@@ -421,7 +421,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
-  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 86400; // 24 hours
+  // Shorter TTL for in-memory fallback to bound memory growth during Redis outages
+  const IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   // In-memory fallback dedup set to limit blast radius during Redis outages
   const inMemoryIdentifyDedup = new Set<string>();
@@ -456,7 +458,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             inMemoryIdentifyDedup.add(distinctId);
             const timer = setTimeout(
               () => inMemoryIdentifyDedup.delete(distinctId),
-              TELEMETRY_IDENTIFY_CACHE_TTL * 1000
+              IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS
             );
             timer.unref();
           }
@@ -498,10 +500,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // In-memory fallback to limit blast radius during Redis outage
           if (inMemoryIdentityDedup.has(dedupKey)) return;
           inMemoryIdentityDedup.add(dedupKey);
-          const timer = setTimeout(
-            () => inMemoryIdentityDedup.delete(dedupKey),
-            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds * 1000
-          );
+          const timer = setTimeout(() => inMemoryIdentityDedup.delete(dedupKey), IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS);
           timer.unref();
           // falls through intentionally: first caller during Redis outage still identifies
         }
