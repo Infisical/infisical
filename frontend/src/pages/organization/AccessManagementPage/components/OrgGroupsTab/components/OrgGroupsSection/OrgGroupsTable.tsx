@@ -248,7 +248,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
           <UnstableEmptyHeader>
             <UnstableEmptyTitle>
               {groups.length
-                ? `No ${isSubOrganization ? "sub-" : ""}organization groups match search`
+                ? `No ${isSubOrganization ? "sub-" : ""}organization groups match ${search ? "search" : "filter criteria"}`
                 : `No ${isSubOrganization ? "sub-" : ""}organization groups found`}
             </UnstableEmptyTitle>
             <UnstableEmptyDescription>
