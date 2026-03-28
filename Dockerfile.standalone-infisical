@@ -215,6 +215,21 @@ ENV DD_GIT_REPOSITORY_URL $DD_GIT_REPOSITORY_URL
 ARG DD_GIT_COMMIT_SHA
 ENV DD_GIT_COMMIT_SHA $DD_GIT_COMMIT_SHA
 
+# OCI Image Labels - Static metadata
+# See: https://github.com/opencontainers/image-spec/blob/main/annotations.md
+LABEL org.opencontainers.image.title="Infisical"
+LABEL org.opencontainers.image.description="Open-source secret management platform"
+LABEL org.opencontainers.image.url="https://infisical.com"
+LABEL org.opencontainers.image.documentation="https://infisical.com/docs"
+LABEL org.opencontainers.image.source="https://github.com/Infisical/infisical"
+LABEL org.opencontainers.image.vendor="Infisical"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.base.name="node:20.20.0-trixie-slim"
+
+# OCI Image Labels - Dynamic metadata (set via build args)
+LABEL org.opencontainers.image.version="${INFISICAL_PLATFORM_VERSION}"
+LABEL org.opencontainers.image.revision="${DD_GIT_COMMIT_SHA}"
+
 ENV PORT 8080
 ENV HOST=0.0.0.0
 ENV HTTPS_ENABLED false
