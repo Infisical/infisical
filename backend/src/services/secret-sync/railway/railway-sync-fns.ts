@@ -30,10 +30,7 @@ export const RailwaySyncFns = {
    * Gets secrets for a specific Railway service (or shared variables if no serviceId).
    * Used internally for per-service operations.
    */
-  async getSecretsForService(
-    secretSync: TRailwaySyncWithCredentials,
-    serviceId?: string
-  ): Promise<TSecretMap> {
+  async getSecretsForService(secretSync: TRailwaySyncWithCredentials, serviceId?: string): Promise<TSecretMap> {
     const config = secretSync.destinationConfig;
     const { keySchema } = secretSync.syncOptions;
     const { environment } = secretSync;
