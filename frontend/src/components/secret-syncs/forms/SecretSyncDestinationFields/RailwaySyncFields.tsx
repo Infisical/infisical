@@ -21,6 +21,8 @@ export const RailwaySyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const projectId = useWatch({ name: "destinationConfig.projectId", control });
+  // Watch legacy serviceId for backward compatibility with existing syncs
+  const legacyServiceId = useWatch({ name: "destinationConfig.serviceId", control });
 
   const { data: projects = [], isPending: isProjectsLoading } = useRailwayConnectionListProjects(
     connectionId,
@@ -122,7 +124,11 @@ export const RailwaySyncFields = () => {
               isMulti
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={services.filter((s) => value?.includes(s.id))}
+              value={services.filter((s) => {
+                // Support legacy single-service syncs that only have serviceId
+                const effectiveIds = value?.length ? value : (legacyServiceId ? [legacyServiceId] : []);
+                return effectiveIds.includes(s.id);
+              })}
               onChange={(option) => {
                 const selected = option as MultiValue<TRailwayService>;
                 onChange(selected.map((s) => s.id));
