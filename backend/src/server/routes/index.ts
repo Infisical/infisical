@@ -2822,7 +2822,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     projectDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

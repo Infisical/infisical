@@ -261,8 +261,8 @@ export enum ProjectPermissionPamAccountActions {
 }
 
 export enum ProjectPermissionPamSessionActions {
-  Read = "read"
-  // Terminate = "terminate"
+  Read = "read",
+  Terminate = "terminate"
 }
 
 export enum ProjectPermissionPamDiscoveryActions {
