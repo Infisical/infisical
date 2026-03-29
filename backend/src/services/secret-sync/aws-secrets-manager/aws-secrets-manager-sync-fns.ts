@@ -3,26 +3,23 @@ import {
   BatchGetSecretValueCommand,
   CreateSecretCommand,
   CreateSecretCommandInput,
+  CreateSecretResponse,
   DeleteSecretCommand,
   DeleteSecretResponse,
   DescribeSecretCommand,
   DescribeSecretCommandInput,
+  DescribeSecretResponse,
   ListSecretsCommand,
+  SecretListEntry,
   SecretsManagerClient,
+  SecretValueEntry,
+  Tag,
   TagResourceCommand,
   TagResourceCommandOutput,
   UntagResourceCommand,
   UpdateSecretCommand,
   UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
-import type { AWSError } from "aws-sdk";
-import {
-  CreateSecretResponse,
-  DescribeSecretResponse,
-  SecretListEntry,
-  SecretValueEntry,
-  Tag
-} from "aws-sdk/clients/secretsmanager.js";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
@@ -89,7 +86,7 @@ const getSecretsRecord = async (
       hasNext = Boolean(output.NextToken);
       nextToken = output.NextToken;
     } catch (e) {
-      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+      if ((e as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
@@ -141,7 +138,7 @@ const getSecretValuesRecord = async (
         hasNext = Boolean(output.NextToken);
         nextToken = output.NextToken;
       } catch (e) {
-        if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+        if ((e as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
           attempt += 1;
           // eslint-disable-next-line no-await-in-loop
           await sleep();
@@ -165,7 +162,7 @@ const describeSecret = async (
   try {
     return await client.send(new DescribeSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -205,7 +202,7 @@ const createSecret = async (
   try {
     return await client.send(new CreateSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -223,7 +220,7 @@ const updateSecret = async (
   try {
     return await client.send(new UpdateSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -241,7 +238,7 @@ const deleteSecret = async (
   try {
     return await client.send(new DeleteSecretCommand({ SecretId: secretKey, ForceDeleteWithoutRecovery: true }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -260,7 +257,7 @@ const addTags = async (
   try {
     return await client.send(new TagResourceCommand({ SecretId: secretKey, Tags: tags }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -279,7 +276,7 @@ const removeTags = async (
   try {
     return await client.send(new UntagResourceCommand({ SecretId: secretKey, TagKeys: tagKeys }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if ((error as Error).name === "ThrottlingException" && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
