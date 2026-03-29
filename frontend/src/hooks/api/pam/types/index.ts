@@ -114,6 +114,7 @@ export type TPamSession = {
   createdAt: string;
   updatedAt: string;
   logs: TPamSessionLog[];
+  gatewayIdentityId?: string | null;
 };
 
 // Resource DTOs

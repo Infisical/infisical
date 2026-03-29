@@ -44,5 +44,6 @@ export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEve
 export const SanitizedSessionSchema = PamSessionsSchema.omit({
   encryptedLogsBlob: true
 }).extend({
-  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema]))
+  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
+  gatewayIdentityId: z.string().nullable().optional()
 });
