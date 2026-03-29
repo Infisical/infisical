@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
+import { MultiValue, SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl } from "@app/components/v2";
@@ -11,6 +11,8 @@ import {
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
+
+type TRailwayService = { id: string; name: string };
 
 export const RailwaySyncFields = () => {
   const { control, setValue } = useFormContext<
@@ -41,10 +43,10 @@ export const RailwaySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.environmentId", "");
           setValue("destinationConfig.projectId", "");
-          setValue("destinationConfig.serviceId", "");
+          setValue("destinationConfig.serviceIds", []);
+          setValue("destinationConfig.serviceNames", []);
           setValue("destinationConfig.projectName", "");
           setValue("destinationConfig.environmentName", "");
-          setValue("destinationConfig.serviceName", "");
         }}
       />
       <Controller
@@ -104,29 +106,33 @@ export const RailwaySyncFields = () => {
       />
 
       <Controller
-        name="destinationConfig.serviceId"
+        name="destinationConfig.serviceIds"
         disabled={!connectionId || !projectId}
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Select a service"
+            label="Select services"
             tooltipClassName="max-w-md"
             tooltipText="By default secrets are created as shared variables in Railway."
-            helperText="Scope your secrets to a specific service within the environment."
+            helperText="Scope your secrets to one or more services within the environment."
           >
             <FilterableSelect
+              isMulti
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={services.find((p) => p.id === value) ?? null}
+              value={services.filter((s) => value?.includes(s.id))}
               onChange={(option) => {
-                const v = option as SingleValue<TRailwayProject>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.serviceName", v?.name ?? "");
+                const selected = option as MultiValue<TRailwayService>;
+                onChange(selected.map((s) => s.id));
+                setValue(
+                  "destinationConfig.serviceNames",
+                  selected.map((s) => s.name)
+                );
               }}
               options={services}
-              placeholder="Select a service..."
+              placeholder="Select one or more services..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />

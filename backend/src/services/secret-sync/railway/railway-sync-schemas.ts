@@ -25,8 +25,12 @@ const RailwaySyncDestinationConfigSchema = z.object({
     .min(1, "Railway environment ID required")
     .describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.environmentId),
   environmentName: z.string().trim().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.environmentName),
+  // Deprecated single-service fields kept for backward compatibility with existing syncs
   serviceId: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.serviceId),
-  serviceName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.serviceName)
+  serviceName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.serviceName),
+  // New multi-service fields
+  serviceIds: z.array(z.string()).optional().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.serviceIds),
+  serviceNames: z.array(z.string()).optional().describe(SecretSyncs.DESTINATION_CONFIG.RAILWAY.serviceNames)
 });
 
 const RailwaySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

@@ -3015,8 +3015,10 @@ export const SecretSyncs = {
       projectName: "The name of the Railway project to sync secrets to.",
       environmentId: "The Railway environment to sync secrets to.",
       environmentName: "The Railway environment to sync secrets to.",
-      serviceId: "The Railway service that secrets should be synced to.",
-      serviceName: "The Railway service that secrets should be synced to."
+      serviceId: "Deprecated. The Railway service that secrets should be synced to.",
+      serviceName: "Deprecated. The Railway service that secrets should be synced to.",
+      serviceIds: "The IDs of the Railway services that secrets should be synced to.",
+      serviceNames: "The names of the Railway services that secrets should be synced to."
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."

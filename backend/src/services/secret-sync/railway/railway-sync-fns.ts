@@ -8,6 +8,23 @@ import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
 import { TRailwaySyncWithCredentials } from "./railway-sync-types";
 
+/**
+ * Returns the list of service IDs to sync to.
+ * Supports both new multi-service format (serviceIds) and legacy single-service format (serviceId).
+ * Returns undefined if no services are specified (shared/project-level variables).
+ */
+function getTargetServiceIds(config: TRailwaySyncWithCredentials["destinationConfig"]): string[] | undefined {
+  if (config.serviceIds && config.serviceIds.length > 0) {
+    return config.serviceIds;
+  }
+
+  if (config.serviceId) {
+    return [config.serviceId];
+  }
+
+  return undefined;
+}
+
 export const RailwaySyncFns = {
   async getSecrets(secretSync: TRailwaySyncWithCredentials): Promise<TSecretMap> {
     try {
@@ -15,10 +32,14 @@ export const RailwaySyncFns = {
       const { keySchema } = secretSync.syncOptions;
       const { environment } = secretSync;
 
+      const targetServiceIds = getTargetServiceIds(config);
+
+      // If multiple services, get variables from the first service for import purposes.
+      // All services should have the same secrets since we sync the same set to all of them.
       const variables = await RailwayPublicAPI.getVariables(secretSync.connection, {
         projectId: config.projectId,
         environmentId: config.environmentId,
-        serviceId: config.serviceId || undefined
+        serviceId: targetServiceIds?.[0] || undefined
       });
 
       const entries = {} as TSecretMap;
@@ -47,11 +68,11 @@ export const RailwaySyncFns = {
   },
 
   /**
-   * Syncs secrets to Railway and redeploys the service if needed.
+   * Syncs secrets to Railway and redeploys services if needed.
    *
    * Gets existing Railway vars, merges with new secrets (keeping Railway vars if deletion is disabled),
    * then replaces every variable with the new values, if variable is not in the secretMap, it is deleted.
-   * If there's a service, triggers a redeploy to pick up the changes.
+   * If there are services, triggers a redeploy for each to pick up the changes.
    */
   async syncSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
     try {
@@ -68,44 +89,66 @@ export const RailwaySyncFns = {
 
       const toReplace = disableSecretDeletion ? { ...railwaySecretsMap, ...secretMapMap } : secretMapMap;
 
-      const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
-        input: {
-          projectId: config.projectId,
-          environmentId: config.environmentId,
-          serviceId: config.serviceId || undefined,
-          skipDeploys: true,
-          variables: toReplace,
-          replace: true
-        }
-      });
+      const targetServiceIds = getTargetServiceIds(config);
 
-      if (!upserted)
-        throw new SecretSyncError({
-          message: "Failed to upsert secrets to Railway"
+      if (targetServiceIds && targetServiceIds.length > 0) {
+        // Sync to each selected service
+        for (const serviceId of targetServiceIds) {
+          // eslint-disable-next-line no-await-in-loop
+          const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
+            input: {
+              projectId: config.projectId,
+              environmentId: config.environmentId,
+              serviceId,
+              skipDeploys: true,
+              variables: toReplace,
+              replace: true
+            }
+          });
+
+          if (!upserted)
+            throw new SecretSyncError({
+              message: `Failed to upsert secrets to Railway service ${serviceId}`
+            });
+
+          // eslint-disable-next-line no-await-in-loop
+          const latestDeployment = await RailwayPublicAPI.getDeployments(secretSync.connection, {
+            input: {
+              serviceId,
+              environmentId: config.environmentId
+            },
+            first: 1
+          });
+
+          const latestDeploymentId = latestDeployment?.deployments.edges[0]?.node.id;
+
+          if (latestDeploymentId) {
+            // eslint-disable-next-line no-await-in-loop
+            await RailwayPublicAPI.redeployDeployment(secretSync.connection, {
+              input: {
+                deploymentId: latestDeploymentId
+              }
+            });
+          }
+        }
+      } else {
+        // No services specified - sync to shared/project-level variables
+        const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
+          input: {
+            projectId: config.projectId,
+            environmentId: config.environmentId,
+            serviceId: undefined,
+            skipDeploys: true,
+            variables: toReplace,
+            replace: true
+          }
         });
 
-      if (!config.serviceId) return;
-
-      const latestDeployment = await RailwayPublicAPI.getDeployments(secretSync.connection, {
-        input: {
-          serviceId: config.serviceId,
-          environmentId: config.environmentId
-        },
-        first: 1
-      });
-
-      const latestDeploymentId = latestDeployment?.deployments.edges[0].node.id;
-
-      if (!latestDeploymentId)
-        throw new SecretSyncError({
-          message: "Failed to get latest deployment from Railway"
-        });
-
-      await RailwayPublicAPI.redeployDeployment(secretSync.connection, {
-        input: {
-          deploymentId: latestDeploymentId
-        }
-      });
+        if (!upserted)
+          throw new SecretSyncError({
+            message: "Failed to upsert secrets to Railway"
+          });
+      }
     } catch (error) {
       if (error instanceof SecretSyncError) throw error;
 
@@ -127,22 +170,46 @@ export const RailwaySyncFns = {
         .map(([key, secret]) => [key, secret.value])
     );
 
-    try {
-      const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
-        input: {
-          projectId: config.projectId,
-          environmentId: config.environmentId,
-          serviceId: config.serviceId || undefined,
-          skipDeploys: true,
-          variables: remainingVariables,
-          replace: true
-        }
-      });
+    const targetServiceIds = getTargetServiceIds(config);
 
-      if (!upserted) {
-        throw new SecretSyncError({
-          message: "Failed to remove secrets from Railway"
+    try {
+      if (targetServiceIds && targetServiceIds.length > 0) {
+        for (const serviceId of targetServiceIds) {
+          // eslint-disable-next-line no-await-in-loop
+          const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
+            input: {
+              projectId: config.projectId,
+              environmentId: config.environmentId,
+              serviceId,
+              skipDeploys: true,
+              variables: remainingVariables,
+              replace: true
+            }
+          });
+
+          if (!upserted) {
+            throw new SecretSyncError({
+              message: `Failed to remove secrets from Railway service ${serviceId}`
+            });
+          }
+        }
+      } else {
+        const upserted = await RailwayPublicAPI.upsertCollection(secretSync.connection, {
+          input: {
+            projectId: config.projectId,
+            environmentId: config.environmentId,
+            serviceId: undefined,
+            skipDeploys: true,
+            variables: remainingVariables,
+            replace: true
+          }
         });
+
+        if (!upserted) {
+          throw new SecretSyncError({
+            message: "Failed to remove secrets from Railway"
+          });
+        }
       }
     } catch (error) {
       if (error instanceof SecretSyncError) throw error;
