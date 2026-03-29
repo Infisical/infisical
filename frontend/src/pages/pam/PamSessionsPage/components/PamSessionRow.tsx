@@ -15,7 +15,6 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -52,7 +51,6 @@ type Props = {
 export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
   const router = useRouter();
   const [showAllLogs, setShowAllLogs] = useState(false);
-  const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
   const terminateSession = useTerminatePamSession();
 
   const {
@@ -196,7 +194,7 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
                           icon={<GavelIcon size={14} />}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setIsTerminateModalOpen(true);
+                            terminateSession.mutate({ sessionId: id, projectId });
                           }}
                         >
                           Terminate Session
@@ -210,23 +208,6 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
           </div>
         </Td>
       </Tr>
-
-      <DeleteActionModal
-        isOpen={isTerminateModalOpen}
-        onChange={(open) => setIsTerminateModalOpen(open)}
-        title="Terminate Session"
-        deleteKey="terminate"
-        onDeleteApproved={async () => {
-          await terminateSession.mutateAsync({ sessionId: id, projectId });
-          setIsTerminateModalOpen(false);
-        }}
-        buttonText="Terminate"
-      >
-        <p className="text-sm text-mineshaft-300">
-          Are you sure you want to terminate this session? The user&apos;s connection will be
-          immediately dropped.
-        </p>
-      </DeleteActionModal>
 
       {filteredLogs.length > 0 && (
         <Tr>

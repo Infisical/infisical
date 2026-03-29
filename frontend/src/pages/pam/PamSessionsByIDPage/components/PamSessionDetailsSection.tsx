@@ -1,19 +1,11 @@
-import { useState } from "react";
 import { faCheck, faCopy, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { GavelIcon, PackageOpenIcon } from "lucide-react";
+import { PackageOpenIcon } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
-import { Badge, Button } from "@app/components/v3";
-import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "@app/context";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
-import {
-  PAM_RESOURCE_TYPE_MAP,
-  PamSessionStatus,
-  TPamSession,
-  useTerminatePamSession
-} from "@app/hooks/api/pam";
+import { PAM_RESOURCE_TYPE_MAP, TPamSession } from "@app/hooks/api/pam";
 
 import { PamSessionStatusBadge } from "../../PamSessionsPage/components/PamSessionStatusBadge";
 
@@ -31,7 +23,6 @@ const DetailItem = ({ label, children }: { label: string; children: React.ReactN
 export const PamSessionDetailsSection = ({
   session: {
     id,
-    projectId,
     accountName,
     resourceType,
     resourceName,
@@ -43,18 +34,12 @@ export const PamSessionDetailsSection = ({
     actorIp,
     actorUserAgent,
     startedAt,
-    expiresAt,
-    gatewayIdentityId
+    expiresAt
   }
 }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-  const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
-  const terminateSession = useTerminatePamSession();
-
-  const isActive = status === PamSessionStatus.Active || status === PamSessionStatus.Starting;
-  const isGatewaySession = !!gatewayIdentityId;
 
   const details = PAM_RESOURCE_TYPE_MAP[resourceType];
 
@@ -110,27 +95,7 @@ export const PamSessionDetailsSection = ({
         </DetailItem>
 
         <DetailItem label="Status">
-          <div className="flex items-center gap-2">
-            <PamSessionStatusBadge status={status} />
-            {isActive && isGatewaySession && (
-              <ProjectPermissionCan
-                I={ProjectPermissionPamSessionActions.Terminate}
-                a={ProjectPermissionSub.PamSessions}
-              >
-                {(isAllowed: boolean) => (
-                  <Button
-                    variant="danger"
-                    size="xs"
-                    disabled={!isAllowed}
-                    onClick={() => setIsTerminateModalOpen(true)}
-                  >
-                    <GavelIcon size={12} />
-                    Terminate
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-            )}
-          </div>
+          <PamSessionStatusBadge status={status} />
         </DetailItem>
 
         <DetailItem label="IP Address">
@@ -157,23 +122,6 @@ export const PamSessionDetailsSection = ({
           <p>{endedAt ? new Date(endedAt).toLocaleString() : "Ongoing"}</p>
         </DetailItem>
       </div>
-
-      <DeleteActionModal
-        isOpen={isTerminateModalOpen}
-        onChange={(open) => setIsTerminateModalOpen(open)}
-        title="Terminate Session"
-        deleteKey="terminate"
-        onDeleteApproved={async () => {
-          await terminateSession.mutateAsync({ sessionId: id, projectId });
-          setIsTerminateModalOpen(false);
-        }}
-        buttonText="Terminate"
-      >
-        <p className="text-sm text-mineshaft-300">
-          Are you sure you want to terminate this session? The user&apos;s connection will be
-          immediately dropped.
-        </p>
-      </DeleteActionModal>
     </div>
   );
 };
