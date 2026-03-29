@@ -126,8 +126,9 @@ export const RailwaySyncFields = () => {
               isDisabled={!connectionId}
               value={services.filter((s) => {
                 // Support legacy single-service syncs that only have serviceId
-                const effectiveIds = value?.length ? value : (legacyServiceId ? [legacyServiceId] : []);
-                return effectiveIds.includes(s.id);
+                if (value && value.length > 0) return value.includes(s.id);
+                if (legacyServiceId) return s.id === legacyServiceId;
+                return false;
               })}
               onChange={(option) => {
                 const selected = option as MultiValue<TRailwayService>;
