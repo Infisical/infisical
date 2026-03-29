@@ -256,13 +256,15 @@ export const pamSessionServiceFactory = ({
           const certs = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId: session.gatewayId,
             sessionId,
-            resourceType: (session.resourceType as PamResource) || PamResource.Postgres,
+            resourceType: session.resourceType as PamResource,
+            // host/port are embedded in cert extensions for routing but not used for cancellation —
+            // real values are encrypted in PamResource.encryptedConnectionDetails and not worth decrypting here
             host: "0.0.0.0",
             port: 0,
-            actorMetadata: { id: actor.id, type: actor.type as ActorType, name: "" }
+            actorMetadata: { id: actor.id, type: actor.type as ActorType, name: session.actorName }
           });
           if (!certs) {
-            logger.debug("Failed to get PAM connection details for session cancellation");
+            logger.debug({ sessionId }, "Failed to get PAM connection details for session cancellation");
             return;
           }
           relayConn = await createRelayConnection({
@@ -278,7 +280,7 @@ export const pamSessionServiceFactory = ({
           );
           cancelConn.end();
         } catch (err) {
-          logger.debug(err, "Session termination ALPN signal failed (best-effort)");
+          logger.debug({ sessionId, err }, "Session termination ALPN signal failed (best-effort)");
         } finally {
           relayConn?.destroy();
         }
