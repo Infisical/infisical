@@ -276,6 +276,9 @@ export enum TableName {
   PkiSigners = "pki_signers",
   PkiSigningOperations = "pki_signing_operations",
 
+  // Deprecated - Not used anymore now that Redis is persistent
+  DeprecatedDurableQueueJobs = "queue_jobs",
+
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules"
 }
