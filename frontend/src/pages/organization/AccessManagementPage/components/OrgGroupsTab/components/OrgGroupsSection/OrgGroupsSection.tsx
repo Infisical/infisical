@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
@@ -73,31 +81,37 @@ export const OrgGroupsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Groups
-          </p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups" />
-        </div>
-        <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
-          {(isAllowed) => (
-            <Button
-              variant="outline_bg"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handleAddGroupModal()}
-              isDisabled={!isAllowed}
-            >
-              {isSubOrganization
-                ? "Add Group to Sub-Organization"
-                : `Create ${isSubOrganization ? "Sub-" : ""}Organization Group`}
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <OrgGroupsTable handlePopUpOpen={handlePopUpOpen} />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups" />
+          </UnstableCardTitle>
+          <UnstableCardDescription>
+            Create and manage {isSubOrganization ? "sub-" : ""}organization groups
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
+              {(isAllowed) => (
+                <Button
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  onClick={() => handleAddGroupModal()}
+                  isDisabled={!isAllowed}
+                >
+                  <PlusIcon />
+                  {isSubOrganization
+                    ? "Add Group to Sub-Organization"
+                    : "Create Organization Group"}
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <OrgGroupsTable handlePopUpOpen={handlePopUpOpen} />
+        </UnstableCardContent>
+      </UnstableCard>
       <OrgGroupModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
@@ -131,6 +145,6 @@ export const OrgGroupsSection = () => {
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text={popUp.upgradePlan?.data?.text}
       />
-    </div>
+    </>
   );
 };
