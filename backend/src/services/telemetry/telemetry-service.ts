@@ -86,8 +86,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       : undefined;
 
   const getPostHogForInstance = (): PostHog | undefined => {
-    const instanceType = licenseService.getInstanceType();
-    if (instanceType === InstanceType.Cloud || appCfg.INFISICAL_CLOUD) {
+    // Only use cloudPostHog when INFISICAL_CLOUD is set, matching the
+    // condition under which cloudPostHog is created.
+    if (appCfg.INFISICAL_CLOUD) {
       return cloudPostHog;
     }
     return selfHostedPostHog;
