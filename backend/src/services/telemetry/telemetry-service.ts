@@ -469,10 +469,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // In-memory fallback to limit blast radius during Redis outage
           if (inMemoryIdentifyDedup.has(distinctId)) return;
           inMemoryIdentifyDedup.add(distinctId);
-          const timer = setTimeout(
-            () => inMemoryIdentifyDedup.delete(distinctId),
-            TELEMETRY_IDENTIFY_CACHE_TTL * 1000
-          );
+          const timer = setTimeout(() => inMemoryIdentifyDedup.delete(distinctId), TELEMETRY_IDENTIFY_CACHE_TTL * 1000);
           timer.unref();
         }
       }
