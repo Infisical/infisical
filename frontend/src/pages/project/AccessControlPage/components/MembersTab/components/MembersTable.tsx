@@ -377,7 +377,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               </Tooltip>
                               <PopoverContent
                                 side="right"
-                                className="flex w-auto flex-wrap gap-1.5"
+                                className="flex w-auto max-w-sm flex-wrap gap-1.5"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {roles
