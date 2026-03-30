@@ -353,7 +353,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                           <ClockIcon />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          {isExpired ? "Timed role expired" : "Timed role access"}
+                                          {isExpired ? "Access expired" : "Temporary access"}
                                         </TooltipContent>
                                       </Tooltip>
                                     )}
