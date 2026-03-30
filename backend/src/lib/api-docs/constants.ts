@@ -1283,9 +1283,7 @@ export const RAW_SECRETS = {
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not.",
-    includePersonalOverrides:
-      "Whether or not to include personal secrets in the response. When enabled, personal secrets will take priority over shared secrets with the same key."
+    includeImports: "Weather to include imported secrets or not."
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
