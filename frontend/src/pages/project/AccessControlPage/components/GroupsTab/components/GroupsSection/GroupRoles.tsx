@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon, ClockIcon, EditIcon } from "lucide-react";
+import { CheckIcon, ClockAlertIcon, ClockIcon, EditIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -425,11 +425,9 @@ export const GroupRoles = ({
               </span>
               {isTemporary && (
                 <Tooltip>
-                  <TooltipTrigger>
-                    <ClockIcon />
-                  </TooltipTrigger>
+                  <TooltipTrigger>{isExpired ? <ClockAlertIcon /> : <ClockIcon />}</TooltipTrigger>
                   <TooltipContent>
-                    {isExpired ? "Expired Temporary Access" : "Temporary Access"}
+                    {isExpired ? "Expired access" : "Temporary access"}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -437,15 +435,24 @@ export const GroupRoles = ({
           );
         })}
       {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="neutral" asChild>
-              <button type="button" onClick={(e) => e.stopPropagation()}>
-                +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-              </button>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger className="flex h-4 items-center">
+              <PopoverTrigger asChild>
+                <Badge variant="neutral" asChild>
+                  <button type="button" onClick={(e) => e.stopPropagation()}>
+                    +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                  </button>
+                </Badge>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Click to view additional roles</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            side="right"
+            className="flex w-auto max-w-sm flex-wrap gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
             {roles
               .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
               .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
@@ -457,19 +464,19 @@ export const GroupRoles = ({
                     </span>
                     {isTemporary && (
                       <Tooltip>
-                        <TooltipTrigger>
-                          <ClockIcon />
+                        <TooltipTrigger tabIndex={-1}>
+                          {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                         </TooltipTrigger>
                         <TooltipContent>
-                          {isExpired ? "Expired Temporary Access" : "Temporary Access"}
+                          {isExpired ? "Access expired" : "Temporary access"}
                         </TooltipContent>
                       </Tooltip>
                     )}
                   </Badge>
                 );
               })}
-          </TooltipContent>
-        </Tooltip>
+          </PopoverContent>
+        </Popover>
       )}
       {!isEditDisabled && (
         <Popover open={isEditOpen} onOpenChange={setIsEditOpen}>
