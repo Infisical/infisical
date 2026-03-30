@@ -759,9 +759,17 @@ export type TPamAccountRotatedEvent = {
   };
 };
 
-export type TPamSessionEvent = {
-  event: PostHogEventTypes.PamSessionStarted | PostHogEventTypes.PamSessionEnded;
+export type TPamSessionStartedEvent = {
+  event: PostHogEventTypes.PamSessionStarted;
   properties: {
+    projectId: string;
+  };
+};
+
+export type TPamSessionEndedEvent = {
+  event: PostHogEventTypes.PamSessionEnded;
+  properties: {
+    resourceType: string;
     projectId: string;
   };
 };
@@ -865,7 +873,8 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TPamAccountEvent
   | TPamAccountAccessedEvent
   | TPamAccountRotatedEvent
-  | TPamSessionEvent
+  | TPamSessionStartedEvent
+  | TPamSessionEndedEvent
   | TPamWebAccessStartedEvent
   | TPamDiscoveryEvent
   | TPamRotationRuleCreatedEvent

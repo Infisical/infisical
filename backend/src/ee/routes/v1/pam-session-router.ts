@@ -190,6 +190,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
+            resourceType: session.resourceType,
             projectId
           }
         })
