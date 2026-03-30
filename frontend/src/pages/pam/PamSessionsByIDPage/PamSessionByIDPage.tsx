@@ -6,24 +6,21 @@ import { GavelIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Modal,
-  ModalClose,
-  ModalContent,
   PageHeader
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { PamSessionStatus, useGetPamSessionById, useTerminatePamSession } from "@app/hooks/api/pam";
+import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
 import { PamSessionDetailsSection } from "./components/PamSessionDetailsSection";
 import { PamSessionLogsSection } from "./components/PamSessionLogsSection";
 
@@ -35,7 +32,6 @@ const Page = () => {
   const { data: session } = useGetPamSessionById(sessionId);
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const terminateSession = useTerminatePamSession();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
 
   const isActive =
@@ -103,37 +99,12 @@ const Page = () => {
             </div>
           </div>
 
-          <Modal
+          <PamTerminateSessionModal
+            sessionId={session.id}
+            projectId={currentProject.id}
             isOpen={popUp.terminateSession.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("terminateSession", isOpen)}
-          >
-            <ModalContent
-              title="Terminate Session"
-              subTitle="Are you sure you want to terminate this session?"
-              footerContent={
-                <div className="mx-2 flex items-center">
-                  <Button
-                    className="mr-4"
-                    colorSchema="danger"
-                    isLoading={terminateSession.isPending}
-                    onClick={() =>
-                      terminateSession.mutate(
-                        { sessionId: session.id, projectId: currentProject.id },
-                        { onSuccess: () => handlePopUpToggle("terminateSession", false) }
-                      )
-                    }
-                  >
-                    Terminate
-                  </Button>
-                  <ModalClose asChild>
-                    <Button variant="plain" colorSchema="secondary">
-                      Cancel
-                    </Button>
-                  </ModalClose>
-                </div>
-              }
-            />
-          </Modal>
+          />
         </div>
       )}
     </div>

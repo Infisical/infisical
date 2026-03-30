@@ -20,9 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Modal,
-  ModalClose,
-  ModalContent,
   Td,
   Tooltip,
   Tr
@@ -37,10 +34,10 @@ import {
   PAM_RESOURCE_TYPE_MAP,
   PamSessionStatus,
   TPamSession,
-  TTerminalEvent,
-  useTerminatePamSession
+  TTerminalEvent
 } from "@app/hooks/api/pam";
 
+import { PamTerminateSessionModal } from "../../components/PamTerminateSessionModal";
 import { formatLogContent } from "../../PamSessionsByIDPage/components/PamSessionLogsSection.utils";
 import { aggregateTerminalEvents } from "../../PamSessionsByIDPage/components/terminal-utils";
 import { PamSessionStatusBadge } from "./PamSessionStatusBadge";
@@ -55,7 +52,6 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
   const router = useRouter();
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false);
-  const terminateSession = useTerminatePamSession();
 
   const {
     id,
@@ -214,37 +210,12 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
         </Td>
       </Tr>
 
-      <Modal
+      <PamTerminateSessionModal
+        sessionId={id}
+        projectId={projectId}
         isOpen={isTerminateDialogOpen}
-        onOpenChange={(isOpen) => setIsTerminateDialogOpen(isOpen)}
-      >
-        <ModalContent
-          title="Terminate Session"
-          subTitle="Are you sure you want to terminate this session?"
-          footerContent={
-            <div className="mx-2 flex items-center">
-              <Button
-                className="mr-4"
-                colorSchema="danger"
-                isLoading={terminateSession.isPending}
-                onClick={() =>
-                  terminateSession.mutate(
-                    { sessionId: id, projectId },
-                    { onSuccess: () => setIsTerminateDialogOpen(false) }
-                  )
-                }
-              >
-                Terminate
-              </Button>
-              <ModalClose asChild>
-                <Button variant="plain" colorSchema="secondary">
-                  Cancel
-                </Button>
-              </ModalClose>
-            </div>
-          }
-        />
-      </Modal>
+        onOpenChange={setIsTerminateDialogOpen}
+      />
 
       {filteredLogs.length > 0 && (
         <Tr>
