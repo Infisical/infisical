@@ -314,7 +314,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
         expandSecretReferences: convertStringBoolean(true).describe(RAW_SECRETS.GET.expand),
         includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports),
-        includePersonalOverrides: convertStringBoolean(true).describe(RAW_SECRETS.GET.includePersonalOverrides)
+        includePersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.GET.includePersonalOverrides)
       }),
       response: {
         200: z.object({
