@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
+  ClockAlertIcon,
   ClockIcon,
   FilterIcon,
   InfoIcon,
@@ -26,6 +27,9 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ProjectIcon,
   Skeleton,
   SubOrgIcon,
@@ -414,8 +418,8 @@ export const IdentityTab = withProjectPermission(
                                                 </TooltipTrigger>
                                                 <TooltipContent>
                                                   {isExpired
-                                                    ? "Timed role expired"
-                                                    : "Timed role access"}
+                                                    ? "Access expired"
+                                                    : "Temporary access"}
                                                 </TooltipContent>
                                               </Tooltip>
                                             )}
@@ -424,19 +428,27 @@ export const IdentityTab = withProjectPermission(
                                       }
                                     )}
                                   {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Badge variant="neutral" asChild>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
-                                          </button>
-                                        </Badge>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        className="flex flex-wrap gap-1.5"
+                                    <Popover>
+                                      <Tooltip>
+                                        <TooltipTrigger className="flex h-4 items-center">
+                                          <PopoverTrigger asChild>
+                                            <Badge variant="neutral" asChild>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                                              </button>
+                                            </Badge>
+                                          </PopoverTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          Click to view additional roles
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <PopoverContent
+                                        side="right"
+                                        className="flex w-auto max-w-sm flex-wrap gap-1.5"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         {roles
@@ -463,8 +475,12 @@ export const IdentityTab = withProjectPermission(
                                                   </span>
                                                   {isTemporary && (
                                                     <Tooltip>
-                                                      <TooltipTrigger>
-                                                        <ClockIcon />
+                                                      <TooltipTrigger tabIndex={-1}>
+                                                        {isExpired ? (
+                                                          <ClockAlertIcon />
+                                                        ) : (
+                                                          <ClockIcon />
+                                                        )}
                                                       </TooltipTrigger>
                                                       <TooltipContent>
                                                         {isExpired
@@ -477,8 +493,8 @@ export const IdentityTab = withProjectPermission(
                                               );
                                             }
                                           )}
-                                      </TooltipContent>
-                                    </Tooltip>
+                                      </PopoverContent>
+                                    </Popover>
                                   )}
                                 </div>
                               </UnstableTableCell>
