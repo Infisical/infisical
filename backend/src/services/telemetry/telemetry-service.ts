@@ -73,10 +73,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 `);
   }
 
-  // Cloud + dedicated instances PostHog client
-  const cloudPostHog = appCfg.TELEMETRY_ENABLED
-    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
-    : undefined;
+  // Cloud + dedicated instances PostHog client (only created when running as cloud/dedicated)
+  const cloudPostHog =
+    appCfg.TELEMETRY_ENABLED && appCfg.INFISICAL_CLOUD
+      ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
+      : undefined;
 
   // Separate PostHog client for self-hosted instance telemetry
   const selfHostedPostHog =
@@ -199,65 +200,67 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const sendPostHogEvents = async (event: TPostHogEvent) => {
-    const postHog = getPostHogForInstance();
-    if (postHog) {
-      // Resolve org name: prefer explicit value, fall back to request context
-      const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
-
-      if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
-        const eventKey = createTelemetryEventKey(event.event, event.distinctId);
-        await keyStore.setItemWithExpiry(
-          eventKey,
-          TELEMETRY_AGGREGATED_KEY_EXP,
-          JSON.stringify({
-            distinctId: event.distinctId,
-            event: event.event,
-            properties: event.properties,
-            organizationId: event.organizationId,
-            ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
-          })
+    // Track secret operation counters in Redis for TelemetryInstanceStats (non-cloud only).
+    // This must run regardless of whether a PostHog client is available.
+    if (!appCfg.INFISICAL_CLOUD) {
+      if (
+        [
+          PostHogEventTypes.SecretPulled,
+          PostHogEventTypes.SecretCreated,
+          PostHogEventTypes.SecretDeleted,
+          PostHogEventTypes.SecretUpdated
+        ].includes(event.event)
+      ) {
+        await keyStore.incrementBy(
+          TELEMETRY_SECRET_PROCESSED_KEY,
+          (event as TSecretModifiedEvent).properties.numberOfSecrets
         );
-      } else {
-        if (event.organizationId) {
-          // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
-          const orgId = event.organizationId;
-          void getOrgGroupProperties(orgId, resolvedOrgName)
-            .then((groupProperties) => {
-              postHog.groupIdentify({
-                groupType: "organization",
-                groupKey: orgId,
-                properties: groupProperties,
-                distinctId: event.distinctId
-              });
-            })
-            .catch((error) => {
-              logger.error(error, "Failed to identify PostHog organization");
-            });
-        }
-        postHog.capture({
-          event: event.event,
-          distinctId: event.distinctId,
-          properties: event.properties,
-          ...(event.organizationId ? { groups: { organization: event.organizationId } } : {})
-        });
+        await keyStore.incrementBy(TELEMETRY_SECRET_OPERATIONS_KEY, 1);
       }
-      return;
     }
 
-    // No PostHog client available — still track secret operation counters in Redis
-    if (
-      [
-        PostHogEventTypes.SecretPulled,
-        PostHogEventTypes.SecretCreated,
-        PostHogEventTypes.SecretDeleted,
-        PostHogEventTypes.SecretUpdated
-      ].includes(event.event)
-    ) {
-      await keyStore.incrementBy(
-        TELEMETRY_SECRET_PROCESSED_KEY,
-        (event as TSecretModifiedEvent).properties.numberOfSecrets
+    const postHog = getPostHogForInstance();
+    if (!postHog) return;
+
+    // Resolve org name: prefer explicit value, fall back to request context
+    const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+
+    if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
+      const eventKey = createTelemetryEventKey(event.event, event.distinctId);
+      await keyStore.setItemWithExpiry(
+        eventKey,
+        TELEMETRY_AGGREGATED_KEY_EXP,
+        JSON.stringify({
+          distinctId: event.distinctId,
+          event: event.event,
+          properties: event.properties,
+          organizationId: event.organizationId,
+          ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
+        })
       );
-      await keyStore.incrementBy(TELEMETRY_SECRET_OPERATIONS_KEY, 1);
+    } else {
+      if (event.organizationId) {
+        // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
+        const orgId = event.organizationId;
+        void getOrgGroupProperties(orgId, resolvedOrgName)
+          .then((groupProperties) => {
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: orgId,
+              properties: groupProperties,
+              distinctId: event.distinctId
+            });
+          })
+          .catch((error) => {
+            logger.error(error, "Failed to identify PostHog organization");
+          });
+      }
+      postHog.capture({
+        event: event.event,
+        distinctId: event.distinctId,
+        properties: event.properties,
+        ...(event.organizationId ? { groups: { organization: event.organizationId } } : {})
+      });
     }
   };
 

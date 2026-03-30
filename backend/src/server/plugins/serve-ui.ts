@@ -31,11 +31,11 @@ export const registerServeUI = async (
     },
     handler: (_req, res) => {
       void res.type("application/javascript");
-      // Serve the self-hosted PostHog key for non-cloud standalone deployments,
-      // falling back to the cloud key if no self-hosted key is configured
+      // Serve the correct PostHog key based on instance type.
+      // Self-hosted without a configured key gets undefined — no frontend telemetry.
       const posthogApiKey = appCfg.INFISICAL_CLOUD
         ? appCfg.POSTHOG_PROJECT_API_KEY
-        : appCfg.POSTHOG_SELF_HOSTED_PROJECT_API_KEY || appCfg.POSTHOG_PROJECT_API_KEY;
+        : appCfg.POSTHOG_SELF_HOSTED_PROJECT_API_KEY;
 
       const config = {
         CAPTCHA_SITE_KEY: appCfg.CAPTCHA_SITE_KEY,

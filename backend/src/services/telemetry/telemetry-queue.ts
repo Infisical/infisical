@@ -31,9 +31,9 @@ export const telemetryQueueServiceFactory = ({
 }: TTelemetryQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  // Cloud + dedicated instances PostHog client
+  // Cloud + dedicated instances PostHog client (only created when running as cloud/dedicated)
   const cloudPostHog =
-    appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED
+    appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED && appCfg.INFISICAL_CLOUD
       ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST, flushAt: 1, flushInterval: 0 })
       : undefined;
 
