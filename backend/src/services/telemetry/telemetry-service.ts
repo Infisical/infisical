@@ -210,7 +210,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           if (event.organizationId) {
             const orgId = event.organizationId;
             // Dedup groupIdentify: only fire once per org per hour to avoid redundant DB/API calls
-            const groupIdentifyCacheKey = `${KeyStorePrefixes.TelemetryGroupIdentify}:${orgId}`;
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(orgId);
             void keyStore
               .setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1")
               .then((wasSet) => {
@@ -366,20 +366,25 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            let groupProperties = orgPropertiesCache.get(key.org);
-            if (!groupProperties) {
-              // Use the organizationName from the first event in the group (all events in a group share the same org)
-              const orgName = events[0]?.organizationName;
-              // eslint-disable-next-line no-await-in-loop
-              groupProperties = await getOrgGroupProperties(key.org, orgName);
-              orgPropertiesCache.set(key.org, groupProperties);
+            // Dedup groupIdentify across all paths: only fire once per org per hour
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
+            // eslint-disable-next-line no-await-in-loop
+            const wasSet = await keyStore.setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1");
+            if (wasSet) {
+              let groupProperties = orgPropertiesCache.get(key.org);
+              if (!groupProperties) {
+                const orgName = events[0]?.organizationName;
+                // eslint-disable-next-line no-await-in-loop
+                groupProperties = await getOrgGroupProperties(key.org, orgName);
+                orgPropertiesCache.set(key.org, groupProperties);
+              }
+              postHog.groupIdentify({
+                groupType: "organization",
+                groupKey: key.org,
+                properties: groupProperties,
+                distinctId: key.id
+              });
             }
-            postHog.groupIdentify({
-              groupType: "organization",
-              groupKey: key.org,
-              properties: groupProperties,
-              distinctId: key.id
-            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }
