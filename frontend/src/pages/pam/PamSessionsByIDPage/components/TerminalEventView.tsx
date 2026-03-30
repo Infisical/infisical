@@ -55,13 +55,13 @@ export const TerminalEventView = ({ events }: Props) => {
             return (
               <div
                 key={eventKey}
-                className="flex w-full flex-col rounded-md border border-mineshaft-700 bg-mineshaft-800 p-3"
+                className="flex w-full flex-col rounded-md border border-border bg-card p-3"
               >
-                <div className="flex items-center justify-between text-bunker-400">
+                <div className="flex items-center justify-between text-muted">
                   <div className="flex items-center gap-2 text-xs">
                     <span>{new Date(event.timestamp).toLocaleString()}</span>
                     {channelLabel && (
-                      <span className="rounded bg-mineshaft-600 px-1.5 py-0.5 text-bunker-300">
+                      <span className="rounded bg-card px-1.5 py-0.5 text-label">
                         {channelLabel}
                       </span>
                     )}
@@ -73,14 +73,14 @@ export const TerminalEventView = ({ events }: Props) => {
                   </div>
                 </div>
 
-                <div className="mt-2 font-mono whitespace-pre-wrap text-bunker-100">
+                <div className="mt-2 font-mono whitespace-pre-wrap text-foreground">
                   <HighlightText text={event.data} highlight={search} />
                 </div>
               </div>
             );
           })
         ) : (
-          <div className="flex grow items-center justify-center text-bunker-300">
+          <div className="flex grow items-center justify-center text-label">
             {search.length ? (
               <div className="text-center">
                 <div className="mb-2">No terminal output matches search criteria</div>
@@ -88,7 +88,7 @@ export const TerminalEventView = ({ events }: Props) => {
             ) : (
               <div className="text-center">
                 <div className="mb-2">Terminal session logs are not yet available</div>
-                <div className="text-xs text-bunker-400">
+                <div className="text-xs text-muted">
                   Logs will be uploaded after the session duration has elapsed.
                   <br />
                   If logs do not appear after some time, please contact your Gateway administrators.
