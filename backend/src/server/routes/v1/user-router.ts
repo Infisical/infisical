@@ -34,6 +34,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO(auth-revamp): Check for all reference of UsersSchema and remove if hashedPassword is set
   server.route({
     method: "GET",
     url: "/duplicate-accounts",

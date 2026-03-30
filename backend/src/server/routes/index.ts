@@ -710,7 +710,7 @@ export const registerRoutes = async (
     projectEnvDAL
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,

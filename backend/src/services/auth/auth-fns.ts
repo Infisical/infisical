@@ -1,4 +1,3 @@
-import { TUsers } from "@app/db/schemas";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -106,13 +105,9 @@ export const enforceUserLockStatus = (isLocked: boolean, temporaryLockDateEnd?: 
   }
 };
 
-export const verifyCaptcha = async (user: TUsers, captchaToken?: string) => {
+export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number | null, captchaToken?: string) => {
   const appCfg = getConfig();
-  if (
-    user.consecutiveFailedPasswordAttempts &&
-    user.consecutiveFailedPasswordAttempts >= 10 &&
-    Boolean(appCfg.CAPTCHA_SECRET)
-  ) {
+  if (consecutiveFailedPasswordAttempts && consecutiveFailedPasswordAttempts >= 10 && Boolean(appCfg.CAPTCHA_SECRET)) {
     if (!captchaToken) {
       throw new BadRequestError({
         name: "Captcha Required",

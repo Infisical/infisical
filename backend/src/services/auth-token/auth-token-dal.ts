@@ -96,6 +96,23 @@ export const tokenDALFactory = (db: TDbClient) => {
     }
   };
 
+  const incrementRefreshVersion = async (
+    sessionId: string,
+    userId: string,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => {
+    try {
+      const [session] = await (tx || db)(TableName.AuthTokenSession)
+        .where({ id: sessionId, userId })
+        .increment("refreshVersion", 1)
+        .update({ lastUsed: new Date() })
+        .returning("*");
+      return session;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "IncrementRefreshVersion" });
+    }
+  };
+
   const deleteTokenSession = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
     try {
       const sessions = await (tx || db)(TableName.AuthTokenSession).where(filter).del().returning("*");
@@ -113,6 +130,7 @@ export const tokenDALFactory = (db: TDbClient) => {
     findOneTokenSession,
     insertTokenSession,
     incrementTokenSessionVersion,
+    incrementRefreshVersion,
     deleteTokenSession
   };
 };

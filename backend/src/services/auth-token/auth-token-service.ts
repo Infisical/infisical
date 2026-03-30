@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -17,6 +18,7 @@ type TAuthTokenServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
@@ -95,7 +97,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -199,13 +201,68 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenSer
       });
 
     if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
+      // Check grace period for multi-tab scenarios
+      const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
+      const graceValue = await keyStore.getItem(graceKey);
+
+      if (graceValue && Number(graceValue) === decodedToken.refreshVersion) {
+        // Grace hit: old token used within grace window (e.g. another browser tab)
+        return { decodedToken, tokenVersion, isGraceHit: true };
+      }
+
+      // Reuse detection: old token used outside grace window — potential theft
+      await tokenDAL.deleteTokenSession({ id: tokenVersion.id, userId: decodedToken.userId });
+      await keyStore.deleteItem(graceKey);
+
       throw new UnauthorizedError({
-        message: "Token version mismatch",
-        name: "InvalidToken"
+        message: "Refresh token reuse detected. Session has been revoked for security.",
+        name: "TokenReuse"
       });
     }
 
-    return { decodedToken, tokenVersion };
+    return { decodedToken, tokenVersion, isGraceHit: false };
+  };
+
+  const rotateRefreshToken = async (decodedToken: AuthModeRefreshJwtTokenPayload, tokenVersion: TAuthTokenSessions) => {
+    const appCfg = getConfig();
+    const oldRefreshVersion = tokenVersion.refreshVersion;
+
+    // Increment refreshVersion in DB
+    const updatedSession = await tokenDAL.incrementRefreshVersion(tokenVersion.id, decodedToken.userId);
+    if (!updatedSession)
+      throw new UnauthorizedError({ message: "Failed to rotate refresh token", name: "RotationFailed" });
+
+    // Store grace entry in Redis so the old token is still accepted briefly
+    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
+    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(oldRefreshVersion));
+
+    // Determine refresh token expiry
+    let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
+    if (decodedToken.organizationId) {
+      const org = await orgDAL.findOne({ id: decodedToken.organizationId });
+      if (org?.userTokenExpiration) {
+        refreshTokenExpiresIn = org.userTokenExpiration;
+      }
+    }
+
+    // Sign new refresh token
+    const newRefreshToken = crypto.jwt().sign(
+      {
+        authMethod: decodedToken.authMethod,
+        authTokenType: AuthTokenType.REFRESH_TOKEN,
+        userId: decodedToken.userId,
+        tokenVersionId: updatedSession.id,
+        refreshVersion: updatedSession.refreshVersion,
+        organizationId: decodedToken.organizationId,
+        ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
+        isMfaVerified: decodedToken.isMfaVerified,
+        mfaMethod: decodedToken.mfaMethod
+      },
+      appCfg.AUTH_SECRET,
+      { expiresIn: refreshTokenExpiresIn }
+    );
+
+    return { newRefreshToken, updatedSession };
   };
 
   // to parse jwt identity in inject identity plugin
@@ -293,6 +350,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenSer
     revokeAllMySessions,
     revokeMySessionById,
     validateRefreshToken,
+    rotateRefreshToken,
     fnValidateJwtIdentity,
     getUserTokenSessionById
   };
