@@ -182,7 +182,7 @@ export const OrgSsoTab = withPermission(
     return (
       <>
         <div className="space-y-4">
-          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.OIDC, LoginMethod.GOOGLE]) && (
+          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.OIDC, LoginMethod.GOOGLE, LoginMethod.LDAP]) && (
             <OrgGeneralAuthSection
               isSamlConfigured={isSamlConfigured}
               isOidcConfigured={isOidcConfigured}
