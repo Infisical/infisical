@@ -14,8 +14,10 @@ import {
   TerminalEventSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
@@ -75,6 +77,17 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
+
+        await server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionStarted,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              projectId
+            }
+          })
+          .catch(() => {});
       }
 
       return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
@@ -170,6 +183,17 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamSessionEnded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId
+          }
+        })
+        .catch(() => {});
 
       return { session };
     }

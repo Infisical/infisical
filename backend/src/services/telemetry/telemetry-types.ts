@@ -12,6 +12,8 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
+import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -88,7 +90,21 @@ export enum PostHogEventTypes {
   SecretRotationV2Created = "Secret Rotation V2 Created",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
-  GatewayCertExchanged = "Gateway Cert Exchanged"
+  GatewayCertExchanged = "Gateway Cert Exchanged",
+  PamResourceCreated = "PAM Resource Created",
+  PamResourceDeleted = "PAM Resource Deleted",
+  PamAccountCreated = "PAM Account Created",
+  PamAccountDeleted = "PAM Account Deleted",
+  PamAccountAccessed = "PAM Account Accessed",
+  PamAccountRotated = "PAM Account Rotated",
+  PamSessionStarted = "PAM Session Started",
+  PamSessionEnded = "PAM Session Ended",
+  PamWebAccessStarted = "PAM Web Access Started",
+  PamDiscoverySourceCreated = "PAM Discovery Source Created",
+  PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
+  PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
+  PamRotationRuleCreated = "PAM Rotation Rule Created",
+  PamRotationRuleDeleted = "PAM Rotation Rule Deleted"
 }
 
 export type TSecretModifiedEvent = {
@@ -712,6 +728,80 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
+export type TPamResourceEvent = {
+  event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
+  properties: {
+    resourceType: PamResource;
+    projectId: string;
+  };
+};
+
+export type TPamAccountEvent = {
+  event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
+  properties: {
+    resourceType: PamResource;
+    projectId: string;
+  };
+};
+
+export type TPamAccountAccessedEvent = {
+  event: PostHogEventTypes.PamAccountAccessed;
+  properties: {
+    resourceType: string;
+    projectId: string;
+    duration: number;
+  };
+};
+
+export type TPamAccountRotatedEvent = {
+  event: PostHogEventTypes.PamAccountRotated;
+  properties: {
+    resourceType: PamResource;
+    projectId: string;
+  };
+};
+
+export type TPamSessionEvent = {
+  event: PostHogEventTypes.PamSessionStarted | PostHogEventTypes.PamSessionEnded;
+  properties: {
+    projectId: string;
+  };
+};
+
+export type TPamWebAccessStartedEvent = {
+  event: PostHogEventTypes.PamWebAccessStarted;
+  properties: {
+    projectId: string;
+  };
+};
+
+export type TPamDiscoveryEvent = {
+  event:
+    | PostHogEventTypes.PamDiscoverySourceCreated
+    | PostHogEventTypes.PamDiscoverySourceDeleted
+    | PostHogEventTypes.PamDiscoveryScanTriggered;
+  properties: {
+    discoveryType: PamDiscoveryType;
+    projectId: string;
+  };
+};
+
+export type TPamRotationRuleCreatedEvent = {
+  event: PostHogEventTypes.PamRotationRuleCreated;
+  properties: {
+    projectId: string;
+    enabled: boolean;
+    hasSchedule: boolean;
+  };
+};
+
+export type TPamRotationRuleDeletedEvent = {
+  event: PostHogEventTypes.PamRotationRuleDeleted;
+  properties: {
+    projectId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -771,4 +861,13 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
+  | TPamResourceEvent
+  | TPamAccountEvent
+  | TPamAccountAccessedEvent
+  | TPamAccountRotatedEvent
+  | TPamSessionEvent
+  | TPamWebAccessStartedEvent
+  | TPamDiscoveryEvent
+  | TPamRotationRuleCreatedEvent
+  | TPamRotationRuleDeletedEvent
 );
