@@ -1604,7 +1604,8 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     secretName,
     includeImports,
-    version
+    version,
+    includePersonalOverrides
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {

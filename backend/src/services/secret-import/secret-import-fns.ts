@@ -6,6 +6,7 @@ import { groupBy, unique } from "@app/lib/fn";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
+import { PersonalOverridesBehavior } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretImportDALFactory } from "./secret-import-dal";
@@ -229,14 +230,16 @@ export const fnSecretsV2FromImports = async ({
   decryptor,
   expandSecretReferences,
   hasSecretAccess,
-  viewSecretValue
+  viewSecretValue,
+  userId,
+  personalOverridesBehavior
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
   })[];
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   viewSecretValue: boolean;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "find">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
@@ -247,6 +250,8 @@ export const fnSecretsV2FromImports = async ({
     secretKey: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  userId?: string;
+  personalOverridesBehavior?: PersonalOverridesBehavior;
 }) => {
   const cyclicDetector = new Set();
   const stack: {
@@ -284,15 +289,52 @@ export const fnSecretsV2FromImports = async ({
 
     const importedFolderGroupBySourceImport = groupBy(importedFolders, (i) => `${i?.envId}-${i?.path}`);
 
-    const importedSecrets = await secretDAL.find(
-      {
-        $in: { folderId: importedFolderIds },
-        type: SecretType.Shared
-      },
-      {
-        sort: [["id", "asc"]]
+    const shouldIncludePersonal =
+      userId &&
+      (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
+        personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll);
+
+    // `find` returns `projectId`, `findByFolderIds` returns `secretReminderRecipients`.
+    // Neither extra field is used downstream for imports, so we define a common base type
+    // by omitting both, allowing either result to be assigned without unsafe casts.
+    type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
+
+    let importedSecrets: TImportedSecret[];
+
+    if (shouldIncludePersonal) {
+      const allSecrets = await secretDAL.findByFolderIds({
+        folderIds: importedFolderIds,
+        userId
+      });
+
+      if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
+        // Personal overrides replace shared secrets with the same key per folder
+        const secretMap = new Map<string, (typeof allSecrets)[number]>();
+        allSecrets.forEach((el) => {
+          const key = `${el.key}-${el.folderId}`;
+          const existing = secretMap.get(key);
+          if (!existing) {
+            secretMap.set(key, el);
+          } else if (el.type === SecretType.Personal) {
+            secretMap.set(key, el);
+          }
+        });
+        importedSecrets = Array.from(secretMap.values());
+      } else {
+        importedSecrets = allSecrets;
       }
-    );
+    } else {
+      importedSecrets = await secretDAL.find(
+        {
+          $in: { folderId: importedFolderIds },
+          type: SecretType.Shared
+        },
+        {
+          sort: [["id", "asc"]]
+        }
+      );
+    }
+
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
     const processedBatchImports = await processReservedImports(sanitizedImports, secretImportDAL);
