@@ -313,7 +313,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
         expandSecretReferences: convertStringBoolean(true).describe(RAW_SECRETS.GET.expand),
-        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports)
+        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports),
+        includePersonalOverrides: convertStringBoolean(true).describe(RAW_SECRETS.GET.includePersonalOverrides)
       }),
       response: {
         200: z.object({
@@ -350,7 +351,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         expandSecretReferences: req.query.expandSecretReferences,
-        expandPersonalOverrides: true,
+        expandPersonalOverrides: req.query.includePersonalOverrides,
         environment,
         projectId,
         viewSecretValue: req.query.viewSecretValue,
