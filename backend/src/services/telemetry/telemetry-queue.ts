@@ -30,10 +30,24 @@ export const telemetryQueueServiceFactory = ({
   telemetryService
 }: TTelemetryQueueServiceFactoryDep) => {
   const appCfg = getConfig();
-  const postHog =
+
+  // Cloud + dedicated instances PostHog client
+  const cloudPostHog =
     appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED
       ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST, flushAt: 1, flushInterval: 0 })
       : undefined;
+
+  // Separate PostHog client for self-hosted instance telemetry
+  const selfHostedPostHog =
+    appCfg.isProductionMode && appCfg.TELEMETRY_ENABLED && appCfg.POSTHOG_SELF_HOSTED_PROJECT_API_KEY
+      ? new PostHog(appCfg.POSTHOG_SELF_HOSTED_PROJECT_API_KEY, {
+          host: appCfg.POSTHOG_HOST,
+          flushAt: 1,
+          flushInterval: 0
+        })
+      : undefined;
+
+  const postHogForStats = appCfg.INFISICAL_CLOUD ? cloudPostHog : selfHostedPostHog;
 
   queueService.start(QueueName.TelemetryInstanceStats, async () => {
     const { instanceId } = await getServerCfg();
@@ -44,7 +58,7 @@ export const telemetryQueueServiceFactory = ({
     const stats = { ...telemtryStats, numberOfSecretProcessed, numberOfSecretOperationsMade };
 
     // send to postHog
-    postHog?.capture({
+    postHogForStats?.capture({
       event: PostHogEventTypes.TelemetryInstanceStats,
       distinctId: instanceId,
       properties: stats
@@ -64,7 +78,7 @@ export const telemetryQueueServiceFactory = ({
     // this is a fast way to check its cloud or not
     if (appCfg.INFISICAL_CLOUD) return;
 
-    if (postHog) {
+    if (postHogForStats) {
       await queueService.upsertJobScheduler(
         QueueName.TelemetryInstanceStats,
         `${JOB_SCHEDULER_PREFIX}:${QueueName.TelemetryInstanceStats}`,
@@ -75,7 +89,7 @@ export const telemetryQueueServiceFactory = ({
   };
 
   const startAggregatedEventsJob = async () => {
-    if (postHog) {
+    if (cloudPostHog || selfHostedPostHog) {
       // Start aggregated events job (runs every five minutes)
       await queueService.upsertJobScheduler(
         QueueName.TelemetryAggregatedEvents,

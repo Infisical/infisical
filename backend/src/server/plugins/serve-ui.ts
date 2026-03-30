@@ -31,9 +31,15 @@ export const registerServeUI = async (
     },
     handler: (_req, res) => {
       void res.type("application/javascript");
+      // Serve the self-hosted PostHog key for non-cloud standalone deployments,
+      // falling back to the cloud key if no self-hosted key is configured
+      const posthogApiKey = appCfg.INFISICAL_CLOUD
+        ? appCfg.POSTHOG_PROJECT_API_KEY
+        : appCfg.POSTHOG_SELF_HOSTED_PROJECT_API_KEY || appCfg.POSTHOG_PROJECT_API_KEY;
+
       const config = {
         CAPTCHA_SITE_KEY: appCfg.CAPTCHA_SITE_KEY,
-        POSTHOG_API_KEY: appCfg.POSTHOG_PROJECT_API_KEY,
+        POSTHOG_API_KEY: posthogApiKey,
         INTERCOM_ID: appCfg.INTERCOM_ID,
         TELEMETRY_CAPTURING_ENABLED: appCfg.TELEMETRY_ENABLED,
         CDN_HOST: cdnHost
