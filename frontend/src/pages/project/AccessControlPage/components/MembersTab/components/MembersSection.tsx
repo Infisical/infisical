@@ -1,10 +1,18 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -46,27 +54,36 @@ export const MembersSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">Project Users</p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
-        </div>
-        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
-          {(isAllowed) => (
-            <Button
-              variant="outline_bg"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("addMember")}
-              isDisabled={!isAllowed}
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
+            Project Users
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
+          </UnstableCardTitle>
+          <UnstableCardDescription>Invite and manage project users</UnstableCardDescription>
+          <UnstableCardAction>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Member}
             >
-              Add Users to Project
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <MembersTable handlePopUpOpen={handlePopUpOpen} />
+              {(isAllowed) => (
+                <Button
+                  variant="project"
+                  onClick={() => handlePopUpOpen("addMember")}
+                  isDisabled={!isAllowed}
+                >
+                  <UserPlusIcon />
+                  Add Users to Project
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <MembersTable handlePopUpOpen={handlePopUpOpen} />
+        </UnstableCardContent>
+      </UnstableCard>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
@@ -75,6 +92,6 @@ export const MembersSection = () => {
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />
-    </div>
+    </>
   );
 };
