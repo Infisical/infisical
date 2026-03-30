@@ -265,6 +265,11 @@ export const fnSecretsV2FromImports = async ({
 
   const processedImports: TSecretImportSecretsV2[] = [];
 
+  // `find` returns `projectId`, `findByFolderIds` returns `secretReminderRecipients`.
+  // Neither extra field is used downstream for imports, so we define a common base type
+  // by omitting both, allowing either result to be assigned without unsafe casts.
+  type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
+
   while (stack.length) {
     const { secretImports, depth, parentImportedSecrets } = stack.pop()!;
 
@@ -293,11 +298,6 @@ export const fnSecretsV2FromImports = async ({
       userId &&
       (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
         personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll);
-
-    // `find` returns `projectId`, `findByFolderIds` returns `secretReminderRecipients`.
-    // Neither extra field is used downstream for imports, so we define a common base type
-    // by omitting both, allowing either result to be assigned without unsafe casts.
-    type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
     let importedSecrets: TImportedSecret[];
 
