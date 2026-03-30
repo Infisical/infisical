@@ -87,11 +87,9 @@ export const SqlCredentialsRotationParametersFields = () => {
             Below is an example statement for creating the required users. You may need to modify it
             to suit your needs.
           </p>
-          <p className="mb-3 text-sm">
-            <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 whitespace-pre-wrap text-mineshaft-300">
-              {rotationOption!.template.createUserStatement}
-            </pre>
-          </p>
+          <pre className="mb-3 max-h-40 overflow-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 text-sm break-words whitespace-pre-wrap text-mineshaft-300">
+            {rotationOption!.template.createUserStatement}
+          </pre>
         </NoticeBannerV2>
       </TabPanel>
       <TabPanel value={ParameterTab.Advanced}>

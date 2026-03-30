@@ -7,6 +7,7 @@ import {
   CheckIcon,
   CopyIcon,
   EllipsisVerticalIcon,
+  InfoIcon,
   KeyRoundIcon,
   LogInIcon,
   PencilIcon,
@@ -424,14 +425,20 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                 >
                   <UnstableTableCell>
                     <div className="flex items-center gap-3">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{account.name}</span>
+                      <Tooltip disableHoverableContent>
+                        <TooltipTrigger>
+                          <div className="flex items-center gap-1">
+                            <span>{account.name}</span>
+                            {account.description && (
+                              <InfoIcon className="mt-px size-3 text-muted" />
+                            )}
+                          </div>
+                        </TooltipTrigger>
                         {account.description && (
-                          <span className="line-clamp-1 text-xs text-muted">
-                            {account.description}
-                          </span>
+                          <TooltipContent side="top">{account.description}</TooltipContent>
                         )}
-                      </div>
+                      </Tooltip>
+
                       {!account.credentialsConfigured && (
                         <Badge variant="warning" className="text-xs">
                           <KeyRoundIcon className="size-3" />

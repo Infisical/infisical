@@ -1,4 +1,5 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -36,6 +37,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "markExpiredRequests">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
+  scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -57,7 +59,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   keyValueStoreDAL,
   approvalRequestDAL,
   approvalRequestGrantsDAL,
-  certificateRequestDAL
+  certificateRequestDAL,
+  scepTransactionDAL,
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -86,6 +89,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await auditLogDAL.pruneAuditLog();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
+        await scepTransactionDAL.pruneExpiredTransactions();
         const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
         if (expiredApprovalRequestIds.length > 0) {
           await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);

@@ -11,6 +11,7 @@ import {
   registerRfc9728ProtectedResourceMetadataRouter
 } from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
+import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import {
@@ -120,6 +121,8 @@ import { pkiDiscoveryQueueFactory } from "@app/ee/services/pki-discovery/pki-dis
 import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-scan-history-dal";
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
+import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -266,6 +269,7 @@ import { convertorServiceFactory } from "@app/services/convertor/convertor-servi
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
+import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -1225,6 +1229,8 @@ export const registerRoutes = async (
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
+  const scepEnrollmentConfigDAL = scepEnrollmentConfigDALFactory(db);
+  const scepTransactionDAL = scepTransactionDALFactory(db);
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
@@ -1338,6 +1344,7 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -2135,7 +2142,8 @@ export const registerRoutes = async (
     keyValueStoreDAL,
     approvalRequestDAL,
     approvalRequestGrantsDAL,
-    certificateRequestDAL
+    certificateRequestDAL,
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2569,6 +2577,25 @@ export const registerRoutes = async (
     certificateProfileDAL,
     estEnrollmentConfigDAL,
     certificatePolicyDAL
+  });
+
+  const pkiScepService = pkiScepServiceFactory({
+    certificateV3Service,
+    certificateProfileDAL,
+    scepEnrollmentConfigDAL,
+    scepTransactionDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateRequestDAL,
+    certificateBodyDAL,
+    projectDAL,
+    kmsService,
+    licenseService,
+    certificatePolicyDAL,
+    certificatePolicyService,
+    certificateRequestService,
+    certificateIssuanceQueue,
+    auditLogService
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -3052,6 +3079,7 @@ export const registerRoutes = async (
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,
+    pkiScep: pkiScepService,
     pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
@@ -3224,6 +3252,7 @@ export const registerRoutes = async (
 
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+  await server.register(registerPkiScepRouter, { prefix: "/scep" });
   await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
   await server.register(registerMcpEndpointAuthServerMetadataRouter, {
     prefix: "/.well-known/oauth-authorization-server"

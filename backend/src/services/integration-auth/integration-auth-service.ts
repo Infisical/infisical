@@ -1,8 +1,8 @@
-import { KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
+import KMS from "aws-sdk/clients/kms.js";
 
 import {
   ActionProjectType,
@@ -1046,7 +1046,7 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const kms = new KMSClient({
+    const kms = new KMS({
       region,
       credentials: {
         accessKeyId: String(accessId),
@@ -1054,7 +1054,7 @@ export const integrationAuthServiceFactory = ({
       }
     });
 
-    const aliases = await kms.send(new ListAliasesCommand({}));
+    const aliases = await kms.listAliases({}).promise();
 
     const keyAliases = aliases.Aliases!.filter((alias) => {
       if (!alias.TargetKeyId) return false;

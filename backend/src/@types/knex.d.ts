@@ -368,6 +368,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepEnrollmentConfigs,
+  TPkiScepEnrollmentConfigsInsert,
+  TPkiScepEnrollmentConfigsUpdate,
+  TPkiScepTransactions,
+  TPkiScepTransactionsInsert,
+  TPkiScepTransactionsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -853,6 +859,16 @@ declare module "knex/types/tables" {
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
       TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiScepEnrollmentConfigs,
+      TPkiScepEnrollmentConfigsInsert,
+      TPkiScepEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepTransaction]: KnexOriginal.CompositeTableType<
+      TPkiScepTransactions,
+      TPkiScepTransactionsInsert,
+      TPkiScepTransactionsUpdate
     >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
