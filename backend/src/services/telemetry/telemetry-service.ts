@@ -201,9 +201,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const sendPostHogEvents = async (event: TPostHogEvent) => {
+    const postHog = getPostHogForInstance();
+
     // Track secret operation counters in Redis for TelemetryInstanceStats (non-cloud only).
-    // This must run regardless of whether a PostHog client is available.
-    if (!appCfg.INFISICAL_CLOUD) {
+    // Only increment when a PostHog client is available, since the TelemetryInstanceStats
+    // cleanup job that reads and deletes these counters is only scheduled when postHogForStats
+    // is defined. Without this gate, counters would accumulate indefinitely in Redis.
+    if (!appCfg.INFISICAL_CLOUD && postHog) {
       if (
         [
           PostHogEventTypes.SecretPulled,
@@ -220,7 +224,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       }
     }
 
-    const postHog = getPostHogForInstance();
     if (!postHog) return;
 
     // Resolve org name: prefer explicit value, fall back to request context
