@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
+  ClockAlertIcon,
   ClockIcon,
   FilterIcon,
   MoreHorizontalIcon,
@@ -404,7 +405,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                           {isTemporary && (
                                             <Tooltip>
                                               <TooltipTrigger tabIndex={-1}>
-                                                <ClockIcon />
+                                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                               </TooltipTrigger>
                                               <TooltipContent>
                                                 {isExpired ? "Access expired" : "Temporary access"}
