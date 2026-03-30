@@ -125,6 +125,7 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
+            resourceType: resource.resourceType,
             projectId: resource.projectId,
             enabled: rule.enabled,
             hasSchedule: Boolean(rule.intervalSeconds)
@@ -245,6 +246,7 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
+            resourceType: resource.resourceType,
             projectId: resource.projectId
           }
         })

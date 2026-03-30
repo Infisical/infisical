@@ -787,6 +787,7 @@ export type TPamDiscoveryEvent = {
 export type TPamRotationRuleCreatedEvent = {
   event: PostHogEventTypes.PamRotationRuleCreated;
   properties: {
+    resourceType: string;
     projectId: string;
     enabled: boolean;
     hasSchedule: boolean;
@@ -796,6 +797,7 @@ export type TPamRotationRuleCreatedEvent = {
 export type TPamRotationRuleDeletedEvent = {
   event: PostHogEventTypes.PamRotationRuleDeleted;
   properties: {
+    resourceType: string;
     projectId: string;
   };
 };
