@@ -63,6 +63,15 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return sessions;
   };
 
+  const endSessionById = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
+      .update({ status: PamSessionStatus.Ended, endedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
   const terminateSessionById = async (sessionId: string, tx?: Knex) => {
     const [updated] = await (tx || db)(TableName.PamSession)
       .where("id", sessionId)
@@ -72,5 +81,13 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
-  return { ...orm, findById, findByProjectId, expireSessionById, countActiveWebSessions, terminateSessionById };
+  return {
+    ...orm,
+    findById,
+    findByProjectId,
+    expireSessionById,
+    countActiveWebSessions,
+    endSessionById,
+    terminateSessionById
+  };
 };

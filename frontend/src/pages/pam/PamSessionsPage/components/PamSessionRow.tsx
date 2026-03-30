@@ -20,6 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Modal,
+  ModalClose,
+  ModalContent,
   Td,
   Tooltip,
   Tr
@@ -51,6 +54,7 @@ type Props = {
 export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
   const router = useRouter();
   const [showAllLogs, setShowAllLogs] = useState(false);
+  const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false);
   const terminateSession = useTerminatePamSession();
 
   const {
@@ -183,18 +187,19 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                  {isActive && isGatewaySession && (
+                  {isGatewaySession && (
                     <ProjectPermissionCan
                       I={ProjectPermissionPamSessionActions.Terminate}
                       a={ProjectPermissionSub.PamSessions}
                     >
                       {(isAllowed: boolean) => (
                         <DropdownMenuItem
-                          isDisabled={!isAllowed}
+                          isDisabled={!isAllowed || !isActive}
+                          className="text-red-600"
                           icon={<GavelIcon size={14} />}
                           onClick={(e) => {
                             e.stopPropagation();
-                            terminateSession.mutate({ sessionId: id, projectId });
+                            setIsTerminateDialogOpen(true);
                           }}
                         >
                           Terminate Session
@@ -208,6 +213,38 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
           </div>
         </Td>
       </Tr>
+
+      <Modal
+        isOpen={isTerminateDialogOpen}
+        onOpenChange={(isOpen) => setIsTerminateDialogOpen(isOpen)}
+      >
+        <ModalContent
+          title="Terminate Session"
+          subTitle="Are you sure you want to terminate this session?"
+          footerContent={
+            <div className="mx-2 flex items-center">
+              <Button
+                className="mr-4"
+                colorSchema="danger"
+                isLoading={terminateSession.isPending}
+                onClick={() =>
+                  terminateSession.mutate(
+                    { sessionId: id, projectId },
+                    { onSuccess: () => setIsTerminateDialogOpen(false) }
+                  )
+                }
+              >
+                Terminate
+              </Button>
+              <ModalClose asChild>
+                <Button variant="plain" colorSchema="secondary">
+                  Cancel
+                </Button>
+              </ModalClose>
+            </div>
+          }
+        />
+      </Modal>
 
       {filteredLogs.length > 0 && (
         <Tr>
