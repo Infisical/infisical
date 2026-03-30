@@ -1,49 +1,48 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faChevronRight,
-  faClock,
-  faEllipsisV,
-  faFilter,
-  faMagnifyingGlass,
-  faSearch,
-  faUsers,
-  faUserXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  ChevronDownIcon,
+  ClockAlertIcon,
+  ClockIcon,
+  FilterIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  UserXIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
-  EmptyState,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  Tag,
-  TBody,
-  Td,
-  Th,
-  THead,
+  Badge,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Skeleton,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuLabel,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
@@ -180,293 +179,310 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     []
   );
 
+  const filteredUsersPage = filteredUsers.slice(offset, perPage * page);
+
   return (
     <div>
-      <div className="flex gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Users"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0">
-            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-            <DropdownSubMenu>
-              <DropdownSubMenuTrigger
-                iconPos="right"
-                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+      <div className="mb-4 flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search project users..."
+          />
+        </InputGroup>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton variant={isTableFiltered ? "project" : "outline"}>
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuLabel>Filter by Project Role</UnstableDropdownMenuLabel>
+            {projectRoles?.map(({ id, slug, name }) => (
+              <UnstableDropdownMenuCheckboxItem
+                key={id}
+                checked={filter.roles.includes(slug)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRoleToggle(slug);
+                  setPage(1);
+                }}
               >
-                Roles
-              </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Filter Project Users by Role
-                </DropdownMenuLabel>
-                {projectRoles?.map(({ id, slug, name }) => (
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      handleRoleToggle(slug);
-                    }}
-                    key={id}
-                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className="mr-2 h-2 w-2 rounded-full"
-                        style={{ background: "#bec2c8" }}
-                      />
-                      {name}
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownSubMenuContent>
-            </DropdownSubMenu>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search project users..."
-        />
+                {name}
+              </UnstableDropdownMenuCheckboxItem>
+            ))}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/3">
-                <div className="flex items-center">
+      {!isMembersLoading && !filteredUsers?.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {search || isTableFiltered
+                ? "No project users match search"
+                : "No project users found"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {search || isTableFiltered
+                ? "Adjust your search or filter criteria."
+                : "Add users to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <>
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead
+                  className="w-1/3"
+                  onClick={() => handleSort(MembersOrderBy.Name)}
+                >
                   Name
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === MembersOrderBy.Name ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(MembersOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Name
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>
-                <div className="flex items-center">
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderDirection === OrderByDirection.DESC &&
+                        orderBy === MembersOrderBy.Name &&
+                        "rotate-180",
+                      orderBy !== MembersOrderBy.Name && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead
+                  className="w-1/3"
+                  onClick={() => handleSort(MembersOrderBy.Email)}
+                >
                   Email
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === MembersOrderBy.Email ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(MembersOrderBy.Email)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Email
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>Project Role</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isMembersLoading && <TableSkeleton columns={4} innerKey="project-members" />}
-            {!isMembersLoading &&
-              filteredUsers.slice(offset, perPage * page).map((projectMember) => {
-                const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
-                const name =
-                  u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
-                const email = u?.email || inviteEmail;
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderDirection === OrderByDirection.DESC &&
+                        orderBy === MembersOrderBy.Email &&
+                        "rotate-180",
+                      orderBy !== MembersOrderBy.Email && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead>Project Role</UnstableTableHead>
+                <UnstableTableHead className="w-5" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isMembersLoading &&
+                Array.from({ length: 10 }).map((_, i) => (
+                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              {!isMembersLoading &&
+                filteredUsersPage.map((projectMember) => {
+                  const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
+                  const name =
+                    u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
+                  const email = u?.email || inviteEmail;
 
-                return (
-                  <Tr
-                    key={`membership-${membershipId}`}
-                    className="group w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") {
+                  return (
+                    <UnstableTableRow
+                      key={`membership-${membershipId}`}
+                      className="group cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") {
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
+                            params: {
+                              projectId,
+                              membershipId
+                            }
+                          });
+                        }
+                      }}
+                      onClick={() =>
                         navigate({
                           to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                           params: {
                             projectId,
                             membershipId
                           }
-                        });
+                        })
                       }
-                    }}
-                    onClick={() =>
-                      navigate({
-                        to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                        params: {
-                          projectId,
-                          membershipId
-                        }
-                      })
-                    }
-                  >
-                    <Td>{name ?? <span className="text-mineshaft-400">Not Set</span>}</Td>
-                    <Td>{email}</Td>
-                    <Td>
-                      <div className="flex items-center space-x-2">
-                        {roles
-                          .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                          .map(
-                            ({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
-                              const isExpired =
-                                new Date() > new Date(temporaryAccessEndTime || ("" as string));
-                              return (
-                                <Tag key={id}>
-                                  <div className="flex items-center space-x-2">
-                                    <div className="capitalize">
+                    >
+                      <UnstableTableCell isTruncatable>
+                        {name ?? <span className="text-muted">&mdash;</span>}
+                      </UnstableTableCell>
+                      <UnstableTableCell isTruncatable>{email}</UnstableTableCell>
+                      <UnstableTableCell>
+                        <div className="flex items-center gap-1.5">
+                          {roles
+                            .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                            .map(
+                              ({
+                                role,
+                                customRoleName,
+                                id,
+                                isTemporary,
+                                temporaryAccessEndTime
+                              }) => {
+                                const isExpired =
+                                  new Date() > new Date(temporaryAccessEndTime || ("" as string));
+                                return (
+                                  <Badge key={id} variant={isExpired ? "danger" : "neutral"}>
+                                    <span className="capitalize">
                                       {formatProjectRoleName(role, customRoleName)}
-                                    </div>
+                                    </span>
                                     {isTemporary && (
-                                      <div>
-                                        <Tooltip
-                                          content={
-                                            isExpired ? "Timed role expired" : "Timed role access"
-                                          }
-                                        >
-                                          <FontAwesomeIcon
-                                            icon={faClock}
-                                            className={twMerge(isExpired && "text-red-600")}
-                                          />
-                                        </Tooltip>
-                                      </div>
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <ClockIcon />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          {isExpired ? "Access expired" : "Temporary access"}
+                                        </TooltipContent>
+                                      </Tooltip>
                                     )}
-                                  </div>
-                                </Tag>
-                              );
-                            }
-                          )}
-                        {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-                          <HoverCard>
-                            <HoverCardTrigger>
-                              <Tag>+{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}</Tag>
-                            </HoverCardTrigger>
-                            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-4">
-                              {roles
-                                .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
-                                .map(
-                                  ({
-                                    role,
-                                    customRoleName,
-                                    id,
-                                    isTemporary,
-                                    temporaryAccessEndTime
-                                  }) => {
-                                    const isExpired =
-                                      new Date() >
-                                      new Date(temporaryAccessEndTime || ("" as string));
-                                    return (
-                                      <Tag key={id} className="capitalize">
-                                        <div className="flex items-center space-x-2">
-                                          <div>{formatProjectRoleName(role, customRoleName)}</div>
+                                  </Badge>
+                                );
+                              }
+                            )}
+                          {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
+                            <Popover>
+                              <Tooltip>
+                                <TooltipTrigger className="flex h-4 items-center">
+                                  <PopoverTrigger asChild>
+                                    <Badge variant="neutral" asChild>
+                                      <button type="button" onClick={(e) => e.stopPropagation()}>
+                                        +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                                      </button>
+                                    </Badge>
+                                  </PopoverTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>Click to view additional roles</TooltipContent>
+                              </Tooltip>
+                              <PopoverContent
+                                side="right"
+                                className="flex w-auto max-w-sm flex-wrap gap-1.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {roles
+                                  .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
+                                  .map(
+                                    ({
+                                      role,
+                                      customRoleName,
+                                      id,
+                                      isTemporary,
+                                      temporaryAccessEndTime
+                                    }) => {
+                                      const isExpired =
+                                        new Date() >
+                                        new Date(temporaryAccessEndTime || ("" as string));
+                                      return (
+                                        <Badge
+                                          key={id}
+                                          className="z-10"
+                                          variant={isExpired ? "danger" : "neutral"}
+                                        >
+                                          <span className="capitalize">
+                                            {formatProjectRoleName(role, customRoleName)}
+                                          </span>
                                           {isTemporary && (
-                                            <div>
-                                              <Tooltip
-                                                content={
-                                                  isExpired ? "Access expired" : "Temporary access"
-                                                }
-                                              >
-                                                <FontAwesomeIcon
-                                                  icon={faClock}
-                                                  className={twMerge(
-                                                    new Date() >
-                                                      new Date(temporaryAccessEndTime as string) &&
-                                                      "text-red-600"
-                                                  )}
-                                                />
-                                              </Tooltip>
-                                            </div>
+                                            <Tooltip>
+                                              <TooltipTrigger tabIndex={-1}>
+                                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                {isExpired ? "Access expired" : "Temporary access"}
+                                              </TooltipContent>
+                                            </Tooltip>
                                           )}
-                                        </div>
-                                      </Tag>
-                                    );
-                                  }
-                                )}
-                            </HoverCardContent>
-                          </HoverCard>
-                        )}
-                      </div>
-                    </Td>
-                    <Td>
-                      {userId !== u?.id && (
-                        <Tooltip className="max-w-sm text-center" content="Options">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
-                                <FontAwesomeIcon icon={faEllipsisV} />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Delete}
-                                a={ProjectPermissionSub.Member}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faUserXmark} />}
-                                    isDisabled={!isAllowed}
-                                    onClick={(evt) => {
-                                      evt.preventDefault();
-                                      evt.stopPropagation();
-                                      handlePopUpOpen("removeMember", { username: u.username });
-                                    }}
-                                  >
-                                    Remove User From Project
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </Tooltip>
-                      )}
-                    </Td>
-                  </Tr>
-                );
-              })}
-          </TBody>
-        </Table>
-        {Boolean(filteredUsers.length) && (
-          <Pagination
-            count={filteredUsers.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isMembersLoading && !filteredUsers?.length && (
-          <EmptyState
-            title={members.length ? "No project users match search..." : "No project users found"}
-            icon={members.length ? faSearch : faUsers}
-          />
-        )}
-      </TableContainer>
+                                        </Badge>
+                                      );
+                                    }
+                                  )}
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
+                      </UnstableTableCell>
+                      <UnstableTableCell>
+                        <UnstableDropdownMenu>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <UnstableDropdownMenuTrigger asChild>
+                                <UnstableIconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  isDisabled={userId === u?.id}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontalIcon />
+                                </UnstableIconButton>
+                              </UnstableDropdownMenuTrigger>
+                            </TooltipTrigger>
+                            {userId === u?.id && (
+                              <TooltipContent side="left">
+                                You cannot modify your own membership
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                          <UnstableDropdownMenuContent sideOffset={2} align="end">
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Delete}
+                              a={ProjectPermissionSub.Member}
+                            >
+                              {(isAllowed) => (
+                                <UnstableDropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={!isAllowed}
+                                  onClick={(evt) => {
+                                    evt.preventDefault();
+                                    evt.stopPropagation();
+                                    handlePopUpOpen("removeMember", {
+                                      username: u.username
+                                    });
+                                  }}
+                                >
+                                  <UserXIcon />
+                                  Remove User From Project
+                                </UnstableDropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                          </UnstableDropdownMenuContent>
+                        </UnstableDropdownMenu>
+                      </UnstableTableCell>
+                    </UnstableTableRow>
+                  );
+                })}
+            </UnstableTableBody>
+          </UnstableTable>
+          {Boolean(filteredUsers.length) && (
+            <UnstablePagination
+              count={filteredUsers.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };
