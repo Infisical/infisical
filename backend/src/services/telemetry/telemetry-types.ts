@@ -12,8 +12,6 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
-import { PamDiscoveryType } from "@app/ee/services/pam-discovery/pam-discovery-enums";
-import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -731,7 +729,7 @@ export type TGatewayCertExchangedEvent = {
 export type TPamResourceEvent = {
   event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
   properties: {
-    resourceType: PamResource;
+    resourceType: string;
     projectId: string;
   };
 };
@@ -739,7 +737,7 @@ export type TPamResourceEvent = {
 export type TPamAccountEvent = {
   event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
   properties: {
-    resourceType: PamResource;
+    resourceType: string;
     projectId: string;
   };
 };
@@ -756,7 +754,7 @@ export type TPamAccountAccessedEvent = {
 export type TPamAccountRotatedEvent = {
   event: PostHogEventTypes.PamAccountRotated;
   properties: {
-    resourceType: PamResource;
+    resourceType: string;
     projectId: string;
   };
 };
@@ -781,7 +779,7 @@ export type TPamDiscoveryEvent = {
     | PostHogEventTypes.PamDiscoverySourceDeleted
     | PostHogEventTypes.PamDiscoveryScanTriggered;
   properties: {
-    discoveryType: PamDiscoveryType;
+    discoveryType: string;
     projectId: string;
   };
 };
