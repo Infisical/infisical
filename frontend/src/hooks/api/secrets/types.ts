@@ -1,4 +1,3 @@
-import { ProjectPermissionActions } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Reminder } from "@app/hooks/api/reminders/types";
 

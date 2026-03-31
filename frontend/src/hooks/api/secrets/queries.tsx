@@ -48,7 +48,10 @@ export const secretKeys = {
     secretKey,
     includeAllEntities
   }: TGetSecretAccessListDTO) =>
-    ["secret-access-list", { projectId, environment, secretPath, secretKey, includeAllEntities }] as const,
+    [
+      "secret-access-list",
+      { projectId, environment, secretPath, secretKey, includeAllEntities }
+    ] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
   getSecretReferences: (dto: TGetSecretReferencesDTO) => ["secret-references", dto]
 };
