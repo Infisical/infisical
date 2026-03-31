@@ -764,24 +764,24 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can create Doppler migration configs" });
     }
 
-    try {
-      const config = await vaultExternalMigrationConfigDAL.create({
-        orgId: actor.orgId,
-        connectionId,
-        provider: ExternalMigrationProviders.Doppler,
-        namespace: null
-      });
+    const existingConfig = await vaultExternalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      provider: ExternalMigrationProviders.Doppler,
+      connectionId
+    });
 
-      return config;
-    } catch (error) {
-      if (error instanceof DatabaseError && error.error && "code" in (error.error as object)) {
-        const dbError = error.error as { code: string };
-        if (dbError.code === DatabaseErrorCode.UniqueViolation) {
-          throw new BadRequestError({ message: "A Doppler migration config already exists for this connection" });
-        }
-      }
-      throw error;
+    if (existingConfig) {
+      throw new BadRequestError({ message: "A Doppler migration config already exists for this connection" });
     }
+
+    const config = await vaultExternalMigrationConfigDAL.create({
+      orgId: actor.orgId,
+      connectionId,
+      provider: ExternalMigrationProviders.Doppler,
+      namespace: null
+    });
+
+    return config;
   };
 
   const getDopplerExternalMigrationConfigs = async (actor: OrgServiceActor) => {
