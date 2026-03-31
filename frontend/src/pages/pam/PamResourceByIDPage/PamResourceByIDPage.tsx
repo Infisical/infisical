@@ -35,7 +35,6 @@ import {
   PamResourceDetailsSection,
   PamResourceMetadataSection,
   PamResourceRelatedResourcesSection,
-  PamResourceRotationPolicySection,
   PamRotationPolicyModal
 } from "./components";
 
@@ -202,10 +201,6 @@ const PageContent = () => {
           <PamResourceConnectionSection
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
-          />
-          <PamResourceRotationPolicySection
-            resource={resource}
-            onEdit={() => setIsRotationPolicyModalOpen(true)}
           />
           <PamResourceMetadataSection resource={resource} />
         </div>

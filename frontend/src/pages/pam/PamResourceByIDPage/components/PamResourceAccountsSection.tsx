@@ -136,26 +136,55 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
   const hasRotatingAccounts = rotatingAccountIds.size > 0;
 
+  const metadataFilterParam = appliedMetadataEntries.filter((e) => e.key.trim()).length
+    ? appliedMetadataEntries
+        .filter((e) => e.key.trim())
+        .map((e) => ({
+          key: e.key.trim(),
+          ...(e.value.trim() ? { value: e.value.trim() } : {})
+        }))
+    : undefined;
+
   const { data: accountsData, isPending } = useListPamAccounts(
     {
       projectId: projectId!,
       filterResourceIds: resource.id,
       search: debouncedSearch || undefined,
-      metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
-        ? appliedMetadataEntries
-            .filter((e) => e.key.trim())
-            .map((e) => ({
-              key: e.key.trim(),
-              ...(e.value.trim() ? { value: e.value.trim() } : {})
-            }))
-        : undefined
+      metadataFilter: metadataFilterParam
     },
     {
       refetchInterval: hasRotatingAccounts ? 3000 : false
     }
   );
 
-  const accounts = accountsData?.accounts || [];
+  const adServerResourceId =
+    resource.resourceType === PamResourceType.Windows ? resource.adServerResourceId : undefined;
+
+  const { data: domainAccountsData, isPending: isDomainAccountsPending } = useListPamAccounts(
+    {
+      projectId: projectId!,
+      filterResourceIds: adServerResourceId!,
+      search: debouncedSearch || undefined,
+      metadataFilter: metadataFilterParam
+    },
+    {
+      enabled: Boolean(adServerResourceId),
+      refetchInterval: hasRotatingAccounts ? 3000 : false
+    }
+  );
+
+  const domainAccountIds = useMemo(() => {
+    if (!domainAccountsData?.accounts) return new Set<string>();
+    return new Set(domainAccountsData.accounts.map((a) => a.id));
+  }, [domainAccountsData]);
+
+  const accounts = useMemo(() => {
+    const local = accountsData?.accounts || [];
+    const domain = domainAccountsData?.accounts || [];
+    return [...local, ...domain];
+  }, [accountsData, domainAccountsData]);
+
+  const isAccountsPending = isPending || (Boolean(adServerResourceId) && isDomainAccountsPending);
 
   // Clear optimistic rotating state when server confirms a non-rotating status
   useEffect(() => {
@@ -367,7 +396,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
-            {isPending && (
+            {isAccountsPending && (
               <UnstableTableRow>
                 <UnstableTableCell
                   colSpan={
@@ -381,7 +410,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
-            {!isPending && accounts.length === 0 && (
+            {!isAccountsPending && accounts.length === 0 && (
               <UnstableTableRow>
                 <UnstableTableCell
                   colSpan={
@@ -403,6 +432,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
               </UnstableTableRow>
             )}
             {accounts.map((account) => {
+              const isDomainAccount = domainAccountIds.has(account.id);
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
               const serverRotationStatus = !isAwsIamAccount
                 ? (account as { rotationStatus?: string | null }).rotationStatus
@@ -439,6 +469,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         )}
                       </Tooltip>
 
+                      {isDomainAccount && (
+                        <Badge variant="info" className="text-xs">
+                          Domain
+                        </Badge>
+                      )}
                       {!account.credentialsConfigured && (
                         <Badge variant="warning" className="text-xs">
                           <KeyRoundIcon className="size-3" />
