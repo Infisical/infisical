@@ -57,7 +57,7 @@ export const ProjectNav = () => {
     pathname.includes("/access-management") ||
     Boolean(pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//));
   const isOnIntegrations = pathname.includes("/integrations");
-  const isOnProjectSettings = pathname.endsWith("/settings") || pathname.includes("/settings?");
+  const isOnProjectSettings = /\/settings(\/|\?|$)/.test(pathname);
   const isOnApproval = pathname.includes("/approval");
   const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
