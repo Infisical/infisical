@@ -241,12 +241,9 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           throw new Error(`${prefix} — ${errObj.message}`);
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const referralDn = String((caughtErr as { dn: string }).dn);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const referralCode = Number((caughtErr as { code: number }).code);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const referralName = String((caughtErr as { name: string }).name);
+        const referralDn = String((caughtErr as { dn: string })?.dn);
+        const referralCode = Number((caughtErr as { code: number })?.code);
+        const referralName = String((caughtErr as { name: string })?.name);
 
         if (hop === MAX_REFERRAL_HOPS) {
           logger.error(

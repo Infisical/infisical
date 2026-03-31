@@ -1,5 +1,6 @@
+import { isIP } from "node:net";
+
 import ldap from "ldapjs";
-import RE2 from "re2";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -59,8 +60,6 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
   return `${protocol}://${host}:${port}`;
 };
 
-const IPV4_REGEX = new RE2(/^\d+\.\d+\.\d+\.\d+$/);
-
 /**
  * Extracts the root domain (last two labels) from a hostname.
  * e.g. "dc1.gap.com" → "gap.com", "americas.infisical.local" → "infisical.local"
@@ -69,7 +68,7 @@ const IPV4_REGEX = new RE2(/^\d+\.\d+\.\d+\.\d+$/);
 const getRootDomain = (hostname: string): string | null => {
   const parts = hostname.split(".");
   if (parts.length < 2) return null;
-  if (IPV4_REGEX.test(hostname)) return null;
+  if (isIP(hostname) !== 0) return null;
   return parts.slice(-2).join(".").toLowerCase();
 };
 
@@ -84,7 +83,7 @@ const getRootDomain = (hostname: string): string | null => {
 export const buildReferralUrl = (originalUrl: string, targetDomain: string): string => {
   const { protocol, host, port } = parseLdapUrl(originalUrl);
 
-  if (IPV4_REGEX.test(targetDomain)) {
+  if (isIP(targetDomain) !== 0) {
     throw new Error(
       `Referral target '${targetDomain}' is an IP address — legitimate AD referrals use FQDNs. Refusing to forward credentials`
     );
