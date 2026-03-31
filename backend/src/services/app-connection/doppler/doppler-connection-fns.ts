@@ -54,16 +54,14 @@ export const listDopplerProjects = async (appConnection: TDopplerConnection): Pr
   const projects: TDopplerProject[] = [];
   let page = 1;
   const perPage = 50;
+  const maxPages = 20;
   let hasMore = true;
 
-  while (hasMore) {
-    const res = await request.get<{ projects: TDopplerProject[]; page: number }>(
-      `${DOPPLER_API_URL}/v3/projects`,
-      {
-        params: { page, per_page: perPage },
-        headers: { Authorization: `Bearer ${apiToken}` }
-      }
-    );
+  while (hasMore && page <= maxPages) {
+    const res = await request.get<{ projects: TDopplerProject[]; page: number }>(`${DOPPLER_API_URL}/v3/projects`, {
+      params: { page, per_page: perPage },
+      headers: { Authorization: `Bearer ${apiToken}` }
+    });
 
     projects.push(...res.data.projects);
 
@@ -88,16 +86,14 @@ export const listDopplerEnvironments = async (
   const environments: TDopplerEnvironment[] = [];
   let page = 1;
   const perPage = 50;
+  const maxPages = 20;
   let hasMore = true;
 
-  while (hasMore) {
-    const res = await request.get<{ environments: TDopplerEnvironment[] }>(
-      `${DOPPLER_API_URL}/v3/environments`,
-      {
-        params: { project: projectSlug, page, per_page: perPage },
-        headers: { Authorization: `Bearer ${apiToken}` }
-      }
-    );
+  while (hasMore && page <= maxPages) {
+    const res = await request.get<{ environments: TDopplerEnvironment[] }>(`${DOPPLER_API_URL}/v3/environments`, {
+      params: { project: projectSlug, page, per_page: perPage },
+      headers: { Authorization: `Bearer ${apiToken}` }
+    });
 
     environments.push(...res.data.environments);
 
