@@ -3,7 +3,6 @@ import { Download, Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   EmptyMedia,
@@ -45,6 +44,7 @@ import {
 
 import { DopplerConfigModal } from "./DopplerConfigModal";
 import { DopplerImportModal } from "./DopplerImportModal";
+import { MigrationConfigDeleteDialog } from "./MigrationConfigDeleteDialog";
 import { SelectInPlatformMigrationProviderModal } from "./SelectInPlatformMigrationProviderModal";
 import { VaultNamespaceConfigModal } from "./VaultNamespaceConfigModal";
 
@@ -141,12 +141,7 @@ export const InPlatformMigrationSection = () => {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-lg font-medium text-mineshaft-100">Configured platforms</h3>
-          <p className="text-sm text-gray-400">
-            Link HashiCorp Vault namespaces or Doppler to enable migration actions across Infisical.
-          </p>
-        </div>
+        <h3 className="text-lg font-medium text-mineshaft-100">Configurations</h3>
         <Button
           variant="project"
           type="button"
@@ -218,11 +213,17 @@ export const InPlatformMigrationSection = () => {
                 <UnstableTableRow key={`${row.kind}-${row.config.id}`}>
                   <UnstableTableCell>
                     <div className="flex items-center gap-2">
-                      <img
-                        src={`/images/integrations/${imageFileName}`}
-                        alt=""
-                        className="size-8 rounded-md bg-bunker-500 p-1"
-                      />
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-bunker-500 p-1">
+                        <img
+                          src={`/images/integrations/${imageFileName}`}
+                          alt=""
+                          className={
+                            row.kind === "doppler"
+                              ? "max-h-5 max-w-5 object-contain"
+                              : "max-h-full max-w-full object-contain"
+                          }
+                        />
+                      </div>
                       <span className="text-sm text-mineshaft-200">{name}</span>
                     </div>
                   </UnstableTableCell>
@@ -342,7 +343,7 @@ export const InPlatformMigrationSection = () => {
         />
       )}
 
-      <DeleteActionModal
+      <MigrationConfigDeleteDialog
         isOpen={vaultDeleteOpen}
         title={`Delete namespace configuration for "${vaultToDelete?.namespace}"?`}
         onChange={(open) => {
@@ -353,7 +354,7 @@ export const InPlatformMigrationSection = () => {
         onDeleteApproved={handleVaultDeleteConfirm}
       />
 
-      <DeleteActionModal
+      <MigrationConfigDeleteDialog
         isOpen={dopplerDeleteOpen}
         title="Delete Doppler configuration?"
         onChange={(open) => {
