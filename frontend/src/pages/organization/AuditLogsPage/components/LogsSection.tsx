@@ -55,7 +55,7 @@ const LogsSectionComponent = ({
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const { data: migrationStatus } = useGetAuditLogMigrationStatus();
 
-  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
+  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 2_000;
   const showClickHouseWarning =
     migrationStatus &&
     !migrationStatus.clickHouseConfigured &&
@@ -104,20 +104,29 @@ const LogsSectionComponent = ({
     return (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         {showClickHouseWarning && (
-          <UnstableAlert variant="info" className="mb-4">
+          <UnstableAlert variant="warning" className="mb-4">
             <UnstableAlertDescription>
               <p>
-                Your audit log table is growing large. PostgreSQL performance will degrade over time
-                at this scale. Consider configuring{" "}
+                Your audit log volume is growing. To keep searches fast and reduce database load, we
+                recommend streaming logs to an{" "}
+                <a
+                  href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:opacity-80"
+                >
+                  external destination
+                </a>{" "}
+                like Splunk or using the built-in{" "}
                 <a
                   href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:opacity-80"
                 >
-                  ClickHouse
-                </a>{" "}
-                as your audit log storage backend to maintain query performance.
+                  ClickHouse integration
+                </a>
+                .
               </p>
             </UnstableAlertDescription>
           </UnstableAlert>

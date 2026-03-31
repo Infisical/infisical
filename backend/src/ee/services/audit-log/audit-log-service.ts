@@ -9,6 +9,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -20,8 +21,8 @@ import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
-const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
-const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
+const AUDIT_LOG_ROW_WARNING_THRESHOLD = 2_000;
+const AUDIT_LOG_ALERT_ROW_INCREMENT = 10;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -31,6 +32,7 @@ type TAuditLogServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
+  orgDAL: Pick<TOrgDALFactory, "findAllOrgsByUserId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -42,6 +44,7 @@ export const auditLogServiceFactory = ({
   keyStore,
   smtpService,
   userDAL,
+  orgDAL,
   notificationService
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
   const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
@@ -148,13 +151,13 @@ export const auditLogServiceFactory = ({
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);
     const auditLogGenerationDisabled = Boolean(appCfg.DISABLE_AUDIT_LOG_GENERATION);
-    const auditLogStorageDisabled = Boolean(appCfg.DISABLE_AUDIT_LOG_STORAGE);
+    const postgresAuditLogStorageDisabled = Boolean(appCfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE);
     const auditLogRowCount = await auditLogDAL.getApproximateRowCount();
 
     return {
       clickHouseConfigured,
       auditLogGenerationDisabled,
-      auditLogStorageDisabled,
+      auditLogStorageDisabled: postgresAuditLogStorageDisabled,
       auditLogRowCount
     };
   };
@@ -194,7 +197,7 @@ export const auditLogServiceFactory = ({
         smtpService.sendMail({
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           template: SmtpTemplates.AuditLogMigrationAlert,
-          subjectLine: "Action recommended: Audit log storage is large",
+          subjectLine: "Action recommended: Optimize your audit log storage",
           recipients: [admin.email],
           substitutions: {
             siteUrl: appCfg.SITE_URL
@@ -208,15 +211,25 @@ export const auditLogServiceFactory = ({
       logger.error({ failedCount: failedEmails.length }, "Failed to send some audit log migration alert emails");
     }
 
+    const adminOrgMap = new Map<string, string>();
+    await Promise.all(
+      superAdminsResult.users.map(async (admin: TUsers) => {
+        const orgs = await orgDAL.findAllOrgsByUserId(admin.id);
+        if (orgs.length > 0) {
+          adminOrgMap.set(admin.id, orgs[0].id);
+        }
+      })
+    );
+
     await notificationService
       .createUserNotifications(
         superAdminsResult.users.map((admin: TUsers) => ({
           userId: admin.id,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           type: NotificationType.AUDIT_LOG_MIGRATION_RECOMMENDED,
-          title: "Audit log migration recommended",
-          body: "Your audit log table has grown large. Consider configuring ClickHouse as your audit log storage backend to maintain query performance.",
-          link: "/admin/audit-logs"
+          title: "Optimize your audit log storage",
+          body: "Your audit log volume is growing. To keep searches fast and reduce database load, we recommend streaming logs to an external destination like Splunk or using the built-in ClickHouse integration.",
+          link: adminOrgMap.has(admin.id) ? `/organizations/${adminOrgMap.get(admin.id)}/audit-logs` : undefined
         }))
       )
       .catch((error) => {

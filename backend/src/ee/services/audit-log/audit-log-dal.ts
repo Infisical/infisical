@@ -236,7 +236,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   const create: TAuditLogDALFactory["create"] = async (tx) => {
     const config = getConfig();
 
-    if (config.DISABLE_AUDIT_LOG_STORAGE) {
+    if (config.DISABLE_POSTGRES_AUDIT_LOG_STORAGE) {
       return {
         ...tx,
         id: uuidv4(),

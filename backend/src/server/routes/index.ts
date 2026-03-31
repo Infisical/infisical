@@ -830,6 +830,7 @@ export const registerRoutes = async (
     keyStore,
     smtpService,
     userDAL,
+    orgDAL,
     notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -3253,7 +3254,7 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE)
       };
     }
   });
