@@ -69,7 +69,8 @@ export const ProjectNav = () => {
 
   const getInitialProjectSubmenu = (): Submenu | null => {
     if (isOnAccessControl) return PROJECT_ACCESS_CONTROL_SUBMENU;
-    if (isOnIntegrations) return INTEGRATIONS_SUBMENU;
+    if (isOnIntegrations && currentProject.type === ProjectType.SecretManager)
+      return INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && isCertManager) return CERT_SETTINGS_SUBMENU;
