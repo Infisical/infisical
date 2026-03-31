@@ -1,4 +1,5 @@
 import { ProjectPermissionActions } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Reminder } from "@app/hooks/api/reminders/types";
 
 import { PendingAction } from "../secretFolders/types";
@@ -290,7 +291,7 @@ export type TSecretDependencyTreeNode = {
 };
 
 export type SecretAccessListEntry = {
-  allowedActions: ProjectPermissionActions[];
+  allowedActions: ProjectPermissionSecretActions[];
   id: string;
   membershipId: string;
   name: string;
