@@ -245,7 +245,6 @@
     "passport-ldapauth": "^3.0.1",
     "passport-oauth2": "^1.8.0",
     "pg": "^8.11.3",
-    "pg-boss": "^10.1.5",
     "pg-query-stream": "^4.5.3",
     "pg-types": "^2.2.0",
     "picomatch": "^3.0.1",
