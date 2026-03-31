@@ -36,6 +36,23 @@ export const PamLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Resources</Tab>}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/pam/$projectId/domains"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => (
+                    <Tab
+                      value={
+                        isActive || location.pathname.includes("/domains/") ? "selected" : ""
+                      }
+                    >
+                      Domains
+                    </Tab>
+                  )}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/pam/$projectId/sessions"
                   params={{
                     orgId: currentOrg.id,

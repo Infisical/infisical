@@ -366,6 +366,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/pam/$projectId/resources/",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
     ),
+    DomainsPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/domains/",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/"
+    ),
     SessionsPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"

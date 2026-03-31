@@ -102,7 +102,8 @@ export const PamResourcesTable = ({ projectId }: Props) => {
       : undefined
   });
 
-  const resources = data?.resources || [];
+  const allResources = data?.resources || [];
+  const resources = allResources.filter((r) => r.resourceType !== PamResourceType.ActiveDirectory);
   const totalCount = data?.totalCount || 0;
 
   useResetPageHelper({
