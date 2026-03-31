@@ -150,7 +150,7 @@ export const authSignupServiceFactory = ({
     const dummyUserId = "00000000-0000-0000-0000-000000000000";
     validateSignUpAuthorization(authorization, user?.id ?? dummyUserId);
 
-    if (!user || (user && (user.isAccepted || !user.isEmailVerified))) {
+    if (!user || (user && user.isAccepted)) {
       throw new BadRequestError({ message: "Failed to complete account for complete user" });
     }
 
@@ -173,19 +173,8 @@ export const authSignupServiceFactory = ({
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const updatedUser = await authDAL.transaction(async (tx) => {
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
-      if (!us) throw new Error("User not found");
-
-      const userEncKey = await userDAL.upsertUserEncryptionKey(
-        us.id,
-        {
-          encryptionVersion: UserEncryption.V2,
-          hashedPassword
-        },
-        tx
-      );
-
-      return { info: us, key: userEncKey };
+      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true, hashedPassword }, tx);
+      return { ...us, hashedPassword: null };
     });
 
     // If self-signup, create a default organization
@@ -204,7 +193,7 @@ export const authSignupServiceFactory = ({
     const tokenSession = await tokenService.getUserTokenSession({
       userAgent,
       ip,
-      userId: updatedUser.info.id
+      userId: updatedUser.id
     });
     if (!tokenSession) throw new Error("Failed to create token");
 
@@ -212,7 +201,7 @@ export const authSignupServiceFactory = ({
       {
         authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: updatedUser.info.id,
+        userId: updatedUser.id,
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion
       },
@@ -223,7 +212,7 @@ export const authSignupServiceFactory = ({
     const refreshToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.REFRESH_TOKEN,
-        userId: updatedUser.info.id,
+        userId: updatedUser.id,
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion
       },
@@ -232,7 +221,8 @@ export const authSignupServiceFactory = ({
     );
 
     return {
-      user: updatedUser.info,
+      user: updatedUser,
+      isInvitedUser,
       accessToken,
       refreshToken,
       authMethod: AuthMethod.EMAIL

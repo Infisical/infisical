@@ -404,8 +404,7 @@ export const authLoginServiceFactory = ({
     const appCfg = getConfig();
 
     try {
-      const users = await userDAL.findUserByUsername(email);
-      const user = users?.[0];
+      const user = await userDAL.findOne({ username: email });
       if (!user) {
         logger.error(`Failed to find user for email ${email}`);
         throw new BadRequestError({ message: "Invalid credentials" });

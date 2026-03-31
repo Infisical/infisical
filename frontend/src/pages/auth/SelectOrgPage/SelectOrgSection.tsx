@@ -62,7 +62,7 @@ export const SelectOrganizationSection = () => {
   const isLoadingSubOrgCheck =
     Boolean(defaultSelectedOrg) && !callbackPort && orgsWithSubOrgs.isPending;
 
-  const logout = useLogoutUser(true);
+  const logout = useLogoutUser();
   const handleLogout = useCallback(async () => {
     try {
       await logout.mutateAsync();

@@ -325,7 +325,7 @@ export const logoutUser = async () => {
 };
 
 // Utility function to clear session storage and query cache
-export const clearSession = (keepQueryClient?: boolean) => {
+export const clearSession = () => {
   setAuthToken(""); // Clear authentication token
   localStorage.removeItem("protectedKey");
   localStorage.removeItem("protectedKeyIV");
@@ -338,21 +338,29 @@ export const clearSession = (keepQueryClient?: boolean) => {
   localStorage.removeItem("orgData.id");
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
-  if (!keepQueryClient) {
-    qc.clear();
-  }
+  qc.clear();
 };
 
-export const useLogoutUser = (keepQueryClient?: boolean) => {
+let logoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const useLogoutUser = () => {
   return useMutation({
     mutationFn: async () => {
-      // Cancel all in-flight queries and clear token before the logout call
-      // to prevent 401 interceptor from triggering refresh attempts
-      qc.cancelQueries();
+      if (logoutTimer) {
+        clearTimeout(logoutTimer);
+        logoutTimer = null;
+      }
       setAuthToken("");
       await logoutUser();
     },
-    onSuccess: () => clearSession(keepQueryClient)
+    onSuccess: () => {
+      // Delay cache clear so the route transition completes first and
+      // useSuspenseQuery components unmount before their cache is removed.
+      logoutTimer = setTimeout(() => {
+        clearSession();
+        logoutTimer = null;
+      }, 500);
+    }
   });
 };
 

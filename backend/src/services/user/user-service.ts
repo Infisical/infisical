@@ -340,12 +340,13 @@ export const userServiceFactory = ({
   };
 
   const getMe = async (userId: string) => {
-    const user = await userDAL.findUserEncKeyByUserId(userId);
+    const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
 
     return {
       ...user,
-      encryptionVersion: user.encryptionVersion!
+      hashedPassword: null,
+      encryptionVersion: 2
     };
   };
 
