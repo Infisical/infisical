@@ -240,13 +240,24 @@ function AddMemberPopover({
     }
   };
 
-  if (!canCreateMember) return null;
+  if (!canCreateMember) {
+    return (
+      <Tooltip>
+        <TooltipTrigger>
+          <Button variant="project" isDisabled aria-label="Add user to project">
+            <UserPlusIcon /> Grant Organization User Access
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>You do not have permission to add members to this project</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="project" aria-label="Add user to project">
-          <UserPlusIcon /> Grant Organization Access
+          <UserPlusIcon /> Grant Organization User Access
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-lg p-0">
