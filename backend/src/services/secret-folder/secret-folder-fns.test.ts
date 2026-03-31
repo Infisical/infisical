@@ -109,6 +109,15 @@ describe("buildFolderPath", () => {
     expect(buildFolderPath(folderD, idMap)).toBe("/folder-a/folder-d");
   });
 
+  test("handles orphaned folder with missing parent gracefully", () => {
+    // Folder whose parentId points to a non-existent folder
+    const orphan = makeFolder("orphan-id", "orphan", "missing-parent-id");
+    const orphanMap = buildFolderIdMap([orphan]);
+
+    // Should not throw — returns path treating orphan as top-level
+    expect(buildFolderPath(orphan, orphanMap)).toBe("/orphan");
+  });
+
   test("throws when depth exceeds 20", () => {
     // Create a chain of 22 folders (root + 21 children)
     const deepFolders: TSecretFolders[] = [makeFolder("deep-0", "root", null)];

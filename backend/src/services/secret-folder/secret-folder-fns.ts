@@ -13,7 +13,13 @@ export const buildFolderPath = (
     return depth === 0 ? "/" : "";
   }
 
-  return `${buildFolderPath(foldersMap[folder.parentId], foldersMap, depth + 1)}/${folder.name}`;
+  const parent = foldersMap[folder.parentId];
+  if (!parent) {
+    // Orphaned folder
+    return `/${folder.name}`;
+  }
+
+  return `${buildFolderPath(parent, foldersMap, depth + 1)}/${folder.name}`;
 };
 
 export const buildFolderIdMap = (folders: TSecretFolders[]): Record<string, TSecretFolders> => {

@@ -408,13 +408,11 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const childrenMap = buildChildrenMap(allFoldersIncludingParents);
 
       const results: (TSecretFolders & { path: string; depth: number; environment: string })[] = [];
-      const parentIdSet = new Set(parentIds);
 
       const traverse = (folder: TSecretFolders, currentPath: string, depth: number, environment: string) => {
         results.push({ ...folder, path: currentPath, depth, environment });
-        const children = childrenMap[folder.id] || [];
+        const children = (childrenMap[folder.id] || []).filter((child) => !child.isReserved);
         for (const child of children) {
-          if (child.isReserved) continue;
           const childPath = currentPath === "/" ? `/${child.name}` : `${currentPath}/${child.name}`;
           traverse(child, childPath, depth + 1, environment);
         }
@@ -463,9 +461,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         if (folderIdSet.has(folder.id)) {
           results.push({ ...folder, path: currentPath, depth, environment });
         }
-        const children = childrenMap[folder.id] || [];
+        const children = (childrenMap[folder.id] || []).filter((child) => !child.isReserved);
         for (const child of children) {
-          if (child.isReserved) continue;
           const childPath = currentPath === "/" ? `/${child.name}` : `${currentPath}/${child.name}`;
           traverse(child, childPath, depth + 1);
         }
