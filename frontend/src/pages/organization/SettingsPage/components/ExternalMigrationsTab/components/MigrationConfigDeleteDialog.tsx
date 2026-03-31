@@ -66,9 +66,9 @@ export const MigrationConfigDeleteDialog = ({
           <DialogDescription>{subTitle}</DialogDescription>
         </DialogHeader>
         <form
-          onSubmit={(evt) => {
+          onSubmit={async (evt) => {
             evt.preventDefault();
-            if (deleteKey === inputData) void onDelete();
+            if (deleteKey === inputData) await onDelete();
           }}
         >
           <Field>
@@ -93,7 +93,9 @@ export const MigrationConfigDeleteDialog = ({
             variant="danger"
             isPending={isLoading}
             isDisabled={deleteKey !== inputData || isLoading || isDisabled}
-            onClick={() => void onDelete()}
+            onClick={async () => {
+              await onDelete();
+            }}
           >
             {buttonText}
           </Button>

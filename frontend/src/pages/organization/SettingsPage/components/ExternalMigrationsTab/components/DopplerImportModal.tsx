@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -285,7 +285,9 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
                         <InfoIcon className="size-3 text-accent" aria-hidden />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent>The path in Infisical where secrets will be imported</TooltipContent>
+                    <TooltipContent>
+                      The path in Infisical where secrets will be imported
+                    </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
@@ -305,7 +307,12 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+            <Button
+              type="submit"
+              variant="project"
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
+            >
               Import Secrets
             </Button>
           </DialogFooter>

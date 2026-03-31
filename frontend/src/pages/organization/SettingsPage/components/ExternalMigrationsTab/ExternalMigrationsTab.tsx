@@ -28,8 +28,8 @@ export const ExternalMigrationsTab = () => {
           <p className="mt-1 mb-6 text-sm text-muted">
             Connect <span className="text-foreground/90">HashiCorp Vault</span> or{" "}
             <span className="text-foreground/90">Doppler</span> to enable migration features across
-            Infisical: import KV secrets (and from Vault, policies, Kubernetes-related resources, and
-            more) directly from the UI.
+            Infisical: import KV secrets (and from Vault, policies, Kubernetes-related resources,
+            and more) directly from the UI.
           </p>
         </div>
         <InPlatformMigrationSection />
@@ -50,7 +50,9 @@ export const ExternalMigrationsTab = () => {
               <p className="text-base font-medium text-foreground">Import from external source</p>
               <DocumentationLinkBadge href={EXTERNAL_MIGRATIONS_DOCS_HREF} />
             </div>
-            <p className="mt-1 text-sm text-muted">Import data from another platform to Infisical.</p>
+            <p className="mt-1 text-sm text-muted">
+              Import data from another platform to Infisical.
+            </p>
           </div>
 
           <Button

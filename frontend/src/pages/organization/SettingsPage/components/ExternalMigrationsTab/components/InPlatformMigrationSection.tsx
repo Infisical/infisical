@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Download, Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { Download, Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -29,8 +29,8 @@ import {
   getInPlatformMigrationProviderMeta,
   TInPlatformMigrationApp
 } from "@app/helpers/externalMigrationInPlatform";
-import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
   useDeleteDopplerExternalMigrationConfig,
   useDeleteVaultExternalMigrationConfig,
@@ -58,7 +58,9 @@ export const InPlatformMigrationSection = () => {
   const [isProviderPickerOpen, setIsProviderPickerOpen] = useState(false);
 
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
-  const [vaultEditConfig, setVaultEditConfig] = useState<TVaultExternalMigrationConfig | undefined>();
+  const [vaultEditConfig, setVaultEditConfig] = useState<
+    TVaultExternalMigrationConfig | undefined
+  >();
 
   const [dopplerConfigModalOpen, setDopplerConfigModalOpen] = useState(false);
   const [dopplerEditConfig, setDopplerEditConfig] = useState<
@@ -66,17 +68,19 @@ export const InPlatformMigrationSection = () => {
   >();
 
   const [dopplerImportModalOpen, setDopplerImportModalOpen] = useState(false);
-  const [dopplerImportConfig, setDopplerImportConfig] = useState<TDopplerExternalMigrationConfig | null>(
-    null
-  );
+  const [dopplerImportConfig, setDopplerImportConfig] =
+    useState<TDopplerExternalMigrationConfig | null>(null);
 
   const [vaultDeleteOpen, setVaultDeleteOpen] = useState(false);
   const [vaultToDelete, setVaultToDelete] = useState<TVaultExternalMigrationConfig | null>(null);
 
   const [dopplerDeleteOpen, setDopplerDeleteOpen] = useState(false);
-  const [dopplerToDelete, setDopplerToDelete] = useState<TDopplerExternalMigrationConfig | null>(null);
+  const [dopplerToDelete, setDopplerToDelete] = useState<TDopplerExternalMigrationConfig | null>(
+    null
+  );
 
-  const { data: vaultConfigs = [], isPending: isVaultLoading } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [], isPending: isVaultLoading } =
+    useGetVaultExternalMigrationConfigs();
   const { data: dopplerConfigs = [], isPending: isDopplerLoading } =
     useGetDopplerExternalMigrationConfigs();
 
@@ -138,22 +142,9 @@ export const InPlatformMigrationSection = () => {
     setDopplerToDelete(null);
   };
 
-  return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-medium text-mineshaft-100">Configurations</h3>
-        <Button
-          variant="project"
-          type="button"
-          className="gap-1.5"
-          onClick={() => setIsProviderPickerOpen(true)}
-        >
-          <Plus className="size-4 shrink-0" />
-          Add configuration
-        </Button>
-      </div>
-
-      {isLoading ? (
+  const renderTable = () => {
+    if (isLoading) {
+      return (
         <UnstableTable>
           <UnstableTableHeader>
             <UnstableTableRow>
@@ -182,7 +173,10 @@ export const InPlatformMigrationSection = () => {
             ))}
           </UnstableTableBody>
         </UnstableTable>
-      ) : mergedRows.length === 0 ? (
+      );
+    }
+    if (mergedRows.length === 0) {
+      return (
         <UnstableEmpty>
           <UnstableEmptyHeader>
             <EmptyMedia variant="icon">
@@ -194,105 +188,125 @@ export const InPlatformMigrationSection = () => {
             </UnstableEmptyDescription>
           </UnstableEmptyHeader>
         </UnstableEmpty>
-      ) : (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Platform</UnstableTableHead>
-              <UnstableTableHead>Namespace</UnstableTableHead>
-              <UnstableTableHead>Connection</UnstableTableHead>
-              <UnstableTableHead className="w-12 text-right" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
-            {mergedRows.map((row) => {
-              const app = providerApp(row);
-              const { name, imageFileName } = getInPlatformMigrationProviderMeta(app);
+      );
+    }
+    return (
+      <UnstableTable>
+        <UnstableTableHeader>
+          <UnstableTableRow>
+            <UnstableTableHead>Platform</UnstableTableHead>
+            <UnstableTableHead>Namespace</UnstableTableHead>
+            <UnstableTableHead>Connection</UnstableTableHead>
+            <UnstableTableHead className="w-12 text-right" />
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {mergedRows.map((row) => {
+            const app = providerApp(row);
+            const { name, imageFileName } = getInPlatformMigrationProviderMeta(app);
 
-              return (
-                <UnstableTableRow key={`${row.kind}-${row.config.id}`}>
-                  <UnstableTableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-bunker-500 p-1">
-                        <img
-                          src={`/images/integrations/${imageFileName}`}
-                          alt=""
-                          className={
-                            row.kind === "doppler"
-                              ? "max-h-5 max-w-5 object-contain"
-                              : "max-h-full max-w-full object-contain"
-                          }
-                        />
-                      </div>
-                      <span className="text-sm text-mineshaft-200">{name}</span>
+            return (
+              <UnstableTableRow key={`${row.kind}-${row.config.id}`}>
+                <UnstableTableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-bunker-500 p-1">
+                      <img
+                        src={`/images/integrations/${imageFileName}`}
+                        alt=""
+                        className={
+                          row.kind === "doppler"
+                            ? "max-h-5 max-w-5 object-contain"
+                            : "max-h-full max-w-full object-contain"
+                        }
+                      />
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-sm text-mineshaft-300">
-                    {row.kind === "vault" ? row.config.namespace : "—"}
-                  </UnstableTableCell>
-                  <UnstableTableCell>{getConnectionName(row.config.connectionId)}</UnstableTableCell>
-                  <UnstableTableCell className="text-right">
-                    <UnstableDropdownMenu>
-                      <UnstableDropdownMenuTrigger asChild>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          aria-label="Row actions"
-                          className="text-mineshaft-300"
-                        >
-                          <MoreVertical className="size-4" />
-                        </UnstableIconButton>
-                      </UnstableDropdownMenuTrigger>
-                      <UnstableDropdownMenuContent align="end" className="min-w-40">
-                        {row.kind === "doppler" && (
-                          <UnstableDropdownMenuItem
-                            onClick={() => {
-                              setDopplerImportConfig(row.config);
-                              setDopplerImportModalOpen(true);
-                            }}
-                          >
-                            <Download />
-                            Import secrets
-                          </UnstableDropdownMenuItem>
-                        )}
+                    <span className="text-sm text-mineshaft-200">{name}</span>
+                  </div>
+                </UnstableTableCell>
+                <UnstableTableCell className="text-sm text-mineshaft-300">
+                  {row.kind === "vault" ? row.config.namespace : "—"}
+                </UnstableTableCell>
+                <UnstableTableCell>{getConnectionName(row.config.connectionId)}</UnstableTableCell>
+                <UnstableTableCell className="text-right">
+                  <UnstableDropdownMenu>
+                    <UnstableDropdownMenuTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Row actions"
+                        className="text-mineshaft-300"
+                      >
+                        <MoreVertical className="size-4" />
+                      </UnstableIconButton>
+                    </UnstableDropdownMenuTrigger>
+                    <UnstableDropdownMenuContent align="end" className="min-w-40">
+                      {row.kind === "doppler" && (
                         <UnstableDropdownMenuItem
                           onClick={() => {
-                            if (row.kind === "vault") {
-                              setVaultEditConfig(row.config);
-                              setVaultModalOpen(true);
-                            } else {
-                              setDopplerEditConfig(row.config);
-                              setDopplerConfigModalOpen(true);
-                            }
+                            setDopplerImportConfig(row.config);
+                            setDopplerImportModalOpen(true);
                           }}
                         >
-                          <Edit />
-                          Edit
+                          <Download />
+                          Import secrets
                         </UnstableDropdownMenuItem>
-                        <UnstableDropdownMenuItem
-                          variant="danger"
-                          onClick={() => {
-                            if (row.kind === "vault") {
-                              setVaultToDelete(row.config);
-                              setVaultDeleteOpen(true);
-                            } else {
-                              setDopplerToDelete(row.config);
-                              setDopplerDeleteOpen(true);
-                            }
-                          }}
-                        >
-                          <Trash2 />
-                          Delete
-                        </UnstableDropdownMenuItem>
-                      </UnstableDropdownMenuContent>
-                    </UnstableDropdownMenu>
-                  </UnstableTableCell>
-                </UnstableTableRow>
-              );
-            })}
-          </UnstableTableBody>
-        </UnstableTable>
-      )}
+                      )}
+                      <UnstableDropdownMenuItem
+                        onClick={() => {
+                          if (row.kind === "vault") {
+                            setVaultEditConfig(row.config);
+                            setVaultModalOpen(true);
+                          } else {
+                            setDopplerEditConfig(row.config);
+                            setDopplerConfigModalOpen(true);
+                          }
+                        }}
+                      >
+                        <Edit />
+                        Edit
+                      </UnstableDropdownMenuItem>
+                      <UnstableDropdownMenuItem
+                        variant="danger"
+                        onClick={() => {
+                          if (row.kind === "vault") {
+                            setVaultToDelete(row.config);
+                            setVaultDeleteOpen(true);
+                          } else {
+                            setDopplerToDelete(row.config);
+                            setDopplerDeleteOpen(true);
+                          }
+                        }}
+                      >
+                        <Trash2 />
+                        Delete
+                      </UnstableDropdownMenuItem>
+                    </UnstableDropdownMenuContent>
+                  </UnstableDropdownMenu>
+                </UnstableTableCell>
+              </UnstableTableRow>
+            );
+          })}
+        </UnstableTableBody>
+      </UnstableTable>
+    );
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-lg font-medium text-mineshaft-100">Configurations</h3>
+        <Button
+          variant="project"
+          type="button"
+          className="gap-1.5"
+          onClick={() => setIsProviderPickerOpen(true)}
+        >
+          <Plus className="size-4 shrink-0" />
+          Add configuration
+        </Button>
+      </div>
+
+      {renderTable()}
 
       <p className="mt-4 text-xs text-mineshaft-400">
         Manage credentials in{" "}
@@ -303,8 +317,10 @@ export const InPlatformMigrationSection = () => {
         >
           App Connections
         </Link>
-        . Use <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.HCVault].name}</span>{" "}
-        or <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.Doppler].name}</span>{" "}
+        . Use{" "}
+        <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.HCVault].name}</span>{" "}
+        or{" "}
+        <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.Doppler].name}</span>{" "}
         connection types as needed.
       </p>
 

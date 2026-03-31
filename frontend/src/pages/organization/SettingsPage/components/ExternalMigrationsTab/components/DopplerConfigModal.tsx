@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -108,7 +108,9 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
     >
       <DialogContent className="max-w-lg overflow-visible" showCloseButton>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Doppler Configuration" : "Add Doppler Configuration"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edit Doppler Configuration" : "Add Doppler Configuration"}
+          </DialogTitle>
           <DialogDescription>
             Configure a Doppler connection for in-platform migration tooling
           </DialogDescription>

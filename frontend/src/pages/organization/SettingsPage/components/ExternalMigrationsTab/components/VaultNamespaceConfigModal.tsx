@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -131,7 +131,8 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
             {isEdit ? "Edit Namespace Configuration" : "Add Namespace Configuration"}
           </DialogTitle>
           <DialogDescription>
-            Configure a HashiCorp Vault namespace {isEdit ? "configuration" : "for migration tooling"}
+            Configure a HashiCorp Vault namespace{" "}
+            {isEdit ? "configuration" : "for migration tooling"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">

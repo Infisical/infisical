@@ -192,11 +192,7 @@ export const useCreateDopplerExternalMigrationConfig = () => {
 export const useUpdateDopplerExternalMigrationConfig = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    TDopplerExternalMigrationConfig,
-    Error,
-    { id: string; connectionId: string }
-  >({
+  return useMutation<TDopplerExternalMigrationConfig, Error, { id: string; connectionId: string }>({
     mutationFn: async ({ id, connectionId }) => {
       const { data } = await apiRequest.put<{ config: TDopplerExternalMigrationConfig }>(
         `/api/v3/external-migration/doppler/configs/${id}`,

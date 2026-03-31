@@ -1,6 +1,6 @@
+import { Controller, useForm } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -12,10 +12,7 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
-import {
-  useGetDopplerEnvironments,
-  useGetDopplerProjects
-} from "@app/hooks/api/migration/queries";
+import { useGetDopplerEnvironments, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
 
 const schema = z.object({
   dopplerProject: z.string().min(1, "Doppler project is required"),
@@ -57,9 +54,8 @@ export const DopplerSecretImportModal = ({
 
   const selectedDopplerProject = watch("dopplerProject");
 
-  const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
-    configId
-  );
+  const { data: dopplerProjects = [], isPending: isLoadingProjects } =
+    useGetDopplerProjects(configId);
   const { data: dopplerEnvironments = [], isPending: isLoadingEnvironments } =
     useGetDopplerEnvironments(configId, selectedDopplerProject || undefined);
 

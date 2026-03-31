@@ -1,7 +1,7 @@
 import { Controller, useForm } from "react-hook-form";
-import { CircleHelpIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { CircleHelpIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -67,20 +67,14 @@ function VaultGatewaySelect({
 }: VaultGatewaySelectProps) {
   const select = (
     <Select
-      value={value ? value : GATEWAY_NONE}
+      value={value || GATEWAY_NONE}
       onValueChange={(v) => {
         onChange(v === GATEWAY_NONE ? undefined : v);
       }}
       disabled={!isAllowed || isGatewayLoading}
     >
-      <SelectTrigger
-        size="default"
-        className="w-full min-w-0 max-w-none"
-        aria-invalid={hasError}
-      >
-        <SelectValue
-          placeholder={isGatewayLoading ? "Loading gateways…" : "Internet Gateway"}
-        />
+      <SelectTrigger size="default" className="w-full max-w-none min-w-0" aria-invalid={hasError}>
+        <SelectValue placeholder={isGatewayLoading ? "Loading gateways…" : "Internet Gateway"} />
       </SelectTrigger>
       <SelectContent position="popper" className="min-w-(--radix-select-trigger-width)">
         <SelectItem value={GATEWAY_NONE}>Internet Gateway</SelectItem>
@@ -136,9 +130,9 @@ const MAPPING_TYPE_MENU_ITEMS = [
     label: "Namespaces",
     tooltip: (
       <div>
-        When using namespaces for mapping, each namespace within Vault will be created in Infisical as
-        a project. Each key vault (KV) inside the namespace, will be created as an environment inside
-        the corresponding project.
+        When using namespaces for mapping, each namespace within Vault will be created in Infisical
+        as a project. Each key vault (KV) inside the namespace, will be created as an environment
+        inside the corresponding project.
         <div className="mt-4 flex flex-col gap-1 text-sm">
           <div>Namespace → Project</div>
           <div>Key Vault → Project Environment</div>

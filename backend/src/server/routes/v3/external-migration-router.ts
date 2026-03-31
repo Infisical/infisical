@@ -134,7 +134,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
             .object({
               id: z.string(),
               orgId: z.string(),
-              namespace: z.string(),
+              namespace: z.string().nullable().optional(),
               connectionId: z.string().nullish(),
               createdAt: z.date(),
               updatedAt: z.date()
@@ -170,7 +170,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
           config: z.object({
             id: z.string(),
             orgId: z.string(),
-            namespace: z.string(),
+            namespace: z.string().nullable().optional(),
             connectionId: z.string().nullable().optional(),
             createdAt: z.date(),
             updatedAt: z.date()

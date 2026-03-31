@@ -72,7 +72,9 @@ export const SelectInPlatformMigrationProviderModal = ({
                 <span className="mt-3 text-center text-sm font-medium text-foreground group-hover:text-foreground">
                   {name}
                 </span>
-                <span className="mt-2 text-center text-xs leading-snug text-muted">{description}</span>
+                <span className="mt-2 text-center text-xs leading-snug text-muted">
+                  {description}
+                </span>
               </button>
             );
           })}
