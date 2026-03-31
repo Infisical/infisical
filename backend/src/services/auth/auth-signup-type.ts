@@ -9,16 +9,4 @@ export type TCompleteAccountSignupDTO = {
   ip: string;
   userAgent: string;
   authorization: string;
-  useDefaultOrg?: boolean;
-};
-
-export type TCompleteAccountInviteDTO = {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName?: string;
-  ip: string;
-  userAgent: string;
-  authorization: string;
-  tokenMetadata?: string;
 };

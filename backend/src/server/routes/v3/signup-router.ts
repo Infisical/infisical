@@ -95,39 +95,21 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
-      operationId: "completeEmailAccountSignupV3",
-      body: z
-        .object({
-          email: z.string().trim(),
-          firstName: z.string().trim(),
-          lastName: z.string().trim().optional(),
-          providerAuthToken: z.string().trim().optional().nullish(),
-          attributionSource: z.string().trim().optional(),
-          password: z.string()
-        })
-        .and(
-          z.preprocess(
-            (data) => {
-              if (typeof data === "object" && data && "useDefaultOrg" in data === false) {
-                return { ...data, useDefaultOrg: false };
-              }
-              return data;
-            },
-            z.discriminatedUnion("useDefaultOrg", [
-              z.object({ useDefaultOrg: z.literal(true) }),
-              z.object({
-                useDefaultOrg: z.literal(false),
-                organizationName: GenericResourceNameSchema
-              })
-            ])
-          )
-        ),
+      operationId: "completeAccountSignupV3",
+      body: z.object({
+        email: z.string().trim(),
+        firstName: z.string().trim(),
+        lastName: z.string().trim().optional(),
+        providerAuthToken: z.string().trim().optional().nullish(),
+        attributionSource: z.string().trim().optional(),
+        password: z.string(),
+        organizationName: GenericResourceNameSchema.optional()
+      }),
       response: {
         200: z.object({
           message: z.string(),
           user: UsersSchema,
-          token: z.string(),
-          organizationId: z.string().nullish()
+          token: z.string()
         })
       }
     },
@@ -136,13 +118,12 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, organizationId, authMethod } =
-        await server.services.signup.completeEmailAccountSignup({
-          ...req.body,
-          ip: req.realIp,
-          userAgent,
-          authorization: req.headers.authorization as string
-        });
+      const { user, accessToken, refreshToken, authMethod } = await server.services.signup.completeAccountSignup({
+        ...req.body,
+        ip: req.realIp,
+        userAgent,
+        authorization: req.headers.authorization as string
+      });
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
@@ -189,94 +170,6 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
-
-      addAuthOriginDomainCookie(res);
-
-      return { message: "Successfully set up account", user, token: accessToken, organizationId };
-    }
-  });
-
-  server.route({
-    url: "/complete-account/invite",
-    method: "POST",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      operationId: "completeAccountInviteV3",
-      body: z.object({
-        email: z.string().email().trim(),
-        password: z.string(),
-        firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        tokenMetadata: z.string().optional()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          user: UsersSchema,
-          token: z.string()
-        })
-      }
-    },
-    handler: async (req, res) => {
-      const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
-      const appCfg = getConfig();
-
-      const { user, accessToken, refreshToken, organizationId } = await server.services.signup.completeAccountInvite({
-        ...req.body,
-        ip: req.realIp,
-        userAgent,
-        authorization: req.headers.authorization as string
-      });
-
-      if (user.email) {
-        void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
-        void server.services.telemetry.sendHubSpotSignupEvent(
-          user.email,
-          "invite",
-          user.firstName || "",
-          user.lastName || ""
-        );
-      }
-
-      void server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.UserSignedUp,
-        distinctId: user.username ?? "",
-        ...(organizationId ? { organizationId } : {}),
-        properties: {
-          username: user.username,
-          email: user.email ?? "",
-          attributionSource: "Team Invite"
-        }
-      });
-
-      const inviteDistinctId = user.username ?? user.email ?? "";
-      if (inviteDistinctId) {
-        void server.services.telemetry.identifyUser(
-          inviteDistinctId,
-          {
-            email: user.email ?? undefined,
-            username: user.username,
-            userId: user.id,
-            firstName: user.firstName ?? undefined,
-            lastName: user.lastName ?? undefined,
-            isEmailVerified: user.isEmailVerified ?? undefined,
-            isMfaEnabled: user.isMfaEnabled ?? undefined,
-            superAdmin: user.superAdmin ?? undefined
-          },
-          { skipDedup: true }
-        );
-      }
-
-      void res.setCookie("jid", refreshToken, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
-      // TODO(akhilmhdh-pg): add telemetry service
 
       addAuthOriginDomainCookie(res);
 

@@ -1105,14 +1105,8 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    userGroupMembershipDAL,
-    projectKeyDAL,
-    projectDAL,
-    projectBotDAL,
     orgDAL,
-    orgService,
-    licenseService,
-    membershipGroupDAL
+    orgService
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({

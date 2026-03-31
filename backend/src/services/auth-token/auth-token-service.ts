@@ -123,6 +123,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return token;
   };
 
+  const DUMMY_HASH = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
   const validateTokenForUser = async ({
     type,
     userId,
@@ -130,16 +131,22 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     orgId
   }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
     const token = await tokenDAL.findOne({ type, userId, orgId: orgId || null });
-    // validate token
+
+    // Always perform a hash comparison, even if no token exists.
+    // Use a dummy hash so the timing is indistinguishable.
+    const hashToCompare = token?.tokenHash ?? DUMMY_HASH;
+    const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
+
+    // Now perform the logical checks *after* the constant-time work is done.
     if (!token) throw new Error("Failed to find token");
-    if (token?.expiresAt && new Date(token.expiresAt) < new Date()) {
+
+    if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
       await tokenDAL.delete({ type, userId, orgId });
       throw new Error("Token expired. Please try again");
     }
 
-    const isValidToken = await crypto.hashing().compareHash(code, token.tokenHash);
     if (!isValidToken) {
-      if (token?.triesLeft) {
+      if (token.triesLeft) {
         if (token.triesLeft === 1) {
           await tokenDAL.deleteTokenForUser({ type, userId, orgId: orgId || null });
         } else {
