@@ -345,7 +345,7 @@ export const Navbar = () => {
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
     >
-      <SidebarTrigger variant="ghost" className="ml-2 md:hidden" />
+      <SidebarTrigger variant="ghost" className="ml-2 lg:hidden" />
       <div className="mr-auto flex h-full min-w-34 items-center">
         {isServerAdminPanel ? (
           <div className="flex h-full items-center">

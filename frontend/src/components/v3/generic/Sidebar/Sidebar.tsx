@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "../Skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
-const MOBILE_BREAKPOINT = 768;
+const MOBILE_BREAKPOINT = 1024;
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(
