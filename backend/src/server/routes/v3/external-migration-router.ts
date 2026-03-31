@@ -639,4 +639,198 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       return { roles };
     }
   });
+
+  // ─── Doppler In-Platform Migration Routes ────────────────────────────────────
+
+  server.route({
+    method: "GET",
+    url: "/doppler/configs",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getDopplerExternalMigrationConfigsV3",
+      response: {
+        200: z.object({
+          configs: z
+            .object({
+              id: z.string(),
+              orgId: z.string(),
+              connectionId: z.string().nullish(),
+              provider: z.string(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const configs = await server.services.migration.getDopplerExternalMigrationConfigs(req.permission);
+      return { configs };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/doppler/configs",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "createDopplerExternalMigrationV3",
+      body: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            connectionId: z.string().nullish(),
+            provider: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.createDopplerExternalMigration({
+        connectionId: req.body.connectionId,
+        actor: req.permission
+      });
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/doppler/configs/:id",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "updateDopplerExternalMigrationV3",
+      params: z.object({ id: z.string().uuid() }),
+      body: z.object({
+        connectionId: z.string().uuid().nullable()
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.updateDopplerExternalMigration({
+        id: req.params.id,
+        connectionId: req.body.connectionId,
+        actor: req.permission
+      });
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/doppler/configs/:id",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "deleteDopplerExternalMigrationV3",
+      params: z.object({ id: z.string().uuid() })
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.deleteDopplerExternalMigration({
+        id: req.params.id,
+        actor: req.permission
+      });
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/doppler/projects",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getDopplerProjectsV3",
+      querystring: z.object({ configId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          projects: z
+            .object({
+              id: z.string(),
+              slug: z.string(),
+              name: z.string(),
+              description: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projects = await server.services.migration.getDopplerProjects({
+        configId: req.query.configId,
+        actor: req.permission
+      });
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/doppler/environments",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getDopplerEnvironmentsV3",
+      querystring: z.object({
+        configId: z.string().uuid(),
+        projectSlug: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          environments: z
+            .object({
+              id: z.string(),
+              slug: z.string(),
+              name: z.string(),
+              project: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const environments = await server.services.migration.getDopplerEnvironments({
+        configId: req.query.configId,
+        projectSlug: req.query.projectSlug,
+        actor: req.permission
+      });
+      return { environments };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/doppler/import-secrets",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "importDopplerSecretsV3",
+      body: z.object({
+        configId: z.string().uuid(),
+        dopplerProject: z.string().min(1),
+        dopplerEnvironment: z.string().min(1),
+        targetProjectId: z.string().min(1),
+        targetEnvironment: z.string().min(1),
+        targetSecretPath: z.string().min(1).default("/")
+      }),
+      response: {
+        200: z.object({ imported: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.migration.importDopplerSecrets({
+        ...req.body,
+        actor: req.permission
+      });
+      return result;
+    }
+  });
 };

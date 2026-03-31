@@ -119,18 +119,46 @@ export type TEnvKeyExportJSON = {
 
 export enum ExternalPlatforms {
   EnvKey = "EnvKey",
-  Vault = "Vault"
+  Vault = "Vault",
+  Doppler = "Doppler"
 }
 
 export enum ExternalMigrationProviders {
   Vault = "vault",
-  EnvKey = "env-key"
+  EnvKey = "env-key",
+  Doppler = "doppler"
 }
 
 export enum VaultImportStatus {
   Imported = "imported",
   ApprovalRequired = "approval-required"
 }
+
+export type TCreateDopplerExternalMigrationDTO = {
+  connectionId: string;
+  actor: OrgServiceActor;
+};
+
+export type TUpdateDopplerExternalMigrationDTO = {
+  id: string;
+  connectionId: string | null;
+  actor: OrgServiceActor;
+};
+
+export type TDeleteDopplerExternalMigrationDTO = {
+  id: string;
+  actor: OrgServiceActor;
+};
+
+export type TImportDopplerSecretsDTO = {
+  configId: string;
+  dopplerProject: string;
+  dopplerEnvironment: string;
+  targetProjectId: string;
+  targetEnvironment: string;
+  targetSecretPath: string;
+  actor: OrgServiceActor;
+};
 
 export type TCreateVaultExternalMigrationDTO = {
   namespace: string;
