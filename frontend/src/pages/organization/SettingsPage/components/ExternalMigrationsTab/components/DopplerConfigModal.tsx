@@ -1,10 +1,27 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
@@ -77,14 +94,26 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
     onOpenChange(false);
   };
 
+  const isPending = isSubmitting || isCreating || isUpdating;
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleClose}>
-      <ModalContent
-        title={isEdit ? "Edit Doppler Configuration" : "Add Doppler Configuration"}
-        subTitle="Configure a Doppler connection for in-platform migration tooling"
-        bodyClassName="overflow-visible"
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          reset();
+          onOpenChange(false);
+        }
+      }}
+    >
+      <DialogContent className="max-w-lg overflow-visible" showCloseButton>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Doppler Configuration" : "Add Doppler Configuration"}</DialogTitle>
+          <DialogDescription>
+            Configure a Doppler connection for in-platform migration tooling
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <Controller
             control={control}
             name="connectionId"
@@ -92,49 +121,52 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
               const selectedConnection = dopplerConnections.find((conn) => conn.id === field.value);
 
               return (
-                <FormControl
-                  label="Doppler Connection"
-                  isError={Boolean(errors.connectionId)}
-                  errorText={errors.connectionId?.message}
-                  tooltipText="Select a Doppler app connection"
-                >
-                  <FilterableSelect
-                    value={selectedConnection || null}
-                    onChange={(newValue) => {
-                      const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                      if (singleValue && "id" in singleValue) {
-                        field.onChange(singleValue.id);
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                    isLoading={isLoadingConnections}
-                    options={dopplerConnections}
-                    placeholder="Select connection..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel className="inline-flex items-center gap-1">
+                    Doppler Connection
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-default">
+                          <InfoIcon className="size-3 text-accent" aria-hidden />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Select a Doppler app connection</TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selectedConnection || null}
+                      onChange={(newValue) => {
+                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                        if (singleValue && "id" in singleValue) {
+                          field.onChange(singleValue.id);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                      isLoading={isLoadingConnections}
+                      options={dopplerConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                    />
+                  </FieldContent>
+                  <FieldError>{errors.connectionId?.message}</FieldError>
+                </Field>
               );
             }}
           />
 
-          <div className="mt-8 flex items-center gap-2">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting || isCreating || isUpdating}
-              isDisabled={isSubmitting || isCreating || isUpdating}
-            >
-              {isEdit ? "Update" : "Create"}
-            </Button>
-            <Button colorSchema="secondary" variant="plain" onClick={handleClose}>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-          </div>
+            <Button type="submit" variant="project" isPending={isPending} isDisabled={isPending}>
+              {isEdit ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
