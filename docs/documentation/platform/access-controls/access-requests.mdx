@@ -1,89 +1,119 @@
 ---
 title: "Access Requests"
-sidebarTitle: "Access Requests"
-description: "Learn how to configure access request policies and request access to sensitive resources in Infisical."
+description: "Learn how to request and manage access to sensitive resources in Infisical."
 ---
 
+In certain situations, developers need to expand their access to a certain new project or a sensitive environment. For those use cases, it is helpful to utilize Infisical's **Access Requests** functionality.
+
 <Info>
-  This feature is available under the **Enterprise Tier**. If you're using
-  Infisical Cloud, contact [sales](https://infisical.com/schedule-demo) to
-  upgrade. If you're self-hosting, contact sales@infisical.com to purchase an
-  enterprise license.
+  Access Requests is a paid feature.
+
+  If you're using Infisical Cloud, then it is available under the **Pro Tier** and **Enterprise Tier**.
+  If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
-This guide shows you how to set up access request policies and request temporary or permanent access to sensitive environments and secret paths in Infisical.
+## Overview
 
-## Prerequisites
+Access Requests allow users to request temporary or permanent access to secrets in specific environments and folders. Administrators can define policies that control who can approve requests, set time limits, and configure expiration rules.
 
-- An Infisical project with at least one [environment](/documentation/platform/project) configured
-- The **Admin** or **Member** role in the project (both roles can create access request policies)
+## Creating Access Policies
 
-## Set up an access request policy
+Before users can submit access requests, a project administrator must create an **Access Policy** that defines the approval workflow.
 
-<Steps>
-  <Step title="Navigate to the Approvals page">
-    In your project, go to the **Approvals** settings page where access request policies are managed.
-  </Step>
-  <Step title="Create a new access request policy">
-    Click **Add Policy** and configure the following options:
+### Setting Up an Access Policy
 
-    - **Name** — A descriptive name for the policy.
-    - **Environment** — The environment this policy applies to.
-    - **Secret Path** — The secret path (folder) this policy governs.
-    - **Approvers** — The users or groups eligible to approve requests. You can assign approvers to sequential steps for multi-level approval chains.
-    - **Approvals Required** — The number of approvals needed at each step.
-    - **Enforcement Level** — Set to **Hard** (approvals are strictly required) or **Soft** (designated bypassers can use break-glass access without full approval).
-    - **Bypassers** — Users or groups allowed to bypass the policy when enforcement is set to Soft.
-    - **Allow Self-Approvals** — Whether requesters who are also approvers can approve their own requests. Enabled by default.
-    - **Max Time Period** — The maximum duration of temporary access that can be requested under this policy (for example, `1h`, `30m`, `2d`). Leave empty to allow permanent access.
+1. In a Secrets Management project, navigate to the **Approvals** tab and then the **Policies** menu in the sidebar.
+2. Click **Create Policy** and select **Access Policy** as the policy type.
 
-    ![Create Access Request Policy Modal](/images/platform/access-controls/create-access-request-policy.png)
+![Policies Tab](/images/platform/access-controls/access-request/policies-tab.png)
+![Access Policy Modal](/images/platform/access-controls/access-request/access-policy-modal.png)
 
-    <Note>
-      A step policy enables a sequential approval workflow in which approvals
-      must follow the designated chain.
-    </Note>
+### Policy Configuration Options
 
-    ![Access Request Policies](/images/platform/access-controls/access-request-policies.png)
-  </Step>
-</Steps>
+| Option | Description |
+|--------|-------------|
+| **Policy Name** | A descriptive name for the policy (e.g., "Production Access Policy"). |
+| **Max Time Period** | The maximum duration a user can request access for (e.g., `1h`, `3d`, `1w`). Leave empty or set to "permanent" to allow permanent access requests. |
+| **Request Expiration** | Time before unapproved requests automatically expire (e.g., `24h`, `3d`, `72h`). Expired requests are moved to the Closed tab and cannot be approved. Leave empty or set to "never" for requests that never expire. |
+| **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). |
+| **Environments** | One or more environments this policy applies to (e.g., Production, Staging). |
 
-## Request access to a sensitive resource
+### Multi-Step Approval Workflows
 
-<Steps>
-  <Step title="Submit an access request">
-    When you need access to an environment or secret path governed by a policy, submit an access request from the dashboard. Specify the permissions you need and the access duration.
+Access policies support sequential multi-step approval workflows where approvals must follow a designated chain.
 
-    ![Access Request Create](/images/platform/access-controls/request-access.png)
-  </Step>
-  <Step title="Wait for approval">
-    Your request appears in the dashboard for eligible approvers to review. Approvers also receive an email notification about the pending request.
+![Multi-Step Approval Workflow](/images/platform/access-controls/access-request/multi-step-approval-workflow.png)
 
-    ![Access Request Dashboard](/images/platform/access-controls/access-requests-pending.png)
-  </Step>
-  <Step title="Approval or rejection">
-    An eligible approver can approve or reject the access request.
+Each step can have:
+- **User Approvers**: Individual users who can approve at this step
+- **Group Approvers**: User groups whose members can approve
+- **Min. Approvals Required**: The minimum number of approvals needed before moving to the next step
 
-    ![Access Request Bypass](/images/platform/access-controls/access-request-bypass.png)
+Approvals must be completed in order — Step 2 approvers cannot review until Step 1 requirements are met.
 
-    <Note>
-      Approvers can edit the duration of an access request to reduce how long access is granted by clicking the **Edit** icon next to the duration.
-    </Note>
+### Self-Approval Settings
 
-    ![Edit Access Request](/images/platform/access-controls/edit-access-request.png)
+The **Self Approvals** toggle controls whether users who are designated as approvers can approve their own access requests. Disable this option to require approval from a different approver.
 
-    <Info>
-      If the policy enforcement level is set to **Soft** and you are a designated bypasser, you can bypass the approval requirement and gain access immediately.
-    </Info>
-  </Step>
-  <Step title="Access granted">
-    Once the request is approved, you can access the requested resources. If the access is temporary, it expires automatically after the specified duration.
-  </Step>
-</Steps>
+### Break-Glass (Bypass) Settings
 
-## Related resources
+The **Bypass Approvals** option enables emergency access in break-glass situations:
 
-- [Additional Privileges](/documentation/platform/access-controls/additional-privileges) — Add specific permissions on top of predefined roles
-- [Temporary Access](/documentation/platform/access-controls/temporary-access) — Set up timed access for user and machine identities
-- [Approval Workflows](/documentation/platform/pr-workflows) — Set up review policies for secret changes
-- [Access Controls overview](/documentation/platform/access-controls/overview) — Overview of all access control tools in Infisical
+- When enabled (Soft Enforcement), designated users can bypass the approval workflow and grant themselves immediate access
+- When disabled (Hard Enforcement), all requests must go through the full approval process
+- You can specify which users or groups are allowed to bypass
+
+![User Bypassers](/images/platform/access-controls/access-request/user-bypassers.png)
+
+<Warning>
+  Not selecting specific users or groups for bypass will allow anyone to bypass the policy.
+</Warning>
+
+## Submitting Access Requests
+
+Once access policies are configured, users can request access to resources covered by those policies.
+
+### Creating a Request
+
+1. Navigate to the **Access Requests** menu in the sidebar.
+2. Click **Request Access**.
+3. Fill in the request details:
+   - **Environment**: Select the target environment
+   - **Secret Path**: Choose the folder path
+   - **Permissions**: Select the access level (Read, Create, Edit, Delete)
+   - **Access Duration**: Choose temporary access with a specific duration or permanent access (limited by policy's Max Time Period)
+   - **Note**: Optional justification or context for the request
+
+![Access Request Tab](/images/platform/access-controls/access-request/access-requests-tab.png)
+![Access Request Modal](/images/platform/access-controls/access-request/access-requests-modal.png)
+
+<Note>
+  If a policy has a **Max Time Period** configured, the requested duration cannot exceed this limit.
+</Note>
+
+
+## Reviewing Access Requests
+
+Eligible approvers receive email notifications when access requests are submitted. They can review and act on requests from the dashboard.
+
+### Pending vs. Closed Requests
+
+The access requests dashboard shows two tabs:
+
+- **Pending**: Open requests awaiting approval (excludes expired requests)
+- **Closed**: Finalized requests including approved, rejected, and expired requests
+
+![Pending Access Requests](/images/platform/access-controls/access-request/pending-access-requests.png)
+![Closed Access Requests](/images/platform/access-controls/access-request/closed-access-requests.png)
+
+### Reviewing a Request
+
+Click on any request to open the review modal with full details:
+
+![Review Request Modal](/images/platform/access-controls/access-request/review-request-modal.png)
+
+### Editing Access Duration
+
+Approvers can modify the access duration before approving a request by clicking the **Edit** icon next to the duration field. This allows shortening the requested timeframe when appropriate.
+
+![Edit Access Duration Modal](/images/platform/access-controls/access-request/edit-access-duration-modal.png)
