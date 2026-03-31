@@ -1,39 +1,89 @@
 ---
 title: "Access Requests"
-description: "Learn how to request access to sensitive resources in Infisical."
+sidebarTitle: "Access Requests"
+description: "Learn how to configure access request policies and request access to sensitive resources in Infisical."
 ---
 
-In certain situations, developers need to expand their access to a certain new project or a sensitive environment. For those use cases, it is helpful to utilize Infisical's **Access Requests** functionality.
-
-This functionality works in the following way:
-
-1. A project administrator sets up an access policy that assigns access managers (also known as eligible approvers) to a certain sensitive folder or environment.
-   ![Create Access Request Policy Modal](/images/platform/access-controls/create-access-request-policy.png)
-
-   <Note>
-     A step policy enables a sequential approval workflow in which approvals
-     must follow the designated chain.
-   </Note>
-
-   ![Access Request Policies](/images/platform/access-controls/access-request-policies.png)
-
-2. When a developer requests access to one of such sensitive resources, the request is visible in the dashboard, and the corresponding eligible approvers get an email notification about it.
-   ![Access Request Create](/images/platform/access-controls/request-access.png)
-   ![Access Request Dashboard](/images/platform/access-controls/access-requests-pending.png)
-
-3. An eligible approver can approve or reject the access request.
-   {/* ![Access Request Review](/images/platform/access-controls/review-access-request.png) */}
-   ![Access Request Bypass](/images/platform/access-controls/access-request-bypass.png)
-
-    <Note>
-        Optionally, approvers can edit the duration of an access request to reduce how long access will be granted by clicking the **Edit** icon next to the duration.
-        ![Edit Access Request](/images/platform/access-controls/edit-access-request.png)
-    </Note>
-
 <Info>
-  If the access request matches with a policy that allows break-glass approval
-  bypasses, the requester may bypass the policy and get access to the resource
-  without full approval.
+  This feature is available under the **Enterprise Tier**. If you're using
+  Infisical Cloud, contact [sales](https://infisical.com/schedule-demo) to
+  upgrade. If you're self-hosting, contact team@infisical.com to purchase an
+  enterprise license.
 </Info>
 
-5. As soon as the request is approved, developer is able to access the sought resources.
+This guide shows you how to set up access request policies and request temporary or permanent access to sensitive environments and secret paths in Infisical.
+
+## Prerequisites
+
+- An Infisical project with at least one [environment](/documentation/platform/project) configured
+- The **Admin** or **Member** role in the project (both roles can create access request policies)
+
+## Set up an access request policy
+
+<Steps>
+  <Step title="Navigate to the Approvals page">
+    In your project, go to the **Approvals** settings page where access request policies are managed.
+  </Step>
+  <Step title="Create a new access request policy">
+    Click **Add Policy** and configure the following options:
+
+    - **Name** — A descriptive name for the policy.
+    - **Environment** — The environment this policy applies to.
+    - **Secret Path** — The secret path (folder) this policy governs.
+    - **Approvers** — The users or groups eligible to approve requests. You can assign approvers to sequential steps for multi-level approval chains.
+    - **Approvals Required** — The number of approvals needed at each step.
+    - **Enforcement Level** — Set to **Hard** (approvals are strictly required) or **Soft** (designated bypassers can use break-glass access without full approval).
+    - **Bypassers** — Users or groups allowed to bypass the policy when enforcement is set to Soft.
+    - **Allow Self-Approvals** — Whether requesters who are also approvers can approve their own requests. Enabled by default.
+    - **Max Time Period** — The maximum duration of temporary access that can be requested under this policy (for example, `1h`, `30m`, `2d`). Leave empty to allow permanent access.
+
+    ![Create Access Request Policy Modal](/images/platform/access-controls/create-access-request-policy.png)
+
+    <Note>
+      A step policy enables a sequential approval workflow in which approvals
+      must follow the designated chain.
+    </Note>
+
+    ![Access Request Policies](/images/platform/access-controls/access-request-policies.png)
+  </Step>
+</Steps>
+
+## Request access to a sensitive resource
+
+<Steps>
+  <Step title="Submit an access request">
+    When you need access to an environment or secret path governed by a policy, submit an access request from the dashboard. Specify the permissions you need and the access duration.
+
+    ![Access Request Create](/images/platform/access-controls/request-access.png)
+  </Step>
+  <Step title="Wait for approval">
+    Your request appears in the dashboard for eligible approvers to review. Approvers also receive an email notification about the pending request.
+
+    ![Access Request Dashboard](/images/platform/access-controls/access-requests-pending.png)
+  </Step>
+  <Step title="Approval or rejection">
+    An eligible approver can approve or reject the access request.
+
+    ![Access Request Bypass](/images/platform/access-controls/access-request-bypass.png)
+
+    <Note>
+      Approvers can edit the duration of an access request to reduce how long access is granted by clicking the **Edit** icon next to the duration.
+    </Note>
+
+    ![Edit Access Request](/images/platform/access-controls/edit-access-request.png)
+
+    <Info>
+      If the policy enforcement level is set to **Soft** and you are a designated bypasser, you can bypass the approval requirement and gain access immediately.
+    </Info>
+  </Step>
+  <Step title="Access granted">
+    Once the request is approved, you can access the requested resources. If the access is temporary, it expires automatically after the specified duration.
+  </Step>
+</Steps>
+
+## Related resources
+
+- [Additional Privileges](/documentation/platform/access-controls/additional-privileges) — Add specific permissions on top of predefined roles
+- [Temporary Access](/documentation/platform/access-controls/temporary-access) — Set up timed access for user and machine identities
+- [Approval Workflows](/documentation/platform/pr-workflows) — Set up review policies for secret changes
+- [Access Controls overview](/documentation/platform/access-controls/overview) — Overview of all access control tools in Infisical

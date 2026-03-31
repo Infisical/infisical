@@ -84,8 +84,6 @@
                   "documentation/platform/access-controls/additional-privileges",
                   "documentation/platform/access-controls/temporary-access",
                   "documentation/platform/access-controls/assume-privilege",
-                  "documentation/platform/access-controls/access-requests",
-                  "documentation/platform/access-controls/access-requests-remediated",
                   "documentation/platform/access-controls/project-access-requests",
                   "documentation/platform/groups"
                 ]
@@ -454,6 +452,7 @@
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
                   "documentation/platform/pr-workflows",
+                  "documentation/platform/access-controls/access-requests",
                   {
                     "group": "Secret Rotation",
                     "pages": [
