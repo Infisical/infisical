@@ -1,70 +1,80 @@
 ---
 title: "Approval Workflows"
-description: "Learn how to enable a set of policies to manage changes to sensitive secrets and environments."
+sidebarTitle: "Approval Workflows"
+description: "Learn how to set up approval policies for managing changes to secrets in sensitive environments."
 ---
 
 <Info>
-    Approval Workflows is a paid feature.
+  This feature is available under the **Pro Tier** and **Enterprise Tier** on Infisical Cloud.
 
-    If you're using Infisical Cloud, then it is available under the **Pro Tier** and **Enterprise Tier**.
-    If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
+  If you're self-hosting Infisical, contact team@infisical.com to purchase an
+  enterprise license.
 </Info>
 
-## Problem at hand
+This guide shows you how to create approval policies that require changes to secrets in specific environments to be reviewed and approved before they take effect.
 
-Updating secrets in high-stakes environments (e.g., production) can have a number of problematic issues:
-- Most developers should not have access to secrets in production environments. Yet, they are the ones who often need to add new secrets or change the existing ones. Many organizations have in-house policies with regards to what person should be contacted in the case of needing to make changes to secrets. This slows down software development lifecycle and distracts engineers from working on things that matter the most.
-- As a general rule, before making changes in production environments, those changes have to be looked over by at least another person. An extra pair of eyes can help reduce the risk of human error and make sure that the change will not affect the application in an unintended way.
-- After making updates to secrets, the corresponding applications need to be redeployed with the right set of secrets and configurations. This process is often not automated and hence prone to human error.
+## Prerequisites
 
-## Solution
+- An Infisical project with at least one environment configured
+- The **Create** permission on **Secret Approval** for the target project (typically granted to project admins or custom roles with explicit Secret Approval permissions)
+- Access to the **Approvals** page in your project sidebar (**Project → Approvals**)
 
-As a wide-spread software engineering practice, developers have to submit their code as a PR that needs to be approved before the code is merged into the main branch.
+<Steps>
+  <Step title="Create a change policy">
+    Navigate to **Project → Approvals** in the Infisical dashboard and create a new policy.
 
-In a similar way, to solve the above-mentioned issues, Infisical provides a feature called `Approval Workflows` for secret management. This is a set of policies and workflows that help advance access controls, compliance procedures, and stability of a particular environment. In other words, **Approval Workflows** help you secure, stabilize, and streamline the change of secrets in high-stakes environments.
+    Select **Change Policy** as the policy type. Other types include **Access Policy**, which creates policies for [Access Requests](/documentation/platform/access-controls/access-requests).
 
-### Setting a policy
+    Choose the target environment (for example, `prod`) and assign one or more approvers.
 
-First, you would need to create a set of policies for a certain environment. In the example below, a generic change policy for a production environment is shown. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined approver (or multiple approvers).
+    ![Create a change policy](../../images/platform/pr-workflows/create-change-policy.png)
 
-![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
+    #### Configure self-approvals
 
-### Policy enforcement levels
+    Enable the **Self Approvals** toggle if you want designated approvers to be able to approve their own change requests. Disable it to require approval from a different approver.
 
-The enforcement level determines how strict the policy is. A **Hard** enforcement level means that any change that matches the policy will need full approval prior merging. A **Soft** enforcement level allows for break glass functionality on the request. If a change request is bypassed, the approvers will be notified via email.
+    #### Configure bypass approvals
 
-<Note>
-    Enabling the "Bypass Approvals" toggle during policy creation will create a **Soft** enforcement level. Disabling the toggle makes the enforcement level **Hard**.
-</Note>
+    By default, every change matching the policy requires full approval before it can be merged.
 
-If you choose to allow approval bypasses (Soft Enforcement), you may select specific users or groups that can perform the bypass for that specific policy. Not choosing users or groups will allow anyone to bypass the policy.
+    Enable the **Bypass Approvals** toggle to allow certain users to bypass the approval requirement in break-glass situations. If a change request is bypassed, all approvers are notified via email.
 
-A policy bypasser cannot bypass requests from others; the bypass action can only be performed by the request creator.
+    When bypass approvals are enabled, you can select specific users or groups allowed to bypass the policy. If you do not select any users or groups, anyone can bypass.
 
-### Self approvals
+    A bypass can only be performed by the person who created the change request. Bypassers cannot bypass requests submitted by others.
 
-If the **Self Approvals** option is enabled, users who are designated as approvers on the policy can approve requests that they themselves have submitted.
+  </Step>
+  <Step title="Submit a change request">
+    When a user modifies secrets in an environment that has an active change policy, a change request is automatically created and sent to the assigned approvers.
 
-### Example of creating a change policy
+    ![Change request submitted](../../images/platform/pr-workflows/secret-update-request.png)
+  </Step>
+  <Step title="Review and act on a change request">
+    Approvers are notified by email, [Slack](/documentation/platform/workflow-integrations/slack-integration), or [Microsoft Teams](/documentation/platform/workflow-integrations/microsoft-teams-integration) when a new change request is submitted.
 
-When creating a policy, you can choose the type of policy you want to create. In this case, we will be creating a `Change Policy`. Other types of policies include `Access Policy` that creates policies for **[Access Requests](/documentation/platform/access-controls/access-requests)**.
+    In the Infisical dashboard, an approver can take the following actions:
 
-![create panel secret update policy](../../images/platform/pr-workflows/create-change-policy.png)
+    1. **Approve** — Submit an approval vote for the change request. The request must meet the minimum approval threshold defined in the policy before it can be merged.
+    2. **Merge** — Apply the approved changes to the target environment. This is a separate action from approving and can be performed by an admin, the request creator, or an approver once sufficient approvals are met.
+    3. **Reject** — Decline the change request.
 
-### Example of updating secrets with Approval workflows
+    ![Review a change request](../../images/platform/pr-workflows/secret-update-pr.png)
 
-When a user submits a change to an environment that is under a particular policy, a corresponding change request will go to a predefined approver (or multiple approvers).
+    After a change request is merged, the updated secrets are automatically synced to connected applications (for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+  </Step>
+</Steps>
 
-![secret update change requests](../../images/platform/pr-workflows/secret-update-request.png)
+## Verify the result
 
-Approvers are notified by email and/or Slack as soon as the request is initiated. In the Infisical Dashboard, they will be able to `approve` and `merge` (or `deny`) a request for a change in a particular environment. After that, depending on the workflows setup, the change will be automatically propagated to the right applications (e.g., using [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+To confirm the workflow is working end-to-end:
 
-![secrets update pull request](../../images/platform/pr-workflows/secret-update-pr.png)
+1. Submit a test change to a secret in the policy-protected environment.
+2. Confirm that a change request is created and approvers are notified.
+3. Approve and merge the request.
+4. Verify that the change request status shows as **Merged** on the **Approvals** page and the updated secret values appear in the target environment.
 
-## FAQ
+## Related resources
 
-<AccordionGroup>
-    <Accordion title="Is it possible to disable self-approval for policies?">
-        Yes, if you'd like to require an approval from an approver other than the one who created the request, then you can disable the **Self Approvals** feature inside of your target policy.
-    </Accordion>
-</AccordionGroup>
+- [Access Requests](/documentation/platform/access-controls/access-requests)
+- [Slack Integration](/documentation/platform/workflow-integrations/slack-integration)
+- [Microsoft Teams Integration](/documentation/platform/workflow-integrations/microsoft-teams-integration)
