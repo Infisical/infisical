@@ -1,5 +1,6 @@
 import fastifyMultipart from "@fastify/multipart";
-import DOMPurify from "isomorphic-dompurify";
+// @ts-expect-error this is due to esm compatibility issue
+import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -21,25 +22,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 
-const ALLOWED_IMAGE_CONTENT_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/svg+xml",
-  "image/x-icon",
-  "image/vnd.microsoft.icon",
-  "image/webp"
-];
-
-const sanitizeSvg = (buffer: Buffer): Buffer => {
-  const raw = buffer.toString("utf-8");
-  const clean = DOMPurify.sanitize(raw, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    ADD_TAGS: ["svg"],
-    ADD_ATTR: ["xmlns", "viewBox", "fill", "rx"]
-  });
-  return Buffer.from(clean, "utf-8");
-};
+const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
@@ -462,6 +445,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
 
       void res.header("Content-Type", asset.contentType);
+      void res.header("X-Content-Type-Options", "nosniff");
       void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
       void res.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
 
@@ -503,20 +487,20 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
 
       // Validate content type
-      const contentType = file.mimetype;
-      if (!ALLOWED_IMAGE_CONTENT_TYPES.includes(contentType)) {
+      const contentType = await (fileTypeFromBuffer as (buffer: Buffer) => Promise<{ mime: string } | undefined>)(
+        buffer
+      );
+      if (!contentType || !ALLOWED_IMAGE_CONTENT_TYPES.includes(contentType?.mime)) {
         throw new BadRequestError({
           message: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_CONTENT_TYPES.join(", ")}`
         });
       }
 
-      const safeBuffer = contentType === "image/svg+xml" ? sanitizeSvg(buffer) : buffer;
-
       await req.server.services.secretSharing.uploadBrandingAsset(
         req.permission.orgId,
         assetType,
-        safeBuffer,
-        contentType,
+        buffer,
+        contentType.mime,
         req.permission
       );
 
