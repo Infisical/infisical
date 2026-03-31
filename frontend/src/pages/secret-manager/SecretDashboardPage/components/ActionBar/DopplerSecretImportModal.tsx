@@ -27,7 +27,7 @@ type Props = {
   configId: string;
   environment: string;
   secretPath: string;
-  onImport: (dopplerProject: string, dopplerEnvironment: string) => void;
+  onImport: (dopplerProject: string, dopplerEnvironment: string) => Promise<void>;
 };
 
 export const DopplerSecretImportModal = ({
@@ -64,8 +64,8 @@ export const DopplerSecretImportModal = ({
     onOpenChange(false);
   };
 
-  const onFormSubmit = (data: FormData) => {
-    onImport(data.dopplerProject, data.dopplerEnvironment);
+  const onFormSubmit = async (data: FormData) => {
+    await onImport(data.dopplerProject, data.dopplerEnvironment);
     handleClose();
   };
 
