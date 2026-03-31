@@ -8,7 +8,7 @@ import {
   CopyIcon,
   EllipsisVerticalIcon,
   InfoIcon,
-  KeyRoundIcon,
+
   LogInIcon,
   PencilIcon,
   PlusIcon,
@@ -504,12 +504,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                       {isDomainAccount && (
                         <Badge variant="info" className="text-xs">
                           {domainFqdn || "Domain"}
-                        </Badge>
-                      )}
-                      {!account.credentialsConfigured && (
-                        <Badge variant="warning" className="text-xs">
-                          <KeyRoundIcon className="size-3" />
-                          <span>No password</span>
                         </Badge>
                       )}
                     </div>

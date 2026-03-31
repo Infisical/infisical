@@ -36,23 +36,6 @@ export const PamLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Resources</Tab>}
                 </Link>
                 <Link
-                  to="/organizations/$orgId/projects/pam/$projectId/rotations"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id
-                  }}
-                >
-                  {({ isActive }) => (
-                    <Tab
-                      value={
-                        isActive || location.pathname.includes("/rotations/") ? "selected" : ""
-                      }
-                    >
-                      Rotation
-                    </Tab>
-                  )}
-                </Link>
-                <Link
                   to="/organizations/$orgId/projects/pam/$projectId/discovery"
                   params={{
                     orgId: currentOrg.id,
@@ -69,6 +52,24 @@ export const PamLayout = () => {
                     </Tab>
                   )}
                 </Link>
+                <Link
+                  to="/organizations/$orgId/projects/pam/$projectId/rotations"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => (
+                    <Tab
+                      value={
+                        isActive || location.pathname.includes("/rotations/") ? "selected" : ""
+                      }
+                    >
+                      Rotation
+                    </Tab>
+                  )}
+                </Link>
+
                 <Link
                   to="/organizations/$orgId/projects/pam/$projectId/sessions"
                   params={{
