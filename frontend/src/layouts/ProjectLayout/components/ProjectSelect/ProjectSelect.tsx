@@ -36,7 +36,7 @@ import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
 const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
   [ProjectType.SecretManager]: "Secrets Management",
-  [ProjectType.CertificateManager]: "PKI",
+  [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SSH]: "SSH",
   [ProjectType.KMS]: "KMS",
   [ProjectType.PAM]: "PAM",
