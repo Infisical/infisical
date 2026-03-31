@@ -10,14 +10,15 @@ import { Button, FormControl, IconButton, Input } from "@app/components/v2";
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
 type Props = {
-  onPasswordSubmit: (val: any) => void;
+  onPasswordSubmit: (val: string) => void;
   isSubmitting?: boolean;
   isInvalidCredential?: boolean;
+  passwordError?: string;
   brandingTheme?: BrandingTheme;
 };
 
 const formSchema = z.object({
-  password: z.string()
+  password: z.string().trim().min(1, "Password is required")
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -26,6 +27,7 @@ export const PasswordContainer = ({
   onPasswordSubmit,
   isSubmitting,
   isInvalidCredential,
+  passwordError,
   brandingTheme
 }: Props) => {
   const { control, handleSubmit } = useForm<FormData>({
@@ -65,8 +67,10 @@ export const PasswordContainer = ({
           render={({ field, fieldState: { error } }) => (
             <div style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
               <FormControl
-                isError={Boolean(error) || isInvalidCredential}
-                errorText={isInvalidCredential ? "Invalid credential" : error?.message}
+                isError={Boolean(error) || isInvalidCredential || Boolean(passwordError)}
+                errorText={
+                  passwordError || (isInvalidCredential ? "Invalid credential" : error?.message)
+                }
                 isRequired
                 label="Password"
                 labelClassName="text-[var(--muted-color)]"
