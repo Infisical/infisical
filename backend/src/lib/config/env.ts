@@ -465,7 +465,7 @@ const envSchema = z
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
     DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
-      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE || data.DISABLE_AUDIT_LOG_STORAGE || false,
+      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
