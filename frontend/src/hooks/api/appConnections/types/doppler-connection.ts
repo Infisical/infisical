@@ -7,5 +7,7 @@ export enum DopplerConnectionMethod {
 
 export type TDopplerConnection = TRootAppConnection & { app: AppConnection.Doppler } & {
   method: DopplerConnectionMethod.ApiToken;
-  credentials: Record<string, never>; // sanitized — no credentials returned
+  credentials: {
+    apiToken: string;
+  };
 };

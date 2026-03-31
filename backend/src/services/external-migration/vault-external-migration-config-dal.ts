@@ -1,13 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TExternalMigrationConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 
 export type TVaultExternalMigrationConfigDALFactory = ReturnType<typeof vaultExternalMigrationConfigDALFactory>;
 
-const buildConnectionJoin = (qb: ReturnType<TDbClient["replicaNode"]>, db: TDbClient) =>
+const buildConnectionJoin = (qb: Knex.QueryBuilder, db: TDbClient) =>
   qb
     .leftJoin(TableName.AppConnection, `${TableName.AppConnection}.id`, `${TableName.ExternalMigrationConfig}.connectionId`)
     .select(selectAllTableCols(TableName.ExternalMigrationConfig))
@@ -27,26 +27,29 @@ const buildConnectionJoin = (qb: ReturnType<TDbClient["replicaNode"]>, db: TDbCl
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("appConnectionUpdatedAt")
     );
 
-const mapResultToConnection = (result: Record<string, unknown>) => ({
-  ...result,
-  connection: result.appConnectionId
-    ? {
-        id: result.appConnectionId,
-        name: result.appConnectionName,
-        app: result.appConnectionApp,
-        encryptedCredentials: result.appConnectionEncryptedCredentials,
-        orgId: result.appConnectionOrgId,
-        method: result.appConnectionMethod,
-        description: result.appConnectionDescription,
-        version: result.appConnectionVersion,
-        gatewayId: result.appConnectionGatewayId,
-        projectId: result.appConnectionProjectId,
-        createdAt: result.appConnectionCreatedAt,
-        updatedAt: result.appConnectionUpdatedAt,
-        isAutoRotationEnabled: result.appConnectionIsAutoRotationEnabled
-      }
-    : undefined
-});
+const mapResultToConnection = (raw: Record<string, unknown>) => {
+  const result = raw as TExternalMigrationConfigs & Record<string, unknown>;
+  return {
+    ...result,
+    connection: raw.appConnectionId
+      ? {
+          id: raw.appConnectionId as string,
+          name: raw.appConnectionName as string,
+          app: raw.appConnectionApp,
+          encryptedCredentials: raw.appConnectionEncryptedCredentials as Buffer,
+          orgId: raw.appConnectionOrgId as string,
+          method: raw.appConnectionMethod,
+          description: raw.appConnectionDescription,
+          version: raw.appConnectionVersion,
+          gatewayId: raw.appConnectionGatewayId,
+          projectId: raw.appConnectionProjectId,
+          createdAt: raw.appConnectionCreatedAt as Date,
+          updatedAt: raw.appConnectionUpdatedAt as Date,
+          isAutoRotationEnabled: raw.appConnectionIsAutoRotationEnabled as boolean
+        }
+      : undefined
+  };
+};
 
 export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ExternalMigrationConfig);

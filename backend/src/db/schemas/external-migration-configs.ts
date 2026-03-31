@@ -12,16 +12,13 @@ export const ExternalMigrationConfigsSchema = z.object({
   orgId: z.string().uuid(),
   namespace: z.string().nullable().optional(),
   connectionId: z.string().uuid().nullable().optional(),
-  provider: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  provider: z.string().default("vault")
 });
 
 export type TExternalMigrationConfigs = z.infer<typeof ExternalMigrationConfigsSchema>;
-export type TExternalMigrationConfigsInsert = Omit<
-  z.input<typeof ExternalMigrationConfigsSchema>,
-  TImmutableDBKeys
->;
+export type TExternalMigrationConfigsInsert = Omit<z.input<typeof ExternalMigrationConfigsSchema>, TImmutableDBKeys>;
 export type TExternalMigrationConfigsUpdate = Partial<
   Omit<z.input<typeof ExternalMigrationConfigsSchema>, TImmutableDBKeys>
 >;
