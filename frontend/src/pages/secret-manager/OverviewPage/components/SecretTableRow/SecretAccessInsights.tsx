@@ -13,14 +13,27 @@ import {
   SearchIcon,
   TriangleAlertIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
+  Button,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  FilterableSelect,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -61,6 +74,8 @@ import {
   ProjectPermissionSecretActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
@@ -111,6 +126,186 @@ const TYPE_CONFIG: Record<AccessRowType, { icon: typeof UserIcon; label: string 
 
 const ALL_TYPE_FILTERS: AccessRowType[] = ["user", "identity", "group"];
 
+const SECRET_ACTION_OPTIONS = [
+  { action: ProjectPermissionSecretActions.DescribeSecret, label: "Describe" },
+  { action: ProjectPermissionSecretActions.ReadValue, label: "Read Value" },
+  { action: ProjectPermissionSecretActions.Create, label: "Create" },
+  { action: ProjectPermissionSecretActions.Edit, label: "Edit" },
+  { action: ProjectPermissionSecretActions.Delete, label: "Delete" }
+] as const;
+
+function AddMemberPopover({
+  secretKey,
+  environment,
+  secretPath
+}: {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+}) {
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set());
+  const [selectedActions, setSelectedActions] = useState<{ value: string; label: string }[]>([
+    { value: ProjectPermissionSecretActions.DescribeSecret, label: "Describe" },
+    { value: ProjectPermissionSecretActions.ReadValue, label: "Read Value" }
+  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const canCreateMember = permission.can(
+    ProjectPermissionMemberActions.Create,
+    ProjectPermissionSub.Member
+  );
+
+  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { data: projectMembers } = useGetWorkspaceUsers(currentProject.id);
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+  const { mutateAsync: createPrivilege } = useCreateProjectUserAdditionalPrivilege();
+
+  const availableUsers = useMemo(() => {
+    if (!orgUsers || !projectMembers) return [];
+    const projectUsernames = new Set(projectMembers.map((m) => m.user.username));
+    return orgUsers
+      .filter(({ user: u }) => !projectUsernames.has(u.username))
+      .map(({ user: u }) => ({
+        username: u.username,
+        label:
+          u.firstName && u.lastName
+            ? `${u.firstName} ${u.lastName}`
+            : u.firstName || u.lastName || u.email || u.username
+      }));
+  }, [orgUsers, projectMembers]);
+
+  const toggleUser = (username: string) => {
+    setSelectedUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) {
+        next.delete(username);
+      } else {
+        next.add(username);
+      }
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (selectedUsers.size === 0 || selectedActions.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = (await addUserToProject({
+        projectId: currentProject.id,
+        orgId: currentOrg.id,
+        usernames: [...selectedUsers],
+        roleSlugs: ["no-access"]
+      })) as { memberships: { id: string; userId: string }[] };
+
+      const privilegePermissions = [
+        {
+          action: selectedActions.map((a) => a.value),
+          subject: ProjectPermissionSub.Secrets,
+          conditions: {
+            environment,
+            secretPath,
+            secretName: { $eq: secretKey }
+          }
+        }
+      ];
+
+      await Promise.all(
+        result.memberships.map((membership) =>
+          createPrivilege({
+            projectMembershipId: membership.id,
+            type: { isTemporary: false },
+            permissions: privilegePermissions
+          })
+        )
+      );
+
+      createNotification({
+        text: `Added ${selectedUsers.size} user${selectedUsers.size > 1 ? "s" : ""} with access to this secret`,
+        type: "success"
+      });
+      setSelectedUsers(new Set());
+      setIsOpen(false);
+    } catch {
+      createNotification({
+        text: "Failed to add users to project",
+        type: "error"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!canCreateMember) return null;
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="project" aria-label="Add user to project">
+          <UserPlusIcon /> Grant Organization Access
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-lg p-0">
+        <Command>
+          <CommandInput placeholder="Search organization users..." />
+          <CommandList>
+            <CommandEmpty>No users available to add.</CommandEmpty>
+            <CommandGroup>
+              {availableUsers.map((user) => (
+                <CommandItem
+                  key={user.username}
+                  value={user.username}
+                  keywords={[user.label]}
+                  onSelect={() => toggleUser(user.username)}
+                >
+                  <CheckIcon
+                    className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
+                  />
+                  <span className="truncate">{user.label}</span>
+                  <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+        <div className="border-t border-border px-3 py-2">
+          <span className="mb-1 block text-xs text-muted">Grant access:</span>
+          <FilterableSelect
+            isMulti
+            value={selectedActions}
+            onChange={(opts) =>
+              setSelectedActions([...(opts as { value: string; label: string }[])])
+            }
+            options={SECRET_ACTION_OPTIONS.map((opt) => ({
+              value: opt.action,
+              label: opt.label
+            }))}
+            placeholder="Select permissions..."
+          />
+        </div>
+        <div className="border-t border-border px-3 py-2">
+          <Button
+            variant="project"
+            size="sm"
+            className="w-full"
+            isDisabled={selectedUsers.size === 0 || selectedActions.length === 0}
+            isPending={isSubmitting}
+            onClick={handleSubmit}
+          >
+            <PlusIcon />
+            Add {selectedUsers.size > 0 ? selectedUsers.size : ""} User
+            {selectedUsers.size !== 1 ? "s" : ""}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function SecretAccessInsights({ secretKey, environment, secretPath }: Props) {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -119,7 +314,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
-  const [showAllEntities, setShowAllEntities] = useState(false);
+  const [showAllEntities, setShowAllEntities] = useState(true);
 
   const toggleTypeFilter = (type: AccessRowType) => {
     setTypeFilters((prev) => {
@@ -263,6 +458,24 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     <>
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2">
+          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
+            <Switch
+              size="sm"
+              variant="project"
+              checked={showAllEntities}
+              onCheckedChange={setShowAllEntities}
+            />
+            Show all members
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-3.5 text-muted" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-60">
+                When enabled, all project members are shown including those without any access to
+                this secret.
+              </TooltipContent>
+            </Tooltip>
+          </Label>
           <InputGroup className="flex-1">
             <InputGroupAddon>
               <SearchIcon />
@@ -277,7 +490,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             <UnstableDropdownMenuTrigger asChild>
               <UnstableIconButton
                 variant={isFilterActive ? "project" : "outline"}
-                size="sm"
                 aria-label="Filter by type"
               >
                 <FilterIcon />
@@ -300,23 +512,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               })}
             </UnstableDropdownMenuContent>
           </UnstableDropdownMenu>
-          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
-            <Switch
-              variant="project"
-              checked={showAllEntities}
-              onCheckedChange={setShowAllEntities}
-            />
-            Show all members
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 text-muted" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-60">
-                When enabled, all project members are shown including those without any access to
-                this secret.
-              </TooltipContent>
-            </Tooltip>
-          </Label>
+          <AddMemberPopover
+            secretKey={secretKey}
+            environment={environment}
+            secretPath={secretPath}
+          />
         </div>
         {/* eslint-disable-next-line no-nested-ternary */}
         {isLoading ? (
@@ -367,7 +567,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           <UnstableTable containerClassName="overflow-auto">
             <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
               <UnstableTableRow>
-                <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                <UnstableTableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
                   Type
                 </UnstableTableHead>
                 <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
