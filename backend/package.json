@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "./dist/main.mjs",
+  "engines": {
+    "npm": ">=11.10.0"
+  },
   "scripts": {
     "assets:export": "./scripts/export-assets.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
