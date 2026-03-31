@@ -25,9 +25,13 @@ export const IN_PLATFORM_MIGRATION_PROVIDER_DETAILS: Record<
 
 export function getInPlatformMigrationProviderMeta(app: TInPlatformMigrationApp) {
   const meta = APP_CONNECTION_MAP[app];
+  const defaultSize = meta.size ?? 50;
+  // Doppler mark fills more of its asset bounds than Vault; use a smaller px width so it matches visually.
+  const size = app === AppConnection.Doppler ? 36 : defaultSize;
+
   return {
     name: meta.name,
     imageFileName: meta.image,
-    size: meta.size ?? 50
+    size
   };
 }
