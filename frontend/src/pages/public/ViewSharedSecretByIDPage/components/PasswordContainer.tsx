@@ -13,7 +13,7 @@ type Props = {
   onPasswordSubmit: (val: string) => void;
   isSubmitting?: boolean;
   isInvalidCredential?: boolean;
-  passwordError?: string;
+  isPasswordRequired?: boolean;
   brandingTheme?: BrandingTheme;
 };
 
@@ -27,7 +27,7 @@ export const PasswordContainer = ({
   onPasswordSubmit,
   isSubmitting,
   isInvalidCredential,
-  passwordError,
+  isPasswordRequired,
   brandingTheme
 }: Props) => {
   const { control, handleSubmit } = useForm<FormData>({
@@ -54,6 +54,15 @@ export const PasswordContainer = ({
       }
     : undefined;
 
+  const hasPasswordError = Boolean(isInvalidCredential || isPasswordRequired);
+  let passwordErrorText: string | undefined;
+
+  if (isPasswordRequired) {
+    passwordErrorText = "Password is required to access this secret";
+  } else if (isInvalidCredential) {
+    passwordErrorText = "Invalid credential";
+  }
+
   return (
     <div
       className={`rounded-lg border p-4 ${brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-800"}`}
@@ -67,10 +76,8 @@ export const PasswordContainer = ({
           render={({ field, fieldState: { error } }) => (
             <div style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
               <FormControl
-                isError={Boolean(error) || isInvalidCredential || Boolean(passwordError)}
-                errorText={
-                  passwordError || (isInvalidCredential ? "Invalid credential" : error?.message)
-                }
+                isError={Boolean(error) || hasPasswordError}
+                errorText={passwordErrorText || error?.message}
                 isRequired
                 label="Password"
                 labelClassName="text-[var(--muted-color)]"

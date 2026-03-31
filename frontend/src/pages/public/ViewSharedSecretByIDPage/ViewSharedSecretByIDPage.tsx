@@ -278,9 +278,7 @@ export const ViewSharedSecretByIDPage = () => {
                 accessMutation.mutate({ sharedSecretId: id, password: pwd });
               }}
               isInvalidCredential={!accessMutation.isPending && isInvalidCredential}
-              passwordError={
-                !accessMutation.isPending && isPasswordRequired ? errorMessage : undefined
-              }
+              isPasswordRequired={!accessMutation.isPending && isPasswordRequired}
               brandingTheme={brandingTheme}
             />
           )}
