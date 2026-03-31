@@ -5,6 +5,7 @@ import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
   Button,
   Dialog,
@@ -19,8 +20,7 @@ import {
   FieldLabel,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useGetUserProjects } from "@app/hooks/api";
@@ -72,6 +72,7 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
 
   const selectedDopplerProject = watch("dopplerProject");
   const selectedTargetProjectId = watch("targetProjectId");
+  const selectedTargetEnvironment = watch("targetEnvironment");
 
   const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
     config.id
@@ -291,11 +292,10 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <UnstableInput
-                    {...field}
-                    placeholder="e.g., /"
-                    autoComplete="off"
-                    isError={Boolean(error)}
+                  <SecretPathInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    environment={selectedTargetEnvironment}
                   />
                 </FieldContent>
                 <FieldError>{error?.message}</FieldError>
