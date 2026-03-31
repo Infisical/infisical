@@ -733,7 +733,7 @@ export const externalMigrationServiceFactory = ({
 
     const config = await vaultExternalMigrationConfigDAL.findById(configId);
 
-    if (!config || config.orgId !== actor.orgId) {
+    if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
     }
 
@@ -824,8 +824,12 @@ export const externalMigrationServiceFactory = ({
 
     const config = await vaultExternalMigrationConfigDAL.findById(id);
 
-    if (!config || config.orgId !== actor.orgId) {
+    if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
+    }
+
+    if (connectionId) {
+      await appConnectionService.connectAppConnectionById(AppConnection.Doppler, connectionId, actor);
     }
 
     return vaultExternalMigrationConfigDAL.updateById(id, { connectionId });
@@ -847,7 +851,7 @@ export const externalMigrationServiceFactory = ({
 
     const config = await vaultExternalMigrationConfigDAL.findById(id);
 
-    if (!config || config.orgId !== actor.orgId) {
+    if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
     }
 
