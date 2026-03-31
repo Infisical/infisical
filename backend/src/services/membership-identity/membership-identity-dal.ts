@@ -273,13 +273,9 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         );
       }
 
-      const countQuery = await paginatedIdentitys
-        .clone()
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
-        );
+      const countQuery = await (tx || db.replicaNode())
+        .count("* as total")
+        .from(paginatedIdentitys.clone().as("distinctMemberships"));
 
       if (filter.limit) void paginatedIdentitys.limit(filter.limit);
       if (filter.offset) void paginatedIdentitys.offset(filter.offset);
