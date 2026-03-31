@@ -63,6 +63,12 @@ export function AddResourceButtons({
   hasDopplerConnection,
   isOrgAdmin
 }: Props) {
+  const getInPlatformImportTooltip = (platform: string) => {
+    if (!isOrgAdmin) return `Only organization admins can import secrets from ${platform}`;
+    if (!isSingleEnvSelected) return `Select a single environment to import from ${platform}`;
+    return "Access Restricted";
+  };
+
   return (
     <UnstableButtonGroup>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
@@ -210,12 +216,7 @@ export function AddResourceButtons({
                     </UnstableDropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
-                    {/* eslint-disable-next-line no-nested-ternary */}
-                    {!isOrgAdmin
-                      ? "Only organization admins can import secrets from HashiCorp Vault"
-                      : !isSingleEnvSelected
-                        ? "Select a single environment to import from HashiCorp Vault"
-                        : "Access Restricted"}
+                    {getInPlatformImportTooltip("HashiCorp Vault")}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -246,12 +247,7 @@ export function AddResourceButtons({
                     </UnstableDropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
-                    {/* eslint-disable-next-line no-nested-ternary */}
-                    {!isOrgAdmin
-                      ? "Only organization admins can import secrets from Doppler"
-                      : !isSingleEnvSelected
-                        ? "Select a single environment to import from Doppler"
-                        : "Access Restricted"}
+                    {getInPlatformImportTooltip("Doppler")}
                   </TooltipContent>
                 </Tooltip>
               )}
