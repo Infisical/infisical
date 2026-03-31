@@ -52,5 +52,6 @@ export enum AppConnection {
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
-  ExternalInfisical = "external-infisical"
+  ExternalInfisical = "external-infisical",
+  Doppler = "doppler"
 }
