@@ -234,6 +234,7 @@ export * from "./user-aliases";
 export * from "./user-encryption-keys";
 export * from "./user-group-membership";
 export * from "./users";
+export * from "./external-migration-configs";
 export * from "./vault-external-migration-configs";
 export * from "./webauthn-credentials";
 export * from "./webhooks";

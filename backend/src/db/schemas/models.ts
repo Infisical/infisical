@@ -235,6 +235,7 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
+  ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
   PkiAcmeAccount = "pki_acme_accounts",
