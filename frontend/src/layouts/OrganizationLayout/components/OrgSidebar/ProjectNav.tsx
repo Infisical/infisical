@@ -54,6 +54,9 @@ export const ProjectNav = () => {
   const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
 
+  // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
+  // been consistent in using a route structure that reflects nested pages; once we refactor we can switch
+  // to using tanstack `isActive` link property
   const isOnAccessControl =
     pathname.includes("/access-management") ||
     Boolean(pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//));
