@@ -626,9 +626,6 @@ import {
   TExternalMigrationConfigs,
   TExternalMigrationConfigsInsert,
   TExternalMigrationConfigsUpdate,
-  TVaultExternalMigrationConfigs,
-  TVaultExternalMigrationConfigsInsert,
-  TVaultExternalMigrationConfigsUpdate,
   TWebauthnCredentials,
   TWebauthnCredentialsInsert,
   TWebauthnCredentialsUpdate,
@@ -1634,11 +1631,6 @@ declare module "knex/types/tables" {
       TExternalMigrationConfigs,
       TExternalMigrationConfigsInsert,
       TExternalMigrationConfigsUpdate
-    >;
-    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TVaultExternalMigrationConfigs,
-      TVaultExternalMigrationConfigsInsert,
-      TVaultExternalMigrationConfigsUpdate
     >;
     [TableName.WebAuthnCredential]: KnexOriginal.CompositeTableType<
       TWebauthnCredentials,
