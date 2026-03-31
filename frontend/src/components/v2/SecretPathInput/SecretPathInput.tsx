@@ -17,6 +17,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & 
   isReadOnly?: boolean;
   isDisabled?: boolean;
   environment?: string;
+  projectId?: string;
   containerClassName?: string;
   onChange?: (arg: string) => void;
   folderNames?: string[];
@@ -26,6 +27,7 @@ export const SecretPathInput = ({
   containerClassName,
   onChange,
   environment,
+  projectId: projectIdProp,
   value: propValue,
   folderNames: folderNamesProp,
   ...props
@@ -38,7 +40,7 @@ export const SecretPathInput = ({
   const [debouncedInputValue] = useDebounce(inputValue, 200);
 
   const { currentProject } = useProject();
-  const projectId = currentProject?.id || "";
+  const projectId = projectIdProp || currentProject?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
     environments: [environment || currentProject?.environments?.[0].slug || ""],
