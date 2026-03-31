@@ -61,7 +61,9 @@ export const DopplerSecretImportModal = ({
   const selectedDopplerProject = watch("dopplerProject");
 
   const hasMultipleConfigs = configs.length > 1;
-  const { data: appConnections = [] } = useListAppConnections(undefined, { enabled: hasMultipleConfigs });
+  const { data: appConnections = [] } = useListAppConnections(undefined, {
+    enabled: hasMultipleConfigs
+  });
 
   useEffect(() => {
     if (isOpen) {

@@ -12,11 +12,7 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { DopplerConnectionMethod } from "./doppler-connection-enums";
 
 export const DopplerConnectionApiTokenCredentialsSchema = z.object({
-  apiToken: z
-    .string()
-    .trim()
-    .min(1, "API token required")
-    .max(512, "API token cannot exceed 512 characters")
+  apiToken: z.string().trim().min(1, "API token required").max(512, "API token cannot exceed 512 characters")
 });
 
 const BaseDopplerConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Doppler) });

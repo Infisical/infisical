@@ -17,10 +17,7 @@ export type TDopplerConnectionInput = z.infer<typeof CreateDopplerConnectionSche
 
 export type TValidateDopplerConnectionCredentialsSchema = typeof ValidateDopplerConnectionCredentialsSchema;
 
-export type TDopplerConnectionConfig = DiscriminativePick<
-  TDopplerConnectionInput,
-  "method" | "app" | "credentials"
-> & {
+export type TDopplerConnectionConfig = DiscriminativePick<TDopplerConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
 

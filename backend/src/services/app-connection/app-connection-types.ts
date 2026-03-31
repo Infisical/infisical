@@ -137,6 +137,12 @@ import {
   TValidateDNSMadeEasyConnectionCredentialsSchema
 } from "./dns-made-easy/dns-made-easy-connection-types";
 import {
+  TDopplerConnection,
+  TDopplerConnectionConfig,
+  TDopplerConnectionInput,
+  TValidateDopplerConnectionCredentialsSchema
+} from "./doppler/doppler-connection-types";
+import {
   TExternalInfisicalConnection,
   TExternalInfisicalConnectionConfig,
   TExternalInfisicalConnectionInput,
@@ -257,12 +263,6 @@ import {
   TRedisConnectionInput,
   TValidateRedisConnectionCredentialsSchema
 } from "./redis";
-import {
-  TDopplerConnection,
-  TDopplerConnectionConfig,
-  TDopplerConnectionInput,
-  TValidateDopplerConnectionCredentialsSchema
-} from "./doppler/doppler-connection-types";
 import {
   TRenderConnection,
   TRenderConnectionConfig,

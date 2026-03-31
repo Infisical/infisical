@@ -102,7 +102,6 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
-import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
   DigitalOceanConnectionMethod,
@@ -114,6 +113,7 @@ import {
   getDNSMadeEasyConnectionListItem,
   validateDNSMadeEasyConnectionCredentials
 } from "./dns-made-easy/dns-made-easy-connection-fns";
+import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import {
   ExternalInfisicalConnectionMethod,
   getExternalInfisicalConnectionListItem,
