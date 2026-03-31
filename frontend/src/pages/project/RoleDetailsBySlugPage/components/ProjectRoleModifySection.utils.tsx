@@ -1956,7 +1956,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
-    rules.forEach((actions) => {
+    (rules ?? []).forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );

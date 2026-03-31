@@ -1,8 +1,9 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -13,8 +14,6 @@ import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
   SecretApprovalRequests = "approval-requests",
-  SecretPolicies = "approval-rules",
-  ResourcePolicies = "resource-rules",
   ResourceApprovalRequests = "resource-requests",
   Policies = "policies"
 }
@@ -27,10 +26,17 @@ export const SecretApprovalsPage = () => {
     projectId
   });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+
+  const { selectedTab: searchTab } = useSearch({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.id
+  });
+
   const defaultTab =
     (accessApprovalRequestCount?.pendingCount || 0) > (secretApprovalReqCount?.open || 0)
       ? TabSection.ResourceApprovalRequests
       : TabSection.SecretApprovalRequests;
+
+  const selectedTab = searchTab || defaultTab;
 
   return (
     <div>
@@ -45,28 +51,7 @@ export const SecretApprovalsPage = () => {
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />
-        <Tabs orientation="vertical" defaultValue={defaultTab}>
-          <TabList>
-            <Tab variant="project" value={TabSection.SecretApprovalRequests}>
-              Change Requests
-              {Boolean(secretApprovalReqCount?.open) && (
-                <Badge variant="warning" isSquare className="ml-2">
-                  {secretApprovalReqCount?.open}
-                </Badge>
-              )}
-            </Tab>
-            <Tab variant="project" value={TabSection.ResourceApprovalRequests}>
-              Access Requests
-              {Boolean(accessApprovalRequestCount?.pendingCount) && (
-                <Badge variant="warning" isSquare className="ml-2">
-                  {accessApprovalRequestCount?.pendingCount}
-                </Badge>
-              )}
-            </Tab>
-            <Tab variant="project" value={TabSection.Policies}>
-              Policies
-            </Tab>
-          </TabList>
+        <Tabs orientation="vertical" value={selectedTab}>
           <TabPanel value={TabSection.SecretApprovalRequests}>
             <SecretApprovalRequest />
           </TabPanel>

@@ -1,52 +1,66 @@
 import { useEffect, useState } from "react";
-import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowUpRightFromSquare,
-  faBook,
-  faCaretDown,
-  faCheck,
-  faChevronRight,
-  faEnvelope,
-  faExclamationTriangle,
-  faInfinity,
-  faInfo,
-  faInfoCircle,
-  faMagnifyingGlass,
-  faPlus,
-  faSignOut,
-  faToolbox,
-  faUser,
-  faUserCog,
-  faUserPlus,
-  faUsers
-} from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronRight, UserPlusIcon } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  Book,
+  Check,
+  ChevronLeft,
+  ChevronsUpDown,
+  CircleHelp,
+  Clipboard,
+  ExternalLink,
+  Github,
+  Infinity,
+  Info,
+  LogOut,
+  Mail,
+  Plus,
+  Settings,
+  Slack,
+  TriangleAlertIcon,
+  User,
+  UserPlus,
+  Users,
+  Wrench
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
-import { Badge, InstanceIcon, OrgIcon, SubOrgIcon } from "@app/components/v3";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  InstanceIcon,
+  OrgIcon,
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableButtonGroup,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuSeparator,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
+import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionActions,
@@ -76,84 +90,6 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
-
-type SubOrgFilterListProps = {
-  search: string;
-  onSearchChange: (value: string) => void;
-  subOrganizations: { id: string; name: string }[];
-  currentOrgId: string | undefined;
-  onSelect: (orgId: string) => void;
-  onCreateSubOrg: () => void;
-};
-
-const SubOrgFilterList = ({
-  search,
-  onSearchChange,
-  subOrganizations,
-  currentOrgId,
-  onSelect,
-  onCreateSubOrg
-}: SubOrgFilterListProps) => {
-  const filtered = subOrganizations.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <>
-      <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
-        <Input
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          size="xs"
-          variant="plain"
-          placeholder="Filter sub-orgs..."
-          className="text-bunker-100 placeholder-mineshaft-300"
-          onKeyDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-      <div className="max-h-48 thin-scrollbar overflow-y-auto">
-        {filtered.map((subOrg) => (
-          <DropdownMenuItem
-            onClick={() => onSelect(subOrg.id)}
-            className="cursor-pointer font-normal"
-            key={subOrg.id}
-          >
-            <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-              {currentOrgId === subOrg.id && (
-                <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
-              )}
-              <p className="truncate">{subOrg.name}</p>
-            </div>
-          </DropdownMenuItem>
-        ))}
-        {filtered.length === 0 && (
-          <p className="px-2 py-1.5 text-xs text-mineshaft-400">No sub-organizations found.</p>
-        )}
-      </div>
-      <OrgPermissionCan
-        I={OrgPermissionSubOrgActions.Create}
-        a={OrgPermissionSubjects.SubOrganization}
-      >
-        {(isAllowed) =>
-          isAllowed ? (
-            <>
-              <div className="mt-1 h-px border-t border-mineshaft-600" />
-              <DropdownMenuItem
-                className="cursor-pointer"
-                icon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={onCreateSubOrg}
-              >
-                New Sub-Organization
-              </DropdownMenuItem>
-            </>
-          ) : null
-        }
-      </OrgPermissionCan>
-    </>
-  );
-};
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -189,36 +125,16 @@ Thank you,
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
+  [Slack, "Support Forum", () => "https://infisical.com/slack"],
   [
-    <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
-    "Support Forum",
-    () => "https://infisical.com/slack"
-  ],
-  [
-    <FontAwesomeIcon key={2} className="pr-4 text-sm" icon={faBook} />,
+    Book,
     "Read Docs",
     () => "https://infisical.com/docs/documentation/getting-started/introduction"
   ],
-  [
-    <FontAwesomeIcon key={3} className="pr-4 text-sm" icon={faGithub} />,
-    "GitHub Issues",
-    () => "https://github.com/Infisical/infisical/issues"
-  ],
-  [
-    <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
-    "Email Support",
-    getFormattedSupportEmailLink
-  ],
-  [
-    <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
-    "Instance Admins",
-    () => "server-admins"
-  ],
-  [
-    <FontAwesomeIcon key={6} className="pr-4 text-sm" icon={faToolbox} />,
-    "Version Upgrade Tool",
-    () => "/upgrade-path"
-  ]
+  [Github, "GitHub Issues", () => "https://github.com/Infisical/infisical/issues"],
+  [Mail, "Email Support", getFormattedSupportEmailLink],
+  [Users, "Instance Admins", () => "server-admins"],
+  [Wrench, "Version Upgrade Tool", () => "/upgrade-path"]
 ] as const;
 
 export const Navbar = () => {
@@ -229,8 +145,6 @@ export const Navbar = () => {
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
-  const [subOrgMenuSearch, setSubOrgMenuSearch] = useState("");
-  const [subOrgBreadcrumbSearch, setSubOrgBreadcrumbSearch] = useState("");
 
   const subOrgQuery = subOrganizationsQuery.list({ isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
@@ -249,7 +163,6 @@ export const Navbar = () => {
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
@@ -423,242 +336,215 @@ export const Navbar = () => {
   };
 
   return (
-    <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4">
+    <div
+      className={twMerge(
+        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
+        isServerAdminPanel && "from-admin/5",
+        !isServerAdminPanel && isProjectScope && "from-project/5",
+        !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
+        !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
+      )}
+    >
+      <SidebarTrigger variant="ghost" className="ml-2 lg:hidden" />
       <div className="mr-auto flex h-full min-w-34 items-center">
-        <div className="mt-0.5 shrink-0">
-          <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
-            <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
-          </Link>
-        </div>
-        <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
         {isServerAdminPanel ? (
-          <Link
-            to="/admin"
-            className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary"
-          >
-            <InstanceIcon className="size-3.5 text-xs text-bunker-300" />
-            <div className="whitespace-nowrap">Server Console</div>
-          </Link>
+          <div className="flex h-full items-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/organizations/$orgId/projects"
+                  params={{ orgId: currentOrg.id }}
+                  className="flex h-full items-center gap-x-1 border-r border-border pr-4 pl-2 text-muted transition-colors hover:text-foreground"
+                >
+                  <ChevronLeft className="size-4" />
+                  <OrgIcon className="size-3.5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Back to organization</TooltipContent>
+            </Tooltip>
+            <Link
+              to="/admin"
+              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-white transition-all duration-100"
+            >
+              <InstanceIcon className="size-3.5 text-admin" />
+              <div className="whitespace-nowrap">Server Console</div>
+            </Link>
+          </div>
         ) : (
           <>
             <div
               className={twMerge(
-                "relative flex min-w-16 items-center self-end rounded-t-md border-x border-t pt-1.5 pr-2 pb-2.5 pl-3",
-                !isProjectScope && !isSubOrganization
-                  ? "border-org/15 bg-gradient-to-b from-org/10 to-org/[0.075]"
-                  : "border-transparent"
+                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
+                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
-              {/* scott: the below is used to hide the top border from the org nav bar */}
-              {!isProjectScope && !isSubOrganization && (
-                <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
-                  <div className="h-full bg-org/[0.075]" />
-                </div>
-              )}
-              <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
+              <Popover open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
+                <PopoverAnchor className="absolute left-2" />
                 <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                     type="button"
-                    onClick={async () => {
-                      if (isSubOrganization) {
-                        await handleOrgSelection({
-                          organizationId: currentOrg.rootOrgId as string
-                        });
-                      } else {
-                        navigate({
-                          to: "/organizations/$orgId/projects",
-                          params: { orgId: currentOrg.id }
-                        });
-                      }
+                    onClick={() => {
+                      navigate({
+                        to: "/organizations/$orgId/projects",
+                        params: { orgId: currentOrg.id }
+                      });
                     }}
                   >
-                    <OrgIcon className={twMerge("size-[14px] shrink-0 text-org")} />
-                    <span className="truncate">{rootOrg?.name}</span>
-                    <Badge variant="org" className="hidden lg:inline-flex">
-                      Organization
+                    {isSubOrganization ? (
+                      <SubOrgIcon
+                        className={twMerge(
+                          "size-[14px] shrink-0",
+                          !isProjectScope ? "text-sub-org" : "text-muted"
+                        )}
+                      />
+                    ) : (
+                      <OrgIcon
+                        className={twMerge(
+                          "size-[14px] shrink-0",
+                          !isProjectScope ? "text-org" : "text-muted"
+                        )}
+                      />
+                    )}
+
+                    <span className="truncate">
+                      {isSubOrganization ? currentOrg?.name : rootOrg?.name}
+                    </span>
+                    <Badge
+                      variant={isSubOrganization ? "sub-org" : "org"}
+                      className="hidden lg:inline-flex"
+                    >
+                      {isSubOrganization ? "Sub-Organization" : "Organization"}
                     </Badge>
                   </button>
-                  {subscription.cardDeclined && (
-                    <Tooltip
-                      content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
-                      className="max-w-xs"
-                    >
-                      <div className="flex items-center">
-                        <FontAwesomeIcon
-                          icon={faExclamationTriangle}
-                          className="animate-pulse cursor-help text-xs text-primary-400"
-                        />
-                      </div>
+                  {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center">
+                          <TriangleAlertIcon className="size-3.5 animate-pulse cursor-help text-warning" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Your payment could not be processed
+                        {subscription.cardDeclinedReason
+                          ? `: ${subscription.cardDeclinedReason}`
+                          : ""}
+                        . Please update your payment method to continue enjoying premium features.
+                      </TooltipContent>
                     </Tooltip>
                   )}
                 </div>
-                <DropdownMenuTrigger asChild>
-                  <div>
-                    <IconButton
-                      variant="plain"
-                      colorSchema="secondary"
-                      ariaLabel="switch-org"
-                      className="px-2 py-1"
-                    >
-                      <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
-                    </IconButton>
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="center"
-                  side="bottom"
-                  className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
-                  style={{ minWidth: "220px" }}
-                >
-                  <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
-                    Organizations
-                  </div>
-                  {orgs?.map((org) => {
-                    if (
-                      subscription.subOrganization &&
-                      (org.id === currentOrg?.id || org.id === currentOrg?.parentOrgId)
-                    ) {
-                      return (
-                        <DropdownSubMenu key={`${org.id}-sub-orgs`}>
-                          <DropdownSubMenuTrigger
-                            onClick={() => {
-                              setIsOrgSelectOpen(false);
-                              handleOrgNav(org);
-                            }}
-                            className="cursor-pointer font-normal"
-                          >
-                            <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                              {currentOrg?.id === org.id && (
-                                <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
-                              )}
-                              <p className="truncate">{org.name}</p>
-                              <FontAwesomeIcon className="ml-auto shrink-0" icon={faChevronRight} />
-                            </div>
-                          </DropdownSubMenuTrigger>
-                          <DropdownSubMenuContent
-                            sideOffset={8}
-                            alignOffset={-24}
-                            className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
-                            style={{ minWidth: "220px" }}
-                          >
-                            <SubOrgFilterList
-                              search={subOrgMenuSearch}
-                              onSearchChange={setSubOrgMenuSearch}
-                              subOrganizations={subOrganizations}
-                              currentOrgId={currentOrg?.id}
-                              onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
-                              onCreateSubOrg={() => setShowSubOrgForm(true)}
-                            />
-                          </DropdownSubMenuContent>
-                        </DropdownSubMenu>
-                      );
-                    }
-
-                    return (
-                      <DropdownMenuItem
-                        onClick={() => handleOrgNav(org)}
-                        className="cursor-pointer font-normal"
-                        key={org.id}
-                      >
-                        <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                          {currentOrg?.id === org.id && (
-                            <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
-                          )}
-                          <p className="truncate">{org.name}</p>
-                        </div>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faSignOut} />}
-                    onClick={logOutUser}
-                  >
-                    Log Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {isSubOrganization && (
-              <>
-                <ChevronRight size={18} className="mt-[3px] mr-3 text-mineshaft-400/70" />
-                <div
-                  className={twMerge(
-                    "relative flex min-w-16 items-center self-end rounded-t-md border-x border-t pt-1.5 pr-2 pb-2.5 pl-3",
-                    !isProjectScope && isSubOrganization
-                      ? "border-sub-org/15 bg-gradient-to-b from-sub-org/10 to-sub-org/[0.075]"
-                      : "border-transparent"
-                  )}
-                >
-                  {/* scott: the below is used to hide the top border from the org nav bar */}
-                  {!isProjectScope && isSubOrganization && (
-                    <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
-                      <div className="h-full bg-sub-org/[0.075]" />
-                    </div>
-                  )}
-                  <DropdownMenu
-                    modal={false}
-                    onOpenChange={(open) => {
-                      if (!open) setSubOrgBreadcrumbSearch("");
-                    }}
-                  >
-                    <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
+                <PopoverTrigger asChild>
+                  <UnstableIconButton variant="ghost" size="xs" aria-label="switch-org">
+                    <ChevronsUpDown />
+                  </UnstableIconButton>
+                </PopoverTrigger>
+                <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+                  <Command>
+                    <CommandInput placeholder="Search organizations..." />
+                    <CommandList>
+                      <CommandEmpty>No organizations found.</CommandEmpty>
+                      {/* Current Organization */}
+                      <CommandGroup heading="Current Organization">
+                        <CommandItem
+                          value={rootOrg.name}
+                          onSelect={() => {
+                            setIsOrgSelectOpen(false);
+                            if (isSubOrganization) {
+                              handleOrgSelection({ organizationId: rootOrg.id });
+                            } else {
+                              navigate({
+                                to: "/organizations/$orgId/projects",
+                                params: { orgId: rootOrg.id }
+                              });
+                            }
+                          }}
+                        >
+                          <Check className={!isSubOrganization ? "opacity-100" : "opacity-0"} />
+                          <span className="truncate">{rootOrg.name}</span>
+                        </CommandItem>
+                      </CommandGroup>
+                      {/* Sub-Organizations */}
+                      {subscription.subOrganization && subOrganizations.length > 0 && (
+                        <>
+                          <CommandGroup className="ml-6" heading="Sub-Organizations">
+                            {subOrganizations.map((subOrg) => (
+                              <CommandItem
+                                key={subOrg.id}
+                                value={subOrg.name}
+                                onSelect={() => {
+                                  setIsOrgSelectOpen(false);
+                                  handleOrgSelection({ organizationId: subOrg.id });
+                                }}
+                              >
+                                <Check
+                                  className={
+                                    currentOrg?.id === subOrg.id ? "opacity-100" : "opacity-0"
+                                  }
+                                />
+                                <span className="truncate">{subOrg.name}</span>
+                              </CommandItem>
+                            ))}
+                            <OrgPermissionCan
+                              I={OrgPermissionSubOrgActions.Create}
+                              a={OrgPermissionSubjects.SubOrganization}
+                            >
+                              {(isAllowed) =>
+                                isAllowed ? (
+                                  <CommandItem
+                                    className="text-muted"
+                                    onSelect={() => {
+                                      setIsOrgSelectOpen(false);
+                                      setShowSubOrgForm(true);
+                                    }}
+                                  >
+                                    <Plus />
+                                    <span>New Sub-Organization</span>
+                                  </CommandItem>
+                                ) : null
+                              }
+                            </OrgPermissionCan>
+                          </CommandGroup>
+                          <CommandSeparator />
+                        </>
+                      )}
+                      {/* Other Organizations */}
+                      {orgs && orgs.filter((o) => o.id !== rootOrg.id).length > 0 && (
+                        <CommandGroup heading="Other Organizations">
+                          {orgs
+                            .filter((o) => o.id !== rootOrg.id)
+                            .map((org) => (
+                              <CommandItem
+                                key={org.id}
+                                value={org.name}
+                                onSelect={() => {
+                                  setIsOrgSelectOpen(false);
+                                  handleOrgNav(org);
+                                }}
+                              >
+                                <span className="truncate">{org.name}</span>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                    <div className="border-t border-border p-1">
                       <button
-                        className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                         type="button"
-                        onClick={async () => {
-                          navigate({
-                            to: "/organizations/$orgId/projects",
-                            params: { orgId: currentOrg.id }
-                          });
-                          if (isSubOrganization) {
-                            await router.invalidate({ sync: true }).catch(() => null);
-                          }
-                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5"
+                        onClick={logOutUser}
                       >
-                        <SubOrgIcon className={twMerge("size-[14px] shrink-0 text-sub-org")} />
-                        <span className="truncate">{currentOrg?.name}</span>
-                        <Badge variant="sub-org" className="hidden lg:inline-flex">
-                          Sub-Organization
-                        </Badge>
+                        <LogOut className="size-4" />
+                        <span>Log Out</span>
                       </button>
                     </div>
-                    <DropdownMenuTrigger asChild>
-                      <div>
-                        <IconButton
-                          variant="plain"
-                          colorSchema="secondary"
-                          ariaLabel="switch-org"
-                          className="px-2 py-1"
-                        >
-                          <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
-                        </IconButton>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="center"
-                      side="bottom"
-                      className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
-                      style={{ minWidth: "220px" }}
-                      onCloseAutoFocus={(e) => e.preventDefault()}
-                    >
-                      <SubOrgFilterList
-                        search={subOrgBreadcrumbSearch}
-                        onSearchChange={setSubOrgBreadcrumbSearch}
-                        subOrganizations={subOrganizations}
-                        currentOrgId={currentOrg?.id}
-                        onSelect={(orgId) => handleOrgSelection({ organizationId: orgId })}
-                        onCreateSubOrg={() => setShowSubOrgForm(true)}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </>
-            )}
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             {isProjectScope && (
               <>
-                <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
+                {/* <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" /> */}
                 <ProjectSelect />
               </>
             )}
@@ -667,48 +553,46 @@ export const Navbar = () => {
       </div>
 
       {subscription && subscription.slug === "starter" && !subscription.has_used_trial ? (
-        <Tooltip content="Start Free Pro Trial">
-          <Button
-            variant="plain"
-            className="mr-2 border-mineshaft-500 px-2.5 py-1.5 whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-            leftIcon={<FontAwesomeIcon icon={faInfinity} />}
-            onClick={async () => {
-              if (!subscription || !rootOrg) return;
-
-              // direct user to start pro trial
-              const url = await mutateAsync({
-                orgId: rootOrg.id,
-                success_url: window.location.href
-              });
-
-              window.location.href = url;
-            }}
-          >
-            Free Pro Trial
-          </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="info"
+              size="xs"
+              className="mt-px mr-2"
+              onClick={async () => {
+                if (!subscription || !rootOrg) return;
+                const url = await mutateAsync({
+                  orgId: rootOrg.id,
+                  success_url: window.location.href
+                });
+                window.location.href = url;
+              }}
+            >
+              <Infinity />
+              Free Pro Trial
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Start Free Pro Trial</TooltipContent>
         </Tooltip>
       ) : (
-        <div className="mt-0.5 mr-3 hidden rounded-sm border border-mineshaft-400 px-1 text-xs text-mineshaft-100 no-underline! opacity-50 md:inline-block">
+        <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
           {getPlan(subscription)}
-        </div>
+        </Badge>
       )}
-      {/* eslint-disable-next-line no-nested-ternary */}
-      {!location.pathname.startsWith("/admin") ? (
-        user.superAdmin ? (
-          <Link
-            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-            to="/admin"
-            onClick={handleNavigateToAdminConsole}
-          >
-            <InstanceIcon className="inline-block size-3.5" />
-            <span className="ml-2 hidden md:inline-block">Server Console</span>
+      {!location.pathname.startsWith("/admin") && user.superAdmin && (
+        <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
+          <Link to="/admin" onClick={handleNavigateToAdminConsole}>
+            <InstanceIcon />
+            <span className="hidden md:inline">Server Console</span>
           </Link>
-        ) : (
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
-            {(isAllowed) =>
-              isAllowed ? (
+        </Button>
+      )}
+      {!location.pathname.startsWith("/admin") && !user.superAdmin && (
+        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+          {(isAllowed) =>
+            isAllowed ? (
+              <Button variant="outline" size="sm" className="mr-2" asChild>
                 <Link
-                  className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
                   to="/organizations/$orgId/access-management"
                   params={{ orgId: currentOrg.id }}
                   search={{
@@ -716,162 +600,152 @@ export const Navbar = () => {
                     action: "invite-members"
                   }}
                 >
-                  <UserPlusIcon className="inline-block size-3.5" />
-                  <span className="ml-2 hidden md:inline-block">Invite Users</span>
+                  <UserPlus />
+                  <span className="hidden md:inline">Invite Users</span>
                 </Link>
-              ) : null
-            }
-          </OrgPermissionCan>
-        )
-      ) : null}
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger>
-          <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-            <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="bottom" className="mt-3 p-1">
-          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, getUrl]) => {
-            const url =
-              text === "Email Support"
-                ? getUrl({
-                    org_id: currentOrg.id,
-                    domain: window.location.origin,
-                    ...(isSubOrganization && { root_org_id: rootOrg.id })
-                  })
-                : getUrl();
+              </Button>
+            ) : null
+          }
+        </OrgPermissionCan>
+      )}
+      <UnstableButtonGroup className="mr-2">
+        <UnstableDropdownMenu modal={false}>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton variant="outline" size="sm" aria-label="Help">
+              <CircleHelp />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end" side="bottom" sideOffset={8}>
+            {INFISICAL_SUPPORT_OPTIONS.map(([Icon, text, getUrl]) => {
+              const url =
+                text === "Email Support"
+                  ? getUrl({
+                      org_id: currentOrg.id,
+                      domain: window.location.origin,
+                      ...(isSubOrganization && { root_org_id: rootOrg.id })
+                    })
+                  : getUrl();
 
-            if (url === "server-admins" && isInfisicalCloud()) {
-              return null;
-            }
-            if (url === "upgrade-path" && isInfisicalCloud()) {
-              return null;
-            }
-            return (
-              <DropdownMenuItem key={url as string}>
-                {url === "server-admins" ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminsModal(true)}
-                    className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
+              if (url === "server-admins" && isInfisicalCloud()) {
+                return null;
+              }
+              if (url === "upgrade-path" && isInfisicalCloud()) {
+                return null;
+              }
+
+              if (url === "server-admins") {
+                return (
+                  <UnstableDropdownMenuItem
+                    key="server-admins"
+                    onSelect={() => setShowAdminsModal(true)}
                   >
-                    <div className="relative flex w-full cursor-pointer items-center justify-start rounded-md select-none">
-                      {icon}
-                      <div className="text-sm">{text}</div>
-                    </div>
-                  </button>
-                ) : (
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={String(url)}
-                    className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                  >
-                    <div className="relative flex w-full cursor-pointer items-center justify-start rounded-md select-none">
-                      {icon}
-                      <div className="text-sm">{text}</div>
-                    </div>
+                    <Icon className="size-4" />
+                    {text}
+                  </UnstableDropdownMenuItem>
+                );
+              }
+
+              return (
+                <UnstableDropdownMenuItem key={url as string} asChild>
+                  <a target="_blank" rel="noopener noreferrer" href={String(url)}>
+                    <Icon />
+                    {text}
                   </a>
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-          {envConfig.PLATFORM_VERSION && (
-            <div className="mt-2 mb-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
-              <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-              Version: {envConfig.PLATFORM_VERSION}
-            </div>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <NotificationDropdown />
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <div className="rounded-r-md border border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-            <FontAwesomeIcon icon={faUserCircle} className="text-mineshaft-200" />
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="end" className="mt-3 p-1">
-          <div className="cursor-default px-1 py-1">
-            <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-linear-to-tr from-primary-500/10 to-mineshaft-800 p-1 px-2 transition-all duration-150">
-              <div className="p-1 pr-3">
-                <FontAwesomeIcon icon={faUser} className="text-xl text-mineshaft-400" />
-              </div>
-              <div className="flex grow flex-col text-white">
-                <div className="max-w-36 truncate text-sm font-medium text-ellipsis capitalize">
-                  {user?.firstName} {user?.lastName}
+                </UnstableDropdownMenuItem>
+              );
+            })}
+            {envConfig.PLATFORM_VERSION && (
+              <>
+                <UnstableDropdownMenuSeparator />
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
+                  <Info className="size-3.5" />
+                  Version: {envConfig.PLATFORM_VERSION}
                 </div>
-                <div className="text-xs text-mineshaft-300">{user.email}</div>
+              </>
+            )}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+        <NotificationDropdown />
+        <UnstableDropdownMenu modal={false}>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton variant="outline" size="sm" aria-label="User menu">
+              <User />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent side="bottom" align="end" sideOffset={8}>
+            <div className="cursor-default px-3 py-2">
+              <div className="text-sm font-medium capitalize">
+                {user?.firstName} {user?.lastName}
               </div>
+              <div className="text-muted-foreground text-xs">{user.email}</div>
             </div>
-          </div>
-          <Link to="/personal-settings">
-            <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserCog} />}>
-              Personal Settings
-            </DropdownMenuItem>
-          </Link>
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
-            {(isAllowed) =>
-              isAllowed ? (
-                <Link
-                  to="/organizations/$orgId/access-management"
-                  params={{ orgId: currentOrg.id }}
-                  search={{
-                    selectedTab: "members",
-                    action: "invite-members"
-                  }}
-                >
-                  <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
-                    Invite Users
-                  </DropdownMenuItem>
-                </Link>
-              ) : null
-            }
-          </OrgPermissionCan>
-          <a
-            href="https://infisical.com/docs/documentation/getting-started/introduction"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 w-full text-sm leading-[1.2rem] font-normal text-mineshaft-300 hover:text-mineshaft-100"
-          >
-            <DropdownMenuItem>
-              Documentation
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="text-xxs mb-[0.06rem] pl-1.5"
-              />
-            </DropdownMenuItem>
-          </a>
-          <a
-            href="https://infisical.com/slack"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 w-full text-sm leading-[1.2rem] font-normal text-mineshaft-300 hover:text-mineshaft-100"
-          >
-            <DropdownMenuItem>
-              Join Slack Community
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="text-xxs mb-[0.06rem] pl-1.5"
-              />
-            </DropdownMenuItem>
-          </a>
-          <div className="mt-1 h-1 border-t border-mineshaft-600" />
-          <DropdownMenuItem onClick={handleCopyToken}>
-            Copy Token
-            <Tooltip
-              content="This token is linked to your current login session and can only access resources within the organization you're currently logged into."
-              className="max-w-3xl"
-            >
-              <FontAwesomeIcon icon={faInfoCircle} className="pl-1.5 text-xs" />
-            </Tooltip>
-          </DropdownMenuItem>
-          <div className="mt-1 h-1 border-t border-mineshaft-600" />
-          <DropdownMenuItem onClick={logOutUser} icon={<FontAwesomeIcon icon={faSignOut} />}>
-            Log Out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <UnstableDropdownMenuSeparator />
+            <UnstableDropdownMenuItem asChild>
+              <Link to="/personal-settings">
+                <Settings className="size-4" />
+                Personal Settings
+              </Link>
+            </UnstableDropdownMenuItem>
+            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+              {(isAllowed) =>
+                isAllowed ? (
+                  <UnstableDropdownMenuItem asChild>
+                    <Link
+                      to="/organizations/$orgId/access-management"
+                      params={{ orgId: currentOrg.id }}
+                      search={{
+                        selectedTab: "members",
+                        action: "invite-members"
+                      }}
+                    >
+                      <UserPlus />
+                      Invite Users
+                    </Link>
+                  </UnstableDropdownMenuItem>
+                ) : null
+              }
+            </OrgPermissionCan>
+            <UnstableDropdownMenuSeparator />
+            <UnstableDropdownMenuItem asChild>
+              <a
+                href="https://infisical.com/docs/documentation/getting-started/introduction"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Book />
+                Documentation
+                <ExternalLink className="ml-auto size-3.5 opacity-50" />
+              </a>
+            </UnstableDropdownMenuItem>
+            <UnstableDropdownMenuItem asChild>
+              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
+                <Slack />
+                Join Slack Community
+                <ExternalLink className="ml-auto size-3.5 opacity-50" />
+              </a>
+            </UnstableDropdownMenuItem>
+            <UnstableDropdownMenuSeparator />
+            <UnstableDropdownMenuItem onSelect={handleCopyToken}>
+              <Clipboard />
+              Copy Token
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="size-3.5 opacity-50" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  This token is linked to your current login session and can only access resources
+                  within the organization you&apos;re currently logged into.
+                </TooltipContent>
+              </Tooltip>
+            </UnstableDropdownMenuItem>
+            <UnstableDropdownMenuSeparator />
+            <UnstableDropdownMenuItem onSelect={logOutUser}>
+              <LogOut />
+              Log Out
+            </UnstableDropdownMenuItem>
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </UnstableButtonGroup>
 
       <Modal
         isOpen={showCardDeclinedModal}
@@ -897,21 +771,21 @@ export const Navbar = () => {
               </div>
               <div className="mt-4">
                 <div className="flex space-x-3">
-                  <Button
+                  <V2Button
                     colorSchema="primary"
                     variant="solid"
                     onClick={handleNavigateToRootOrgBilling}
                   >
                     Update Payment Method
-                  </Button>
+                  </V2Button>
                   {!isModalIntrusive && (
-                    <Button
+                    <V2Button
                       colorSchema="secondary"
                       variant="outline"
                       onClick={() => setShowCardDeclinedModal(false)}
                     >
                       Dismiss
-                    </Button>
+                    </V2Button>
                   )}
                 </div>
               </div>
