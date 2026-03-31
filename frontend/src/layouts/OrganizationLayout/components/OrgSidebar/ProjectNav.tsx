@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { DoorOpen, FileKey, Shield } from "lucide-react";
+import { ChevronLeft, DoorOpen, FileKey, Shield } from "lucide-react";
 
-import { SidebarGroup, SidebarMenu } from "@app/components/v3";
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -48,9 +48,10 @@ const PROJECT_NAV_COMPONENT: Record<
 
 export const ProjectNav = () => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
 
   const isOnAccessControl =
@@ -135,6 +136,23 @@ export const ProjectNav = () => {
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
           <SidebarGroup>
+            <SidebarGroupLabel asChild>
+              <button
+                className="cursor-pointer hover:bg-foreground/[0.025]"
+                type="button"
+                onClick={() =>
+                  navigate({
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    to: "/organizations/$orgId/projects" as any,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    params: { orgId: currentOrg.id } as any
+                  })
+                }
+              >
+                <ChevronLeft />
+                <span>{projectLabel}</span>
+              </button>
+            </SidebarGroupLabel>
             <SidebarMenu>
               <NavComponent onSubmenuOpen={handleSubmenuOpen} />
             </SidebarMenu>
