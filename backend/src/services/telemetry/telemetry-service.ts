@@ -16,8 +16,9 @@ import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedE
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
-export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
+export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled, PostHogEventTypes.MachineIdentityLogin];
 const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
+const GROUP_IDENTIFY_CACHE_TTL = 3600; // 1 hour
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
@@ -207,16 +208,23 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           );
         } else {
           if (event.organizationId) {
-            // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
             const orgId = event.organizationId;
-            void getOrgGroupProperties(orgId, resolvedOrgName)
-              .then((groupProperties) => {
-                postHog.groupIdentify({
-                  groupType: "organization",
-                  groupKey: orgId,
-                  properties: groupProperties,
-                  distinctId: event.distinctId
-                });
+            // Dedup groupIdentify: only fire once per org per hour to avoid redundant DB/API calls
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(orgId);
+            void keyStore
+              .setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1")
+              .then((wasSet) => {
+                if (wasSet) {
+                  return getOrgGroupProperties(orgId, resolvedOrgName).then((groupProperties) => {
+                    postHog.groupIdentify({
+                      groupType: "organization",
+                      groupKey: orgId,
+                      properties: groupProperties,
+                      distinctId: event.distinctId
+                    });
+                  });
+                }
+                return undefined;
               })
               .catch((error) => {
                 logger.error(error, "Failed to identify PostHog organization");
@@ -358,20 +366,25 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            let groupProperties = orgPropertiesCache.get(key.org);
-            if (!groupProperties) {
-              // Use the organizationName from the first event in the group (all events in a group share the same org)
-              const orgName = events[0]?.organizationName;
-              // eslint-disable-next-line no-await-in-loop
-              groupProperties = await getOrgGroupProperties(key.org, orgName);
-              orgPropertiesCache.set(key.org, groupProperties);
+            // Dedup groupIdentify across all paths: only fire once per org per hour
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
+            // eslint-disable-next-line no-await-in-loop
+            const wasSet = await keyStore.setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1");
+            if (wasSet) {
+              let groupProperties = orgPropertiesCache.get(key.org);
+              if (!groupProperties) {
+                const orgName = events[0]?.organizationName;
+                // eslint-disable-next-line no-await-in-loop
+                groupProperties = await getOrgGroupProperties(key.org, orgName);
+                orgPropertiesCache.set(key.org, groupProperties);
+              }
+              postHog.groupIdentify({
+                groupType: "organization",
+                groupKey: key.org,
+                properties: groupProperties,
+                distinctId: key.id
+              });
             }
-            postHog.groupIdentify({
-              groupType: "organization",
-              groupKey: key.org,
-              properties: groupProperties,
-              distinctId: key.id
-            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }

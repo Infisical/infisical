@@ -102,6 +102,7 @@ export const KeyStorePrefixes = {
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
+  TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const
 };
 
