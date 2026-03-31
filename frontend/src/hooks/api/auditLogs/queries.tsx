@@ -1,14 +1,15 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
-import { AuditLog, TGetAuditLogsFilter } from "./types";
+import { AuditLog, AuditLogMigrationStatus, TGetAuditLogsFilter } from "./types";
 
 export const auditLogKeys = {
   getAuditLogs: (projectId: string | null, filters: TGetAuditLogsFilter) =>
-    [{ projectId, filters }, "audit-logs"] as const
+    [{ projectId, filters }, "audit-logs"] as const,
+  migrationStatus: ["audit-logs-migration-status"] as const
 };
 
 export const useGetAuditLogs = (
@@ -51,5 +52,19 @@ export const useGetAuditLogs = (
       lastPage.length !== 0 ? pages.length * filters.limit : undefined,
     placeholderData: (prev) => prev,
     ...options
+  });
+};
+
+const fetchAuditLogMigrationStatus = async () => {
+  const { data } = await apiRequest.get<AuditLogMigrationStatus>(
+    "/api/v1/organization/audit-logs/migration-status"
+  );
+  return data;
+};
+
+export const useGetAuditLogMigrationStatus = () => {
+  return useQuery({
+    queryKey: auditLogKeys.migrationStatus,
+    queryFn: fetchAuditLogMigrationStatus
   });
 };

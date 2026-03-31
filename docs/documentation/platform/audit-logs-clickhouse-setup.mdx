@@ -1,0 +1,162 @@
+---
+title: "ClickHouse Setup"
+description: "Configure ClickHouse as your audit log storage backend for high-volume deployments"
+---
+
+<Info>
+This guide is for self-hosted Infisical deployments experiencing performance degradation with large audit log tables. ClickHouse is optional and only recommended for deployments with 300 million+ audit log rows.
+</Info>
+
+## Why ClickHouse?
+
+For high-volume audit log workloads, ClickHouse provides significant advantages over PostgreSQL:
+
+- **Superior compression**: ClickHouse's [columnar storage](https://clickhouse.com/docs/en/intro#why-columnar-databases-are-better-suited-for-olap) significantly reduces disk footprint compared to PostgreSQL's row-oriented storage.
+- **Query performance**: Analytical queries with complex filters and aggregations are substantially faster due to ClickHouse's vectorized execution engine.
+
+At high row counts, PostgreSQL analytical queries with JSON filter predicates begin to degrade regardless of hardware tier. ClickHouse is purpose-built for this scale.
+
+## Prerequisites
+
+1. A running ClickHouse instance (version 21.3+). See [ClickHouse deployment documentation](https://clickhouse.com/docs/en/install) for installation options.
+2. A database created in ClickHouse for audit logs.
+3. Network connectivity from your Infisical backend to the ClickHouse instance.
+
+## Configuration
+
+Set the following environment variables in your Infisical backend configuration:
+
+```bash
+# Required: ClickHouse connection URL
+CLICKHOUSE_URL=http://username:password@clickhouse-host:8123/database_name
+
+# Optional: Enable audit log writes to ClickHouse (default: true)
+CLICKHOUSE_AUDIT_LOG_ENABLED=true
+
+# Optional: Enable reading audit logs from ClickHouse instead of Postgres (default: false)
+CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED=false
+```
+
+### Connection URL Format
+
+The `CLICKHOUSE_URL` follows this format:
+```
+http(s)://username:password@host:port/database
+```
+
+Example:
+```
+CLICKHOUSE_URL=http://infisical:mypassword@clickhouse.internal:8123/audit_logs
+```
+
+### Table Name (Optional)
+
+By default, Infisical uses the `audit_logs` table in ClickHouse. Override with:
+
+```bash
+CLICKHOUSE_AUDIT_LOG_TABLE_NAME=custom_audit_logs
+```
+
+## How It Works
+
+Once configured, Infisical automatically:
+
+1. **Async batch writes**: Audit events are queued in Redis and batch-inserted into ClickHouse every 5 seconds via a background worker.
+2. **Automatic schema creation**: On first startup, Infisical creates the audit log table in ClickHouse with an optimized schema (partitioned by day, primary key on `orgId`, `projectId`, `createdAt`).
+3. **Dual-write mode**: Audit logs continue writing to PostgreSQL (for backward compatibility) unless you set `DISABLE_AUDIT_LOG_STORAGE=true`.
+4. **Query routing**: When `CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED=true`, the audit log API automatically reads from ClickHouse instead of PostgreSQL.
+
+### Migration Strategy
+
+**Recommended approach for existing deployments:**
+
+1. **Phase 1** — Enable writes only:
+   - Set `CLICKHOUSE_URL` and `CLICKHOUSE_AUDIT_LOG_ENABLED=true`
+   - Keep `CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED=false`
+   - New audit logs write to both PostgreSQL and ClickHouse
+   - Queries continue using PostgreSQL
+
+2. **Phase 2** — Historical data migration (optional):
+   - Use the `clickhouse-client` CLI to bulk-load historical audit logs from PostgreSQL into ClickHouse
+   - Example: `INSERT INTO audit_logs SELECT * FROM postgresql('host:5432', 'db', 'audit_logs', 'user', 'password')`
+
+3. **Phase 3** — Switch reads:
+   - Set `CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED=true`
+   - Queries now use ClickHouse
+   - Monitor for any issues
+
+4. **Phase 4** — Cleanup (optional):
+   - Once confident ClickHouse is working correctly, prune old PostgreSQL audit logs or set `DISABLE_AUDIT_LOG_STORAGE=true` to stop PostgreSQL writes entirely
+
+## Docker Compose Example
+
+Add a ClickHouse service to your `docker-compose.yml`:
+
+```yaml
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: infisical_audit
+      CLICKHOUSE_USER: infisical
+      CLICKHOUSE_PASSWORD: changeme
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  backend:
+    # ... existing backend config
+    environment:
+      # ... existing env vars
+      CLICKHOUSE_URL: http://infisical:changeme@clickhouse:8123/infisical_audit
+      CLICKHOUSE_AUDIT_LOG_ENABLED: true
+      # Optional: switch reads to ClickHouse after historical data is migrated
+      # CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED: true
+    depends_on:
+      - clickhouse
+
+volumes:
+  clickhouse-data:
+```
+
+## Verification
+
+After configuration, verify ClickHouse integration:
+
+1. **Check backend logs** on startup for ClickHouse connection success
+2. **Perform an action** in Infisical (e.g., read a secret)
+3. **Query ClickHouse directly**:
+
+```sql
+SELECT count() FROM audit_logs;
+SELECT * FROM audit_logs ORDER BY createdAt DESC LIMIT 10;
+```
+
+If rows appear in ClickHouse, the integration is working correctly.
+
+## Troubleshooting
+
+### Connection Errors
+
+- Verify network connectivity: `curl http://clickhouse-host:8123/ping`
+- Check credentials in `CLICKHOUSE_URL`
+- Ensure the database exists in ClickHouse
+
+### No Data in ClickHouse
+
+- Check backend logs for batch insert errors
+- Verify `CLICKHOUSE_AUDIT_LOG_ENABLED=true`
+- Ensure Redis is configured (required for the audit log queue)
+
+### Slow Queries in ClickHouse
+
+- Verify the table was created with proper partitioning and primary key (Infisical creates this automatically on first run)
+- Check ClickHouse query logs: `SELECT query, query_duration_ms FROM system.query_log ORDER BY event_time DESC LIMIT 10;`

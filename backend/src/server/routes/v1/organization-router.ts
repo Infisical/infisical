@@ -263,6 +263,28 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/audit-logs/migration-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          clickHouseConfigured: z.boolean(),
+          auditLogGenerationDisabled: z.boolean(),
+          auditLogStorageDisabled: z.boolean(),
+          auditLogRowCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async () => {
+      return server.services.auditLog.getAuditLogMigrationStatus();
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:organizationId/users",
     config: {
       rateLimit: readLimit

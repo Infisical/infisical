@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  UnstableAlert,
+  UnstableAlertDescription
+} from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -12,6 +16,7 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { withPermission, withProjectPermission } from "@app/hoc";
+import { useGetAuditLogMigrationStatus } from "@app/hooks/api/auditLogs";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -48,6 +53,16 @@ const LogsSectionComponent = ({
 }: Props) => {
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { data: migrationStatus } = useGetAuditLogMigrationStatus();
+
+  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
+  const showClickHouseWarning =
+    migrationStatus &&
+    !migrationStatus.clickHouseConfigured &&
+    !migrationStatus.auditLogStorageDisabled &&
+    !migrationStatus.auditLogGenerationDisabled &&
+    migrationStatus.auditLogRowCount >= AUDIT_LOG_ROW_WARNING_THRESHOLD;
+
   const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
     eventType: presets?.eventType || [],
     actor: presets?.actorId,
@@ -88,6 +103,25 @@ const LogsSectionComponent = ({
   if (pageView)
     return (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        {showClickHouseWarning && (
+          <UnstableAlert variant="info" className="mb-4">
+            <UnstableAlertDescription>
+              <p>
+                Your audit log table is growing large. PostgreSQL performance will degrade over time
+                at this scale. Consider configuring{" "}
+                <a
+                  href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:opacity-80"
+                >
+                  ClickHouse
+                </a>{" "}
+                as your audit log storage backend to maintain query performance.
+              </p>
+            </UnstableAlertDescription>
+          </UnstableAlert>
+        )}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
             <div className="flex items-center gap-x-2 whitespace-nowrap">
@@ -154,6 +188,25 @@ const LogsSectionComponent = ({
 
   return (
     <div className="space-y-2">
+      {showClickHouseWarning && (
+        <UnstableAlert variant="info">
+          <UnstableAlertDescription>
+            <p>
+              Your audit log table is growing large. PostgreSQL performance will degrade over time
+              at this scale. Consider configuring{" "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-80"
+              >
+                ClickHouse
+              </a>{" "}
+              as your audit log storage backend to maintain query performance.
+            </p>
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
           <LogsDateFilter

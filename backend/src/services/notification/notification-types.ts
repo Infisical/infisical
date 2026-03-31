@@ -20,7 +20,8 @@ export enum NotificationType {
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
-  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed"
+  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
+  AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended"
 }
 
 export interface TCreateUserNotificationDTO {

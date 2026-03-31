@@ -826,7 +826,11 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     permissionService,
-    auditLogQueue
+    auditLogQueue,
+    keyStore,
+    smtpService,
+    userDAL,
+    notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -2130,6 +2134,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
+    auditLogService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,

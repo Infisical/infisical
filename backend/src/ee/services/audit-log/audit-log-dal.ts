@@ -15,6 +15,7 @@ import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
+  getApproximateRowCount: () => Promise<number>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -202,6 +203,26 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
+  const getApproximateRowCount: TAuditLogDALFactory["getApproximateRowCount"] = async () => {
+    try {
+      const result = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT n_live_tup::bigint AS count FROM pg_stat_user_tables WHERE relname = ?`,
+        [TableName.AuditLog]
+      );
+      if (!result.rows?.[0]?.count) {
+        const fallback = await db.raw<{ rows: Array<{ count: string | number }> }>(
+          `SELECT reltuples::bigint AS count FROM pg_class WHERE relname = ?`,
+          [TableName.AuditLog]
+        );
+        return Number(fallback.rows?.[0]?.count ?? 0);
+      }
+      return Number(result.rows[0].count);
+    } catch (error) {
+      logger.error(error, "Failed to get approximate audit log row count");
+      return 0;
+    }
+  };
+
   const create: TAuditLogDALFactory["create"] = async (tx) => {
     const config = getConfig();
 
@@ -217,5 +238,5 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
-  return { ...auditLogOrm, create, pruneAuditLog, find };
+  return { ...auditLogOrm, create, pruneAuditLog, getApproximateRowCount, find };
 };

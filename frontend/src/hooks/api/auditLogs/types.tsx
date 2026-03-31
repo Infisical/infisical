@@ -4,6 +4,13 @@ import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
+export type AuditLogMigrationStatus = {
+  clickHouseConfigured: boolean;
+  auditLogGenerationDisabled: boolean;
+  auditLogStorageDisabled: boolean;
+  auditLogRowCount: number;
+};
+
 export type TGetAuditLogsFilter = {
   eventType?: EventType[];
   userAgentType?: UserAgentType;
