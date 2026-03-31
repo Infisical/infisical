@@ -30,6 +30,8 @@ export enum TableName {
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
+  PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
+  PkiScepTransaction = "pki_scep_transactions",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",
@@ -231,6 +233,7 @@ export enum TableName {
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
   PamAccountDependency = "pam_account_dependencies",
+  PamResourceRotationRule = "pam_resource_rotation_rules",
   PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
@@ -276,7 +279,8 @@ export enum TableName {
   PkiSigningOperations = "pki_signing_operations",
 
   QueueJobs = "queue_jobs",
-  CaSigningConfig = "ca_signing_configs"
+  CaSigningConfig = "ca_signing_configs",
+  SecretValidationRule = "secret_validation_rules"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

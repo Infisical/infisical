@@ -1,7 +1,8 @@
 export enum EnrollmentType {
   API = "api",
   EST = "est",
-  ACME = "acme"
+  ACME = "acme",
+  SCEP = "scep"
 }
 
 export enum IssuerType {
@@ -81,6 +82,14 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
   };
+  scepConfig?: {
+    id: string;
+    scepEndpointUrl: string;
+    raCertificatePem: string;
+    raCertExpiresAt: string;
+    includeCaCertInResponse: boolean;
+    allowCertBasedRenewal: boolean;
+  };
 };
 
 export type TCreateCertificateProfileDTO = {
@@ -104,6 +113,11 @@ export type TCreateCertificateProfileDTO = {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
   };
+  scepConfig?: {
+    challengePassword: string;
+    includeCaCertInResponse?: boolean;
+    allowCertBasedRenewal?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;
 };
@@ -126,6 +140,11 @@ export type TUpdateCertificateProfileDTO = {
   acmeConfig?: {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
+  };
+  scepConfig?: {
+    challengePassword?: string;
+    includeCaCertInResponse?: boolean;
+    allowCertBasedRenewal?: boolean;
   };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;

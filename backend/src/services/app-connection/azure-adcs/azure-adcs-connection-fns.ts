@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-var-requires, no-await-in-loop, no-continue */
 import { NtlmClient } from "axios-ntlm";
 import https from "https";
+import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
@@ -129,7 +130,7 @@ const axiosNtlmRequest = async (config: AxiosNtlmConfig): Promise<AxiosNtlmRespo
 
   const axiosConfig = {
     httpsAgent: config.httpsAgent,
-    timeout: 30000
+    timeout: 60000
   };
 
   const client = NtlmClient(credentials, axiosConfig);
@@ -436,6 +437,28 @@ export const validateAzureADCSConnectionCredentials = async (appConnection: TAzu
       }`
     });
   }
+};
+
+// Pattern to extract <option value="..."> from ADCS certrqxt.asp template selection page
+const RE_OPTION_VALUE = new RE2('<option\\s+value="([^"]+)"', "gi");
+
+export const listAdcsTemplates = async (client: ReturnType<typeof createNtlmClient>): Promise<string[]> => {
+  const response = await client.get("/certsrv/certrqxt.asp");
+  const html: string = response.data;
+
+  const templates = new Set<string>();
+  let match = RE_OPTION_VALUE.exec(html);
+  while (match) {
+    const optionValue = match[1];
+    // Template name is the second semicolon-delimited field
+    const parts = optionValue.split(";");
+    if (parts.length >= 2 && parts[1]) {
+      templates.add(parts[1]);
+    }
+    match = RE_OPTION_VALUE.exec(html);
+  }
+
+  return [...templates];
 };
 
 export const getAzureADCSConnectionListItem = () => ({

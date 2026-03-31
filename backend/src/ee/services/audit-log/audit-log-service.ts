@@ -13,7 +13,7 @@ import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../perm
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { EventType, TAuditLogServiceFactory } from "./audit-log-types";
+import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -66,6 +66,12 @@ export const auditLogServiceFactory = ({
       );
     }
 
+    if (filter.auditLogActorId && filter.actorType && !ACTOR_TYPE_TO_METADATA_ID_KEY[filter.actorType]) {
+      throw new BadRequestError({
+        message: `Actor type '${filter.actorType}' does not support filtering by actor ID`
+      });
+    }
+
     const appCfg = getConfig();
     const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
 
@@ -109,7 +115,7 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
       return;
     }
-    // add all cases in which project id or org id cannot be added
+    // Events that don't require projectId or orgId (login events where org context may not be available)
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });

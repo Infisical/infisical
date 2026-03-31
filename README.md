@@ -95,21 +95,21 @@ Check out the [Quickstart Guides](https://infisical.com/docs/documentation/getti
 
 ### Run Infisical locally
 
-To set up and run Infisical locally, make sure you have Git and Docker installed on your system. Then run the command for your system:
+To set up and run Infisical locally, make sure you have [Git](https://git-scm.com/downloads) and [Docker](https://www.docker.com/get-started/) installed on your system.
 
-Linux/macOS:
-
+**Linux/macOS:**
 ```console
-git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.dev.example .env && docker compose -f docker-compose.prod.yml up
+git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
 
-Windows Command Prompt:
-
+**Windows (Command Prompt):**
 ```console
-git clone https://github.com/Infisical/infisical && cd infisical && copy .env.dev.example .env && docker compose -f docker-compose.prod.yml up
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
 
-Create an account at `http://localhost:80`
+Once running, create an account at [http://localhost:80](http://localhost:80).
+
+> **Contributing?** Check out our guide to see how to [get started](https://infisical.com/docs/contributing/getting-started).
 
 ### Scan and prevent secret leaks
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FieldError, FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,7 +35,9 @@ interface Props {
 
 type TFormData = TCreatePkiAlertV2;
 
-const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = [
+type TFormTab = { name: string; key: string; fields: (keyof TFormData)[] };
+
+const TABS_WITH_PREVIEW: TFormTab[] = [
   {
     name: "Details",
     key: "basicInfo",
@@ -47,7 +49,36 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = 
   { name: "Review", key: "review", fields: [] }
 ];
 
-const CHANNELS_TAB_INDEX = 3;
+const TABS_WITHOUT_PREVIEW: TFormTab[] = [
+  {
+    name: "Details",
+    key: "basicInfo",
+    fields: ["eventType", "name", "description", "notificationConfig"]
+  },
+  { name: "Filters", key: "filterRules", fields: ["filters"] },
+  { name: "Channels", key: "channels", fields: ["channels"] },
+  { name: "Review", key: "review", fields: [] }
+];
+
+const hasPreviewTab = (eventType?: PkiAlertEventTypeV2): boolean => {
+  return (
+    !eventType ||
+    eventType === PkiAlertEventTypeV2.EXPIRATION ||
+    eventType === PkiAlertEventTypeV2.RENEWAL ||
+    eventType === PkiAlertEventTypeV2.REVOCATION
+  );
+};
+
+const getFormTabs = (eventType?: PkiAlertEventTypeV2): TFormTab[] => {
+  if (hasPreviewTab(eventType)) {
+    return TABS_WITH_PREVIEW;
+  }
+  return TABS_WITHOUT_PREVIEW;
+};
+
+const getChannelsTabIndex = (eventType?: PkiAlertEventTypeV2): number => {
+  return hasPreviewTab(eventType) ? 3 : 2;
+};
 
 export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
   const { currentProject } = useProject();
@@ -82,8 +113,19 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     handleSubmit,
     trigger,
     reset,
+    watch,
     formState: { errors }
   } = formMethods;
+
+  const watchedEventType = watch("eventType");
+  const formTabs = getFormTabs(watchedEventType);
+  const channelsTabIndex = getChannelsTabIndex(watchedEventType);
+
+  useEffect(() => {
+    if (selectedTabIndex >= formTabs.length) {
+      setSelectedTabIndex(0);
+    }
+  }, [watchedEventType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { mutateAsync: createAlert } = useCreatePkiAlertV2();
   const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
@@ -224,9 +266,9 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     setSelectedTabIndex((prev) => prev - 1);
   };
 
-  const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
+  const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
-  const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isFinalStep = selectedTabIndex === formTabs.length - 1;
 
   // Helper to find first channel with error and expand it
   const getFirstChannelErrorIndex = (): number => {
@@ -244,7 +286,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     const isValid = await isStepValid(selectedTabIndex);
     if (!isValid) {
       // If on channels tab and validation failed, expand first channel with error
-      if (selectedTabIndex === CHANNELS_TAB_INDEX) {
+      if (selectedTabIndex === channelsTabIndex) {
         const firstErrorIdx = getFirstChannelErrorIndex();
         if (firstErrorIdx >= 0) {
           setExpandedChannel(`channel-${firstErrorIdx}`);
@@ -274,7 +316,8 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       >
         <form
           className={twMerge(
-            "flex min-h-[60vh] flex-col",
+            "flex flex-col",
+            hasPreviewTab(watchedEventType) ? "min-h-[60vh]" : "min-h-[40vh]",
             isFinalStep && "max-h-[70vh] overflow-y-auto"
           )}
         >
@@ -282,7 +325,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
             <FormProvider {...formMethods}>
               <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
                 <Tab.List className="-pb-1 mb-6 flex w-full justify-center border-b-2 border-mineshaft-600">
-                  {FORM_TABS.map((tab, index) => (
+                  {formTabs.map((tab, index) => (
                     <Tab
                       onClick={async (e) => {
                         e.preventDefault();
@@ -306,6 +349,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                   <CreatePkiAlertV2FormSteps
                     expandedChannel={expandedChannel}
                     setExpandedChannel={setExpandedChannel}
+                    showPreview={hasPreviewTab(watchedEventType)}
                   />
                 </Tab.Panels>
               </Tab.Group>

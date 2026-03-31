@@ -1,3 +1,8 @@
+export enum GatewayHealthCheckStatus {
+  Healthy = "healthy",
+  Failed = "failed"
+}
+
 export type TGatewayV2ConnectionDetails = {
   relayHost: string;
   gateway: {

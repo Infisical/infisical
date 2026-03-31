@@ -80,9 +80,14 @@ export const ViewSharedSecretByIDPage = () => {
     sharedSecretId: id
   });
 
-  // Auto-access when the secret is not password protected
+  // Auto-access when the user is authorized and no password is needed
   useEffect(() => {
-    if (secretDetails && !secretDetails.isPasswordProtected && !hasTriggeredAccess.current) {
+    if (
+      secretDetails &&
+      secretDetails.isAuthorizedUser &&
+      !secretDetails.isPasswordProtected &&
+      !hasTriggeredAccess.current
+    ) {
       hasTriggeredAccess.current = true;
       accessMutation.mutate({ sharedSecretId: id });
     }
@@ -125,10 +130,11 @@ export const ViewSharedSecretByIDPage = () => {
 
   const secret = accessMutation.data;
   const isPasswordProtected = secretDetails?.isPasswordProtected ?? false;
+  const needsPassword = isPasswordProtected;
   // only show password prompt if no critical error (403/404) occurred after submission
   const hasCriticalError = accessMutation.isError && (isForbidden || isNotFound);
-  const showPasswordPrompt = isPasswordProtected && !secret && !hasCriticalError;
-  const isLoading = isLoadingDetails || (!isPasswordProtected && accessMutation.isPending);
+  const showPasswordPrompt = needsPassword && !secret && !hasCriticalError;
+  const isLoading = isLoadingDetails || (!needsPassword && accessMutation.isPending);
 
   const hasCustomBranding = !!brandingConfig;
 

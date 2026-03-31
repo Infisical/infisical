@@ -164,7 +164,10 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityLdapAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -195,7 +198,13 @@ export const identityLdapAuthServiceFactory = ({
 
         if (!subOrgMembership) {
           throw new UnauthorizedError({
-            message: `Identity not authorized to access sub organization ${organizationSlug}`
+            message: `Identity not authorized to access sub organization ${organizationSlug}`,
+            detail: {
+              reasonCode: "sub_org_unauthorized",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -848,6 +857,9 @@ export const identityLdapAuthServiceFactory = ({
   ): Promise<T> => {
     const usernameSlug = slugify(username.trim().toLowerCase());
 
+    const identity = await identityDAL.findById(identityId);
+    const orgId = identity?.orgId ?? null;
+
     const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
 
     const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
@@ -859,7 +871,8 @@ export const identityLdapAuthServiceFactory = ({
 
     if (lockout && lockout?.lockedOut) {
       throw new UnauthorizedError({
-        message: "This identity auth method is temporarily locked, please try again later"
+        message: "This identity auth method is temporarily locked, please try again later",
+        detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
       });
     }
 
@@ -877,7 +890,10 @@ export const identityLdapAuthServiceFactory = ({
       if ((error as any).status === 401 || error instanceof UnauthorizedError) {
         const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
         if (!identityLdapAuth) {
-          throw new UnauthorizedError({ message: "Invalid credentials" });
+          throw new UnauthorizedError({
+            message: "Invalid credentials",
+            detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
+          });
         }
 
         if (identityLdapAuth.lockoutEnabled) {
@@ -902,7 +918,8 @@ export const identityLdapAuthServiceFactory = ({
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
-                message: "This identity auth method is temporarily locked, please try again later"
+                message: "This identity auth method is temporarily locked, please try again later",
+                detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
               });
             }
 
@@ -931,7 +948,10 @@ export const identityLdapAuthServiceFactory = ({
           }
         }
 
-        throw new UnauthorizedError({ message: "Invalid credentials" });
+        throw new UnauthorizedError({
+          message: "Invalid credentials",
+          detail: { reasonCode: "invalid_credentials", identityId, orgId, identityName: identity?.name }
+        });
       }
       throw error;
     }

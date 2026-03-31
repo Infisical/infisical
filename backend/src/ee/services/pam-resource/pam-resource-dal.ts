@@ -2,15 +2,14 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPamResources } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
+import { TPamResourceWithFavorite } from "@app/ee/services/pam-resource/pam-resource-types";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { PamResourceOrderBy } from "./pam-resource-enums";
-
-type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 
 export type TPamResourceDALFactory = ReturnType<typeof pamResourceDALFactory>;
 export const pamResourceDALFactory = (db: TDbClient) => {

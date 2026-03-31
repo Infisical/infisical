@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -124,6 +124,37 @@ const DependencyRow = ({
           )}
         </UnstableTableCell>
         <UnstableTableCell>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted">
+              {dep.lastSyncedAt
+                ? formatDistance(new Date(dep.lastSyncedAt), new Date(), { addSuffix: true })
+                : "Never"}
+            </span>
+            {dep.syncStatus === "failed" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="danger" className="text-xs">
+                    Failed
+                  </Badge>
+                </TooltipTrigger>
+                {dep.lastSyncMessage && (
+                  <TooltipContent className="max-w-sm">{dep.lastSyncMessage}</TooltipContent>
+                )}
+              </Tooltip>
+            )}
+            {dep.syncStatus === "pending" && (
+              <Badge variant="info" className="animate-pulse text-xs">
+                Pending
+              </Badge>
+            )}
+            {dep.syncStatus === "success" && (
+              <Badge variant="success" className="text-xs">
+                Success
+              </Badge>
+            )}
+          </div>
+        </UnstableTableCell>
+        <UnstableTableCell>
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <UnstableIconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
@@ -204,7 +235,7 @@ type PamDependenciesTableProps = {
   getContextValue: (dep: TDependencyItem) => string | null | undefined;
 };
 
-const COL_COUNT = 7;
+const COL_COUNT = 8;
 
 export const PamDependenciesTable = ({
   dependencies,
@@ -254,6 +285,7 @@ export const PamDependenciesTable = ({
                 </Tooltip>
               </div>
             </UnstableTableHead>
+            <UnstableTableHead>Last Synced</UnstableTableHead>
             <UnstableTableHead className="w-5" />
           </UnstableTableRow>
         </UnstableTableHeader>

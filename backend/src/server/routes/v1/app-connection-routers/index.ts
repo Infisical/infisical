@@ -22,6 +22,7 @@ import { registerDatabricksConnectionRouter } from "./databricks-connection-rout
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
+import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -110,5 +111,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
-    [AppConnection.Venafi]: registerVenafiConnectionRouter
+    [AppConnection.Venafi]: registerVenafiConnectionRouter,
+    [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter
   };

@@ -6,7 +6,7 @@ import { ApiDocsTags, AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -118,7 +118,8 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
           offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
           limit: z.coerce.number().max(1000).default(20).describe(AUDIT_LOGS.EXPORT.limit),
-          actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+          actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor),
+          actorType: z.nativeEnum(ActorType).optional().describe(AUDIT_LOGS.EXPORT.actorType)
         })
         .superRefine((el, ctx) => {
           if (el.endDate && el.startDate) {
@@ -186,6 +187,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           endDate: req.query.endDate || new Date().toISOString(),
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
+          actorType: req.query.actorType,
           eventType: req.query.eventType ? [req.query.eventType] : undefined
         }
       });

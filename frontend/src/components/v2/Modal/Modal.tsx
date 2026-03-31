@@ -37,7 +37,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
   ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className={twMerge("animate-fade-in fixed inset-0 z-30 h-full w-full", overlayClassName)}
+        className={twMerge("animate-fade-in fixed inset-0 z-[60] h-full w-full", overlayClassName)}
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content
@@ -60,7 +60,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         <Card
           isRounded
           className={twMerge(
-            "animate-pop-in fixed top-1/2 left-1/2 z-30 thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
+            "animate-pop-in fixed top-1/2 left-1/2 z-[60] thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
             className
           )}
           style={{ maxHeight: "90%" }}

@@ -1,4 +1,4 @@
-import { Spinner } from "@app/components/v2";
+import { Button, Label } from "@app/components/v3";
 import {
   PAM_DISCOVERY_TYPE_MAP,
   PamDiscoveryType,
@@ -14,35 +14,31 @@ export const DiscoveryTypeSelect = ({ onSelect }: Props) => {
 
   if (isPending) {
     return (
-      <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+      <div className="flex h-full items-center justify-center">
+        <Label>Loading options...</Label>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="flex flex-col gap-2 p-4">
       {(discoveryOptions || []).map((option) => {
         const details = PAM_DISCOVERY_TYPE_MAP[option.discoveryType];
         return (
-          <button
+          <Button
             key={option.discoveryType}
-            type="button"
             onClick={() => onSelect(option.discoveryType)}
-            className="group flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+            size="lg"
+            variant="neutral"
+            className="w-full"
           >
-            <div className="relative my-auto">
-              <img
-                src={`/images/integrations/${details.image}`}
-                className="size-10"
-                alt={`${details.name} logo`}
-              />
-            </div>
-            <div className="max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-              {details.name}
-            </div>
-          </button>
+            <img
+              src={`/images/integrations/${details.image}`}
+              className="size-6"
+              alt={`${details.name} logo`}
+            />
+            <Label className="pointer-events-none">{details.name}</Label>
+          </Button>
         );
       })}
     </div>

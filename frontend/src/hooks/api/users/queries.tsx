@@ -338,7 +338,7 @@ export const clearSession = (keepQueryClient?: boolean) => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   if (!keepQueryClient) {
-    qc.invalidateQueries();
+    qc.clear();
   }
 };
 

@@ -85,6 +85,13 @@ export const registerCertificateProfilesRouter = async (
               skipEabBinding: z.boolean().optional()
             })
             .optional(),
+          scepConfig: z
+            .object({
+              challengePassword: z.string().min(8),
+              includeCaCertInResponse: z.boolean().optional(),
+              allowCertBasedRenewal: z.boolean().optional()
+            })
+            .optional(),
           externalConfigs: ExternalConfigUnionSchema,
           defaults: z
             .object({
@@ -155,34 +162,56 @@ export const registerCertificateProfilesRouter = async (
         .refine(
           (data) => {
             if (data.enrollmentType === EnrollmentType.EST) {
-              return !data.apiConfig && !data.acmeConfig;
+              return !data.apiConfig && !data.acmeConfig && !data.scepConfig;
             }
             return true;
           },
           {
-            message: "EST enrollment type cannot have API or ACME configuration"
+            message: "EST enrollment type cannot have API, ACME, or SCEP configuration"
           }
         )
         .refine(
           (data) => {
             if (data.enrollmentType === EnrollmentType.API) {
-              return !data.estConfig && !data.acmeConfig;
+              return !data.estConfig && !data.acmeConfig && !data.scepConfig;
             }
             return true;
           },
           {
-            message: "API enrollment type cannot have EST or ACME configuration"
+            message: "API enrollment type cannot have EST, ACME, or SCEP configuration"
           }
         )
         .refine(
           (data) => {
             if (data.enrollmentType === EnrollmentType.ACME) {
-              return !data.estConfig && !data.apiConfig;
+              return !data.estConfig && !data.apiConfig && !data.scepConfig;
             }
             return true;
           },
           {
-            message: "ACME enrollment type cannot have EST or API configuration"
+            message: "ACME enrollment type cannot have EST, API, or SCEP configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.SCEP) {
+              return !!data.scepConfig?.challengePassword;
+            }
+            return true;
+          },
+          {
+            message: "SCEP enrollment type requires SCEP configuration with a challenge password"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.SCEP) {
+              return !data.estConfig && !data.apiConfig && !data.acmeConfig;
+            }
+            return true;
+          },
+          {
+            message: "SCEP enrollment type cannot have EST, API, or ACME configuration"
           }
         )
         .refine(
@@ -321,6 +350,16 @@ export const registerCertificateProfilesRouter = async (
                 skipEabBinding: z.boolean().optional()
               })
               .optional(),
+            scepConfig: z
+              .object({
+                id: z.string(),
+                scepEndpointUrl: z.string(),
+                raCertificatePem: z.string(),
+                raCertExpiresAt: z.date(),
+                includeCaCertInResponse: z.boolean(),
+                allowCertBasedRenewal: z.boolean()
+              })
+              .optional(),
             externalConfigs: ExternalConfigUnionSchema,
             defaults: CertificateProfileDefaultsResponseSchema
           }).array(),
@@ -411,6 +450,16 @@ export const registerCertificateProfilesRouter = async (
                 directoryUrl: z.string(),
                 skipDnsOwnershipVerification: z.boolean().optional(),
                 skipEabBinding: z.boolean().optional()
+              })
+              .optional(),
+            scepConfig: z
+              .object({
+                id: z.string(),
+                scepEndpointUrl: z.string(),
+                raCertificatePem: z.string(),
+                raCertExpiresAt: z.date(),
+                includeCaCertInResponse: z.boolean(),
+                allowCertBasedRenewal: z.boolean()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema
@@ -525,6 +574,13 @@ export const registerCertificateProfilesRouter = async (
             .object({
               skipDnsOwnershipVerification: z.boolean().optional(),
               skipEabBinding: z.boolean().optional()
+            })
+            .optional(),
+          scepConfig: z
+            .object({
+              challengePassword: z.string().min(8).optional(),
+              includeCaCertInResponse: z.boolean().optional(),
+              allowCertBasedRenewal: z.boolean().optional()
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema,

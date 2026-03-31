@@ -41,7 +41,7 @@ import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
+import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 type TGatewayV2ServiceFactoryDep = {
@@ -717,6 +717,123 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
+  const $checkGatewayHealth = async (gatewayId: string) => {
+    const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost: "health-check",
+      targetPort: 443
+    });
+
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: `Gateway connection details for gateway ${gatewayId} not found.` });
+    }
+
+    let isGatewayReachable = false;
+    try {
+      isGatewayReachable = await withGatewayV2Proxy(
+        async (port) => {
+          return new Promise<boolean>((resolve, reject) => {
+            const socket = new net.Socket();
+            let responseReceived = false;
+            let isResolved = false;
+
+            socket.setTimeout(10000);
+
+            const cleanup = () => {
+              if (!socket.destroyed) {
+                socket.destroy();
+              }
+            };
+
+            socket.on("data", (data: Buffer) => {
+              const response = data.toString().trim();
+              if (response === "PONG" && !isResolved) {
+                isResolved = true;
+                responseReceived = true;
+                cleanup();
+                resolve(true);
+              }
+            });
+
+            socket.on("error", (err: Error) => {
+              if (!isResolved) {
+                isResolved = true;
+                cleanup();
+                reject(new Error(`TCP connection error: ${err.message}`));
+              }
+            });
+
+            socket.on("timeout", () => {
+              if (!isResolved) {
+                isResolved = true;
+                cleanup();
+                reject(new Error("TCP connection timeout"));
+              }
+            });
+
+            socket.on("close", () => {
+              if (!isResolved && !responseReceived) {
+                isResolved = true;
+                cleanup();
+                reject(new Error("Connection closed without receiving PONG"));
+              }
+            });
+
+            socket.connect(port, "localhost");
+          });
+        },
+        {
+          protocol: GatewayProxyProtocol.Ping,
+          relayHost: gatewayV2ConnectionDetails.relayHost,
+          gateway: gatewayV2ConnectionDetails.gateway,
+          relay: gatewayV2ConnectionDetails.relay
+        }
+      );
+    } catch (err) {
+      await gatewayV2DAL.updateById(gatewayId, {
+        heartbeat: new Date(),
+        lastHealthCheckStatus: GatewayHealthCheckStatus.Failed
+      });
+      throw err;
+    }
+
+    if (!isGatewayReachable) {
+      await gatewayV2DAL.updateById(gatewayId, {
+        heartbeat: new Date(),
+        lastHealthCheckStatus: GatewayHealthCheckStatus.Failed
+      });
+      throw new BadRequestError({ message: `Gateway ${gatewayId} is not reachable` });
+    }
+
+    await gatewayV2DAL.updateById(gatewayId, {
+      heartbeat: new Date(),
+      lastHealthCheckStatus: GatewayHealthCheckStatus.Healthy
+    });
+  };
+
+  const triggerHeartbeat = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
+    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${id} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    await $checkGatewayHealth(gateway.id);
+  };
+
   const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
     await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
 
@@ -729,82 +846,7 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
     }
 
-    const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
-      gatewayId: gateway.id,
-      targetHost: "health-check",
-      targetPort: 443
-    });
-
-    if (!gatewayV2ConnectionDetails) {
-      throw new NotFoundError({ message: `Gateway connection details for gateway ${gateway.id} not found.` });
-    }
-
-    const isGatewayReachable = await withGatewayV2Proxy(
-      async (port) => {
-        return new Promise<boolean>((resolve, reject) => {
-          const socket = new net.Socket();
-          let responseReceived = false;
-          let isResolved = false;
-
-          // Set socket timeout
-          socket.setTimeout(10000);
-
-          const cleanup = () => {
-            if (!socket.destroyed) {
-              socket.destroy();
-            }
-          };
-
-          socket.on("data", (data: Buffer) => {
-            const response = data.toString().trim();
-            if (response === "PONG" && !isResolved) {
-              isResolved = true;
-              responseReceived = true;
-              cleanup();
-              resolve(true);
-            }
-          });
-
-          socket.on("error", (err: Error) => {
-            if (!isResolved) {
-              isResolved = true;
-              cleanup();
-              reject(new Error(`TCP connection error: ${err.message}`));
-            }
-          });
-
-          socket.on("timeout", () => {
-            if (!isResolved) {
-              isResolved = true;
-              cleanup();
-              reject(new Error("TCP connection timeout"));
-            }
-          });
-
-          socket.on("close", () => {
-            if (!isResolved && !responseReceived) {
-              isResolved = true;
-              cleanup();
-              reject(new Error("Connection closed without receiving PONG"));
-            }
-          });
-
-          socket.connect(port, "localhost");
-        });
-      },
-      {
-        protocol: GatewayProxyProtocol.Ping,
-        relayHost: gatewayV2ConnectionDetails.relayHost,
-        gateway: gatewayV2ConnectionDetails.gateway,
-        relay: gatewayV2ConnectionDetails.relay
-      }
-    );
-
-    if (!isGatewayReachable) {
-      throw new BadRequestError({ message: `Gateway ${gateway.id} is not reachable` });
-    }
-
-    await gatewayV2DAL.updateById(gateway.id, { heartbeat: new Date() });
+    await $checkGatewayHealth(gateway.id);
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
@@ -1010,6 +1052,7 @@ export const gatewayV2ServiceFactory = ({
     getPAMConnectionDetails,
     deleteGatewayById,
     heartbeat,
+    triggerHeartbeat,
     getPamSessionKey,
     healthcheckNotify,
     getConnectedResources

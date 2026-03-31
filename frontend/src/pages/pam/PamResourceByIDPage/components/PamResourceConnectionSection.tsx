@@ -188,6 +188,7 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
   switch (resource.resourceType) {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
+    case PamResourceType.MsSQL:
       return <SqlConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.SSH:
       return <SSHConnectionDetails connectionDetails={resource.connectionDetails} />;

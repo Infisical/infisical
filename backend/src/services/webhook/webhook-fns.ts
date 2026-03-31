@@ -7,6 +7,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -40,6 +41,7 @@ export const triggerWebhookRequest = async (
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
+  await blockLocalAndPrivateIpAddresses(url);
   if (secretKey) {
     const webhookSign = crypto.nativeCrypto
       .createHmac("sha256", secretKey)
@@ -98,6 +100,69 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             projectName,
             environment,
             secretPath
+          }
+        };
+    }
+  }
+
+  if (event.type === WebhookEvents.SecretRotationFailed) {
+    const { projectName, projectId, environment, secretPath, type, rotationName, errorMessage, triggeredManually } =
+      event.payload;
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: "A secret rotation has failed.",
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                {
+                  title: "Rotation Name",
+                  value: rotationName,
+                  short: false
+                },
+                {
+                  title: "Project",
+                  value: projectName,
+                  short: false
+                },
+                {
+                  title: "Environment",
+                  value: environment,
+                  short: false
+                },
+                {
+                  title: "Secret Path",
+                  value: secretPath,
+                  short: false
+                },
+                {
+                  title: "Error Message",
+                  value: errorMessage,
+                  short: false
+                },
+                {
+                  title: "Triggered Manually",
+                  value: triggeredManually ? "Yes" : "No",
+                  short: false
+                }
+              ]
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          project: {
+            projectId,
+            projectName,
+            environment,
+            secretPath,
+            rotationName,
+            errorMessage,
+            triggeredManually
           }
         };
     }

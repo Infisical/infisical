@@ -4,6 +4,36 @@ import { z } from "zod";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectServiceActor } from "@app/lib/types";
 
+export enum SessionEndReason {
+  SessionCompleted = "Session duration complete",
+  UserQuit = "Goodbye",
+  ConnectionLost = "Connection lost",
+  SetupFailed = "Failed to establish connection",
+  IdleTimeout = "Session closed due to inactivity",
+  SessionLimitReached = "Maximum concurrent sessions reached"
+}
+
+export enum TerminalServerMessageType {
+  Ready = "ready",
+  Output = "output",
+  SessionEnd = "session_end"
+}
+
+// Terminal server message schema — used by TSessionContext.sendMessage
+export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.enum([TerminalServerMessageType.Ready, TerminalServerMessageType.Output]),
+    data: z.string(),
+    prompt: z.string().default("")
+  }),
+  z.object({
+    type: z.literal(TerminalServerMessageType.SessionEnd),
+    reason: z.nativeEnum(SessionEndReason)
+  })
+]);
+
+export type TWebSocketServerMessage = z.input<typeof WebSocketServerMessageSchema>;
+
 // Default session duration for web access sessions (1 hour in ms)
 export const DEFAULT_WEB_SESSION_DURATION_MS = 60 * 60 * 1000;
 
@@ -15,46 +45,6 @@ export const WS_PING_INTERVAL_MS = 30000;
 
 // Idle timeout (ms) — auto-close sessions with no user input/control messages
 export const WS_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
-
-export enum WsMessageType {
-  Ready = "ready",
-  Output = "output",
-  Input = "input",
-  Control = "control",
-  Resize = "resize",
-  SessionEnd = "session_end"
-}
-
-export enum SessionEndReason {
-  SessionCompleted = "Session duration complete. Connection closed.",
-  UserQuit = "Goodbye!",
-  ConnectionLost = "Connection lost. Session ended.",
-  SetupFailed = "Failed to establish connection.",
-  IdleTimeout = "Session closed due to inactivity."
-}
-
-const WebSocketOutputMessageSchema = z.object({
-  type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
-  data: z.string(),
-  prompt: z.string().default("")
-});
-
-const WebSocketSessionEndMessageSchema = z.object({
-  type: z.literal(WsMessageType.SessionEnd),
-  reason: z.nativeEnum(SessionEndReason)
-});
-
-export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
-  WebSocketOutputMessageSchema,
-  WebSocketSessionEndMessageSchema
-]);
-
-export type TWebSocketServerMessage = z.input<typeof WebSocketServerMessageSchema>;
-
-export const WebSocketClientMessageSchema = z.object({
-  type: z.enum([WsMessageType.Input, WsMessageType.Control, WsMessageType.Resize]),
-  data: z.string()
-});
 
 export type TSessionContext = {
   socket: WebSocket;
@@ -69,27 +59,6 @@ export type TSessionContext = {
 
 export type TSessionHandlerResult = {
   cleanup: () => Promise<void>;
-};
-
-export const resolveEndReason = (isNearSessionExpiry: () => boolean): SessionEndReason =>
-  isNearSessionExpiry() ? SessionEndReason.SessionCompleted : SessionEndReason.ConnectionLost;
-
-export const parseWsClientMessage = (
-  rawData: Buffer | ArrayBuffer | Buffer[]
-): z.infer<typeof WebSocketClientMessageSchema> | null => {
-  let data: string;
-  if (Buffer.isBuffer(rawData)) data = rawData.toString();
-  else if (Array.isArray(rawData)) data = Buffer.concat(rawData).toString();
-  else data = Buffer.from(rawData).toString();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(data);
-  } catch {
-    return null;
-  }
-  const result = WebSocketClientMessageSchema.safeParse(parsed);
-  return result.success ? result.data : null;
 };
 
 export type TIssueWebSocketTicketDTO = {

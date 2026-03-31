@@ -1,0 +1,249 @@
+/* eslint-disable no-continue, no-await-in-loop */
+import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
+
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { createAdcsHttpClient } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
+
+const POLL_INTERVAL_MS = 5000;
+const MAX_POLL_ATTEMPTS = 120;
+
+// Pre-compiled regex patterns
+const RE_NON_BASE64 = new RE2("[^A-Za-z0-9+/=\\s]", "g");
+const RE_WHITESPACE = new RE2("\\s", "g");
+const RE_BASE64_WRAP = new RE2("(.{64})", "g");
+const RE_CSR_BEGIN = new RE2("-----BEGIN CERTIFICATE REQUEST-----", "g");
+const RE_CSR_END = new RE2("-----END CERTIFICATE REQUEST-----", "g");
+const RE_CSR_NEWLINES = new RE2("\\r?\\n", "g");
+const RE_PEM_CERT = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----");
+const RE_ESCAPED_CRLF = new RE2("\\\\r\\\\n", "g");
+const RE_ESCAPED_CR = new RE2("\\\\r", "g");
+const RE_CRLF = new RE2("[\\r\\n]", "g");
+// Error detail extraction patterns for ADCS error pages
+const RE_DISPOSITION_INLINE = new RE2('disposition\\s+message\\s+is\\s+"([^"]+)"', "i");
+const RE_RESULT_FIELD = new RE2("<b>Result:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_COM_ERROR = new RE2("<b>COM Error Info:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_DISPOSITION_DD = new RE2("<b>Disposition message:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+const RE_SUGGESTED_CAUSE = new RE2("<b>Suggested Cause:</b>[^<]*(?:<[^>]*>)*\\s*([^<]+)", "i");
+
+const ADCS_ERROR_PATTERNS = [
+  RE_DISPOSITION_INLINE,
+  RE_DISPOSITION_DD,
+  RE_RESULT_FIELD,
+  RE_COM_ERROR,
+  RE_SUGGESTED_CAUSE
+];
+
+const extractAdcsErrorDetail = (html: string): string => {
+  for (const re of ADCS_ERROR_PATTERNS) {
+    const match = html.match(re);
+    const val = match?.[1]?.trim();
+    if (val && !val.startsWith("(")) {
+      return val;
+    }
+  }
+  return "";
+};
+
+const REQUEST_ID_PATTERNS = [
+  new RE2("reqid[=:](\\d+)", "i"),
+  new RE2("request\\s+id[:\\s]+(\\d+)", "i"),
+  new RE2("certificate\\s+request\\s+(\\d+)", "i"),
+  new RE2("\\breqid=(\\d+)\\b", "i"),
+  new RE2("requestid[:\\s]*(\\d+)", "i")
+];
+
+/**
+ * Fetch the issuing CA certificate from ADCS web enrollment.
+ * Uses the /certsrv/certnew.cer endpoint which returns an X.509 certificate,
+ * NOT the .p7b endpoint which returns a PKCS#7 container that cannot be
+ * parsed as individual X.509 certs.
+ */
+const fetchAdcsCaChain = async (adcsClient: ReturnType<typeof createAdcsHttpClient>): Promise<string> => {
+  const caCertResponse = await adcsClient.get("/certsrv/certnew.cer?ReqID=CACert&Renewal=0&Enc=b64", {
+    Accept: "application/pkix-cert,application/x-x509-ca-cert,*/*"
+  });
+
+  const caCertData: string = caCertResponse.data;
+
+  // Already PEM-formatted
+  if (caCertData.includes("-----BEGIN CERTIFICATE-----")) {
+    const pemCert = caCertData.trim();
+    // Validate it's actually parseable as X.509 (throws on invalid input)
+    // eslint-disable-next-line no-new
+    new x509.X509Certificate(pemCert);
+    return pemCert;
+  }
+
+  // Raw base64 — convert to PEM
+  let cleanData = caCertData.trim();
+  cleanData = cleanData.replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
+
+  if (cleanData.length < 100) {
+    throw new BadRequestError({ message: "Failed to retrieve CA certificate from ADCS: response too short" });
+  }
+
+  const formatted = cleanData.replace(RE_BASE64_WRAP, "$1\n").trim();
+  const pemCert = `-----BEGIN CERTIFICATE-----\n${formatted}\n-----END CERTIFICATE-----`;
+
+  // Validate it's actually parseable as X.509 (throws on invalid input)
+  // eslint-disable-next-line no-new
+  new x509.X509Certificate(pemCert);
+
+  return pemCert;
+};
+
+export const submitCsrToAdcs = async (params: {
+  credentials: { username: string; password: string; sslRejectUnauthorized?: boolean; sslCertificate?: string };
+  adcsUrl: string;
+  csr: string;
+  template: string;
+  validityPeriod?: number;
+}): Promise<{ certificate: string; certificateChain: string }> => {
+  const { credentials, adcsUrl, csr, template, validityPeriod } = params;
+
+  const adcsClient = createAdcsHttpClient(
+    credentials.username,
+    credentials.password,
+    adcsUrl,
+    credentials.sslRejectUnauthorized ?? true,
+    credentials.sslCertificate
+  );
+
+  // Clean CSR by removing headers and newlines for ADCS submission
+  const cleanCsr = csr.replace(RE_CSR_BEGIN, "").replace(RE_CSR_END, "").replace(RE_CSR_NEWLINES, "");
+
+  // Build certificate attributes
+  const sanitizedTemplate = RE_CRLF.replace(template.trim(), "");
+  const certAttribParts: string[] = [`CertificateTemplate:${sanitizedTemplate}`];
+
+  if (validityPeriod) {
+    const ttlMs = validityPeriod * 86400000;
+    const expirationDate = new Date(Date.now() + ttlMs);
+    const rfc2616Date = expirationDate.toUTCString();
+    certAttribParts.push(`ExpirationDate:${rfc2616Date}`);
+  }
+
+  const certAttrib = `${certAttribParts.join("\r\n")}\r\n`;
+
+  const formData = new URLSearchParams({
+    Mode: "newreq",
+    CertRequest: cleanCsr,
+    CertAttrib: certAttrib,
+    FriendlyType: "Saved-Request Certificate",
+    TargetStoreFlags: "0",
+    SaveCert: "yes"
+  });
+
+  const response = await adcsClient.post("/certsrv/certfnsh.asp", formData.toString());
+  const responseText = response.data;
+
+  // Parse request ID
+  let requestId: string | undefined;
+  let status: "issued" | "pending" | "denied" = "pending";
+  let certificate = "";
+
+  for (const regex of REQUEST_ID_PATTERNS) {
+    const match = responseText.match(regex);
+    if (match) {
+      [, requestId] = match;
+      break;
+    }
+  }
+
+  // Check for immediate certificate issuance
+  const certMatch = responseText.match(RE_PEM_CERT);
+  if (certMatch) {
+    certificate = certMatch[0].replace(RE_ESCAPED_CRLF, "\n").replace(RE_ESCAPED_CR, "\n").trim();
+    status = "issued";
+  }
+
+  // Check disposition message (only if we didn't already extract a certificate)
+  if (!certificate) {
+    if (responseText.includes("taken under submission") || responseText.includes("pending")) {
+      status = "pending";
+    } else if (responseText.includes("denied") || responseText.includes("rejected")) {
+      status = "denied";
+    } else if (responseText.includes("issued")) {
+      status = "issued";
+    }
+  }
+
+  if (status === "denied") {
+    const detail = extractAdcsErrorDetail(responseText);
+    throw new BadRequestError({
+      message: detail ? `Certificate request was denied by ADCS: ${detail}` : "Certificate request was denied by ADCS"
+    });
+  }
+
+  if (status === "issued" && certificate) {
+    const certificateChain = await fetchAdcsCaChain(adcsClient);
+    return { certificate, certificateChain };
+  }
+
+  // If pending, poll for the certificate
+  if (!requestId) {
+    const detail = extractAdcsErrorDetail(responseText);
+    throw new BadRequestError({
+      message: detail
+        ? `Certificate request failed: ${detail}`
+        : "Certificate request failed: could not parse request ID or certificate from ADCS response"
+    });
+  }
+
+  logger.info({ requestId }, "ADCS certificate request pending, polling for completion");
+
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, POLL_INTERVAL_MS);
+    });
+
+    try {
+      const certResponse = await adcsClient.get(`/certsrv/certnew.cer?ReqID=${requestId}&Enc=b64`, {
+        Accept: "application/pkix-cert,application/x-x509-ca-cert,application/octet-stream,*/*"
+      });
+
+      const certData = certResponse.data;
+
+      // Still pending
+      if (certData.includes("<html>") || certData.includes("taken under submission") || certData.includes("pending")) {
+        continue;
+      }
+
+      // Certificate in PEM format
+      if (certData.includes("-----BEGIN CERTIFICATE-----")) {
+        const polledCert = certData.trim();
+        const certificateChain = await fetchAdcsCaChain(adcsClient);
+        return { certificate: polledCert, certificateChain };
+      }
+
+      // Handle base64-encoded certificate data
+      let cleanCertData = certData.trim();
+      cleanCertData = cleanCertData.replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
+
+      if (cleanCertData.length < 100) {
+        continue;
+      }
+
+      const formattedCert = cleanCertData.replace(RE_BASE64_WRAP, "$1\n").trim();
+      const pemCert = `-----BEGIN CERTIFICATE-----\n${formattedCert}\n-----END CERTIFICATE-----`;
+
+      // Validate the PEM (throws on invalid input)
+      // eslint-disable-next-line no-new
+      new x509.X509Certificate(pemCert);
+      const certificateChain = await fetchAdcsCaChain(adcsClient);
+      return { certificate: pemCert, certificateChain };
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      // Continue polling on transient errors
+      logger.warn({ requestId, attempt, error }, "ADCS poll attempt failed, retrying");
+    }
+  }
+
+  throw new BadRequestError({
+    message: `Certificate request ${requestId} did not complete within the polling timeout`
+  });
+};

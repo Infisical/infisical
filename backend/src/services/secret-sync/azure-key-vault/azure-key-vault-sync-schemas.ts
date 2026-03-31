@@ -20,9 +20,20 @@ const AzureKeyVaultSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_KEY_VAULT.vaultBaseUrl)
 });
 
+const AzureKeyVaultSyncOptionsSchema = z.object({
+  disableCertificateImport: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AZURE_KEY_VAULT.disableCertificateImport)
+});
+
 const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(SecretSync.AzureKeyVault, AzureKeyVaultSyncOptionsConfig)
+export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(
+  SecretSync.AzureKeyVault,
+  AzureKeyVaultSyncOptionsConfig,
+  AzureKeyVaultSyncOptionsSchema
+)
   .extend({
     destination: z.literal(SecretSync.AzureKeyVault),
     destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
@@ -31,14 +42,16 @@ export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(SecretSync.AzureKeyV
 
 export const CreateAzureKeyVaultSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AzureKeyVault,
-  AzureKeyVaultSyncOptionsConfig
+  AzureKeyVaultSyncOptionsConfig,
+  AzureKeyVaultSyncOptionsSchema
 ).extend({
   destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
 });
 
 export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AzureKeyVault,
-  AzureKeyVaultSyncOptionsConfig
+  AzureKeyVaultSyncOptionsConfig,
+  AzureKeyVaultSyncOptionsSchema
 ).extend({
   destinationConfig: AzureKeyVaultSyncDestinationConfigSchema.optional()
 });

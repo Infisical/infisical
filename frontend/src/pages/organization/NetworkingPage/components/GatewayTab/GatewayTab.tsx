@@ -4,6 +4,7 @@ import {
   faDoorClosed,
   faEdit,
   faEllipsisV,
+  faHeartPulse,
   faInfoCircle,
   faMagnifyingGlass,
   faPlus,
@@ -47,22 +48,29 @@ import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import {
   useDeleteGatewayV2ById,
-  useGetGatewayConnectedResources
+  useGetGatewayConnectedResources,
+  useTriggerGatewayV2Heartbeat
 } from "@app/hooks/api/gateways-v2";
+import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
-const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+const GatewayHealthStatus = ({
+  heartbeat,
+  lastHealthCheckStatus
+}: {
+  heartbeat?: string;
+  lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
+}) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = heartbeatDate && heartbeatDate >= oneHourAgo;
+  const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
+
   const tooltipContent = heartbeatDate
-    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
-    : "No heartbeat data available";
+    ? `Last health check: ${heartbeatDate.toLocaleString()}`
+    : "No health check data available";
 
   return (
     <Tooltip content={tooltipContent}>
@@ -135,6 +143,22 @@ export const GatewayTab = withPermission(
 
     const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
+    const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
+
+    const handleTriggerHealthCheck = async (id: string) => {
+      try {
+        await triggerGatewayV2Heartbeat.mutateAsync(id);
+        createNotification({
+          type: "success",
+          text: "Health check successful - gateway is healthy"
+        });
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Health check failed - gateway is unreachable"
+        });
+      }
+    };
 
     const handleDeleteGateway = async () => {
       const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
@@ -228,7 +252,12 @@ export const GatewayTab = withPermission(
                       />
                     </Td>
                     <Td>
-                      <GatewayHealthStatus heartbeat={el.heartbeat} />
+                      <GatewayHealthStatus
+                        heartbeat={el.heartbeat}
+                        lastHealthCheckStatus={
+                          "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
+                        }
+                      />
                     </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
@@ -250,6 +279,14 @@ export const GatewayTab = withPermission(
                             >
                               Copy ID
                             </DropdownMenuItem>
+                            {!el.isV1 && (
+                              <DropdownMenuItem
+                                icon={<FontAwesomeIcon icon={faHeartPulse} />}
+                                onClick={() => handleTriggerHealthCheck(el.id)}
+                              >
+                                Trigger Health Check
+                              </DropdownMenuItem>
+                            )}
                             {el.isV1 && (
                               <OrgPermissionCan
                                 I={OrgGatewayPermissionActions.EditGateways}

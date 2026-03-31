@@ -2,7 +2,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, ModalClose } from "@app/components/v2";
+import { Button, SheetFooter } from "@app/components/v3";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesResource } from "@app/hooks/api/pam";
 
 import { KubernetesResourceFields } from "./shared/KubernetesResourceFields";
@@ -12,6 +12,7 @@ import { MetadataFields } from "./MetadataFields";
 type Props = {
   resource?: TKubernetesResource;
   onSubmit: (formData: FormData) => Promise<void>;
+  closeSheet: () => void;
 };
 
 const KubernetesConnectionDetailsSchema = z.object({
@@ -33,19 +34,25 @@ const formSchema = genericResourceFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
+export const KubernetesResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(resource);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: resource ?? {
-      resourceType: PamResourceType.Kubernetes,
-      connectionDetails: {
-        url: "",
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
-      }
-    }
+    defaultValues: resource
+      ? {
+          ...resource,
+          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined
+        }
+      : {
+          resourceType: PamResourceType.Kubernetes,
+          gateway: undefined,
+          connectionDetails: {
+            url: "",
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
+          }
+        }
   });
 
   const {
@@ -55,27 +62,28 @@ export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <GenericResourceFields />
-        <KubernetesResourceFields />
-        <MetadataFields />
-        <div className="mt-6 flex items-center">
+      <form
+        onSubmit={handleSubmit((data) => onSubmit(data as FormData))}
+        className="flex flex-1 flex-col overflow-hidden"
+      >
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <GenericResourceFields />
+          <KubernetesResourceFields />
+          <MetadataFields />
+        </div>
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
             {isUpdate ? "Update Details" : "Create Resource"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={closeSheet} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

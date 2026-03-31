@@ -17,6 +17,7 @@ import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-route
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
+import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
@@ -75,5 +76,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Chef]: registerChefSyncRouter,
   [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter,
   [SecretSync.CircleCI]: registerCircleCISyncRouter,
-  [SecretSync.AzureEntraIdScim]: registerAzureEntraIdScimSyncRouter
+  [SecretSync.AzureEntraIdScim]: registerAzureEntraIdScimSyncRouter,
+  [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter
 };

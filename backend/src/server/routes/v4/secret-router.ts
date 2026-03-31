@@ -166,7 +166,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       // just for delivery hero usecase
       let { secretPath, environment, projectId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -181,7 +181,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const { secrets, imports } = await server.services.secret.getSecretsRaw({
+      const result = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -199,8 +199,21 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         metadataFilter: req.query.metadataFilter,
         includeImports: req.query.includeImports,
         recursive: req.query.recursive,
-        tagSlugs: req.query.tagSlugs
+        tagSlugs: req.query.tagSlugs,
+        ifNoneMatch: req.headers["if-none-match"]
       });
+
+      const { secrets, imports, etag, notModified } = result;
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
+
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
@@ -524,6 +537,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (
+        req.body.secretReminderRepeatDays !== undefined &&
+        req.body.secretReminderRepeatDays !== null &&
+        req.body.secretReminderRepeatDays > 0
+      ) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
+          }
+        });
+      }
+
       return { secret };
     }
   });
@@ -673,6 +704,27 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           actorType: req.permission.type
         }
       });
+
+      // Only fire reminder event when secretReminderRepeatDays is explicitly provided and > 0,
+      // matching the service layer's truthy check that actually creates the reminder
+      if (
+        req.body.secretReminderRepeatDays !== undefined &&
+        req.body.secretReminderRepeatDays !== null &&
+        req.body.secretReminderRepeatDays > 0
+      ) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretReminderCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            secretId: secret.id,
+            reminderRepeatDays: req.body.secretReminderRepeatDays,
+            hasNote: !!req.body.secretReminderNote,
+            isOneTime: false
+          }
+        });
+      }
+
       return { secret };
     }
   });

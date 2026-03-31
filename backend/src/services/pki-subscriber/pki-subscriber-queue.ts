@@ -1,6 +1,6 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -159,21 +159,12 @@ export const pkiSubscriberQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startDailyAutoRenewalJob = async () => {
-    // clear previous job
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.PkiSubscriber,
-      QueueJobs.PkiSubscriberDailyAutoRenewal,
-      { pattern: "0 0 * * *", utc: true },
-      // { pattern: "*/30 * * * * *", utc: true } // for testing
-      QueueName.PkiSubscriber // just a job id
+      `${JOB_SCHEDULER_PREFIX}:${QueueName.PkiSubscriber}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.PkiSubscriberDailyAutoRenewal, opts: { delay: 5000 } }
     );
-
-    await queueService.queue(QueueName.PkiSubscriber, QueueJobs.PkiSubscriberDailyAutoRenewal, undefined, {
-      delay: 5000,
-      jobId: QueueName.PkiSubscriber,
-      // { pattern: "*/30 * * * * *", utc: true } // for testing
-      repeat: { pattern: "0 0 * * *", utc: true, key: QueueName.PkiSubscriber }
-    });
   };
 
   queueService.listen(QueueName.PkiSubscriber, "failed", (_, err) => {

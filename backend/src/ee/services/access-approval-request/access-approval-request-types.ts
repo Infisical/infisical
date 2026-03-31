@@ -58,6 +58,7 @@ export interface TAccessApprovalRequestServiceFactory {
       permissions?: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
+      expiresAt?: Date | null | undefined;
     };
     projectId: string;
   }>;
@@ -76,6 +77,7 @@ export interface TAccessApprovalRequestServiceFactory {
       permissions?: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
+      expiresAt?: Date | null | undefined;
     };
   }>;
   listApprovalRequests: (arg: TListApprovalRequestsDTO) => Promise<{
@@ -109,6 +111,7 @@ export interface TAccessApprovalRequestServiceFactory {
         envId: string;
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
+        requestExpirationTime?: string | null;
       };
       projectId: string;
       environment: string;
@@ -145,6 +148,7 @@ export interface TAccessApprovalRequestServiceFactory {
       permissions?: unknown;
       note?: string | null | undefined;
       privilegeDeletedAt?: Date | null | undefined;
+      expiresAt?: Date | null | undefined;
       reviewers: {
         userId: string;
         status: string;

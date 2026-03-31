@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -136,7 +136,12 @@ export const certificateRequestServiceFactory = ({
     status,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    if (actor !== ActorType.ACME_ACCOUNT && actor !== ActorType.PLATFORM && actor !== ActorType.EST_ACCOUNT) {
+    if (
+      actor !== ActorType.ACME_ACCOUNT &&
+      actor !== ActorType.PLATFORM &&
+      actor !== ActorType.EST_ACCOUNT &&
+      actor !== ActorType.SCEP_ACCOUNT
+    ) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
@@ -184,6 +189,15 @@ export const certificateRequestServiceFactory = ({
     projectId,
     certificateRequestId
   }: TGetCertificateRequestDTO) => {
+    const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
+    if (!certificateRequest) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
+    if (certificateRequest.projectId !== projectId) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -193,19 +207,19 @@ export const certificateRequestServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
-
-    const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
-    if (!certificateRequest) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
-    if (certificateRequest.projectId !== projectId) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
 
     return certificateRequest;
   };
@@ -231,18 +245,24 @@ export const certificateRequestServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
 
     const parsedBasicConstraints = certificateRequest.basicConstraints as {
       isCA: boolean;
       pathLength?: number;
     } | null;
-
-    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
-    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {
@@ -280,7 +300,13 @@ export const certificateRequestServiceFactory = ({
 
     const canReadPrivateKey = permission.can(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
 
     let privateKey: string | null = null;

@@ -1,4 +1,4 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { PAM_DISCOVERY_TYPE_MAP, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
 
 import { PamDiscoverySourceForm } from "./PamDiscoverySourceForm/PamDiscoverySourceForm";
@@ -13,20 +13,21 @@ export const PamUpdateDiscoverySourceModal = ({ isOpen, onOpenChange, source }: 
   if (!source) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Edit Discovery Source"
-        subTitle={`Update details for this ${
-          PAM_DISCOVERY_TYPE_MAP[source.discoveryType].name
-        } discovery source.`}
-      >
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>Edit Discovery Source</SheetTitle>
+          <SheetDescription>
+            Update details for this {PAM_DISCOVERY_TYPE_MAP[source.discoveryType].name} discovery
+            source.
+          </SheetDescription>
+        </SheetHeader>
         <PamDiscoverySourceForm
-          onComplete={() => onOpenChange(false)}
+          closeSheet={() => onOpenChange(false)}
           source={source}
           projectId={source.projectId}
         />
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

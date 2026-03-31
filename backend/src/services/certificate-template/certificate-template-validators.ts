@@ -13,7 +13,7 @@ export const createTemplateFieldValidator = (options?: {
     minLength = 1,
     maxLength = 100,
     allowedCharacters = [
-      CharacterType.AlphaNumeric,
+      CharacterType.UnicodeLettersAndDigits,
       CharacterType.Spaces, // (space)
       CharacterType.Asterisk, // *
       CharacterType.At, // @

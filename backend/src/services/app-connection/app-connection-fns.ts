@@ -22,6 +22,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -112,6 +113,12 @@ import {
   getDNSMadeEasyConnectionListItem,
   validateDNSMadeEasyConnectionCredentials
 } from "./dns-made-easy/dns-made-easy-connection-fns";
+import {
+  ExternalInfisicalConnectionMethod,
+  getExternalInfisicalConnectionListItem,
+  TExternalInfisicalConnectionConfig,
+  validateExternalInfisicalConnectionCredentials
+} from "./external-infisical";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -271,7 +278,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOpenRouterConnectionListItem(),
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
-    getVenafiConnectionListItem()
+    getVenafiConnectionListItem(),
+    getExternalInfisicalConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -357,7 +365,8 @@ export const decryptAppConnectionCredentials = async ({
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  deps: { identityUaDAL: Pick<TIdentityUaDALFactory, "findOne"> }
 ): Promise<TAppConnection["credentials"]> => {
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -414,7 +423,12 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
+      validateExternalInfisicalConnectionCredentials(
+        config as TExternalInfisicalConnectionConfig,
+        deps.identityUaDAL
+      )) as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -504,6 +518,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
+    case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
+      return "Machine Identity - Universal Auth";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -610,7 +626,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
-  [AppConnection.Venafi]: platformManagedCredentialsNotSupported
+  [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
+  [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -418,7 +418,10 @@ export const secretSyncServiceFactory = ({
         projectId
       });
 
-      if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+      if (secretSync.isAutoSyncEnabled)
+        await secretSyncQueue.queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id
+        });
 
       return secretSync as TSecretSync;
     } catch (err) {
@@ -598,7 +601,9 @@ export const secretSyncServiceFactory = ({
       });
 
       if (updatedSecretSync.isAutoSyncEnabled)
-        await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+        await secretSyncQueue.queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id
+        });
 
       return updatedSecretSync as TSecretSync;
     } catch (err) {

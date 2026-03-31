@@ -10,11 +10,13 @@ import { MsSqlCredentialsRotationSchema } from "@app/components/secret-rotations
 import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mysql-credentials-rotation-schema";
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
+import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
@@ -41,7 +43,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         UnixLinuxLocalAccountRotationSchema,
         DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
-        OpenRouterApiKeyRotationSchema
+        OpenRouterApiKeyRotationSchema,
+        HpIloRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )
@@ -78,6 +81,19 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
       if (val.type === SecretRotation.WindowsLocalAccount) {
         if (
           val.parameters.rotationMethod === WindowsLocalAccountRotationMethod.LoginAsTarget &&
+          !val.temporaryParameters?.password
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Password required",
+            path: ["temporaryParameters", "password"]
+          });
+        }
+      }
+
+      if (val.type === SecretRotation.HpIloLocalAccount) {
+        if (
+          val.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget &&
           !val.temporaryParameters?.password
         ) {
           ctx.addIssue({

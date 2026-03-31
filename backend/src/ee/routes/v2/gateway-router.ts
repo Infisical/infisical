@@ -13,7 +13,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   name: true,
   createdAt: true,
   updatedAt: true,
-  heartbeat: true
+  heartbeat: true,
+  lastHealthCheckStatus: true
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
@@ -133,6 +134,34 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         id: req.params.id
       });
       return gateway;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:id/heartbeat",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerGatewayHeartbeat",
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.gatewayV2.triggerHeartbeat({
+        orgPermission: req.permission,
+        id: req.params.id
+      });
+
+      return { message: "Successfully triggered heartbeat" };
     }
   });
 

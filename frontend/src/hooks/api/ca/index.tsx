@@ -15,6 +15,7 @@ export {
   useDeleteCa,
   useGenerateCaCertificate,
   useImportCaCertificate,
+  useInstallCaCertificateAdcs,
   useInstallCaCertificateVenafi,
   useOrderCertificateWithProfile,
   useRenewCa,

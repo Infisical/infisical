@@ -40,7 +40,8 @@ export enum CharacterType {
   Comma = "comma", // ,
   Semicolon = "semicolon", // ;
   Exclamation = "exclamation", // !
-  Fullstop = "fullStop" // .
+  Fullstop = "fullStop", // .
+  UnicodeLettersAndDigits = "unicodeLettersAndDigits" // Unicode letters (\p{L}) and digits (\p{N})
 }
 
 /**
@@ -86,7 +87,8 @@ export const characterValidator = (allowedCharacters: CharacterType[]) => {
     [CharacterType.Comma]: ",",
     [CharacterType.Semicolon]: ";",
     [CharacterType.Exclamation]: "!",
-    [CharacterType.Fullstop]: "."
+    [CharacterType.Fullstop]: ".",
+    [CharacterType.UnicodeLettersAndDigits]: "\\p{L}\\p{N}"
   };
 
   // Combine patterns from allowed characters

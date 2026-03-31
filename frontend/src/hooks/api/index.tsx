@@ -58,6 +58,7 @@ export * from "./secretRotation";
 export * from "./secrets";
 export * from "./secretSharing";
 export * from "./secretSnapshots";
+export * from "./secretValidationRules";
 export * from "./serverDetails";
 export * from "./serviceTokens";
 export * from "./sshCa";

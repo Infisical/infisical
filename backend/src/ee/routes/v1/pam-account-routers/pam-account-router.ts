@@ -7,6 +7,7 @@ import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/
 import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { SanitizedMsSQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
@@ -29,6 +30,7 @@ const SanitizedAccountSchema = z
     SanitizedSSHAccountWithResourceSchema,
     SanitizedPostgresAccountWithResourceSchema,
     SanitizedMySQLAccountWithResourceSchema,
+    SanitizedMsSQLAccountWithResourceSchema,
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
@@ -61,7 +63,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           dependencies: PamAccountDependenciesSchema.extend({
-            resourceName: z.string().nullable().optional()
+            resourceName: z.string().nullable().optional(),
+            lastSyncMessage: z.string().nullable().optional()
           }).array()
         })
       }
@@ -149,6 +152,32 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return { dependency };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          account: SanitizedAccountSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      return { account: account as z.infer<typeof SanitizedAccountSchema> };
     }
   });
 
@@ -359,9 +388,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
+          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
