@@ -147,7 +147,23 @@ export const auditLogServiceFactory = ({
     return auditLogQueue.pushToLog(el);
   };
 
-  const getAuditLogMigrationStatus = async () => {
+  const getAuditLogMigrationStatus: TAuditLogServiceFactory["getAuditLogMigrationStatus"] = async ({
+    actorAuthMethod,
+    actorId,
+    actorOrgId,
+    actor
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);
     const auditLogGenerationDisabled = Boolean(appCfg.DISABLE_AUDIT_LOG_GENERATION);
@@ -187,28 +203,31 @@ export const auditLogServiceFactory = ({
       adminsOnly: true
     });
 
+    if (superAdminsResult.users.length === 0) return;
+
     const adminsWithEmail = superAdminsResult.users.filter((admin): admin is TUsers & { email: string } =>
       Boolean(admin.email)
     );
-    if (adminsWithEmail.length === 0) return;
 
-    const emailResults = await Promise.allSettled(
-      adminsWithEmail.map((admin) =>
-        smtpService.sendMail({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          template: SmtpTemplates.AuditLogMigrationAlert,
-          subjectLine: "Action recommended: Optimize your audit log storage",
-          recipients: [admin.email],
-          substitutions: {
-            siteUrl: appCfg.SITE_URL
-          }
-        })
-      )
-    );
+    if (adminsWithEmail.length > 0) {
+      const emailResults = await Promise.allSettled(
+        adminsWithEmail.map((admin) =>
+          smtpService.sendMail({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            template: SmtpTemplates.AuditLogMigrationAlert,
+            subjectLine: "Action recommended: Optimize your audit log storage",
+            recipients: [admin.email],
+            substitutions: {
+              siteUrl: appCfg.SITE_URL
+            }
+          })
+        )
+      );
 
-    const failedEmails = emailResults.filter((r) => r.status === "rejected");
-    if (failedEmails.length > 0) {
-      logger.error({ failedCount: failedEmails.length }, "Failed to send some audit log migration alert emails");
+      const failedEmails = emailResults.filter((r) => r.status === "rejected");
+      if (failedEmails.length > 0) {
+        logger.error({ failedCount: failedEmails.length }, "Failed to send some audit log migration alert emails");
+      }
     }
 
     const adminOrgMap = new Map<string, string>();

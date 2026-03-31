@@ -28,7 +28,7 @@ import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -117,7 +117,7 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
-  getAuditLogMigrationStatus: () => Promise<{
+  getAuditLogMigrationStatus: (arg: TOrgPermission) => Promise<{
     clickHouseConfigured: boolean;
     auditLogGenerationDisabled: boolean;
     auditLogStorageDisabled: boolean;

@@ -278,8 +278,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async () => {
-      return server.services.auditLog.getAuditLogMigrationStatus();
+    handler: async (req) => {
+      return server.services.auditLog.getAuditLogMigrationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
     }
   });
 

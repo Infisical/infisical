@@ -198,20 +198,29 @@ const LogsSectionComponent = ({
   return (
     <div className="space-y-2">
       {showClickHouseWarning && (
-        <UnstableAlert variant="info">
+        <UnstableAlert variant="warning">
           <UnstableAlertDescription>
             <p>
-              Your audit log table is growing large. PostgreSQL performance will degrade over time
-              at this scale. Consider configuring{" "}
+              Your audit log volume is growing. To keep searches fast and reduce database load, we
+              recommend streaming logs to an{" "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-80"
+              >
+                external destination
+              </a>{" "}
+              like Splunk or using the built-in{" "}
               <a
                 href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 hover:opacity-80"
               >
-                ClickHouse
-              </a>{" "}
-              as your audit log storage backend to maintain query performance.
+                ClickHouse integration
+              </a>
+              .
             </p>
           </UnstableAlertDescription>
         </UnstableAlert>
