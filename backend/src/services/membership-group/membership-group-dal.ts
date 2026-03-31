@@ -153,9 +153,6 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedGroups.limit(filter.limit);
-      if (filter.offset) void paginatedGroups.offset(filter.offset);
-
       if (filter.name || filter.role) {
         buildKnexFilterForSearchResource(
           paginatedGroups,
@@ -175,6 +172,13 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           }
         );
       }
+
+      const countQuery = await (tx || db.replicaNode())
+        .count("* as total")
+        .from(paginatedGroups.clone().as("distinctMemberships"));
+
+      if (filter.limit) void paginatedGroups.limit(filter.limit);
+      if (filter.offset) void paginatedGroups.offset(filter.offset);
 
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
@@ -208,11 +212,6 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
             .as("membershipRoleTemporaryAccessEndTime"),
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorGroupId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
 
       const data = sqlNestRelationships({
@@ -262,7 +261,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount: Number((countQuery?.[0] as unknown as { total: number })?.total ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindGroup" });
     }
