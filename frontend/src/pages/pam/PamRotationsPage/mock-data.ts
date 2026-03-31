@@ -20,6 +20,11 @@ export type MatchingPattern = {
   domainName?: string;
 };
 
+export type RotationRunAccountError = {
+  accountName: string;
+  error: string;
+};
+
 export type RotationRun = {
   id: string;
   startedAt: string;
@@ -27,6 +32,7 @@ export type RotationRun = {
   triggeredBy: string;
   status: "completed" | "partial" | "failed";
   rotatedCount: number;
+  accountErrors?: RotationRunAccountError[];
 };
 
 export type RotationPolicy = {
@@ -34,15 +40,13 @@ export type RotationPolicy = {
   name: string;
   type: RotationPolicyType;
   status: "active" | "inactive";
-  schedule: string;
+  scheduleDays: number;
   lastRun: string;
   nextRun: string;
-  rotationIntervalDays: number;
   credentials: {
     username: string;
   } | null;
-  allowPatterns: MatchingPattern[];
-  denyPatterns: MatchingPattern[];
+  allowPattern: MatchingPattern;
   runs: RotationRun[];
 };
 
@@ -52,13 +56,11 @@ export const MOCK_ROTATION_POLICIES: RotationPolicy[] = [
     name: "PostgreSQL Admin Rotation",
     type: RotationPolicyType.Postgres,
     status: "active",
-    schedule: "Weekly",
+    scheduleDays: 30,
     lastRun: "03/23/2026, 02:00 AM",
     nextRun: "03/30/2026, 02:00 AM",
-    rotationIntervalDays: 30,
     credentials: { username: "rotation_admin" },
-    allowPatterns: [{ accountNames: "app_*, postgres", resourceNames: "prod-*, *" }],
-    denyPatterns: [{ accountNames: "readonly_*", resourceNames: "*" }],
+    allowPattern: { accountNames: "app_*, postgres", resourceNames: "prod-*, *" },
     runs: [
       {
         id: "run-1",
@@ -74,7 +76,13 @@ export const MOCK_ROTATION_POLICIES: RotationPolicy[] = [
         duration: "52s",
         triggeredBy: "Scheduled",
         status: "partial",
-        rotatedCount: 2
+        rotatedCount: 2,
+        accountErrors: [
+          {
+            accountName: "app_analytics",
+            error: "Connection timeout after 30s — could not reach host db-analytics.prod:5432"
+          }
+        ]
       }
     ]
   },
@@ -83,13 +91,11 @@ export const MOCK_ROTATION_POLICIES: RotationPolicy[] = [
     name: "Domain Service Accounts",
     type: RotationPolicyType.DomainWindows,
     status: "active",
-    schedule: "Monthly",
+    scheduleDays: 60,
     lastRun: "03/01/2026, 03:00 AM",
     nextRun: "04/01/2026, 03:00 AM",
-    rotationIntervalDays: 60,
     credentials: { username: "svc_rotator" },
-    allowPatterns: [{ accountNames: "svc_*", domainName: "corp.example.com" }],
-    denyPatterns: [{ accountNames: "svc_krbtgt", domainName: "corp.example.com" }],
+    allowPattern: { accountNames: "svc_*", domainName: "corp.example.com" },
     runs: [
       {
         id: "run-3",
@@ -105,7 +111,23 @@ export const MOCK_ROTATION_POLICIES: RotationPolicy[] = [
         duration: "2m 30s",
         triggeredBy: "Scheduled",
         status: "failed",
-        rotatedCount: 0
+        rotatedCount: 0,
+        accountErrors: [
+          {
+            accountName: "svc_backup",
+            error:
+              "LDAP bind failed: invalid credentials for CN=svc_rotator,OU=Service Accounts,DC=corp,DC=example,DC=com"
+          },
+          {
+            accountName: "svc_monitoring",
+            error:
+              "LDAP bind failed: invalid credentials for CN=svc_rotator,OU=Service Accounts,DC=corp,DC=example,DC=com"
+          },
+          {
+            accountName: "svc_deploy",
+            error: "Account locked out — too many failed password change attempts"
+          }
+        ]
       }
     ]
   },
@@ -114,13 +136,11 @@ export const MOCK_ROTATION_POLICIES: RotationPolicy[] = [
     name: "Local Admin Rotation",
     type: RotationPolicyType.LocalWindows,
     status: "inactive",
-    schedule: "Biweekly",
+    scheduleDays: 14,
     lastRun: "03/10/2026, 01:00 AM",
     nextRun: "-",
-    rotationIntervalDays: 14,
     credentials: null,
-    allowPatterns: [{ accountNames: "Administrator", resourceNames: "win-srv-*" }],
-    denyPatterns: [],
+    allowPattern: { accountNames: "Administrator", resourceNames: "win-srv-*" },
     runs: [
       {
         id: "run-5",

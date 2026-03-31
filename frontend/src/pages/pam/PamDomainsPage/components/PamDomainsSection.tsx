@@ -1,12 +1,33 @@
-import { faCircleXmark } from "@fortawesome/free-regular-svg-icons";
-import { faMagnifyingGlass, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
-import { Button, EmptyState, Input, Pagination, Tooltip } from "@app/components/v2";
+import { Input } from "@app/components/v2";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -17,16 +38,20 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { PamResourceOrderBy, PamResourceType, useListPamResources } from "@app/hooks/api/pam";
-import { useSetPamResourceFavorite } from "@app/hooks/api/pam/mutations";
+import {
+  PamResourceOrderBy,
+  PamResourceType,
+  TActiveDirectoryResource,
+  useListPamResources
+} from "@app/hooks/api/pam";
 
 import { PamDeleteResourceModal } from "../../PamResourcesPage/components/PamDeleteResourceModal";
 import { PamUpdateResourceModal } from "../../PamResourcesPage/components/PamUpdateResourceModal";
 import { PamAddDomainModal } from "./PamAddDomainModal";
-import { PamDomainCard } from "./PamDomainCard";
 
 export const PamDomainsSection = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject.id;
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.DomainsPage.path });
 
@@ -42,7 +67,7 @@ export const PamDomainsSection = () => {
 
   const { search, debouncedSearch, setSearch, setPage, page, perPage, setPerPage, offset } =
     usePagination(PamResourceOrderBy.Name, {
-      initPerPage: getUserTablePreference("pamDomainsTable", PreferenceKey.PerPage, 9),
+      initPerPage: getUserTablePreference("pamDomainsTable", PreferenceKey.PerPage, 20),
       initSearch
     });
 
@@ -50,8 +75,6 @@ export const PamDomainsSection = () => {
     setPerPage(newPerPage);
     setUserTablePreference("pamDomainsTable", PreferenceKey.PerPage, newPerPage);
   };
-
-  const setFavorite = useSetPamResourceFavorite();
 
   const { data, isLoading } = useListPamResources({
     projectId,
@@ -70,9 +93,6 @@ export const PamDomainsSection = () => {
     setPage
   });
 
-  const isContentEmpty = !resources.length;
-  const isSearchEmpty = isContentEmpty && Boolean(search);
-
   return (
     <div>
       <div className="flex gap-2">
@@ -88,7 +108,8 @@ export const PamDomainsSection = () => {
           }}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           placeholder="Search domains..."
-          className="flex-1"
+          className="h-full flex-1"
+          containerClassName="h-9"
         />
         <OrgPermissionCan
           I={OrgGatewayPermissionActions.AttachGateways}
@@ -100,65 +121,115 @@ export const PamDomainsSection = () => {
               a={ProjectPermissionSub.PamResources}
             >
               {(isAllowed) => (
-                <Tooltip
-                  isDisabled={isGatewayAllowed}
-                  content="Restricted access. You don't have permission to attach gateways to resources."
-                >
-                  <Button
-                    colorSchema="secondary"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => handlePopUpOpen("addDomain")}
-                    isDisabled={!isAllowed || !isGatewayAllowed}
-                  >
-                    Add Domain
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="project"
+                      onClick={() => handlePopUpOpen("addDomain")}
+                      isDisabled={!isAllowed || !isGatewayAllowed}
+                    >
+                      <PlusIcon />
+                      Add Domain
+                    </Button>
+                  </TooltipTrigger>
+                  {!isGatewayAllowed && (
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  )}
                 </Tooltip>
               )}
             </ProjectPermissionCan>
           )}
         </OrgPermissionCan>
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {isLoading &&
-          Array.from({ length: 9 }).map((_, i) => (
-            <div
-              // eslint-disable-next-line react/no-array-index-key
-              key={`skeleton-${i}`}
-              className="h-[88px] animate-pulse rounded-sm border border-mineshaft-600 bg-mineshaft-800"
-            />
-          ))}
-        {!isLoading &&
-          resources.map((resource) => (
-            <PamDomainCard
-              key={resource.id}
-              resource={resource}
-              onUpdate={(e) => handlePopUpOpen("updateResource", e)}
-              onDelete={(e) => handlePopUpOpen("deleteResource", e)}
-              onToggleFavorite={(e) =>
-                setFavorite.mutate({ projectId, resourceId: e.id, isFavorite: !e.isFavorite })
-              }
-              search={search.trim().toLowerCase()}
-            />
-          ))}
+
+      <div className="mt-4">
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead>Name</UnstableTableHead>
+              <UnstableTableHead>Domain</UnstableTableHead>
+              <UnstableTableHead>DC Address</UnstableTableHead>
+              <UnstableTableHead>LDAPS</UnstableTableHead>
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {isLoading && (
+              <UnstableTableRow>
+                <UnstableTableCell colSpan={4} className="text-center text-muted">
+                  Loading domains...
+                </UnstableTableCell>
+              </UnstableTableRow>
+            )}
+            {!isLoading && resources.length === 0 && (
+              <UnstableTableRow>
+                <UnstableTableCell colSpan={4}>
+                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
+                    <UnstableEmptyHeader>
+                      <UnstableEmptyTitle>
+                        {search ? "No domains match search" : "No domains"}
+                      </UnstableEmptyTitle>
+                    </UnstableEmptyHeader>
+                  </UnstableEmpty>
+                </UnstableTableCell>
+              </UnstableTableRow>
+            )}
+            {!isLoading &&
+              resources.map((resource) => {
+                const conn = (resource as TActiveDirectoryResource).connectionDetails;
+                return (
+                  <UnstableTableRow
+                    key={resource.id}
+                    className="group cursor-pointer"
+                    onClick={() =>
+                      navigate({
+                        to: "/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId",
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId,
+                          resourceType: resource.resourceType,
+                          resourceId: resource.id
+                        }
+                      })
+                    }
+                  >
+                    <UnstableTableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <img
+                          alt="Active Directory"
+                          src="/images/integrations/ActiveDirectory.png"
+                          className="size-5"
+                        />
+                        {resource.name}
+                      </div>
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted">
+                      {conn?.domain || "-"}
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted">
+                      {conn?.dcAddress || "-"}
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted">
+                      {conn?.useLdaps ? "Yes" : "No"}
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                );
+              })}
+          </UnstableTableBody>
+        </UnstableTable>
         {Boolean(totalCount) && !isLoading && (
-          <Pagination
+          <UnstablePagination
             count={totalCount}
             page={page}
             perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
+            onChangePage={setPage}
             onChangePerPage={handlePerPageChange}
-            perPageList={[9, 18, 48, 99]}
-            className="col-span-full justify-start! border-transparent bg-transparent pl-2"
-          />
-        )}
-        {!isLoading && isContentEmpty && (
-          <EmptyState
-            title={isSearchEmpty ? "No domains match search" : "No domains"}
-            icon={isSearchEmpty ? faSearch : faCircleXmark}
-            className="col-span-full rounded border border-mineshaft-500"
           />
         )}
       </div>
+
       <PamDeleteResourceModal
         isOpen={popUp.deleteResource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteResource", isOpen)}

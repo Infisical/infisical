@@ -70,7 +70,7 @@ export const PostgresResourceForm = ({ resource, onSubmit, closeSheet }: Props) 
             variant="neutral"
             type="submit"
           >
-            {isUpdate ? "Update Details" : "Create Resource"}
+            {isUpdate ? "Update Details" : "Create"}
           </Button>
           <Button onClick={closeSheet} variant="outline" className="mr-auto" type="button">
             Cancel

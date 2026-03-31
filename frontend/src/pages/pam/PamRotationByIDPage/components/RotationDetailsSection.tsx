@@ -45,7 +45,7 @@ export const RotationDetailsSection = ({ policy }: Props) => {
         </Detail>
         <Detail>
           <DetailLabel>Schedule</DetailLabel>
-          <DetailValue>{policy.schedule}</DetailValue>
+          <DetailValue>Every {policy.scheduleDays} days</DetailValue>
         </Detail>
         <Detail>
           <DetailLabel>Last Run</DetailLabel>

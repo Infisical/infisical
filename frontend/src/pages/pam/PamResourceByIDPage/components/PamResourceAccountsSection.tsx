@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { faFilter, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import {
   CheckIcon,
@@ -56,9 +56,11 @@ import {
   PamAccountRotationStatus,
   PamResourceType,
   TActiveDirectoryAccount,
+  TActiveDirectoryResource,
   TPamAccount,
   TPamResource,
   TWindowsAccount,
+  useGetPamResourceById,
   useListPamAccounts
 } from "@app/hooks/api/pam";
 import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
@@ -96,9 +98,11 @@ const getAccountType = (account: TPamAccount): string | undefined => {
 
 export const PamResourceAccountsSection = ({ resource }: Props) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentOrg } = useOrganization();
   const params = useParams({ strict: false }) as { projectId?: string };
   const { projectId } = params;
+  const isDomainContext = location.pathname.includes("/domains/");
 
   const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
@@ -159,6 +163,16 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
   const adServerResourceId =
     resource.resourceType === PamResourceType.Windows ? resource.adServerResourceId : undefined;
+
+  const { data: adResource } = useGetPamResourceById(
+    PamResourceType.ActiveDirectory,
+    adServerResourceId ?? undefined,
+    { enabled: Boolean(adServerResourceId) }
+  );
+
+  const domainFqdn = adResource
+    ? (adResource as TActiveDirectoryResource).connectionDetails.domain
+    : undefined;
 
   const { data: domainAccountsData, isPending: isDomainAccountsPending } = useListPamAccounts(
     {
@@ -224,16 +238,34 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   );
 
   const handleAccountClick = (account: TPamAccount) => {
-    navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      params: {
-        orgId: currentOrg.id,
-        projectId: projectId!,
-        resourceType: resource.resourceType,
-        resourceId: resource.id,
-        accountId: account.id
-      }
-    });
+    const isDomain = domainAccountIds.has(account.id);
+    if (isDomain && adServerResourceId) {
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId/accounts/$accountId",
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          resourceType: PamResourceType.ActiveDirectory,
+          resourceId: adServerResourceId,
+          accountId: account.id
+        },
+        search: { fromResourceId: resource.id }
+      });
+    } else {
+      const accountPath = isDomainContext
+        ? "/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId/accounts/$accountId"
+        : "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId";
+      navigate({
+        to: accountPath,
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          resourceType: resource.resourceType,
+          resourceId: resource.id,
+          accountId: account.id
+        }
+      });
+    }
   };
 
   const handleRotateAccount = async (accountId: string) => {
@@ -471,7 +503,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
                       {isDomainAccount && (
                         <Badge variant="info" className="text-xs">
-                          Domain
+                          {domainFqdn || "Domain"}
                         </Badge>
                       )}
                       {!account.credentialsConfigured && (

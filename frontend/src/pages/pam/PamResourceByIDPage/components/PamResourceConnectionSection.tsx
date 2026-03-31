@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link, useParams } from "@tanstack/react-router";
 import { CheckIcon, LockIcon, PencilIcon, UnlockIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Detail, DetailLabel, DetailValue, UnstableIconButton } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { PamResourceType, TPamResource, useGetPamResourceById } from "@app/hooks/api/pam";
 
@@ -133,6 +134,8 @@ const WindowsConnectionDetails = ({
   connectionDetails: { protocol: string; hostname: string; port: number };
   adServerResourceId?: string | null;
 }) => {
+  const { currentOrg } = useOrganization();
+  const routeParams = useParams({ strict: false }) as { projectId?: string };
   const { data: adResource } = useGetPamResourceById(
     PamResourceType.ActiveDirectory,
     adServerResourceId || undefined,
@@ -156,7 +159,20 @@ const WindowsConnectionDetails = ({
       {adResource && (
         <Detail>
           <DetailLabel>AD Domain</DetailLabel>
-          <DetailValue>{adResource.name}</DetailValue>
+          <DetailValue>
+            <Link
+              to="/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId"
+              params={{
+                orgId: currentOrg.id,
+                projectId: routeParams.projectId!,
+                resourceType: PamResourceType.ActiveDirectory,
+                resourceId: adResource.id
+              }}
+              className="hover:underline"
+            >
+              {adResource.name}
+            </Link>
+          </DetailValue>
         </Detail>
       )}
     </>

@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   BanIcon,
   EllipsisVerticalIcon,
@@ -15,7 +15,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
   UnstableDropdownMenu,
@@ -46,17 +45,18 @@ import { PamDeleteAccountModal } from "../PamAccountsPage/components/PamDeleteAc
 import { PamRequestAccountAccessModal } from "../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../PamAccountsPage/components/PamUpdateAccountModal";
 import { useAccessAwsIamAccount } from "../PamAccountsPage/components/useAccessAwsIamAccount";
+import { DomainAccountAccessModal } from "./components/DomainAccountAccessModal";
 import {
   PamAccountCredentialsSection,
   PamAccountDependenciesSection,
   PamAccountDetailsSection,
   PamAccountMetadataSection,
-  PamAccountPropertiesSection,
-  PamAccountResourcesSection
+  PamAccountPropertiesSection
 } from "./components";
 
 const PageContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentOrg } = useOrganization();
   const params = useParams({
     strict: false
@@ -69,27 +69,15 @@ const PageContent = () => {
   };
 
   const { accountId, projectId, resourceType, resourceId } = params;
+  const isDomainContext = location.pathname.includes("/domains/");
 
-  const selectedTab = useSearch({
+  const fromResourceId = useSearch({
     strict: false,
-    select: (el) => el.selectedTab
-  });
-
-  const handleTabChange = (tab: string) => {
-    navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      search: (prev) => ({ ...prev, selectedTab: tab }),
-      params: {
-        orgId: currentOrg.id,
-        projectId: projectId!,
-        resourceType: resourceType!,
-        resourceId: resourceId!,
-        accountId: accountId!
-      }
-    });
-  };
+    select: (el) => el.fromResourceId
+  }) as string | undefined;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDomainAccessOpen, setIsDomainAccessOpen] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "accessAccount",
@@ -124,10 +112,14 @@ const PageContent = () => {
   }
 
   const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
+  const isAdAccount = account.resource.resourceType === PamResourceType.ActiveDirectory;
 
   const handleBack = () => {
+    const basePath = isDomainContext
+      ? "/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId"
+      : "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId";
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      to: basePath,
       params: {
         orgId: currentOrg.id,
         projectId: projectId!,
@@ -138,6 +130,11 @@ const PageContent = () => {
   };
 
   const handleAccess = async () => {
+    if (isAdAccount) {
+      setIsDomainAccessOpen(true);
+      return;
+    }
+
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
@@ -164,7 +161,6 @@ const PageContent = () => {
   };
 
   const handleRotate = async () => {
-    // Optimistically show rotating status immediately
     queryClient.setQueryData(pamKeys.getAccount(account.id), (old: TPamAccount | undefined) =>
       old ? { ...old, rotationStatus: PamAccountRotationStatus.Rotating } : old
     );
@@ -183,7 +179,6 @@ const PageContent = () => {
         createNotification({ text: "Credential rotation failed", type: "error" });
       }
     } catch {
-      // Revert optimistic update on failure
       queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(account.id) });
       createNotification({ text: "Failed to trigger rotation", type: "error" });
     }
@@ -197,7 +192,7 @@ const PageContent = () => {
         className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-        Back to resource
+        {isDomainContext ? "Back to domain" : "Back to resource"}
       </button>
 
       <div className="mb-6 flex items-center justify-between">
@@ -217,20 +212,15 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Windows Server accounts cannot be accessed temporarily */}
-          {/* Active Directory accounts cannot be accessed */}
-          {account.resource.resourceType !== PamResourceType.Windows &&
-            account.resource.resourceType !== PamResourceType.ActiveDirectory && (
-              <ProjectPermissionCan
-                I={ProjectPermissionPamAccountActions.Access}
-                a={ProjectPermissionSub.PamAccounts}
-              >
-                <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
-                  <LogInIcon />
-                  Access
-                </Button>
-              </ProjectPermissionCan>
-            )}
+          <ProjectPermissionCan
+            I={ProjectPermissionPamAccountActions.Access}
+            a={ProjectPermissionSub.PamAccounts}
+          >
+            <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+              <LogInIcon />
+              Access
+            </Button>
+          </ProjectPermissionCan>
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -299,20 +289,9 @@ const PageContent = () => {
           <PamAccountMetadataSection account={account} />
         </div>
 
-        {/* Right Column - Tabbed Content */}
+        {/* Right Column */}
         <div className="min-w-0 flex-1">
-          <Tabs value={selectedTab} onValueChange={handleTabChange}>
-            <TabList>
-              <Tab value="resources">Resources</Tab>
-              <Tab value="dependencies">Dependencies</Tab>
-            </TabList>
-            <TabPanel value="resources">
-              <PamAccountResourcesSection account={account} onAccessResource={handleAccess} />
-            </TabPanel>
-            <TabPanel value="dependencies">
-              <PamAccountDependenciesSection account={account} />
-            </TabPanel>
-          </Tabs>
+          <PamAccountDependenciesSection account={account} />
         </div>
       </div>
 
@@ -343,6 +322,17 @@ const PageContent = () => {
         account={popUp.deleteAccount.data}
         onDeleted={handleBack}
       />
+
+      {isAdAccount && (
+        <DomainAccountAccessModal
+          isOpen={isDomainAccessOpen}
+          onOpenChange={setIsDomainAccessOpen}
+          adResourceId={account.resource.id}
+          accountName={account.name}
+          projectId={projectId!}
+          preselectedResourceId={fromResourceId}
+        />
+      )}
     </div>
   );
 };

@@ -108,7 +108,9 @@ export const PamRotationsSection = () => {
                     </div>
                   </UnstableTableCell>
                   <UnstableTableCell className="text-muted">{typeInfo.name}</UnstableTableCell>
-                  <UnstableTableCell className="text-muted">{policy.schedule}</UnstableTableCell>
+                  <UnstableTableCell className="text-muted">
+                    Every {policy.scheduleDays} days
+                  </UnstableTableCell>
                   <UnstableTableCell>
                     <Badge variant={policy.status === "active" ? "success" : "neutral"}>
                       {policy.status}

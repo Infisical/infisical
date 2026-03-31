@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { BanIcon, PlayIcon, RefreshCwIcon } from "lucide-react";
+import { BanIcon, PlayIcon } from "lucide-react";
 
 import { Button, UnstableEmpty, UnstableEmptyHeader, UnstableEmptyTitle } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -67,7 +67,11 @@ const PageContent = () => {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-mineshaft-700">
-            <RefreshCwIcon className="size-6 text-green-500" />
+            <img
+              alt={typeInfo.name}
+              src={`/images/integrations/${typeInfo.image}`}
+              className="size-6"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-mineshaft-100">{policy.name}</h1>

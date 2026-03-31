@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Field,

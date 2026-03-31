@@ -39,7 +39,9 @@ export const PamResourceHeader = ({ resourceType, onBack }: Props) => {
             />
           )}
         </Label>
-        <p className="text-xs text-muted">Resoure</p>
+        <p className="text-xs text-muted">
+          {resourceType === PamResourceType.ActiveDirectory ? "Domain" : "Resource"}
+        </p>
       </div>
       {onBack && (
         <Button size="xs" variant="neutral" onClick={onBack}>

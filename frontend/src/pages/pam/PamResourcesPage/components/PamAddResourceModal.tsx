@@ -60,10 +60,13 @@ export const PamAddResourceModal = ({ isOpen, onOpenChange, projectId, onComplet
       >
         <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
           <SheetHeader className="border-b">
-            <SheetTitle>Create Resource</SheetTitle>
+            <SheetTitle>
+              Create{" "}
+              {selectedResourceType === PamResourceType.ActiveDirectory ? "Domain" : "Resource"}
+            </SheetTitle>
             <SheetDescription>
               {selectedResourceType
-                ? "Input resource connection details"
+                ? `Input ${selectedResourceType === PamResourceType.ActiveDirectory ? "domain" : "resource"} connection details`
                 : "Select a resource type"}
             </SheetDescription>
           </SheetHeader>

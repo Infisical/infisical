@@ -302,7 +302,7 @@ export const PamDependenciesTable = ({
               <UnstableTableCell colSpan={COL_COUNT}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
-                    <UnstableEmptyTitle>No dependencies discovered</UnstableEmptyTitle>
+                    <UnstableEmptyTitle>No dependencies</UnstableEmptyTitle>
                   </UnstableEmptyHeader>
                 </UnstableEmpty>
               </UnstableTableCell>

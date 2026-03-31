@@ -10,7 +10,8 @@ export enum AccountDetailTab {
 }
 
 const AccountDetailSearchSchema = z.object({
-  selectedTab: z.nativeEnum(AccountDetailTab).catch(AccountDetailTab.Resources)
+  selectedTab: z.nativeEnum(AccountDetailTab).catch(AccountDetailTab.Dependencies),
+  fromResourceId: z.string().optional()
 });
 
 export const Route = createFileRoute(
@@ -19,7 +20,7 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(AccountDetailSearchSchema),
   component: PamAccountByIDPage,
   search: {
-    middlewares: [stripSearchParams({ selectedTab: AccountDetailTab.Resources })]
+    middlewares: [stripSearchParams({ selectedTab: AccountDetailTab.Dependencies })]
   },
   beforeLoad: ({ context, params }) => {
     return {
