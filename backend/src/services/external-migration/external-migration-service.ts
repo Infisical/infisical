@@ -40,6 +40,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
+import { TVaultExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
   decryptEnvKeyDataFn,
   getDopplerSecrets,
@@ -65,7 +66,6 @@ import {
   TUpdateVaultExternalMigrationDTO,
   VaultImportStatus
 } from "./external-migration-types";
-import { TVaultExternalMigrationConfigDALFactory } from "./vault-external-migration-config-dal";
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
