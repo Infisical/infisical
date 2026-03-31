@@ -47,7 +47,6 @@ export const DopplerSecretImportModal = ({
     handleSubmit,
     watch,
     reset,
-    setValue,
     formState: { errors, isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -64,16 +63,15 @@ export const DopplerSecretImportModal = ({
   const hasMultipleConfigs = configs.length > 1;
   const { data: appConnections = [] } = useListAppConnections({ enabled: hasMultipleConfigs });
 
-  // Auto-select when there is exactly one config
   useEffect(() => {
-    if (configs.length === 1 && configs[0].id) {
-      setValue("configId", configs[0].id);
+    if (isOpen) {
+      reset({
+        configId: configs.length === 1 ? configs[0].id : "",
+        dopplerProject: "",
+        dopplerEnvironment: ""
+      });
     }
-  }, [configs, setValue]);
-
-  useEffect(() => {
-    if (isOpen) reset();
-  }, [isOpen, reset]);
+  }, [isOpen, reset, configs]);
 
   const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
     selectedConfigId || undefined
@@ -171,7 +169,7 @@ export const DopplerSecretImportModal = ({
 
               return (
                 <FormControl
-                  label="Doppler project"
+                  label="Source project"
                   className="mb-4"
                   isError={Boolean(errors.dopplerProject)}
                   errorText={errors.dopplerProject?.message}
@@ -189,7 +187,7 @@ export const DopplerSecretImportModal = ({
                     isLoading={isLoadingProjects}
                     isDisabled={!selectedConfigId}
                     options={dopplerProjects}
-                    placeholder="Select Doppler project..."
+                    placeholder="Select source project..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.slug}
                   />
@@ -206,7 +204,7 @@ export const DopplerSecretImportModal = ({
 
               return (
                 <FormControl
-                  label="Doppler environment"
+                  label="Source environment"
                   className="mb-4"
                   isError={Boolean(errors.dopplerEnvironment)}
                   errorText={errors.dopplerEnvironment?.message}
