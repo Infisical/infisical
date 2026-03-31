@@ -287,11 +287,11 @@ const OverviewPageContent = () => {
   const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { data: dopplerConfigs = [] } = useGetDopplerExternalMigrationConfigs();
-  const dopplerImportConfigId = useMemo(
-    () => dopplerConfigs.find((c) => c.connectionId)?.id,
+  const dopplerImportConfigs = useMemo(
+    () => dopplerConfigs.filter((c) => c.connectionId),
     [dopplerConfigs]
   );
-  const hasDopplerConnection = Boolean(dopplerImportConfigId);
+  const hasDopplerConnection = dopplerImportConfigs.length > 0;
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const { mutateAsync: importDopplerSecrets } = useImportDopplerSecrets();
   const prevPageSize = useRef(0);
@@ -835,11 +835,13 @@ const OverviewPageContent = () => {
     }
   };
 
-  const handleDopplerImport = async (dopplerProject: string, dopplerEnvironment: string) => {
-    if (!dopplerImportConfigId) return;
-
+  const handleDopplerImport = async (
+    dopplerProject: string,
+    dopplerEnvironment: string,
+    configId: string
+  ) => {
     await importDopplerSecrets({
-      configId: dopplerImportConfigId,
+      configId,
       dopplerProject,
       dopplerEnvironment,
       targetProjectId: projectId,
@@ -3353,11 +3355,11 @@ const OverviewPageContent = () => {
         secretPath={secretPath}
         onImport={handleVaultImport}
       />
-      {dopplerImportConfigId && (
+      {dopplerImportConfigs.length > 0 && (
         <DopplerSecretImportModal
           isOpen={popUp.importFromDoppler.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("importFromDoppler", isOpen)}
-          configId={dopplerImportConfigId}
+          configs={dopplerImportConfigs}
           environment={singleEnvSlug}
           secretPath={secretPath}
           onImport={handleDopplerImport}

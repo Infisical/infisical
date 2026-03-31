@@ -165,7 +165,7 @@ const SecretPathInputBase = ({
                     <div className="flex items-center text-yellow-700">
                       <FontAwesomeIcon icon={faFolder} />
                     </div>
-                    <div className="text-md w-10/12 truncate text-left">{suggestion}</div>
+                    <div className="text-md text-left">{suggestion}</div>
                   </div>
                 </div>
               </div>

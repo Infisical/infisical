@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,9 +13,12 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
+import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useGetDopplerEnvironments, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
+import { TDopplerExternalMigrationConfig } from "@app/hooks/api/migration/types";
 
 const schema = z.object({
+  configId: z.string().min(1, "Doppler configuration is required"),
   dopplerProject: z.string().min(1, "Doppler project is required"),
   dopplerEnvironment: z.string().min(1, "Doppler environment is required")
 });
@@ -24,16 +28,16 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  configId: string;
+  configs: TDopplerExternalMigrationConfig[];
   environment: string;
   secretPath: string;
-  onImport: (dopplerProject: string, dopplerEnvironment: string) => Promise<void>;
+  onImport: (dopplerProject: string, dopplerEnvironment: string, configId: string) => Promise<void>;
 };
 
 export const DopplerSecretImportModal = ({
   isOpen,
   onOpenChange,
-  configId,
+  configs,
   environment,
   secretPath,
   onImport
@@ -43,21 +47,48 @@ export const DopplerSecretImportModal = ({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      configId: "",
       dopplerProject: "",
       dopplerEnvironment: ""
     }
   });
 
+  const selectedConfigId = watch("configId");
   const selectedDopplerProject = watch("dopplerProject");
 
-  const { data: dopplerProjects = [], isPending: isLoadingProjects } =
-    useGetDopplerProjects(configId);
+  const hasMultipleConfigs = configs.length > 1;
+  const { data: appConnections = [] } = useListAppConnections({ enabled: hasMultipleConfigs });
+
+  // Auto-select when there is exactly one config
+  useEffect(() => {
+    if (configs.length === 1 && configs[0].id) {
+      setValue("configId", configs[0].id);
+    }
+  }, [configs, setValue]);
+
+  useEffect(() => {
+    if (isOpen) reset();
+  }, [isOpen, reset]);
+
+  const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
+    selectedConfigId || undefined
+  );
   const { data: dopplerEnvironments = [], isPending: isLoadingEnvironments } =
-    useGetDopplerEnvironments(configId, selectedDopplerProject || undefined);
+    useGetDopplerEnvironments(selectedConfigId || undefined, selectedDopplerProject || undefined);
+
+  const configOptions = useMemo(
+    () =>
+      configs.map((c) => {
+        const conn = appConnections.find((a) => a.id === c.connectionId);
+        return { id: c.id, label: conn?.name ?? c.id };
+      }),
+    [configs, appConnections]
+  );
 
   const handleClose = () => {
     reset();
@@ -65,7 +96,7 @@ export const DopplerSecretImportModal = ({
   };
 
   const onFormSubmit = async (data: FormData) => {
-    await onImport(data.dopplerProject, data.dopplerEnvironment);
+    await onImport(data.dopplerProject, data.dopplerEnvironment, data.configId);
     handleClose();
   };
 
@@ -102,6 +133,36 @@ export const DopplerSecretImportModal = ({
         </div>
 
         <form onSubmit={handleSubmit(onFormSubmit)}>
+          {hasMultipleConfigs && (
+            <Controller
+              control={control}
+              name="configId"
+              render={({ field }) => {
+                const selectedItem = configOptions.find((o) => o.id === field.value);
+                return (
+                  <FormControl
+                    label="Doppler configuration"
+                    className="mb-4"
+                    isError={Boolean(errors.configId)}
+                    errorText={errors.configId?.message}
+                  >
+                    <FilterableSelect
+                      value={selectedItem || null}
+                      onChange={(newValue) => {
+                        const single = Array.isArray(newValue) ? newValue[0] : newValue;
+                        field.onChange(single && "id" in single ? single.id : "");
+                      }}
+                      options={configOptions}
+                      placeholder="Select Doppler configuration..."
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.id}
+                    />
+                  </FormControl>
+                );
+              }}
+            />
+          )}
+
           <Controller
             control={control}
             name="dopplerProject"
@@ -126,6 +187,7 @@ export const DopplerSecretImportModal = ({
                       }
                     }}
                     isLoading={isLoadingProjects}
+                    isDisabled={!selectedConfigId}
                     options={dopplerProjects}
                     placeholder="Select Doppler project..."
                     getOptionLabel={(option) => option.name}
