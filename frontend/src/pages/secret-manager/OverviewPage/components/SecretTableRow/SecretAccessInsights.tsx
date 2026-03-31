@@ -7,6 +7,7 @@ import {
   ExternalLinkIcon,
   FilterIcon,
   HardDriveIcon,
+  InfoIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
@@ -20,13 +21,14 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Label,
   Sheet,
-  Switch,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   Skeleton,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -363,14 +365,23 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               })}
             </UnstableDropdownMenuContent>
           </UnstableDropdownMenu>
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted whitespace-nowrap">
+          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
             <Switch
-              size="sm"
+              variant="project"
               checked={showAllEntities}
               onCheckedChange={setShowAllEntities}
             />
-            Show all
-          </label>
+            Show all members
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-3.5 text-muted" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-60">
+                When enabled, all project members are shown including those without any access to
+                this secret.
+              </TooltipContent>
+            </Tooltip>
+          </Label>
         </div>
 
         {filteredRows.length === 0 ? (
