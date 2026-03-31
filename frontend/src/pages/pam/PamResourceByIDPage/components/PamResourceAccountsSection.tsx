@@ -8,7 +8,6 @@ import {
   CopyIcon,
   EllipsisVerticalIcon,
   InfoIcon,
-
   LogInIcon,
   PencilIcon,
   PlusIcon,
