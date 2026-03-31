@@ -136,6 +136,6 @@ export const getDopplerSecrets = async (
   return Object.fromEntries(
     Object.entries(res.data.secrets)
       .filter(([, v]) => v.raw !== null)
-      .map(([k, v]) => [k, v.raw ?? ""])
+      .map(([k, v]) => [k, v.raw as string])
   );
 };

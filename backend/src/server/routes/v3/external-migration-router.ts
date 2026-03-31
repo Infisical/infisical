@@ -711,7 +711,19 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       params: z.object({ id: z.string().uuid() }),
       body: z.object({
         connectionId: z.string().uuid().nullable()
-      })
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            connectionId: z.string().nullish(),
+            provider: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
@@ -730,7 +742,19 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "deleteDopplerExternalMigrationV3",
-      params: z.object({ id: z.string().uuid() })
+      params: z.object({ id: z.string().uuid() }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            connectionId: z.string().nullish(),
+            provider: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
@@ -821,7 +845,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         targetSecretPath: z.string().min(1).default("/")
       }),
       response: {
-        200: z.object({ imported: z.number() })
+        200: z.object({ status: z.string(), imported: z.number() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
