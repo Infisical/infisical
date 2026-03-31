@@ -233,9 +233,13 @@ export const useDeleteDopplerExternalMigrationConfig = () => {
 export const useImportDopplerSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, TImportDopplerSecretsDTO>({
+  return useMutation<{ status: string; imported: number }, Error, TImportDopplerSecretsDTO>({
     mutationFn: async (dto) => {
-      await apiRequest.post("/api/v3/external-migration/doppler/import-secrets", dto);
+      const { data } = await apiRequest.post<{ status: string; imported: number }>(
+        "/api/v3/external-migration/doppler/import-secrets",
+        dto
+      );
+      return data;
     },
     onSuccess: (_, { targetProjectId, targetEnvironment, targetSecretPath }) => {
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
