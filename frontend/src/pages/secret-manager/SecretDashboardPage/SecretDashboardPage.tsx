@@ -873,7 +873,7 @@ const Page = () => {
             ,
             <a
               className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-              href="https://infisical.com/docs/documentation/getting-started/api"
+              href="https://infisical.com/docs/api-reference/overview/introduction"
               target="_blank"
               rel="noopener noreferrer"
             >
