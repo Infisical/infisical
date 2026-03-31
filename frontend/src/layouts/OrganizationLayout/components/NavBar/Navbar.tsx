@@ -19,6 +19,7 @@ import {
   Plus,
   Settings,
   Slack,
+  TriangleAlertIcon,
   User,
   UserPlus,
   Users,
@@ -30,7 +31,7 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button as V2Button, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -48,9 +49,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   SubOrgIcon,
-  Tooltip as V3Tooltip,
-  TooltipContent as V3TooltipContent,
-  TooltipTrigger as V3TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableButtonGroup,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
@@ -348,8 +349,8 @@ export const Navbar = () => {
       <div className="mr-auto flex h-full min-w-34 items-center">
         {isServerAdminPanel ? (
           <div className="flex h-full items-center">
-            <V3Tooltip>
-              <V3TooltipTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Link
                   to="/organizations/$orgId/projects"
                   params={{ orgId: currentOrg.id }}
@@ -358,9 +359,9 @@ export const Navbar = () => {
                   <ChevronLeft className="size-4" />
                   <OrgIcon className="size-3.5" />
                 </Link>
-              </V3TooltipTrigger>
-              <V3TooltipContent side="bottom">Back to organization</V3TooltipContent>
-            </V3Tooltip>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Back to organization</TooltipContent>
+            </Tooltip>
             <Link
               to="/admin"
               className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-white transition-all duration-100"
@@ -416,17 +417,20 @@ export const Navbar = () => {
                       {isSubOrganization ? "Sub-Organization" : "Organization"}
                     </Badge>
                   </button>
-                  {subscription.cardDeclined && (
-                    <Tooltip
-                      content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
-                      className="max-w-xs"
-                    >
-                      <div className="flex items-center">
-                        <FontAwesomeIcon
-                          icon={faExclamationTriangle}
-                          className="animate-pulse cursor-help text-xs text-primary-400"
-                        />
-                      </div>
+                  {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center">
+                          <TriangleAlertIcon className="size-3.5 animate-pulse cursor-help text-warning" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Your payment could not be processed
+                        {subscription.cardDeclinedReason
+                          ? `: ${subscription.cardDeclinedReason}`
+                          : ""}
+                        . Please update your payment method to continue enjoying premium features.
+                      </TooltipContent>
                     </Tooltip>
                   )}
                 </div>
@@ -549,23 +553,26 @@ export const Navbar = () => {
       </div>
 
       {subscription && subscription.slug === "starter" && !subscription.has_used_trial ? (
-        <Tooltip content="Start Free Pro Trial">
-          <Button
-            variant="info"
-            size="xs"
-            className="mt-px mr-2"
-            onClick={async () => {
-              if (!subscription || !rootOrg) return;
-              const url = await mutateAsync({
-                orgId: rootOrg.id,
-                success_url: window.location.href
-              });
-              window.location.href = url;
-            }}
-          >
-            <Infinity />
-            Free Pro Trial
-          </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="info"
+              size="xs"
+              className="mt-px mr-2"
+              onClick={async () => {
+                if (!subscription || !rootOrg) return;
+                const url = await mutateAsync({
+                  orgId: rootOrg.id,
+                  success_url: window.location.href
+                });
+                window.location.href = url;
+              }}
+            >
+              <Infinity />
+              Free Pro Trial
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Start Free Pro Trial</TooltipContent>
         </Tooltip>
       ) : (
         <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
@@ -721,15 +728,15 @@ export const Navbar = () => {
             <UnstableDropdownMenuItem onSelect={handleCopyToken}>
               <Clipboard />
               Copy Token
-              <V3Tooltip>
-                <V3TooltipTrigger>
+              <Tooltip>
+                <TooltipTrigger>
                   <Info className="size-3.5 opacity-50" />
-                </V3TooltipTrigger>
-                <V3TooltipContent className="max-w-xs">
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
                   This token is linked to your current login session and can only access resources
                   within the organization you&apos;re currently logged into.
-                </V3TooltipContent>
-              </V3Tooltip>
+                </TooltipContent>
+              </Tooltip>
             </UnstableDropdownMenuItem>
             <UnstableDropdownMenuSeparator />
             <UnstableDropdownMenuItem onSelect={logOutUser}>
