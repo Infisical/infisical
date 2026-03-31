@@ -890,7 +890,7 @@ export const externalMigrationServiceFactory = ({
     const dopplerSecrets = await getDopplerSecrets(appConnection, dopplerProject, dopplerEnvironment);
 
     try {
-      await secretService.createManySecretsRaw({
+      const secretOperation = await secretService.createManySecretsRaw({
         actorId: actor.id,
         actor: actor.type,
         actorAuthMethod: actor.authMethod,
@@ -903,13 +903,17 @@ export const externalMigrationServiceFactory = ({
           secretValue
         }))
       });
+
+      if (secretOperation.type === SecretProtectionType.Approval) {
+        return { status: VaultImportStatus.ApprovalRequired, imported: 0 };
+      }
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to import Doppler secrets. ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
 
-    return { imported: Object.keys(dopplerSecrets).length };
+    return { status: VaultImportStatus.Imported, imported: Object.keys(dopplerSecrets).length };
   };
 
   return {
