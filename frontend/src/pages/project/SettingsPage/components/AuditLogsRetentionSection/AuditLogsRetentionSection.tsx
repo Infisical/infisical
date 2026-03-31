@@ -57,7 +57,7 @@ export const AuditLogsRetentionSection = () => {
 
     await updateAuditLogsRetention({
       auditLogsRetentionDays,
-      projectSlug: currentProject.slug
+      projectId: currentProject.id
     });
 
     createNotification({
