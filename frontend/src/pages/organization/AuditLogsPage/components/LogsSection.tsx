@@ -55,7 +55,7 @@ const LogsSectionComponent = ({
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const { data: migrationStatus } = useGetAuditLogMigrationStatus();
 
-  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 2_000;
+  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
   const showClickHouseWarning =
     migrationStatus &&
     !migrationStatus.clickHouseConfigured &&
