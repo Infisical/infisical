@@ -38,7 +38,36 @@ import {
   PamRotationPolicyModal
 } from "./components";
 
-const PageContent = () => {
+type Variant = "resource" | "domain";
+
+const VARIANT_CONFIG: Record<
+  Variant,
+  {
+    backLabel: string;
+    backRoute: string;
+    entityLabel: string;
+    subtitle: (typeName: string) => string;
+    title: string;
+  }
+> = {
+  resource: {
+    backLabel: "Resources",
+    backRoute: "/organizations/$orgId/projects/pam/$projectId/resources",
+    entityLabel: "Resource",
+    subtitle: (typeName) => `${typeName} Resource`,
+    title: "PAM Resource | Infisical"
+  },
+  domain: {
+    backLabel: "Domains",
+    backRoute: "/organizations/$orgId/projects/pam/$projectId/domains",
+    entityLabel: "Domain",
+    subtitle: () => "Active Directory Domain",
+    title: "PAM Domain | Infisical"
+  }
+};
+
+const PageContent = ({ variant = "resource" }: { variant?: Variant }) => {
+  const config = VARIANT_CONFIG[variant];
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const params = useParams({
@@ -47,6 +76,11 @@ const PageContent = () => {
 
   const { resourceId, resourceType, projectId } = params;
 
+  const tabRoute =
+    variant === "domain"
+      ? "/organizations/$orgId/projects/pam/$projectId/domains/$resourceType/$resourceId"
+      : "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId";
+
   const selectedTab = useSearch({
     strict: false,
     select: (el) => el.selectedTab
@@ -54,7 +88,7 @@ const PageContent = () => {
 
   const handleTabChange = (tab: string) => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      to: tabRoute,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
         orgId: currentOrg.id,
@@ -90,7 +124,7 @@ const PageContent = () => {
           <UnstableEmptyHeader>
             <BanIcon className="size-8 text-muted" />
             <UnstableEmptyTitle className="text-muted">
-              Could not find PAM Resource with ID {resourceId}
+              Could not find {config.entityLabel.toLowerCase()} with ID {resourceId}
             </UnstableEmptyTitle>
           </UnstableEmptyHeader>
         </UnstableEmpty>
@@ -102,7 +136,7 @@ const PageContent = () => {
 
   const handleBack = () => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources",
+      to: config.backRoute,
       params: { orgId: currentOrg.id, projectId: projectId! }
     });
   };
@@ -116,14 +150,14 @@ const PageContent = () => {
         resourceType: resource.resourceType
       });
       createNotification({
-        text: `Resource "${resource.name}" deleted successfully`,
+        text: `${config.entityLabel} "${resource.name}" deleted successfully`,
         type: "success"
       });
       handleBack();
     } catch (error) {
-      console.error("Failed to delete resource:", error);
+      console.error(`Failed to delete ${config.entityLabel.toLowerCase()}:`, error);
       createNotification({
-        text: "Failed to delete resource",
+        text: `Failed to delete ${config.entityLabel.toLowerCase()}`,
         type: "error"
       });
     }
@@ -137,7 +171,7 @@ const PageContent = () => {
         className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-        Resources
+        {config.backLabel}
       </button>
 
       <div className="mb-6 flex items-center justify-between">
@@ -151,7 +185,7 @@ const PageContent = () => {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-mineshaft-100">{resource.name}</h1>
-            <p className="text-sm text-bunker-300">{resourceTypeInfo.name} Resource</p>
+            <p className="text-sm text-bunker-300">{config.subtitle(resourceTypeInfo.name)}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -171,7 +205,7 @@ const PageContent = () => {
                     onClick={() => setIsEditModalOpen(true)}
                     isDisabled={!isAllowed}
                   >
-                    Edit Resource
+                    Edit {config.entityLabel}
                   </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
@@ -185,7 +219,7 @@ const PageContent = () => {
                     variant="danger"
                     isDisabled={!isAllowed}
                   >
-                    Delete Resource
+                    Delete {config.entityLabel}
                   </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
@@ -242,7 +276,7 @@ const PageContent = () => {
 
       <DeleteActionModal
         isOpen={isDeleteModalOpen}
-        title={`Delete Resource ${resource.name}?`}
+        title={`Delete ${config.entityLabel} ${resource.name}?`}
         onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
         deleteKey={resource.name}
         onDeleteApproved={handleDeleteConfirm}
@@ -261,10 +295,22 @@ export const PamResourceByIDPage = () => {
   return (
     <>
       <Helmet>
-        <title>PAM Resource | Infisical</title>
+        <title>{VARIANT_CONFIG.resource.title}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <PageContent />
+      <PageContent variant="resource" />
+    </>
+  );
+};
+
+export const PamDomainByIDPage = () => {
+  return (
+    <>
+      <Helmet>
+        <title>{VARIANT_CONFIG.domain.title}</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Helmet>
+      <PageContent variant="domain" />
     </>
   );
 };

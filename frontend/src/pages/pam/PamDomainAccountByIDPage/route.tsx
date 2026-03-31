@@ -1,14 +1,8 @@
 import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
 
 import { PamAccountByIDPage } from "../PamAccountByIDPage/PamAccountByIDPage";
-import { AccountDetailTab } from "../PamAccountByIDPage/route";
-
-const AccountDetailSearchSchema = z.object({
-  selectedTab: z.nativeEnum(AccountDetailTab).catch(AccountDetailTab.Dependencies),
-  fromResourceId: z.string().optional()
-});
+import { AccountDetailSearchSchema, AccountDetailTab } from "../PamAccountByIDPage/route";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/domains/$resourceType/$resourceId/accounts/$accountId/"

@@ -2,8 +2,8 @@ import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { PamDomainByIDPage } from "../PamResourceByIDPage/PamResourceByIDPage";
 import { ResourceDetailTab } from "../PamResourceByIDPage/route";
-import { PamDomainByIDPage } from "./PamDomainByIDPage";
 
 const DomainDetailSearchSchema = z.object({
   selectedTab: z.nativeEnum(ResourceDetailTab).catch(ResourceDetailTab.Accounts)

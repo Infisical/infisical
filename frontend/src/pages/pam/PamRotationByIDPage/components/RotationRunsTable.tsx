@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
 
 import {
@@ -6,7 +6,6 @@ import {
   UnstableEmpty,
   UnstableEmptyHeader,
   UnstableEmptyTitle,
-  UnstablePagination,
   UnstableTable,
   UnstableTableBody,
   UnstableTableCell,
@@ -62,9 +61,8 @@ export const RotationRunsTable = ({ runs }: Props) => {
             const hasErrors = run.accountErrors && run.accountErrors.length > 0;
 
             return (
-              <>
+              <Fragment key={run.id}>
                 <UnstableTableRow
-                  key={run.id}
                   className={hasErrors ? "cursor-pointer" : undefined}
                   onClick={
                     hasErrors ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined
@@ -111,20 +109,11 @@ export const RotationRunsTable = ({ runs }: Props) => {
                     </UnstableTableCell>
                   </UnstableTableRow>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </UnstableTableBody>
       </UnstableTable>
-      {runs.length > 0 && (
-        <UnstablePagination
-          count={runs.length}
-          page={1}
-          perPage={20}
-          onChangePage={() => {}}
-          onChangePerPage={() => {}}
-        />
-      )}
     </div>
   );
 };

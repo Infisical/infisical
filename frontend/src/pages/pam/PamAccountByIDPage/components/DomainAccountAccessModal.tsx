@@ -76,12 +76,8 @@ export const DomainAccountAccessModal = ({
   const selectedOption = options.find((o) => o.value === selectedResourceId) ?? null;
   const selectedResource = relatedResources?.find((r) => r.id === selectedResourceId);
 
-  const { protocol, hostname, port } = window.location;
-  const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
-  const siteURL = `${protocol}//${hostname}${portSuffix}`;
-
   const command = selectedResource
-    ? `infisical pam rdp access --resource ${selectedResource.name} --account ${accountName} --project-id ${projectId} --duration ${duration} --domain ${siteURL}`
+    ? `infisical pam rdp access --resource ${selectedResource.name} --account ${accountName} --project-id ${projectId} --duration ${duration} --domain ${window.location.origin}`
     : "";
 
   const handleCopyCommand = () => {

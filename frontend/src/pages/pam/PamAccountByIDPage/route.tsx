@@ -9,7 +9,7 @@ export enum AccountDetailTab {
   Dependencies = "dependencies"
 }
 
-const AccountDetailSearchSchema = z.object({
+export const AccountDetailSearchSchema = z.object({
   selectedTab: z.nativeEnum(AccountDetailTab).catch(AccountDetailTab.Dependencies),
   fromResourceId: z.string().optional()
 });
