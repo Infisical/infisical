@@ -63,9 +63,10 @@ export const externalMigrationConfigDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const qb = (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig);
-      buildConnectionJoin(qb, db);
-      qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
+      const qb = buildConnectionJoin(
+        (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig),
+        db
+      ).where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
 
       const result = await qb.first();
       if (!result) return undefined;
@@ -78,9 +79,10 @@ export const externalMigrationConfigDALFactory = (db: TDbClient) => {
 
   const findWithConnection = async (filter: { orgId: string; provider?: string }, tx?: Knex) => {
     try {
-      const qb = (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig);
-      buildConnectionJoin(qb, db);
-      qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
+      const qb = buildConnectionJoin(
+        (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig),
+        db
+      ).where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
 
       const results = await qb;
       return (results as Record<string, unknown>[]).map(mapResultToConnection);

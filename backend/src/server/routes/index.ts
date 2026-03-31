@@ -269,9 +269,9 @@ import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/a
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
+import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
-import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";

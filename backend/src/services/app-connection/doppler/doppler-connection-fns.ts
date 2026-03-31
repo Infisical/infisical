@@ -34,8 +34,9 @@ export const validateDopplerConnectionCredentials = async (config: TDopplerConne
     });
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const responseData = error.response?.data as { messages?: string[] } | undefined;
       throw new BadRequestError({
-        message: `Failed to validate Doppler credentials: ${error.response?.data?.messages?.join(", ") || error.message || "Unknown error"}`
+        message: `Failed to validate Doppler credentials: ${responseData?.messages?.join(", ") || error.message || "Unknown error"}`
       });
     }
     throw new BadRequestError({
@@ -58,6 +59,7 @@ export const listDopplerProjects = async (appConnection: TDopplerConnection): Pr
   let hasMore = true;
 
   while (hasMore && page <= maxPages) {
+    // eslint-disable-next-line no-await-in-loop
     const res = await request.get<{ projects: TDopplerProject[]; page: number }>(`${DOPPLER_API_URL}/v3/projects`, {
       params: { page, per_page: perPage },
       headers: { Authorization: `Bearer ${apiToken}` }
@@ -90,6 +92,7 @@ export const listDopplerEnvironments = async (
   let hasMore = true;
 
   while (hasMore && page <= maxPages) {
+    // eslint-disable-next-line no-await-in-loop
     const res = await request.get<{ environments: TDopplerEnvironment[] }>(`${DOPPLER_API_URL}/v3/environments`, {
       params: { project: projectSlug, page, per_page: perPage },
       headers: { Authorization: `Bearer ${apiToken}` }
