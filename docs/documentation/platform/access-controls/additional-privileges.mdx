@@ -8,15 +8,31 @@ Even though Infisical supports full-fledged [role-base access controls](./role-b
 Infisical **Additional Privileges** functionality enables specific permissions with access to sensitive secrets/folders by identities within certain projects. It is possible to set up additional privileges through Web UI or API. 
 
 To provision specific privileges through Web UI: 
-1. Click on the `Edit` button next to the set of roles for user or identities. 
-![Edit User Role](/images/platform/access-controls/edit-role.png)
+1. Click on the user you wish to add additional privileges to
+![Select User](/images/platform/access-controls/additional-privileges/access-control-select-user.png)
 
-2. Click `Add Additional Privileges` in the corresponding section of the permission management modal.
-![Add Specific Privilege](/images/platform/access-controls/add-additional-privileges.png)
+2. Click `Add Additional Privileges`. This will open a sidebar where you can configure the additional privileges for the selected user.
+![Add Specific Privilege](/images/platform/access-controls/additional-privileges/user-details-add-additional-privileges-button.png)
 
-3. Fill out the necessary parameters in the privilege entry that appears. It is possible to specify the `Environment` and `Secret Path` to which you want to enable access. 
-It is also possible to define the range of permissions (`View`, `Create`, `Modify`, `Delete`) as well as how long the access should last (e.g., permanent or timed). 
-![Additional privileges](/images/platform/access-controls/additional-privileges.png)
+3. Click the `Add Policies` button. This will open a dropdown select where you can select the policies you want to configure for the additional privilege.
+![Add Policies](/images/platform/access-controls/additional-privileges/additional-privilege-add-policies-button.png)
 
-4. Click the `Save` button to enable the additional privilege.
-![Confirm Specific Privilege](/images/platform/access-controls/confirm-additional-privileges.png)
+
+4. Select the policies you wish to configure for the additional privilege.
+![Select Policies](/images/platform/access-controls/additional-privileges/additional-privilege-select-policy-dropdown.png)
+
+
+5. Configure the policies you have selected for the additional privilege.
+
+The supported options when configuring an additional privilege are:
+-  **Privilege Name**: The name of the additional privilege. This is a slug-friendly name for the privilege.
+- **Duration**: The duration of the additional privilege. This is the time period for which the additional privilege will be active after it has been created. This defaults to `Permanent`.
+- **Policies**: The policies that you wish to configure for the additional privilege.
+
+![Configure Policies](/images/platform/access-controls/additional-privileges/additional-privilege-configure-policies.png)
+
+6. Click the `Save` button to save and apply the additional privilege.
+![Save Additional Privilege](/images/platform/access-controls/additional-privileges/additional-privilege-save-button.png)
+
+7. The additional privilege is now applied to the user or machine identity. You can now view the additional privilege in the user or machine identity details page.
+![View Additional Privilege](/images/platform/access-controls/additional-privileges/user-details-additional-privileges-created.png)
