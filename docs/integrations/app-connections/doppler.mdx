@@ -1,0 +1,115 @@
+---
+title: "Doppler Connection"
+description: "Learn how to configure a Doppler Connection for Infisical."
+---
+
+Infisical supports the use of API Tokens to connect with Doppler. This connection is used for importing secrets from Doppler into Infisical via the [external migration tool](/documentation/platform/external-migrations/doppler).
+
+## Create a Doppler API Token
+
+<Steps>
+  <Step title="Navigate to the Doppler Tokens tab and click in Service">
+    Log in to your Doppler account and go to the Tokens tab.
+
+    ![Doppler Dashboard](/images/app-connections/doppler/doppler-dashboard.png)
+  </Step>
+  <Step title="Navigate to the Service Accounts section">
+    In the User Tokens page, click in **Manage service accounts** .
+
+    ![Doppler Service Accounts](/images/app-connections/doppler/manage-service-accounts.png)
+  </Step>
+  <Step title="Create Service Account">
+    Click in the "+" icon, provide a descriptive name, and confirm creation.
+
+    ![Doppler Create Token](/images/app-connections/doppler/doppler-create-service-account.png)
+  </Step>
+  <Step title="Click in create service account token">
+    Click in the "+" icon in the Service Account API Tokens container
+
+    ![Doppler Token Created](/images/app-connections/doppler/service-account-api-token-creation.png)
+  </Step>
+  <Step title="Add a name for the API Token">
+    Add a name for the API Token and click in Create API Token
+
+    ![Doppler Token Created](/images/app-connections/doppler/create-api-token.png)
+  </Step>
+  <Step title="Coppy the generated token">
+    Copy the generated token and save it, you will need it in the nexts steps
+
+    ![Doppler Token Created](/images/app-connections/doppler/copy-the-generated-code.png)
+  </Step>
+</Steps>
+
+## Create a Doppler Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, navigate to **Organization Settings** and select the **App Connections** tab.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Doppler Connection">
+        Click **+ Add Connection** and choose **Doppler Connection** from the list of available connections.
+
+        ![Select Doppler Connection](/images/app-connections/doppler/doppler-app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Doppler Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - The API Token value from the previous step
+
+        ![Doppler Connection Form](/images/app-connections/doppler/doppler-app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Doppler Connection** will be successfully created and ready to use for importing secrets into Infisical.
+
+        ![Doppler Connection Created](/images/app-connections/doppler/doppler-app-connection-created.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a Doppler Connection via API, send a request to the [Create Doppler Connection](/api-reference/endpoints/app-connections/doppler/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/doppler \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-doppler-connection",
+                "method": "api-token",
+                "credentials": {
+                    "apiToken": "[API TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "3c2a1b4d-97e6-4f18-b3c2-8e5d9a0f1234",
+          "name": "my-doppler-connection",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2025-04-23T19:46:34.831Z",
+          "updatedAt": "2025-04-23T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "9a1e482fbc306g93b1d6e2ce0d081b340dfcbg99f005b7c506f3ecd1391772g0",
+          "app": "doppler",
+          "method": "api-token",
+          "credentials": {}
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>
