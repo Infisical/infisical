@@ -231,7 +231,7 @@ function Sidebar({
         >
           <div
             className={cn(
-              "flex h-full flex-col border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear overflow-hidden",
+              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
               scope === "project" && "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
@@ -469,7 +469,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "flex h-10 shrink-0 items-center rounded-md px-4 text-xs font-medium text-muted ring-sidebar-ring outline-hidden transition-[margin,opacity,padding] duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:[&>span]:hidden hover:text-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "flex h-10 shrink-0 items-center rounded-md px-4 text-xs font-medium text-muted ring-sidebar-ring outline-hidden transition-[margin,opacity,padding] duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:text-foreground focus-visible:ring-2 group-data-[collapsible=icon]:[&>span]:hidden [&>svg]:size-4 [&>svg]:shrink-0",
         className
       )}
       {...props}
