@@ -1,17 +1,28 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableInput
+} from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
   useGetDopplerEnvironments,
@@ -55,6 +66,10 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
     }
   });
 
+  useEffect(() => {
+    if (isOpen) reset();
+  }, [isOpen, reset]);
+
   const selectedDopplerProject = watch("dopplerProject");
   const selectedTargetProjectId = watch("targetProjectId");
 
@@ -79,7 +94,7 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
   const { mutateAsync: importSecrets } = useImportDopplerSecrets();
 
   const onFormSubmit = async (data: FormData) => {
-    await importSecrets({
+    const result = await importSecrets({
       configId: config.id,
       dopplerProject: data.dopplerProject,
       dopplerEnvironment: data.dopplerEnvironment,
@@ -89,7 +104,10 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
     });
     createNotification({
       type: "success",
-      text: "Secrets imported successfully from Doppler"
+      text:
+        result.status === "approval-required"
+          ? "Secrets submitted for approval — review the pending request in your project"
+          : `${result.imported} secret${result.imported !== 1 ? "s" : ""} imported successfully from Doppler`
     });
     reset();
     onOpenChange(false);
@@ -101,14 +119,22 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleClose}>
-      <ModalContent
-        title="Import Secrets from Doppler"
-        subTitle="Select source and destination to import secrets"
-        bodyClassName="overflow-visible"
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <p className="mb-4 text-sm font-medium text-mineshaft-300">Doppler Source</p>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          reset();
+          onOpenChange(false);
+        }
+      }}
+    >
+      <DialogContent className="max-w-lg overflow-visible" showCloseButton>
+        <DialogHeader>
+          <DialogTitle>Import Secrets from Doppler</DialogTitle>
+          <DialogDescription>Select source and destination to import secrets</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+          <p className="text-sm font-medium text-muted">Doppler Source</p>
 
           <Controller
             control={control}
@@ -117,28 +143,28 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
               const selectedItem = dopplerProjects.find((p) => p.slug === field.value);
 
               return (
-                <FormControl
-                  label="Project"
-                  isError={Boolean(errors.dopplerProject)}
-                  errorText={errors.dopplerProject?.message}
-                >
-                  <FilterableSelect
-                    value={selectedItem || null}
-                    onChange={(newValue) => {
-                      const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                      if (singleValue && "slug" in singleValue) {
-                        field.onChange(singleValue.slug);
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                    isLoading={isLoadingProjects}
-                    options={dopplerProjects}
-                    placeholder="Select Doppler project..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.slug}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Project</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selectedItem || null}
+                      onChange={(newValue) => {
+                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                        if (singleValue && "slug" in singleValue) {
+                          field.onChange(singleValue.slug);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                      isLoading={isLoadingProjects}
+                      options={dopplerProjects}
+                      placeholder="Select Doppler project..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.slug}
+                    />
+                  </FieldContent>
+                  <FieldError>{errors.dopplerProject?.message}</FieldError>
+                </Field>
               );
             }}
           />
@@ -150,34 +176,34 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
               const selectedItem = dopplerEnvironments.find((e) => e.slug === field.value);
 
               return (
-                <FormControl
-                  label="Environment"
-                  isError={Boolean(errors.dopplerEnvironment)}
-                  errorText={errors.dopplerEnvironment?.message}
-                >
-                  <FilterableSelect
-                    value={selectedItem || null}
-                    onChange={(newValue) => {
-                      const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                      if (singleValue && "slug" in singleValue) {
-                        field.onChange(singleValue.slug);
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                    isLoading={isLoadingEnvironments}
-                    isDisabled={!selectedDopplerProject}
-                    options={dopplerEnvironments}
-                    placeholder="Select Doppler environment..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.slug}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Environment</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selectedItem || null}
+                      onChange={(newValue) => {
+                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                        if (singleValue && "slug" in singleValue) {
+                          field.onChange(singleValue.slug);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                      isLoading={isLoadingEnvironments}
+                      isDisabled={!selectedDopplerProject}
+                      options={dopplerEnvironments}
+                      placeholder="Select Doppler environment..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.slug}
+                    />
+                  </FieldContent>
+                  <FieldError>{errors.dopplerEnvironment?.message}</FieldError>
+                </Field>
               );
             }}
           />
 
-          <p className="mb-4 mt-6 text-sm font-medium text-mineshaft-300">Infisical Destination</p>
+          <p className="pt-2 text-sm font-medium text-muted">Infisical Destination</p>
 
           <Controller
             control={control}
@@ -186,28 +212,28 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
               const selectedItem = secretManagerProjects.find((p) => p.id === field.value);
 
               return (
-                <FormControl
-                  label="Project"
-                  isError={Boolean(errors.targetProjectId)}
-                  errorText={errors.targetProjectId?.message}
-                >
-                  <FilterableSelect
-                    value={selectedItem || null}
-                    onChange={(newValue) => {
-                      const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                      if (singleValue && "id" in singleValue) {
-                        field.onChange(singleValue.id);
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                    isLoading={isLoadingUserProjects}
-                    options={secretManagerProjects}
-                    placeholder="Select Infisical project..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Project</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selectedItem || null}
+                      onChange={(newValue) => {
+                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                        if (singleValue && "id" in singleValue) {
+                          field.onChange(singleValue.id);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                      isLoading={isLoadingUserProjects}
+                      options={secretManagerProjects}
+                      placeholder="Select Infisical project..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                    />
+                  </FieldContent>
+                  <FieldError>{errors.targetProjectId?.message}</FieldError>
+                </Field>
               );
             }}
           />
@@ -220,28 +246,28 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
               const selectedItem = environments.find((e) => e.slug === field.value);
 
               return (
-                <FormControl
-                  label="Environment"
-                  isError={Boolean(errors.targetEnvironment)}
-                  errorText={errors.targetEnvironment?.message}
-                >
-                  <FilterableSelect
-                    value={selectedItem || null}
-                    onChange={(newValue) => {
-                      const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                      if (singleValue && "slug" in singleValue) {
-                        field.onChange(singleValue.slug);
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                    isDisabled={!selectedTargetProjectId}
-                    options={environments}
-                    placeholder="Select environment..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.slug}
-                  />
-                </FormControl>
+                <Field>
+                  <FieldLabel>Environment</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selectedItem || null}
+                      onChange={(newValue) => {
+                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
+                        if (singleValue && "slug" in singleValue) {
+                          field.onChange(singleValue.slug);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                      isDisabled={!selectedTargetProjectId}
+                      options={environments}
+                      placeholder="Select environment..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.slug}
+                    />
+                  </FieldContent>
+                  <FieldError>{errors.targetEnvironment?.message}</FieldError>
+                </Field>
               );
             }}
           />
@@ -250,33 +276,41 @@ export const DopplerImportModal = ({ isOpen, onOpenChange, config }: Props) => {
             control={control}
             name="targetSecretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Secret Path"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The path in Infisical where secrets will be imported"
-              >
-                <Input {...field} placeholder="e.g., /" autoComplete="off" />
-              </FormControl>
+              <Field>
+                <FieldLabel className="inline-flex items-center gap-1">
+                  Secret Path
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-default">
+                        <InfoIcon className="size-3 text-accent" aria-hidden />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>The path in Infisical where secrets will be imported</TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <UnstableInput
+                    {...field}
+                    placeholder="e.g., /"
+                    autoComplete="off"
+                    isError={Boolean(error)}
+                  />
+                </FieldContent>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
 
-          <div className="mt-8 flex items-center gap-2">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              Import Secrets
-            </Button>
-            <Button colorSchema="secondary" variant="plain" onClick={handleClose}>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-          </div>
+            <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+              Import Secrets
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
