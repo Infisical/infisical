@@ -88,6 +88,7 @@ type TSecretSyncQueueFactoryDep = {
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "findByFolderId"
+    | "findByFolderIds"
     | "find"
     | "insertMany"
     | "upsertSecretReferences"

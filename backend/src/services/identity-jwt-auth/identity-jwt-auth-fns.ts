@@ -9,5 +9,5 @@ export const doesFieldValueMatchJwtPolicy = (fieldValue: string | boolean | numb
     return fieldValue === parseInt(policyValue, 10);
   }
 
-  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue);
+  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
 };
