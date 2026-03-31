@@ -11,6 +11,12 @@ type NavigateUserToOrgParams = {
   navigateTo?: string;
 };
 
+export enum LoginSection {
+  Initial = "initial",
+  SAML = "saml",
+  OIDC = "oidc"
+}
+
 export const navigateUserToOrg = async ({
   navigate,
   organizationId,

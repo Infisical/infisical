@@ -345,7 +345,13 @@ export const clearSession = (keepQueryClient?: boolean) => {
 
 export const useLogoutUser = (keepQueryClient?: boolean) => {
   return useMutation({
-    mutationFn: logoutUser,
+    mutationFn: async () => {
+      // Cancel all in-flight queries and clear token before the logout call
+      // to prevent 401 interceptor from triggering refresh attempts
+      qc.cancelQueries();
+      setAuthToken("");
+      await logoutUser();
+    },
     onSuccess: () => clearSession(keepQueryClient)
   });
 };

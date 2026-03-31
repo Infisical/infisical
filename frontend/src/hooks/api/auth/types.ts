@@ -1,5 +1,6 @@
 export type GetAuthTokenAPI = {
   token: string;
+  refreshToken?: string;
   organizationId?: string;
   subOrganizationId?: string;
 };
@@ -94,19 +95,13 @@ export type LoginLDAPRes = {
   nextUrl: string;
 };
 
-export type CompleteAccountDTO = {
+export type CompleteAccountSignupDTO = {
   email: string;
   firstName: string;
   lastName: string;
   password: string;
-  tokenMetadata?: string;
-};
-
-export type CompleteAccountSignupDTO = CompleteAccountDTO & {
-  providerAuthToken?: string;
   attributionSource?: string;
-  organizationName: string;
-  useDefaultOrg?: boolean;
+  organizationName?: string;
 };
 
 export type VerifySignupInviteDTO = {

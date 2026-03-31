@@ -39,7 +39,6 @@ export const UserInfoSSOStep = ({
   providerOrganizationName,
   password,
   setPassword,
-  providerAuthToken,
   forceDefaultOrg
 }: Props) => {
   const [nameError, setNameError] = useState(false);
@@ -87,10 +86,8 @@ export const UserInfoSSOStep = ({
           password,
           firstName: name.split(" ")[0],
           lastName: name.split(" ").slice(1).join(" "),
-          providerAuthToken,
           organizationName,
-          attributionSource,
-          useDefaultOrg: forceDefaultOrg
+          attributionSource
         });
 
         // unset signup JWT token and set JWT token

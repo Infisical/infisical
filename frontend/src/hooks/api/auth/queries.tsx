@@ -6,12 +6,9 @@ import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
-import { setAuthToken } from "../reactQuery";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
 import {
-  CompleteAccountDTO,
   CompleteAccountSignupDTO,
-  GetAuthTokenAPI,
   GetBackupEncryptedPrivateKeyDTO,
   Login1DTO,
   Login1Res,
@@ -145,9 +142,10 @@ export const completeAccountSignup = async (details: CompleteAccountSignupDTO) =
   return data;
 };
 
-export const completeAccountSignupInvite = async (details: CompleteAccountDTO) => {
-  const { data } = await apiRequest.post("/api/v3/signup/complete-account/invite", details);
-  return data;
+export const useCompleteAccountSignup = () => {
+  return useMutation({
+    mutationFn: completeAccountSignup
+  });
 };
 
 export const useSendMfaToken = () => {
@@ -286,15 +284,11 @@ export const useResetUserPasswordV2 = () => {
   });
 };
 
-// Refresh token is set as cookie when logged in
-// Using that we fetch the auth bearer token needed for auth calls
-export const fetchAuthToken = async () => {
-  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
-    withCredentials: true
-  });
-  setAuthToken(data.token);
-  return data;
-};
+// Re-export from refresh.ts to maintain backwards compatibility
+// The actual implementation lives in refresh.ts to avoid circular imports with request.ts
+import { fetchAuthToken } from "./refresh";
+
+export { fetchAuthToken };
 
 export const useGetAuthToken = () =>
   useQuery({

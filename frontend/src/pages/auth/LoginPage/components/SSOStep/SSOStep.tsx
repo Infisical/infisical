@@ -12,12 +12,14 @@ import {
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { useLastLogin } from "@app/hooks/useLastLogin";
 
+import { LoginSection } from "../../Login.utils";
+
 type Props = {
-  setStep: (step: number) => void;
+  setSection: (section: LoginSection) => void;
   type: "SAML" | "OIDC";
 };
 
-export const SSOStep = ({ setStep, type }: Props) => {
+export const SSOStep = ({ setSection, type }: Props) => {
   const { lastLogin, saveLastLogin } = useLastLogin();
   const { t } = useTranslation();
 
@@ -76,7 +78,7 @@ export const SSOStep = ({ setStep, type }: Props) => {
             </Button>
           </div>
           <div className="mt-6 flex flex-row justify-center text-xs text-muted">
-            <button onClick={() => setStep(0)} type="button">
+            <button onClick={() => setSection(LoginSection.Initial)} type="button">
               <span className="cursor-pointer duration-200 hover:text-label hover:underline hover:decoration-project/45 hover:underline-offset-2">
                 {t("login.other-option")}
               </span>

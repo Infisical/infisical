@@ -1,14 +1,16 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
+import { z } from "zod";
 
 import Error from "@app/components/basic/Error";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
-import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import {
   Badge,
@@ -31,27 +33,23 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { useLastLogin } from "@app/hooks/useLastLogin";
 
-import { useNavigateToSelectOrganization } from "../../Login.utils";
+import { LoginSection, useNavigateToSelectOrganization } from "../../Login.utils";
 import { OrgLoginButton } from "../OrgLoginButton";
 import { SocialLoginButton } from "../SocialLoginButton";
 
+const loginFormSchema = z.object({
+  email: z.string().email("Please enter a valid email").min(1, "Email is required"),
+  password: z.string().min(1, "Password is required")
+});
+
+type LoginFormData = z.infer<typeof loginFormSchema>;
+
 type Props = {
-  setStep: (step: number) => void;
-  email: string;
-  setEmail: (email: string) => void;
-  password: string;
-  setPassword: (email: string) => void;
+  setSection: (section: LoginSection) => void;
   isAdmin?: boolean;
 };
 
-export const InitialStep = ({
-  setStep,
-  email,
-  setEmail,
-  password,
-  setPassword,
-  isAdmin
-}: Props) => {
+export const InitialStep = ({ setSection, isAdmin }: Props) => {
   const navigate = useNavigate();
 
   const { t } = useTranslation();
@@ -69,6 +67,18 @@ export const InitialStep = ({
   const { lastLogin, saveLastLogin } = useLastLogin();
 
   const callbackPort = queryParams.get("callback_port");
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      email: "",
+      password: ""
+    }
+  });
 
   const redirectToSaml = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
@@ -96,7 +106,7 @@ export const InitialStep = ({
       saveLastLogin({ method: LoginMethod.SAML, orgSlug: config.defaultAuthOrgSlug });
       redirectToSaml(config.defaultAuthOrgSlug);
     } else {
-      setStep(2);
+      setSection(LoginSection.SAML);
     }
   };
 
@@ -105,7 +115,7 @@ export const InitialStep = ({
       saveLastLogin({ method: LoginMethod.OIDC, orgSlug: config.defaultAuthOrgSlug });
       redirectToOidc(config.defaultAuthOrgSlug);
     } else {
-      setStep(3);
+      setSection(LoginSection.OIDC);
     }
   };
 
@@ -130,83 +140,77 @@ export const InitialStep = ({
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleLoginFailure = () => {
+    setLoginError(true);
+    const errorMessage = callbackPort
+      ? "CLI login unsuccessful. Double-check your credentials and try again."
+      : "Login unsuccessful. Double-check your credentials and try again.";
+
+    createNotification({
+      text: errorMessage,
+      type: "error"
+    });
+  };
+
+  const handleLoginError = (err: any) => {
+    const errorType = err.response?.data?.error;
+    if (errorType === "User Locked") {
+      createNotification({
+        title: err.response.data.error,
+        text: err.response.data.message,
+        type: "error"
+      });
+      return;
+    }
+
+    if (errorType === "Captcha Required") {
+      setShouldShowCaptcha(true);
+      return;
+    }
+
+    handleLoginFailure();
+  };
+
+  const resetCaptcha = () => {
+    captchaRef.current?.resetCaptcha();
+    setCaptchaToken("");
+  };
+
+  const handleEmailLogin = async (formData: LoginFormData) => {
+    setIsLoading(true);
+
     try {
-      if (!email || !password) {
-        return;
-      }
+      const loginResult = await attemptLogin({
+        email: formData.email.toLowerCase(),
+        password: formData.password,
+        captchaToken
+      });
 
-      setIsLoading(true);
-      if (callbackPort) {
-        const isCliLoginSuccessful = await attemptCliLogin({
-          email: email.toLowerCase(),
-          password,
-          captchaToken
+      const isLoginSuccessful = loginResult?.success;
+
+      if (isLoginSuccessful) {
+        saveLastLogin({ method: LoginMethod.EMAIL });
+        navigateToSelectOrganization(callbackPort || undefined, isAdmin);
+        createNotification({
+          text: "Successfully logged in",
+          type: "success"
         });
-
-        if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
-          navigateToSelectOrganization(callbackPort);
-        } else {
-          setLoginError(true);
-          createNotification({
-            text: "CLI login unsuccessful. Double-check your credentials and try again.",
-            type: "error"
-          });
-        }
       } else {
-        const isLoginSuccessful = await attemptLogin({
-          email: email.toLowerCase(),
-          password,
-          captchaToken
-        });
-
-        if (isLoginSuccessful && isLoginSuccessful.success) {
-          saveLastLogin({ method: LoginMethod.EMAIL });
-          navigateToSelectOrganization(undefined, isAdmin);
-          createNotification({
-            text: "Successfully logged in",
-            type: "success"
-          });
-        }
+        handleLoginFailure();
       }
     } catch (err: any) {
       console.error(err);
-      if (err.response.data.error === "User Locked") {
-        createNotification({
-          title: err.response.data.error,
-          text: err.response.data.message,
-          type: "error"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (err.response.data.error === "Captcha Required") {
-        setShouldShowCaptcha(true);
-        setIsLoading(false);
-        return;
-      }
-
-      setLoginError(true);
-      createNotification({
-        text: "Login unsuccessful. Double-check your credentials and try again.",
-        type: "error"
-      });
+      handleLoginError(err);
+    } finally {
+      resetCaptcha();
+      setIsLoading(false);
     }
-
-    if (captchaRef.current) {
-      captchaRef.current.resetCaptcha();
-    }
-
-    setCaptchaToken("");
-    setIsLoading(false);
   };
 
   if (config.defaultAuthOrgAuthEnforced && config.defaultAuthOrgAuthMethod && !isAdmin) {
     return (
       <form
-        onSubmit={handleLogin}
+        onSubmit={handleSubmit(handleEmailLogin)}
         className="mx-auto flex w-full flex-col items-center justify-center"
       >
         <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
@@ -233,7 +237,7 @@ export const InitialStep = ({
 
   return (
     <form
-      onSubmit={handleLogin}
+      onSubmit={handleSubmit(handleEmailLogin)}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
       <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
@@ -250,23 +254,22 @@ export const InitialStep = ({
             <>
               <div className="w-full">
                 <UnstableInput
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register("email")}
                   type="email"
                   placeholder="Enter your email..."
-                  required
                   autoComplete="username"
                   className="h-10"
                 />
+                {errors.email && (
+                  <span className="mt-1 text-xs text-red-500">{errors.email.message}</span>
+                )}
               </div>
               <div className="mt-2 w-full">
                 <InputGroup className="h-10">
                   <InputGroupInput
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    {...register("password")}
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password..."
-                    required
                     autoComplete="current-password"
                     id="current-password"
                   />
@@ -281,6 +284,9 @@ export const InitialStep = ({
                     </UnstableIconButton>
                   </InputGroupAddon>
                 </InputGroup>
+                {errors.password && (
+                  <span className="mt-1 text-xs text-red-500">{errors.password.message}</span>
+                )}
               </div>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
                 <div className="mt-4 flex justify-center [&>div]:!w-full">

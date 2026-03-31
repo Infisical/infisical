@@ -1,9 +1,10 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import { fetchAuthToken } from "@app/hooks/api/auth/refresh";
 import {
   getAuthToken,
   getMfaTempToken,
@@ -49,23 +50,54 @@ const resetRedirectingFlag = () => {
   isRedirecting = false;
 };
 
+let refreshPromise: Promise<string> | null = null;
+
+const isTokenExpiredError = (message: string) => {
+  const lower = message.toLowerCase();
+  return lower.includes("token expired") || lower.includes("stalesession");
+};
+
 apiRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const { response } = error;
+    const { response, config } = error;
 
     if (response && (response.status === 401 || response.status === 403)) {
       const currentToken = getAuthToken();
       const isAuthenticatedRequest = Boolean(currentToken);
 
-      if (isAuthenticatedRequest && !isRedirecting) {
-        // Check if the error indicates token expiration
+      if (isAuthenticatedRequest) {
         const errorMessage = response.data?.message || "";
-        const isTokenExpired = errorMessage
-          .toLowerCase()
-          .includes("your token has expired. please re-authenticate.");
 
-        if (isTokenExpired) {
+        // Attempt transparent token refresh on expiration
+        if (
+          isTokenExpiredError(errorMessage) &&
+          !(config as AxiosRequestConfig & { _retry?: boolean })._retry
+        ) {
+          (config as AxiosRequestConfig & { _retry?: boolean })._retry = true;
+
+          try {
+            // Deduplicate concurrent refresh attempts
+            if (!refreshPromise) {
+              refreshPromise = fetchAuthToken()
+                .then((data) => data.token)
+                .finally(() => {
+                  refreshPromise = null;
+                });
+            }
+
+            const newToken = await refreshPromise;
+
+            // Retry the original request with the new token
+            // eslint-disable-next-line no-param-reassign
+            config.headers.Authorization = `Bearer ${newToken}`;
+            return apiRequest(config);
+          } catch {
+            // Refresh failed — fall through to redirect logic below
+          }
+        }
+
+        if (!isRedirecting) {
           isRedirecting = true;
 
           try {

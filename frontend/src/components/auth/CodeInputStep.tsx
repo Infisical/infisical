@@ -12,7 +12,9 @@ import {
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
-import { useSendVerificationEmail } from "@app/hooks/api";
+import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
+
+import SecurityClient from "../utilities/SecurityClient";
 
 // Matches v3 input theme: transparent bg, border (#2b2c30), foreground text (#ebebeb), ring on focus (#2d2f33)
 const codeInputStyle = {
@@ -54,44 +56,23 @@ const codeInputStylePhone = {
 
 interface CodeInputStepProps {
   email: string;
-  incrementStep: () => void;
-  setCode: (value: string) => void;
-  codeError: boolean;
-  isCodeInputCheckLoading: boolean;
+  onComplete: () => void;
 }
 
-/**
- * This is the second step of sign up where users need to verify their email
- * @param {object} obj
- * @param {string} obj.email - user's email to which we just sent a verification email
- * @param {function} obj.incrementStep - goes to the next step of signup
- * @param {function} obj.setCode - state updating function that set the current value of the emai verification code
- * @param {boolean} obj.codeError - whether the code was inputted wrong or now
- * @returns
- */
-export default function CodeInputStep({
-  email,
-  incrementStep,
-  setCode,
-  codeError,
-  isCodeInputCheckLoading
-}: CodeInputStepProps): JSX.Element {
-  const { mutateAsync } = useSendVerificationEmail();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
+export default function CodeInputStep({ email, onComplete }: CodeInputStepProps): JSX.Element {
+  const { mutateAsync: resendEmail, isPending: isResending } = useSendVerificationEmail();
+  const {
+    mutateAsync: verifyCode,
+    isPending: isVerifying,
+    isError: isCodeError
+  } = useVerifySignupEmailVerificationCode();
+  const [code, setCode] = useState("");
   const { t } = useTranslation();
 
-  const resendVerificationEmail = async () => {
-    setIsResendingVerificationEmail(true);
-    setIsLoading(true);
-    try {
-      await mutateAsync({ email });
-    } finally {
-      setTimeout(() => {
-        setIsLoading(false);
-        setIsResendingVerificationEmail(false);
-      }, 1000);
-    }
+  const handleVerify = async () => {
+    const { token } = await verifyCode({ email, code });
+    SecurityClient.setSignupToken(token);
+    onComplete();
   };
 
   return (
@@ -126,26 +107,30 @@ export default function CodeInputStep({
               className="code-input-v3 mt-2 mb-2"
             />
           </div>
-          {codeError && <FieldError>{t("signup.step2-code-error")}</FieldError>}
+          {isCodeError && <FieldError>{t("signup.step2-code-error")}</FieldError>}
           <div className="mt-4 w-full">
             <Button
               type="submit"
-              onClick={incrementStep}
+              onClick={handleVerify}
               variant="project"
               size="lg"
               isFullWidth
-              isPending={isCodeInputCheckLoading}
-              isDisabled={isCodeInputCheckLoading}
+              isPending={isVerifying}
+              isDisabled={isVerifying}
             >
               {String(t("signup.verify"))}
             </Button>
           </div>
           <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
             <div className="flex flex-row items-baseline gap-1">
-              <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
+              <button
+                disabled={isResending}
+                onClick={() => resendEmail({ email })}
+                type="button"
+              >
                 <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                   {t("signup.step2-resend-alert")}{" "}
-                  {isResendingVerificationEmail
+                  {isResending
                     ? t("signup.step2-resend-progress")
                     : t("signup.step2-resend-submit")}
                 </span>
