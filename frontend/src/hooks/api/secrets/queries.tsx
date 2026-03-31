@@ -312,7 +312,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
           projectId: dto.projectId,
           environment: dto.environment,
           secretPath: dto.secretPath,
-          includeAllEntities: dto.includeAllEntities ?? undefined
+          includeAllEntities: dto.includeAllEntities
         }
       });
 

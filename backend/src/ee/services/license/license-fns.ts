@@ -73,7 +73,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   customRateLimits: false,
   subOrganization: false,
   customAlerts: false,
-  secretAccessInsights: true,
+  secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,

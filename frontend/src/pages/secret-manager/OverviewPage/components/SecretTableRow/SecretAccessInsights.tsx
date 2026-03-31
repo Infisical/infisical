@@ -154,10 +154,12 @@ function AddMemberPopover({
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canCreateMember = permission.can(
-    ProjectPermissionMemberActions.Create,
-    ProjectPermissionSub.Member
-  );
+  const canGrantAccess =
+    permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
+    permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Member
+    );
 
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: projectMembers } = useGetWorkspaceUsers(currentProject.id);
@@ -230,17 +232,12 @@ function AddMemberPopover({
       });
       setSelectedUsers(new Set());
       setIsOpen(false);
-    } catch {
-      createNotification({
-        text: "Failed to add users to project",
-        type: "error"
-      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!canCreateMember) {
+  if (!canGrantAccess) {
     return (
       <Tooltip>
         <TooltipTrigger>
