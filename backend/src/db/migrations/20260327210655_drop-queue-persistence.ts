@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { createOnUpdateTrigger } from "../utils";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 const QUEUE_JOBS_TABLE = "queue_jobs";
 
@@ -8,6 +8,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasTable = await knex.schema.hasTable(QUEUE_JOBS_TABLE);
   if (hasTable) {
     await knex.schema.dropTable(QUEUE_JOBS_TABLE);
+    await dropOnUpdateTrigger(knex, QUEUE_JOBS_TABLE);
   }
 }
 
