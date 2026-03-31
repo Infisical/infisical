@@ -205,18 +205,28 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
   const getApproximateRowCount: TAuditLogDALFactory["getApproximateRowCount"] = async () => {
     try {
+      // Sum across parent + all partitions via pg_inherits
       const result = await db.raw<{ rows: Array<{ count: string | number }> }>(
-        `SELECT n_live_tup::bigint AS count FROM pg_stat_user_tables WHERE relname = ?`,
-        [TableName.AuditLog]
+        `SELECT COALESCE(SUM(s.n_live_tup), 0)::bigint AS count
+         FROM pg_stat_user_tables s
+         JOIN pg_class c ON s.relname = c.relname
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
       );
-      if (!result.rows?.[0]?.count) {
-        const fallback = await db.raw<{ rows: Array<{ count: string | number }> }>(
-          `SELECT reltuples::bigint AS count FROM pg_class WHERE relname = ?`,
-          [TableName.AuditLog]
-        );
-        return Number(fallback.rows?.[0]?.count ?? 0);
-      }
-      return Number(result.rows[0].count);
+
+      const count = Number(result.rows?.[0]?.count ?? 0);
+      if (count > 0) return count;
+
+      // Fallback: reltuples (handles never-analyzed tables returning -1)
+      const fallback = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT COALESCE(SUM(GREATEST(c.reltuples, 0)), 0)::bigint AS count
+         FROM pg_class c
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
+      );
+      return Number(fallback.rows?.[0]?.count ?? 0);
     } catch (error) {
       logger.error(error, "Failed to get approximate audit log row count");
       return 0;

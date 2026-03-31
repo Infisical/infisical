@@ -184,23 +184,29 @@ export const auditLogServiceFactory = ({
       adminsOnly: true
     });
 
-    if (superAdminsResult.users.length === 0) return;
+    const adminsWithEmail = superAdminsResult.users.filter((admin): admin is TUsers & { email: string } =>
+      Boolean(admin.email)
+    );
+    if (adminsWithEmail.length === 0) return;
 
-    await Promise.all(
-      superAdminsResult.users.map((admin: TUsers) =>
+    const emailResults = await Promise.allSettled(
+      adminsWithEmail.map((admin) =>
         smtpService.sendMail({
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           template: SmtpTemplates.AuditLogMigrationAlert,
           subjectLine: "Action recommended: Audit log storage is large",
-          recipients: [admin.email!],
+          recipients: [admin.email],
           substitutions: {
             siteUrl: appCfg.SITE_URL
           }
         })
       )
-    ).catch((error) => {
-      logger.error(error, "Failed to send audit log migration alert emails");
-    });
+    );
+
+    const failedEmails = emailResults.filter((r) => r.status === "rejected");
+    if (failedEmails.length > 0) {
+      logger.error({ failedCount: failedEmails.length }, "Failed to send some audit log migration alert emails");
+    }
 
     await notificationService
       .createUserNotifications(
