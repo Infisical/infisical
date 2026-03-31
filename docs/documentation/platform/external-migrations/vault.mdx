@@ -107,22 +107,22 @@ Before importing anything, you need to establish a secure connection between Inf
 
   </Step>
 
-  <Step title="Add Vault Namespaces for Migration">
+  <Step title="Add a Vault migration configuration">
     Navigate to **Organization Settings > External Migrations** in Infisical.
 
-    Under the "In-Platform Migration Tooling" section for HashiCorp Vault, click **"+ Add Namespace"**.
+    Under **In-Platform Migration Tooling**, click **Add configuration**. In the provider chooser, select **HashiCorp Vault** (listed by the same name as in **App Connections**).
 
-    ![In-Platform Migration Tooling](/images/platform/external-migrations/vault-in-platform/external-migration-overview.png)
+    ![Choose provider for in-platform migration](/images/platform/external-migrations/in-platform-migration-select-provider.png)
 
-    Configure your namespace:
+    Configure the Vault namespace entry:
 
-    ![Namespace Configuration](/images/platform/external-migrations/vault-in-platform/namespace-configuration-modal.png)
+    ![Namespace configuration modal](/images/platform/external-migrations/vault-in-platform/namespace-configuration-modal.png)
 
     - **Namespace**: Enter your Vault namespace path (e.g., `admin/namespace1`). If you intend to use the root namespace, set the namespace value to "root".
     - **Connection**: Select the App Connection you created in the previous step.
 
     <Note>
-    You can add multiple namespaces with different connections if you have multiple Vault instances or namespaces to migrate from.
+    You can add multiple Vault rows (different namespaces and/or connections) in the same table if you have several Vault instances or namespaces to migrate from.
     </Note>
 
   </Step>
