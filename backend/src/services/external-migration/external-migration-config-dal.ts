@@ -63,14 +63,15 @@ export const externalMigrationConfigDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const qb = buildConnectionJoin((tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig), db).where(
-        buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter))
-      );
+      const qb = buildConnectionJoin((tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig), db);
+      /* eslint-disable @typescript-eslint/no-misused-promises */
+      void qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
+      /* eslint-enable @typescript-eslint/no-misused-promises */
 
-      const result = await qb.first();
+      const result = (await qb.first()) as Record<string, unknown> | undefined;
       if (!result) return undefined;
 
-      return mapResultToConnection(result as Record<string, unknown>);
+      return mapResultToConnection(result);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
     }
@@ -78,12 +79,13 @@ export const externalMigrationConfigDALFactory = (db: TDbClient) => {
 
   const findWithConnection = async (filter: { orgId: string; provider?: string }, tx?: Knex) => {
     try {
-      const qb = buildConnectionJoin((tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig), db).where(
-        buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter))
-      );
+      const qb = buildConnectionJoin((tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig), db);
+      /* eslint-disable @typescript-eslint/no-misused-promises */
+      void qb.where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)));
+      /* eslint-enable @typescript-eslint/no-misused-promises */
 
-      const results = await qb;
-      return (results as Record<string, unknown>[]).map(mapResultToConnection);
+      const results = (await qb) as Record<string, unknown>[];
+      return results.map(mapResultToConnection);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find with connection" });
     }
