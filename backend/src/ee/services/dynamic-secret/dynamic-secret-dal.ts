@@ -46,6 +46,7 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
       environmentSlug: string;
     }>
   >;
+  countByGatewayId: (gatewayId: string, tx?: Knex) => Promise<number>;
 }
 
 export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory => {
@@ -213,5 +214,14 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     return docs;
   };
 
-  return { ...orm, listDynamicSecretsByFolderIds, findOne, findWithMetadata, findByGatewayId };
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
+      .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...orm, listDynamicSecretsByFolderIds, findOne, findWithMetadata, findByGatewayId, countByGatewayId };
 };

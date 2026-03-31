@@ -23,5 +23,14 @@ export const aiMcpServerDALFactory = (db: TDbClient) => {
     return docs;
   };
 
-  return { ...aiMcpServerOrm, findByGatewayId };
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.AiMcpServer)
+      .where(`${TableName.AiMcpServer}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...aiMcpServerOrm, findByGatewayId, countByGatewayId };
 };

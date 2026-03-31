@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faExclamationTriangle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -12,12 +12,14 @@ import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
-import { useToggle } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 import { relayQueryKeys } from "@app/hooks/api/relays/queries";
 import { TRelay } from "@app/hooks/api/relays/types";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+const DISMISS_STORAGE_KEY = "network-health-banner-dismissed-at";
 
 const isHeartbeatStale = (heartbeat?: string | null): boolean => {
   if (!heartbeat) return true;
@@ -25,8 +27,15 @@ const isHeartbeatStale = (heartbeat?: string | null): boolean => {
   return heartbeatDate.getTime() < Date.now() - ONE_HOUR_MS;
 };
 
+const wasDismissedWithinLastDay = (): boolean => {
+  const dismissedAt = localStorage.getItem(DISMISS_STORAGE_KEY);
+  if (!dismissedAt) return false;
+  const dismissedTime = parseInt(dismissedAt, 10);
+  return Date.now() - dismissedTime < ONE_DAY_MS;
+};
+
 export const NetworkHealthBanner = () => {
-  const [isDismissed, setIsDismissed] = useToggle(false);
+  const [isDismissed, setIsDismissed] = useState(() => wasDismissedWithinLastDay());
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
 
@@ -53,7 +62,16 @@ export const NetworkHealthBanner = () => {
   });
 
   const unreachableGateways = useMemo(
-    () => gateways?.filter((g) => isHeartbeatStale(g.heartbeat)).length ?? 0,
+    () =>
+      gateways?.filter((g) => {
+        if (
+          "lastHealthCheckStatus" in g &&
+          g.lastHealthCheckStatus === GatewayHealthCheckStatus.Failed
+        ) {
+          return true;
+        }
+        return isHeartbeatStale(g.heartbeat);
+      }).length ?? 0,
     [gateways]
   );
 
@@ -90,7 +108,10 @@ export const NetworkHealthBanner = () => {
         className="ml-auto p-0 text-red-200 hover:text-red-100"
         ariaLabel="Dismiss banner"
         variant="plain"
-        onClick={() => setIsDismissed.on()}
+        onClick={() => {
+          localStorage.setItem(DISMISS_STORAGE_KEY, Date.now().toString());
+          setIsDismissed(true);
+        }}
       >
         <FontAwesomeIcon icon={faXmark} />
       </IconButton>

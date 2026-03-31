@@ -2786,7 +2786,6 @@ export const registerRoutes = async (
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);

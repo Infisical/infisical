@@ -46,11 +46,7 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import {
-  useDeleteGatewayV2ById,
-  useGetGatewayConnectedResources,
-  useTriggerGatewayV2Heartbeat
-} from "@app/hooks/api/gateways-v2";
+import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
@@ -82,33 +78,17 @@ const GatewayHealthStatus = ({
 };
 
 type GatewayConnectedCellProps = {
-  gatewayId: string;
   isV1: boolean;
+  connectedResourcesCount: number;
   onClick: () => void;
 };
 
-const GatewayConnectedCell = ({ gatewayId, isV1, onClick }: GatewayConnectedCellProps) => {
-  const { data: resources, isPending } = useGetGatewayConnectedResources(isV1 ? "" : gatewayId);
-
-  if (isV1) {
-    return <span className="text-mineshaft-400">—</span>;
-  }
-
-  if (isPending) {
-    return <span className="text-mineshaft-400">...</span>;
-  }
-
-  const totalCount = resources
-    ? resources.appConnections.length +
-      resources.dynamicSecrets.length +
-      resources.pamResources.length +
-      resources.pamDiscoverySources.length +
-      resources.kubernetesAuths.length +
-      resources.mcpServers.length +
-      resources.pkiDiscoveryConfigs.length
-    : 0;
-
-  if (totalCount === 0) {
+const GatewayConnectedCell = ({
+  isV1,
+  connectedResourcesCount,
+  onClick
+}: GatewayConnectedCellProps) => {
+  if (isV1 || connectedResourcesCount === 0) {
     return <span className="text-mineshaft-400">—</span>;
   }
 
@@ -119,7 +99,7 @@ const GatewayConnectedCell = ({ gatewayId, isV1, onClick }: GatewayConnectedCell
       className="flex cursor-pointer items-center gap-1.5 text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
     >
       <span>
-        {totalCount} resource{totalCount !== 1 ? "s" : ""}
+        {connectedResourcesCount} resource{connectedResourcesCount !== 1 ? "s" : ""}
       </span>
     </button>
   );
@@ -243,8 +223,10 @@ export const GatewayTab = withPermission(
                     </Td>
                     <Td>
                       <GatewayConnectedCell
-                        gatewayId={el.id}
                         isV1={el.isV1}
+                        connectedResourcesCount={
+                          "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                        }
                         onClick={() => {
                           setSelectedGateway({ id: el.id, name: el.name });
                           handlePopUpOpen("connectedResources");

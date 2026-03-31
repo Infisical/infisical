@@ -95,7 +95,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           identity: z.object({
             name: z.string(),
             id: z.string()
-          })
+          }),
+          connectedResourcesCount: z.number()
         }).array()
       }
     },
@@ -233,7 +234,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               id: z.string(),
               name: z.string(),
               projectId: z.string(),
-              projectName: z.string()
+              projectName: z.string(),
+              discoveryType: z.string()
             })
           ),
           kubernetesAuths: z.array(

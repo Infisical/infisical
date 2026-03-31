@@ -163,6 +163,15 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     return docs;
   };
 
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PkiDiscoveryConfig)
+      .where(`${TableName.PkiDiscoveryConfig}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...pkiDiscoveryConfigOrm,
     findByProjectId,
@@ -171,6 +180,7 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     findByIdWithInstallationCounts,
     findByName,
     claimScanSlot,
-    findByGatewayId
+    findByGatewayId,
+    countByGatewayId
   };
 };

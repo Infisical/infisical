@@ -192,8 +192,13 @@ export const GatewayConnectedResourcesDrawer = ({
                             key={res.id}
                             name={res.name}
                             subtitle={`${res.resourceType} · ${res.projectName}`}
-                            to="/organizations/$orgId/projects/pam/$projectId/resources/"
-                            params={{ orgId: currentOrg.id, projectId: res.projectId }}
+                            to="/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId"
+                            params={{
+                              orgId: currentOrg.id,
+                              projectId: res.projectId,
+                              resourceType: res.resourceType,
+                              resourceId: res.id
+                            }}
                             isLast={idx === (resources?.pamResources.length ?? 0) - 1}
                           />
                         ))}
@@ -212,9 +217,14 @@ export const GatewayConnectedResourcesDrawer = ({
                           <ResourceRow
                             key={source.id}
                             name={source.name}
-                            subtitle={source.projectName}
-                            to="/organizations/$orgId/projects/pam/$projectId/discovery/"
-                            params={{ orgId: currentOrg.id, projectId: source.projectId }}
+                            subtitle={`${source.discoveryType} · ${source.projectName}`}
+                            to="/organizations/$orgId/projects/pam/$projectId/discovery/$discoveryType/$discoverySourceId"
+                            params={{
+                              orgId: currentOrg.id,
+                              projectId: source.projectId,
+                              discoveryType: source.discoveryType,
+                              discoverySourceId: source.id
+                            }}
                             isLast={idx === (resources?.pamDiscoverySources.length ?? 0) - 1}
                           />
                         ))}

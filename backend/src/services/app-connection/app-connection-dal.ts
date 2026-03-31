@@ -169,5 +169,14 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     return docs;
   };
 
-  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails, findByGatewayId };
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.AppConnection)
+      .where(`${TableName.AppConnection}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails, findByGatewayId, countByGatewayId };
 };

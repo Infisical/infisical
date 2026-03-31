@@ -11,6 +11,7 @@ export type TGatewayV2 = {
   updatedAt: string;
   heartbeat: string;
   lastHealthCheckStatus: GatewayHealthCheckStatus | null;
+  connectedResourcesCount: number;
   identity: {
     name: string;
     id: string;
@@ -47,6 +48,7 @@ export type TGatewayConnectedPamDiscoverySource = {
   name: string;
   projectId: string;
   projectName: string;
+  discoveryType: string;
 };
 
 export type TGatewayConnectedKubernetesAuth = {

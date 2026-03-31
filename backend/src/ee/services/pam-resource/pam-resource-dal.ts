@@ -163,5 +163,22 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     return docs;
   };
 
-  return { ...orm, findById, findByProjectId, findMetadataByResourceIds, findByAdServerResourceId, findByGatewayId };
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where(`${TableName.PamResource}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return {
+    ...orm,
+    findById,
+    findByProjectId,
+    findMetadataByResourceIds,
+    findByAdServerResourceId,
+    findByGatewayId,
+    countByGatewayId
+  };
 };

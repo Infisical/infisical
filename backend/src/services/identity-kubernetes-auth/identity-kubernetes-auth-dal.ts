@@ -22,5 +22,14 @@ export const identityKubernetesAuthDALFactory = (db: TDbClient) => {
     return docs;
   };
 
-  return { ...kubernetesAuthOrm, findByGatewayId };
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.IdentityKubernetesAuth)
+      .where(`${TableName.IdentityKubernetesAuth}.gatewayV2Id`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...kubernetesAuthOrm, findByGatewayId, countByGatewayId };
 };

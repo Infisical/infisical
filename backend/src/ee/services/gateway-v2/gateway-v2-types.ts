@@ -52,6 +52,7 @@ export type TGatewayConnectedPamDiscoverySource = {
 export type TGatewayConnectedKubernetesAuth = {
   id: string;
   identityId: string;
+  identityName: string;
 };
 
 export type TGatewayConnectedMcpServer = {

@@ -54,13 +54,13 @@ type TGatewayV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId">;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId">;
-  pamResourceDAL: Pick<TPamResourceDALFactory, "findByGatewayId">;
-  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findByGatewayId">;
-  identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId">;
-  aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId">;
-  pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findByGatewayId" | "countByGatewayId">;
+  identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
+  aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -287,7 +287,60 @@ export const gatewayV2ServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
-    return gateways;
+    if (gateways.length === 0) {
+      return [];
+    }
+
+    const gatewayIds = gateways.map((g) => g.id);
+
+    const [
+      appConnectionsCounts,
+      dynamicSecretsCounts,
+      pamResourcesCounts,
+      pamDiscoverySourcesCounts,
+      kubernetesAuthsCounts,
+      mcpServersCounts,
+      pkiDiscoveryConfigsCounts
+    ] = await Promise.all([
+      Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pamResourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pamDiscoverySourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(
+        gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
+      ),
+      Promise.all(gatewayIds.map((id) => aiMcpServerDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
+    ]);
+
+    const countMap = new Map<string, number>();
+
+    for (const { id, count } of appConnectionsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of dynamicSecretsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamResourcesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamDiscoverySourcesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of kubernetesAuthsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of mcpServersCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pkiDiscoveryConfigsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+
+    return gateways.map((gateway) => ({
+      ...gateway,
+      connectedResourcesCount: countMap.get(gateway.id) ?? 0
+    }));
   };
 
   const getPlatformConnectionDetailsByGatewayId = async ({
