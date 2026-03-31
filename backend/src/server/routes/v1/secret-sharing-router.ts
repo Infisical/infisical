@@ -490,9 +490,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       const contentType = await (fileTypeFromBuffer as (buffer: Buffer) => Promise<{ mime: string } | undefined>)(
         buffer
       );
+
       if (!contentType || !ALLOWED_IMAGE_CONTENT_TYPES.includes(contentType?.mime)) {
         throw new BadRequestError({
           message: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_CONTENT_TYPES.join(", ")}`
+        });
+      }
+
+      if (contentType?.mime !== file.mimetype) {
+        throw new BadRequestError({
+          message: `Detected file type (${contentType?.mime}) does not match the expected type (${file.mimetype})`
         });
       }
 
