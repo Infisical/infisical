@@ -258,6 +258,12 @@ import {
   TValidateRedisConnectionCredentialsSchema
 } from "./redis";
 import {
+  TDopplerConnection,
+  TDopplerConnectionConfig,
+  TDopplerConnectionInput,
+  TValidateDopplerConnectionCredentialsSchema
+} from "./doppler/doppler-connection-types";
+import {
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderConnectionInput,
@@ -373,6 +379,7 @@ export type TAppConnection = { id: string } & (
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
+  | TDopplerConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -438,6 +445,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TExternalInfisicalConnectionInput
+  | TDopplerConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -531,7 +539,8 @@ export type TAppConnectionConfig =
   | TCircleCIConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
-  | TExternalInfisicalConnectionConfig;
+  | TExternalInfisicalConnectionConfig
+  | TDopplerConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -587,7 +596,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
-  | TValidateExternalInfisicalConnectionCredentialsSchema;
+  | TValidateExternalInfisicalConnectionCredentialsSchema
+  | TValidateDopplerConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

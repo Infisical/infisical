@@ -102,6 +102,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
+import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
   DigitalOceanConnectionMethod,
@@ -279,7 +280,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
-    getExternalInfisicalConnectionListItem()
+    getExternalInfisicalConnectionListItem(),
+    getDopplerConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -428,7 +430,8 @@ export const validateAppConnectionCredentials = async (
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
-      )) as TAppConnectionCredentialsValidator
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -520,6 +523,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Access Token";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
+    case DopplerConnectionMethod.ApiToken:
+      return "API Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -627,7 +632,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
-  [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported
+  [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
+  [AppConnection.Doppler]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

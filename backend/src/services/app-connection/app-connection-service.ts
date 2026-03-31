@@ -126,6 +126,8 @@ import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
+import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
+import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
@@ -215,7 +217,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
-  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema
+  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
+  [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1093,6 +1096,7 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    doppler: dopplerConnectionService(connectAppConnectionById)
   };
 };
