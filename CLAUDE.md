@@ -43,6 +43,10 @@ Infisical supports self-hosted deployment via Docker. Key considerations:
 - **`docker-compose.prod.yml`** — production compose with backend, PostgreSQL, and Redis.
 - New backend dependencies should be evaluated carefully — they affect container size, FIPS compliance, and the encryption boundary. Check `docs/` for self-hosted deployment documentation when in doubt.
 
+### Dependency Policy
+
+Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
+
 ## Cross-Cutting Patterns
 
 ### Auth & Permissions
