@@ -2272,7 +2272,7 @@ const OverviewPageContent = () => {
                 ,
                 <a
                   className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/documentation/getting-started/api"
+                  href="https://infisical.com/docs/api-reference/overview/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
