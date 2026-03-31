@@ -41,7 +41,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .trim()
           .default("/")
           .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.GET_ACCESS_LIST.secretPath)
+          .describe(RAW_SECRETS.GET_ACCESS_LIST.secretPath),
+        includeAllEntities: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((val) => val === "true")
+          .describe(RAW_SECRETS.GET_ACCESS_LIST.includeAllEntities)
       }),
       response: {
         200: z.object({
@@ -54,7 +59,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secretName } = req.params;
-      const { secretPath, environment, projectId } = req.query;
+      const { secretPath, environment, projectId, includeAllEntities } = req.query;
 
       return server.services.secret.getSecretAccessList({
         actorId: req.permission.id,
@@ -64,7 +69,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment,
         projectId,
-        secretName
+        secretName,
+        includeAllEntities
       });
     }
   });

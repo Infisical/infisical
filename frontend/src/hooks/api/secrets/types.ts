@@ -165,6 +165,7 @@ export type TGetSecretAccessListDTO = {
   environment: string;
   secretPath: string;
   secretKey: string;
+  includeAllEntities?: boolean;
 };
 
 export type TCreateSecretsV3DTO = {

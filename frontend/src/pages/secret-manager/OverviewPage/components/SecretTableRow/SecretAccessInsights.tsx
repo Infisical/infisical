@@ -21,6 +21,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Sheet,
+  Switch,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -117,6 +118,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
+  const [showAllEntities, setShowAllEntities] = useState(false);
 
   const toggleTypeFilter = (type: AccessRowType) => {
     setTypeFilters((prev) => {
@@ -161,7 +163,8 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     projectId: currentProject.id,
     environment,
     secretPath,
-    secretKey
+    secretKey,
+    includeAllEntities: showAllEntities
   });
 
   const flatRows = useMemo<AccessRow[]>(() => {
@@ -360,6 +363,14 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               })}
             </UnstableDropdownMenuContent>
           </UnstableDropdownMenu>
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted whitespace-nowrap">
+            <Switch
+              size="sm"
+              checked={showAllEntities}
+              onCheckedChange={setShowAllEntities}
+            />
+            Show all
+          </label>
         </div>
 
         {filteredRows.length === 0 ? (

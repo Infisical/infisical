@@ -1283,7 +1283,7 @@ export const secretServiceFactory = ({
   };
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
-    const { environment, secretPath, secretName, projectId } = dto;
+    const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
@@ -1351,15 +1351,14 @@ export const secretServiceFactory = ({
       };
     };
 
-    const usersWithAccess = userPermissions.map(attachAllowedActions).filter((user) => user.allowedActions.length > 0);
-    const identitiesWithAccess = identityPermissions
-      .map(attachAllowedActions)
-      .filter((identity) => identity.allowedActions.length > 0);
-    const groupsWithAccess = groupPermissions
-      .map(attachAllowedActions)
-      .filter((group) => group.allowedActions.length > 0);
+    const hasAccess = (entity: { allowedActions: string[] }) => entity.allowedActions.length > 0;
+    const filterFn = includeAllEntities ? () => true : hasAccess;
 
-    return { users: usersWithAccess, identities: identitiesWithAccess, groups: groupsWithAccess };
+    const users = userPermissions.map(attachAllowedActions).filter(filterFn);
+    const identities = identityPermissions.map(attachAllowedActions).filter(filterFn);
+    const groups = groupPermissions.map(attachAllowedActions).filter(filterFn);
+
+    return { users, identities, groups };
   };
 
   const getAccessibleSecrets = async ({
