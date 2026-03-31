@@ -219,7 +219,7 @@ const PageContent = () => {
                 <Tab value="dependencies">Dependencies</Tab>
               )}
               {resource.resourceType === PamResourceType.ActiveDirectory && (
-                <Tab value="related-resources">Related Resources</Tab>
+                <Tab value="related-resources">Resources</Tab>
               )}
             </TabList>
             <TabPanel value="accounts">

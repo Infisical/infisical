@@ -214,7 +214,7 @@ const PageContent = () => {
           <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="accounts">Accounts</Tab>
-              <Tab value="related-resources">Related Resources</Tab>
+              <Tab value="related-resources">Resources</Tab>
             </TabList>
             <TabPanel value="accounts">
               <PamResourceAccountsSection resource={resource} />

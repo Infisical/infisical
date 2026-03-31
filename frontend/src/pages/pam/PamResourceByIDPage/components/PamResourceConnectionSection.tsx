@@ -155,7 +155,7 @@ const WindowsConnectionDetails = ({
       </Detail>
       {adResource && (
         <Detail>
-          <DetailLabel>AD Resource</DetailLabel>
+          <DetailLabel>AD Domain</DetailLabel>
           <DetailValue>{adResource.name}</DetailValue>
         </Detail>
       )}

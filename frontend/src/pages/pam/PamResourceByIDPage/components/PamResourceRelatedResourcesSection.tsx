@@ -42,7 +42,7 @@ export const PamResourceRelatedResourcesSection = ({ resource }: Props) => {
   return (
     <div className="rounded-lg border border-border bg-container">
       <div className="border-b border-border px-4 py-3">
-        <h3 className="text-lg font-medium">Related Resources</h3>
+        <h3 className="text-lg font-medium">Resources</h3>
         <p className="text-sm text-muted">Resources that belong to this Active Directory domain</p>
       </div>
       <div className="p-4">

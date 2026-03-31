@@ -129,7 +129,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
             name="adServerResourceId"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Active Directory Resource</FieldLabel>
+                <FieldLabel>Active Directory Domain</FieldLabel>
                 <FieldContent>
                   <Select
                     value={value || "none"}
