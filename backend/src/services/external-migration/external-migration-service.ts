@@ -161,29 +161,29 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: `Only admins can ${action}` });
     }
 
-    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
+    const existingConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
       namespace,
       provider: ExternalMigrationProviders.Vault
     });
 
-    if (!vaultConfig) {
+    if (!existingConfig) {
       throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
-    if (!vaultConfig.connection) {
+    if (!existingConfig.connection) {
       throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
-      orgId: vaultConfig.orgId,
-      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      orgId: existingConfig.orgId,
+      encryptedCredentials: existingConfig.connection.encryptedCredentials,
       kmsService,
       projectId: null
     });
 
     return {
-      ...vaultConfig.connection,
+      ...existingConfig.connection,
       credentials
     } as THCVaultConnection;
   };
@@ -804,11 +804,7 @@ export const externalMigrationServiceFactory = ({
     });
   };
 
-  const updateDopplerExternalMigration = async ({
-    id,
-    connectionId,
-    actor
-  }: TUpdateDopplerExternalMigrationDTO) => {
+  const updateDopplerExternalMigration = async ({ id, connectionId, actor }: TUpdateDopplerExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: actor.type,

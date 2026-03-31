@@ -9,7 +9,11 @@ export type TVaultExternalMigrationConfigDALFactory = ReturnType<typeof vaultExt
 
 const buildConnectionJoin = (qb: Knex.QueryBuilder, db: TDbClient) =>
   qb
-    .leftJoin(TableName.AppConnection, `${TableName.AppConnection}.id`, `${TableName.ExternalMigrationConfig}.connectionId`)
+    .leftJoin(
+      TableName.AppConnection,
+      `${TableName.AppConnection}.id`,
+      `${TableName.ExternalMigrationConfig}.connectionId`
+    )
     .select(selectAllTableCols(TableName.ExternalMigrationConfig))
     .select(
       db.ref("id").withSchema(TableName.AppConnection).as("appConnectionId"),
@@ -54,7 +58,10 @@ const mapResultToConnection = (raw: Record<string, unknown>) => {
 export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ExternalMigrationConfig);
 
-  const findOne = async (filter: { orgId: string; namespace?: string; provider?: string }, tx?: Knex) => {
+  const findOne = async (
+    filter: { orgId: string; namespace?: string; provider?: string; connectionId?: string | null },
+    tx?: Knex
+  ) => {
     try {
       const qb = (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig);
       buildConnectionJoin(qb, db);
