@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import {
-  EmptyMedia,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -260,70 +259,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
 
   const isFilterActive = typeFilters.size > 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full rounded-md" />
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Type</UnstableTableHead>
-              <UnstableTableHead>Name</UnstableTableHead>
-              {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                <UnstableTableHead key={col.action} className="w-[100px] text-center">
-                  {col.label}
-                </UnstableTableHead>
-              ))}
-              <UnstableTableHead className="w-10" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <UnstableTableRow key={`skeleton-row-${String(i)}`}>
-                <UnstableTableCell>
-                  <Skeleton className="h-4 w-16 rounded" />
-                </UnstableTableCell>
-                <UnstableTableCell>
-                  <Skeleton className="h-4 w-24 rounded" />
-                </UnstableTableCell>
-                {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                  <UnstableTableCell key={col.action} className="w-[100px] text-center">
-                    <Skeleton className="mx-auto h-4 w-4 rounded" />
-                  </UnstableTableCell>
-                ))}
-                <UnstableTableCell>
-                  <Skeleton className="h-4 w-6 rounded" />
-                </UnstableTableCell>
-              </UnstableTableRow>
-            ))}
-          </UnstableTableBody>
-        </UnstableTable>
-      </div>
-    );
-  }
-
-  const hasAnyAccess =
-    secretAccessList &&
-    (secretAccessList.users.length > 0 ||
-      secretAccessList.identities.length > 0 ||
-      secretAccessList.groups.length > 0);
-
-  if (!hasAnyAccess) {
-    return (
-      <UnstableEmpty className="bg-transparent">
-        <UnstableEmptyHeader>
-          <EmptyMedia variant="icon">
-            <UsersIcon />
-          </EmptyMedia>
-          <UnstableEmptyTitle>No Access Found</UnstableEmptyTitle>
-          <UnstableEmptyDescription>
-            No users, groups, or identities have direct access to this secret.
-          </UnstableEmptyDescription>
-        </UnstableEmptyHeader>
-      </UnstableEmpty>
-    );
-  }
-
   return (
     <>
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
@@ -383,8 +318,43 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             </Tooltip>
           </Label>
         </div>
-
-        {filteredRows.length === 0 ? (
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isLoading ? (
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead>Type</UnstableTableHead>
+                <UnstableTableHead>Name</UnstableTableHead>
+                {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                  <UnstableTableHead key={col.action} className="w-[100px] text-center">
+                    {col.label}
+                  </UnstableTableHead>
+                ))}
+                <UnstableTableHead className="w-10" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <UnstableTableRow key={`skeleton-row-${String(i)}`}>
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-16 rounded" />
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-24 rounded" />
+                  </UnstableTableCell>
+                  {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                    <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                      <Skeleton className="mx-auto h-4 w-4 rounded" />
+                    </UnstableTableCell>
+                  ))}
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-6 rounded" />
+                  </UnstableTableCell>
+                </UnstableTableRow>
+              ))}
+            </UnstableTableBody>
+          </UnstableTable>
+        ) : filteredRows.length === 0 ? (
           <UnstableEmpty className="border">
             <UnstableEmptyHeader>
               <UnstableEmptyTitle>No Results Found</UnstableEmptyTitle>
