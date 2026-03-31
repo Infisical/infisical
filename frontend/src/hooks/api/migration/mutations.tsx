@@ -6,7 +6,13 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 
 import { projectKeys } from "../projects";
 import { externalMigrationQueryKeys } from "./queries";
-import { TImportVaultSecretsDTO, TVaultExternalMigrationConfig, VaultImportStatus } from "./types";
+import {
+  TDopplerExternalMigrationConfig,
+  TImportDopplerSecretsDTO,
+  TImportVaultSecretsDTO,
+  TVaultExternalMigrationConfig,
+  VaultImportStatus
+} from "./types";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -159,6 +165,86 @@ export const useDeleteVaultExternalMigrationConfig = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: externalMigrationQueryKeys.vaultConfigs()
+      });
+    }
+  });
+};
+
+export const useCreateDopplerExternalMigrationConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TDopplerExternalMigrationConfig, Error, { connectionId: string }>({
+    mutationFn: async ({ connectionId }) => {
+      const { data } = await apiRequest.post<{ config: TDopplerExternalMigrationConfig }>(
+        "/api/v3/external-migration/doppler/configs",
+        { connectionId }
+      );
+      return data.config;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalMigrationQueryKeys.dopplerConfigs()
+      });
+    }
+  });
+};
+
+export const useUpdateDopplerExternalMigrationConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    TDopplerExternalMigrationConfig,
+    Error,
+    { id: string; connectionId: string }
+  >({
+    mutationFn: async ({ id, connectionId }) => {
+      const { data } = await apiRequest.put<{ config: TDopplerExternalMigrationConfig }>(
+        `/api/v3/external-migration/doppler/configs/${id}`,
+        { connectionId }
+      );
+      return data.config;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalMigrationQueryKeys.dopplerConfigs()
+      });
+    }
+  });
+};
+
+export const useDeleteDopplerExternalMigrationConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TDopplerExternalMigrationConfig, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const { data } = await apiRequest.delete<{ config: TDopplerExternalMigrationConfig }>(
+        `/api/v3/external-migration/doppler/configs/${id}`
+      );
+      return data.config;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalMigrationQueryKeys.dopplerConfigs()
+      });
+    }
+  });
+};
+
+export const useImportDopplerSecrets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, TImportDopplerSecretsDTO>({
+    mutationFn: async (dto) => {
+      await apiRequest.post("/api/v3/external-migration/doppler/import-secrets", dto);
+    },
+    onSuccess: (_, { targetProjectId, targetEnvironment, targetSecretPath }) => {
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({
+          projectId: targetProjectId,
+          environment: targetEnvironment,
+          secretPath: targetSecretPath
+        })
       });
     }
   });

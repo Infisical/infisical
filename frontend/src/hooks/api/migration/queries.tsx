@@ -4,6 +4,9 @@ import { apiRequest } from "@app/config/request";
 
 import {
   ExternalMigrationProviders,
+  TDopplerEnvironment,
+  TDopplerExternalMigrationConfig,
+  TDopplerProject,
   TVaultExternalMigrationConfig,
   VaultDatabaseRole,
   VaultKubernetesAuthRole,
@@ -49,6 +52,13 @@ export const externalMigrationQueryKeys = {
     "vault-ldap-roles",
     namespace,
     mountPath
+  ],
+  dopplerConfigs: () => ["doppler-external-migration-configs"],
+  dopplerProjects: (configId?: string) => ["doppler-projects", configId],
+  dopplerEnvironments: (configId?: string, projectSlug?: string) => [
+    "doppler-environments",
+    configId,
+    projectSlug
   ]
 };
 
@@ -265,5 +275,49 @@ export const useGetVaultLdapRoles = (enabled = true, namespace?: string, mountPa
       return data.roles;
     },
     enabled: enabled && !!namespace && !!mountPath
+  });
+};
+
+export const useGetDopplerExternalMigrationConfigs = () => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.dopplerConfigs(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ configs: TDopplerExternalMigrationConfig[] }>(
+        "/api/v3/external-migration/doppler/configs"
+      );
+      return data.configs;
+    }
+  });
+};
+
+export const useGetDopplerProjects = (configId?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.dopplerProjects(configId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ projects: TDopplerProject[] }>(
+        "/api/v3/external-migration/doppler/projects",
+        {
+          params: { configId }
+        }
+      );
+      return data.projects;
+    },
+    enabled: !!configId
+  });
+};
+
+export const useGetDopplerEnvironments = (configId?: string, projectSlug?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.dopplerEnvironments(configId, projectSlug),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ environments: TDopplerEnvironment[] }>(
+        "/api/v3/external-migration/doppler/environments",
+        {
+          params: { configId, projectSlug }
+        }
+      );
+      return data.environments;
+    },
+    enabled: !!configId && !!projectSlug
   });
 };

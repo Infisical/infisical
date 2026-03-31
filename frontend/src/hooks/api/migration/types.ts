@@ -1,7 +1,40 @@
 export enum ExternalMigrationProviders {
   Vault = "vault",
-  EnvKey = "env-key"
+  EnvKey = "env-key",
+  Doppler = "doppler"
 }
+
+export type TDopplerExternalMigrationConfig = {
+  id: string;
+  orgId: string;
+  connectionId: string | null;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TDopplerProject = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+};
+
+export type TDopplerEnvironment = {
+  id: string;
+  slug: string;
+  name: string;
+  project: string;
+};
+
+export type TImportDopplerSecretsDTO = {
+  configId: string;
+  dopplerProject: string;
+  dopplerEnvironment: string;
+  targetProjectId: string;
+  targetEnvironment: string;
+  targetSecretPath: string;
+};
 
 export enum VaultImportStatus {
   Imported = "imported",
