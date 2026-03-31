@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -23,7 +22,8 @@ export const OrgTabGroup = () => {
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
-  const { isSubOrganization } = useOrganization();
+  const navigate = useNavigate();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -84,11 +84,10 @@ export const OrgTabGroup = () => {
 
   const visibleTabs = tabs.filter((el) => !el.isHidden);
   const defaultTab = visibleTabs.find((t) => !t.requiresFeature)?.key ?? visibleTabs[0].key;
-  const initialTab = search.selectedTab
+  const selectedTab = search.selectedTab
     ? (visibleTabs.find((t) => t.key === search.selectedTab && !t.requiresFeature)?.key ??
       defaultTab)
     : defaultTab;
-  const [selectedTab, setSelectedTab] = useState(initialTab);
 
   const handleTabChange = (key: string) => {
     const tab = visibleTabs.find((t) => t.key === key);
@@ -96,19 +95,16 @@ export const OrgTabGroup = () => {
       handlePopUpOpen("upgradePlan");
       return;
     }
-    setSelectedTab(key);
+    navigate({
+      to: "/organizations/$orgId/settings",
+      params: { orgId: currentOrg.id },
+      search: { selectedTab: key }
+    });
   };
 
   return (
     <>
       <Tabs orientation="vertical" value={selectedTab} onValueChange={handleTabChange}>
-        <TabList>
-          {visibleTabs.map((tab) => (
-            <Tab variant={isSubOrganization ? "namespace" : "org"} value={tab.key} key={tab.key}>
-              {tab.name}
-            </Tab>
-          ))}
-        </TabList>
         {visibleTabs
           .filter((tab) => !tab.requiresFeature)
           .map(({ key, component: Component }) => (

@@ -1,9 +1,8 @@
 import { Helmet } from "react-helmet";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
 import { SecretSharingSettingsTab } from "./components/SecretSharingSettings/SecretSharingSettingsTab";
@@ -16,22 +15,9 @@ enum SecretSharingPageTabs {
 }
 
 export const ShareSecretSection = () => {
-  const navigate = useNavigate();
-  const { isSubOrganization, currentOrg } = useOrganization();
-
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.Organization.SecretSharing.id
   });
-
-  const updateSelectedTab = (tab: string) => {
-    navigate({
-      to: ROUTE_PATHS.Organization.SecretSharing.path,
-      params: { orgId: currentOrg.id },
-      search: (prev) => ({ ...prev, selectedTab: tab as SecretSharingPageTabs })
-    });
-  };
-
-  const tabVariant = isSubOrganization ? "namespace" : "org";
 
   return (
     <div>
@@ -41,20 +27,7 @@ export const ShareSecretSection = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
 
-      <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
-        <TabList>
-          <Tab variant={tabVariant} value={SecretSharingPageTabs.ShareSecret}>
-            Share Secrets
-          </Tab>
-          <Tab variant={tabVariant} value={SecretSharingPageTabs.RequestSecret}>
-            Request Secrets
-          </Tab>
-          {!isSubOrganization && (
-            <Tab variant={tabVariant} value={SecretSharingPageTabs.Settings}>
-              Settings
-            </Tab>
-          )}
-        </TabList>
+      <Tabs orientation="vertical" value={selectedTab}>
         <TabPanel value={SecretSharingPageTabs.ShareSecret}>
           <ShareSecretTab />
         </TabPanel>

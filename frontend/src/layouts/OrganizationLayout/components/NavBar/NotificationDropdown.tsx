@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
+import { Bell, BellDotIcon } from "lucide-react";
 
 import {
   ContentLoader,
@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from "@app/components/v2";
+import { UnstableIconButton } from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
@@ -42,20 +43,15 @@ export const NotificationDropdown = () => {
 
   return (
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger>
-        <div className="relative border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-          <FontAwesomeIcon icon={faBell} className="text-mineshaft-200" />
-          {unreadCount > 0 && (
-            <span
-              className={twMerge(
-                "absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px]",
-                hasCritical ? "bg-red-700 text-white" : "bg-yellow-400 text-black"
-              )}
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </div>
+      <DropdownMenuTrigger asChild>
+        <UnstableIconButton
+          variant="outline"
+          size="sm"
+          aria-label="Notifications"
+          className="relative"
+        >
+          {unreadCount > 0 ? <BellDotIcon className="text-warning" /> : <Bell />}
+        </UnstableIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

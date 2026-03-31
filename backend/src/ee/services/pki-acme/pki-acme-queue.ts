@@ -31,7 +31,7 @@ export const pkiAcmeQueueServiceFactory = async ({
         error,
         `Failed to validate ACME challenge ${challengeId} (retryCount ${retryCount}): ${errorMessage}`
       );
-      // Re-throw to let pg-boss handle retries with exponential backoff
+      // Re-throw to let BullMQ handle retries with exponential backoff
       throw error;
     }
   });

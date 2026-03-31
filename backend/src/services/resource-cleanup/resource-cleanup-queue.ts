@@ -6,7 +6,6 @@ import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TQueueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
@@ -39,7 +38,6 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
-  queueJobsDAL: Pick<TQueueJobsDALFactory, "pruneQueueJobs">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -62,8 +60,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestDAL,
   approvalRequestGrantsDAL,
   certificateRequestDAL,
-  scepTransactionDAL,
-  queueJobsDAL
+  scepTransactionDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -92,7 +89,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await auditLogDAL.pruneAuditLog();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
-        await queueJobsDAL.pruneQueueJobs();
         await scepTransactionDAL.pruneExpiredTransactions();
         const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
         if (expiredApprovalRequestIds.length > 0) {

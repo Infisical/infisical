@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ApprovalsPage } from "./ApprovalsPage";
 
 const ApprovalsSearchSchema = z.object({
+  selectedTab: z.string().optional().default("requests"),
   section: z.enum(["certificates", "code-signing"]).optional().default("certificates")
 });
 
