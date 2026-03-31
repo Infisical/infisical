@@ -137,7 +137,9 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  useGetDopplerExternalMigrationConfigs,
   useGetVaultExternalMigrationConfigs,
+  useImportDopplerSecrets,
   useImportVaultSecrets
 } from "@app/hooks/api/migration";
 import { VaultImportStatus } from "@app/hooks/api/migration/types";
@@ -175,6 +177,7 @@ import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/Actio
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
+import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
@@ -283,7 +286,14 @@ const OverviewPageContent = () => {
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { data: dopplerConfigs = [] } = useGetDopplerExternalMigrationConfigs();
+  const dopplerImportConfigId = useMemo(
+    () => dopplerConfigs.find((c) => c.connectionId)?.id,
+    [dopplerConfigs]
+  );
+  const hasDopplerConnection = Boolean(dopplerImportConfigId);
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
+  const { mutateAsync: importDopplerSecrets } = useImportDopplerSecrets();
   const prevPageSize = useRef(0);
 
   const canReadCommits = permission.can(
@@ -730,6 +740,7 @@ const OverviewPageContent = () => {
     "deleteEnv",
     "requestAccess",
     "importFromVault",
+    "importFromDoppler",
     "confirmDisableBatchMode"
   ] as const);
 
@@ -822,6 +833,24 @@ const OverviewPageContent = () => {
         text: "Successfully imported secrets from HashiCorp Vault"
       });
     }
+  };
+
+  const handleDopplerImport = async (dopplerProject: string, dopplerEnvironment: string) => {
+    if (!dopplerImportConfigId) return;
+
+    await importDopplerSecrets({
+      configId: dopplerImportConfigId,
+      dopplerProject,
+      dopplerEnvironment,
+      targetProjectId: projectId,
+      targetEnvironment: singleEnvSlug,
+      targetSecretPath: secretPath
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully imported secrets from Doppler"
+    });
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -2378,8 +2407,10 @@ const OverviewPageContent = () => {
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
+                    hasDopplerConnection={hasDopplerConnection}
                     isOrgAdmin={isOrgAdmin}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
+                    onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
                 )}
               </div>
@@ -3322,6 +3353,16 @@ const OverviewPageContent = () => {
         secretPath={secretPath}
         onImport={handleVaultImport}
       />
+      {dopplerImportConfigId && (
+        <DopplerSecretImportModal
+          isOpen={popUp.importFromDoppler.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("importFromDoppler", isOpen)}
+          configId={dopplerImportConfigId}
+          environment={singleEnvSlug}
+          secretPath={secretPath}
+          onImport={handleDopplerImport}
+        />
+      )}
       <AlertDialog
         open={popUp.deleteFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
