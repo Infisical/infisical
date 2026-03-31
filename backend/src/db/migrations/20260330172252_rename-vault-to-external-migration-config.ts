@@ -34,8 +34,12 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.ExternalMigrationConfig)) {
+    // Remove Doppler rows before re-applying the NOT NULL constraint on namespace
+    await knex(TableName.ExternalMigrationConfig).where("provider", "doppler").delete();
+
+    const hasProviderColumn = await knex.schema.hasColumn(TableName.ExternalMigrationConfig, "provider");
     await knex.schema.alterTable(TableName.ExternalMigrationConfig, (t) => {
-      t.dropColumn("provider");
+      if (hasProviderColumn) t.dropColumn("provider");
       t.string("namespace").notNullable().alter();
     });
 
