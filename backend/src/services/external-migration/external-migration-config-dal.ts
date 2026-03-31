@@ -5,7 +5,7 @@ import { TableName, TExternalMigrationConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 
-export type TVaultExternalMigrationConfigDALFactory = ReturnType<typeof vaultExternalMigrationConfigDALFactory>;
+export type TExternalMigrationConfigDALFactory = ReturnType<typeof externalMigrationConfigDALFactory>;
 
 const buildConnectionJoin = (qb: Knex.QueryBuilder, db: TDbClient) =>
   qb
@@ -55,7 +55,7 @@ const mapResultToConnection = (raw: Record<string, unknown>) => {
   };
 };
 
-export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
+export const externalMigrationConfigDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ExternalMigrationConfig);
 
   const findOne = async (

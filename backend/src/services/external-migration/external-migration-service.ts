@@ -40,7 +40,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
-import { TVaultExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
+import { TExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
   decryptEnvKeyDataFn,
   getDopplerSecrets,
@@ -73,8 +73,8 @@ type TExternalMigrationServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   externalMigrationQueue: TExternalMigrationQueueFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
-  vaultExternalMigrationConfigDAL: Pick<
-    TVaultExternalMigrationConfigDALFactory,
+  externalMigrationConfigDAL: Pick<
+    TExternalMigrationConfigDALFactory,
     "create" | "findOne" | "transaction" | "find" | "updateById" | "deleteById" | "findById" | "findWithConnection"
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -94,7 +94,7 @@ export const externalMigrationServiceFactory = ({
   secretService,
   auditLogService,
   appConnectionService,
-  vaultExternalMigrationConfigDAL,
+  externalMigrationConfigDAL,
   kmsService
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
@@ -161,7 +161,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: `Only admins can ${action}` });
     }
 
-    const existingConfig = await vaultExternalMigrationConfigDAL.findOne({
+    const existingConfig = await externalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
       namespace,
       provider: ExternalMigrationProviders.Vault
@@ -391,7 +391,7 @@ export const externalMigrationServiceFactory = ({
     });
 
     try {
-      const config = await vaultExternalMigrationConfigDAL.create({
+      const config = await externalMigrationConfigDAL.create({
         namespace,
         connectionId,
         orgId: actor.orgId,
@@ -432,7 +432,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can update vault external migration" });
     }
 
-    const existing = await vaultExternalMigrationConfigDAL.findById(id);
+    const existing = await externalMigrationConfigDAL.findById(id);
     if (!existing || existing.orgId !== actor.orgId) {
       throw new NotFoundError({ message: "Vault migration config not found" });
     }
@@ -453,7 +453,7 @@ export const externalMigrationServiceFactory = ({
       });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.updateById(id, {
+    const config = await externalMigrationConfigDAL.updateById(id, {
       namespace,
       connectionId
     });
@@ -475,7 +475,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault external migration configs" });
     }
 
-    const configs = await vaultExternalMigrationConfigDAL.find({
+    const configs = await externalMigrationConfigDAL.find({
       orgId: actor.orgId,
       provider: ExternalMigrationProviders.Vault
     });
@@ -498,7 +498,7 @@ export const externalMigrationServiceFactory = ({
     }
 
     // Get all configured namespaces for this org
-    const vaultConfigs = await vaultExternalMigrationConfigDAL.find({
+    const vaultConfigs = await externalMigrationConfigDAL.find({
       orgId: actor.orgId,
       provider: ExternalMigrationProviders.Vault
     });
@@ -631,7 +631,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can delete vault external migration configs" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.findById(id);
+    const config = await externalMigrationConfigDAL.findById(id);
 
     if (!config) {
       throw new NotFoundError({ message: "Vault migration config not found" });
@@ -645,7 +645,7 @@ export const externalMigrationServiceFactory = ({
       throw new NotFoundError({ message: "Vault migration config not found" });
     }
 
-    const deletedConfig = await vaultExternalMigrationConfigDAL.deleteById(id);
+    const deletedConfig = await externalMigrationConfigDAL.deleteById(id);
 
     return deletedConfig;
   };
@@ -731,7 +731,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can use Doppler migration" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.findById(configId);
+    const config = await externalMigrationConfigDAL.findById(configId);
 
     if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
@@ -764,7 +764,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can create Doppler migration configs" });
     }
 
-    const existingConfig = await vaultExternalMigrationConfigDAL.findOne({
+    const existingConfig = await externalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
       provider: ExternalMigrationProviders.Doppler,
       connectionId
@@ -774,7 +774,7 @@ export const externalMigrationServiceFactory = ({
       throw new BadRequestError({ message: "A Doppler migration config already exists for this connection" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.create({
+    const config = await externalMigrationConfigDAL.create({
       orgId: actor.orgId,
       connectionId,
       provider: ExternalMigrationProviders.Doppler,
@@ -798,7 +798,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view Doppler migration configs" });
     }
 
-    return vaultExternalMigrationConfigDAL.findWithConnection({
+    return externalMigrationConfigDAL.findWithConnection({
       orgId: actor.orgId,
       provider: ExternalMigrationProviders.Doppler
     });
@@ -818,7 +818,7 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can update Doppler migration configs" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.findById(id);
+    const config = await externalMigrationConfigDAL.findById(id);
 
     if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
@@ -828,7 +828,7 @@ export const externalMigrationServiceFactory = ({
       await appConnectionService.connectAppConnectionById(AppConnection.Doppler, connectionId, actor);
     }
 
-    return vaultExternalMigrationConfigDAL.updateById(id, { connectionId });
+    return externalMigrationConfigDAL.updateById(id, { connectionId });
   };
 
   const deleteDopplerExternalMigration = async ({ id, actor }: TDeleteDopplerExternalMigrationDTO) => {
@@ -845,13 +845,13 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can delete Doppler migration configs" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.findById(id);
+    const config = await externalMigrationConfigDAL.findById(id);
 
     if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
       throw new NotFoundError({ message: "Doppler migration config not found" });
     }
 
-    return vaultExternalMigrationConfigDAL.deleteById(id);
+    return externalMigrationConfigDAL.deleteById(id);
   };
 
   const getDopplerProjects = async ({ configId, actor }: { configId: string; actor: OrgServiceActor }) => {
