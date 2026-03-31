@@ -4,7 +4,7 @@ sidebarTitle: "Doppler"
 description: "Learn how to migrate secrets from Doppler to Infisical using in-platform migration."
 ---
 
-This guide helps you bring secrets from **Doppler** into Infisical. In-platform migration lets you register a Doppler **App Connection** once, link it under **External Migrations**, then import secrets on demand from the organization settings or directly from a project’s secret overview—similar to how [Vault in-platform migration](./vault) works, but scoped to Doppler’s project and environment model.
+This guide helps you bring secrets from **Doppler** into Infisical. Register a Doppler **App Connection** once, link it under **External Migrations**, then import secrets on demand — from the organization settings or directly from a project’s secret overview — into any Infisical project, environment, and folder you choose.
 
 **What you can migrate:**
 
@@ -59,7 +59,7 @@ This guide helps you bring secrets from **Doppler** into Infisical. In-platform 
 You can import in two places: **External Migrations** (pick any Infisical project and path) or the **Secret overview** for a single environment (current project, path, and environment).
 
 <Tip>
-  **Migration strategy:** Same as Vault—start with a non-production Infisical environment, verify key names and values, then expand to other environments.
+  **Migration strategy:** Start with a non-production Infisical environment, verify key names and values, then expand to other environments.
 </Tip>
 
 ### Import from Organization Settings
@@ -67,12 +67,14 @@ You can import in two places: **External Migrations** (pick any Infisical projec
 1. Open **Organization Settings > External Migrations** and find your Doppler row.
 2. Click **Import**.
 3. Choose the **Doppler project** and **Doppler environment** to read from.
-4. Choose the **Infisical project**, **environment**, and **secret path** where secrets should be created or updated.
+4. Choose the **Infisical project**, **environment**, and **secret path** where secrets should be created.
 5. Confirm the import.
 
 ![Import secrets from Doppler (organization settings)](/images/platform/external-migrations/doppler-in-platform/doppler-import-modal-org-settings.png)
 
-Secrets are written as normal Infisical secret keys at the target path; existing keys with the same name are updated when the import runs.
+<Warning>
+  The import will fail if any secret key from Doppler already exists at the target path. Make sure the destination is empty or use a new secret path to avoid conflicts.
+</Warning>
 
 ### Import from the Secret Overview
 
@@ -91,17 +93,6 @@ When you are already in a **Secret Manager** project and have **one** environmen
 <Info>
   **First time in this project?** Create a [project](/documentation/platform/project) and environments if you have not already. The overview import always targets the project you are viewing.
 </Info>
-
-## Comparison with Vault In-Platform Migration
-
-| Topic | Vault | Doppler |
-|-------|--------|---------|
-| **Org setup** | Vault policy + App Connection + namespace row | Doppler token + App Connection + Doppler row |
-| **Table “Namespace” column** | Vault **namespace** | **—** (not applicable for Doppler) |
-| **Secret import** | Namespace + secret path | Doppler **project** + **environment** |
-| **Other imports** | Kubernetes auth, dynamic secrets, policies | Secrets only (this guide) |
-
-For Vault-specific steps (KV paths, policy translation, Kubernetes), use [Migrating from Vault to Infisical](./vault).
 
 ## Next Steps
 
