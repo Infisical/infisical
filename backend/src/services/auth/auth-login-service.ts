@@ -637,7 +637,7 @@ export const authLoginServiceFactory = ({
 
     const decodedToken = crypto.jwt().verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
 
-    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
+    const userEnc = await userDAL.findById(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
     // reset lock states
@@ -656,7 +656,7 @@ export const authLoginServiceFactory = ({
       mfaMethod
     });
 
-    return { token, user: userEnc };
+    return { token, user: { ...userEnc, hashedPassword: null } };
   };
   /*
    * OAuth2 login for google,github, and other oauth2 provider
@@ -1098,7 +1098,7 @@ export const authLoginServiceFactory = ({
       ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL)
       : (user.selectedMfaMethod ?? MfaMethod.EMAIL);
     // Check if organization has changed
-    const hasOrganizationChanged = decodedToken.organizationId !== rootOrg.id;
+    const hasOrganizationChanged = decodedToken?.organizationId ? decodedToken.organizationId !== rootOrg.id : false;
     // Check if MFA method has changed
     const hasMfaMethodChanged = decodedToken.mfaMethod !== requiredMfaMethod;
     // Trigger MFA if required and either not verified or something changed

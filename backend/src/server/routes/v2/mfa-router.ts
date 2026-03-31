@@ -45,10 +45,8 @@ const handleMfaVerification = async (
 
   return {
     ...user,
-    token: token.access,
-    protectedKey: user.protectedKey || null,
-    protectedKeyIV: user.protectedKeyIV || null,
-    protectedKeyTag: user.protectedKeyTag || null
+    hashedPassword: null,
+    token: token.access
   };
 };
 

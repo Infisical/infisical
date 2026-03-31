@@ -82,14 +82,10 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/admin/signup" });
     }
 
-    const data = await context.queryClient
-      .fetchQuery({
-        queryKey: authKeys.getAuthToken,
-        queryFn: fetchAuthToken
-      })
-      .catch(() => {
-        return null;
-      });
+    const data = await context.queryClient.ensureQueryData({
+      queryKey: authKeys.getAuthToken,
+      queryFn: fetchAuthToken
+    });
     if (!data) return;
 
     setAuthToken(data.token);

@@ -6,6 +6,7 @@ import { SessionStorageKeys } from "@app/const";
 import { queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
+import { authKeys } from "../auth/queries";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { setAuthToken } from "../reactQuery";
@@ -351,6 +352,10 @@ export const useLogoutUser = () => {
         logoutTimer = null;
       }
       setAuthToken("");
+      // Remove the login check cache immediately so the restrict-login-signup
+      // middleware doesn't find stale auth data and redirect to select-organization.
+      qc.removeQueries({ queryKey: authKeys.getLoginCheck });
+      qc.removeQueries({ queryKey: authKeys.getAuthToken });
       await logoutUser();
     },
     onSuccess: () => {
@@ -359,7 +364,7 @@ export const useLogoutUser = () => {
       logoutTimer = setTimeout(() => {
         clearSession();
         logoutTimer = null;
-      }, 500);
+      }, 1000);
     }
   });
 };
