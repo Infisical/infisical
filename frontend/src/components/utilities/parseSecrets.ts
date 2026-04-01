@@ -100,12 +100,22 @@ function flattenObject(
         if (typeof item === "object" && item !== null) {
           flattenObject(item, itemKey, result);
         } else {
+          if (itemKey in result) {
+            throw new Error(
+              `Key collision: "${itemKey}" is produced by both a flat key and a nested path.`
+            );
+          }
           result[itemKey] = item;
         }
       });
 
       // handle primitive values
     } else {
+      if (newKey in result) {
+        throw new Error(
+          `Key collision: "${newKey}" is produced by both a flat key and a nested path.`
+        );
+      }
       result[newKey] = value;
     }
   }
