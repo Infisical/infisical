@@ -14,7 +14,7 @@ import {
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faClock, faDatabase, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase, faTerminal } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -173,7 +173,7 @@ const DYNAMIC_SECRET_LIST = [
     title: "ClickHouse"
   },
   {
-    icon: <FontAwesomeIcon icon={faKey} size="lg" />,
+    icon: <FontAwesomeIcon icon={faTerminal} size="lg" />,
     provider: DynamicSecretProviders.Ssh,
     title: "SSH"
   }
