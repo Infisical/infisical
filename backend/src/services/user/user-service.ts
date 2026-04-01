@@ -63,7 +63,7 @@ export const userServiceFactory = ({
       username: string;
       authTokenType: AuthTokenType;
     };
-    if (authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+    if (authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
 
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);

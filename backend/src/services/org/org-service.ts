@@ -753,7 +753,7 @@ export const orgServiceFactory = ({
       const user = await userDAL.findById(userId, tx);
       const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
         {
-          user,
+          userId: user.id,
           authMethod: decodedToken.authMethod,
           ip: ipAddress,
           userAgent: userAgentHeader,

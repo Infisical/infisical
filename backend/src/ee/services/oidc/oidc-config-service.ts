@@ -14,12 +14,12 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
-import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -87,6 +87,7 @@ type TOidcConfigServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -108,7 +109,8 @@ export const oidcConfigServiceFactory = ({
   projectDAL,
   projectBotDAL,
   auditLogService,
-  kmsService
+  kmsService,
+  loginService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -172,6 +174,8 @@ export const oidcConfigServiceFactory = ({
     firstName,
     lastName,
     orgId,
+    ip,
+    userAgent,
     callbackPort,
     groups = [],
     manageGroupMemberships
@@ -184,7 +188,6 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const appCfg = getConfig();
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -454,31 +457,6 @@ export const oidcConfigServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
-        username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
-        firstName,
-        lastName,
-        organizationName: organization.name,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        hasExchangedPrivateKey: true,
-        aliasId: userAlias.id,
-        authMethod: AuthMethod.OIDC,
-        authType: UserAliasType.OIDC,
-        isUserCompleted,
-        ...(callbackPort && { callbackPort })
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
     if (user.email && !userAlias.isEmailVerified) {
@@ -504,7 +482,19 @@ export const oidcConfigServiceFactory = ({
         });
     }
 
-    return { isUserCompleted, providerAuthToken, user };
+    const callbackResult = await loginService.processProviderCallback({
+      user,
+      authMethod: AuthMethod.OIDC,
+      isAliasVerified: Boolean(userAlias.isEmailVerified),
+      isEmailVerified: Boolean(userAlias.isEmailVerified),
+      aliasId: userAlias.id,
+      ip,
+      userAgent,
+      organizationId: organization.id,
+      callbackPort
+    });
+
+    return { ...callbackResult, user };
   };
 
   const updateOidcCfg = async ({
@@ -810,15 +800,17 @@ export const oidcConfigServiceFactory = ({
           firstName: name,
           lastName: claims.family_name ?? "",
           orgId: org.id,
+          ip: requestContext.get("ip") || "",
+          userAgent: requestContext.get("userAgent") || "",
           groups,
           callbackPort,
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
-          .then(({ isUserCompleted, providerAuthToken, user }) => {
+          .then((loginResult) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
-                "infisical.user.id": user.id,
+                "infisical.user.id": loginResult.user?.id,
                 "infisical.organization.id": org.id,
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
@@ -828,7 +820,7 @@ export const oidcConfigServiceFactory = ({
               });
             }
 
-            cb(null, { isUserCompleted, providerAuthToken });
+            cb(null, loginResult);
           })
           .catch((error) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {

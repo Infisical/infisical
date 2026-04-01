@@ -29,7 +29,6 @@ type Props = {
   setPassword: (value: string) => void;
   name: string;
   providerOrganizationName: string;
-  providerAuthToken?: string;
   forceDefaultOrg?: boolean;
 };
 

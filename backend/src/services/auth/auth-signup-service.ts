@@ -1,7 +1,7 @@
 import { AccessScope } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -11,29 +11,34 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { UserEncryption } from "../user/user-types";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { validateSignUpAuthorization } from "./auth-fns";
+import { TAuthLoginFactory } from "./auth-login-service";
 import { TCompleteAccountSignupDTO } from "./auth-signup-type";
-import { AuthMethod, AuthTokenType } from "./auth-type";
+import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "updateById">;
   orgService: Pick<TOrgServiceFactory, "createOrganization" | "findOrganizationById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
+  userAliasDAL,
   tokenService,
   smtpService,
   orgService,
-  orgDAL
+  orgDAL,
+  loginService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
@@ -229,9 +234,87 @@ export const authSignupServiceFactory = ({
     };
   };
 
+  /*
+   * Verify an SSO/OAuth alias via email confirmation code.
+   * Called from /signup/verify-alias with the signup token in the Authorization header.
+   *
+   * For org IdP (SAML/OIDC/LDAP): organizationId is in the signup token → tokens issued with org context
+   * For OAuth (Google/GitHub/GitLab): no organizationId → tokens issued without org, user goes to select-org
+   *
+   * If the user is not yet accepted, they are automatically accepted (SSO users don't need password setup).
+   */
+  const verifyAlias = async ({
+    code,
+    authorization,
+    ip,
+    userAgent
+  }: {
+    code: string;
+    authorization: string;
+    ip: string;
+    userAgent: string;
+  }) => {
+    const appCfg = getConfig();
+
+    // Extract and validate the signup token
+    const [, tokenValue] = authorization.split(" ", 2);
+    if (!tokenValue) throw new UnauthorizedError({ message: "Missing authorization token" });
+
+    const decodedToken = crypto.jwt().verify(tokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
+
+    if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
+      throw new UnauthorizedError({ message: "Invalid token type" });
+    }
+
+    const user = await userDAL.findById(decodedToken.userId);
+    if (!user) throw new BadRequestError({ message: "User not found" });
+
+    if (!decodedToken.aliasId) {
+      throw new BadRequestError({ message: "Missing alias ID in signup token" });
+    }
+
+    // Verify the alias belongs to this user
+    const userAlias = await userAliasDAL.findOne({
+      id: decodedToken.aliasId,
+      userId: user.id
+    });
+
+    if (!userAlias) {
+      throw new BadRequestError({ message: "Alias not found for this user" });
+    }
+
+    // Validate the email verification code — the code was created with this specific aliasId
+    // by the EE service (saml/oidc/ldap) when the alias was first created
+    await tokenService.validateTokenForUser({
+      type: TokenType.TOKEN_EMAIL_VERIFICATION,
+      userId: user.id,
+      code
+    });
+
+    // Mark this specific alias as email-verified
+    await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true });
+
+    // If user is not yet accepted, accept them (SSO users don't need password/account setup)
+    if (!user.isAccepted) {
+      await userDAL.updateById(user.id, { isAccepted: true });
+    }
+
+    // Issue session tokens
+    const tokens = await loginService.generateUserTokens({
+      userId: user.id,
+      ip,
+      userAgent,
+      authMethod: decodedToken.authMethod,
+      organizationId: decodedToken.organizationId
+    });
+
+    return { tokens, user };
+  };
+
   return {
     beginEmailSignupProcess,
     verifyEmailSignup,
-    completeAccountSignup
+    completeAccountSignup,
+    verifyAlias
   };
 };

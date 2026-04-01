@@ -24,7 +24,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false);
       const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(token.userId);
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 
@@ -58,7 +58,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false);
       await server.services.password.resetPasswordByBackupKey({
         ...req.body,
         userId: token.userId

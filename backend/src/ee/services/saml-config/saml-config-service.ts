@@ -15,10 +15,9 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
@@ -85,6 +84,7 @@ type TSamlConfigServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
+  loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -104,7 +104,8 @@ export const samlConfigServiceFactory = ({
   identityMetadataDAL,
   kmsService,
   membershipRoleDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  loginService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -504,10 +505,11 @@ export const samlConfigServiceFactory = ({
     lastName,
     authProvider,
     orgId,
+    ip,
+    userAgent,
     relayState,
     metadata
   }) => {
-    const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
@@ -748,35 +750,6 @@ export const samlConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted && userAlias.isEmailVerified);
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
-        username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
-        firstName,
-        lastName,
-        organizationName: organization.name,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        authMethod: authProvider,
-        hasExchangedPrivateKey: true,
-        aliasId: userAlias.id,
-        authType: UserAliasType.SAML,
-        isUserCompleted,
-        ...(relayState
-          ? {
-              callbackPort: (JSON.parse(relayState) as { callbackPort: string }).callbackPort
-            }
-          : {})
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
     if (user.email && !userAlias.isEmailVerified) {
@@ -796,7 +769,21 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    return { isUserCompleted, providerAuthToken, user, organization };
+    const callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
+
+    const callbackResult = await loginService.processProviderCallback({
+      user,
+      authMethod: authProvider as AuthMethod,
+      isAliasVerified: Boolean(userAlias.isEmailVerified),
+      isEmailVerified: Boolean(userAlias.isEmailVerified),
+      aliasId: userAlias.id,
+      ip,
+      userAgent,
+      organizationId: organization.id,
+      callbackPort
+    });
+
+    return { ...callbackResult, user, organization };
   };
 
   return {

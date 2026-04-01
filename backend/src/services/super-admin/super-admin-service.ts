@@ -536,7 +536,7 @@ export const superAdminServiceFactory = ({
 
     await updateServerCfg({ initialized: true }, userInfo.user.id);
     const token = await authService.generateUserTokens({
-      user: userInfo.user,
+      userId: userInfo.user.id,
       authMethod: AuthMethod.EMAIL,
       ip,
       userAgent,

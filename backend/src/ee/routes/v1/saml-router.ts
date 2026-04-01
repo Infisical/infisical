@@ -20,10 +20,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TSAMLConfig = {
@@ -152,7 +153,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             })
             .filter((el) => el.key && !["email", "firstName", "lastName"].includes(el.key));
 
-          const { isUserCompleted, providerAuthToken, user, organization } = await server.services.saml.samlLogin({
+          const loginResult = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email: email.toLowerCase(),
             firstName,
@@ -160,15 +161,17 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             relayState: (req.body as { RelayState?: string }).RelayState,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId,
+            ip: requestContext.get("ip") || "",
+            userAgent: requestContext.get("userAgent") || "",
             metadata: userMetadata
           });
 
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
-              "infisical.user.id": user.id,
-              "infisical.organization.id": organization.id,
-              "infisical.organization.name": organization.name,
+              "infisical.user.id": loginResult.user.id,
+              "infisical.organization.id": loginResult.organization.id,
+              "infisical.organization.name": loginResult.organization.name,
               "infisical.auth.method": AuthAttemptAuthMethod.SAML,
               "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
               "client.address": requestContext.get("ip"),
@@ -176,7 +179,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             });
           }
 
-          cb(null, { isUserCompleted, providerAuthToken });
+          cb(null, loginResult);
         } catch (error) {
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
@@ -274,18 +277,34 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         if (err) {
           throw new BadRequestError({ message: `Saml authentication failed. ${err?.message}`, error: err });
         }
-        req.passportUser = user as { isUserCompleted: boolean; providerAuthToken: string };
+        req.passportUser = user;
       }
     ) as any, // this is due to zod type difference
     handler: (req, res) => {
-      if (req.passportUser.isUserCompleted) {
+      const passportResult = req.passportUser;
+
+      if (passportResult.result === ProviderAuthResult.SESSION) {
+        void res.setCookie("jid", passportResult.tokens.refresh, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+        addAuthOriginDomainCookie(res);
+        return res.redirect(`${appCfg.SITE_URL}/login/select-organization`);
+      }
+
+      if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`
         );
       }
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
+
+      if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+        return res.redirect(`${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`);
+      }
+
+      throw new BadRequestError({ message: "Unexpected auth result" });
     }
   });
 

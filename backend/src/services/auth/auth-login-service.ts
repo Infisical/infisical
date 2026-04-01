@@ -43,11 +43,12 @@ import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
+import { enforceUserLockStatus, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
   TOauthLoginDTO,
+  TProcessProviderCallbackDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import {
@@ -56,7 +57,8 @@ import {
   AuthModeJwtTokenPayload,
   AuthModeMfaJwtTokenPayload,
   AuthTokenType,
-  MfaMethod
+  MfaMethod,
+  ProviderAuthResult
 } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
@@ -239,6 +241,101 @@ export const authLoginServiceFactory = ({
   };
 
   /*
+   * Shared pipeline called by all provider callbacks (OAuth, SAML, OIDC, LDAP).
+   * Decides whether to:
+   *   - Issue a session (refresh + access tokens)
+   *   - Require MFA (for org-scoped IdP flows where org is already known)
+   *   - Require signup/alias verification
+   *
+   * For OAuth (no organizationId): MFA is deferred to selectOrganization.
+   * For IdP (SAML/OIDC/LDAP with organizationId): MFA is checked here.
+   */
+  const processProviderCallback = async ({
+    user,
+    authMethod,
+    isAliasVerified,
+    isEmailVerified,
+    aliasId,
+    ip,
+    userAgent,
+    organizationId,
+    callbackPort
+  }: TProcessProviderCallbackDTO) => {
+    const appCfg = getConfig();
+
+    // Step 1: If user is not fully set up or alias needs verification, issue a signup token
+    if (!user.isAccepted || !isAliasVerified) {
+      const signupToken = crypto.jwt().sign(
+        {
+          authTokenType: AuthTokenType.SIGNUP_TOKEN,
+          userId: user.id,
+          authMethod,
+          isEmailVerified,
+          isAliasVerified,
+          aliasId,
+          organizationId,
+          callbackPort,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        },
+        appCfg.AUTH_SECRET,
+        { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
+      );
+
+      return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken } as const;
+    }
+
+    // Step 2: For org-scoped IdP flows, check MFA before issuing tokens
+    if (organizationId) {
+      const org = await orgDAL.findById(organizationId);
+      if (org) {
+        const isOrgMfaEnforced = org.enforceMfa;
+        const isUserMfaEnabled = user.isMfaEnabled;
+        const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
+
+        if (isMfaRequired) {
+          enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+          const requiredMfaMethod = isOrgMfaEnforced
+            ? (org.selectedMfaMethod ?? MfaMethod.EMAIL)
+            : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
+
+          const mfaToken = crypto.jwt().sign(
+            {
+              authMethod,
+              authTokenType: AuthTokenType.MFA_TOKEN,
+              userId: user.id,
+              organizationId
+            },
+            appCfg.AUTH_SECRET,
+            { expiresIn: appCfg.JWT_MFA_LIFETIME }
+          );
+
+          if (requiredMfaMethod === MfaMethod.EMAIL && user.email) {
+            await sendUserMfaCode({ userId: user.id, email: user.email });
+          }
+
+          return { result: ProviderAuthResult.MFA_REQUIRED, mfaToken, mfaMethod: requiredMfaMethod } as const;
+        }
+      }
+    }
+
+    // Step 3: All clear — issue session tokens
+    // For OAuth (no org): tokens without org context, MFA deferred to selectOrganization
+    // For IdP (with org): tokens with org context, MFA already passed above
+    const tokens = await generateUserTokens({
+      userId: user.id,
+      ip,
+      userAgent,
+      authMethod,
+      organizationId
+    });
+
+    return { result: ProviderAuthResult.SESSION, tokens } as const;
+  };
+
+  /*
    * Step 1 of login. To get server public key in exchange of client public key
    */
   const loginGenServerPublicKey = async ({
@@ -278,7 +375,8 @@ export const authLoginServiceFactory = ({
     }
 
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      validateProviderAuthToken(providerAuthToken as string, email);
+      // Deprecated: provider token validation removed. This path is only reachable from legacy SRP clients.
+      if (!providerAuthToken) throw new UnauthorizedError();
     }
 
     const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
@@ -298,7 +396,6 @@ export const authLoginServiceFactory = ({
     clientProof,
     ip,
     userAgent,
-    providerAuthToken,
     captchaToken,
     password
   }: TLoginClientProofDTO) => {
@@ -312,7 +409,9 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
 
-    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+    // Deprecated SRP path: default to email auth. Provider token exchange is no longer supported.
+    const authMethod = AuthMethod.EMAIL;
+    const organizationId: string | undefined = undefined;
     await verifyCaptcha(user.consecutiveFailedPasswordAttempts, captchaToken);
 
     if (!userEnc.salt || !userEnc.verifier) {
@@ -681,7 +780,9 @@ export const authLoginServiceFactory = ({
     authMethod,
     callbackPort,
     orgSlug,
-    providerUserId
+    providerUserId,
+    ip,
+    userAgent
   }: TOauthLoginDTO) => {
     const aliasType = authMethodToAliasType(authMethod);
 
@@ -928,41 +1029,21 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const isUserCompleted = user.isAccepted;
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
+    // TODO(auth-revamp): check this out later
+    const callbackResult = await processProviderCallback({
+      user,
+      authMethod,
+      // For OAuth, new users get alias created with the user, so alias is always verified.
+      // For existing users found by email fallback (isNewAlias), the alias was just backfilled above.
+      isAliasVerified: true,
+      isEmailVerified: Boolean(user.isEmailVerified),
+      ip,
+      userAgent,
+      organizationId: orgId || undefined,
+      callbackPort
+    });
 
-        ...(orgId && orgSlug && orgName !== undefined
-          ? {
-              organizationId: orgId,
-              organizationName: orgName,
-              organizationSlug: orgSlug
-            }
-          : {}),
-
-        username: user.username,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        hasExchangedPrivateKey: true,
-        authMethod,
-        isUserCompleted,
-        ...(callbackPort
-          ? {
-              callbackPort
-            }
-          : {})
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
-    return { isUserCompleted, providerAuthToken, user, orgId, orgName };
+    return { ...callbackResult, user: { ...user, hashedPassword: null }, orgId, orgName };
   };
 
   /*
@@ -1273,6 +1354,7 @@ export const authLoginServiceFactory = ({
     verifyMfaToken,
     selectOrganization,
     generateUserTokens,
+    processProviderCallback,
 
     // deprecated completely
     loginGenServerPublicKey,

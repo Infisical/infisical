@@ -7,6 +7,9 @@ import { SessionStorageKeys } from "@app/const";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
+// Re-export from refresh.ts to maintain backwards compatibility
+// The actual implementation lives in refresh.ts to avoid circular imports with request.ts
+import { fetchAuthToken } from "./refresh";
 import {
   CompleteAccountSignupDTO,
   GetBackupEncryptedPrivateKeyDTO,
@@ -148,6 +151,20 @@ export const useCompleteAccountSignup = () => {
   });
 };
 
+export const verifyAlias = async (details: { code: string }) => {
+  const { data } = await apiRequest.post<{ accessToken: string; refreshToken: string }>(
+    "/api/v3/signup/verify-alias",
+    details
+  );
+  return data;
+};
+
+export const useVerifyAlias = () => {
+  return useMutation({
+    mutationFn: verifyAlias
+  });
+};
+
 export const useSendMfaToken = () => {
   return useMutation<object, object, SendMfaTokenDTO>({
     mutationFn: async ({ email }) => {
@@ -283,10 +300,6 @@ export const useResetUserPasswordV2 = () => {
     }
   });
 };
-
-// Re-export from refresh.ts to maintain backwards compatibility
-// The actual implementation lives in refresh.ts to avoid circular imports with request.ts
-import { fetchAuthToken } from "./refresh";
 
 export { fetchAuthToken };
 

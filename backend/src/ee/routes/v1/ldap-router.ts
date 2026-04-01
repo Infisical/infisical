@@ -9,6 +9,7 @@
 import { IncomingMessage } from "node:http";
 
 import { Authenticator } from "@fastify/passport";
+import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
 import { FastifyRequest } from "fastify";
 import LdapStrategy from "passport-ldapauth";
@@ -25,7 +26,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
@@ -77,7 +78,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           const externalId = ldapConfig.uniqueUserAttribute ? user[ldapConfig.uniqueUserAttribute] : user.uidNumber;
           const username = ldapConfig.uniqueUserAttribute ? externalId : user.uid;
 
-          const { isUserCompleted, providerAuthToken } = await server.services.ldap.ldapLogin({
+          const loginResult = await server.services.ldap.ldapLogin({
             externalId,
             username,
             ldapConfigId: ldapConfig.id,
@@ -85,11 +86,13 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             lastName: user.sn ?? "",
             email: user.mail,
             groups,
+            ip: requestContext.get("ip") || "",
+            userAgent: requestContext.get("userAgent") || "",
             relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });
 
-          return cb(null, { isUserCompleted, providerAuthToken });
+          return cb(null, loginResult);
         } catch (error) {
           logger.error(error);
           return cb(error, false);
@@ -116,16 +119,26 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {
+      const passportResult = req.passportUser;
       let nextUrl;
-      if (req.passportUser.isUserCompleted) {
-        nextUrl = `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`;
+
+      if (passportResult.result === ProviderAuthResult.SESSION) {
+        void res.setCookie("jid", passportResult.tokens.refresh, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+        nextUrl = `${appCfg.SITE_URL}/login/select-organization`;
+      } else if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
+        nextUrl = `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`;
+      } else if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+        nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`;
       } else {
-        nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`;
+        throw new BadRequestError({ message: "Unexpected auth result" });
       }
 
-      return res.status(200).send({
-        nextUrl
-      });
+      return res.status(200).send({ nextUrl });
     }
   });
 

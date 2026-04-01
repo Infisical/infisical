@@ -10,12 +10,12 @@ import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
+import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { createNotification } from "@app/components/notifications";
 
 enum SignupSection {
   Email = "email",

@@ -25,7 +25,7 @@ import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -66,27 +66,28 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
             });
 
           try {
-            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
-              await server.services.login.oauth2Login({
-                email,
-                firstName: profile?.name?.givenName || "",
-                lastName: profile?.name?.familyName || "",
-                authMethod: AuthMethod.GOOGLE,
-                callbackPort,
-                orgSlug,
-                providerUserId: profile.id
-              });
+            const loginResult = await server.services.login.oauth2Login({
+              email,
+              firstName: profile?.name?.givenName || "",
+              lastName: profile?.name?.familyName || "",
+              authMethod: AuthMethod.GOOGLE,
+              callbackPort,
+              orgSlug,
+              providerUserId: profile.id,
+              ip: requestContext.get("ip") || "",
+              userAgent: requestContext.get("userAgent") || ""
+            });
 
-            const googleDistinctId = user.username ?? user.email ?? "";
+            const googleDistinctId = loginResult.user.username ?? loginResult.user.email ?? "";
             if (googleDistinctId) {
               void server.services.telemetry.identifyUser(
                 googleDistinctId,
                 {
-                  email: user.email ?? undefined,
-                  username: user.username,
-                  userId: user.id,
-                  firstName: user.firstName ?? undefined,
-                  lastName: user.lastName ?? undefined
+                  email: loginResult.user.email ?? undefined,
+                  username: loginResult.user.username,
+                  userId: loginResult.user.id,
+                  firstName: loginResult.user.firstName ?? undefined,
+                  lastName: loginResult.user.lastName ?? undefined
                 },
                 { skipDedup: true }
               );
@@ -95,9 +96,9 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
-                "infisical.user.id": user.id,
-                "infisical.organization.id": orgId,
-                "infisical.organization.name": orgName,
+                "infisical.user.id": loginResult.user.id,
+                "infisical.organization.id": loginResult.orgId,
+                "infisical.organization.name": loginResult.orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
                 "client.address": requestContext.get("ip"),
@@ -105,7 +106,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            cb(null, { isUserCompleted, providerAuthToken });
+            cb(null, loginResult);
           } catch (error) {
             logger.error(error);
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -154,26 +155,27 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
 
             const callbackPort = req.session.get("callbackPort");
 
-            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
-              await server.services.login.oauth2Login({
-                email,
-                firstName: githubUser.name || githubUser.login,
-                lastName: "",
-                authMethod: AuthMethod.GITHUB,
-                callbackPort,
-                providerUserId: String(githubUser.id)
-              });
+            const loginResult = await server.services.login.oauth2Login({
+              email,
+              firstName: githubUser.name || githubUser.login,
+              lastName: "",
+              authMethod: AuthMethod.GITHUB,
+              callbackPort,
+              providerUserId: String(githubUser.id),
+              ip: requestContext.get("ip") || "",
+              userAgent: requestContext.get("userAgent") || ""
+            });
 
-            const githubDistinctId = user.username ?? user.email ?? "";
+            const githubDistinctId = loginResult.user.username ?? loginResult.user.email ?? "";
             if (githubDistinctId) {
               void server.services.telemetry.identifyUser(
                 githubDistinctId,
                 {
-                  email: user.email ?? undefined,
-                  username: user.username,
-                  userId: user.id,
-                  firstName: user.firstName ?? undefined,
-                  lastName: user.lastName ?? undefined
+                  email: loginResult.user.email ?? undefined,
+                  username: loginResult.user.username,
+                  userId: loginResult.user.id,
+                  firstName: loginResult.user.firstName ?? undefined,
+                  lastName: loginResult.user.lastName ?? undefined
                 },
                 { skipDedup: true }
               );
@@ -182,9 +184,9 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
-                "infisical.user.id": user.id,
-                "infisical.organization.id": orgId,
-                "infisical.organization.name": orgName,
+                "infisical.user.id": loginResult.user.id,
+                "infisical.organization.id": loginResult.orgId,
+                "infisical.organization.name": loginResult.orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
                 "client.address": requestContext.get("ip"),
@@ -192,7 +194,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            done(null, { isUserCompleted, providerAuthToken, externalProviderAccessToken: accessToken });
+            done(null, { ...loginResult, externalProviderAccessToken: accessToken });
           } catch (err) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -233,26 +235,27 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           try {
             const callbackPort = req.session.get("callbackPort");
 
-            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
-              await server.services.login.oauth2Login({
-                email,
-                firstName: profile.displayName || profile.username || "",
-                lastName: "",
-                authMethod: AuthMethod.GITLAB,
-                callbackPort,
-                providerUserId: String(profile.id)
-              });
+            const loginResult = await server.services.login.oauth2Login({
+              email,
+              firstName: profile.displayName || profile.username || "",
+              lastName: "",
+              authMethod: AuthMethod.GITLAB,
+              callbackPort,
+              providerUserId: String(profile.id),
+              ip: requestContext.get("ip") || "",
+              userAgent: requestContext.get("userAgent") || ""
+            });
 
-            const gitlabDistinctId = user.username ?? user.email ?? "";
+            const gitlabDistinctId = loginResult.user.username ?? loginResult.user.email ?? "";
             if (gitlabDistinctId) {
               void server.services.telemetry.identifyUser(
                 gitlabDistinctId,
                 {
-                  email: user.email ?? undefined,
-                  username: user.username,
-                  userId: user.id,
-                  firstName: user.firstName ?? undefined,
-                  lastName: user.lastName ?? undefined
+                  email: loginResult.user.email ?? undefined,
+                  username: loginResult.user.username,
+                  userId: loginResult.user.id,
+                  firstName: loginResult.user.firstName ?? undefined,
+                  lastName: loginResult.user.lastName ?? undefined
                 },
                 { skipDedup: true }
               );
@@ -261,9 +264,9 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": email,
-                "infisical.user.id": user.id,
-                "infisical.organization.id": orgId,
-                "infisical.organization.name": orgName,
+                "infisical.user.id": loginResult.user.id,
+                "infisical.organization.id": loginResult.orgId,
+                "infisical.organization.name": loginResult.orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
                 "client.address": requestContext.get("ip"),
@@ -271,7 +274,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               });
             }
 
-            return cb(null, { isUserCompleted, providerAuthToken });
+            return cb(null, loginResult);
           } catch (error) {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
@@ -375,6 +378,43 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     handler: () => {}
   });
 
+  // Shared redirect logic for all OAuth provider callbacks
+  const handleOAuthCallbackRedirect = async (req: any, res: any) => {
+    const isAdminLogin = req.session.get("isAdminLogin");
+    await req.session.destroy();
+    const passportResult = req.passportUser;
+
+    if (passportResult.result === ProviderAuthResult.SESSION) {
+      void res.setCookie("jid", passportResult.tokens.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+      addAuthOriginDomainCookie(res);
+      return res.redirect(
+        `${appCfg.SITE_URL}/login/select-organization${isAdminLogin ? `?isAdminLogin=${isAdminLogin}` : ""}`
+      );
+    }
+
+    if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
+      return res.redirect(
+        `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`
+      );
+    }
+
+    if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+      const serverCfg = await getServerCfg();
+      return res.redirect(
+        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${
+          serverCfg.defaultAuthOrgId && !appCfg.isCloud ? `&defaultOrgAllowed=true` : ""
+        }`
+      );
+    }
+
+    throw new BadRequestError({ message: "Unexpected auth result" });
+  };
+
   server.route({
     url: "/google",
     method: "GET",
@@ -384,20 +424,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       authInfo: false
       // this is due to zod type difference
     }) as never,
-    handler: async (req, res) => {
-      const isAdminLogin = req.session.get("isAdminLogin");
-      await req.session.destroy();
-      if (req.passportUser.isUserCompleted) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
-            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
-          }`
-        );
-      }
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
-    }
+    handler: handleOAuthCallbackRedirect
   });
 
   server.route({
@@ -486,34 +513,17 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       authInfo: false
       // this is due to zod type difference
     }) as any,
-    handler: async (req, res) => {
-      const isAdminLogin = req.session.get("isAdminLogin");
-      await req.session.destroy();
-
+    handler: async (req: any, res: any) => {
       if (req.passportUser.externalProviderAccessToken) {
         void res.cookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, req.passportUser.externalProviderAccessToken, {
           httpOnly: true,
           path: "/",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
-          expires: new Date(Date.now() + ms(appCfg.JWT_PROVIDER_AUTH_LIFETIME))
+          expires: new Date(Date.now() + ms("15m"))
         });
       }
-
-      if (req.passportUser.isUserCompleted) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
-            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
-          }`
-        );
-      }
-
-      const serverCfg = await getServerCfg();
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
-          serverCfg.defaultAuthOrgId && !appCfg.isCloud ? `&defaultOrgAllowed=true` : ""
-        }`
-      );
+      return handleOAuthCallbackRedirect(req, res);
     }
   });
 
@@ -566,22 +576,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
-    handler: async (req, res) => {
-      const isAdminLogin = req.session.get("isAdminLogin");
-      await req.session.destroy();
-      if (req.passportUser.isUserCompleted) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}${
-            isAdminLogin ? `&isAdminLogin=${isAdminLogin}` : ""
-          }`
-        );
-      }
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
-    }
+    handler: handleOAuthCallbackRedirect
   });
 
+  // Deprecated: token-exchange is no longer needed — sessions are issued directly from callbacks.
+  // Kept for backward compatibility with old clients.
   server.route({
     url: "/token-exchange",
     method: "POST",
@@ -592,53 +591,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         email: z.string()
       })
     },
-    handler: async (req, res) => {
-      const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
-
-      const data = await server.services.login.oauth2TokenExchange({
-        email: req.body.email,
-        ip: req.realIp,
-        userAgent,
-        providerAuthToken: req.body.providerAuthToken
+    handler: async () => {
+      throw new BadRequestError({
+        message: "Token exchange is no longer supported. Please update your client."
       });
-
-      const tokenExchangeDistinctId = data.user.username ?? data.user.email ?? "";
-      if (tokenExchangeDistinctId) {
-        void server.services.telemetry.identifyUser(
-          tokenExchangeDistinctId,
-          {
-            email: data.user.email ?? undefined,
-            username: data.user.username,
-            userId: data.user.userId
-          },
-          { skipDedup: true }
-        );
-      }
-      if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {
-        void res.setCookie("jid", data.token.refresh, {
-          httpOnly: true,
-          path: "/",
-          sameSite: "strict",
-          secure: appCfg.HTTPS_ENABLED
-        });
-      }
-
-      addAuthOriginDomainCookie(res);
-
-      return {
-        encryptionVersion: data.user.encryptionVersion,
-        token: data.token.access,
-        isMfaEnabled: data.isMfaEnabled,
-        mfaMethod: data?.mfaMethod,
-        publicKey: data.user.publicKey,
-        encryptedPrivateKey: data.user.encryptedPrivateKey,
-        iv: data.user.iv,
-        tag: data.user.tag,
-        protectedKey: data.user.protectedKey || null,
-        protectedKeyIV: data.user.protectedKeyIV || null,
-        protectedKeyTag: data.user.protectedKeyTag || null
-      } as const;
     }
   });
 };

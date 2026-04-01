@@ -1,76 +1,49 @@
-import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import {
-  AuthMethod,
-  AuthModeProviderJwtTokenPayload,
-  AuthModeProviderSignUpTokenPayload,
-  AuthTokenType
-} from "./auth-type";
+import { AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
-export const validateProviderAuthToken = (providerToken: string, username?: string) => {
-  if (!providerToken) throw new UnauthorizedError();
-  const appCfg = getConfig();
-  const decodedToken = crypto.jwt().verify(providerToken, appCfg.AUTH_SECRET) as AuthModeProviderJwtTokenPayload;
-
-  if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
-
-  if (decodedToken.username !== username) throw new Error("Invalid auth credentials");
-
-  if (decodedToken.organizationId) {
-    return { orgId: decodedToken.organizationId, authMethod: decodedToken.authMethod, userName: decodedToken.username };
+const extractBearerToken = (token?: string): string => {
+  if (!token) {
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
   }
-
-  return { authMethod: decodedToken.authMethod, orgId: null, userName: decodedToken.username };
+  const [authTokenType, authTokenValue] = token.split(" ", 2) as [string, string];
+  if (!authTokenType) {
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
+  }
+  if (authTokenType.toLowerCase() !== "bearer") {
+    throw new UnauthorizedError({
+      message: `The provided authentication type '${authTokenType}' is not supported.`
+    });
+  }
+  if (!authTokenValue) {
+    throw new UnauthorizedError({
+      message: "Missing Authorization Body in the request header"
+    });
+  }
+  return authTokenValue;
 };
 
 export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {
   const appCfg = getConfig();
-  const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>token?.split(" ", 2) ?? [null, null];
-  if (AUTH_TOKEN_TYPE === null) {
-    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
-  }
-  if (AUTH_TOKEN_TYPE.toLowerCase() !== "bearer") {
-    throw new UnauthorizedError({
-      message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`
-    });
-  }
-  if (AUTH_TOKEN_VALUE === null) {
-    throw new UnauthorizedError({
-      message: "Missing Authorization Body in the request header"
-    });
-  }
+  const authTokenValue = extractBearerToken(token);
 
-  const decodedToken = crypto.jwt().verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
+  const decodedToken = crypto.jwt().verify(authTokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
   if (!validate) return decodedToken;
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new UnauthorizedError();
   if (decodedToken.userId !== userId) throw new UnauthorizedError();
+
+  return decodedToken;
 };
 
 export const validatePasswordResetAuthorization = (token?: string) => {
-  if (!token) throw new UnauthorizedError();
-
   const appCfg = getConfig();
-  const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>token?.split(" ", 2) ?? [null, null];
-  if (AUTH_TOKEN_TYPE === null) {
-    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
-  }
-  if (AUTH_TOKEN_TYPE.toLowerCase() !== "bearer") {
-    throw new UnauthorizedError({
-      message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`
-    });
-  }
-  if (AUTH_TOKEN_VALUE === null) {
-    throw new UnauthorizedError({
-      message: "Missing Authorization Body in the request header"
-    });
-  }
+  const authTokenValue = extractBearerToken(token);
 
-  const decodedToken = crypto.jwt().verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
+  const decodedToken = crypto.jwt().verify(authTokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
     throw new UnauthorizedError({
@@ -127,23 +100,4 @@ export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number |
       });
     }
   }
-};
-
-export const getAuthMethodAndOrgId = (email: string, providerAuthToken?: string) => {
-  let authMethod = AuthMethod.EMAIL;
-  let organizationId: string | undefined;
-
-  if (providerAuthToken) {
-    const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
-
-    authMethod = decodedProviderToken.authMethod;
-    if (
-      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
-      decodedProviderToken.orgId
-    ) {
-      organizationId = decodedProviderToken.orgId;
-    }
-  }
-
-  return { authMethod, organizationId };
 };

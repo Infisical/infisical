@@ -1,26 +1,40 @@
-import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { jwtDecode } from "jwt-decode";
 
-import { ContentLoader } from "@app/components/v2";
-import { useGetMyDuplicateAccount } from "@app/hooks/api";
+import { Mfa } from "@app/components/auth/Mfa";
+import SecurityClient from "@app/components/utilities/SecurityClient";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { MfaMethod } from "@app/hooks/api/auth/types";
 
-import { EmailDuplicationConfirmation } from "./EmailDuplicationConfirmation";
+import { navigateUserToOrg } from "../LoginPage/Login.utils";
 import { SelectOrganizationSection } from "./SelectOrgSection";
 
 export const SelectOrganizationPage = () => {
-  const duplicateAccounts = useGetMyDuplicateAccount();
-  const [removeDuplicateLater, setRemoveDuplicateLater] = useState(false);
+  const search = useSearch({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
+  const navigate = useNavigate();
 
-  if (duplicateAccounts.isPending) {
-    return (
-      <div className="h-screen w-screen bg-bunker-800">
-        <ContentLoader />
-      </div>
-    );
-  }
+  // IdP MFA redirect: backend sends mfaToken + mfaMethod when org-scoped SSO requires MFA
+  const { mfaToken, mfaMethod } = search;
 
-  if (duplicateAccounts.data?.duplicateAccounts?.length && !removeDuplicateLater) {
+  if (mfaToken && mfaMethod) {
+    SecurityClient.setMfaToken(mfaToken);
+
+    // Decode the MFA token to get the organizationId for post-MFA navigation
+    const decoded = jwtDecode(mfaToken) as { organizationId?: string };
+
     return (
-      <EmailDuplicationConfirmation onRemoveDuplicateLater={() => setRemoveDuplicateLater(true)} />
+      <Mfa
+        email=""
+        method={mfaMethod as MfaMethod}
+        successCallback={async () => {
+          if (decoded.organizationId) {
+            localStorage.setItem("orgData.id", decoded.organizationId);
+            navigateUserToOrg({ navigate, organizationId: decoded.organizationId });
+          } else {
+            navigate({ to: "/login/select-organization", search: {}, replace: true });
+          }
+        }}
+      />
     );
   }
 

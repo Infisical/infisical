@@ -13,10 +13,9 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -86,6 +85,7 @@ type TLdapConfigServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -107,7 +107,8 @@ export const ldapConfigServiceFactory = ({
   licenseService,
   tokenService,
   smtpService,
-  kmsService
+  kmsService,
+  loginService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -392,9 +393,10 @@ export const ldapConfigServiceFactory = ({
     email,
     groups,
     orgId,
+    ip,
+    userAgent,
     relayState
   }: TLdapLoginDTO) => {
-    const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
@@ -649,35 +651,6 @@ export const ldapConfigServiceFactory = ({
       return newUser;
     });
 
-    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
-        username: user.username,
-        hasExchangedPrivateKey: true,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
-        firstName,
-        lastName,
-        organizationName: organization.name,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        authMethod: AuthMethod.LDAP,
-        authType: UserAliasType.LDAP,
-        aliasId: userAlias.id,
-        isUserCompleted,
-        ...(relayState
-          ? {
-              callbackPort: (JSON.parse(relayState) as { callbackPort: string }).callbackPort
-            }
-          : {})
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
     if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -695,7 +668,21 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    return { isUserCompleted, providerAuthToken };
+    const callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
+
+    const callbackResult = await loginService.processProviderCallback({
+      user,
+      authMethod: AuthMethod.LDAP,
+      isAliasVerified: Boolean(userAlias.isEmailVerified),
+      isEmailVerified: Boolean(userAlias.isEmailVerified),
+      aliasId: userAlias.id,
+      ip,
+      userAgent,
+      organizationId: organization.id,
+      callbackPort
+    });
+
+    return callbackResult;
   };
 
   const getLdapGroupMaps = async ({

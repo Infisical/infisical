@@ -17,9 +17,10 @@ import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
@@ -123,17 +124,30 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     ],
     handler: async (req, res) => {
       await req.session.destroy();
+      const passportResult = req.passportUser;
 
-      if (req.passportUser.isUserCompleted) {
+      if (passportResult.result === ProviderAuthResult.SESSION) {
+        void res.setCookie("jid", passportResult.tokens.refresh, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+        addAuthOriginDomainCookie(res);
+        return res.redirect(`${appCfg.SITE_URL}/login/select-organization`);
+      }
+
+      if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
         return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
+          `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`
         );
       }
 
-      // signup
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
+      if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+        return res.redirect(`${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`);
+      }
+
+      throw new Error("Unexpected auth result");
     }
   });
 

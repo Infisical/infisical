@@ -848,25 +848,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL
   });
 
-  const samlService = samlConfigServiceFactory({
-    identityMetadataDAL,
-    permissionService,
-    orgDAL,
-    userDAL,
-    userAliasDAL,
-    samlConfigDAL,
-    groupDAL,
-    userGroupMembershipDAL,
-    projectDAL,
-    projectBotDAL,
-    projectKeyDAL,
-    licenseService,
-    tokenService,
-    smtpService,
-    kmsService,
-    membershipRoleDAL,
-    membershipGroupDAL
-  });
+  // samlService is created after loginService (below) due to dependency on processProviderCallback
   const groupService = groupServiceFactory({
     identityDAL,
     membershipDAL,
@@ -958,25 +940,7 @@ export const registerRoutes = async (
     membershipGroupDAL
   });
 
-  const ldapService = ldapConfigServiceFactory({
-    ldapConfigDAL,
-    ldapGroupMapDAL,
-    orgDAL,
-    groupDAL,
-    projectKeyDAL,
-    projectDAL,
-    projectBotDAL,
-    userGroupMembershipDAL,
-    userDAL,
-    userAliasDAL,
-    permissionService,
-    licenseService,
-    tokenService,
-    smtpService,
-    kmsService,
-    membershipGroupDAL,
-    membershipRoleDAL
-  });
+  // ldapService is created after loginService (below) due to dependency on processProviderCallback
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
@@ -1034,6 +998,48 @@ export const registerRoutes = async (
     membershipUserDAL,
     keyStore,
     permissionService
+  });
+
+  const samlService = samlConfigServiceFactory({
+    identityMetadataDAL,
+    permissionService,
+    orgDAL,
+    userDAL,
+    userAliasDAL,
+    samlConfigDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    projectDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    licenseService,
+    tokenService,
+    smtpService,
+    kmsService,
+    membershipRoleDAL,
+    membershipGroupDAL,
+    loginService
+  });
+
+  const ldapService = ldapConfigServiceFactory({
+    ldapConfigDAL,
+    ldapGroupMapDAL,
+    orgDAL,
+    groupDAL,
+    projectKeyDAL,
+    projectDAL,
+    projectBotDAL,
+    userGroupMembershipDAL,
+    userDAL,
+    userAliasDAL,
+    permissionService,
+    licenseService,
+    tokenService,
+    smtpService,
+    kmsService,
+    membershipGroupDAL,
+    membershipRoleDAL,
+    loginService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1105,8 +1111,10 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    userAliasDAL,
     orgDAL,
-    orgService
+    orgService,
+    loginService
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -2201,7 +2209,8 @@ export const registerRoutes = async (
     groupDAL,
     auditLogService,
     membershipGroupDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    loginService
   });
 
   const userEngagementService = userEngagementServiceFactory({

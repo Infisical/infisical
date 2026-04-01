@@ -4,7 +4,6 @@ export type TCompleteAccountSignupDTO = {
   firstName: string;
   lastName?: string;
   organizationName?: string;
-  providerAuthToken?: string | null;
   attributionSource?: string | undefined;
   ip: string;
   userAgent: string;

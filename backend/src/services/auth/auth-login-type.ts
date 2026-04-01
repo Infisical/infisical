@@ -1,4 +1,4 @@
-import { AuthMethod, MfaMethod } from "./auth-type";
+import { AuthMethod, MfaMethod, ProviderAuthResult } from "./auth-type";
 
 export type TLoginGenServerPublicKeyDTO = {
   email: string;
@@ -35,11 +35,34 @@ export type TOauthLoginDTO = {
   callbackPort?: string;
   orgSlug?: string;
   providerUserId: string;
-};
-
-export type TOauthTokenExchangeDTO = {
-  providerAuthToken: string;
   ip: string;
   userAgent: string;
-  email: string;
 };
+
+export type TProcessProviderCallbackDTO = {
+  user: {
+    id: string;
+    isAccepted?: boolean | null;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    isEmailVerified?: boolean | null;
+    isMfaEnabled?: boolean | null;
+    selectedMfaMethod?: string | null;
+    isLocked?: boolean | null;
+    temporaryLockDateEnd?: Date | null;
+  };
+  authMethod: AuthMethod;
+  isAliasVerified: boolean;
+  isEmailVerified: boolean;
+  aliasId?: string;
+  ip: string;
+  userAgent: string;
+  organizationId?: string;
+  callbackPort?: string;
+};
+
+export type TProviderAuthResult =
+  | { result: ProviderAuthResult.SESSION; tokens: { access: string; refresh: string } }
+  | { result: ProviderAuthResult.MFA_REQUIRED; mfaToken: string; mfaMethod: MfaMethod }
+  | { result: ProviderAuthResult.SIGNUP_REQUIRED; signupToken: string };

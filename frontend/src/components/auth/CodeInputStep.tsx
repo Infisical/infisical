@@ -123,11 +123,7 @@ export default function CodeInputStep({ email, onComplete }: CodeInputStepProps)
           </div>
           <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
             <div className="flex flex-row items-baseline gap-1">
-              <button
-                disabled={isResending}
-                onClick={() => resendEmail({ email })}
-                type="button"
-              >
+              <button disabled={isResending} onClick={() => resendEmail({ email })} type="button">
                 <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                   {t("signup.step2-resend-alert")}{" "}
                   {isResending

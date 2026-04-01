@@ -9,7 +9,9 @@ export const SelectOrganizationPageQueryParams = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
   is_admin_login: z.boolean().optional().catch(false),
   force: z.boolean().optional(),
-  mfa_pending: z.boolean().optional().catch(false)
+  mfa_pending: z.boolean().optional().catch(false),
+  mfaToken: z.string().optional().catch(undefined),
+  mfaMethod: z.string().optional().catch(undefined)
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/select-organization")({
@@ -21,7 +23,9 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         org_id: "",
         callback_port: undefined,
         is_admin_login: false,
-        mfa_pending: false
+        mfa_pending: false,
+        mfaToken: undefined,
+        mfaMethod: undefined
       })
     ]
   }

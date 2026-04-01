@@ -226,12 +226,9 @@ declare module "fastify" {
       rootOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
-    // passport data
-    passportUser: {
-      isUserCompleted: boolean;
-      providerAuthToken: string;
-      externalProviderAccessToken?: string;
-    };
+    // passport data — result from processProviderCallback
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    passportUser: any;
     passportMachineIdentity: {
       identityId: string;
       user: {
