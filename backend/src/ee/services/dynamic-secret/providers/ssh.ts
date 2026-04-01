@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { BadRequestError } from "@app/lib/errors";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -27,6 +29,8 @@ export const SshProvider = (): TDynamicProviderFns => {
     };
   };
 
+  // No remote connection to test for SSH — this validates the CA key pair consistency instead.
+  // Required by the TDynamicProviderFns interface that all providers implement.
   const validateConnection = async (inputs: unknown) => {
     // On create, the service passes the raw user inputs (no CA keys — those are generated
     // in validateProviderInputs). On update, it passes the merged stored + new inputs.
@@ -42,7 +46,7 @@ export const SshProvider = (): TDynamicProviderFns => {
     const parsed = storedResult.data;
     const derivedPublicKey = await getSshPublicKey(parsed.caPrivateKey);
 
-    const normalize = (key: string) => key.trim().split(/\s+/).slice(0, 2).join(" ");
+    const normalize = (key: string) => key.trim().split(new RE2(/\s+/)).slice(0, 2).join(" ");
     if (normalize(derivedPublicKey) !== normalize(parsed.caPublicKey)) {
       throw new BadRequestError({
         message: "SSH CA key pair validation failed: derived public key does not match stored public key"
@@ -83,7 +87,7 @@ export const SshProvider = (): TDynamicProviderFns => {
     }
 
     // Build key ID: infisical-{identity.name} (alphanumeric + hyphens only)
-    const sanitizedName = identity.name.replace(/[^a-zA-Z0-9-]/g, "-");
+    const sanitizedName = identity.name.replace(new RE2(/[^a-zA-Z0-9-]/g), "-");
     const keyId = `infisical-${sanitizedName}`;
 
     // Generate ephemeral key pair with configured algorithm

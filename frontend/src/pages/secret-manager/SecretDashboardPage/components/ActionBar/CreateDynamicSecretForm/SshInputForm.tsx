@@ -341,9 +341,9 @@ export const SshInputForm = ({
             </div>
             <div className="mt-4 flex flex-col gap-1 text-sm text-mineshaft-300">
               <span>This command will:</span>
-              <span>• Install the CA certificate on the target host</span>
-              <span>• Configure SSH to trust certificate-based authentication</span>
-              <span>• Enable seamless access for authorized users</span>
+              <span>- Install the CA certificate on the target host</span>
+              <span>- Configure SSH to trust certificate-based authentication</span>
+              <span>- Restart the SSH service</span>
             </div>
           </div>
           <div className="mt-6 flex justify-end">
