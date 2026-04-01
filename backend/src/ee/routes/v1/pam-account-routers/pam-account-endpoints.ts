@@ -4,9 +4,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamAccount } from "@app/ee/services/pam-resource/pam-resource-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
@@ -80,6 +82,18 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }
@@ -171,6 +185,18 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }

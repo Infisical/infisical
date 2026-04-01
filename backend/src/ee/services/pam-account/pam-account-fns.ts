@@ -101,6 +101,7 @@ export const decryptAccount = async <
   return {
     ...rest,
     credentials,
+    internalMetadata: internalMetadata as TPamResourceInternalMetadata | undefined,
     credentialsConfigured: hasConfiguredCredentials(credentials),
     lastRotationMessage: encryptedLastRotationMessage
       ? await decryptAccountMessage({

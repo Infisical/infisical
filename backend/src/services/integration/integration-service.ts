@@ -39,7 +39,7 @@ type TIntegrationServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectBotService: TProjectBotServiceFactory;
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;

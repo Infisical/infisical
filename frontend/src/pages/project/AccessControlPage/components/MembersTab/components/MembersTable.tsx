@@ -350,7 +350,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                     {isTemporary && (
                                       <Tooltip>
                                         <TooltipTrigger>
-                                          <ClockIcon />
+                                          {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                         </TooltipTrigger>
                                         <TooltipContent>
                                           {isExpired ? "Access expired" : "Temporary access"}

@@ -422,9 +422,6 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
-  TQueueJobs,
-  TQueueJobsInsert,
-  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -1735,7 +1732,6 @@ declare module "knex/types/tables" {
       TOrganizationAssetsUpdate
     >;
 
-    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
     [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,
