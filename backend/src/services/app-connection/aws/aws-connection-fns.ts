@@ -1,6 +1,4 @@
-import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
-import type { AWSError, Response } from "aws-sdk";
-import STS from "aws-sdk/clients/sts.js";
+import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient, STSServiceException } from "@aws-sdk/client-sts";
 import { AxiosError } from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -87,17 +85,27 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 };
 
 export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
-  let resp: STS.GetCallerIdentityResponse & {
-    $response: Response<STS.GetCallerIdentityResponse, AWSError>;
-  };
-
   try {
     const awsConfig = await getAwsConnectionConfig(appConnection);
-    const sts = new STS(awsConfig);
+    const sts = new STSClient({
+      region: awsConfig.region,
+      credentials: awsConfig.credentials
+    });
 
-    resp = await sts.getCallerIdentity().promise();
+    await sts.send(new GetCallerIdentityCommand({}));
   } catch (error: unknown) {
     logger.error(error, "Error validating AWS connection credentials");
+
+    // v3 SDK throws on non-2xx responses (v2 resolved and required manual status check).
+    // Preserve the original InternalServerError for AWS-level failures.
+    if (error instanceof STSServiceException) {
+      throw new InternalServerError({
+        message: `Unable to validate credentials: ${
+          error.message ??
+          `AWS responded with a status code of ${error.$metadata.httpStatusCode}. Verify credentials and try again.`
+        }`
+      });
+    }
 
     let message: string;
 
@@ -112,14 +120,6 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
       message: `Unable to validate connection: ${message}`
     });
   }
-
-  if (resp?.$response.httpResponse.statusCode !== 200)
-    throw new InternalServerError({
-      message: `Unable to validate credentials: ${
-        resp.$response.error?.message ??
-        `AWS responded with a status code of ${resp.$response.httpResponse.statusCode}. Verify credentials and try again.`
-      }`
-    });
 
   return appConnection.credentials;
 };
