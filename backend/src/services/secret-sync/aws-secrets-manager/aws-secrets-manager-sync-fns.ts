@@ -1,29 +1,27 @@
-import { UntagResourceCommandOutput } from "@aws-sdk/client-kms";
 import {
   BatchGetSecretValueCommand,
   CreateSecretCommand,
-  CreateSecretCommandInput,
+  type CreateSecretCommandInput,
+  type CreateSecretResponse,
   DeleteSecretCommand,
-  DeleteSecretResponse,
+  type DeleteSecretResponse,
   DescribeSecretCommand,
-  DescribeSecretCommandInput,
+  type DescribeSecretCommandInput,
+  type DescribeSecretResponse,
   ListSecretsCommand,
+  type SecretListEntry,
   SecretsManagerClient,
+  type SecretValueEntry,
+  type Tag,
   TagResourceCommand,
-  TagResourceCommandOutput,
+  type TagResourceCommandOutput,
   UntagResourceCommand,
+  type UntagResourceCommandOutput,
   UpdateSecretCommand,
-  UpdateSecretCommandInput
+  type UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
-import type { AWSError } from "aws-sdk";
-import {
-  CreateSecretResponse,
-  DescribeSecretResponse,
-  SecretListEntry,
-  SecretValueEntry,
-  Tag
-} from "aws-sdk/clients/secretsmanager.js";
 
+import { isAwsError } from "@app/lib/aws/error";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
@@ -89,7 +87,7 @@ const getSecretsRecord = async (
       hasNext = Boolean(output.NextToken);
       nextToken = output.NextToken;
     } catch (e) {
-      if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+      if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
         attempt += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
@@ -141,7 +139,7 @@ const getSecretValuesRecord = async (
         hasNext = Boolean(output.NextToken);
         nextToken = output.NextToken;
       } catch (e) {
-        if ((e as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+        if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
           attempt += 1;
           // eslint-disable-next-line no-await-in-loop
           await sleep();
@@ -165,7 +163,7 @@ const describeSecret = async (
   try {
     return await client.send(new DescribeSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -205,7 +203,7 @@ const createSecret = async (
   try {
     return await client.send(new CreateSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -223,7 +221,7 @@ const updateSecret = async (
   try {
     return await client.send(new UpdateSecretCommand(input));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -241,7 +239,7 @@ const deleteSecret = async (
   try {
     return await client.send(new DeleteSecretCommand({ SecretId: secretKey, ForceDeleteWithoutRecovery: true }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -260,7 +258,7 @@ const addTags = async (
   try {
     return await client.send(new TagResourceCommand({ SecretId: secretKey, Tags: tags }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
@@ -279,7 +277,7 @@ const removeTags = async (
   try {
     return await client.send(new UntagResourceCommand({ SecretId: secretKey, TagKeys: tagKeys }));
   } catch (error) {
-    if ((error as AWSError).code === "ThrottlingException" && attempt < MAX_RETRIES) {
+    if (isAwsError(error, "ThrottlingException") && attempt < MAX_RETRIES) {
       await sleep();
 
       // retry
