@@ -1,38 +1,127 @@
 ---
 title: "Additional Privileges"
-description: "Learn how to add specific privileges on top of predefined roles."
+description: "Grant specific, scoped privileges to users and machine identities on top of their predefined roles."
 ---
 
-Even though Infisical supports full-fledged [role-base access controls](./role-based-access-controls) with ability to set predefined permissions for user and machine identities, it is sometimes desired to set additional privileges for specific user or machine identities on top of their roles.
+Infisical's [role-based access controls](./role-based-access-controls) let you define predefined permission sets for [users](/documentation/platform/identities/user-identities) and [machine identities](/documentation/platform/identities/machine-identities). However, there are cases where a specific user or machine identity needs access beyond what their assigned roles provide — without creating an entirely new role.
 
-Infisical **Additional Privileges** functionality enables specific permissions with access to sensitive secrets/folders by identities within certain projects. It is possible to set up additional privileges through Web UI or API. 
+**Additional Privileges** let you grant scoped, fine-grained permissions to individual users or machine identities within a project. Use them when you need to:
 
-To provision specific privileges through Web UI: 
-1. Click on the user you wish to add additional privileges to
-![Select User](/images/platform/access-controls/additional-privileges/access-control-select-user.png)
+- Grant access to a specific secret path that the member's current role doesn't cover.
+- Provide temporary, time-bound access for a particular task or incident.
+- Layer extra permissions on top of existing roles without affecting other members who share those roles.
 
-2. Click `Add Additional Privileges`. This will open a sidebar where you can configure the additional privileges for the selected user.
-![Add Specific Privilege](/images/platform/access-controls/additional-privileges/user-details-add-additional-privileges-button.png)
+<Info>
+  If you find yourself assigning the same additional privileges repeatedly, consider creating a [custom role](./role-based-access-controls) instead.
+</Info>
 
-3. Click the `Add Policies` button. This will open a dropdown select where you can select the policies you want to configure for the additional privilege.
-![Add Policies](/images/platform/access-controls/additional-privileges/additional-privilege-add-policies-button.png)
+## Adding Additional Privileges
 
+Additional privileges can be configured through the Infisical Dashboard or the API. The steps below apply to both users and machine identities.
 
-4. Select the policies you wish to configure for the additional privilege.
-![Select Policies](/images/platform/access-controls/additional-privileges/additional-privilege-select-policy-dropdown.png)
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Select the user or machine identity">
+        Navigate to the **Access Controls** page of your project and click on the user or machine identity you want to grant additional privileges to.
 
+        ![Select a member](/images/platform/access-controls/additional-privileges/access-control-select-user.png)
+      </Step>
+      <Step title="Add additional privileges">
+        In the member detail view, click the **Add Additional Privileges** button. This opens a configuration panel for the new privilege.
 
-5. Configure the policies you have selected for the additional privilege.
+        ![Add Additional Privileges button](/images/platform/access-controls/additional-privileges/user-details-add-additional-privileges-button.png)
+      </Step>
+      <Step title="Add policies">
+        Click the **Add Policies** button to open the policy selector dropdown.
 
-The supported options when configuring an additional privilege are:
--  **Privilege Name**: The name of the additional privilege. This is a slug-friendly name for the privilege.
-- **Duration**: The duration of the additional privilege. This is the time period for which the additional privilege will be active after it has been created. This defaults to `Permanent`.
-- **Policies**: The policies that you wish to configure for the additional privilege.
+        ![Add Policies button](/images/platform/access-controls/additional-privileges/additional-privilege-add-policies-button.png)
+      </Step>
+      <Step title="Select the policies to apply">
+        Choose the policies you want to include in this additional privilege from the dropdown.
 
-![Configure Policies](/images/platform/access-controls/additional-privileges/additional-privilege-configure-policies.png)
+        ![Policy selector dropdown](/images/platform/access-controls/additional-privileges/additional-privilege-select-policy-dropdown.png)
+      </Step>
+      <Step title="Configure the privilege">
+        Fill in the privilege details and configure each policy you selected:
 
-6. Click the `Save` button to save and apply the additional privilege.
-![Save Additional Privilege](/images/platform/access-controls/additional-privileges/additional-privilege-save-button.png)
+        - **Privilege Name** — A slug-friendly identifier for the privilege.
+        - **Duration** — How long the privilege remains active. Defaults to **Permanent**. Set a limited duration for [temporary access](/documentation/platform/access-controls/temporary-access) grants.
+        - **Policies** — The specific permission policies (e.g., read/write access to certain secret paths) included in this privilege.
 
-7. The additional privilege is now applied to the user or machine identity. You can now view the additional privilege in the user or machine identity details page.
-![View Additional Privilege](/images/platform/access-controls/additional-privileges/user-details-additional-privileges-created.png)
+        ![Configure policies](/images/platform/access-controls/additional-privileges/additional-privilege-configure-policies.png)
+      </Step>
+      <Step title="Save the privilege">
+        Click **Save** to apply the additional privilege. It takes effect immediately.
+
+        ![Save button](/images/platform/access-controls/additional-privileges/additional-privilege-save-button.png)
+      </Step>
+      <Step title="Verify the privilege">
+        The new additional privilege now appears in the member's detail page. You can edit or remove it at any time from here.
+
+        ![Additional privilege created](/images/platform/access-controls/additional-privileges/user-details-additional-privileges-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    <Note>
+      The API for managing additional privileges is only supported for machine identities. To manage additional privileges for users, use the Infisical UI.
+    </Note>
+
+    To create an additional privilege for a machine identity, make a `POST` request to the [Create Identity Privilege](/api-reference/endpoints/identity-specific-privilege/v2/create) endpoint:
+
+    ```bash
+    curl --request POST \
+      --url https://us.infisical.com/api/v2/identity-project-additional-privilege \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "identityId": "<identity-id>",
+        "projectId": "<project-id>",
+        "slug": "read-secrets-prod",
+        "permissions": [
+          {
+            "subject": "secrets",
+            "action": ["read", "readValue"],
+            "conditions": {
+              "environment": {
+                "$eq": "production"
+              }
+            }
+          }
+        ]
+      }'
+    ```
+
+    ### Sample Response
+
+    ```json
+    {
+      "privilege": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "slug": "read-secrets-prod",
+        "isTemporary": false,
+        "temporaryMode": null,
+        "temporaryRange": null,
+        "temporaryAccessStartTime": null,
+        "temporaryAccessEndTime": null,
+        "permissions": [
+          {
+            "subject": "secrets",
+            "action": ["read", "readValue"],
+            "conditions": {
+              "environment": {
+                "$eq": "production"
+              }
+            }
+          }
+        ],
+        "createdAt": "2024-09-01T12:00:00.000Z",
+        "updatedAt": "2024-09-01T12:00:00.000Z"
+      }
+    }
+    ```
+
+    For the full list of request parameters, supported subjects, actions, and condition operators, see the [API reference](/api-reference/endpoints/identity-specific-privilege/v2/create).
+  </Tab>
+</Tabs>
