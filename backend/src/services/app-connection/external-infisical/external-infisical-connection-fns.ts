@@ -60,19 +60,35 @@ export const validateExternalInfisicalConnectionCredentials = async (
   const { credentials: inputCredentials } = config;
 
   const appCfg = getConfig();
-  if (appCfg.SITE_URL?.replace(/\/$/, "") !== inputCredentials.instanceUrl.replace(/\/$/, "")) {
-    await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
+  const isSelfSync = appCfg.SITE_URL?.replace(/\/$/, "") === inputCredentials.instanceUrl.replace(/\/$/, "");
 
+  if (isSelfSync) {
+    // For self-sync, validate the machine identity exists in this instance via DAL.
+    // Skip the outbound HTTP token call — SITE_URL is the external URL and is not
+    // reachable from within the container (ECONNREFUSED). Credentials are fully
+    // validated at sync execution time via getAuthHeaders.
     const localIdentity = await identityUaDAL.findOne({
       clientId: inputCredentials.machineIdentityClientId
     });
-
-    if (localIdentity) {
+    if (!localIdentity) {
       throw new BadRequestError({
-        message:
-          "Cannot create an Infisical connection targeting the same instance. Use a machine identity from a different Infisical instance."
+        message: "Machine identity not found in this instance."
       });
     }
+    return inputCredentials;
+  }
+
+  await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
+
+  const localIdentity = await identityUaDAL.findOne({
+    clientId: inputCredentials.machineIdentityClientId
+  });
+
+  if (localIdentity) {
+    throw new BadRequestError({
+      message:
+        "Cannot create an Infisical connection targeting the same instance. Use a machine identity from a different Infisical instance."
+    });
   }
 
   try {
@@ -93,7 +109,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
 
 const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
   const appCfg = getConfig();
-  if (appCfg.SITE_URL !== connection.credentials.instanceUrl) {
+  if (appCfg.SITE_URL?.replace(/\/$/, "") !== connection.credentials.instanceUrl.replace(/\/$/, "")) {
     await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
   }
   const token = await getExternalInfisicalAccessToken(connection.credentials);
