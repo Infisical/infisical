@@ -12,4 +12,3 @@ export * from "./SecretDropzone";
 export * from "./SecretImportTableRow";
 export * from "./SecretRotationTableRow";
 export * from "./SecretTableRow";
-export * from "./TagFilter";
