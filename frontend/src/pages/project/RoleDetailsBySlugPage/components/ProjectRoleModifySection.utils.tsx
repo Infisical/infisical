@@ -2011,7 +2011,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Describe Secret",
         description:
-          "View secret metadata (name, tags, etc.) without revealing the actual secret value",
+          "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value",
         value: ProjectPermissionSecretActions.DescribeSecret
       },
       {
