@@ -2,6 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -34,6 +35,7 @@ type TRoleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
@@ -45,7 +47,8 @@ export const roleServiceFactory = ({
   identityDAL,
   userDAL,
   externalGroupOrgRoleMappingDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  licenseService
 }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
     permissionService,
@@ -64,6 +67,14 @@ export const roleServiceFactory = ({
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
+
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (!plan?.rbac) {
+      throw new BadRequestError({
+        message:
+          "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
+      });
+    }
 
     const scope = factory.getScopeField(scopeData);
     const existingRole = await roleDAL.findOne({
@@ -93,6 +104,14 @@ export const roleServiceFactory = ({
     const scope = factory.getScopeField(scopeData);
 
     await factory.onUpdateRoleGuard(dto);
+
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (!plan?.rbac) {
+      throw new BadRequestError({
+        message:
+          "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
+      });
+    }
 
     const existingRole = await roleDAL.findOne({
       id: dto.selector.id,

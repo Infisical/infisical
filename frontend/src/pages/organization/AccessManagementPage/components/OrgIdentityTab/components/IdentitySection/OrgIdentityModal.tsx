@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -16,11 +17,11 @@ import {
   Input,
   Switch
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
-import { findOrgMembershipRole } from "@app/helpers/roles";
+import { useOrganization, useSubscription } from "@app/context";
+import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
 import { useCreateOrgIdentity, useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
@@ -49,6 +50,12 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
+  const { subscription } = useSubscription();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
 
   const { data: roles } = useGetOrgRoles(orgId);
   const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
@@ -106,6 +113,11 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.identity?.data, roles]);
 
   const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
+    if (role?.slug && isCustomOrgRole(role.slug) && subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
+
     const identity = popUp?.identity?.data as {
       identityId: string;
       name: string;
@@ -311,6 +323,12 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           Cancel
         </Button>
       </div>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
+      />
     </form>
   );
 };

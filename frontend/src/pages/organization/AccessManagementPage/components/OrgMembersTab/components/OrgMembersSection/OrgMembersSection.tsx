@@ -333,6 +333,7 @@ export const OrgMembersSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}

@@ -110,7 +110,8 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
+        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
       });
       return;
     }
@@ -527,6 +528,7 @@ export const OrgRoleTable = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

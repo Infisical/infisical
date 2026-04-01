@@ -759,7 +759,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
