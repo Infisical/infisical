@@ -211,7 +211,7 @@ function UnstableDropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRightIcon className="4 ml-auto" />
+      <ChevronRightIcon className="ml-auto size-4" />
     </DropdownMenuPrimitive.SubTrigger>
   );
 }
