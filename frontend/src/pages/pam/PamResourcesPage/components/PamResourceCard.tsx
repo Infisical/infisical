@@ -160,15 +160,9 @@ export const PamResourceCard = ({
               </DropdownMenu>
             </div>
           </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <Badge variant="neutral">
-              {resourceTypeName}
-            </Badge>
-            {domainFqdn && (
-              <Badge variant="info">
-                {domainFqdn}
-              </Badge>
-            )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <Badge variant="neutral">{resourceTypeName}</Badge>
+            {domainFqdn && <Badge variant="info">{domainFqdn}</Badge>}
           </div>
         </div>
       </div>
