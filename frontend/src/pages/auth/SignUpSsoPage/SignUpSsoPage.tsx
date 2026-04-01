@@ -5,9 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
-import Error from "@app/components/basic/Error";
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
+import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";

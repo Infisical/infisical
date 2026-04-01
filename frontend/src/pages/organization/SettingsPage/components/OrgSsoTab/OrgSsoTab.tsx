@@ -16,6 +16,7 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 
 import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
+import { OrgEmailDomainsSection } from "./OrgEmailDomainsSection";
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
@@ -205,6 +206,7 @@ export const OrgSsoTab = withPermission(
             </div>
           )}
         </div>
+        <OrgEmailDomainsSection />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
