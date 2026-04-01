@@ -694,6 +694,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDNS && appConnection.app !== AppConnection.PowerDNS) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
+      });
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -805,6 +811,12 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDNS && appConnection.app !== AppConnection.PowerDNS) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
           });
         }
 
