@@ -34,8 +34,8 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
   } = secretRotation;
 
   const $rotateClientSecret = async () => {
-    const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAMClient({ credentials, region });
+    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const iam = new IAMClient({ credentials, region: resolvedRegion });
 
     const { AccessKeyMetadata } = await iam.send(new ListAccessKeysCommand({ UserName: userName }));
 
@@ -77,8 +77,8 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     generatedCredentials,
     callback
   ) => {
-    const { credentials } = await getAwsConnectionConfig(connection, region);
-    const iam = new IAMClient({ credentials, region });
+    const { credentials, region: resolvedRegion } = await getAwsConnectionConfig(connection, region);
+    const iam = new IAMClient({ credentials, region: resolvedRegion });
 
     await Promise.all(
       generatedCredentials.map((generatedCredential) =>
