@@ -82,7 +82,7 @@ export const powerDnsDeleteTxtRecord = async (
   const zone = normalizePowerDNSZone(hostedZoneId);
   const recordName = normalizePowerDNSRecordName(domain);
 
-  logger.info({ zone, recordName, value }, "Deleting TXT record for PowerDNS");
+  logger.info({ zone, recordName }, "Deleting TXT record for PowerDNS");
 
   try {
     // PowerDNS returns 204 even if the record does not exist, so no pre-check needed
