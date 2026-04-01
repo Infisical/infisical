@@ -1,0 +1,420 @@
+---
+title: "infisical pam"
+description: "Access databases, SSH servers, Kubernetes clusters, and Redis instances through Infisical's Privileged Access Management"
+---
+
+```bash
+infisical pam <resource-type> <subcommand> [flags]
+```
+
+## Description
+
+The `infisical pam` command provides privileged access management capabilities for securely accessing databases, SSH servers, Kubernetes clusters, and Redis instances through Infisical's Gateway.
+
+All PAM commands require the user to be logged in first via `infisical login`.
+
+### Command Structure
+
+```
+infisical pam
+├── db
+│   └── access       (start local database proxy)
+├── ssh
+│   ├── access       (start interactive SSH session)
+│   ├── exec         (execute single command over SSH)
+│   └── proxy        (start SSH proxy for SCP/SFTP/rsync)
+├── kubernetes       (alias: k8s)
+│   └── access       (start local Kubernetes proxy)
+└── redis
+    └── access       (start local Redis proxy)
+```
+
+## Subcommands & flags
+
+<Accordion title="infisical pam db" defaultOpen="true">
+  Access PAM database accounts. Starts a local database proxy server that you can use to connect to databases directly (PostgreSQL, MySQL, MS SQL Server).
+
+```bash
+$ infisical pam db access --resource <resource-name> --account <account-name> [flags]
+
+# Example
+$ infisical pam db access --resource infisical-shared-cloud-instances --account infisical --project-id b38bef10-2685-43c4-9a2c-635206d60bec --duration 4h
+```
+
+### Flags
+
+  <Accordion title="--resource">
+    Name of the PAM resource to access.
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin
+    ```
+
+  </Accordion>
+
+  <Accordion title="--account">
+    Name of the account within the resource.
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin
+    ```
+
+  </Accordion>
+
+  <Accordion title="--project-id">
+    Project ID of the account to access. If not provided, uses the project from `.infisical.json` (run `infisical init` to configure).
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin --project-id=<project-uuid>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--duration">
+    Duration for database access session. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
+
+    Default value: `1h`
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin --duration=4h
+    ```
+
+  </Accordion>
+
+  <Accordion title="--port">
+    Port for the local database proxy server. Use `0` for auto-assign.
+
+    Default value: `0`
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin --port=5432
+    ```
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    infisical pam db access --resource=my-database-resource --account=admin --domain=https://your-infisical-instance.com
+    ```
+
+  </Accordion>
+
+### Output
+
+The command displays a connection string based on the database type:
+
+| Database Type | Connection String Format |
+|--------------|-------------------------|
+| PostgreSQL | `postgres://<username>@localhost:<port>/<database>` |
+| MySQL | `mysql://<username>@localhost:<port>/<database>` |
+| MS SQL Server | `sqlserver://<username>@localhost:<port>?database=<database>&encrypt=false&trustServerCertificate=true` |
+
+</Accordion>
+
+<Accordion title="infisical pam ssh">
+  Access PAM SSH accounts. Provides interactive sessions, single command execution, and proxy mode for file transfers.
+
+```bash
+$ infisical pam ssh <subcommand> --resource <resource-name> --account <account-name> [flags]
+```
+
+### Subcommands
+
+  <Accordion title="access">
+    Start an interactive SSH session to a PAM-managed SSH account. This command automatically launches an SSH client connected through the Infisical Gateway.
+
+    ```bash
+    $ infisical pam ssh access --resource <resource-name> --account <account-name> [flags]
+
+    # Example
+    $ infisical pam ssh access --resource prod-servers --account root --project-id <project-uuid> --duration 1h
+    ```
+
+  </Accordion>
+
+  <Accordion title="exec">
+    Execute a single command on a PAM-managed SSH account and return the output. This is useful for CI/CD pipelines and scripting where interactive sessions are not needed.
+
+    ```bash
+    $ infisical pam ssh exec "<command>" --resource <resource-name> --account <account-name> [flags]
+
+    # Example
+    $ infisical pam ssh exec "ls -la /var/log" --resource prod-servers --account root --project-id <project-uuid>
+
+    # Use in a script to capture output
+    $ OUTPUT=$(infisical pam ssh exec "cat /etc/hostname" --resource prod-servers --account root --project-id <project-uuid>)
+    ```
+
+    <Info>
+      The exit code from the remote command is propagated to the CLI exit code, making this suitable for scripts that check command success.
+    </Info>
+
+    | Argument | Description |
+    |----------|-------------|
+    | `command` | The command to execute on the remote server (passed as first argument) |
+
+  </Accordion>
+
+  <Accordion title="proxy">
+    Start an SSH proxy without launching an interactive session. This is useful for file transfers using SCP, SFTP, rsync, or other SSH-based tools. The proxy prints connection details and waits until terminated with Ctrl+C.
+
+    ```bash
+    $ infisical pam ssh proxy --resource <resource-name> --account <account-name> [flags]
+
+    # Example
+    $ infisical pam ssh proxy --resource prod-servers --account root --project-id <project-uuid>
+    # Output:
+    # SSH proxy listening on 127.0.0.1:53619
+    # Username: root
+    # Session expires: 2026-04-02T09:25:08+08:00
+    #
+    # Use this proxy with SSH, SCP, SFTP, or rsync:
+    #   ssh -p 53619 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1
+    #   scp -P 53619 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null <local-file> root@127.0.0.1:<remote-path>
+    #
+    # Press Ctrl+C to stop the proxy.
+    ```
+
+    #### Using the Proxy
+
+    In another terminal, use the proxy for file transfers:
+
+    ```bash
+    # SCP file transfer
+    scp -P <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null local-file.txt root@127.0.0.1:/remote/path/
+
+    # rsync
+    rsync -e "ssh -p <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" local-dir/ root@127.0.0.1:/remote/path/
+
+    # SFTP
+    sftp -P <port> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@127.0.0.1
+    ```
+
+  </Accordion>
+
+### Flags
+
+All SSH subcommands share the following flags:
+
+  <Accordion title="--resource">
+    Name of the PAM resource to access.
+
+    ```bash
+    # Example
+    infisical pam ssh access --resource=prod-servers --account=root
+    ```
+
+  </Accordion>
+
+  <Accordion title="--account">
+    Name of the account within the resource.
+
+    ```bash
+    # Example
+    infisical pam ssh access --resource=prod-servers --account=root
+    ```
+
+  </Accordion>
+
+  <Accordion title="--project-id">
+    Project ID of the account to access. If not provided, uses the project from `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical pam ssh access --resource=prod-servers --account=root --project-id=<project-uuid>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--duration">
+    Duration for SSH access session.
+
+    Default value: `1h`
+
+    ```bash
+    # Example
+    infisical pam ssh access --resource=prod-servers --account=root --duration=2h
+    ```
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    infisical pam ssh access --resource=prod-servers --account=root --domain=https://your-infisical-instance.com
+    ```
+
+  </Accordion>
+
+</Accordion>
+
+<Accordion title="infisical pam kubernetes">
+  Access Kubernetes via a PAM-managed Kubernetes account. This command automatically launches a proxy connected to your Kubernetes cluster through the Infisical Gateway.
+
+  **Alias:** `infisical pam k8s`
+
+```bash
+$ infisical pam kubernetes access --resource <resource-name> --account <account-name> [flags]
+
+# Example
+$ infisical pam kubernetes access --resource prod-cluster --account developer --project-id b38bef10-2685-43c4-9a2c-635206d60bec --duration 4h
+
+# Using the alias
+$ infisical pam k8s access --resource prod-cluster --account developer --project-id b38bef10-2685-43c4-9a2c-635206d60bec
+```
+
+### Flags
+
+  <Accordion title="--resource">
+    Name of the PAM resource to access.
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer
+    ```
+
+  </Accordion>
+
+  <Accordion title="--account">
+    Name of the account within the resource.
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer
+    ```
+
+  </Accordion>
+
+  <Accordion title="--project-id">
+    Project ID of the account to access. If not provided, uses the project from `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer --project-id=<project-uuid>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--duration">
+    Duration for Kubernetes access session.
+
+    Default value: `1h`
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer --duration=4h
+    ```
+
+  </Accordion>
+
+  <Accordion title="--port">
+    Port for the local Kubernetes proxy server. Use `0` for auto-assign.
+
+    Default value: `0`
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer --port=8080
+    ```
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    infisical pam kubernetes access --resource=prod-cluster --account=developer --domain=https://your-infisical-instance.com
+    ```
+
+  </Accordion>
+
+</Accordion>
+
+<Accordion title="infisical pam redis">
+  Access PAM Redis accounts. Starts a local Redis proxy server that you can use to connect to Redis directly.
+
+```bash
+$ infisical pam redis access --resource <resource-name> --account <account-name> [flags]
+
+# Example
+$ infisical pam redis access --resource my-redis-resource --account redis-admin --duration 4h --port 6379 --project-id <project-uuid>
+```
+
+### Flags
+
+  <Accordion title="--resource">
+    Name of the PAM resource to access.
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin
+    ```
+
+  </Accordion>
+
+  <Accordion title="--account">
+    Name of the account within the resource.
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin
+    ```
+
+  </Accordion>
+
+  <Accordion title="--project-id">
+    Project ID of the account to access. If not provided, uses the project from `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin --project-id=<project-uuid>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--duration">
+    Duration for Redis access session.
+
+    Default value: `1h`
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin --duration=4h
+    ```
+
+  </Accordion>
+
+  <Accordion title="--port">
+    Port for the local Redis proxy server. Use `0` for auto-assign.
+
+    Default value: `0`
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin --port=6379
+    ```
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    infisical pam redis access --resource=my-redis-resource --account=redis-admin --domain=https://your-infisical-instance.com
+    ```
+
+  </Accordion>
+
+</Accordion>
