@@ -229,6 +229,23 @@ export const secretQueueFactory = ({
     };
   };
 
+  const resolveChangedByDisplayName = async (changedBy: string, changedByActorType: ActorType) => {
+    switch (changedByActorType) {
+      case ActorType.USER: {
+        const user = await userDAL.findById(changedBy);
+        return user?.email || user?.username || changedBy;
+      }
+      case ActorType.IDENTITY: {
+        const identity = await identityDAL.findById(changedBy);
+        return identity?.name || changedBy;
+      }
+      case ActorType.PLATFORM:
+        return "Platform";
+      default:
+        return changedBy;
+    }
+  };
+
   const $getJobKey = (projectId: string, environmentSlug: string, secretPath: string) => {
     // the idea here is a timestamp based id which will be constant in a 3s interval
     const timestampId = Math.floor(Date.now() / SYNC_SECRET_DEBOUNCE_INTERVAL_MS);
@@ -1562,25 +1579,7 @@ export const secretQueueFactory = ({
     if (job.data.type === WebhookEvents.SecretModified) {
       const { changedBy, changedByActorType } = job.data.payload;
       if (changedBy && changedByActorType) {
-        let resolvedName: string | undefined;
-        switch (changedByActorType) {
-          case ActorType.USER: {
-            const user = await userDAL.findById(changedBy);
-            resolvedName = user?.email || user?.username || changedBy;
-            break;
-          }
-          case ActorType.IDENTITY: {
-            const identity = await identityDAL.findById(changedBy);
-            resolvedName = identity?.name || changedBy;
-            break;
-          }
-          case ActorType.PLATFORM:
-            resolvedName = "Platform";
-            break;
-          default:
-            resolvedName = changedBy;
-            break;
-        }
+        const resolvedName = await resolveChangedByDisplayName(changedBy, changedByActorType as ActorType);
         // eslint-disable-next-line no-param-reassign
         job.data.payload.changedBy = resolvedName;
       }

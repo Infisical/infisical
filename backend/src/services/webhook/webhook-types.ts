@@ -1,5 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 
+import { ActorType } from "../auth/auth-type";
+
 export type TCreateWebhookDTO = {
   environment: string;
   secretPath?: string;
@@ -47,7 +49,7 @@ type TWebhookSecretModifiedEventPayload = {
     secretPath?: string;
     type?: string | null;
     changedBy?: string;
-    changedByActorType?: string;
+    changedByActorType?: ActorType;
   };
 };
 
