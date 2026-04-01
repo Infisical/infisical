@@ -113,6 +113,11 @@ import {
   getDNSMadeEasyConnectionListItem,
   validateDNSMadeEasyConnectionCredentials
 } from "./dns-made-easy/dns-made-easy-connection-fns";
+import { PowerDNSConnectionMethod } from "./powerdns/powerdns-connection-enum";
+import {
+  getPowerDNSConnectionListItem,
+  validatePowerDNSConnectionCredentials
+} from "./powerdns/powerdns-connection-fns";
 import {
   ExternalInfisicalConnectionMethod,
   getExternalInfisicalConnectionListItem,
@@ -221,7 +226,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
-  AppConnection.Venafi
+  AppConnection.Venafi,
+  AppConnection.PowerDNS
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -279,7 +285,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
-    getExternalInfisicalConnectionListItem()
+    getExternalInfisicalConnectionListItem(),
+    getPowerDNSConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -428,7 +435,8 @@ export const validateAppConnectionCredentials = async (
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
-      )) as TAppConnectionCredentialsValidator
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.PowerDNS]: validatePowerDNSConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -520,6 +528,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Access Token";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
+    case PowerDNSConnectionMethod.APIKey:
+      return "API Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

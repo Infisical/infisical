@@ -89,6 +89,8 @@ import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
+import { ValidatePowerDNSConnectionCredentialsSchema } from "./powerdns/powerdns-connection-schema";
+import { powerDnsConnectionService } from "./powerdns/powerdns-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -215,7 +217,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
-  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema
+  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
+  [AppConnection.PowerDNS]: ValidatePowerDNSConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1077,6 +1080,7 @@ export const appConnectionServiceFactory = ({
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    powerDns: powerDnsConnectionService(),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),

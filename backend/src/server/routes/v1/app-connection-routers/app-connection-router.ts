@@ -79,6 +79,10 @@ import {
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
 import {
+  PowerDNSConnectionListItemSchema,
+  SanitizedPowerDNSConnectionSchema
+} from "@app/services/app-connection/powerdns/powerdns-connection-schema";
+import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
@@ -218,7 +222,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOpenRouterConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
-  ...SanitizedExternalInfisicalConnectionSchema.options
+  ...SanitizedExternalInfisicalConnectionSchema.options,
+  ...SanitizedPowerDNSConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -275,7 +280,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
-  ExternalInfisicalConnectionListItemSchema
+  ExternalInfisicalConnectionListItemSchema,
+  PowerDNSConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
