@@ -87,6 +87,14 @@ const getGitLabVariables = async ({
       variables = await client.GroupVariables.all(resourceId);
     }
 
+    if (!Array.isArray(variables)) {
+      throw new SecretSyncError({
+        error: new Error(
+          `Unexpected response from GitLab API when fetching variables: expected an array but received ${typeof variables}`
+        )
+      });
+    }
+
     if (targetEnvironment) {
       variables = variables.filter((v) => v.environmentScope === targetEnvironment);
     }
