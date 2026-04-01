@@ -134,7 +134,10 @@ const SECRET_ACTION_OPTIONS = [
   { action: ProjectPermissionSecretActions.Create, label: "Create" },
   { action: ProjectPermissionSecretActions.Edit, label: "Edit" },
   { action: ProjectPermissionSecretActions.Delete, label: "Delete" }
-] as const;
+].map((opt) => ({
+  value: opt.action,
+  label: opt.label
+}));
 
 function AddMemberPopover({
   secretKey,
@@ -290,10 +293,7 @@ function AddMemberPopover({
             onChange={(opts) =>
               setSelectedActions([...(opts as { value: string; label: string }[])])
             }
-            options={SECRET_ACTION_OPTIONS.map((opt) => ({
-              value: opt.action,
-              label: opt.label
-            }))}
+            options={SECRET_ACTION_OPTIONS}
             placeholder="Select permissions..."
           />
         </div>
