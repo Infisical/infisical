@@ -63,20 +63,22 @@ const Page = () => {
             <Tab variant="project" value={ProjectAccessControlTabs.Member}>
               Users
             </Tab>
-            <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
-              Groups
-            </Tab>
             <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
               Machine Identities
             </Tab>
+            <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
+              Groups
+            </Tab>
+
+            <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
+              Roles
+            </Tab>
+
             {isSecretManager && (
               <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
                 Service Tokens
               </Tab>
             )}
-            <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
-              Roles
-            </Tab>
           </TabList>
           <TabPanel value={ProjectAccessControlTabs.Member}>
             <MembersTab />
