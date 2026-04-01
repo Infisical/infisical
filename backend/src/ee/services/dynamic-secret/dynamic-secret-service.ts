@@ -36,7 +36,10 @@ type TDynamicSecretServiceFactoryDep = {
     "pruneDynamicSecret" | "unsetLeaseRevocation"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findBySecretPathMultiEnv">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findBySecretPath" | "findBySecretPathMultiEnv" | "findById" | "findSecretPathByFolderIds"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -800,6 +803,61 @@ export const dynamicSecretServiceFactory = ({
     });
   };
 
+  const getSshCaPublicKey: TDynamicSecretServiceFactory["getSshCaPublicKey"] = async ({
+    dynamicSecretId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }) => {
+    const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretId);
+    if (!dynamicSecretCfg) {
+      throw new NotFoundError({ message: `Dynamic secret with ID '${dynamicSecretId}' not found` });
+    }
+
+    if (dynamicSecretCfg.type !== DynamicSecretProviders.Ssh) {
+      throw new BadRequestError({ message: "Dynamic secret is not an SSH type" });
+    }
+
+    // Find the folder to get environment and path for permission check
+    const folder = await folderDAL.findById(dynamicSecretCfg.folderId);
+    if (!folder) {
+      throw new NotFoundError({ message: "Dynamic secret folder not found" });
+    }
+
+    // Get the full secret path for the permission check
+    const folderPaths = await folderDAL.findSecretPathByFolderIds(folder.projectId, [dynamicSecretCfg.folderId]);
+    const secretPath = folderPaths?.[0]?.path || "/";
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: folder.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: folder.environment.envSlug,
+        secretPath
+      })
+    );
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: folder.projectId
+    });
+
+    const decryptedStoredInput = JSON.parse(
+      secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
+    ) as { caPublicKey: string };
+
+    return { caPublicKey: decryptedStoredInput.caPublicKey };
+  };
+
   const fetchAzureEntraIdUsers: TDynamicSecretServiceFactory["fetchAzureEntraIdUsers"] = async ({
     tenantId,
     applicationId,
@@ -823,6 +881,7 @@ export const dynamicSecretServiceFactory = ({
     getDynamicSecretCount,
     getCountMultiEnv,
     fetchAzureEntraIdUsers,
-    listDynamicSecretsByFolderIds
+    listDynamicSecretsByFolderIds,
+    getSshCaPublicKey
   };
 };

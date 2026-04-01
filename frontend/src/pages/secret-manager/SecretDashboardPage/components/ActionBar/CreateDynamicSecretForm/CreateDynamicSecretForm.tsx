@@ -14,7 +14,7 @@ import {
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -43,6 +43,7 @@ import { SapAseInputForm } from "./SapAseInputForm";
 import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SnowflakeInputForm } from "./SnowflakeInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
+import { SshInputForm } from "./SshInputForm";
 import { TotpInputForm } from "./TotpInputForm";
 import { VerticaInputForm } from "./VerticaInputForm";
 
@@ -170,6 +171,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <SiClickhouse size="1.5rem" />,
     provider: DynamicSecretProviders.Clickhouse,
     title: "ClickHouse"
+  },
+  {
+    icon: <FontAwesomeIcon icon={faKey} size="lg" />,
+    provider: DynamicSecretProviders.Ssh,
+    title: "SSH"
   }
 ];
 
@@ -660,6 +666,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <ClickHouseInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Ssh && (
+              <motion.div
+                key="dynamic-ssh-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <SshInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

@@ -406,6 +406,20 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Ssh) {
+    const { PRIVATE_KEY, SIGNED_KEY } = data as { PRIVATE_KEY: string; SIGNED_KEY: string };
+    return (
+      <div>
+        <OutputDisplay label="Private Key" value={PRIVATE_KEY} />
+        <OutputDisplay
+          label="Signed Key (Certificate)"
+          value={SIGNED_KEY}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 
@@ -537,6 +551,199 @@ export const CreateKubernetesDynamicSecretLease = ({
   );
 };
 
+const sshFormSchema = z.object({
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional(),
+  principals: z.array(z.string().trim().min(1)).min(1, "At least one principal is required")
+});
+
+type TSshForm = z.infer<typeof sshFormSchema>;
+
+export const CreateSshDynamicSecretLease = ({
+  onClose,
+  projectSlug,
+  dynamicSecretName,
+  provider,
+  secretPath,
+  environment
+}: Props) => {
+  const {
+    control,
+    formState: { isSubmitting },
+    handleSubmit,
+    setValue,
+    watch
+  } = useForm<TSshForm>({
+    resolver: zodResolver(sshFormSchema),
+    defaultValues: {
+      ttl: "1h",
+      principals: []
+    }
+  });
+
+  const [principalInput, setPrincipalInput] = useState("");
+  const createDynamicSecretLease = useCreateDynamicSecretLease();
+  const principals = watch("principals");
+
+  const handleAddPrincipal = () => {
+    const trimmed = principalInput.trim();
+    if (trimmed && !principals.includes(trimmed)) {
+      setValue("principals", [...principals, trimmed], { shouldValidate: true });
+    }
+    setPrincipalInput("");
+  };
+
+  const handleRemovePrincipal = (idx: number) => {
+    setValue(
+      "principals",
+      principals.filter((_: string, i: number) => i !== idx),
+      { shouldValidate: true }
+    );
+  };
+
+  const handleDynamicSecretLeaseCreate = async ({ ttl, principals: reqPrincipals }: TSshForm) => {
+    if (createDynamicSecretLease.isPending) return;
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      config: {
+        principals: reqPrincipals
+      },
+      provider
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
+  };
+
+  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
+    handleDynamicSecretLeaseCreate({ ...data, principals });
+  };
+
+  const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  return (
+    <div>
+      <AnimatePresence>
+        {!isOutputMode && (
+          <motion.div
+            key="lease-input"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            <form onSubmit={handleSubmit(handleDynamicSecretLeaseCreate)}>
+              <Controller
+                control={control}
+                name="principals"
+                render={({ fieldState: { error } }) => (
+                  <FormControl
+                    label="Principals"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    helperText="The usernames to embed in the certificate (must be from the allowed list)"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={principalInput}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setPrincipalInput(e.target.value)
+                          }
+                          placeholder="Enter principal name..."
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddPrincipal();
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline_bg"
+                          size="sm"
+                          onClick={handleAddPrincipal}
+                          isDisabled={!principalInput.trim()}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {principals.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {principals.map((principal: string, idx: number) => (
+                            <span
+                              key={principal}
+                              className="inline-flex items-center gap-1 rounded-md bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-200"
+                            >
+                              {principal}
+                              <button
+                                type="button"
+                                className="ml-1 text-mineshaft-400 hover:text-mineshaft-200"
+                                onClick={() => handleRemovePrincipal(idx)}
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="ttl"
+                defaultValue="1h"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label={<TtlFormLabel label="Default TTL" />}
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <Input {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-4 flex items-center space-x-4">
+                <Button type="submit" isLoading={isSubmitting}>
+                  Submit
+                </Button>
+                <Button variant="outline_bg" onClick={onClose}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+        {isOutputMode && (
+          <motion.div
+            key="lease-output"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            {renderOutputForm(
+              provider,
+              createDynamicSecretLease.data?.data,
+              handleLeaseRegeneration
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const formSchema = z.object({
   ttl: z
     .string()
@@ -614,6 +821,19 @@ export const CreateDynamicSecretLease = ({
   if (provider === DynamicSecretProviders.Kubernetes) {
     return (
       <CreateKubernetesDynamicSecretLease
+        onClose={onClose}
+        projectSlug={projectSlug}
+        dynamicSecretName={dynamicSecretName}
+        provider={provider}
+        secretPath={secretPath}
+        environment={environment}
+      />
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Ssh) {
+    return (
+      <CreateSshDynamicSecretLease
         onClose={onClose}
         projectSlug={projectSlug}
         dynamicSecretName={dynamicSecretName}
