@@ -66,15 +66,59 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   return object;
 }
 
+/**
+ * Recursively flattens a nested JSON object into dot notation.
+ * Example:
+ * { a: { b: 1 } } → { "a.b": 1 }
+ *
+ * Arrays are also flattened using index notation:
+ * { arr: [1, 2] } → { "arr.0": 1, "arr.1": 2 }
+ */
+
+function flattenObject(obj: any, parentKey = "", result: Record<string, any> = {}) {
+  for (const key in obj) {
+    if (obj[key] == null) continue;
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+    if (
+      typeof obj[key] === "object" &&
+      obj[key] !== null &&
+      !Array.isArray(obj[key])
+    ) {
+      flattenObject(obj[key], newKey, result);
+    } else if (Array.isArray(obj[key])) {
+      obj[key].forEach((item, index) => {
+        result[`${newKey}.${index}`] = item;
+      });
+    } else {
+      result[newKey] = obj[key];
+    }
+  }
+  return result;
+}
+
+/**
+ * Parses JSON secrets into a flat key-value structure.
+ * 
+ * Supports nested objects by flattening them into dot notation
+ * so they can be imported as individual secrets.
+ *
+ * All values are converted to strings to match secret storage format.
+ */
+
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const formatedData: Record<string, string> = JSON.parse(file);
+  const parsed: Record<string, any> = JSON.parse(file);
+
+  const flattened = flattenObject(parsed);
   const env: Record<string, { value: string; comments: string[] }> = {};
-  Object.keys(formatedData).forEach((key) => {
-    if (typeof formatedData[key] === "string") {
-      env[key] = { value: formatedData[key], comments: [] };
-    }
+  Object.keys(flattened).forEach((key) => {
+    env[key] = {
+      value: String(flattened[key]),
+      comments: []
+    };
   });
+
   return env;
 };
 
