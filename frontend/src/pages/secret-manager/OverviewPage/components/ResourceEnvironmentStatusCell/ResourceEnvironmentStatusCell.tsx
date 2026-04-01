@@ -5,8 +5,7 @@ import {
   GitBranchIcon,
   ImportIcon,
   LucideIcon,
-  MinusIcon,
-  XIcon
+  MinusIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
