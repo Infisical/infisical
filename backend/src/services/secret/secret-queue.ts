@@ -230,19 +230,35 @@ export const secretQueueFactory = ({
   };
 
   const resolveChangedByDisplayName = async (changedBy: string, changedByActorType: ActorType) => {
-    switch (changedByActorType) {
-      case ActorType.USER: {
-        const user = await userDAL.findById(changedBy);
-        return user?.email || user?.username || changedBy;
+    try {
+      switch (changedByActorType) {
+        case ActorType.USER: {
+          const user = await userDAL.findById(changedBy);
+          return user?.email || user?.username || changedBy;
+        }
+        case ActorType.IDENTITY: {
+          const identity = await identityDAL.findById(changedBy);
+          return identity?.name || changedBy;
+        }
+        case ActorType.PLATFORM:
+          return "Platform";
+        case ActorType.KMIP_CLIENT:
+          return "KMIP Client";
+        case ActorType.SERVICE:
+          return "Service";
+        case ActorType.ACME_PROFILE:
+          return "ACME Profile";
+        case ActorType.ACME_ACCOUNT:
+          return "ACME Account";
+        default:
+          return `Unknown Actor [${changedByActorType}]`;
       }
-      case ActorType.IDENTITY: {
-        const identity = await identityDAL.findById(changedBy);
-        return identity?.name || changedBy;
-      }
-      case ActorType.PLATFORM:
-        return "Platform";
-      default:
-        return changedBy;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to resolve changed by display name for [changedBy=${changedBy}] [changedByActorType=${changedByActorType}]`
+      );
+      return `Failed to resolve display name`;
     }
   };
 
@@ -1576,12 +1592,15 @@ export const secretQueueFactory = ({
     });
 
     // Resolve changedBy from UUID to human-readable display name
+    let webhookEvent = job.data;
     if (job.data.type === WebhookEvents.SecretModified) {
       const { changedBy, changedByActorType } = job.data.payload;
       if (changedBy && changedByActorType) {
         const resolvedName = await resolveChangedByDisplayName(changedBy, changedByActorType as ActorType);
-        // eslint-disable-next-line no-param-reassign
-        job.data.payload.changedBy = resolvedName;
+        webhookEvent = {
+          ...job.data,
+          payload: { ...job.data.payload, changedBy: resolvedName }
+        };
       }
     }
 
@@ -1592,7 +1611,7 @@ export const secretQueueFactory = ({
       projectEnvDAL,
       projectDAL,
       webhookDAL,
-      event: job.data,
+      event: webhookEvent,
       auditLogService,
       secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
     });

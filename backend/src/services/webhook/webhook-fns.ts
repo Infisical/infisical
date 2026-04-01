@@ -87,8 +87,13 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                   short: false
                 },
                 {
-                  title: " Modified By",
+                  title: "Modified By",
                   value: changedBy,
+                  short: false
+                },
+                {
+                  title: "Modified By Actor Type",
+                  value: changedByActorType?.toString() || "Unknown Actor Type",
                   short: false
                 }
               ]
