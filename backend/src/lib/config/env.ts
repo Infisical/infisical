@@ -292,6 +292,9 @@ const envSchema = z
       .enum(["true", "false"])
       .transform((val) => val === "true" || IS_PACKAGED)
       .optional(),
+    // WARNING: Infisical-managed only. Do not set on self-hosted deployments.
+    // When true, enables full PostHog telemetry including user PII (emails, usernames)
+    // sent to Infisical's cloud PostHog project. Used for Cloud and dedicated cloud instances.
     INFISICAL_CLOUD: zodStrBool.default("false"),
     MAINTENANCE_MODE: zodStrBool.default("false"),
     CAPTCHA_SECRET: zpStr(z.string().optional()),
