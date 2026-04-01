@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -58,17 +59,20 @@ export const validateExternalInfisicalConnectionCredentials = async (
 ) => {
   const { credentials: inputCredentials } = config;
 
-  await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
+  const appCfg = getConfig();
+  if (appCfg.SITE_URL !== inputCredentials.instanceUrl) {
+    await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
 
-  const localIdentity = await identityUaDAL.findOne({
-    clientId: inputCredentials.machineIdentityClientId
-  });
-
-  if (localIdentity) {
-    throw new BadRequestError({
-      message:
-        "Cannot create an Infisical connection targeting the same instance. Use a machine identity from a different Infisical instance."
+    const localIdentity = await identityUaDAL.findOne({
+      clientId: inputCredentials.machineIdentityClientId
     });
+
+    if (localIdentity) {
+      throw new BadRequestError({
+        message:
+          "Cannot create an Infisical connection targeting the same instance. Use a machine identity from a different Infisical instance."
+      });
+    }
   }
 
   try {
@@ -88,7 +92,10 @@ export const validateExternalInfisicalConnectionCredentials = async (
 };
 
 const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
-  await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
+  const appCfg = getConfig();
+  if (appCfg.SITE_URL !== connection.credentials.instanceUrl) {
+    await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
+  }
   const token = await getExternalInfisicalAccessToken(connection.credentials);
   return { Authorization: `Bearer ${token}` };
 };

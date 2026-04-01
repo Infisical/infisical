@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
@@ -44,9 +45,12 @@ type TRemoteContext = {
 
 const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
   const { credentials } = secretSync.connection;
+  const appCfg = getConfig();
+  if (appCfg.SITE_URL !== credentials.instanceUrl) {
+    await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
+  }
   const accessToken = await getExternalInfisicalAccessToken(credentials);
   const baseUrl = credentials.instanceUrl.replace(/\/$/, "");
-  await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   return { accessToken, baseUrl };
 };
 
