@@ -59,6 +59,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -130,8 +131,7 @@ export const OrgMembersTable = ({
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
 
-    // TODO: replace hardcoding default role
-    const isCustomRole = !["admin", "member", "no-access"].includes(role);
+    const isCustomRole = isCustomOrgRole(role);
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {

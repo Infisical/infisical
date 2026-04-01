@@ -121,7 +121,6 @@ export const OrgRoleTable = () => {
       defaultMembershipRoleSlug
     });
     createNotification({ type: "success", text: "Successfully updated default membership role" });
-    handlePopUpClose("deleteRole");
   };
 
   const {

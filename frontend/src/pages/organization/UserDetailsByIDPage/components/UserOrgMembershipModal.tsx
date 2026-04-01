@@ -89,6 +89,14 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   const onFormSubmit = async ({ role, metadata }: FormData) => {
     if (!orgId) return;
 
+    if (isCustomOrgRole(role.slug) && subscription && !subscription?.rbac) {
+      handlePopUpOpen("upgradePlan", {
+        text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
     await updateOrgMembership({
       organizationId: orgId,
       membershipId: popUpData.membershipId,
