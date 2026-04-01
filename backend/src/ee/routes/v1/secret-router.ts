@@ -7,14 +7,12 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const AccessListEntrySchema = z
-  .object({
-    allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
-    id: z.string(),
-    name: z.string(),
-    membershipId: z.string()
-  })
-  .array();
+const AccessListEntrySchema = z.object({
+  allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
+  id: z.string(),
+  name: z.string(),
+  membershipId: z.string()
+});
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -50,9 +48,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          groups: AccessListEntrySchema,
-          identities: AccessListEntrySchema,
-          users: AccessListEntrySchema
+          groups: AccessListEntrySchema.extend({
+            userIds: z.string().array(),
+            identityIds: z.string().array()
+          }).array(),
+          identities: AccessListEntrySchema.array(),
+          users: AccessListEntrySchema.array()
         })
       }
     },

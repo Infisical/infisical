@@ -103,6 +103,8 @@ type AccessRow = {
   linkParams: Record<string, string>;
   canEdit: boolean;
   onEdit?: () => void;
+  inheritedFromGroups?: string[];
+  inheritedActions?: Set<string>;
 };
 
 const PERMISSION_COLUMNS = [
@@ -375,9 +377,29 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     if (!secretAccessList) return [];
     const baseUrl = getProjectBaseURL(currentProject.type);
 
+    // Build lookup: for each user/identity, find groups they belong to that have access
+    const groupsWithAccess = secretAccessList.groups.filter((g) => g.allowedActions.length > 0);
+
+    const getGroupInheritance = (
+      entityId: string,
+      directActions: string[],
+      memberField: "userIds" | "identityIds"
+    ) => {
+      const matchingGroups = groupsWithAccess.filter((g) => g[memberField].includes(entityId));
+      const groupNames = matchingGroups.map((g) => g.name);
+      const inherited = new Set<string>(
+        matchingGroups
+          .flatMap((g) => g.allowedActions)
+          .filter((action) => !directActions.includes(action))
+      );
+      return { groupNames, inherited };
+    };
+
     return [
-      ...secretAccessList.users.map(
-        (user): AccessRow => ({
+      ...secretAccessList.users.map((user): AccessRow => {
+        const { groupNames: inheritedFromGroups, inherited: inheritedActions } =
+          getGroupInheritance(user.id, user.allowedActions, "userIds");
+        return {
           type: "user",
           entry: user,
           linkTo: `${baseUrl}/members/$membershipId`,
@@ -395,11 +417,15 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               type: "user",
               membershipId: user.membershipId,
               name: user.name
-            })
-        })
-      ),
-      ...secretAccessList.identities.map(
-        (identity): AccessRow => ({
+            }),
+          inheritedFromGroups,
+          inheritedActions
+        };
+      }),
+      ...secretAccessList.identities.map((identity): AccessRow => {
+        const { groupNames: identityInheritedGroups, inherited: identityInheritedActions } =
+          getGroupInheritance(identity.id, identity.allowedActions, "identityIds");
+        return {
           type: "identity",
           entry: identity,
           linkTo: `${baseUrl}/identities/$identityId`,
@@ -418,9 +444,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               membershipId: identity.membershipId,
               identityId: identity.id,
               name: identity.name
-            })
-        })
-      ),
+            }),
+          inheritedFromGroups: identityInheritedGroups,
+          inheritedActions: identityInheritedActions
+        };
+      }),
       ...secretAccessList.groups.map(
         (group): AccessRow => ({
           type: "group",
@@ -619,17 +647,47 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                       </span>
                     </UnstableTableCell>
                     <UnstableTableCell isTruncatable className="max-w-[180px] font-medium">
-                      {row.entry.name}
-                    </UnstableTableCell>
-                    {visibleColumns.map((col) => (
-                      <UnstableTableCell key={col.action} className="w-[100px] text-center">
-                        {row.entry.allowedActions.includes(col.action) ? (
-                          <CheckIcon className="mx-auto size-4 text-success" />
-                        ) : (
-                          <BanIcon className="mx-auto size-4 text-muted" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate">{row.entry.name}</span>
+                        {row.inheritedFromGroups && row.inheritedFromGroups.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-foreground/5 px-1.5 py-0.5 text-xs text-muted">
+                                <UsersIcon className="size-3" />
+                                {row.inheritedFromGroups.length}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              Access through{" "}
+                              {row.inheritedFromGroups.length === 1
+                                ? `group: ${row.inheritedFromGroups[0]}`
+                                : `groups: ${row.inheritedFromGroups.join(", ")}`}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
-                      </UnstableTableCell>
-                    ))}
+                      </div>
+                    </UnstableTableCell>
+                    {visibleColumns.map((col) => {
+                      const hasDirect = row.entry.allowedActions.includes(col.action);
+                      const hasInherited = row.inheritedActions?.has(col.action);
+                      return (
+                        <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {hasDirect ? (
+                            <CheckIcon className="mx-auto size-4 text-success" />
+                          ) : hasInherited ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <UsersIcon className="mx-auto size-4 text-success" />
+                              </TooltipTrigger>
+                              <TooltipContent>Inherited from group</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <BanIcon className="mx-auto size-4 text-muted" />
+                          )}
+                        </UnstableTableCell>
+                      );
+                    })}
                     <UnstableTableCell className="text-right">
                       <UnstableDropdownMenu>
                         <UnstableDropdownMenuTrigger asChild>

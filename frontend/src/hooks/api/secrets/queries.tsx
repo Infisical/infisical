@@ -12,6 +12,7 @@ import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
   GetSecretVersionsDTO,
   SecretAccessListEntry,
+  SecretAccessListGroupEntry,
   SecretType,
   SecretV3Raw,
   SecretV3RawResponse,
@@ -304,7 +305,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
     queryKey: secretKeys.getSecretAccessList(dto),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        groups: SecretAccessListEntry[];
+        groups: SecretAccessListGroupEntry[];
         identities: SecretAccessListEntry[];
         users: SecretAccessListEntry[];
       }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {

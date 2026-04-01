@@ -296,3 +296,8 @@ export type SecretAccessListEntry = {
   membershipId: string;
   name: string;
 };
+
+export type SecretAccessListGroupEntry = SecretAccessListEntry & {
+  userIds: string[];
+  identityIds: string[];
+};
