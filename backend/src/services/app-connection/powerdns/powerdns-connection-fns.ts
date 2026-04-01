@@ -4,6 +4,8 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+
 
 import { PowerDNSConnectionMethod } from "./powerdns-connection-enum";
 import { TPowerDNSConnectionConfig } from "./powerdns-connection-types";
@@ -24,6 +26,10 @@ export const validatePowerDNSConnectionCredentials = async (config: TPowerDNSCon
   const { apiKey, baseUrl } = config.credentials;
 
   try {
+
+    await blockLocalAndPrivateIpAddresses(baseUrl);
+
+
     // Use /servers/localhost/zones as the validation endpoint — it is supported by both
     // direct PowerDNS Server and PowerDNS-Admin proxy configurations.
     const resp = await request.get(`${baseUrl}/servers/localhost/zones`, {
