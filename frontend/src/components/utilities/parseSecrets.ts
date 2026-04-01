@@ -139,10 +139,29 @@ function flattenObject(
 
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const parsed: Record<string, any> = JSON.parse(file);
 
-  const flattened = flattenObject(parsed);
+  let parsed: Record<string, any>;
+
+  try {
+    parsed = JSON.parse(file);
+  } catch {
+    throw new Error("Invalid JSON file.");
+  }
+
+  let flattened: Record<string, any>;
+
+  try {
+    flattened = flattenObject(parsed);
+  } catch (e) {
+    throw new Error(
+      e instanceof Error
+        ? e.message
+        : "Failed to flatten JSON secrets."
+    );
+  }
+
   const env: Record<string, { value: string; comments: string[] }> = {};
+  
   Object.keys(flattened).forEach((key) => {
     env[key] = {
       value: String(flattened[key]),
