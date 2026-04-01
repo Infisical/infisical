@@ -46,11 +46,13 @@ type TRemoteContext = {
 const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
   const { credentials } = secretSync.connection;
   const appCfg = getConfig();
-  if (appCfg.SITE_URL?.replace(/\/$/, "") !== credentials.instanceUrl.replace(/\/$/, "")) {
+  const isSelfSync = appCfg.SITE_URL?.replace(/\/$/, "") === credentials.instanceUrl.replace(/\/$/, "");
+  if (!isSelfSync) {
     await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   }
-  const accessToken = await getExternalInfisicalAccessToken(credentials);
-  const baseUrl = credentials.instanceUrl.replace(/\/$/, "");
+  const baseUrl = isSelfSync ? `http://127.0.0.1:${appCfg.PORT}` : credentials.instanceUrl.replace(/\/$/, "");
+  const effectiveCredentials = isSelfSync ? { ...credentials, instanceUrl: baseUrl } : credentials;
+  const accessToken = await getExternalInfisicalAccessToken(effectiveCredentials);
   return { accessToken, baseUrl };
 };
 

@@ -107,16 +107,28 @@ export const validateExternalInfisicalConnectionCredentials = async (
   return inputCredentials;
 };
 
-const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
+const getInternalBaseUrl = (instanceUrl: string): string | null => {
   const appCfg = getConfig();
-  if (appCfg.SITE_URL?.replace(/\/$/, "") !== connection.credentials.instanceUrl.replace(/\/$/, "")) {
+  if (appCfg.SITE_URL?.replace(/\/$/, "") === instanceUrl.replace(/\/$/, "")) {
+    return `http://127.0.0.1:${appCfg.PORT}`;
+  }
+  return null;
+};
+
+const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
+  const internalBaseUrl = getInternalBaseUrl(connection.credentials.instanceUrl);
+  if (!internalBaseUrl) {
     await blockLocalAndPrivateIpAddresses(connection.credentials.instanceUrl);
   }
-  const token = await getExternalInfisicalAccessToken(connection.credentials);
+  const effectiveCredentials = internalBaseUrl
+    ? { ...connection.credentials, instanceUrl: internalBaseUrl }
+    : connection.credentials;
+  const token = await getExternalInfisicalAccessToken(effectiveCredentials);
   return { Authorization: `Bearer ${token}` };
 };
 
-const getBaseUrl = (connection: TExternalInfisicalConnection) => connection.credentials.instanceUrl.replace(/\/$/, "");
+const getBaseUrl = (connection: TExternalInfisicalConnection) =>
+  getInternalBaseUrl(connection.credentials.instanceUrl) ?? connection.credentials.instanceUrl.replace(/\/$/, "");
 
 export const listProjects = async (connection: TExternalInfisicalConnection): Promise<TRemoteProject[]> => {
   const baseUrl = getBaseUrl(connection);
