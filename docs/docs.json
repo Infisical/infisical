@@ -142,6 +142,7 @@
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
+                      "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
@@ -814,7 +815,8 @@
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
                   "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+                  "documentation/platform/pki/certificate-syncs/netscaler"
                 ]
               },
               {
@@ -1635,6 +1637,18 @@
                       "api-reference/endpoints/app-connections/mysql/create",
                       "api-reference/endpoints/app-connections/mysql/update",
                       "api-reference/endpoints/app-connections/mysql/delete"
+                    ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/netscaler/list",
+                      "api-reference/endpoints/app-connections/netscaler/available",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-id",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-name",
+                      "api-reference/endpoints/app-connections/netscaler/create",
+                      "api-reference/endpoints/app-connections/netscaler/update",
+                      "api-reference/endpoints/app-connections/netscaler/delete"
                     ]
                   },
                   {
@@ -3098,6 +3112,18 @@
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/netscaler/list",
+                      "api-reference/endpoints/pki/syncs/netscaler/get-by-id",
+                      "api-reference/endpoints/pki/syncs/netscaler/create",
+                      "api-reference/endpoints/pki/syncs/netscaler/update",
+                      "api-reference/endpoints/pki/syncs/netscaler/delete",
+                      "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
                     ]
                   }
                 ]

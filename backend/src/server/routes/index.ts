@@ -2332,7 +2332,8 @@ export const registerRoutes = async (
     certificateSecretDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
-    certificateSyncDAL
+    certificateSyncDAL,
+    gatewayV2Service
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
