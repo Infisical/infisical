@@ -24,6 +24,7 @@ import {
   MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
+  SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
@@ -71,7 +72,10 @@ export const ProjectNav = () => {
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
 
   const getInitialProjectSubmenu = (): Submenu | null => {
-    if (isOnAccessControl) return PROJECT_ACCESS_CONTROL_SUBMENU;
+    if (isOnAccessControl)
+      return currentProject.type === ProjectType.SecretManager
+        ? SECRET_MANAGER_ACCESS_CONTROL_SUBMENU
+        : PROJECT_ACCESS_CONTROL_SUBMENU;
     if (isOnIntegrations && currentProject.type === ProjectType.SecretManager)
       return INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
