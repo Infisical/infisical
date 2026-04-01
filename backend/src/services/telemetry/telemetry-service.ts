@@ -16,8 +16,9 @@ import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedE
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
-export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
+export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled, PostHogEventTypes.MachineIdentityLogin];
 const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
+const GROUP_IDENTIFY_CACHE_TTL = 3600; // 1 hour
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
@@ -207,16 +208,23 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           );
         } else {
           if (event.organizationId) {
-            // Fire-and-forget: enrich groupIdentify without blocking the HTTP response
             const orgId = event.organizationId;
-            void getOrgGroupProperties(orgId, resolvedOrgName)
-              .then((groupProperties) => {
-                postHog.groupIdentify({
-                  groupType: "organization",
-                  groupKey: orgId,
-                  properties: groupProperties,
-                  distinctId: event.distinctId
-                });
+            // Dedup groupIdentify: only fire once per org per hour to avoid redundant DB/API calls
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(orgId);
+            void keyStore
+              .setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1")
+              .then((wasSet) => {
+                if (wasSet) {
+                  return getOrgGroupProperties(orgId, resolvedOrgName).then((groupProperties) => {
+                    postHog.groupIdentify({
+                      groupType: "organization",
+                      groupKey: orgId,
+                      properties: groupProperties,
+                      distinctId: event.distinctId
+                    });
+                  });
+                }
+                return undefined;
               })
               .catch((error) => {
                 logger.error(error, "Failed to identify PostHog organization");
@@ -358,20 +366,25 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const key = JSON.parse(eventsKey) as { id: string; org?: string };
         if (key.org) {
           try {
-            let groupProperties = orgPropertiesCache.get(key.org);
-            if (!groupProperties) {
-              // Use the organizationName from the first event in the group (all events in a group share the same org)
-              const orgName = events[0]?.organizationName;
-              // eslint-disable-next-line no-await-in-loop
-              groupProperties = await getOrgGroupProperties(key.org, orgName);
-              orgPropertiesCache.set(key.org, groupProperties);
+            // Dedup groupIdentify across all paths: only fire once per org per hour
+            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
+            // eslint-disable-next-line no-await-in-loop
+            const wasSet = await keyStore.setItemWithExpiryNX(groupIdentifyCacheKey, GROUP_IDENTIFY_CACHE_TTL, "1");
+            if (wasSet) {
+              let groupProperties = orgPropertiesCache.get(key.org);
+              if (!groupProperties) {
+                const orgName = events[0]?.organizationName;
+                // eslint-disable-next-line no-await-in-loop
+                groupProperties = await getOrgGroupProperties(key.org, orgName);
+                orgPropertiesCache.set(key.org, groupProperties);
+              }
+              postHog.groupIdentify({
+                groupType: "organization",
+                groupKey: key.org,
+                properties: groupProperties,
+                distinctId: key.id
+              });
             }
-            postHog.groupIdentify({
-              groupType: "organization",
-              groupKey: key.org,
-              properties: groupProperties,
-              distinctId: key.id
-            });
           } catch (error) {
             logger.error(error, "Failed to identify PostHog organization");
           }
@@ -421,7 +434,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const TELEMETRY_IDENTIFY_CACHE_KEY_PREFIX = "telemetry-identify";
-  const TELEMETRY_IDENTIFY_CACHE_TTL = 600; // 10 minutes
+  const TELEMETRY_IDENTIFY_CACHE_TTL = 86400; // 24 hours
+  // Shorter TTL for in-memory fallback to bound memory growth during Redis outages
+  const IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   // In-memory fallback dedup set to limit blast radius during Redis outages
   const inMemoryIdentifyDedup = new Set<string>();
@@ -456,7 +471,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             inMemoryIdentifyDedup.add(distinctId);
             const timer = setTimeout(
               () => inMemoryIdentifyDedup.delete(distinctId),
-              TELEMETRY_IDENTIFY_CACHE_TTL * 1000
+              IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS
             );
             timer.unref();
           }
@@ -498,10 +513,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           // In-memory fallback to limit blast radius during Redis outage
           if (inMemoryIdentityDedup.has(dedupKey)) return;
           inMemoryIdentityDedup.add(dedupKey);
-          const timer = setTimeout(
-            () => inMemoryIdentityDedup.delete(dedupKey),
-            KeyStoreTtls.TelemetryIdentifyIdentityInSeconds * 1000
-          );
+          const timer = setTimeout(() => inMemoryIdentityDedup.delete(dedupKey), IN_MEMORY_IDENTIFY_FALLBACK_TTL_MS);
           timer.unref();
           // falls through intentionally: first caller during Redis outage still identifies
         }

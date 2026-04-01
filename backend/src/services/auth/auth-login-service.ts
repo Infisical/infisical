@@ -1310,6 +1310,7 @@ export const authLoginServiceFactory = ({
    * 2. To avoid attaching the access token to the URL, which could be logged. The provider token has a very short lifespan, reducing security risks.
    */
   const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
+    const appCfg = getConfig();
     const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
 
     const { authMethod, userName } = decodedProviderToken;
@@ -1328,6 +1329,48 @@ export const authLoginServiceFactory = ({
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
     if (!userEnc) throw new BadRequestError({ message: "User encryption not found" });
+
+    // Check MFA before issuing tokens — mirrors the logic in selectOrganization
+    const user = await userDAL.findById(userEnc.userId);
+    const org = organizationId ? await orgDAL.findById(organizationId) : null;
+    // for now check mfa in this state when your token is org scoped. If not we will do it in select org step
+    const shouldCheckMfa = org?.enforceMfa || user?.isMfaEnabled;
+
+    if (shouldCheckMfa && organizationId) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+      const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+      const mfaMethod = orgMfaMethod ?? userMfaMethod;
+
+      const mfaToken = crypto.jwt().sign(
+        {
+          authMethod,
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: userEnc.userId,
+          organizationId
+        },
+        appCfg.AUTH_SECRET,
+        {
+          expiresIn: appCfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      if (mfaMethod === MfaMethod.EMAIL && userEnc.email) {
+        await sendUserMfaCode({
+          userId: userEnc.userId,
+          email: userEnc.email
+        });
+      }
+
+      return {
+        token: { access: mfaToken, refresh: "" },
+        isMfaEnabled: true,
+        mfaMethod,
+        user: userEnc,
+        decodedProviderToken
+      } as const;
+    }
 
     const token = await generateUserTokens({
       user: { ...userEnc, id: userEnc.userId },

@@ -991,7 +991,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,

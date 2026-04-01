@@ -137,6 +137,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.AzureEntraIdScim]: {
     name: "Azure Entra ID SCIM",
     image: "Microsoft Azure.png"
+  },
+  [SecretSync.ExternalInfisical]: {
+    name: "Infisical",
+    image: "Infisical.png"
   }
 };
 
@@ -176,7 +180,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Chef]: AppConnection.Chef,
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
   [SecretSync.CircleCI]: AppConnection.CircleCI,
-  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId
+  [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
+  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -188,11 +193,17 @@ export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
     description: `Infisical will overwrite any secrets located in the ${destinationName} destination, removing any secrets that are not present within Infiscal. `
   }),
   [SecretSyncInitialSyncBehavior.ImportPrioritizeSource]: (destinationName: string) => ({
-    name: "Import Destination Secrets - Prioritize Infisical Values",
+    name:
+      destinationName === "Infisical"
+        ? "Import Destination Secrets - Prioritize Source (This Instance) Values"
+        : "Import Destination Secrets - Prioritize Infisical Values",
     description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values from Infisical over ${destinationName} when keys conflict.`
   }),
   [SecretSyncInitialSyncBehavior.ImportPrioritizeDestination]: (destinationName: string) => ({
-    name: `Import Destination Secrets - Prioritize ${destinationName} Values`,
+    name:
+      destinationName === "Infisical"
+        ? "Import Destination Secrets - Prioritize Destination (Remote Instance) Values"
+        : `Import Destination Secrets - Prioritize ${destinationName} Values`,
     description: `Infisical will import any secrets present in the ${destinationName} destination prior to syncing, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
 };
@@ -202,11 +213,17 @@ export const SECRET_SYNC_IMPORT_BEHAVIOR_MAP: Record<
   (destinationName: string) => { name: string; description: string }
 > = {
   [SecretSyncImportBehavior.PrioritizeSource]: (destinationName: string) => ({
-    name: "Prioritize Infisical Values",
+    name:
+      destinationName === "Infisical"
+        ? "Prioritize Source (This Instance) Values"
+        : "Prioritize Infisical Values",
     description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from Infisical over ${destinationName} when keys conflict.`
   }),
   [SecretSyncImportBehavior.PrioritizeDestination]: (destinationName: string) => ({
-    name: `Prioritize ${destinationName} Values`,
+    name:
+      destinationName === "Infisical"
+        ? "Prioritize Destination (Remote Instance) Values"
+        : `Prioritize ${destinationName} Values`,
     description: `Infisical will import any secrets present in the ${destinationName} destination, prioritizing values from ${destinationName} over Infisical when keys conflict.`
   })
 };

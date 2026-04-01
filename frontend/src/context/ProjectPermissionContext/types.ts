@@ -256,7 +256,8 @@ export enum ProjectPermissionPamAccountActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  TriggerRotation = "trigger-rotation"
 }
 
 export enum ProjectPermissionPamSessionActions {
@@ -293,6 +294,13 @@ export enum ProjectPermissionApprovalRequestGrantActions {
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
+
+export type MemberManagementSubjectFields = {
+  userEmail?: string;
+  assignableRole?: string;
+  assignableSubject?: string;
+  assignableAction?: string;
+};
 
 export type IdentityManagementSubjectFields = {
   identityId?: string;
@@ -574,7 +582,13 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
-  | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
+  | [
+      ProjectPermissionMemberActions,
+      (
+        | ProjectPermissionSub.Member
+        | (ForcedSubject<ProjectPermissionSub.Member> & MemberManagementSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]

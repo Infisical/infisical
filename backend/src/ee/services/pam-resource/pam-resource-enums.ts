@@ -1,6 +1,7 @@
 export enum PamResource {
   Postgres = "postgres",
   MySQL = "mysql",
+  MsSQL = "mssql",
   SSH = "ssh",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",

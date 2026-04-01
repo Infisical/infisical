@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -53,6 +54,41 @@ type Props = {
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
 };
+
+const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
+const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
+const durationSchema = z
+  .string()
+  .trim()
+  .nullish()
+  .superRefine((val, ctx) => {
+    if (!val || val === "never") return;
+    const parsed = ms(val);
+
+    if (typeof parsed !== "number" || parsed <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid duration format. Use formats like '1h', '3d', '72h'."
+      });
+      return;
+    }
+
+    if (parsed < MIN_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Duration must be at least 1 minute."
+      });
+      return;
+    }
+
+    if (parsed > MAX_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Duration cannot exceed 1 year."
+      });
+    }
+  });
 
 const formSchema = z
   .object({
@@ -106,7 +142,8 @@ const formSchema = z
       .array()
       .default([])
       .optional(),
-    maxTimePeriod: z.string().trim().nullish()
+    maxTimePeriod: durationSchema,
+    requestExpirationTime: durationSchema
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -172,6 +209,8 @@ const Form = ({
               .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
           approvals: editValues?.approvals,
           allowedSelfApprovals: editValues?.allowedSelfApprovals,
+          maxTimePeriod: editValues?.maxTimePeriod,
+          requestExpirationTime: editValues?.requestExpirationTime,
           sequenceApprovers: editValues.approvers?.reduce(
             (acc, curr) => {
               if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
@@ -443,7 +482,7 @@ const Form = ({
                 label="Policy Name"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                className="flex-1"
+                className="min-w-0 flex-[2]"
               >
                 <Input {...field} value={field.value || ""} />
               </FormControl>
@@ -460,9 +499,27 @@ const Form = ({
                   tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="shrink"
+                  className="w-36 shrink-0"
                 >
                   <Input {...field} value={field.value || ""} placeholder="permanent" />
+                </FormControl>
+              )}
+            />
+          )}
+
+          {isAccessPolicyType && (
+            <Controller
+              control={control}
+              name="requestExpirationTime"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Request Expiration"
+                  tooltipText="Time before unapproved requests expire. Ex: 1h, 3d, 72h"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="w-36 shrink-0"
+                >
+                  <Input {...field} value={field.value || ""} placeholder="never expires" />
                 </FormControl>
               )}
             />

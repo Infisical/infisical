@@ -21,30 +21,24 @@ export const pamSessionExpirationServiceFactory = ({
       return;
     }
 
-    queueService.start(
-      QueueName.PamSessionExpiration,
-      async (job) => {
-        const { sessionId } = job.data;
-        try {
-          logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session`);
-          const updated = await pamSessionDAL.expireSessionById(sessionId);
-          if (updated > 0) {
-            logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired successfully`);
-          } else {
-            logger.info(
-              { sessionId },
-              `${QueueName.PamSessionExpiration}: session not expired (already ended or not found)`
-            );
-          }
-        } catch (error) {
-          logger.error(error, `${QueueName.PamSessionExpiration}: failed to expire session ${sessionId}`);
-          throw error;
+    queueService.start(QueueName.PamSessionExpiration, async (job) => {
+      const { sessionId } = job.data;
+      try {
+        logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session`);
+        const updated = await pamSessionDAL.expireSessionById(sessionId);
+        if (updated > 0) {
+          logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired successfully`);
+        } else {
+          logger.info(
+            { sessionId },
+            `${QueueName.PamSessionExpiration}: session not expired (already ended or not found)`
+          );
         }
-      },
-      {
-        persistence: true
+      } catch (error) {
+        logger.error(error, `${QueueName.PamSessionExpiration}: failed to expire session ${sessionId}`);
+        throw error;
       }
-    );
+    });
   };
 
   // Schedule a session expiration job to run at the session's expiresAt time

@@ -9,6 +9,7 @@ import {
   faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { BanIcon, CheckIcon, HourglassIcon } from "lucide-react";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
@@ -260,15 +261,19 @@ export const ReviewAccessRequestModal = ({
 
   const hasRejected = request.status === ApprovalStatus.REJECTED;
   const hasApproved = request.status === ApprovalStatus.APPROVED;
+  const hasExpired =
+    !hasApproved && !hasRejected && request.expiresAt && new Date(request.expiresAt) < new Date();
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
 
   const shouldBlockRequestActions =
     hasRejected ||
     hasApproved ||
+    hasExpired ||
     isReviewedByMe ||
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
 
   const renderCompletedMessages = () => {
+    if (hasExpired) return "This request has expired.";
     if (hasRejected) return "This request has been rejected.";
     if (hasApproved) return "This request has been approved.";
     if (isReviewedByMe) return "You have reviewed this request.";
@@ -339,15 +344,47 @@ export const ReviewAccessRequestModal = ({
                   {request.note}
                 </GenericFieldLabel>
               )}
+              {request.expiresAt &&
+                request.status === ApprovalStatus.PENDING &&
+                new Date(request.expiresAt) > new Date() && (
+                  <GenericFieldLabel label="Request Expires">
+                    <span>
+                      In{" "}
+                      {ms(new Date(request.expiresAt).getTime() - Date.now(), {
+                        long: true
+                      })}
+                    </span>
+                  </GenericFieldLabel>
+                )}
+              {hasExpired && request.expiresAt && (
+                <GenericFieldLabel label="Expired At">
+                  <span className="text-red-400">
+                    {format(new Date(request.expiresAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {hasRejected && (
+                <GenericFieldLabel label="Rejected At">
+                  <span className="text-red-400">
+                    {format(new Date(request.updatedAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {hasApproved && (
+                <GenericFieldLabel label="Approved At">
+                  <span className="text-green-400">
+                    {format(new Date(request.updatedAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
             </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between border-b-2 border-mineshaft-500 py-2">
             <span>Approvers</span>
             {approverSequence.isMyReviewInThisSequence &&
-              request.status === ApprovalStatus.PENDING && (
-                <Badge variant="warning">Awaiting Your Review</Badge>
-              )}
+              request.status === ApprovalStatus.PENDING &&
+              !hasExpired && <Badge variant="warning">Awaiting Your Review</Badge>}
           </div>
           <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
             {approverSequence?.approvers &&
@@ -374,7 +411,7 @@ export const ReviewAccessRequestModal = ({
                     </Badge>
                   );
                   BadgeComponent = <Badge variant="success">Approved</Badge>;
-                } else if (isPending) {
+                } else if (isPending && !hasExpired) {
                   StepComponent = (
                     <Badge isSquare variant="warning">
                       <HourglassIcon />
@@ -501,7 +538,8 @@ export const ReviewAccessRequestModal = ({
                 "mt-2 rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm",
                 isReviewedByMe && "border-l-green-400",
                 !approverSequence.isMyReviewInThisSequence && "border-l-primary-400",
-                hasRejected && "border-l-red-500"
+                hasRejected && "border-l-red-500",
+                hasExpired && "border-l-red-500"
               )}
             >
               {renderCompletedMessages()}

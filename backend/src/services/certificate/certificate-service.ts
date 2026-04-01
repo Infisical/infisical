@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -21,6 +22,8 @@ import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -79,6 +82,7 @@ type TCertificateServiceFactoryDep = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -100,7 +104,8 @@ export const certificateServiceFactory = ({
   pkiSyncDAL,
   pkiSyncQueue,
   certificateAuthorityService,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  pkiAlertV2Queue
 }: TCertificateServiceFactoryDep) => {
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -425,6 +430,16 @@ export const certificateServiceFactory = ({
         certificateDAL,
         kmsService
       });
+    }
+
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: cert.id,
+        projectId: ca.projectId,
+        eventType: PkiAlertEventType.REVOCATION
+      });
+    } catch {
+      logger.debug("Failed to queue PKI revocation alert event");
     }
 
     // Return appropriate CA format based on CA type

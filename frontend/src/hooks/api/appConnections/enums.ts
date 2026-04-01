@@ -51,5 +51,6 @@ export enum AppConnection {
   OpenRouter = "open-router",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
-  Venafi = "venafi"
+  Venafi = "venafi",
+  ExternalInfisical = "external-infisical"
 }

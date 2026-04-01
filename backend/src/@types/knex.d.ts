@@ -368,6 +368,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepEnrollmentConfigs,
+  TPkiScepEnrollmentConfigsInsert,
+  TPkiScepEnrollmentConfigsUpdate,
+  TPkiScepTransactions,
+  TPkiScepTransactionsInsert,
+  TPkiScepTransactionsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -416,9 +422,6 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
-  TQueueJobs,
-  TQueueJobsInsert,
-  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -703,6 +706,11 @@ import {
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
 } from "@app/db/schemas/pam-resource-favorites";
+import {
+  TPamResourceRotationRules,
+  TPamResourceRotationRulesInsert,
+  TPamResourceRotationRulesUpdate
+} from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
@@ -726,6 +734,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TSecretValidationRules,
+  TSecretValidationRulesInsert,
+  TSecretValidationRulesUpdate
+} from "@app/db/schemas/secret-validation-rules";
 import {
   TUserNotifications,
   TUserNotificationsInsert,
@@ -846,6 +859,16 @@ declare module "knex/types/tables" {
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
       TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiScepEnrollmentConfigs,
+      TPkiScepEnrollmentConfigsInsert,
+      TPkiScepEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepTransaction]: KnexOriginal.CompositeTableType<
+      TPkiScepTransactions,
+      TPkiScepTransactionsInsert,
+      TPkiScepTransactionsUpdate
     >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
@@ -1599,6 +1622,11 @@ declare module "knex/types/tables" {
       TPamAccountDependenciesInsert,
       TPamAccountDependenciesUpdate
     >;
+    [TableName.PamResourceRotationRule]: KnexOriginal.CompositeTableType<
+      TPamResourceRotationRules,
+      TPamResourceRotationRulesInsert,
+      TPamResourceRotationRulesUpdate
+    >;
 
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
     [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
@@ -1704,7 +1732,6 @@ declare module "knex/types/tables" {
       TOrganizationAssetsUpdate
     >;
 
-    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
     [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,
@@ -1719,6 +1746,11 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigs,
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
+    >;
+    [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
+      TSecretValidationRules,
+      TSecretValidationRulesInsert,
+      TSecretValidationRulesUpdate
     >;
   }
 }

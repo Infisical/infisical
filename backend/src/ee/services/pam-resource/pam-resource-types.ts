@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-duplicate-type-constituents */
 import { z } from "zod";
 
 import { TPamResources } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import {
   TActiveDirectoryAccount,
   TActiveDirectoryAccountCredentials,
@@ -24,11 +27,18 @@ import {
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
 import {
+  TMsSQLAccount,
+  TMsSQLAccountCredentials,
+  TMsSQLResource,
+  TMsSQLResourceConnectionDetails
+} from "./mssql/mssql-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
+import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
   TPostgresAccount,
@@ -61,6 +71,7 @@ import {
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
@@ -71,6 +82,7 @@ export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
+  | TMsSQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
@@ -83,6 +95,7 @@ export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindo
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
@@ -92,8 +105,8 @@ export type TPamAccount =
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
+  | TMsSQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
@@ -133,6 +146,12 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
+export type TPostRotateContext = {
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById" | "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
 export type TPamResourceFactory<
   T extends TPamResourceConnectionDetails,
   C extends TPamAccountCredentials,
@@ -148,5 +167,12 @@ export type TPamResourceFactory<
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
+  postRotate?: (
+    accountId: string,
+    newCredentials: C,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: C
+  ) => Promise<void>;
   handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };

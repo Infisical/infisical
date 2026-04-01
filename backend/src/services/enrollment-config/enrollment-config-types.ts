@@ -13,6 +13,11 @@ import {
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate
 } from "@app/db/schemas/pki-est-enrollment-configs";
+import {
+  TPkiScepEnrollmentConfigs,
+  TPkiScepEnrollmentConfigsInsert,
+  TPkiScepEnrollmentConfigsUpdate
+} from "@app/db/schemas/pki-scep-enrollment-configs";
 
 export type TEstEnrollmentConfig = TPkiEstEnrollmentConfigs;
 export type TEstEnrollmentConfigInsert = TPkiEstEnrollmentConfigsInsert;
@@ -40,4 +45,14 @@ export interface TApiConfigData {
 export interface TAcmeConfigData {
   skipDnsOwnershipVerification?: boolean;
   skipEabBinding?: boolean;
+}
+
+export type TScepEnrollmentConfig = TPkiScepEnrollmentConfigs;
+export type TScepEnrollmentConfigInsert = TPkiScepEnrollmentConfigsInsert;
+export type TScepEnrollmentConfigUpdate = TPkiScepEnrollmentConfigsUpdate;
+
+export interface TScepConfigData {
+  challengePassword: string;
+  includeCaCertInResponse?: boolean;
+  allowCertBasedRenewal?: boolean;
 }

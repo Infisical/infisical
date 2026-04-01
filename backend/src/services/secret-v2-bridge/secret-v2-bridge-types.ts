@@ -58,6 +58,7 @@ export type TGetSecretsDTO = {
   search?: string;
   keys?: string[];
   excludeRotatedSecrets?: boolean;
+  ifNoneMatch?: string;
 } & TProjectPermission;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<

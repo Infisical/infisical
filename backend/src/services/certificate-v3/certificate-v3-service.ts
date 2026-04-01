@@ -49,6 +49,8 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -152,6 +154,7 @@ type TCertificateV3ServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -209,6 +212,15 @@ const validateProfileAndPermissions = async ({
     if (account.profileId !== profile.id) {
       throw new ForbiddenRequestError({
         message: "ACME account is not associated with this profile"
+      });
+    }
+    return profile;
+  }
+
+  if (actor === ActorType.SCEP_ACCOUNT && requiredEnrollmentType === EnrollmentType.SCEP) {
+    if (actorId !== profile.id) {
+      throw new ForbiddenRequestError({
+        message: "SCEP profile mismatch"
       });
     }
     return profile;
@@ -633,7 +645,8 @@ export const certificateV3ServiceFactory = ({
   userDAL,
   identityDAL,
   approvalPolicyService,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  pkiAlertV2Queue
 }: TCertificateV3ServiceFactoryDep) => {
   /**
    * Resolves requester name and email based on actor type
@@ -695,7 +708,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
@@ -1212,6 +1225,16 @@ export const certificateV3ServiceFactory = ({
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
 
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: cert.id,
+        projectId: profile.projectId,
+        eventType: PkiAlertEventType.ISSUANCE
+      });
+    } catch {
+      logger.debug("Failed to queue PKI issuance alert event");
+    }
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: bufferToString(certificate),
@@ -1252,7 +1275,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     if (!profile.caId) {
@@ -1578,6 +1601,16 @@ export const certificateV3ServiceFactory = ({
       certificateChainString = removeRootCaFromChain(certificateChainString);
     }
 
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: cert.id,
+        projectId: profile.projectId,
+        eventType: PkiAlertEventType.ISSUANCE
+      });
+    } catch {
+      logger.debug("Failed to queue PKI issuance alert event");
+    }
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: certificateString,
@@ -1611,7 +1644,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     let certificateRequest: TCertificateRequest;
@@ -2374,6 +2407,17 @@ export const certificateV3ServiceFactory = ({
     if (removeRootsFromChain) {
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
+
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: renewalResult.newCert.id,
+        projectId: renewalResult.originalCert.projectId,
+        eventType: PkiAlertEventType.RENEWAL
+      });
+    } catch {
+      logger.debug("Failed to queue PKI renewal alert event");
+    }
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: renewalResult.certificate,

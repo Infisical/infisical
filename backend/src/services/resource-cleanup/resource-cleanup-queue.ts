@@ -1,11 +1,11 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TQueueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
@@ -37,7 +37,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "markExpiredRequests">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
-  queueJobsDAL: Pick<TQueueJobsDALFactory, "pruneQueueJobs">;
+  scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -60,7 +60,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestDAL,
   approvalRequestGrantsDAL,
   certificateRequestDAL,
-  queueJobsDAL
+  scepTransactionDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -89,7 +89,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await auditLogDAL.pruneAuditLog();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
-        await queueJobsDAL.pruneQueueJobs();
+        await scepTransactionDAL.pruneExpiredTransactions();
         const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
         if (expiredApprovalRequestIds.length > 0) {
           await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);

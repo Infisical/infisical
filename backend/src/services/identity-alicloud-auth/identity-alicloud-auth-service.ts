@@ -77,7 +77,10 @@ export const identityAliCloudAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityAliCloudAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -103,7 +106,13 @@ export const identityAliCloudAuthServiceFactory = ({
 
         if (!isAccountAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: Alibaba Cloud account ARN not allowed."
+            message: "Access denied: Alibaba Cloud account ARN not allowed.",
+            detail: {
+              reasonCode: "arn_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -123,7 +132,13 @@ export const identityAliCloudAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                identityName: identity.name,
+                orgId: identity.orgId
+              }
             });
           }
 

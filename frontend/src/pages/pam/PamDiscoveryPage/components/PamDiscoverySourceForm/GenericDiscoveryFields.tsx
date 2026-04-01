@@ -2,72 +2,119 @@ import { Controller, useFormContext } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  UnstableInput
+} from "@app/components/v3";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+
+export const gatewayOptionSchema = z.object({
+  id: z.string().min(1, "Gateway is required"),
+  name: z.string()
+});
 
 export const genericDiscoveryFieldsSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
-  gatewayId: z.string().min(1, "Gateway is required"),
+  gateway: gatewayOptionSchema.nullable().refine((val) => val !== null, {
+    message: "Gateway is required"
+  }),
   schedule: z.string().default("manual")
 });
+
+type GenericFormValues = {
+  name: string;
+  gateway: { id: string; name: string } | null;
+  schedule: string;
+};
 
 export const GenericDiscoveryFields = () => {
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
-  const { control } = useFormContext<{ name: string; gatewayId: string; schedule: string }>();
+  const { control } = useFormContext<GenericFormValues>();
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <Controller
+        control={control}
         name="name"
-        control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Name">
-            <Input autoFocus placeholder="my-discovery-source" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <UnstableInput
+                  {...field}
+                  autoFocus
+                  isError={Boolean(error)}
+                  placeholder="my-discovery-source"
+                />
+              </div>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
+
       <Controller
         control={control}
-        name="gatewayId"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error?.message)} errorText={error?.message} label="Gateway">
-            <Select
-              value={value || (null as unknown as string)}
-              onValueChange={onChange}
-              className="w-full border border-mineshaft-500"
-              dropdownContainerClassName="max-w-none"
-              isLoading={isGatewaysLoading}
-              placeholder="Select a Gateway..."
-              position="popper"
-            >
-              {(gateways || []).map((el) => (
-                <SelectItem value={el.id} key={el.id}>
-                  {el.name}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+        name="gateway"
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
+          const selectedOption =
+            value && gateways ? (gateways.find((g) => g.id === value.id) ?? value) : value;
+
+          return (
+            <Field>
+              <FieldLabel>Gateway</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={selectedOption}
+                  onChange={onChange}
+                  onBlur={onBlur}
+                  options={gateways}
+                  isError={Boolean(error)}
+                  isLoading={isGatewaysLoading}
+                  placeholder="Select a Gateway..."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          );
+        }}
       />
+
       <Controller
         control={control}
         name="schedule"
-        render={({ field: { value, onChange } }) => (
-          <FormControl label="Schedule">
-            <Select
-              value={value}
-              onValueChange={onChange}
-              className="w-full border border-mineshaft-500"
-              position="popper"
-            >
-              <SelectItem value="manual">Manual</SelectItem>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-            </Select>
-          </FormControl>
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>Schedule</FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={onChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" align="start">
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </div>
   );
 };

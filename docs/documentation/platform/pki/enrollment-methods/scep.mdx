@@ -3,6 +3,180 @@ title: "Certificate Enrollment via SCEP"
 sidebarTitle: "SCEP"
 ---
 
-<Info>
-  SCEP-based certificate enrollment is currently under development and will be included in a future release.
-</Info>
+## Concept
+
+The SCEP enrollment method allows you to issue and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [SCEP protocol](https://en.wikipedia.org/wiki/Simple_Certificate_Enrollment_Protocol) (Simple Certificate Enrollment Protocol).
+This method is suitable for provisioning certificates to network devices, mobile devices, printers, routers, and other endpoints that support the SCEP protocol.
+
+Infisical's SCEP service is based on [RFC 8894](https://datatracker.ietf.org/doc/html/rfc8894) and implements the following operations:
+
+- **GetCACaps**: returns the SCEP server's supported capabilities (algorithms, features).
+- **GetCACert**: returns the RA (Registration Authority) certificate and the CA certificate chain in a PKCS#7 bundle.
+- **PKIOperation**: processes certificate enrollment requests (PKCSReq), renewal requests (RenewalReq), and certificate polling (GetCertInitial).
+
+These SCEP endpoints are exposed under the `/scep` path and structured as:
+
+```
+https://app.infisical.com/scep/{profile_id}/pkiclient.exe
+```
+
+For self-hosted Infisical instances, replace `app.infisical.com` with your instance's domain.
+
+## Prerequisites
+
+- A SCEP-compatible client (e.g., [sscep](https://github.com/certnanny/sscep)) or a network device with built-in SCEP support.
+- A certificate profile with a **CA-issued** issuer type.
+
+## Guide to Certificate Enrollment via SCEP
+
+In the following steps, we walk through how to issue an X.509 certificate using the SCEP enrollment method.
+
+<Steps>
+  <Step title="Create a certificate profile with SCEP enrollment">
+    Create a [certificate profile](/documentation/platform/pki/certificates/profiles) with **SCEP** selected as the enrollment method and fill in the SCEP-specific configuration.
+
+    Here's some guidance on each SCEP-specific configuration field:
+
+    - **Challenge Password**: A shared secret that SCEP clients must include in their certificate signing request (CSR) to authenticate with Infisical's SCEP server. Must be at least 8 characters.
+    - **Include CA Cert in Response**: When enabled, the CA certificate chain is included alongside the RA certificate in the GetCACert response. Most SCEP clients expect this to be enabled (default: enabled).
+    - **Allow Certificate-Based Renewal**: When enabled, devices that already hold a valid certificate issued by the same CA can renew their certificate without providing the challenge password (default: enabled).
+
+  </Step>
+  <Step title="Obtain the SCEP endpoint URL">
+    Once the certificate profile is created, you can obtain the SCEP endpoint URL from the certificate profile details page.
+
+    The SCEP endpoint URL follows the structure:
+
+    ```
+    https://app.infisical.com/scep/{profile_id}/pkiclient.exe
+    ```
+
+    Where `{profile_id}` is the UUID of the certificate profile. This is the URL you provide to your SCEP clients as the SCEP server URL.
+
+  </Step>
+  <Step title="Configure your SCEP client and enroll">
+    Provide the **SCEP endpoint URL** and **challenge password** from the previous steps to your SCEP client.
+
+    Below is an example using [sscep](https://github.com/certnanny/sscep), an open-source SCEP client.
+
+    **1. Retrieve the CA/RA certificates:**
+
+    ```bash
+    sscep getca \
+      -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+      -c ca.pem
+    ```
+
+    This writes the RA certificate to `ca.pem-0` and the CA certificate to `ca.pem-1` (when "Include CA Cert in Response" is enabled).
+
+    **2. Generate a device key and CSR with the challenge password:**
+
+    The challenge password must be embedded in the CSR as a PKCS#9 attribute. Create an OpenSSL config file to include it:
+
+    ```bash
+    cat > device-csr.cnf << 'EOF'
+    [req]
+    default_bits = 2048
+    prompt = no
+    distinguished_name = dn
+    attributes = req_attributes
+
+    [dn]
+    CN = my-device.example.com
+
+    [req_attributes]
+    challengePassword = your-challenge-password
+    EOF
+
+    # Generate the key and CSR
+    openssl genrsa -out device.key 2048
+    openssl req -new -key device.key -out device.csr -config device-csr.cnf
+    ```
+
+    **3. Create a self-signed certificate for the sscep signing identity:**
+
+    sscep requires a local signing certificate to sign the SCEP request envelope:
+
+    ```bash
+    openssl x509 -req -in device.csr -signkey device.key \
+      -out device-selfsigned.pem -days 1
+    ```
+
+    **4. Enroll via SCEP:**
+
+    ```bash
+    sscep enroll \
+      -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+      -c ca.pem-0 \
+      -k device.key \
+      -r device.csr \
+      -l device-cert.pem \
+      -K device.key \
+      -O device-selfsigned.pem \
+      -E aes256 \
+      -S sha256
+    ```
+
+    On success, the issued certificate is written to `device-cert.pem`.
+
+    <Note>
+      Flag reference for the enroll command:
+      - `-c ca.pem-0` is the RA certificate from step 1
+      - `-K` / `-O` are the signing key and self-signed certificate used to sign the SCEP message envelope
+      - `-E aes256` selects AES-256-CBC encryption
+      - `-S sha256` selects SHA-256 for the message digest
+    </Note>
+
+    <Note>
+      SCEP uses CMS/PKCS#7 encrypted messages to protect the certificate request in transit. The challenge password is included inside the encrypted envelope and is never sent in plaintext over the network.
+    </Note>
+
+  </Step>
+  <Step title="Renew a certificate via SCEP (optional)">
+    If **Allow Certificate-Based Renewal** is enabled on the certificate profile, devices that already hold a valid certificate issued by the same CA can renew without the challenge password.
+
+    The device signs the SCEP request with its existing issued certificate instead of a self-signed one. Using sscep:
+
+    ```bash
+    # Generate a new CSR (no challenge password needed for renewal)
+    openssl req -new -key device.key -out device-renew.csr \
+      -subj "/CN=my-device.example.com"
+
+    # Enroll using the issued certificate as the signing identity
+    sscep enroll \
+      -u https://app.infisical.com/scep/{profile_id}/pkiclient.exe \
+      -c ca.pem-0 \
+      -k device.key \
+      -r device-renew.csr \
+      -l device-renewed.pem \
+      -K device.key \
+      -O device-cert.pem \
+      -E aes256 \
+      -S sha256
+    ```
+
+    The key difference from the initial enrollment is `-O device-cert.pem` (the previously issued certificate) instead of `-O device-selfsigned.pem`. On success, the renewed certificate is written to `device-renewed.pem`.
+  </Step>
+</Steps>
+
+## Supported Algorithms
+
+Infisical's SCEP server supports the following algorithms for the CMS message exchange:
+
+- **Encryption**: AES-256-CBC, AES-128-CBC, 3DES-CBC (DES-EDE3-CBC)
+- **Signing**: SHA-256, SHA-384, SHA-512, SHA-1
+
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What is the RA certificate?">
+    The RA (Registration Authority) certificate is automatically generated when you create a SCEP-enabled certificate profile. It is used to encrypt and sign the SCEP message exchange between the client and server. The RA certificate has a 10-year validity and is separate from your CA certificate.
+  </Accordion>
+  <Accordion title="Can devices renew their certificates without the challenge password?">
+    Yes, if **Allow Certificate-Based Renewal** is enabled on the certificate profile. Devices that already hold a valid certificate issued by the same CA can submit a renewal request (RenewalReq) signed with their existing certificate, without needing the challenge password.
+  </Accordion>
+  <Accordion title="What happens if my SCEP client uses an unsupported encryption algorithm?">
+    The server will reject the request with a `400 Bad Request` error indicating the unsupported cipher OID. Configure your client to use AES-256-CBC (`-E aes256` in sscep) for compatibility.
+  </Accordion>
+</AccordionGroup>

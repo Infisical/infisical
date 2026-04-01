@@ -6,21 +6,25 @@ import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { getActiveDirectoryResourceListItem } from "./active-directory/active-directory-resource-fns";
 import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
 import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
+import { getMsSQLResourceListItem } from "./mssql/mssql-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails, TPamResourceInternalMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 import { getRedisResourceListItem } from "./redis/redis-resource-fns";
+import { getSshResourceListItem } from "./ssh/ssh-resource-fns";
 import { getWindowsResourceListItem } from "./windows-server/windows-server-resource-fns";
 
 export const listResourceOptions = () => {
   return [
     getPostgresResourceListItem(),
     getMySQLResourceListItem(),
+    getMsSQLResourceListItem(),
     getAwsIamResourceListItem(),
     getKubernetesResourceListItem(),
     getRedisResourceListItem(),
     getWindowsResourceListItem(),
-    getActiveDirectoryResourceListItem()
+    getActiveDirectoryResourceListItem(),
+    getSshResourceListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 

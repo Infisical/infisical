@@ -69,7 +69,10 @@ export const identityGcpAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityGcpAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -109,7 +112,13 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isServiceAccountAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP service account not allowed."
+            message: "Access denied: GCP service account not allowed.",
+            detail: {
+              reasonCode: "service_account_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -127,7 +136,13 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isProjectAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP project not allowed."
+            message: "Access denied: GCP project not allowed.",
+            detail: {
+              reasonCode: "project_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -139,7 +154,13 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isZoneAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP zone not allowed."
+            message: "Access denied: GCP zone not allowed.",
+            detail: {
+              reasonCode: "zone_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -159,7 +180,13 @@ export const identityGcpAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

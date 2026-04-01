@@ -159,6 +159,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.acmeConfigId`,
           `${TableName.PkiAcmeEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiScepEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.scepConfigId`,
+          `${TableName.PkiScepEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.Project).as("projectId"),
@@ -189,7 +194,18 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
             .as("acmeConfigSkipDnsOwnershipVerification"),
-          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigSkipEabBinding")
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigSkipEabBinding"),
+          db.ref("id").withSchema(TableName.PkiScepEnrollmentConfig).as("scepConfigDbId"),
+          db.ref("raCertificate").withSchema(TableName.PkiScepEnrollmentConfig).as("scepConfigRaCertificate"),
+          db.ref("raCertExpiresAt").withSchema(TableName.PkiScepEnrollmentConfig).as("scepConfigRaCertExpiresAt"),
+          db
+            .ref("includeCaCertInResponse")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepConfigIncludeCaCertInResponse"),
+          db
+            .ref("allowCertBasedRenewal")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepConfigAllowCertBasedRenewal")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -223,6 +239,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false,
             skipEabBinding: result.acmeConfigSkipEabBinding ?? false
           } as TCertificateProfileWithConfigs["acmeConfig"])
+        : undefined;
+
+      const scepConfig = result.scepConfigDbId
+        ? ({
+            id: result.scepConfigDbId,
+            raCertificatePem: result.scepConfigRaCertificate,
+            raCertExpiresAt: result.scepConfigRaCertExpiresAt,
+            includeCaCertInResponse: result.scepConfigIncludeCaCertInResponse ?? true,
+            allowCertBasedRenewal: result.scepConfigAllowCertBasedRenewal ?? true
+          } as TCertificateProfileWithConfigs["scepConfig"])
         : undefined;
 
       const certificateAuthority = result.caId
@@ -263,6 +289,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         estConfigId: result.estConfigId,
         apiConfigId: result.apiConfigId,
         acmeConfigId: result.acmeConfigId,
+        scepConfigId: result.scepConfigId,
         externalConfigs: result.externalConfigs
           ? (JSON.parse(result.externalConfigs) as Record<string, unknown>)
           : null,
@@ -272,6 +299,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         estConfig,
         apiConfig,
         acmeConfig,
+        scepConfig,
         project,
         certificateAuthority,
         certificatePolicy
@@ -367,6 +395,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.acmeConfigId`,
           `${TableName.PkiAcmeEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiScepEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.scepConfigId`,
+          `${TableName.PkiScepEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
@@ -389,7 +422,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
             .as("acmeSkipDnsOwnershipVerification"),
-          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeSkipEabBinding")
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeSkipEabBinding"),
+          db.ref("id").withSchema(TableName.PkiScepEnrollmentConfig).as("scepId"),
+          db.ref("raCertificate").withSchema(TableName.PkiScepEnrollmentConfig).as("scepRaCertificate"),
+          db.ref("raCertExpiresAt").withSchema(TableName.PkiScepEnrollmentConfig).as("scepRaCertExpiresAt"),
+          db
+            .ref("includeCaCertInResponse")
+            .withSchema(TableName.PkiScepEnrollmentConfig)
+            .as("scepIncludeCaCertInResponse"),
+          db.ref("allowCertBasedRenewal").withSchema(TableName.PkiScepEnrollmentConfig).as("scepAllowCertBasedRenewal")
         );
 
       if (processedRules) {
@@ -432,6 +473,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             }
           : undefined;
 
+        const scepConfigResult = result.scepId
+          ? {
+              id: result.scepId as string,
+              raCertificatePem: result.scepRaCertificate as string,
+              raCertExpiresAt: result.scepRaCertExpiresAt as Date,
+              includeCaCertInResponse: (result.scepIncludeCaCertInResponse as boolean) ?? true,
+              allowCertBasedRenewal: (result.scepAllowCertBasedRenewal as boolean) ?? true
+            }
+          : undefined;
+
         const certificateAuthority = result.caId
           ? {
               id: result.caId as string,
@@ -454,6 +505,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           estConfigId: result.estConfigId,
           apiConfigId: result.apiConfigId,
           acmeConfigId: result.acmeConfigId,
+          scepConfigId: result.scepConfigId,
           externalConfigs: result.externalConfigs
             ? (JSON.parse(result.externalConfigs as string) as Record<string, unknown>)
             : null,
@@ -463,6 +515,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           estConfig,
           apiConfig,
           acmeConfig,
+          scepConfig: scepConfigResult,
           certificateAuthority
         };
 

@@ -42,6 +42,7 @@ export type TCreateAccessApprovalPolicy = {
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
+  requestExpirationTime?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -62,6 +63,7 @@ export type TUpdateAccessApprovalPolicy = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   environments?: string[];
   maxTimePeriod?: string | null;
+  requestExpirationTime?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -139,6 +141,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    requestExpirationTime?: string | null;
   }>;
   deleteAccessApprovalPolicy: ({
     policyId,
@@ -164,6 +167,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    requestExpirationTime?: string | null;
     environment: {
       id: string;
       name: string;
@@ -307,6 +311,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    requestExpirationTime?: string | null;
     environment: {
       id: string;
       name: string;

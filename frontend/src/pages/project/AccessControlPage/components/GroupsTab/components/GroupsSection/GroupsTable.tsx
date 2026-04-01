@@ -1,37 +1,32 @@
 import { useMemo } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faEllipsisV,
-  faMagnifyingGlass,
-  faSearch,
-  faUsers,
-  faUsersSlash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon, UserRoundXIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -116,56 +111,94 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
+  const filteredGroupMembershipsPage = filteredGroupMemberships.slice(offset, perPage * page);
+
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search project groups..."
-      />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/3">
-                <div className="flex items-center">
+      <div className="mb-4">
+        <InputGroup>
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search project groups..."
+          />
+        </InputGroup>
+      </div>
+      {!isPending && !filteredGroupMemberships?.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {search ? "No project groups match search" : "No project groups found"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {search ? "Adjust your search criteria." : "Add a group to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <>
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead className="w-1/3" onClick={toggleOrderDirection}>
                   Name
-                  <IconButton
-                    variant="plain"
-                    className="ml-2"
-                    ariaLabel="sort"
-                    onClick={toggleOrderDirection}
-                  >
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>Project Role</Th>
-              <Th>Added on</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="project-groups" />}
-            {!isPending &&
-              filteredGroupMemberships &&
-              filteredGroupMemberships.length > 0 &&
-              filteredGroupMemberships
-                .slice(offset, perPage * page)
-                .map(({ group: { id, name, orgId: groupOrgId }, roles, createdAt }) => {
-                  const isLinkedGroup =
-                    groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
-                  return (
-                    <Tr
-                      className="group h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                      key={`st-v3-${id}`}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") {
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderDirection === OrderByDirection.DESC && "rotate-180"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead>Project Role</UnstableTableHead>
+                <UnstableTableHead>Added on</UnstableTableHead>
+                <UnstableTableHead className="w-5" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isPending &&
+                Array.from({ length: 10 }).map((_, i) => (
+                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              {!isPending &&
+                filteredGroupMembershipsPage.map(
+                  ({ group: { id, name, orgId: groupOrgId }, roles, createdAt }) => {
+                    const isLinkedGroup =
+                      groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
+                    return (
+                      <UnstableTableRow
+                        className="group cursor-pointer"
+                        key={`st-v3-${id}`}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(evt) => {
+                          if (evt.key === "Enter") {
+                            navigate({
+                              to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
+                              params: {
+                                orgId: currentOrg.id,
+                                projectId: currentProject.id,
+                                groupId: id
+                              }
+                            });
+                          }
+                        }}
+                        onClick={() =>
                           navigate({
                             to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                             params: {
@@ -173,59 +206,48 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               projectId: currentProject.id,
                               groupId: id
                             }
-                          });
+                          })
                         }
-                      }}
-                      onClick={() =>
-                        navigate({
-                          to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
-                          params: {
-                            orgId: currentOrg.id,
-                            projectId: currentProject.id,
-                            groupId: id
-                          }
-                        })
-                      }
-                    >
-                      <Td>{name}</Td>
-                      <Td>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Edit}
-                          a={ProjectPermissionSub.Groups}
-                        >
-                          {(isAllowed) => (
-                            <GroupRoles
-                              roles={roles}
-                              disableEdit={!isAllowed || isLinkedGroup}
-                              groupId={id}
-                              groupName={name}
-                            />
-                          )}
-                        </ProjectPermissionCan>
-                      </Td>
-                      <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
-                      <Td className="flex justify-end">
-                        <Tooltip className="max-w-sm text-center" content="Options">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
+                      >
+                        <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
+                        <UnstableTableCell>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Groups}
+                          >
+                            {(isAllowed) => (
+                              <GroupRoles
+                                roles={roles}
+                                disableEdit={!isAllowed || isLinkedGroup}
+                                groupId={id}
+                                groupName={name}
+                              />
+                            )}
+                          </ProjectPermissionCan>
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          {format(new Date(createdAt), "MMM d, yyyy")}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <UnstableDropdownMenu>
+                            <UnstableDropdownMenuTrigger asChild>
+                              <UnstableIconButton
+                                variant="ghost"
+                                size="xs"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <FontAwesomeIcon icon={faEllipsisV} />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
+                                <MoreHorizontalIcon />
+                              </UnstableIconButton>
+                            </UnstableDropdownMenuTrigger>
+                            <UnstableDropdownMenuContent sideOffset={2} align="end">
                               {!isLinkedGroup && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Delete}
                                   a={ProjectPermissionSub.Groups}
                                 >
                                   {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      icon={<FontAwesomeIcon icon={faUsersSlash} />}
+                                    <UnstableDropdownMenuItem
+                                      variant="danger"
                                       isDisabled={!isAllowed}
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -235,40 +257,32 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                                         });
                                       }}
                                     >
+                                      <UserRoundXIcon />
                                       Remove Group From Project
-                                    </DropdownMenuItem>
+                                    </UnstableDropdownMenuItem>
                                   )}
                                 </ProjectPermissionCan>
                               )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </Tooltip>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-          </TBody>
-        </Table>
-        {Boolean(filteredGroupMemberships.length) && (
-          <Pagination
-            count={filteredGroupMemberships.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isPending && !filteredGroupMemberships?.length && (
-          <EmptyState
-            title={
-              groupMemberships.length
-                ? "No project groups match search..."
-                : "No project groups found"
-            }
-            icon={groupMemberships.length ? faSearch : faUsers}
-          />
-        )}
-      </TableContainer>
+                            </UnstableDropdownMenuContent>
+                          </UnstableDropdownMenu>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    );
+                  }
+                )}
+            </UnstableTableBody>
+          </UnstableTable>
+          {Boolean(filteredGroupMemberships.length) && (
+            <UnstablePagination
+              count={filteredGroupMemberships.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

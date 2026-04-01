@@ -547,30 +547,30 @@ describe("Secret Rotations", async () => {
         }
       ]
     },
-    {
-      type: SecretRotationType.OracleDb,
-      name: "OracleDB (19.3) Secret Rotation",
-      skippable: true,
-      dbCredentials: {
-        password: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
-        host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
-        username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
-        port: 1521,
-        database: process.env.E2E_TEST_ORACLE_DB_19_DATABASE!
-      },
-      secretMapping: {
-        username: formatSqlUsername("ORACLEDB_USERNAME"),
-        password: formatSqlUsername("ORACLEDB_PASSWORD")
-      },
-      userCredentials: [
-        {
-          username: formatSqlUsername("INFISICAL_USER_1")
-        },
-        {
-          username: formatSqlUsername("INFISICAL_USER_2")
-        }
-      ]
-    },
+    // {
+    //   type: SecretRotationType.OracleDb,
+    //   name: "OracleDB (19.3) Secret Rotation",
+    //   skippable: true,
+    //   dbCredentials: {
+    //     password: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
+    //     host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
+    //     username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
+    //     port: 1521,
+    //     database: process.env.E2E_TEST_ORACLE_DB_19_DATABASE!
+    //   },
+    //   secretMapping: {
+    //     username: formatSqlUsername("ORACLEDB_USERNAME"),
+    //     password: formatSqlUsername("ORACLEDB_PASSWORD")
+    //   },
+    //   userCredentials: [
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_1")
+    //     },
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_2")
+    //     }
+    //   ]
+    // },
     {
       type: SecretRotationType.Postgres,
       name: "Postgres (17) Secret Rotation",

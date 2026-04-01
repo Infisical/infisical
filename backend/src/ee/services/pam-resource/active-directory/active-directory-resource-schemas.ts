@@ -25,7 +25,19 @@ export const ActiveDirectoryResourceListItemSchema = z.object({
 export const ActiveDirectoryResourceConnectionDetailsSchema = z.object({
   domain: z.string().trim().min(1).max(255),
   dcAddress: z.string().trim().min(1).max(255),
-  port: z.coerce.number().int().min(1).max(65535)
+  port: z.coerce.number().int().min(1).max(65535),
+  useLdaps: z.boolean(),
+  ldapRejectUnauthorized: z.boolean(),
+  ldapCaCert: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  ldapTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional()
 });
 
 // Credentials (username + password for AD)

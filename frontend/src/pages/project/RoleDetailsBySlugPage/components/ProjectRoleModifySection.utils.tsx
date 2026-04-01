@@ -815,6 +815,28 @@ export const projectRoleFormSchema = z.object({
     })
     .partial()
     .optional()
+    .superRefine((permissions, ctx) => {
+      if (!permissions) return;
+
+      const NON_ACTION_KEYS = new Set(["conditions", "inverted"]);
+
+      Object.entries(permissions).forEach(([subject, rules]) => {
+        if (!Array.isArray(rules)) return;
+        rules.forEach((rule, ruleIndex) => {
+          if (!rule || typeof rule !== "object") return;
+          const hasAction = Object.entries(rule).some(
+            ([key, value]) => !NON_ACTION_KEYS.has(key) && value === true
+          );
+          if (!hasAction) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "At least one action is required",
+              path: [subject, ruleIndex, "actionRequired"]
+            });
+          }
+        });
+      });
+    })
 });
 
 export type TFormSchema = z.infer<typeof projectRoleFormSchema>;
@@ -1934,7 +1956,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
-    rules.forEach((actions) => {
+    (rules ?? []).forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );

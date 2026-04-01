@@ -33,6 +33,7 @@ export type TCreateSharedSecretRequest = {
   maxViews?: number;
   accessType?: SecretSharingAccessType;
   authorizedEmails?: string[];
+  allowExternalEmails?: boolean;
 };
 
 export type TCreateSecretRequestRequestDTO = {
@@ -73,6 +74,7 @@ export type TSanitizedSharedSecret = {
 
 export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {
   isPasswordProtected: boolean;
+  isAuthorizedUser: boolean;
 };
 
 export type TAccessSharedSecretResponse = {

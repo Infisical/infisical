@@ -11,6 +11,7 @@ import {
   registerRfc9728ProtectedResourceMetadataRouter
 } from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
+import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import {
@@ -95,6 +96,8 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
+import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
+import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -118,6 +121,8 @@ import { pkiDiscoveryQueueFactory } from "@app/ee/services/pki-discovery/pki-dis
 import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-scan-history-dal";
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
+import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -191,7 +196,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
-import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -265,6 +269,7 @@ import { convertorServiceFactory } from "@app/services/convertor/convertor-servi
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
+import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -416,6 +421,8 @@ import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-
 import { secretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
+import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { signerDALFactory, signerServiceFactory, signingOperationDALFactory } from "@app/services/signer";
@@ -509,6 +516,7 @@ export const registerRoutes = async (
 
   const secretDAL = secretDALFactory(db);
   const secretTagDAL = secretTagDALFactory(db);
+  const secretValidationRuleDAL = secretValidationRuleDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
@@ -522,7 +530,6 @@ export const registerRoutes = async (
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
-  const queueJobsDAL = queueJobsDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -1222,6 +1229,8 @@ export const registerRoutes = async (
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
+  const scepEnrollmentConfigDAL = scepEnrollmentConfigDALFactory(db);
+  const scepTransactionDAL = scepTransactionDALFactory(db);
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
@@ -1335,6 +1344,7 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -1568,7 +1578,15 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
+  const secretValidationRuleService = secretValidationRuleServiceFactory({
+    secretValidationRuleDAL,
+    projectEnvDAL,
+    permissionService,
+    kmsService,
+    folderDAL,
+    secretDAL: secretV2BridgeDAL
+  });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
@@ -1609,6 +1627,7 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
+    permissionDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -1620,7 +1639,8 @@ export const registerRoutes = async (
     snapshotService,
     resourceMetadataDAL,
     reminderService,
-    keyStore
+    keyStore,
+    secretValidationRuleService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -1677,7 +1697,8 @@ export const registerRoutes = async (
     secretApprovalRequestService,
     licenseService,
     reminderService,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    secretV2BridgeDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2122,7 +2143,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    queueJobsDAL
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2231,7 +2252,8 @@ export const registerRoutes = async (
     gatewayDAL,
     gatewayV2DAL,
     projectDAL,
-    appConnectionCredentialRotationService
+    appConnectionCredentialRotationService,
+    identityUaDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2442,7 +2464,8 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     certificateAuthorityService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiAlertV2Queue
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
@@ -2469,7 +2492,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     certificateProfileDAL,
     certificateRequestService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiAlertV2Queue
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -2532,7 +2556,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     approvalPolicyService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    pkiAlertV2Queue
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2552,6 +2577,25 @@ export const registerRoutes = async (
     certificateProfileDAL,
     estEnrollmentConfigDAL,
     certificatePolicyDAL
+  });
+
+  const pkiScepService = pkiScepServiceFactory({
+    certificateV3Service,
+    certificateProfileDAL,
+    scepEnrollmentConfigDAL,
+    scepTransactionDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateRequestDAL,
+    certificateBodyDAL,
+    projectDAL,
+    kmsService,
+    licenseService,
+    certificatePolicyDAL,
+    certificatePolicyService,
+    certificateRequestService,
+    certificateIssuanceQueue,
+    auditLogService
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -2729,6 +2773,7 @@ export const registerRoutes = async (
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
+  const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
@@ -2752,6 +2797,12 @@ export const registerRoutes = async (
     resourceMetadataDAL
   });
 
+  const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
+    pamResourceRotationRulesDAL,
+    pamResourceDAL,
+    permissionService
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
@@ -2766,6 +2817,7 @@ export const registerRoutes = async (
 
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
+    pamResourceRotationRulesDAL,
     gatewayV2Service,
     kmsService,
     pamResourceDAL,
@@ -2935,6 +2987,7 @@ export const registerRoutes = async (
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
+  await secretSyncQueue.startDailySecretSyncRetryJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await certificateAuthorityQueue.startCaCrlRebuildJob();
@@ -2970,6 +3023,7 @@ export const registerRoutes = async (
     secret: secretService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
+    secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
     secretImport: secretImportService,
@@ -3025,6 +3079,7 @@ export const registerRoutes = async (
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pkiAcme: pkiAcmeService,
+    pkiScep: pkiScepService,
     pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
@@ -3073,6 +3128,7 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
+    pamResourceRotationRules: pamResourceRotationRulesService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
@@ -3196,6 +3252,7 @@ export const registerRoutes = async (
 
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+  await server.register(registerPkiScepRouter, { prefix: "/scep" });
   await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
   await server.register(registerMcpEndpointAuthServerMetadataRouter, {
     prefix: "/.well-known/oauth-authorization-server"

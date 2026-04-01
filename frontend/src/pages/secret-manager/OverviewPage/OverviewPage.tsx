@@ -646,6 +646,15 @@ const OverviewPageContent = () => {
     }
   }, [hasPendingBatchChanges, resetSelectedEntries]);
 
+  const storedEnvIdsKey = storedEnvIds.join(",");
+  const prevStoredEnvIdsKeyRef = useRef(storedEnvIdsKey);
+  useEffect(() => {
+    if (prevStoredEnvIdsKeyRef.current !== storedEnvIdsKey) {
+      prevStoredEnvIdsKeyRef.current = storedEnvIdsKey;
+      resetSelectedEntries();
+    }
+  }, [storedEnvIdsKey, resetSelectedEntries]);
+
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
@@ -2263,7 +2272,7 @@ const OverviewPageContent = () => {
                 ,
                 <a
                   className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/documentation/getting-started/api"
+                  href="https://infisical.com/docs/api-reference/overview/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -2300,6 +2309,7 @@ const OverviewPageContent = () => {
           importedBy={importedBy}
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
+          visibleEnvs={visibleEnvs}
         />
 
         <UnstableCard>
