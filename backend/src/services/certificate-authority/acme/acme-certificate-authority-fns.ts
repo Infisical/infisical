@@ -205,7 +205,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-const DNS_PROPAGATION_MAX_RETRIES = 5;
+const DNS_PROPAGATION_MAX_RETRIES = 30;
 const DNS_PROPAGATION_INTERVAL_MS = 2000;
 const CNAME_MAX_DEPTH = 10;
 
