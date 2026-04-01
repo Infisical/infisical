@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faClock, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClock, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import FileSaver from "file-saver";
 import { AnimatePresence, motion } from "framer-motion";
 import ms from "ms";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
+  FormLabel,
   IconButton,
   Input,
   SecretInput,
@@ -406,20 +408,6 @@ const renderOutputForm = (
     );
   }
 
-  if (provider === DynamicSecretProviders.Ssh) {
-    const { PRIVATE_KEY, SIGNED_KEY } = data as { PRIVATE_KEY: string; SIGNED_KEY: string };
-    return (
-      <div>
-        <OutputDisplay label="Private Key" value={PRIVATE_KEY} />
-        <OutputDisplay
-          label="Signed Key (Certificate)"
-          value={SIGNED_KEY}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
-      </div>
-    );
-  }
-
   return null;
 };
 
@@ -561,6 +549,137 @@ const sshFormSchema = z.object({
 
 type TSshForm = z.infer<typeof sshFormSchema>;
 
+const SshLeaseOutput = ({
+  data,
+  firstPrincipal
+}: {
+  data: { PRIVATE_KEY: string; SIGNED_KEY: string };
+  firstPrincipal: string;
+}) => {
+  const [copyTextPrivateKey, isCopyingPrivateKey, setCopyTextPrivateKey] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+  const [copyTextSignedKey, isCopyingSignedKey, setCopyTextSignedKey] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+
+  const downloadTxtFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, filename);
+  };
+
+  const chmodCommand = "chmod 600 key.pem";
+  const sshCommand = `ssh -i key.pem -o CertificateFile=cert.pub ${firstPrincipal}@<hostname>`;
+
+  const copyCommand = (cmd: string) => {
+    navigator.clipboard.writeText(cmd);
+    createNotification({ text: "Command copied to clipboard", type: "info" });
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium">Private Key</h2>
+        <div className="flex">
+          <Tooltip content={copyTextPrivateKey}>
+            <IconButton
+              ariaLabel="copy icon"
+              colorSchema="secondary"
+              className="group relative"
+              onClick={() => {
+                navigator.clipboard.writeText(data.PRIVATE_KEY);
+                setCopyTextPrivateKey("Copied");
+              }}
+            >
+              <FontAwesomeIcon icon={isCopyingPrivateKey ? faCheck : faCopy} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content="Download key.pem">
+            <IconButton
+              ariaLabel="download icon"
+              colorSchema="secondary"
+              className="group relative ml-2"
+              onClick={() => downloadTxtFile("key.pem", data.PRIVATE_KEY)}
+            >
+              <FontAwesomeIcon icon={faDownload} />
+            </IconButton>
+          </Tooltip>
+        </div>
+      </div>
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+        <p className="mr-4 break-all whitespace-pre-wrap">{data.PRIVATE_KEY}</p>
+      </div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium">Signed Certificate</h2>
+        <div className="flex">
+          <Tooltip content={copyTextSignedKey}>
+            <IconButton
+              ariaLabel="copy icon"
+              colorSchema="secondary"
+              className="group relative"
+              onClick={() => {
+                navigator.clipboard.writeText(data.SIGNED_KEY);
+                setCopyTextSignedKey("Copied");
+              }}
+            >
+              <FontAwesomeIcon icon={isCopyingSignedKey ? faCheck : faCopy} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content="Download cert.pub">
+            <IconButton
+              ariaLabel="download icon"
+              colorSchema="secondary"
+              className="group relative ml-2"
+              onClick={() => downloadTxtFile("cert.pub", data.SIGNED_KEY)}
+            >
+              <FontAwesomeIcon icon={faDownload} />
+            </IconButton>
+          </Tooltip>
+        </div>
+      </div>
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+        <p className="mr-4 break-all whitespace-pre-wrap">{data.SIGNED_KEY}</p>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div>
+          <FormLabel label="Set private key permissions" />
+          <div className="flex gap-2">
+            <Input value={chmodCommand} isDisabled />
+            <IconButton
+              ariaLabel="copy"
+              variant="outline_bg"
+              colorSchema="secondary"
+              onClick={() => copyCommand(chmodCommand)}
+              className="w-10"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </div>
+        </div>
+        <div>
+          <FormLabel label="Connect to the target host" />
+          <div className="flex gap-2">
+            <Input value={sshCommand} isDisabled />
+            <IconButton
+              ariaLabel="copy"
+              variant="outline_bg"
+              colorSchema="secondary"
+              onClick={() => copyCommand(sshCommand)}
+              className="w-10"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-mineshaft-400">
+        Important: Copy or download these credentials now. You will not be able to see them again
+        after you close the modal.
+      </p>
+    </div>
+  );
+};
+
 export const CreateSshDynamicSecretLease = ({
   onClose,
   projectSlug,
@@ -621,10 +740,6 @@ export const CreateSshDynamicSecretLease = ({
       type: "success",
       text: "Successfully leased dynamic secret"
     });
-  };
-
-  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
-    handleDynamicSecretLeaseCreate({ ...data, principals });
   };
 
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
@@ -732,11 +847,12 @@ export const CreateSshDynamicSecretLease = ({
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
           >
-            {renderOutputForm(
-              provider,
-              createDynamicSecretLease.data?.data,
-              handleLeaseRegeneration
-            )}
+            <SshLeaseOutput
+              data={
+                createDynamicSecretLease.data?.data as { PRIVATE_KEY: string; SIGNED_KEY: string }
+              }
+              firstPrincipal={principals[0]}
+            />
           </motion.div>
         )}
       </AnimatePresence>
