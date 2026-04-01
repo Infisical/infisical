@@ -534,6 +534,7 @@ const OverviewPageContent = () => {
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
+      tags: tagFilter,
       limit,
       offset
     },
@@ -601,17 +602,7 @@ const OverviewPageContent = () => {
   const { secretImportNames, isSecretImportInEnv, getSecretImportByEnv, getSecretImportsForEnv } =
     useSecretImportOverview(overview?.imports);
 
-  const { secKeys: rawSecKeys } = useSecretOverview(secrets || []);
-
-  const secKeys = useMemo(() => {
-    if (!activeTagSlugs.length) return rawSecKeys;
-    const keysWithTag = new Set(
-      (secrets || [])
-        .filter((s) => s.tags?.some((tag) => activeTagSlugs.includes(tag.slug)))
-        .map((s) => s.key)
-    );
-    return rawSecKeys.filter((key) => keysWithTag.has(key));
-  }, [rawSecKeys, secrets, activeTagSlugs]);
+  const { secKeys } = useSecretOverview(secrets || []);
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {

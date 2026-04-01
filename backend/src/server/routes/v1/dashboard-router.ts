@@ -101,6 +101,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
+        tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
@@ -217,6 +218,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       } = req.query;
 
       const environments = req.query.environments.split(",");
+      const tagSlugs = req.query.tags?.split(",").filter(Boolean) ?? [];
 
       if (!projectId || environments.length === 0)
         throw new BadRequestError({ message: "Missing project id or environment(s)" });
@@ -466,6 +468,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           projectId,
           path: secretPath,
           search,
+          tagSlugs,
           isInternal: true
         });
 
@@ -484,6 +487,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             orderBy,
             orderDirection,
             search,
+            tagSlugs,
             limit: remainingLimit,
             offset: adjustedOffset,
             isInternal: true
