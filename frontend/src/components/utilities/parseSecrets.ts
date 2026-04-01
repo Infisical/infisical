@@ -75,25 +75,41 @@ export function parseDotEnv(src: ArrayBuffer | string) {
  * { arr: [1, 2] } → { "arr.0": 1, "arr.1": 2 }
  */
 
-function flattenObject(obj: any, parentKey = "", result: Record<string, any> = {}) {
-  for (const key in obj) {
-    if (obj[key] == null) continue;
+function flattenObject(
+  obj: any,
+  parentKey = "",
+  result: Record<string, any> = {}
+) {
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+
+    // skip null / undefined
+    if (value == null) continue;
+
     const newKey = parentKey ? `${parentKey}.${key}` : key;
 
-    if (
-      typeof obj[key] === "object" &&
-      obj[key] !== null &&
-      !Array.isArray(obj[key])
-    ) {
-      flattenObject(obj[key], newKey, result);
-    } else if (Array.isArray(obj[key])) {
-      obj[key].forEach((item, index) => {
-        result[`${newKey}.${index}`] = item;
+    // handle nested objects
+    if (typeof value === "object" && !Array.isArray(value)) {
+      flattenObject(value, newKey, result);
+
+      // handle arrays (IMPORTANT FIX)
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        const itemKey = `${newKey}.${index}`;
+
+        if (typeof item === "object" && item !== null) {
+          flattenObject(item, itemKey, result);
+        } else {
+          result[itemKey] = item;
+        }
       });
+
+      // handle primitive values
     } else {
-      result[newKey] = obj[key];
+      result[newKey] = value;
     }
   }
+
   return result;
 }
 
