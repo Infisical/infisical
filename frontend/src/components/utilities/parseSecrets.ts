@@ -90,6 +90,11 @@ function flattenObject(
 
     // handle nested objects
     if (typeof value === "object" && !Array.isArray(value)) {
+      if (newKey in result) {
+        throw new Error(
+          `Key collision: "${newKey}" is produced by both a flat key and a nested path.`
+        );
+      }
       flattenObject(value, newKey, result);
 
       // handle arrays (IMPORTANT FIX)
