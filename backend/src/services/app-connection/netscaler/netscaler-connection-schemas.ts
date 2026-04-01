@@ -12,7 +12,14 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { NetScalerConnectionMethod } from "./netscaler-connection-enums";
 
 export const NetScalerConnectionBasicAuthCredentialsSchema = z.object({
-  hostname: z.string().trim().min(1, "Hostname is required").max(512, "Hostname cannot exceed 512 characters"),
+  hostname: z
+    .string()
+    .trim()
+    .min(1, "Hostname is required")
+    .max(512, "Hostname cannot exceed 512 characters")
+    .refine((val) => !val.includes("/") && !val.includes("@") && !val.includes("?"), {
+      message: "Hostname must not contain /, @, or ? characters"
+    }),
   port: z.number().int().min(1).max(65535).optional(),
   username: z.string().trim().min(1, "Username is required").max(256, "Username cannot exceed 256 characters"),
   password: z.string().trim().min(1, "Password is required").max(512, "Password cannot exceed 512 characters"),

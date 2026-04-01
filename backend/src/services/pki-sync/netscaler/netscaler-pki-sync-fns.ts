@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError, AxiosRequestConfig } from "axios";
 import handlebars from "handlebars";
+import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -409,7 +410,7 @@ export const netScalerPkiSyncFactory = ({
                 oldCertificateIdToRemove = certificate.renewedFromCertificateId;
                 activeExternalIdentifiers.add(targetCertKeyName);
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
-                const certIdClean = certificateId.replace(/-/g, "");
+                const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
                   targetCertKeyName = handlebars.compile(certificateNameSchema)({
                     certificateId: certIdClean,

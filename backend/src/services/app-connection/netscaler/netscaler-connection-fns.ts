@@ -84,6 +84,8 @@ const requestWithNetScalerGateway = async <T>(
     );
   }
 
+  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
+
   const httpsAgent = createNetScalerHttpsAgent(credentials);
   const resp = await request.request<T>({
     ...requestConfig,
@@ -205,6 +207,8 @@ export const executeNetScalerOperationWithGateway = async <T>(
       }
     );
   }
+
+  await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
   const httpsAgent = createNetScalerHttpsAgent(credentials);
 
