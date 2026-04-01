@@ -1,5 +1,7 @@
+import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Bar,
   BarChart,
@@ -13,9 +15,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { z } from "zod";
 
-import { PageHeader } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import { Button, FormControl, Modal, ModalContent, PageHeader, Select, SelectItem } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { CreatePolicyModal } from "../components";
 
 const riskTrendData = [
   { date: "Nov 17", score: 4.2 },
@@ -65,8 +72,34 @@ const InfisicalTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const scanFormSchema = z.object({
+  scanJob: z.string().min(1, "Scan job is required"),
+  scope: z.string().default("Full Scan")
+});
+type TScanFormSchema = z.infer<typeof scanFormSchema>;
+
 export const OverviewPage = () => {
   const { t } = useTranslation();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "createPolicy",
+    "runDiscoveryScan"
+  ] as const);
+
+  const {
+    handleSubmit: handleScanSubmit,
+    control: scanControl,
+    reset: resetScan,
+    formState: { isSubmitting: isScanSubmitting }
+  } = useForm<TScanFormSchema>({
+    resolver: zodResolver(scanFormSchema),
+    defaultValues: { scope: "Full Scan" }
+  });
+
+  const onScanSubmit = () => {
+    createNotification({ text: "Discovery scan initiated successfully.", type: "success" });
+    resetScan();
+    handlePopUpToggle("runDiscoveryScan", false);
+  };
 
   return (
     <div className="h-full bg-bunker-800">
@@ -283,7 +316,7 @@ export const OverviewPage = () => {
                       <Tooltip content={<InfisicalTooltip />} wrapperStyle={{ zIndex: 50 }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-mineshaft-100">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold text-mineshaft-100">
                     4
                   </span>
                 </div>
@@ -342,12 +375,14 @@ export const OverviewPage = () => {
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
+                  onClick={() => handlePopUpOpen("createPolicy")}
                   className="w-full rounded-md border border-mineshaft-600 bg-transparent px-4 py-2 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-100"
                 >
                   + Create Policy
                 </button>
                 <button
                   type="button"
+                  onClick={() => handlePopUpOpen("runDiscoveryScan")}
                   className="w-full rounded-md border border-mineshaft-600 bg-transparent px-4 py-2 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-700 hover:text-mineshaft-100"
                 >
                   Run Discovery Scan
@@ -398,6 +433,59 @@ export const OverviewPage = () => {
           </div>
         </div>
       </div>
+
+      <CreatePolicyModal
+        isOpen={popUp.createPolicy.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
+      />
+
+      <Modal
+        isOpen={popUp.runDiscoveryScan.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetScan();
+          handlePopUpToggle("runDiscoveryScan", isOpen);
+        }}
+      >
+        <ModalContent title="Run Discovery Scan" subTitle="Initiate an on-demand scan of your infrastructure.">
+          <form onSubmit={handleScanSubmit(onScanSubmit)}>
+            <Controller
+              control={scanControl}
+              name="scanJob"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl label="Scan Job" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select a job">
+                    {["prod-network-scan", "k8s-cluster-prod", "infisical-pki", "infisical-kms", "ct-log-monitor"].map((v) => (
+                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={scanControl}
+              name="scope"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl label="Scope" isError={Boolean(error)} errorText={error?.message}>
+                  <Select {...field} onValueChange={onChange} className="w-full">
+                    {["Full Scan", "Quick Scan", "Incremental"].map((v) => (
+                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isScanSubmitting} isDisabled={isScanSubmitting} className="mr-4">
+                Start Scan
+              </Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetScan(); handlePopUpToggle("runDiscoveryScan", false); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

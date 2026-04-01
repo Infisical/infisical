@@ -1,11 +1,33 @@
 import { useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faCheckCircle, faDownload, faEllipsis, faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { IconButton, PageHeader } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FormControl,
+  IconButton,
+  Input,
+  Modal,
+  ModalContent,
+  PageHeader,
+  Select,
+  SelectItem,
+  TextArea
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { CreateTicketModal } from "../components";
 
 const violations = [
   { severity: "Critical", policy: "Non Quantum-Safe Algorithm", category: "PQC", asset: "key-a1b2c3 (RSA-2048)", assetType: "Asymmetric Key", itAsset: "Secrets-Prod", detected: "Feb 24, 2026", status: "Open", assignedTo: "ashwin@infisical.com" },
@@ -50,10 +72,16 @@ function ViolationStatusBadge({ status }: { status: string }) {
 
 function ViolationDrawer({
   violation,
-  onClose
+  onClose,
+  onCreateTicket,
+  onAcceptRisk,
+  onResolve
 }: {
   violation: (typeof violations)[0];
   onClose: () => void;
+  onCreateTicket: () => void;
+  onAcceptRisk: () => void;
+  onResolve: () => void;
 }) {
   return (
     <div className="fixed inset-y-0 right-0 z-50 flex w-[420px] flex-col border-l border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
@@ -142,18 +170,21 @@ function ViolationDrawer({
       <div className="flex gap-2 border-t border-mineshaft-600 px-5 py-3">
         <button
           type="button"
+          onClick={onCreateTicket}
           className="flex-1 rounded-md border border-mineshaft-500 bg-transparent px-3 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
         >
           Create Ticket
         </button>
         <button
           type="button"
+          onClick={onAcceptRisk}
           className="rounded-md border border-mineshaft-600 px-3 py-2 text-xs text-mineshaft-400 hover:bg-mineshaft-700 hover:text-mineshaft-100"
         >
           Accept Risk
         </button>
         <button
           type="button"
+          onClick={onResolve}
           className="rounded-md border border-mineshaft-600 px-3 py-2 text-xs text-mineshaft-400 hover:bg-mineshaft-700 hover:text-mineshaft-100"
         >
           Resolve
@@ -168,6 +199,18 @@ const uniqueAssetTypes = [...new Set(violations.map((v) => v.assetType))];
 const uniqueSeverities = [...new Set(violations.map((v) => v.severity))];
 const uniqueStatuses = [...new Set(violations.map((v) => v.status))];
 
+const acceptRiskSchema = z.object({
+  justification: z.string().trim().min(10, "Justification must be at least 10 characters"),
+  reviewDate: z.string().optional()
+});
+type TAcceptRiskSchema = z.infer<typeof acceptRiskSchema>;
+
+const resolveSchema = z.object({
+  resolutionType: z.string().min(1, "Resolution type is required"),
+  resolutionNotes: z.string().optional()
+});
+type TResolveSchema = z.infer<typeof resolveSchema>;
+
 export const ViolationsPage = () => {
   const { t } = useTranslation();
   const [selectedViolation, setSelectedViolation] = useState<(typeof violations)[0] | null>(null);
@@ -177,6 +220,42 @@ export const ViolationsPage = () => {
   const [severityFilter, setSeverityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "createTicket",
+    "acceptRisk",
+    "resolveViolation"
+  ] as const);
+
+  const {
+    handleSubmit: handleRiskSubmit,
+    control: riskControl,
+    reset: resetRisk,
+    formState: { isSubmitting: isRiskSubmitting }
+  } = useForm<TAcceptRiskSchema>({
+    resolver: zodResolver(acceptRiskSchema)
+  });
+
+  const {
+    handleSubmit: handleResolveSubmit,
+    control: resolveControl,
+    reset: resetResolve,
+    formState: { isSubmitting: isResolveSubmitting }
+  } = useForm<TResolveSchema>({
+    resolver: zodResolver(resolveSchema)
+  });
+
+  const onRiskSubmit = () => {
+    createNotification({ text: "Risk accepted for this violation.", type: "success" });
+    resetRisk();
+    handlePopUpToggle("acceptRisk", false);
+  };
+
+  const onResolveSubmit = () => {
+    createNotification({ text: "Violation marked as resolved.", type: "success" });
+    resetResolve();
+    handlePopUpToggle("resolveViolation", false);
+  };
 
   const filteredViolations = useMemo(() => {
     return violations.filter((v) => {
@@ -316,6 +395,7 @@ export const ViolationsPage = () => {
           </div>
           <button
             type="button"
+            onClick={() => createNotification({ text: "CSV export started.", type: "success" })}
             className="flex items-center gap-1.5 rounded-md border border-mineshaft-600 px-3 py-1.5 text-xs text-mineshaft-400 hover:bg-mineshaft-700"
           >
             <FontAwesomeIcon icon={faDownload} className="h-3.5 w-3.5" />
@@ -383,13 +463,28 @@ export const ViolationsPage = () => {
                       <ViolationStatusBadge status={v.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-400"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <FontAwesomeIcon icon={faEllipsis} className="h-3.5 w-3.5" />
-                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-400"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <FontAwesomeIcon icon={faEllipsis} className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => setSelectedViolation(v)}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePopUpOpen("createTicket")}>
+                            Create Ticket
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePopUpOpen("acceptRisk")}>
+                            Accept Risk
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))
@@ -402,9 +497,111 @@ export const ViolationsPage = () => {
           <ViolationDrawer
             violation={selectedViolation}
             onClose={() => setSelectedViolation(null)}
+            onCreateTicket={() => {
+              setSelectedViolation(null);
+              handlePopUpOpen("createTicket");
+            }}
+            onAcceptRisk={() => {
+              setSelectedViolation(null);
+              handlePopUpOpen("acceptRisk");
+            }}
+            onResolve={() => {
+              setSelectedViolation(null);
+              handlePopUpOpen("resolveViolation");
+            }}
           />
         )}
       </div>
+
+      <CreateTicketModal
+        isOpen={popUp.createTicket.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createTicket", isOpen)}
+      />
+
+      {/* Accept Risk Modal */}
+      <Modal
+        isOpen={popUp.acceptRisk.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetRisk();
+          handlePopUpToggle("acceptRisk", isOpen);
+        }}
+      >
+        <ModalContent title="Accept Risk" subTitle="Document the justification for accepting this violation risk.">
+          <form onSubmit={handleRiskSubmit(onRiskSubmit)}>
+            <Controller
+              control={riskControl}
+              name="justification"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Justification" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <TextArea {...field} placeholder="Explain why this risk is acceptable..." reSize="none" rows={4} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={riskControl}
+              name="reviewDate"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Review Date" isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="YYYY-MM-DD (optional)" />
+                </FormControl>
+              )}
+            />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isRiskSubmitting} isDisabled={isRiskSubmitting} className="mr-4">
+                Accept Risk
+              </Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetRisk(); handlePopUpToggle("acceptRisk", false); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Resolve Violation Modal */}
+      <Modal
+        isOpen={popUp.resolveViolation.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetResolve();
+          handlePopUpToggle("resolveViolation", isOpen);
+        }}
+      >
+        <ModalContent title="Resolve Violation" subTitle="Mark this violation as resolved.">
+          <form onSubmit={handleResolveSubmit(onResolveSubmit)}>
+            <Controller
+              control={resolveControl}
+              name="resolutionType"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl label="Resolution Type" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select resolution type">
+                    {["Remediated", "False Positive", "Mitigating Control"].map((v) => (
+                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={resolveControl}
+              name="resolutionNotes"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Resolution Notes" isError={Boolean(error)} errorText={error?.message}>
+                  <TextArea {...field} placeholder="Optional notes about the resolution..." reSize="none" rows={3} />
+                </FormControl>
+              )}
+            />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isResolveSubmitting} isDisabled={isResolveSubmitting} className="mr-4">
+                Resolve
+              </Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetResolve(); handlePopUpToggle("resolveViolation", false); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

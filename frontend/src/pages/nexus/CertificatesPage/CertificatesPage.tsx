@@ -81,7 +81,7 @@ function DonutChart({
           <Tooltip content={<InfisicalTooltip />} wrapperStyle={{ zIndex: 50 }} />
         </PieChart>
       </ResponsiveContainer>
-      <span className={`absolute inset-0 flex items-center justify-center font-semibold text-mineshaft-100 ${size === "lg" ? "text-lg" : "text-sm"}`}>
+      <span className={`pointer-events-none absolute inset-0 flex items-center justify-center font-semibold text-mineshaft-100 ${size === "lg" ? "text-lg" : "text-sm"}`}>
         {centerLabel}
       </span>
     </div>

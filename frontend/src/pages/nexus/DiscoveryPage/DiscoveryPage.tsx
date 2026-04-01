@@ -1,10 +1,29 @@
 import { useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faDownload, faEllipsis, faExternalLink, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { PageHeader } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  PageHeader,
+  Select,
+  SelectItem
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 const subNavItems = ["Jobs", "Installations", "Scan History"] as const;
@@ -44,10 +63,61 @@ function JobStatusBadge({ status }: { status: string }) {
 const thClass =
   "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-mineshaft-400";
 
+const addJobSchema = z.object({
+  jobName: z.string().trim().min(1, "Job name is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and hyphens only"),
+  scanType: z.string().min(1, "Scan type is required"),
+  target: z.string().trim().min(1, "Target is required"),
+  ports: z.string().optional()
+});
+type TAddJobSchema = z.infer<typeof addJobSchema>;
+
+const generateTokenSchema = z.object({
+  tokenName: z.string().trim().min(1, "Token name is required"),
+  expiresIn: z.string().default("90 days")
+});
+type TGenerateTokenSchema = z.infer<typeof generateTokenSchema>;
+
 export const DiscoveryPage = () => {
   const { t } = useTranslation();
   const [activeSubNav, setActiveSubNav] = useState<SubNav>("Jobs");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "addJob",
+    "generateToken",
+    "deleteJob"
+  ] as const);
+
+  const {
+    handleSubmit: handleJobSubmit,
+    control: jobControl,
+    reset: resetJob,
+    formState: { isSubmitting: isJobSubmitting }
+  } = useForm<TAddJobSchema>({
+    resolver: zodResolver(addJobSchema)
+  });
+
+  const {
+    handleSubmit: handleTokenSubmit,
+    control: tokenControl,
+    reset: resetToken,
+    formState: { isSubmitting: isTokenSubmitting }
+  } = useForm<TGenerateTokenSchema>({
+    resolver: zodResolver(generateTokenSchema),
+    defaultValues: { expiresIn: "90 days" }
+  });
+
+  const onJobSubmit = () => {
+    createNotification({ text: "Discovery job created successfully.", type: "success" });
+    resetJob();
+    handlePopUpToggle("addJob", false);
+  };
+
+  const onTokenSubmit = () => {
+    createNotification({ text: "Agent token generated successfully.", type: "success" });
+    resetToken();
+    handlePopUpToggle("generateToken", false);
+  };
 
   const filteredJobs = useMemo(() => {
     if (!searchQuery) return discoveryJobs;
@@ -142,6 +212,7 @@ export const DiscoveryPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("addJob")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Add Job
@@ -196,12 +267,24 @@ export const DiscoveryPage = () => {
                           {job.assets > 0 ? job.assets.toLocaleString() : "-"}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+                              >
+                                <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => createNotification({ text: "Edit functionality coming soon.", type: "info" })}>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handlePopUpOpen("deleteJob", { name: job.name })}>
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     ))}
@@ -229,6 +312,7 @@ export const DiscoveryPage = () => {
                     <button
                       key={os}
                       type="button"
+                      onClick={() => createNotification({ text: `Downloading Nexus agent for ${os}...`, type: "info" })}
                       className="flex items-center gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3 text-xs text-mineshaft-100 transition-colors hover:bg-mineshaft-700"
                     >
                       <FontAwesomeIcon icon={faDownload} className="h-4 w-4 text-mineshaft-400" />
@@ -250,6 +334,7 @@ export const DiscoveryPage = () => {
                     </div>
                     <button
                       type="button"
+                      onClick={() => handlePopUpOpen("generateToken")}
                       className="rounded-md border border-mineshaft-500 bg-transparent px-3 py-1.5 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                     >
                       Generate Token
@@ -342,6 +427,125 @@ export const DiscoveryPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Job Modal */}
+      <Modal
+        isOpen={popUp.addJob.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetJob();
+          handlePopUpToggle("addJob", isOpen);
+        }}
+      >
+        <ModalContent title="Add Discovery Job" subTitle="Configure a new scan to discover cryptographic assets.">
+          <form onSubmit={handleJobSubmit(onJobSubmit)}>
+            <Controller
+              control={jobControl}
+              name="jobName"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Job Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="e.g. prod-network-scan" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={jobControl}
+              name="scanType"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl label="Scan Type" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select scan type">
+                    {["Network Scan", "Kubernetes Scan", "Infisical PKI", "Infisical KMS", "CT Log"].map((v) => (
+                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={jobControl}
+              name="target"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Target" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="e.g. 172.16.0.0/24 or cluster-name" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={jobControl}
+              name="ports"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Ports" isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="e.g. 443, 8443 (optional)" />
+                </FormControl>
+              )}
+            />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isJobSubmitting} isDisabled={isJobSubmitting} className="mr-4">
+                Add Job
+              </Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetJob(); handlePopUpToggle("addJob", false); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Generate Token Modal */}
+      <Modal
+        isOpen={popUp.generateToken.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetToken();
+          handlePopUpToggle("generateToken", isOpen);
+        }}
+      >
+        <ModalContent title="Generate Agent Token" subTitle="Create a new authentication token for Nexus agents.">
+          <form onSubmit={handleTokenSubmit(onTokenSubmit)}>
+            <Controller
+              control={tokenControl}
+              name="tokenName"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Token Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="e.g. agent-prod-token" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={tokenControl}
+              name="expiresIn"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl label="Expires In" isError={Boolean(error)} errorText={error?.message}>
+                  <Select {...field} onValueChange={onChange} className="w-full">
+                    {["30 days", "90 days", "1 year", "Never"].map((v) => (
+                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isTokenSubmitting} isDisabled={isTokenSubmitting} className="mr-4">
+                Generate
+              </Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetToken(); handlePopUpToggle("generateToken", false); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Job Confirmation */}
+      <DeleteActionModal
+        isOpen={popUp.deleteJob.isOpen}
+        onChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
+        deleteKey={(popUp.deleteJob.data as { name: string })?.name || ""}
+        title={`Delete job "${(popUp.deleteJob.data as { name: string })?.name}"?`}
+        onDeleteApproved={async () => {
+          createNotification({ text: "Discovery job deleted.", type: "success" });
+          handlePopUpClose("deleteJob");
+        }}
+      />
     </div>
   );
 };

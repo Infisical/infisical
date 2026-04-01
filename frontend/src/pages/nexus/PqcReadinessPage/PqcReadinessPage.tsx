@@ -36,9 +36,9 @@ const protocolData = [
 ];
 
 const itAssets = [
-  { label: "Application", shortLabel: "App", count: 314, color: "#ecc94b", size: 70 },
-  { label: "Database", shortLabel: "Database", count: 364, color: "#68d391", size: 80 },
-  { label: "Service", shortLabel: "Service", count: 1426, color: "#63b3ed", size: 120 }
+  { label: "Application", shortLabel: "App", count: 314, color: "#ecc94b", size: 60 },
+  { label: "Database", shortLabel: "Database", count: 364, color: "#68d391", size: 70 },
+  { label: "Service", shortLabel: "Service", count: 1426, color: "#63b3ed", size: 100 }
 ];
 
 const asymmetricKeys = [
@@ -223,8 +223,10 @@ export const PqcReadinessPage = () => {
           </p>
         </div>
 
+        {/* IT Assets & Protocol Usage - Side by Side */}
+        <div className="mb-6 grid grid-cols-2 gap-4">
         {/* IT Assets Section */}
-        <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-mineshaft-100">IT Assets</h2>
             <div className="flex items-center gap-2">
@@ -251,7 +253,7 @@ export const PqcReadinessPage = () => {
           </div>
           <div className="flex items-center gap-8">
             {/* Bubble Visualization */}
-            <div className="relative flex h-[140px] w-[280px] items-center justify-center">
+            <div className="relative flex h-[140px] w-[220px] items-center justify-center">
               <div className="flex items-end gap-4">
                 {[...filteredItAssets].sort((a, b) => b.count - a.count).map((item) => (
                   <div
@@ -295,7 +297,7 @@ export const PqcReadinessPage = () => {
         </div>
 
         {/* Protocol Distribution */}
-        <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-mineshaft-100">
               Protocol Usage Across IT Assets
@@ -306,7 +308,7 @@ export const PqcReadinessPage = () => {
           </div>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={protocolData} barSize={36}>
+              <BarChart data={protocolData} barSize={28}>
                 <XAxis
                   dataKey="name"
                   axisLine={false}
@@ -346,6 +348,7 @@ export const PqcReadinessPage = () => {
               <span className="text-mineshaft-400">Other</span>
             </div>
           </div>
+        </div>
         </div>
 
         {/* Two-column Key Breakdown */}
@@ -499,7 +502,7 @@ export const PqcReadinessPage = () => {
                       <Tooltip content={<InfisicalTooltip />} wrapperStyle={{ zIndex: 50 }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-mineshaft-100">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold text-mineshaft-100">
                     1,121
                   </span>
                 </div>
@@ -542,7 +545,7 @@ export const PqcReadinessPage = () => {
                       <Tooltip content={<InfisicalTooltip />} wrapperStyle={{ zIndex: 50 }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-mineshaft-100">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-semibold text-mineshaft-100">
                     1,121
                   </span>
                 </div>

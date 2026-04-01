@@ -1,10 +1,29 @@
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { PageHeader } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  PageHeader,
+  Select,
+  SelectItem
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 const subNavItems = [
@@ -59,9 +78,100 @@ function IntegrationStatusBadge({ status }: { status: string }) {
 const thClass =
   "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-mineshaft-400";
 
+// Schemas
+const ticketSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  system: z.string().min(1, "System is required"),
+  project: z.string().trim().min(1, "Project is required"),
+  trigger: z.string().min(1, "Trigger is required")
+});
+
+const alertSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  eventType: z.string().min(1, "Event type is required"),
+  channel: z.string().min(1, "Channel is required"),
+  threshold: z.string().optional()
+});
+
+const siemSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  platform: z.string().min(1, "Platform is required"),
+  exportType: z.string().min(1, "Export type is required")
+});
+
+const cloudSyncSchema = z.object({
+  provider: z.string().min(1, "Provider is required"),
+  name: z.string().trim().min(1, "Name is required"),
+  source: z.string().trim().min(1, "Source is required")
+});
+
+const scannerSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  platform: z.string().min(1, "Platform is required"),
+  source: z.string().trim().min(1, "Source is required")
+});
+
+type TTicketSchema = z.infer<typeof ticketSchema>;
+type TAlertSchema = z.infer<typeof alertSchema>;
+type TSiemSchema = z.infer<typeof siemSchema>;
+type TCloudSyncSchema = z.infer<typeof cloudSyncSchema>;
+type TScannerSchema = z.infer<typeof scannerSchema>;
+
+function ThreeDotMenu({ name, onDelete }: { name: string; onDelete: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
+        >
+          <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => createNotification({ text: `Editing "${name}" coming soon.`, type: "info" })}>
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onDelete}>
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export const NexusIntegrationsPage = () => {
   const { t } = useTranslation();
   const [activeSubNav, setActiveSubNav] = useState<SubNav>("Ticket Systems");
+
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "addIntegration",
+    "createAlert",
+    "addConnection",
+    "addSync",
+    "addScanner",
+    "deleteIntegration"
+  ] as const);
+
+  // Ticket form
+  const { handleSubmit: handleTicketSubmit, control: ticketControl, reset: resetTicket, formState: { isSubmitting: isTicketSubmitting } } = useForm<TTicketSchema>({ resolver: zodResolver(ticketSchema) });
+  const onTicketSubmit = () => { createNotification({ text: "Ticket integration added.", type: "success" }); resetTicket(); handlePopUpToggle("addIntegration", false); };
+
+  // Alert form
+  const { handleSubmit: handleAlertSubmit, control: alertControl, reset: resetAlert, formState: { isSubmitting: isAlertSubmitting } } = useForm<TAlertSchema>({ resolver: zodResolver(alertSchema) });
+  const onAlertSubmit = () => { createNotification({ text: "Alert created.", type: "success" }); resetAlert(); handlePopUpToggle("createAlert", false); };
+
+  // SIEM form
+  const { handleSubmit: handleSiemSubmit, control: siemControl, reset: resetSiem, formState: { isSubmitting: isSiemSubmitting } } = useForm<TSiemSchema>({ resolver: zodResolver(siemSchema) });
+  const onSiemSubmit = () => { createNotification({ text: "SIEM connection added.", type: "success" }); resetSiem(); handlePopUpToggle("addConnection", false); };
+
+  // Cloud sync form
+  const { handleSubmit: handleCloudSubmit, control: cloudControl, reset: resetCloud, formState: { isSubmitting: isCloudSubmitting } } = useForm<TCloudSyncSchema>({ resolver: zodResolver(cloudSyncSchema) });
+  const onCloudSubmit = () => { createNotification({ text: "Cloud sync added.", type: "success" }); resetCloud(); handlePopUpToggle("addSync", false); };
+
+  // Scanner form
+  const { handleSubmit: handleScannerSubmit, control: scannerControl, reset: resetScanner, formState: { isSubmitting: isScannerSubmitting } } = useForm<TScannerSchema>({ resolver: zodResolver(scannerSchema) });
+  const onScannerSubmit = () => { createNotification({ text: "Scanner added.", type: "success" }); resetScanner(); handlePopUpToggle("addScanner", false); };
 
   return (
     <div className="h-full bg-bunker-800">
@@ -111,6 +221,7 @@ export const NexusIntegrationsPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("addIntegration")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Add Integration
@@ -147,12 +258,7 @@ export const NexusIntegrationsPage = () => {
                         </td>
                         <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastSync}</td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
                         </td>
                       </tr>
                     ))}
@@ -172,6 +278,7 @@ export const NexusIntegrationsPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("createAlert")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Create Alert
@@ -208,12 +315,7 @@ export const NexusIntegrationsPage = () => {
                           {item.lastTriggered}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
                         </td>
                       </tr>
                     ))}
@@ -233,6 +335,7 @@ export const NexusIntegrationsPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("addConnection")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Add Connection
@@ -266,12 +369,7 @@ export const NexusIntegrationsPage = () => {
                         </td>
                         <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastExport}</td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
                         </td>
                       </tr>
                     ))}
@@ -293,6 +391,7 @@ export const NexusIntegrationsPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("addSync")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Add Sync
@@ -332,12 +431,7 @@ export const NexusIntegrationsPage = () => {
                           {item.lastSynced}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
                         </td>
                       </tr>
                     ))}
@@ -359,6 +453,7 @@ export const NexusIntegrationsPage = () => {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handlePopUpOpen("addScanner")}
                     className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                   >
                     + Add Scanner
@@ -392,12 +487,7 @@ export const NexusIntegrationsPage = () => {
                           {item.lastImport}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            className="rounded p-1 text-mineshaft-400 hover:bg-mineshaft-600 hover:text-mineshaft-100"
-                          >
-                            <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
-                          </button>
+                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
                         </td>
                       </tr>
                     ))}
@@ -408,6 +498,210 @@ export const NexusIntegrationsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Ticket Integration Modal */}
+      <Modal
+        isOpen={popUp.addIntegration.isOpen}
+        onOpenChange={(isOpen) => { if (!isOpen) resetTicket(); handlePopUpToggle("addIntegration", isOpen); }}
+      >
+        <ModalContent title="Add Ticket Integration" subTitle="Connect a ticket system for automated violation tracking.">
+          <form onSubmit={handleTicketSubmit(onTicketSubmit)}>
+            <Controller control={ticketControl} name="name" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. Jira Cloud - INFRA" />
+              </FormControl>
+            )} />
+            <Controller control={ticketControl} name="system" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="System" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select system">
+                  {["Jira", "ServiceNow", "Linear", "GitHub", "Azure DevOps"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={ticketControl} name="project" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Project / Queue" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. INFRA or SEC-OPS" />
+              </FormControl>
+            )} />
+            <Controller control={ticketControl} name="trigger" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Trigger" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select trigger">
+                  {["All Violations", "Critical + High Violations", "New Critical Violations", "PQC Violations Only"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isTicketSubmitting} isDisabled={isTicketSubmitting} className="mr-4">Add Integration</Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetTicket(); handlePopUpToggle("addIntegration", false); }}>Cancel</Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Create Alert Modal */}
+      <Modal
+        isOpen={popUp.createAlert.isOpen}
+        onOpenChange={(isOpen) => { if (!isOpen) resetAlert(); handlePopUpToggle("createAlert", isOpen); }}
+      >
+        <ModalContent title="Create Alert" subTitle="Configure a new alert for cryptographic events.">
+          <form onSubmit={handleAlertSubmit(onAlertSubmit)}>
+            <Controller control={alertControl} name="name" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. Cert Expiry Alert" />
+              </FormControl>
+            )} />
+            <Controller control={alertControl} name="eventType" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Event Type" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select event type">
+                  {["Certificate Expiry", "New Critical Violation", "Risk Score Threshold", "Discovery Scan Completed", "Policy Violation"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={alertControl} name="channel" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Channel" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select channel">
+                  {["Slack", "PagerDuty", "Email", "Microsoft Teams", "Webhook"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={alertControl} name="threshold" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Threshold" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. < 10 days or > 5.0 (optional)" />
+              </FormControl>
+            )} />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isAlertSubmitting} isDisabled={isAlertSubmitting} className="mr-4">Create Alert</Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetAlert(); handlePopUpToggle("createAlert", false); }}>Cancel</Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Add SIEM Connection Modal */}
+      <Modal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => { if (!isOpen) resetSiem(); handlePopUpToggle("addConnection", isOpen); }}
+      >
+        <ModalContent title="Add SIEM Connection" subTitle="Export cryptographic risk data to a SIEM/SOAR platform.">
+          <form onSubmit={handleSiemSubmit(onSiemSubmit)}>
+            <Controller control={siemControl} name="name" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. Splunk Production" />
+              </FormControl>
+            )} />
+            <Controller control={siemControl} name="platform" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Platform" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select platform">
+                  {["Splunk", "Microsoft Sentinel", "IBM QRadar", "Elastic Security", "Google Chronicle"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={siemControl} name="exportType" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Export Type" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select export type">
+                  {["Real-time Stream", "Batch (Hourly)", "Batch (Daily)", "On-demand"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isSiemSubmitting} isDisabled={isSiemSubmitting} className="mr-4">Add Connection</Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetSiem(); handlePopUpToggle("addConnection", false); }}>Cancel</Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Add Cloud Sync Modal */}
+      <Modal
+        isOpen={popUp.addSync.isOpen}
+        onOpenChange={(isOpen) => { if (!isOpen) resetCloud(); handlePopUpToggle("addSync", isOpen); }}
+      >
+        <ModalContent title="Add Cloud Sync" subTitle="Sync certificates and keys from a cloud provider.">
+          <form onSubmit={handleCloudSubmit(onCloudSubmit)}>
+            <Controller control={cloudControl} name="provider" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Provider" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select provider">
+                  {["AWS", "Azure", "GCP"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={cloudControl} name="name" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. AWS ACM Sync" />
+              </FormControl>
+            )} />
+            <Controller control={cloudControl} name="source" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Source" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. us-east-1, us-west-2" />
+              </FormControl>
+            )} />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isCloudSubmitting} isDisabled={isCloudSubmitting} className="mr-4">Add Sync</Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetCloud(); handlePopUpToggle("addSync", false); }}>Cancel</Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Add Scanner Modal */}
+      <Modal
+        isOpen={popUp.addScanner.isOpen}
+        onOpenChange={(isOpen) => { if (!isOpen) resetScanner(); handlePopUpToggle("addScanner", isOpen); }}
+      >
+        <ModalContent title="Add Scanner" subTitle="Import results from a third-party scanning tool.">
+          <form onSubmit={handleScannerSubmit(onScannerSubmit)}>
+            <Controller control={scannerControl} name="name" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. Qualys TLS Scan" />
+              </FormControl>
+            )} />
+            <Controller control={scannerControl} name="platform" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Platform" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select platform">
+                  {["Qualys", "Shodan", "Nessus", "Censys", "CertSpotter"].map((v) => (
+                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )} />
+            <Controller control={scannerControl} name="source" render={({ field, fieldState: { error } }) => (
+              <FormControl label="Source" isRequired isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="e.g. External Perimeter Scan" />
+              </FormControl>
+            )} />
+            <div className="mt-7 flex items-center">
+              <Button type="submit" isLoading={isScannerSubmitting} isDisabled={isScannerSubmitting} className="mr-4">Add Scanner</Button>
+              <Button variant="plain" colorSchema="secondary" onClick={() => { resetScanner(); handlePopUpToggle("addScanner", false); }}>Cancel</Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <DeleteActionModal
+        isOpen={popUp.deleteIntegration.isOpen}
+        onChange={(isOpen) => handlePopUpToggle("deleteIntegration", isOpen)}
+        deleteKey={(popUp.deleteIntegration.data as { name: string })?.name || ""}
+        title={`Delete "${(popUp.deleteIntegration.data as { name: string })?.name}"?`}
+        onDeleteApproved={async () => {
+          createNotification({ text: "Integration deleted.", type: "success" });
+          handlePopUpClose("deleteIntegration");
+        }}
+      />
     </div>
   );
 };

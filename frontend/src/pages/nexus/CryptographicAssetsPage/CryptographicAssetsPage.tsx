@@ -14,15 +14,21 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   IconButton,
+  Modal,
+  ModalContent,
   PageHeader
 } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { CreateTicketModal } from "../components";
 
 const tabs = ["Endpoints", "Keys", "Certificates", "Protocols"] as const;
 type Tab = (typeof tabs)[number];
@@ -91,7 +97,17 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-[11px] ${cls}`}>{status}</span>;
 }
 
-function AssetDrawer({ onClose }: { onClose: () => void }) {
+function AssetDrawer({
+  onClose,
+  onCreateTicket,
+  onViewSource,
+  onExport
+}: {
+  onClose: () => void;
+  onCreateTicket: () => void;
+  onViewSource: () => void;
+  onExport: () => void;
+}) {
   return (
     <div className="fixed inset-y-0 right-0 z-50 flex w-[420px] flex-col border-l border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
       <div className="flex items-center justify-between border-b border-mineshaft-600 px-5 py-4">
@@ -172,18 +188,21 @@ function AssetDrawer({ onClose }: { onClose: () => void }) {
       <div className="flex gap-2 border-t border-mineshaft-600 px-5 py-3">
         <button
           type="button"
+          onClick={onCreateTicket}
           className="flex-1 rounded-md border border-mineshaft-500 bg-transparent px-3 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
         >
           Create Ticket
         </button>
         <button
           type="button"
+          onClick={onViewSource}
           className="rounded-md border border-mineshaft-600 px-3 py-2 text-xs text-mineshaft-100 hover:bg-mineshaft-700"
         >
           View Source
         </button>
         <button
           type="button"
+          onClick={onExport}
           className="rounded-md border border-mineshaft-600 px-3 py-2 text-xs text-mineshaft-100 hover:bg-mineshaft-700"
         >
           Export
@@ -220,6 +239,26 @@ const tdClass = "px-4 py-3 text-xs";
 const trClass =
   "cursor-pointer border-b border-mineshaft-600 transition-colors hover:bg-mineshaft-700";
 
+const mockSourceJson = JSON.stringify(
+  {
+    source: "network-scan",
+    discoveredAt: "2026-02-24T23:04:32Z",
+    scanner: "prod-network-scan",
+    raw: {
+      host: "10.0.1.15",
+      port: 443,
+      protocol: "TLS",
+      version: "1.3",
+      cipherSuite: "TLS_AES_256_GCM_SHA384",
+      certificateChain: [
+        { subject: "CN=*.acmecorp.com", issuer: "CN=Infisical CA", serial: "3A:F2:1B:9C:04:D8" }
+      ]
+    }
+  },
+  null,
+  2
+);
+
 export const CryptographicAssetsPage = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("Endpoints");
@@ -228,6 +267,11 @@ export const CryptographicAssetsPage = () => {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "createTicket",
+    "viewSource"
+  ] as const);
 
   const isFiltered = useMemo(() => {
     switch (activeTab) {
@@ -499,6 +543,7 @@ export const CryptographicAssetsPage = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => createNotification({ text: "CSV export started.", type: "success" })}
               className="flex items-center gap-1.5 rounded-md border border-mineshaft-600 px-3 py-1.5 text-xs text-mineshaft-400 hover:bg-mineshaft-700 hover:text-mineshaft-100"
             >
               <FontAwesomeIcon icon={faDownload} className="h-3.5 w-3.5" />
@@ -689,8 +734,46 @@ export const CryptographicAssetsPage = () => {
         </div>
 
         {/* Drawer */}
-        {drawerOpen && <AssetDrawer onClose={() => setDrawerOpen(false)} />}
+        {drawerOpen && (
+          <AssetDrawer
+            onClose={() => setDrawerOpen(false)}
+            onCreateTicket={() => {
+              setDrawerOpen(false);
+              handlePopUpOpen("createTicket");
+            }}
+            onViewSource={() => {
+              setDrawerOpen(false);
+              handlePopUpOpen("viewSource");
+            }}
+            onExport={() => createNotification({ text: "Asset data exported.", type: "success" })}
+          />
+        )}
       </div>
+
+      <CreateTicketModal
+        isOpen={popUp.createTicket.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createTicket", isOpen)}
+      />
+
+      <Modal
+        isOpen={popUp.viewSource.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("viewSource", isOpen)}
+      >
+        <ModalContent title="Asset Source Details" subTitle="Raw discovery data for this asset.">
+          <pre className="max-h-[400px] overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 font-mono text-xs text-mineshaft-200">
+            {mockSourceJson}
+          </pre>
+          <div className="mt-7 flex items-center">
+            <button
+              type="button"
+              onClick={() => handlePopUpToggle("viewSource", false)}
+              className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
+            >
+              Close
+            </button>
+          </div>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

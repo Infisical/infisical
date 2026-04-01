@@ -6,7 +6,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { PageHeader } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { CreatePolicyModal } from "../components";
 
 const complianceDonut = [
   { name: "Compliant", value: 2150, fill: "#68d391" },
@@ -60,6 +63,8 @@ export const PoliciesPage = () => {
   const [stateFilter, setStateFilter] = useState("");
   const [complianceFilter, setComplianceFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["createPolicy"] as const);
 
   const filteredPolicies = useMemo(() => {
     return policies.filter((p) => {
@@ -267,6 +272,7 @@ export const PoliciesPage = () => {
               </button>
               <button
                 type="button"
+                onClick={() => handlePopUpOpen("createPolicy")}
                 className="rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
               >
                 + Create Policy
@@ -307,6 +313,7 @@ export const PoliciesPage = () => {
                       </p>
                       <button
                         type="button"
+                        onClick={() => handlePopUpOpen("createPolicy")}
                         className="mt-1 rounded-md border border-mineshaft-500 bg-transparent px-4 py-2 text-xs font-medium text-mineshaft-100 hover:bg-mineshaft-700"
                       >
                         + Create Policy
@@ -379,6 +386,11 @@ export const PoliciesPage = () => {
           </table>
         </div>
       </div>
+
+      <CreatePolicyModal
+        isOpen={popUp.createPolicy.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createPolicy", isOpen)}
+      />
     </div>
   );
 };
