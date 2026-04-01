@@ -225,132 +225,46 @@ type FieldDef = {
   key: string;
   label: string;
   sensitive: boolean;
-  source: "credentials" | "connectionDetails";
 };
 
 const RESOURCE_FIELD_DEFS: Record<string, FieldDef[]> = {
   [PamResourceType.Postgres]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "host", label: "Host", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" },
-    { key: "database", label: "Database", sensitive: false, source: "connectionDetails" },
-    { key: "sslEnabled", label: "SSL Enabled", sensitive: false, source: "connectionDetails" },
-    {
-      key: "sslCertificate",
-      label: "SSL Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ],
   [PamResourceType.MySQL]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "host", label: "Host", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" },
-    { key: "database", label: "Database", sensitive: false, source: "connectionDetails" },
-    { key: "sslEnabled", label: "SSL Enabled", sensitive: false, source: "connectionDetails" },
-    {
-      key: "sslCertificate",
-      label: "SSL Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ],
   [PamResourceType.MsSQL]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "host", label: "Host", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" },
-    { key: "database", label: "Database", sensitive: false, source: "connectionDetails" },
-    { key: "sslEnabled", label: "SSL Enabled", sensitive: false, source: "connectionDetails" },
-    {
-      key: "sslCertificate",
-      label: "SSL Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ],
   [PamResourceType.SSH]: [
-    { key: "authMethod", label: "Auth Method", sensitive: false, source: "credentials" },
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "privateKey", label: "Private Key", sensitive: true, source: "credentials" },
-    { key: "host", label: "Host", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" }
+    { key: "authMethod", label: "Auth Method", sensitive: false },
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true },
+    { key: "privateKey", label: "Private Key", sensitive: true }
   ],
   [PamResourceType.Redis]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "host", label: "Host", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" },
-    { key: "sslEnabled", label: "SSL Enabled", sensitive: false, source: "connectionDetails" },
-    {
-      key: "sslCertificate",
-      label: "SSL Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ],
   [PamResourceType.Kubernetes]: [
-    { key: "authMethod", label: "Auth Method", sensitive: false, source: "credentials" },
-    {
-      key: "serviceAccountToken",
-      label: "Service Account Token",
-      sensitive: true,
-      source: "credentials"
-    },
-    { key: "url", label: "Cluster URL", sensitive: false, source: "connectionDetails" },
-    {
-      key: "sslRejectUnauthorized",
-      label: "Verify SSL",
-      sensitive: false,
-      source: "connectionDetails"
-    },
-    {
-      key: "sslCertificate",
-      label: "SSL Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "authMethod", label: "Auth Method", sensitive: false },
+    { key: "serviceAccountToken", label: "Service Account Token", sensitive: true }
   ],
   [PamResourceType.AwsIam]: [
-    { key: "targetRoleArn", label: "Target Role ARN", sensitive: false, source: "credentials" },
-    {
-      key: "defaultSessionDuration",
-      label: "Session Duration (s)",
-      sensitive: false,
-      source: "credentials"
-    },
-    { key: "roleArn", label: "Source Role ARN", sensitive: false, source: "connectionDetails" }
+    { key: "targetRoleArn", label: "Target Role ARN", sensitive: false },
+    { key: "defaultSessionDuration", label: "Session Duration (s)", sensitive: false }
   ],
   [PamResourceType.Windows]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "hostname", label: "Hostname", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "RDP Port", sensitive: false, source: "connectionDetails" },
-    { key: "winrmPort", label: "WinRM Port", sensitive: false, source: "connectionDetails" },
-    { key: "useWinrmHttps", label: "WinRM HTTPS", sensitive: false, source: "connectionDetails" },
-    {
-      key: "winrmCaCert",
-      label: "WinRM CA Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ],
   [PamResourceType.ActiveDirectory]: [
-    { key: "username", label: "Username", sensitive: false, source: "credentials" },
-    { key: "password", label: "Password", sensitive: true, source: "credentials" },
-    { key: "domain", label: "Domain", sensitive: false, source: "connectionDetails" },
-    { key: "dcAddress", label: "Domain Controller", sensitive: false, source: "connectionDetails" },
-    { key: "port", label: "Port", sensitive: false, source: "connectionDetails" },
-    { key: "useLdaps", label: "Use LDAPS", sensitive: false, source: "connectionDetails" },
-    {
-      key: "ldapCaCert",
-      label: "LDAP CA Certificate",
-      sensitive: true,
-      source: "connectionDetails"
-    }
+    { key: "username", label: "Username", sensitive: false },
+    { key: "password", label: "Password", sensitive: true }
   ]
 };
 
@@ -359,54 +273,37 @@ const CredentialsDataContent = ({
 }: {
   credentialsData: TPamAccountCredentialsResponse;
 }) => {
-  const { credentials, connectionDetails, resourceType } = credentialsData;
+  const { credentials, resourceType } = credentialsData;
 
   const fieldDefs = RESOURCE_FIELD_DEFS[resourceType] || [];
 
-  const credentialFields = fieldDefs.filter((f) => {
-    const data = f.source === "credentials" ? credentials : connectionDetails;
-    const value = data[f.key];
+  const visibleFields = fieldDefs.filter((f) => {
+    const value = credentials[f.key];
     return value !== undefined && value !== null && String(value).length > 0;
   });
 
-  const credSection = credentialFields.filter((f) => f.source === "credentials");
-  const connSection = credentialFields.filter((f) => f.source === "connectionDetails");
-
-  const getValue = (field: FieldDef) => {
-    const data = field.source === "credentials" ? credentials : connectionDetails;
-    return String(data[field.key]);
-  };
+  if (visibleFields.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4">
-      {credSection.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-medium text-label">Credentials</h4>
-          <div className="flex flex-col gap-1.5 rounded-md border border-border bg-container p-3">
-            {credSection.map((field) =>
-              field.sensitive ? (
-                <SensitiveField key={field.key} label={field.label} value={getValue(field)} />
-              ) : (
-                <PlainField key={field.key} label={field.label} value={getValue(field)} />
-              )
-            )}
-          </div>
-        </div>
-      )}
-      {connSection.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-medium text-label">Connection Details</h4>
-          <div className="flex flex-col gap-1.5 rounded-md border border-border bg-container p-3">
-            {connSection.map((field) =>
-              field.sensitive ? (
-                <SensitiveField key={field.key} label={field.label} value={getValue(field)} />
-              ) : (
-                <PlainField key={field.key} label={field.label} value={getValue(field)} />
-              )
-            )}
-          </div>
-        </div>
-      )}
+    <div className="flex flex-col gap-2">
+      <h4 className="text-sm font-medium text-label">Credentials</h4>
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-container p-3">
+        {visibleFields.map((field) =>
+          field.sensitive ? (
+            <SensitiveField
+              key={field.key}
+              label={field.label}
+              value={String(credentials[field.key])}
+            />
+          ) : (
+            <PlainField
+              key={field.key}
+              label={field.label}
+              value={String(credentials[field.key])}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 };

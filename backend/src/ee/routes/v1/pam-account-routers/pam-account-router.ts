@@ -6,50 +6,41 @@ import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-l
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import {
   ActiveDirectoryAccountCredentialsSchema,
-  ActiveDirectoryResourceConnectionDetailsSchema,
   SanitizedActiveDirectoryAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import {
   AwsIamAccountCredentialsSchema,
-  AwsIamResourceConnectionDetailsSchema,
   SanitizedAwsIamAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import {
   KubernetesAccountCredentialsSchema,
-  KubernetesResourceConnectionDetailsSchema,
   SanitizedKubernetesAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
   MsSQLAccountCredentialsSchema,
-  MsSQLResourceConnectionDetailsSchema,
   SanitizedMsSQLAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import {
   MySQLAccountCredentialsSchema,
-  MySQLResourceConnectionDetailsSchema,
   SanitizedMySQLAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import {
   PostgresAccountCredentialsSchema,
-  PostgresResourceConnectionDetailsSchema,
   SanitizedPostgresAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import {
   RedisAccountCredentialsSchema,
-  RedisResourceConnectionDetailsSchema,
   SanitizedRedisAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import {
   SanitizedSSHAccountWithResourceSchema,
-  SSHAccountCredentialsSchema,
-  SSHResourceConnectionDetailsSchema
+  SSHAccountCredentialsSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import {
   SanitizedWindowsAccountWithResourceSchema,
-  WindowsAccountCredentialsSchema,
-  WindowsResourceConnectionDetailsSchema
+  WindowsAccountCredentialsSchema
 } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -94,48 +85,39 @@ const AccountCredentialsBaseSchema = z.object({
 const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.Postgres),
-    credentials: PostgresAccountCredentialsSchema,
-    connectionDetails: PostgresResourceConnectionDetailsSchema
+    credentials: PostgresAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.MySQL),
-    credentials: MySQLAccountCredentialsSchema,
-    connectionDetails: MySQLResourceConnectionDetailsSchema
+    credentials: MySQLAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.MsSQL),
-    credentials: MsSQLAccountCredentialsSchema,
-    connectionDetails: MsSQLResourceConnectionDetailsSchema
+    credentials: MsSQLAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.SSH),
-    credentials: SSHAccountCredentialsSchema,
-    connectionDetails: SSHResourceConnectionDetailsSchema
+    credentials: SSHAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.Redis),
-    credentials: RedisAccountCredentialsSchema,
-    connectionDetails: RedisResourceConnectionDetailsSchema
+    credentials: RedisAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.Kubernetes),
-    credentials: KubernetesAccountCredentialsSchema,
-    connectionDetails: KubernetesResourceConnectionDetailsSchema
+    credentials: KubernetesAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.AwsIam),
-    credentials: AwsIamAccountCredentialsSchema,
-    connectionDetails: AwsIamResourceConnectionDetailsSchema
+    credentials: AwsIamAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.Windows),
-    credentials: WindowsAccountCredentialsSchema,
-    connectionDetails: WindowsResourceConnectionDetailsSchema
+    credentials: WindowsAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.ActiveDirectory),
-    credentials: ActiveDirectoryAccountCredentialsSchema,
-    connectionDetails: ActiveDirectoryResourceConnectionDetailsSchema
+    credentials: ActiveDirectoryAccountCredentialsSchema
   })
 ]);
 

@@ -259,7 +259,6 @@ export const useGetPamAccountDependencies = (accountId?: string) => {
 
 export type TPamAccountCredentialsResponse = {
   credentials: Record<string, unknown>;
-  connectionDetails: Record<string, unknown>;
   resourceType: string;
   accountId: string;
   accountName: string;

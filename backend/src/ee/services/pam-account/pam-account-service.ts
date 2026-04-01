@@ -1463,16 +1463,8 @@ export const pamAccountServiceFactory = ({
       projectId: accountWithResource.projectId
     });
 
-    // Decrypt resource connection details
-    const resource = await pamResourceDAL.findById(accountWithResource.resourceId);
-    if (!resource)
-      throw new NotFoundError({ message: `Resource with ID '${accountWithResource.resourceId}' not found` });
-
-    const decryptedResource = await decryptResource(resource, accountWithResource.projectId, kmsService);
-
     return {
       credentials,
-      connectionDetails: decryptedResource.connectionDetails,
       resourceType: accountWithResource.resource.resourceType,
       accountId: accountWithResource.id,
       accountName: accountWithResource.name,
