@@ -6,12 +6,16 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   const hasUserTable = await knex.schema.hasTable(TableName.Users);
   const hasHashedPasswordColumn = await knex.schema.hasColumn(TableName.Users, "hashedPassword");
+  const hasIsGoogleVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGoogleVerified");
   const hasIsGitHubVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitHubVerified");
   const hasIsGitlabVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitLabVerified");
   if (hasUserTable) {
     await knex.schema.alterTable(TableName.Users, (table) => {
       if (!hasHashedPasswordColumn) {
         table.string("hashedPassword").nullable();
+      }
+      if (!hasIsGoogleVerifiedColumn) {
+        table.boolean("isGoogleVerified").nullable();
       }
       if (!hasIsGitHubVerifiedColumn) {
         table.boolean("isGitHubVerified").nullable();
@@ -72,10 +76,14 @@ export async function down(knex: Knex): Promise<void> {
   const hasHashedPasswordColumn = await knex.schema.hasColumn(TableName.Users, "hashedPassword");
   const hasIsGitHubVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitHubVerified");
   const hasIsGitlabVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGitLabVerified");
+  const hasIsGoogleVerifiedColumn = await knex.schema.hasColumn(TableName.Users, "isGoogleVerified");
   if (hasUserTable) {
     await knex.schema.alterTable(TableName.Users, (table) => {
       if (hasHashedPasswordColumn) {
         table.dropColumn("hashedPassword");
+      }
+      if (hasIsGoogleVerifiedColumn) {
+        table.dropColumn("isGoogleVerified");
       }
       if (hasIsGitHubVerifiedColumn) {
         table.dropColumn("isGitHubVerified");

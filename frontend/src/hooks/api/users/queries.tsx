@@ -354,7 +354,6 @@ export const useLogoutUser = () => {
       setAuthToken("");
       // Remove the login check cache immediately so the restrict-login-signup
       // middleware doesn't find stale auth data and redirect to select-organization.
-      qc.removeQueries({ queryKey: authKeys.getLoginCheck });
       qc.removeQueries({ queryKey: authKeys.getAuthToken });
       await logoutUser();
     },

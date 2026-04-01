@@ -6,7 +6,6 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
-import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -97,15 +96,22 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "completeAccountSignupV3",
-      body: z.object({
-        email: z.string().trim(),
-        firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        providerAuthToken: z.string().trim().optional().nullish(),
-        attributionSource: z.string().trim().optional(),
-        password: z.string(),
-        organizationName: GenericResourceNameSchema.optional()
-      }),
+      body: z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("email"),
+          email: z.string().trim(),
+          firstName: z.string().trim(),
+          lastName: z.string().trim().optional(),
+          attributionSource: z.string().trim().optional(),
+          password: z.string(),
+          organizationName: GenericResourceNameSchema.optional()
+        }),
+        z.object({
+          type: z.literal("alias"),
+          code: z.string().trim(),
+          organizationName: GenericResourceNameSchema.optional()
+        })
+      ]),
       response: {
         200: z.object({
           message: z.string(),
@@ -119,7 +125,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, authMethod } = await server.services.signup.completeAccountSignup({
+      const { user, accessToken, refreshToken, authMethod } = await server.services.signup.completeAccount({
         ...req.body,
         ip: req.realIp,
         userAgent,
@@ -143,7 +149,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         properties: {
           username: user.username,
           email: user.email ?? "",
-          attributionSource: req.body.attributionSource
+          attributionSource: "attributionSource" in req.body ? req.body.attributionSource : undefined
         }
       });
 
@@ -178,51 +184,4 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  server.route({
-    url: "/verify-alias",
-    method: "POST",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      operationId: "verifyAliasSignupV3",
-      body: z.object({
-        code: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          accessToken: z.string(),
-          refreshToken: z.string()
-        })
-      }
-    },
-    handler: async (req, res) => {
-      const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
-      const appCfg = getConfig();
-
-      const { tokens } = await server.services.signup.verifyAlias({
-        code: req.body.code,
-        authorization: req.headers.authorization as string,
-        ip: req.realIp,
-        userAgent
-      });
-
-      void res.setCookie("jid", tokens.refresh, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
-
-      addAuthOriginDomainCookie(res);
-
-      return {
-        message: "Successfully verified alias",
-        accessToken: tokens.access,
-        refreshToken: tokens.refresh
-      };
-    }
-  });
 };

@@ -95,14 +95,21 @@ export type LoginLDAPRes = {
   nextUrl: string;
 };
 
-export type CompleteAccountSignupDTO = {
-  email: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-  attributionSource?: string;
-  organizationName?: string;
-};
+export type CompleteAccountSignupDTO =
+  | {
+      type: "email";
+      email: string;
+      firstName: string;
+      lastName: string;
+      password: string;
+      attributionSource?: string;
+      organizationName?: string;
+    }
+  | {
+      type: "alias";
+      code: string;
+      organizationName?: string;
+    };
 
 export type VerifySignupInviteDTO = {
   email: string;

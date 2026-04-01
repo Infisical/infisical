@@ -124,6 +124,7 @@ export default function UserInfoStep({
     }
 
     const response = await completeSignup({
+      type: "email",
       email,
       password: formData.password,
       firstName: formData.name.split(" ")[0],

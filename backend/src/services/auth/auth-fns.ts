@@ -5,7 +5,7 @@ import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/
 
 import { AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
-const extractBearerToken = (token?: string): string => {
+export const extractBearerToken = (token?: string): string => {
   if (!token) {
     throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
   }

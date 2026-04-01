@@ -103,6 +103,9 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
+      // Invalidate the auth token cache so the authenticate middleware
+      // re-calls fetchAuthToken (which reads the new in-memory token with orgId)
+      queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({
         queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
       });
@@ -148,20 +151,6 @@ export const completeAccountSignup = async (details: CompleteAccountSignupDTO) =
 export const useCompleteAccountSignup = () => {
   return useMutation({
     mutationFn: completeAccountSignup
-  });
-};
-
-export const verifyAlias = async (details: { code: string }) => {
-  const { data } = await apiRequest.post<{ accessToken: string; refreshToken: string }>(
-    "/api/v3/signup/verify-alias",
-    details
-  );
-  return data;
-};
-
-export const useVerifyAlias = () => {
-  return useMutation({
-    mutationFn: verifyAlias
   });
 };
 

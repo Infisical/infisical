@@ -13,9 +13,9 @@ import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { validateSignUpAuthorization } from "./auth-fns";
+import { extractBearerToken } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
-import { TCompleteAccountSignupDTO } from "./auth-signup-type";
+import { CompleteAccountType, TCompleteAccountDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
@@ -134,187 +134,153 @@ export const authSignupServiceFactory = ({
     return { user, token: jwtToken };
   };
 
-  const completeAccountSignup = async ({
-    email,
-    password,
-    firstName,
-    lastName,
-    organizationName,
-    ip,
-    userAgent,
-    authorization
-  }: TCompleteAccountSignupDTO) => {
-    const sanitizedEmail = email.trim().toLowerCase();
-    const appCfg = getConfig();
-
-    const user = await userDAL.findOne({ username: sanitizedEmail });
-
-    // Always validate the authorization token to prevent timing attacks
-    // that could reveal whether an email is registered.
-    // Use a dummy userId when user is missing so the JWT work is still performed.
-    const dummyUserId = "00000000-0000-0000-0000-000000000000";
-    validateSignUpAuthorization(authorization, user?.id ?? dummyUserId);
-
-    if (!user || (user && user.isAccepted)) {
-      throw new BadRequestError({ message: "Failed to complete account for complete user" });
-    }
-
-    // Check if user has existing org memberships (i.e., they were invited)
-    const existingMemberships = await orgDAL.findMembership({
-      actorUserId: user.id,
-      scope: AccessScope.Organization
-    });
-    const isInvitedUser = existingMemberships.length > 0;
-
-    // Self-signup requires allowSignUp to be enabled
-    if (!isInvitedUser) {
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
-        throw new ForbiddenRequestError({
-          message: "Signup's are disabled"
-        });
-      }
-    }
-
-    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    const updatedUser = await authDAL.transaction(async (tx) => {
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true, hashedPassword }, tx);
-      return { ...us, hashedPassword: null };
-    });
-
-    // If self-signup, create a default organization
-    if (!isInvitedUser && organizationName) {
-      await orgService.createOrganization({
-        userId: user.id,
-        userEmail: user.email ?? user.username,
-        orgName: organizationName
-      });
-    }
-
-    // TODO(auth-revamp): check for license count
-    const tokenSessionExpiresIn = appCfg.JWT_AUTH_LIFETIME;
-    const refreshTokenExpiresIn = appCfg.JWT_REFRESH_LIFETIME;
-
-    const tokenSession = await tokenService.getUserTokenSession({
-      userAgent,
-      ip,
-      userId: updatedUser.id
-    });
-    if (!tokenSession) throw new Error("Failed to create token");
-
-    const accessToken = crypto.jwt().sign(
-      {
-        authMethod: AuthMethod.EMAIL,
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: updatedUser.id,
-        tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: tokenSessionExpiresIn }
-    );
-
-    const refreshToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.REFRESH_TOKEN,
-        userId: updatedUser.id,
-        tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: refreshTokenExpiresIn }
-    );
-
-    return {
-      user: updatedUser,
-      isInvitedUser,
-      accessToken,
-      refreshToken,
-      authMethod: AuthMethod.EMAIL
-    };
-  };
-
   /*
-   * Verify an SSO/OAuth alias via email confirmation code.
-   * Called from /signup/verify-alias with the signup token in the Authorization header.
+   * Unified account completion for both email signup and SSO/OAuth alias verification.
    *
-   * For org IdP (SAML/OIDC/LDAP): organizationId is in the signup token → tokens issued with org context
-   * For OAuth (Google/GitHub/GitLab): no organizationId → tokens issued without org, user goes to select-org
+   * Shared: signup token validation, user lookup, org creation if no membership, session token issuance.
    *
-   * If the user is not yet accepted, they are automatically accepted (SSO users don't need password setup).
+   * Email: sets password + user profile, creates user account.
+   * Alias: verifies email code against alias, marks alias + user flags as verified.
    */
-  const verifyAlias = async ({
-    code,
-    authorization,
-    ip,
-    userAgent
-  }: {
-    code: string;
-    authorization: string;
-    ip: string;
-    userAgent: string;
-  }) => {
+  const completeAccount = async (dto: TCompleteAccountDTO) => {
     const appCfg = getConfig();
+    const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
-    // Extract and validate the signup token
-    const [, tokenValue] = authorization.split(" ", 2);
-    if (!tokenValue) throw new UnauthorizedError({ message: "Missing authorization token" });
-
+    // Step 1: Extract and validate the signup token
+    const tokenValue = extractBearerToken(dto.authorization);
     const decodedToken = crypto.jwt().verify(tokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
 
     if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
       throw new UnauthorizedError({ message: "Invalid token type" });
     }
 
-    const user = await userDAL.findById(decodedToken.userId);
-    if (!user) throw new BadRequestError({ message: "User not found" });
+    // Step 2: Find the user
+    let user = await userDAL.findById(decodedToken.userId);
 
-    if (!decodedToken.aliasId) {
-      throw new BadRequestError({ message: "Missing alias ID in signup token" });
+    // Step 3: Type-specific validation and user updates
+    // All branches perform their expensive work (bcrypt hash / token validation) before
+    // checking rejection conditions, so the response time is constant regardless of
+    // whether the request is valid. This prevents timing-based user/alias enumeration.
+    let authMethod: AuthMethod;
+
+    if (dto.type === CompleteAccountType.Email) {
+      const sanitizedEmail = dto.email.trim().toLowerCase();
+      const userByEmail = await userDAL.findOne({ username: sanitizedEmail });
+
+      // Determine rejection before hashing, but don't throw yet
+      const shouldReject = !user || user.isAccepted || !userByEmail || userByEmail.id !== user?.id;
+
+      // Always hash the password so bcrypt cost is incurred regardless of validity
+      const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
+
+      if (shouldReject) {
+        throw new BadRequestError({ message: "Failed to complete account for complete user" });
+      }
+
+      const updatedUser = await authDAL.transaction(async (tx) => {
+        const us = await userDAL.updateById(
+          user.id,
+          { firstName: dto.firstName, lastName: dto.lastName, isAccepted: true, hashedPassword },
+          tx
+        );
+        return { ...us, hashedPassword: null };
+      });
+      user = updatedUser;
+      authMethod = AuthMethod.EMAIL;
+    } else {
+      // Alias verification
+      const userAlias = decodedToken.aliasId
+        ? await userAliasDAL.findOne({
+            id: decodedToken.aliasId,
+            userId: user?.id ?? DUMMY_USER_ID
+          })
+        : null;
+
+      // Determine rejection before token validation, but don't throw yet
+      const shouldReject = !user || !decodedToken.aliasId || !userAlias;
+
+      // Always validate the verification code so the bcrypt cost is incurred
+      // Use dummy userId when rejecting so the work is still performed
+      try {
+        await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_VERIFICATION,
+          userId: shouldReject ? DUMMY_USER_ID : user.id,
+          code: dto.code
+        });
+      } catch {
+        throw new BadRequestError({ message: "Invalid or expired verification code" });
+      }
+
+      if (shouldReject) {
+        throw new BadRequestError({ message: "Invalid or expired verification code" });
+      }
+
+      // Mark alias as verified
+      await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true });
+
+      // Update user-level verification flags based on auth method
+      const userUpdates: Record<string, boolean> = { isEmailVerified: true };
+      if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+        userUpdates.isGoogleVerified = true;
+      } else if (decodedToken.authMethod === AuthMethod.GITHUB) {
+        userUpdates.isGitHubVerified = true;
+      } else if (decodedToken.authMethod === AuthMethod.GITLAB) {
+        userUpdates.isGitLabVerified = true;
+      }
+      if (!user.isAccepted) {
+        userUpdates.isAccepted = true;
+      }
+
+      user = await userDAL.updateById(user.id, userUpdates);
+      authMethod = decodedToken.authMethod;
     }
 
-    // Verify the alias belongs to this user
-    const userAlias = await userAliasDAL.findOne({
-      id: decodedToken.aliasId,
-      userId: user.id
+    // Step 4: Check org membership — create org if self-signup with no existing membership
+    const existingMemberships = await orgDAL.findMembership({
+      actorUserId: user.id,
+      scope: AccessScope.Organization
     });
+    const isInvitedUser = existingMemberships.length > 0;
 
-    if (!userAlias) {
-      throw new BadRequestError({ message: "Alias not found for this user" });
+    let { organizationId } = decodedToken;
+    if (!isInvitedUser) {
+      const serverCfg = await getServerCfg();
+      if (!serverCfg.allowSignUp) {
+        throw new ForbiddenRequestError({ message: "Signups are disabled" });
+      }
+
+      if (dto.organizationName) {
+        const org = await orgService.createOrganization({
+          userId: user.id,
+          userEmail: user.email ?? user.username,
+          orgName: dto.organizationName
+        });
+
+        organizationId = org.id;
+      }
     }
 
-    // Validate the email verification code — the code was created with this specific aliasId
-    // by the EE service (saml/oidc/ldap) when the alias was first created
-    await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id,
-      code
-    });
-
-    // Mark this specific alias as email-verified
-    await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true });
-
-    // If user is not yet accepted, accept them (SSO users don't need password/account setup)
-    if (!user.isAccepted) {
-      await userDAL.updateById(user.id, { isAccepted: true });
-    }
-
-    // Issue session tokens
+    // Step 5: Issue session tokens
     const tokens = await loginService.generateUserTokens({
       userId: user.id,
-      ip,
-      userAgent,
-      authMethod: decodedToken.authMethod,
-      organizationId: decodedToken.organizationId
+      ip: dto.ip,
+      userAgent: dto.userAgent,
+      authMethod,
+      organizationId
     });
 
-    return { tokens, user };
+    return {
+      user,
+      isInvitedUser,
+      accessToken: tokens.access,
+      refreshToken: tokens.refresh,
+      authMethod
+    };
   };
 
   return {
     beginEmailSignupProcess,
     verifyEmailSignup,
-    completeAccountSignup,
-    verifyAlias
+    completeAccount
   };
 };

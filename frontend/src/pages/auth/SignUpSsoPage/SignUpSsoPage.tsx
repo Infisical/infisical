@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
@@ -10,10 +10,15 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button } from "@app/components/v2";
+import { Button, Input } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
-import { verifyAlias } from "@app/hooks/api/auth/queries";
+import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
+
+enum SignupSsoStep {
+  VerifyCode = "verify-code",
+  OrgName = "org-name"
+}
 
 const codeInputProps = {
   inputStyle: {
@@ -59,9 +64,12 @@ export const SignupSsoPage = () => {
   const search = useSearch({ from: ROUTE_PATHS.Auth.SignUpSsoPage.id });
   const token = search.token as string;
 
+  const [step, setStep] = useState(SignupSsoStep.VerifyCode);
   const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
+  const [orgNameError, setOrgNameError] = useState(false);
+
+  const completeAccountSignup = useCompleteAccountSignup();
 
   const decoded = jwtDecode(token) as {
     email?: string;
@@ -73,33 +81,57 @@ export const SignupSsoPage = () => {
     organizationId?: string;
   };
 
-  // Store the signup token so the Axios interceptor uses it for Authorization headers
-  SecurityClient.setSignupToken(token);
+  // If token has an organizationId, the user already belongs to an org (IdP or invited)
+  const needsOrgName = !decoded.organizationId;
 
   const { mutateAsync: sendEmailVerificationCode } = useSendEmailVerificationCode();
 
-  const handleVerify = async () => {
-    setIsLoading(true);
-    try {
-      const { accessToken, refreshToken } = await verifyAlias({ code });
+  useEffect(() => {
+    SecurityClient.setSignupToken(token);
+  }, [token]);
 
-      setCodeError(false);
-      SecurityClient.setSignupToken("");
-      SecurityClient.setToken(accessToken);
+  const handleSubmit = async () => {
+    const { token: accessToken } = await completeAccountSignup.mutateAsync({
+      type: "alias",
+      code,
+      organizationName: organizationName || undefined
+    });
 
-      createNotification({
-        text: "Successfully verified",
-        type: "success"
+    SecurityClient.setSignupToken("");
+    SecurityClient.setToken(accessToken);
+    const { organizationId } = jwtDecode(accessToken) as { organizationId?: string };
+
+    createNotification({
+      text: "Successfully verified",
+      type: "success"
+    });
+    if (decoded.organizationId || organizationId) {
+      navigate({
+        to: "/organizations/$orgId/projects",
+        params: { orgId: decoded.organizationId || organizationId || "" }
       });
-
-      // refreshToken is set as jid cookie by the backend response
-      // Navigate to org selection
-      void refreshToken; // used by backend cookie, not needed here
+    } else {
       navigate({ to: "/login/select-organization" });
-    } catch {
-      setCodeError(true);
-      setIsLoading(false);
     }
+  };
+
+  const handleCodeNext = async () => {
+    if (needsOrgName) {
+      // Move to org name step — code will be submitted together with org name
+      setStep(SignupSsoStep.OrgName);
+    } else {
+      // No org needed, submit directly
+      await handleSubmit();
+    }
+  };
+
+  const handleOrgNameSubmit = async () => {
+    if (!organizationName.trim()) {
+      setOrgNameError(true);
+      return;
+    }
+    setOrgNameError(false);
+    await handleSubmit();
   };
 
   const handleResendCode = async () => {
@@ -138,61 +170,119 @@ export const SignupSsoPage = () => {
           </div>
         </Link>
         <div className="mx-auto h-full w-full pb-4 md:px-8">
-          <p className="text-md flex justify-center text-bunker-200">
-            We&apos;ve sent a verification code to {decoded.email}
-          </p>
-          <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-            <ReactCodeInput
-              name=""
-              inputMode="tel"
-              type="text"
-              fields={6}
-              onChange={setCode}
-              {...codeInputProps}
-              className="mt-6 mb-2"
-            />
-          </div>
-          <div className="mx-auto mt-4 block w-max md:hidden">
-            <ReactCodeInput
-              name=""
-              inputMode="tel"
-              type="text"
-              fields={6}
-              onChange={setCode}
-              {...codeInputPropsPhone}
-              className="mt-2 mb-2"
-            />
-          </div>
-          {codeError && <Error text="Oops. Your code is wrong. Please try again." />}
-          <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-            <div className="text-l w-full py-1 text-lg">
-              <Button
-                type="submit"
-                onClick={handleVerify}
-                size="sm"
-                isFullWidth
-                className="h-14"
-                colorSchema="primary"
-                variant="outline_bg"
-                isLoading={isLoading}
-              >
-                Verify
-              </Button>
-            </div>
-          </div>
-          <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-            <div className="flex flex-row items-baseline gap-1 text-sm">
-              <span className="text-bunker-400">Don&apos;t see the code?</span>
-              <div className="text-md mt-2 flex flex-row text-bunker-400">
-                <button disabled={isLoading} onClick={handleResendCode} type="button">
-                  <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                    Resend
-                  </span>
-                </button>
+          {step === SignupSsoStep.VerifyCode && (
+            <>
+              <p className="text-md flex justify-center text-bunker-200">
+                We&apos;ve sent a verification code to {decoded.email}
+              </p>
+              <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+                <ReactCodeInput
+                  name=""
+                  inputMode="tel"
+                  type="text"
+                  fields={6}
+                  onChange={setCode}
+                  {...codeInputProps}
+                  className="mt-6 mb-2"
+                />
+              </div>
+              <div className="mx-auto mt-4 block w-max md:hidden">
+                <ReactCodeInput
+                  name=""
+                  inputMode="tel"
+                  type="text"
+                  fields={6}
+                  onChange={setCode}
+                  {...codeInputPropsPhone}
+                  className="mt-2 mb-2"
+                />
+              </div>
+              {completeAccountSignup.isError && (
+                <Error text="Oops. Your code is wrong. Please try again." />
+              )}
+              <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+                <div className="text-l w-full py-1 text-lg">
+                  <Button
+                    type="submit"
+                    onClick={handleCodeNext}
+                    size="sm"
+                    isFullWidth
+                    className="h-14"
+                    colorSchema="primary"
+                    variant="outline_bg"
+                    isLoading={completeAccountSignup.isPending}
+                  >
+                    {needsOrgName ? "Next" : "Verify"}
+                  </Button>
+                </div>
+              </div>
+              <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
+                <div className="flex flex-row items-baseline gap-1 text-sm">
+                  <span className="text-bunker-400">Don&apos;t see the code?</span>
+                  <div className="text-md mt-2 flex flex-row text-bunker-400">
+                    <button
+                      disabled={completeAccountSignup.isPending}
+                      onClick={handleResendCode}
+                      type="button"
+                    >
+                      <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+                        Resend
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <p className="pb-2 text-sm text-bunker-400">Make sure to check your spam inbox.</p>
+              </div>
+            </>
+          )}
+          {step === SignupSsoStep.OrgName && (
+            <div className="mx-auto flex w-full max-w-xs flex-col items-center">
+              <p className="text-md mb-6 text-bunker-200">Create your organization</p>
+              <div className="w-full">
+                <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Organization Name</p>
+                <Input
+                  value={organizationName}
+                  onChange={(e) => {
+                    setOrganizationName(e.target.value);
+                    if (e.target.value.trim()) setOrgNameError(false);
+                  }}
+                  placeholder="Infisical"
+                  maxLength={64}
+                  isError={orgNameError}
+                />
+                {orgNameError && (
+                  <p className="mt-1 text-xs text-red-500">Please enter an organization name.</p>
+                )}
+              </div>
+              {completeAccountSignup.isError && (
+                <Error text="Something went wrong. Please try again." />
+              )}
+              <div className="mt-6 flex w-full gap-2">
+                <Button
+                  onClick={() => setStep(SignupSsoStep.VerifyCode)}
+                  size="sm"
+                  className="h-14"
+                  colorSchema="secondary"
+                  variant="outline_bg"
+                  isDisabled={completeAccountSignup.isPending}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  onClick={handleOrgNameSubmit}
+                  size="sm"
+                  isFullWidth
+                  className="h-14"
+                  colorSchema="primary"
+                  variant="outline_bg"
+                  isLoading={completeAccountSignup.isPending}
+                >
+                  Complete
+                </Button>
               </div>
             </div>
-            <p className="pb-2 text-sm text-bunker-400">Make sure to check your spam inbox.</p>
-          </div>
+          )}
         </div>
       </div>
       <AuthPageFooter />

@@ -789,7 +789,7 @@ export const authLoginServiceFactory = ({
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
     let isNewAlias = false;
-    const existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+    let existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
     if (existingAlias) {
       user = await userDAL.findById(existingAlias.userId);
     }
@@ -874,7 +874,8 @@ export const authLoginServiceFactory = ({
           {
             username: email.trim().toLowerCase(),
             email: email.trim().toLowerCase(),
-            isEmailVerified: true,
+            isEmailVerified: false,
+            isAccepted: false,
             firstName,
             lastName,
             authMethods: [authMethod],
@@ -923,14 +924,14 @@ export const authLoginServiceFactory = ({
           }
         }
 
-        await userAliasDAL.create(
+        existingAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
             aliasType,
             externalId: providerUserId,
             emails: [email],
             orgId: orgId || null,
-            isEmailVerified: true
+            isEmailVerified: false
           },
           tx
         );
@@ -1008,17 +1009,28 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    // Use user-level provider verification flags
+    let isAliasVerified = false;
+    if (authMethod === AuthMethod.GOOGLE) {
+      isAliasVerified = Boolean(user.isGoogleVerified);
+    } else if (authMethod === AuthMethod.GITHUB) {
+      isAliasVerified = Boolean(user.isGitHubVerified);
+    } else if (authMethod === AuthMethod.GITLAB) {
+      isAliasVerified = Boolean(user.isGitLabVerified);
+    }
     // Self-healing backfill: create alias for existing users found by email fallback
+    let aliasId = existingAlias?.id;
     if (isNewAlias) {
       try {
-        await userAliasDAL.create({
+        const newAlias = await userAliasDAL.create({
           userId: user.id,
           aliasType,
           externalId: providerUserId,
           emails: [email],
           orgId: orgId || null,
-          isEmailVerified: true
+          isEmailVerified: isAliasVerified
         });
+        aliasId = newAlias.id;
       } catch (err) {
         // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
@@ -1029,14 +1041,30 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    // TODO(auth-revamp): check this out later
+    // Send verification email for OAuth providers that haven't verified the user's email
+    if (!isAliasVerified && user.email && aliasId) {
+      const verificationCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: user.id,
+        aliasId
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: verificationCode
+        }
+      });
+    }
+
     const callbackResult = await processProviderCallback({
       user,
       authMethod,
-      // For OAuth, new users get alias created with the user, so alias is always verified.
-      // For existing users found by email fallback (isNewAlias), the alias was just backfilled above.
-      isAliasVerified: true,
-      isEmailVerified: Boolean(user.isEmailVerified),
+      isAliasVerified,
+      isEmailVerified: isAliasVerified,
+      aliasId,
       ip,
       userAgent,
       organizationId: orgId || undefined,

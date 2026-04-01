@@ -269,7 +269,6 @@ export const Navbar = () => {
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
-      console.log("Triggering logout");
       await logout.mutateAsync();
       navigate({ to: "/login" });
     } catch (error) {

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticate")({
     }
 
     const data = await context.queryClient
-      .ensureQueryData({
+      .fetchQuery({
         queryKey: authKeys.getAuthToken,
         queryFn: fetchAuthToken
       })
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/_authenticate")({
             text: "Something went wrong with your session. Please log in again."
           });
         }
-        clearSession(true);
+        clearSession();
         await logoutUser();
 
         throw redirect({

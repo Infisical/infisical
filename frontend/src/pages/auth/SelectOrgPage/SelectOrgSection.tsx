@@ -23,7 +23,7 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, isLoggedIn } from "@app/hooks/api/reactQuery";
+import { getAuthToken, isLoggedIn, setAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
@@ -214,6 +214,7 @@ export const SelectOrganizationSection = () => {
         });
         navigate({ to: "/cli-redirect" });
       } else {
+        setAuthToken(token);
         navigateUserToOrg({ navigate, organizationId: organization.id });
       }
     },

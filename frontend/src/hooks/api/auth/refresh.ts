@@ -1,6 +1,7 @@
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 
-import { setAuthToken } from "../reactQuery";
+import { getAuthToken, setAuthToken } from "../reactQuery";
 import { GetAuthTokenAPI } from "./types";
 
 // BroadcastChannel for cross-tab token synchronization
@@ -21,10 +22,27 @@ let activeRefreshPromise: Promise<GetAuthTokenAPI> | null = null;
 
 /**
  * Refresh the auth token using the httpOnly refresh token cookie.
- * Uses a standalone axios call (not apiRequest) to avoid circular imports with request.ts.
- * Deduplicates concurrent calls and broadcasts the new token to other tabs.
+ * If an in-memory token already exists (e.g. after selectOrganization),
+ * decode it directly to avoid stale cache from the refresh endpoint.
  */
 export const fetchAuthToken = async (): Promise<GetAuthTokenAPI> => {
+  // If we already have an in-memory token, decode org context from it directly
+  const currentToken = getAuthToken();
+  if (currentToken) {
+    try {
+      const decoded = jwtDecode<{ organizationId?: string; subOrganizationId?: string }>(
+        currentToken
+      );
+      return {
+        token: currentToken,
+        organizationId: decoded.organizationId,
+        subOrganizationId: decoded.subOrganizationId
+      };
+    } catch {
+      // decode failed — fall through to refresh
+    }
+  }
+
   if (activeRefreshPromise) {
     return activeRefreshPromise;
   }

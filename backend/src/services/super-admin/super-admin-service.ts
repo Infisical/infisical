@@ -510,20 +510,13 @@ export const superAdminServiceFactory = ({
           isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL],
-          isEmailVerified: true
-        },
-        tx
-      );
-      const userEnc = await userDAL.createUserEncryption(
-        {
-          encryptionVersion: 2,
-          userId: newUser.id,
+          isEmailVerified: true,
           hashedPassword
         },
         tx
       );
 
-      return { user: newUser, enc: userEnc };
+      return { user: { ...newUser, hashedPassword: null } };
     });
 
     const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
