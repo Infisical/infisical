@@ -189,7 +189,7 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
         </div>
       </DetailLabel>
       <DetailValue>
-        <pre className="max-h-32 overflow-auto rounded-md bg-mineshaft-700 p-2 font-mono text-xs break-all whitespace-pre-wrap">
+        <pre className="max-h-32 thin-scrollbar overflow-auto rounded-md border border-border bg-transparent px-3 py-2 font-mono text-sm break-all whitespace-pre-wrap">
           {value}
         </pre>
       </DetailValue>
