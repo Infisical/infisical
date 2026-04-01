@@ -46,7 +46,7 @@ type TRemoteContext = {
 const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
   const { credentials } = secretSync.connection;
   const appCfg = getConfig();
-  if (appCfg.SITE_URL !== credentials.instanceUrl) {
+  if (appCfg.SITE_URL?.replace(/\/$/, "") !== credentials.instanceUrl.replace(/\/$/, "")) {
     await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   }
   const accessToken = await getExternalInfisicalAccessToken(credentials);

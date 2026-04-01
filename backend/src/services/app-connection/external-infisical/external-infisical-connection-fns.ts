@@ -60,7 +60,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
   const { credentials: inputCredentials } = config;
 
   const appCfg = getConfig();
-  if (appCfg.SITE_URL !== inputCredentials.instanceUrl) {
+  if (appCfg.SITE_URL?.replace(/\/$/, "") !== inputCredentials.instanceUrl.replace(/\/$/, "")) {
     await blockLocalAndPrivateIpAddresses(inputCredentials.instanceUrl);
 
     const localIdentity = await identityUaDAL.findOne({
