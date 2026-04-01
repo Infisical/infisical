@@ -1,6 +1,6 @@
 import dns from "node:dns/promises";
 
-import { isIPv4 } from "net";
+import { isIPv4, isIPv6 } from "net";
 import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
@@ -20,14 +20,17 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   }
 
   const inputHostIps: string[] = [];
-  if (isIPv4(validUrl.hostname)) {
+  if (isIPv4(validUrl.hostname) || isIPv6(validUrl.hostname)) {
     inputHostIps.push(validUrl.hostname);
   } else {
     if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const resolvedIps = await dns.resolve4(validUrl.hostname);
-    inputHostIps.push(...resolvedIps);
+    // Use dns.lookup (OS system resolver via getaddrinfo) instead of dns.resolve4 (c-ares).
+    // dns.resolve4 bypasses the system resolver and can fail in containerized/VPC environments
+    // where DNS depends on system-level configuration (e.g., ECS, Kubernetes).
+    const resolvedAddresses = await dns.lookup(validUrl.hostname, { all: true });
+    inputHostIps.push(...resolvedAddresses.map((addr) => addr.address));
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
