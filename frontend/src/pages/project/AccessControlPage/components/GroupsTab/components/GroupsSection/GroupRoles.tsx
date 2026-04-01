@@ -7,23 +7,20 @@ import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
+import { FormControl, Spinner } from "@app/components/v2";
 import {
   Badge,
+  Button,
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-  FormControl,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Spinner,
-  Tooltip
-} from "@app/components/v2";
-import {
-  Button,
+  Tooltip,
   TooltipContent,
   TooltipTrigger,
   UnstableIconButton,
