@@ -72,7 +72,6 @@ export const powerDnsDeleteTxtRecord = async (
   connection: TPowerDNSConnection,
   hostedZoneId: string,
   domain: string,
-  value: string
 ) => {
   const {
     credentials: { apiKey, baseUrl }

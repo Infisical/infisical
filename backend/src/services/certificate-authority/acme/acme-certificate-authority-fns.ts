@@ -529,7 +529,6 @@ export const orderCertificate = async (
             connection as TPowerDNSConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
           );
           break;
         }
