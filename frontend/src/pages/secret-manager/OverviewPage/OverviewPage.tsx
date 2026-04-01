@@ -209,8 +209,7 @@ import {
   SecretImportTableRow,
   SecretNoAccessTableRow,
   SecretRotationTableRow,
-  SecretTableRow,
-  TagFilter
+  SecretTableRow
 } from "./components";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
@@ -509,6 +508,14 @@ const OverviewPageContent = () => {
   );
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
+  const activeTagSlugs = useMemo(
+    () =>
+      Object.entries(tagFilter)
+        .filter(([, enabled]) => enabled)
+        .map(([slug]) => slug),
+    [tagFilter]
+  );
+
   const {
     isPending: isOverviewLoading,
     data: overview,
@@ -523,7 +530,7 @@ const OverviewPageContent = () => {
       orderBy,
       includeFolders: isFilteredByResources ? filter.folder : true,
       includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
-      includeSecrets: isFilteredByResources ? filter.secret : true,
+      includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
@@ -595,14 +602,6 @@ const OverviewPageContent = () => {
     useSecretImportOverview(overview?.imports);
 
   const { secKeys: rawSecKeys } = useSecretOverview(secrets || []);
-
-  const activeTagSlugs = useMemo(
-    () =>
-      Object.entries(tagFilter)
-        .filter(([, enabled]) => enabled)
-        .map(([slug]) => slug),
-    [tagFilter]
-  );
 
   const secKeys = useMemo(() => {
     if (!activeTagSlugs.length) return rawSecKeys;
@@ -1716,8 +1715,8 @@ const OverviewPageContent = () => {
   const mergedSecKeys = useMemo(() => {
     if (!isBatchModeActive) return secKeys;
 
-    // If resource filter is active and secrets are excluded, don't add pending creates
-    if (isFilteredByResources && !filter.secret) return secKeys;
+    // If resource filter is active, secrets are excluded, and no tag filter is active, don't add pending creates
+    if (isFilteredByResources && !filter.secret && !activeTagSlugs.length) return secKeys;
 
     const result = [...secKeys];
     const searchLower = debouncedSearchFilter.toLowerCase();
@@ -2035,14 +2034,15 @@ const OverviewPageContent = () => {
     []
   );
 
-  const handleToggleTag = useCallback(
-    (tagSlug: string) =>
-      setTagFilter((state) => ({
-        ...state,
-        [tagSlug]: !state[tagSlug]
-      })),
-    []
-  );
+  const handleToggleTag = useCallback((tagSlug: string) => {
+    setTagFilter((state) => {
+      const isActivating = !state[tagSlug];
+      if (isActivating) {
+        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+      }
+      return { ...state, [tagSlug]: isActivating };
+    });
+  }, []);
 
   const allRowsSelectedOnPage = useMemo(() => {
     if (!secrets?.length && !folders?.length) return { isChecked: false, isIndeterminate: false };
@@ -2240,6 +2240,9 @@ const OverviewPageContent = () => {
     activeTagSlugs.length > 0 &&
     mergedSecKeys.length === 0 &&
     mergedFolderNamesAndDescriptions.length === 0 &&
+    dynamicSecretNames.length === 0 &&
+    secretRotationNames.length === 0 &&
+    secretImportNames.length === 0 &&
     !isOverviewLoading;
 
   useEffect(() => {
@@ -2382,10 +2385,9 @@ const OverviewPageContent = () => {
                   />
                 )}
                 {userAvailableEnvs.length > 0 && (
-                  <ResourceFilter rowTypeFilter={filter} onToggleRowType={handleToggleRowType} />
-                )}
-                {userAvailableEnvs.length > 0 && (
-                  <TagFilter
+                  <ResourceFilter
+                    rowTypeFilter={filter}
+                    onToggleRowType={handleToggleRowType}
                     tags={tags}
                     selectedTagSlugs={tagFilter}
                     onToggleTag={handleToggleTag}
@@ -2843,8 +2845,7 @@ const OverviewPageContent = () => {
                                 importedSecrets={importedSecretsFlat}
                               />
                             ))}
-                          {!activeTagSlugs.length &&
-                            !isSingleEnvView &&
+                          {!isSingleEnvView &&
                             secretImportNames.map(
                               ({ importEnvSlug, importEnvName, importPath }, index) => (
                                 <SecretImportTableRow
@@ -2898,67 +2899,65 @@ const OverviewPageContent = () => {
                               />
                             )
                           )}
-                          {!activeTagSlugs.length &&
-                            dynamicSecretNames.map((dynamicSecretName, index) => (
-                              <DynamicSecretTableRow
-                                dynamicSecretName={dynamicSecretName}
-                                isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
-                                getDynamicSecretByName={getDynamicSecretByName}
-                                getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
-                                environments={visibleEnvs}
-                                tableWidth={tableWidth}
-                                secretPath={secretPath}
-                                key={`overview-${dynamicSecretName}-${index + 1}`}
-                                onEdit={(dynamicSecret) =>
-                                  handlePopUpOpen("editDynamicSecret", dynamicSecret)
-                                }
-                                onViewLeases={(dynamicSecret) =>
-                                  handlePopUpOpen("dynamicSecretLeases", dynamicSecret)
-                                }
-                                onGenerateLease={(dynamicSecret) =>
-                                  handlePopUpOpen("createDynamicSecretLease", dynamicSecret)
-                                }
-                                onDelete={(dynamicSecret) =>
-                                  handlePopUpOpen("deleteDynamicSecret", dynamicSecret)
-                                }
-                                onForceDelete={(dynamicSecret) =>
-                                  handlePopUpOpen("deleteDynamicSecret", {
-                                    ...dynamicSecret,
-                                    isForced: true
-                                  })
-                                }
-                              />
-                            ))}
-                          {!activeTagSlugs.length &&
-                            secretRotationNames.map((secretRotationName, index) => (
-                              <SecretRotationTableRow
-                                secretRotationName={secretRotationName}
-                                isSecretRotationInEnv={isSecretRotationPresentInEnv}
-                                environments={visibleEnvs}
-                                getSecretRotationByName={getSecretRotationByName}
-                                getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                                key={`overview-${secretRotationName}-${index + 1}`}
-                                tableWidth={tableWidth}
-                                onEdit={(secretRotation) =>
-                                  handlePopUpOpen("editSecretRotation", secretRotation)
-                                }
-                                onRotate={(secretRotation) =>
-                                  handlePopUpOpen("rotateSecretRotation", secretRotation)
-                                }
-                                onReconcile={(secretRotation) =>
-                                  handlePopUpOpen("reconcileSecretRotation", secretRotation)
-                                }
-                                onViewGeneratedCredentials={(secretRotation) =>
-                                  handlePopUpOpen(
-                                    "viewSecretRotationGeneratedCredentials",
-                                    secretRotation
-                                  )
-                                }
-                                onDelete={(secretRotation) =>
-                                  handlePopUpOpen("deleteSecretRotation", secretRotation)
-                                }
-                              />
-                            ))}
+                          {dynamicSecretNames.map((dynamicSecretName, index) => (
+                            <DynamicSecretTableRow
+                              dynamicSecretName={dynamicSecretName}
+                              isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                              getDynamicSecretByName={getDynamicSecretByName}
+                              getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
+                              environments={visibleEnvs}
+                              tableWidth={tableWidth}
+                              secretPath={secretPath}
+                              key={`overview-${dynamicSecretName}-${index + 1}`}
+                              onEdit={(dynamicSecret) =>
+                                handlePopUpOpen("editDynamicSecret", dynamicSecret)
+                              }
+                              onViewLeases={(dynamicSecret) =>
+                                handlePopUpOpen("dynamicSecretLeases", dynamicSecret)
+                              }
+                              onGenerateLease={(dynamicSecret) =>
+                                handlePopUpOpen("createDynamicSecretLease", dynamicSecret)
+                              }
+                              onDelete={(dynamicSecret) =>
+                                handlePopUpOpen("deleteDynamicSecret", dynamicSecret)
+                              }
+                              onForceDelete={(dynamicSecret) =>
+                                handlePopUpOpen("deleteDynamicSecret", {
+                                  ...dynamicSecret,
+                                  isForced: true
+                                })
+                              }
+                            />
+                          ))}
+                          {secretRotationNames.map((secretRotationName, index) => (
+                            <SecretRotationTableRow
+                              secretRotationName={secretRotationName}
+                              isSecretRotationInEnv={isSecretRotationPresentInEnv}
+                              environments={visibleEnvs}
+                              getSecretRotationByName={getSecretRotationByName}
+                              getSecretRotationStatusesByName={getSecretRotationStatusesByName}
+                              key={`overview-${secretRotationName}-${index + 1}`}
+                              tableWidth={tableWidth}
+                              onEdit={(secretRotation) =>
+                                handlePopUpOpen("editSecretRotation", secretRotation)
+                              }
+                              onRotate={(secretRotation) =>
+                                handlePopUpOpen("rotateSecretRotation", secretRotation)
+                              }
+                              onReconcile={(secretRotation) =>
+                                handlePopUpOpen("reconcileSecretRotation", secretRotation)
+                              }
+                              onViewGeneratedCredentials={(secretRotation) =>
+                                handlePopUpOpen(
+                                  "viewSecretRotationGeneratedCredentials",
+                                  secretRotation
+                                )
+                              }
+                              onDelete={(secretRotation) =>
+                                handlePopUpOpen("deleteSecretRotation", secretRotation)
+                              }
+                            />
+                          ))}
                           {mergedSecKeys.map((key, index) => (
                             <SecretTableRow
                               isSelected={
