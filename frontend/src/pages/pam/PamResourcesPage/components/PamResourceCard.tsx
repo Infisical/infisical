@@ -19,6 +19,7 @@ import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
 
 type Props = {
   resource: TPamResource;
+  domainFqdn?: string;
   onUpdate: (resource: TPamResource) => void;
   onDelete: (resource: TPamResource) => void;
   onToggleFavorite: (resource: TPamResource) => void;
@@ -27,6 +28,7 @@ type Props = {
 
 export const PamResourceCard = ({
   resource,
+  domainFqdn,
   onUpdate,
   onDelete,
   onToggleFavorite,
@@ -158,9 +160,16 @@ export const PamResourceCard = ({
               </DropdownMenu>
             </div>
           </div>
-          <Badge variant="neutral" className="mt-1">
-            {resourceTypeName}
-          </Badge>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Badge variant="neutral">
+              {resourceTypeName}
+            </Badge>
+            {domainFqdn && (
+              <Badge variant="info">
+                {domainFqdn}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     </div>

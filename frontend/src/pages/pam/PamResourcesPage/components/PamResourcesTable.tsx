@@ -106,6 +106,16 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   const resources = allResources.filter((r) => r.resourceType !== PamResourceType.ActiveDirectory);
   const totalCount = data?.totalCount || 0;
 
+  const adDomainMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of allResources) {
+      if (r.resourceType === PamResourceType.ActiveDirectory) {
+        map.set(r.id, r.connectionDetails.domain);
+      }
+    }
+    return map;
+  }, [allResources]);
+
   useResetPageHelper({
     totalCount,
     offset,
@@ -308,6 +318,11 @@ export const PamResourcesTable = ({ projectId }: Props) => {
             <PamResourceCard
               key={resource.id}
               resource={resource}
+              domainFqdn={
+                resource.adServerResourceId
+                  ? adDomainMap.get(resource.adServerResourceId)
+                  : undefined
+              }
               onUpdate={(e) => handlePopUpOpen("updateResource", e)}
               onDelete={(e) => handlePopUpOpen("deleteResource", e)}
               onToggleFavorite={(e) =>
