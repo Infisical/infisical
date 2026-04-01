@@ -101,6 +101,9 @@ const getGitLabVariables = async ({
 
     return variables;
   } catch (error) {
+    if (error instanceof SecretSyncError) {
+      throw error;
+    }
     if (error instanceof GitbeakerRequestError) {
       throw new SecretSyncError({
         error: new Error(
