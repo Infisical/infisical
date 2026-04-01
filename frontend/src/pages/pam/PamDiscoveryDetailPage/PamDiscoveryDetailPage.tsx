@@ -665,8 +665,10 @@ const ResourcesTab = ({
     limit: perPage
   });
 
-  const resources = data?.resources || [];
-  const totalCount = data?.totalCount || 0;
+  const resources = (data?.resources || []).filter(
+    (r) => r.resourceType !== PamResourceType.ActiveDirectory
+  );
+  const totalCount = resources.length;
 
   return (
     <div>
