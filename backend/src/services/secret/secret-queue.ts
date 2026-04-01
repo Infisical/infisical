@@ -38,6 +38,7 @@ import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
@@ -103,6 +104,7 @@ type TSecretQueueFactoryDep = {
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretTagDAL: TSecretTagDALFactory;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   kmsService: TKmsServiceFactory;
@@ -157,6 +159,7 @@ export const secretQueueFactory = ({
   secretDAL,
   secretImportDAL,
   folderDAL,
+  identityDAL,
   userDAL,
   webhookDAL,
   projectEnvDAL,
@@ -644,7 +647,9 @@ export const secretQueueFactory = ({
         payload: {
           environment,
           projectId,
-          secretPath
+          secretPath,
+          changedBy: actorId,
+          changedByActorType: actor
         }
       },
       {
@@ -1552,6 +1557,34 @@ export const secretQueueFactory = ({
       type: KmsDataKey.SecretManager,
       projectId: job.data.payload.projectId
     });
+
+    // Resolve changedBy from UUID to human-readable display name
+    if (job.data.type === WebhookEvents.SecretModified) {
+      const { changedBy, changedByActorType } = job.data.payload;
+      if (changedBy && changedByActorType) {
+        let resolvedName: string | undefined;
+        switch (changedByActorType) {
+          case ActorType.USER: {
+            const user = await userDAL.findById(changedBy);
+            resolvedName = user?.email || user?.username || changedBy;
+            break;
+          }
+          case ActorType.IDENTITY: {
+            const identity = await identityDAL.findById(changedBy);
+            resolvedName = identity?.name || changedBy;
+            break;
+          }
+          case ActorType.PLATFORM:
+            resolvedName = "Platform";
+            break;
+          default:
+            resolvedName = changedBy;
+            break;
+        }
+        // eslint-disable-next-line no-param-reassign
+        job.data.payload.changedBy = resolvedName;
+      }
+    }
 
     await fnTriggerWebhook({
       projectId: job.data.payload.projectId,

@@ -46,6 +46,8 @@ type TWebhookSecretModifiedEventPayload = {
     environment: string;
     secretPath?: string;
     type?: string | null;
+    changedBy?: string;
+    changedByActorType?: string;
   };
 };
 

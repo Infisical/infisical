@@ -1467,6 +1467,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     webhookDAL,
     auditLogService,
+    identityDAL,
     userDAL,
     projectMembershipDAL,
     smtpService,
