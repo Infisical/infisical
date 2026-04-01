@@ -52,7 +52,8 @@ export enum AppConnection {
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
-  ExternalInfisical = "external-infisical"
+  ExternalInfisical = "external-infisical",
+  PowerDNS = "powerdns"
 }
 
 export enum AWSRegion {
