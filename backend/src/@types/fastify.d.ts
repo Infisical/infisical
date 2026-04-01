@@ -15,6 +15,7 @@ import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certifi
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
+import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
@@ -338,6 +339,7 @@ declare module "fastify" {
       telemetry: TTelemetryServiceFactory;
       dynamicSecret: TDynamicSecretServiceFactory;
       dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
+      emailDomain: TEmailDomainServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
       rateLimit: TRateLimitServiceFactory;
       userEngagement: TUserEngagementServiceFactory;

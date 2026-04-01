@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
-      t.string("domain", 255).notNullable().unique();
+      t.string("domain", 255).notNullable();
       t.string("parentDomain", 255);
 
       // Verification details
@@ -53,6 +53,7 @@ export async function up(knex: Knex): Promise<void> {
       // Indexes
       t.index("parentDomain");
       t.index("orgId");
+      t.index("domain");
 
       // Check constraint
       t.check(

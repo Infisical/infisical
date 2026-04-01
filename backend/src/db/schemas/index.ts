@@ -42,6 +42,7 @@ export * from "./certificate-templates";
 export * from "./certificates";
 export * from "./dynamic-secret-leases";
 export * from "./dynamic-secrets";
+export * from "./email-domains";
 export * from "./external-certificate-authorities";
 export * from "./external-group-org-role-mappings";
 export * from "./external-kms";

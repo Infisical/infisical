@@ -136,7 +136,8 @@ export enum OrgPermissionSubjects {
   Gateway = "gateway",
   Relay = "relay",
   SecretShare = "secret-share",
-  SubOrganization = "sub-organization"
+  SubOrganization = "sub-organization",
+  EmailDomains = "email-domains"
 }
 
 export type AppConnectionSubjectFields = {
@@ -175,7 +176,8 @@ export type OrgPermissionSet =
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
-  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
+  | [OrgPermissionActions, OrgPermissionSubjects.EmailDomains];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -326,6 +328,10 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionRelayActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   })
 ]);
 
@@ -471,6 +477,11 @@ const buildAdminPermission = () => {
   );
 
   can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.EmailDomains);
 
   return rules;
 };

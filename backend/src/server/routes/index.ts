@@ -50,6 +50,8 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
@@ -611,6 +613,7 @@ export const registerRoutes = async (
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
+  const emailDomainDAL = emailDomainDALFactory(db);
 
   const sshCertificateDAL = sshCertificateDALFactory(db);
   const sshCertificateBodyDAL = sshCertificateBodyDALFactory(db);
@@ -2146,6 +2149,12 @@ export const registerRoutes = async (
     identityDAL
   });
 
+  const emailDomainService = emailDomainServiceFactory({
+    emailDomainDAL,
+    permissionService,
+    licenseService
+  });
+
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
@@ -3088,6 +3097,7 @@ export const registerRoutes = async (
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
+    emailDomain: emailDomainService,
     snapshot: snapshotService,
     saml: samlService,
     ldap: ldapService,

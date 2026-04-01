@@ -649,6 +649,7 @@ import {
   TCertificateRequestsInsert,
   TCertificateRequestsUpdate
 } from "@app/db/schemas/certificate-requests";
+import { TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate } from "@app/db/schemas/email-domains";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
@@ -1293,6 +1294,7 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesInsert,
       TDynamicSecretLeasesUpdate
     >;
+    [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;

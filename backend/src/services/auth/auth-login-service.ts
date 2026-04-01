@@ -298,7 +298,7 @@ export const authLoginServiceFactory = ({
           enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
           const requiredMfaMethod = isOrgMfaEnforced
-            ? (org.selectedMfaMethod ?? MfaMethod.EMAIL)
+            ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
             : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
 
           const mfaToken = crypto.jwt().sign(

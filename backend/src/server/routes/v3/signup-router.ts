@@ -6,6 +6,7 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -98,7 +99,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       operationId: "completeAccountSignupV3",
       body: z.discriminatedUnion("type", [
         z.object({
-          type: z.literal("email"),
+          type: z.literal(CompleteAccountType.Email),
           email: z.string().trim(),
           firstName: z.string().trim(),
           lastName: z.string().trim().optional(),
@@ -107,7 +108,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           organizationName: GenericResourceNameSchema.optional()
         }),
         z.object({
-          type: z.literal("alias"),
+          type: z.literal(CompleteAccountType.Alias),
           code: z.string().trim(),
           organizationName: GenericResourceNameSchema.optional()
         })
@@ -183,5 +184,4 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       return { message: "Successfully set up account", user, token: accessToken };
     }
   });
-
 };
