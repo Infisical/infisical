@@ -25,7 +25,7 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
-import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
+import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
@@ -851,9 +851,9 @@ export const dynamicSecretServiceFactory = ({
       projectId: folder.projectId
     });
 
-    const decryptedStoredInput = JSON.parse(
-      secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
-    ) as { caPublicKey: string };
+    const decryptedStoredInput = SshStoredSchema.pick({ caPublicKey: true }).parse(
+      JSON.parse(secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString())
+    );
 
     return { caPublicKey: decryptedStoredInput.caPublicKey };
   };
