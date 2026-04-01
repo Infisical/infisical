@@ -56,7 +56,7 @@ export const ProjectEventRegisterSchema = z.object({
   conditions: z
     .object({
       secretPath: z.string().optional().default("/"),
-      environmentSlug: z.string()
+      environmentSlug: z.string().optional()
     })
     .optional()
 });
