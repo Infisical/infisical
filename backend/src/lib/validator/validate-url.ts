@@ -142,9 +142,7 @@ export const isFQDN = (str: string, options: FQDNOptions = {}): boolean => {
 const MAX_SAFE_REDIRECTS = 5;
 
 type SsrfSafeRequestOptions = {
-  /** If true, skips SSRF validation (for gateway-proxied requests) */
   allowPrivateIps?: boolean;
-  /** Custom status validator for axios */
   validateStatus?: (status: number) => boolean;
 };
 
@@ -226,18 +224,17 @@ export const ssrfSafeGet = async <T>(
 
 /**
  * Makes an HTTP POST request with SSRF protection.
- * POST requests do not follow redirects for security reasons.
- *
- * Note: URL validation should be done by the caller before invoking this function.
- * This function ensures redirects are blocked as a defense-in-depth measure.
+ * Validates the URL before making the request and disables redirects.
  */
 export const ssrfSafePost = async <T>(
   url: string,
   data: unknown,
-  config?: { headers?: Record<string, string> }
+  options?: Pick<SsrfSafeRequestOptions, "allowPrivateIps"> & { headers?: Record<string, string> }
 ): Promise<{ data: T }> => {
+  await validateSsrfUrl(url, options);
+
   return request.post<T>(url, data, {
-    ...config,
+    headers: options?.headers,
     maxRedirects: 0
   });
 };

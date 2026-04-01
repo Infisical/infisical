@@ -18,7 +18,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ssrfSafeGet, ssrfSafePost, validateSsrfUrl } from "@app/lib/validator";
+import { ssrfSafeGet, ssrfSafePost } from "@app/lib/validator";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -567,11 +567,6 @@ export const aiMcpServerServiceFactory = ({
         });
       }
 
-      // Validate registration_endpoint for SSRF protection (comes from attacker-controlled AS metadata)
-      if (!gatewayId) {
-        await validateSsrfUrl(authServer.registration_endpoint);
-      }
-
       // Route DCR request through gateway when configured
       const { data: clientMetadata } = await gatewayRequest.post<TOAuthDynamicClientMetadata>(
         authServer.registration_endpoint,
@@ -662,15 +657,7 @@ export const aiMcpServerServiceFactory = ({
     // Create gateway-aware request helper using the stored gatewayId
     const serverUrlObj = new URL(sessionData.serverUrl);
     const gatewayRequest = createGatewayAwareRequest(sessionData.gatewayId, serverUrlObj);
-    const isUsingGateway = Boolean(sessionData.gatewayId);
-
-    // 2. Validate token endpoint for SSRF protection before making the request
-    // This is critical as the tokenEndpoint was stored from attacker-controlled AS metadata
-    if (!isUsingGateway) {
-      await validateSsrfUrl(sessionData.tokenEndpoint);
-    }
-
-    // 3. Exchange code for tokens using the stored token endpoint
+    // 2. Exchange code for tokens using the stored token endpoint
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
       code,
