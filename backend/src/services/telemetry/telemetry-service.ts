@@ -185,10 +185,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const sendPostHogEvents = async (event: TPostHogEvent) => {
-    // Track secret operation counters in Redis for TelemetryInstanceStats (non-cloud only).
-    // Only increment when a PostHog client is available, since the TelemetryInstanceStats
-    // cleanup job that reads and deletes these counters is only scheduled when postHog
-    // is defined. Without this gate, counters would accumulate indefinitely in Redis.
     if (!appCfg.INFISICAL_CLOUD && postHog) {
       if (
         [
@@ -198,11 +194,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           PostHogEventTypes.SecretUpdated
         ].includes(event.event)
       ) {
-        await keyStore.incrementBy(
-          TELEMETRY_SECRET_PROCESSED_KEY,
-          (event as TSecretModifiedEvent).properties.numberOfSecrets
-        );
-        await keyStore.incrementBy(TELEMETRY_SECRET_OPERATIONS_KEY, 1);
+        try {
+          await keyStore.incrementBy(
+            TELEMETRY_SECRET_PROCESSED_KEY,
+            (event as TSecretModifiedEvent).properties.numberOfSecrets
+          );
+          await keyStore.incrementBy(TELEMETRY_SECRET_OPERATIONS_KEY, 1);
+        } catch (error) {
+          logger.error(error, "Failed to increment telemetry secret counters in Redis");
+        }
       }
     }
 
