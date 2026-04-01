@@ -1404,14 +1404,14 @@ export const pamAccountServiceFactory = ({
       })
     );
 
-    // MFA enforcement
-    const project = await projectDAL.findById(accountWithResource.projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${accountWithResource.projectId}' not found` });
-
-    const actorUser = await userDAL.findById(actorId);
-    if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
-
     if (!mfaSessionId && accountWithResource.requireMfa) {
+      const project = await projectDAL.findById(accountWithResource.projectId);
+      if (!project)
+        throw new NotFoundError({ message: `Project with ID '${accountWithResource.projectId}' not found` });
+
+      const actorUser = await userDAL.findById(actorId);
+      if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+
       const org = await orgDAL.findOrgById(project.orgId);
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 

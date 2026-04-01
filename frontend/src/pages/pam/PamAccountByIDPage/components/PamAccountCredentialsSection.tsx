@@ -32,8 +32,6 @@ type Props = {
   onEdit: VoidFunction;
 };
 
-// -- Field components for the main section (non-sensitive, always visible) --
-
 const CopyableField = ({ label, value }: { label: string; value: string }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -131,8 +129,6 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
   }
 };
 
-// -- Sensitive field components (revealed inside gate) --
-
 const MASKED_VALUE = "••••••••••••";
 
 const SensitiveField = ({ label, value }: { label: string; value: string }) => {
@@ -196,8 +192,6 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
     </Detail>
   );
 };
-
-// -- Per-resource-type field definitions for sensitive credentials --
 
 type FieldDef = {
   key: string;
@@ -284,8 +278,6 @@ const RevealedCredentials = ({
   );
 };
 
-// -- Main section component --
-
 export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
   const { state, startReveal, reset } = useCredentialsReveal(account.id);
 
@@ -316,17 +308,15 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
       </div>
       <CredentialsContent account={account} />
       {hasSensitiveFields && (
-        <>
-          <SensitiveCredentialsGate
-            state={state}
-            requireMfa={Boolean(account.requireMfa)}
-            onReveal={startReveal}
-            onReset={reset}
-            onRetry={startReveal}
-          >
-            {state.status === "revealed" && <RevealedCredentials credentialsData={state.data} />}
-          </SensitiveCredentialsGate>
-        </>
+        <SensitiveCredentialsGate
+          state={state}
+          requireMfa={Boolean(account.requireMfa)}
+          onReveal={startReveal}
+          onReset={reset}
+          onRetry={startReveal}
+        >
+          {state.status === "revealed" && <RevealedCredentials credentialsData={state.data} />}
+        </SensitiveCredentialsGate>
       )}
     </div>
   );
