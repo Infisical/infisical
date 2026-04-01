@@ -3,6 +3,7 @@ import axios from "axios";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TPowerDNSConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 const normalizePowerDNSZone = (zone: string): string => {
   return zone.endsWith(".") ? zone : `${zone}.`;
@@ -21,6 +22,8 @@ export const powerDnsInsertTxtRecord = async (
   const {
     credentials: { apiKey, baseUrl }
   } = connection;
+
+  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   const zone = normalizePowerDNSZone(hostedZoneId);
   // domain is the full FQDN (e.g. "_acme-challenge.example.com"), ensure trailing dot for PowerDNS
@@ -74,6 +77,8 @@ export const powerDnsDeleteTxtRecord = async (
   const {
     credentials: { apiKey, baseUrl }
   } = connection;
+
+  await blockLocalAndPrivateIpAddresses(baseUrl);
 
   const zone = normalizePowerDNSZone(hostedZoneId);
   const recordName = normalizePowerDNSRecordName(domain);
