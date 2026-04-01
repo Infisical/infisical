@@ -22,6 +22,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TPowerDNSConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -54,6 +55,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord } from "./dns-providers/powerdns";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const validateDnsResolver = (resolver: string): void => {
@@ -457,6 +459,15 @@ export const orderCertificate = async (
           );
           break;
         }
+        case AcmeDnsProvider.PowerDNS: {
+          await powerDnsInsertTxtRecord(
+            connection as TPowerDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -507,6 +518,15 @@ export const orderCertificate = async (
         case AcmeDnsProvider.AzureDNS: {
           await azureDnsDeleteTxtRecord(
             connection as TAzureDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.PowerDNS: {
+          await powerDnsDeleteTxtRecord(
+            connection as TPowerDNSConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue

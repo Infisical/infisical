@@ -20,6 +20,7 @@ import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
+import { TPowerDNSConnection } from "./powerdns-connection";
 import { TExternalInfisicalConnection } from "./external-infisical-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
@@ -107,6 +108,7 @@ export * from "./terraform-cloud-connection";
 export * from "./venafi-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./powerdns-connection";
 export * from "./zabbix-connection";
 
 export type TAppConnection =
@@ -163,7 +165,8 @@ export type TAppConnection =
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection
-  | TExternalInfisicalConnection;
+  | TExternalInfisicalConnection
+  | TPowerDNSConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
