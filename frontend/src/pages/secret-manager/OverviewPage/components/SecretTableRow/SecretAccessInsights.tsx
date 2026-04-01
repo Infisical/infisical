@@ -262,7 +262,7 @@ function AddMemberPopover({
           <UserPlusIcon /> Grant Organization User Access
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-lg p-0">
+      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg p-0">
         <Command>
           <CommandInput placeholder="Search organization users..." />
           <CommandList>
