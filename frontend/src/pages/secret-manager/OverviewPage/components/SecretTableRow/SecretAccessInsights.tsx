@@ -67,7 +67,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useUser
 } from "@app/context";
 import {
   PermissionConditionOperators,
@@ -102,6 +103,7 @@ type AccessRow = {
   linkTo: string;
   linkParams: Record<string, string>;
   canEdit: boolean;
+  isSelf?: boolean;
   onEdit?: () => void;
   inheritedFromGroups?: string[];
   inheritedActions?: Set<string>;
@@ -320,6 +322,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { user: currentUser } = useUser();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
@@ -408,10 +411,13 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             projectId: currentProject.id,
             membershipId: user.membershipId
           },
-          canEdit: permission.can(
-            ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-            subject(ProjectPermissionSub.Member, { userEmail: user.name })
-          ),
+          isSelf: user.name === currentUser.username,
+          canEdit:
+            user.name !== currentUser.username &&
+            permission.can(
+              ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+              subject(ProjectPermissionSub.Member, { userEmail: user.name })
+            ),
           onEdit: () =>
             setEditingPrivilege({
               type: "user",
@@ -708,14 +714,16 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                                 </UnstableDropdownMenuItem>
                               </TooltipTrigger>
                               <TooltipContent side="left">
-                                You do not have permission to perform this action
+                                {row.isSelf
+                                  ? "You cannot modify your own privileges"
+                                  : "You do not have permission to perform this action"}
                               </TooltipContent>
                             </Tooltip>
                           )}
                           <UnstableDropdownMenuItem asChild>
                             <Link to={row.linkTo as "."} params={row.linkParams} target="_blank">
                               <ExternalLinkIcon />
-                              Manage Access
+                              {row.isSelf ? "View" : "Manage"} Access
                             </Link>
                           </UnstableDropdownMenuItem>
                         </UnstableDropdownMenuContent>
