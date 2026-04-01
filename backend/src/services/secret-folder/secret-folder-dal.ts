@@ -225,10 +225,14 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         return folderIds.map(() => undefined);
       }
 
-      const targetEnvIds = unique(targetFolders, (f) => f.envId).map((f) => f.envId);
-
-      // Fetch all folders in those environments for path building
-      const allEnvFolders = await (tx || db.replicaNode())(TableName.SecretFolder).whereIn("envId", targetEnvIds);
+      const allEnvFolders = await (tx || db.replicaNode())(TableName.SecretFolder).whereIn(
+        "envId",
+        (tx || db.replicaNode())(TableName.SecretFolder)
+          .select("envId")
+          .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+          .whereIn(`${TableName.SecretFolder}.id`, folderIds)
+          .where(`${TableName.Environment}.projectId`, projectId)
+      );
 
       const idMap = buildFolderIdMap(allEnvFolders);
 
@@ -388,10 +392,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
       if (!parentFolders.length) return [];
 
-      const envIds = unique(parentFolders, (f) => f.envId).map((f) => f.envId);
-
       const allFolders = await (tx || db.replicaNode())(TableName.SecretFolder)
-        .whereIn("envId", envIds)
+        .whereIn("envId", (tx || db.replicaNode())(TableName.SecretFolder).select("envId").whereIn("id", parentIds))
         .where("isReserved", false);
 
       const envSlugMap: Record<string, string> = {};
