@@ -7,7 +7,7 @@ import {
   KeyIcon,
   RefreshCwIcon,
   SearchIcon,
-  TagIcon
+  TagsIcon
 } from "lucide-react";
 
 import {
@@ -125,8 +125,8 @@ export function ResourceFilter({
         <UnstableDropdownMenuSeparator />
         <UnstableDropdownMenuSub onOpenChange={(open) => !open && setTagSearch("")}>
           <UnstableDropdownMenuSubTrigger className="gap-2">
-            <TagIcon className="size-4 shrink-0" />
-            Tags
+            <TagsIcon className="size-4 shrink-0 text-muted" />
+            <span className="flex-1">Tags</span>
             {tagCount > 0 && (
               <Badge variant="project" isSquare>
                 {tagCount}
