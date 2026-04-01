@@ -236,7 +236,8 @@ const PamAccountPolicyActionSchema = z.object({
   [ProjectPermissionPamAccountActions.Create]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional()
+  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.ReadCredentials]: z.boolean().optional()
 });
 
 const PamSessionPolicyActionSchema = z.object({
@@ -3133,6 +3134,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionPamAccountActions.Delete,
         description: "Delete PAM accounts"
+      },
+      {
+        label: "View Credentials",
+        value: ProjectPermissionPamAccountActions.ReadCredentials,
+        description: "View full account credentials and connection details"
       }
     ]
   },

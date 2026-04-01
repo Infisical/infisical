@@ -48,6 +48,7 @@ export const pamKeys = {
     params
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
+  accountCredentials: (accountId: string) => [...pamKeys.account(), "credentials", accountId],
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
@@ -253,6 +254,33 @@ export const useGetPamAccountDependencies = (accountId?: string) => {
       return data.dependencies;
     },
     enabled: !!accountId
+  });
+};
+
+export type TPamAccountCredentialsResponse = {
+  credentials: Record<string, unknown>;
+  connectionDetails: Record<string, unknown>;
+  resourceType: string;
+  accountId: string;
+  accountName: string;
+  resourceName: string;
+  projectId: string;
+};
+
+export const useViewPamAccountCredentials = (
+  accountId: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: pamKeys.accountCredentials(accountId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPamAccountCredentialsResponse>(
+        `/api/v1/pam/accounts/${accountId}/credentials`
+      );
+
+      return data;
+    },
+    enabled: options?.enabled ?? false
   });
 };
 

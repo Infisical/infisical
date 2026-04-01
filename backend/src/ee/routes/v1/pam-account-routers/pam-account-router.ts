@@ -4,17 +4,53 @@ import { z } from "zod";
 import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
-import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
-import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
-import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
-import { SanitizedMsSQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
-import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  ActiveDirectoryAccountCredentialsSchema,
+  ActiveDirectoryResourceConnectionDetailsSchema,
+  SanitizedActiveDirectoryAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import {
+  AwsIamAccountCredentialsSchema,
+  AwsIamResourceConnectionDetailsSchema,
+  SanitizedAwsIamAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
+  KubernetesAccountCredentialsSchema,
+  KubernetesResourceConnectionDetailsSchema,
+  SanitizedKubernetesAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
+  MsSQLAccountCredentialsSchema,
+  MsSQLResourceConnectionDetailsSchema,
+  SanitizedMsSQLAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
+import {
+  MySQLAccountCredentialsSchema,
+  MySQLResourceConnectionDetailsSchema,
+  SanitizedMySQLAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
-import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
-import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
-import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
-import { SanitizedWindowsAccountWithResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
+import {
+  PostgresAccountCredentialsSchema,
+  PostgresResourceConnectionDetailsSchema,
+  SanitizedPostgresAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import {
+  RedisAccountCredentialsSchema,
+  RedisResourceConnectionDetailsSchema,
+  SanitizedRedisAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
+import {
+  SanitizedSSHAccountWithResourceSchema,
+  SSHAccountCredentialsSchema,
+  SSHResourceConnectionDetailsSchema
+} from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  SanitizedWindowsAccountWithResourceSchema,
+  WindowsAccountCredentialsSchema,
+  WindowsResourceConnectionDetailsSchema
+} from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -47,6 +83,61 @@ const ListPamAccountsResponseSchema = z.object({
   accounts: SanitizedAccountSchema.array(),
   totalCount: z.number().default(0)
 });
+
+const AccountCredentialsBaseSchema = z.object({
+  accountId: z.string().uuid(),
+  accountName: z.string(),
+  resourceName: z.string(),
+  projectId: z.string().uuid()
+});
+
+const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Postgres),
+    credentials: PostgresAccountCredentialsSchema,
+    connectionDetails: PostgresResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MySQL),
+    credentials: MySQLAccountCredentialsSchema,
+    connectionDetails: MySQLResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MsSQL),
+    credentials: MsSQLAccountCredentialsSchema,
+    connectionDetails: MsSQLResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.SSH),
+    credentials: SSHAccountCredentialsSchema,
+    connectionDetails: SSHResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Redis),
+    credentials: RedisAccountCredentialsSchema,
+    connectionDetails: RedisResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Kubernetes),
+    credentials: KubernetesAccountCredentialsSchema,
+    connectionDetails: KubernetesResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.AwsIam),
+    credentials: AwsIamAccountCredentialsSchema,
+    connectionDetails: AwsIamResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Windows),
+    credentials: WindowsAccountCredentialsSchema,
+    connectionDetails: WindowsResourceConnectionDetailsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.ActiveDirectory),
+    credentials: ActiveDirectoryAccountCredentialsSchema,
+    connectionDetails: ActiveDirectoryResourceConnectionDetailsSchema
+  })
+]);
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -222,6 +313,54 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return account as z.infer<typeof SanitizedAccountSchema>;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/credentials",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "View full (unsanitized) PAM account credentials and resource connection details",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      querystring: z.object({
+        mfaSessionId: z.string().optional()
+      }),
+      response: {
+        200: AccountCredentialsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pamAccount.viewCredentials({
+        accountId: req.params.accountId,
+        mfaSessionId: req.query.mfaSessionId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_READ_CREDENTIALS,
+          metadata: {
+            accountId: result.accountId,
+            accountName: result.accountName,
+            resourceName: result.resourceName,
+            resourceType: result.resourceType
+          }
+        }
+      });
+
+      return result as z.infer<typeof AccountCredentialsResponseSchema>;
     }
   });
 
