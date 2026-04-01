@@ -122,10 +122,7 @@ const getAwsElbClient = async (
 
   const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new ElasticLoadBalancingV2Client({
-    region: awsConfig.region,
-    credentials: awsConfig.credentials
-  });
+  return new ElasticLoadBalancingV2Client(awsConfig);
 };
 
 const getAwsAcmClient = async (
@@ -179,10 +176,7 @@ const getAwsAcmClient = async (
 
   const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new ACMClient({
-    region: awsConfig.region,
-    credentials: awsConfig.credentials
-  });
+  return new ACMClient(awsConfig);
 };
 
 export const awsElasticLoadBalancerPkiSyncFactory = ({

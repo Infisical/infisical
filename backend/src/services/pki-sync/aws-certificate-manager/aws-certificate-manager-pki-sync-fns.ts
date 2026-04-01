@@ -227,10 +227,7 @@ const getAwsAcmClient = async (
 
   const awsConfig = await getAwsConnectionConfig(awsConnectionConfig, region);
 
-  return new ACMClient({
-    region,
-    credentials: awsConfig.credentials
-  });
+  return new ACMClient(awsConfig);
 };
 
 export const awsCertificateManagerPkiSyncFactory = ({
