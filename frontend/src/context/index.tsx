@@ -27,6 +27,7 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,

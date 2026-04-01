@@ -397,7 +397,10 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.PamAccounts
   );
 
-  can([ProjectPermissionPamSessionActions.Read], ProjectPermissionSub.PamSessions);
+  can(
+    [ProjectPermissionPamSessionActions.Read, ProjectPermissionPamSessionActions.Terminate],
+    ProjectPermissionSub.PamSessions
+  );
 
   can(
     [
