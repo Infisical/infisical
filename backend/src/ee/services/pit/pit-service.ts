@@ -446,18 +446,20 @@ export const pitServiceFactory = ({
       reconstructNewFolders: deepRollback
     });
 
-    // Trigger secret sync for the rolled-back folder
-    const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
-    const folderPath = folderPaths?.[0];
-    if (folderPath?.path != null && folderPath.environmentSlug != null) {
-      await secretQueueService.syncSecrets({
-        secretPath: folderPath.path,
-        projectId,
-        orgId: actorOrgId,
-        environmentSlug: folderPath.environmentSlug,
-        actorId,
-        actor
-      });
+    // Trigger secret sync for the rolled-back folder if changes were made
+    if (response.totalChanges > 0) {
+      const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+      const folderPath = folderPaths?.[0];
+      if (folderPath?.path != null && folderPath.environmentSlug != null) {
+        await secretQueueService.syncSecrets({
+          secretPath: folderPath.path,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: folderPath.environmentSlug,
+          actorId,
+          actor
+        });
+      }
     }
 
     return {
