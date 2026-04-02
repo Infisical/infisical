@@ -240,7 +240,8 @@ const PamAccountPolicyActionSchema = z.object({
 });
 
 const PamSessionPolicyActionSchema = z.object({
-  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
+  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
 });
 
 const PamDiscoveryPolicyActionSchema = z.object({
@@ -1791,10 +1792,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
     if (subject === ProjectPermissionSub.PamSessions) {
       const canRead = action.includes(ProjectPermissionPamSessionActions.Read);
+      const canTerminate = action.includes(ProjectPermissionPamSessionActions.Terminate);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
+      if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
     }
 
     if (subject === ProjectPermissionSub.PamDiscovery) {
@@ -1956,7 +1959,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
-    rules.forEach((actions) => {
+    (rules ?? []).forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
@@ -2011,7 +2014,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Describe Secret",
         description:
-          "View secret metadata (name, tags, etc.) without revealing the actual secret value",
+          "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value",
         value: ProjectPermissionSecretActions.DescribeSecret
       },
       {
@@ -3144,6 +3147,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read",
         value: ProjectPermissionPamSessionActions.Read,
         description: "View PAM session history and recordings"
+      },
+      {
+        label: "Terminate",
+        value: ProjectPermissionPamSessionActions.Terminate,
+        description: "Terminate active PAM sessions"
       }
     ]
   },

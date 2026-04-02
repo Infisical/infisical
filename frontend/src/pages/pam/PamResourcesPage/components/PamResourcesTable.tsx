@@ -142,13 +142,19 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     setPendingResourceTypes([]);
   };
 
-  const resourceTypeOptions = Object.entries(PAM_RESOURCE_TYPE_MAP).map(
-    ([type, { name, image }]) => ({
+  // TODO: Temporary - hide Active Directory and RDP from resource type filter
+  const TEMPORARILY_HIDDEN_RESOURCE_TYPES = new Set([
+    PamResourceType.ActiveDirectory,
+    PamResourceType.RDP
+  ]);
+
+  const resourceTypeOptions = Object.entries(PAM_RESOURCE_TYPE_MAP)
+    .filter(([type]) => !TEMPORARILY_HIDDEN_RESOURCE_TYPES.has(type as PamResourceType))
+    .map(([type, { name, image }]) => ({
       value: type as PamResourceType,
       label: name,
       image
-    })
-  );
+    }));
 
   const isContentEmpty = !resources.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
