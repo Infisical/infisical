@@ -258,7 +258,11 @@ const waitForDnsPropagation = async (
     if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
       await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
     }
-    throw new Error(`DNS record "${lookupName}" with value "${expectedValue}" not found after ${DNS_PROPAGATION_MAX_RETRIES} attempts`);
+    if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
+      await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
+    }
+  }
+  throw new Error(`DNS record "${lookupName}" with value "${expectedValue}" not found after ${DNS_PROPAGATION_MAX_RETRIES} attempts`);
   }
 };
 
