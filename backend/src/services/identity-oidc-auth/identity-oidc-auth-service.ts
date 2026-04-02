@@ -32,6 +32,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -110,6 +111,8 @@ export const identityOidcAuthServiceFactory = ({
 
       let discoveryDoc: { jwks_uri: string };
       try {
+        await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
+
         const response = await axios.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
           {
@@ -141,6 +144,8 @@ export const identityOidcAuthServiceFactory = ({
           }
         });
       }
+
+      await blockLocalAndPrivateIpAddresses(jwksUri);
 
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
@@ -592,6 +597,8 @@ export const identityOidcAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -709,6 +716,10 @@ export const identityOidcAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
+
+    if (oidcDiscoveryUrl) {
+      await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+    }
 
     const updateQuery: TIdentityOidcAuthsUpdate = {
       oidcDiscoveryUrl,
