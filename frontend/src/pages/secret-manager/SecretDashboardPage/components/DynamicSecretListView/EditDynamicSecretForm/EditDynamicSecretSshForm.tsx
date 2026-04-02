@@ -283,7 +283,7 @@ export const EditDynamicSecretSshForm = ({
             <button
               type="button"
               onClick={() => setCmdOpen(!cmdOpen)}
-              className="mt-4 flex w-full cursor-pointer flex-col rounded-md border border-mineshaft-500 bg-mineshaft-700 p-3 text-sm hover:bg-mineshaft-600"
+              className="flex w-full cursor-pointer flex-col rounded-md border border-mineshaft-500 bg-mineshaft-700 p-3 text-sm hover:bg-mineshaft-600"
             >
               <div className="flex gap-2.5">
                 <ShieldIcon className="mt-0.5 size-6 shrink-0 text-info" />
