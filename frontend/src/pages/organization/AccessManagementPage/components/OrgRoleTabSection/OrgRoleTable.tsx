@@ -11,6 +11,7 @@ import {
   SearchIcon,
   ServerIcon,
   TrashIcon,
+  TriangleAlertIcon,
   WrenchIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -30,6 +31,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -69,6 +73,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
@@ -195,8 +200,36 @@ export const OrgRoleTable = () => {
 
   const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
 
+  const isProPlan =
+    Boolean(subscription) &&
+    subscription.rbac &&
+    [SubscriptionPlanTypes.Pro, SubscriptionPlanTypes.ProAnnual].includes(subscription.slug);
+
+  const customRoles = filteredRoles.filter((role) => isCustomOrgRole(role.slug));
+
   return (
     <>
+      {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
+      {isProPlan && customRoles?.length > 0 && (
+        <UnstableAlert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            <div>
+              Custom roles will require an Enterprise plan starting June 1, 2026. Please{" "}
+              <a
+                href="https://infisical.com/scheduledemo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                contact sales
+              </a>{" "}
+              to upgrade and retain access to custom roles.
+            </div>
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <UnstableCard>
         <UnstableCardHeader>
           <UnstableCardTitle>
