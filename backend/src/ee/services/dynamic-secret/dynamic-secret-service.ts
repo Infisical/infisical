@@ -810,7 +810,7 @@ export const dynamicSecretServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }) => {
-    const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretId);
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ id: dynamicSecretId });
     if (!dynamicSecretCfg) {
       throw new NotFoundError({ message: `Dynamic secret with ID '${dynamicSecretId}' not found` });
     }
@@ -842,7 +842,8 @@ export const dynamicSecretServiceFactory = ({
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, {
         environment: folder.environment.envSlug,
-        secretPath
+        secretPath,
+        metadata: dynamicSecretCfg.metadata
       })
     );
 
