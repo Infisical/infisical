@@ -38,7 +38,7 @@ infisical pam
 $ infisical pam db access --resource <resource-name> --account <account-name> [flags]
 
 # Example
-$ infisical pam db access --resource infisical-shared-cloud-instances --account infisical --project-id b38bef10-2685-43c4-9a2c-635206d60bec --duration 4h
+$ infisical pam db access --resource infisical-shared-cloud-instances --account infisical --project-id <project-uuid> --duration 4h
 ```
 
 ### Flags
@@ -235,13 +235,25 @@ All SSH subcommands share the following flags:
   </Accordion>
 
   <Accordion title="--duration">
-    Duration for SSH access session.
+    Duration for SSH access session. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
 
     Default value: `1h`
 
     ```bash
     # Example
     infisical pam ssh access --resource=prod-servers --account=root --duration=2h
+    ```
+
+  </Accordion>
+
+  <Accordion title="--port">
+    Port for the local SSH proxy server (only applies to `proxy` subcommand). Use `0` for auto-assign.
+
+    Default value: `0`
+
+    ```bash
+    # Example
+    infisical pam ssh proxy --resource=prod-servers --account=root --port=2222
     ```
 
   </Accordion>
@@ -267,10 +279,10 @@ All SSH subcommands share the following flags:
 $ infisical pam kubernetes access --resource <resource-name> --account <account-name> [flags]
 
 # Example
-$ infisical pam kubernetes access --resource prod-cluster --account developer --project-id b38bef10-2685-43c4-9a2c-635206d60bec --duration 4h
+$ infisical pam kubernetes access --resource prod-cluster --account developer --project-id <project-uuid> --duration 4h
 
 # Using the alias
-$ infisical pam k8s access --resource prod-cluster --account developer --project-id b38bef10-2685-43c4-9a2c-635206d60bec
+$ infisical pam k8s access --resource prod-cluster --account developer --project-id <project-uuid>
 ```
 
 ### Flags
@@ -306,7 +318,7 @@ $ infisical pam k8s access --resource prod-cluster --account developer --project
   </Accordion>
 
   <Accordion title="--duration">
-    Duration for Kubernetes access session.
+    Duration for Kubernetes access session. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
 
     Default value: `1h`
 
@@ -384,7 +396,7 @@ $ infisical pam redis access --resource my-redis-resource --account redis-admin 
   </Accordion>
 
   <Accordion title="--duration">
-    Duration for Redis access session.
+    Duration for Redis access session. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
 
     Default value: `1h`
 
