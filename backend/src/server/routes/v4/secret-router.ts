@@ -130,6 +130,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: convertStringBoolean().describe(RAW_SECRETS.LIST.recursive),
         includePersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.LIST.includePersonalOverrides),
         includeImports: convertStringBoolean(true).describe(RAW_SECRETS.LIST.includeImports),
+        filterInaccessibleSecrets: convertStringBoolean().describe(RAW_SECRETS.LIST.filterInaccessibleSecrets),
         tagSlugs: z
           .string()
           .describe(RAW_SECRETS.LIST.tagSlugs)
@@ -200,6 +201,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
+        filterInaccessibleSecrets: req.query.filterInaccessibleSecrets,
         ifNoneMatch: req.headers["if-none-match"]
       });
 

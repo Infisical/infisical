@@ -212,6 +212,7 @@ export type TGetSecretsRawDTO = {
   path: string;
   environment: string;
   viewSecretValue: boolean;
+  filterInaccessibleSecrets?: boolean;
   throwOnMissingReadValuePermission?: boolean;
   includeImports?: boolean;
   recursive?: boolean;

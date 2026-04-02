@@ -1151,6 +1151,7 @@ export const secretV2BridgeServiceFactory = ({
       expandSecretReferences: shouldExpandSecretReferences,
       expandPersonalOverrides,
       personalOverridesBehavior,
+      filterInaccessibleSecrets,
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
       ...params
@@ -1328,6 +1329,23 @@ export const secretV2BridgeServiceFactory = ({
 
         if (!canDescribeSecret) {
           return false;
+        }
+
+        if (filterInaccessibleSecrets) {
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment,
+              secretPath: groupedPaths[el.folderId][0].path,
+              secretName: el.key,
+              secretTags: el.tags.map((i) => i.slug)
+            }
+          );
+
+          if (!canReadValue) {
+            return false;
+          }
         }
 
         if (viewSecretValue) {
@@ -1547,7 +1565,7 @@ export const secretV2BridgeServiceFactory = ({
           }
         );
 
-        return viewSecretValue ? canDescribe && canReadValue : canDescribe;
+        return viewSecretValue || filterInaccessibleSecrets ? canDescribe && canReadValue : canDescribe;
       }
     });
 
