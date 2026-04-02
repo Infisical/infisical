@@ -21,14 +21,7 @@ import {
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-
-const KEY_ALGORITHMS = [
-  { label: "ED25519 (Recommended)", value: "ED25519" },
-  { label: "RSA 2048", value: "RSA_2048" },
-  { label: "RSA 4096", value: "RSA_4096" },
-  { label: "ECDSA P-256", value: "EC_prime256v1" },
-  { label: "ECDSA P-384", value: "EC_secp384r1" }
-];
+import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
 
 const formSchema = z.object({
   inputs: z.object({
@@ -76,7 +69,7 @@ export const EditDynamicSecretSshForm = ({
       maxTTL: dynamicSecret.maxTTL,
       inputs: {
         principals: sshInputs.principals || [],
-        keyAlgorithm: sshInputs.keyAlgorithm || "ED25519"
+        keyAlgorithm: sshInputs.keyAlgorithm || SshCertKeyAlgorithm.ED25519
       }
     }
   });
@@ -250,7 +243,7 @@ export const EditDynamicSecretSshForm = ({
                     helperText="Algorithm for ephemeral key pairs generated per lease"
                   >
                     <Select value={value} onValueChange={onChange} className="w-full">
-                      {KEY_ALGORITHMS.map((alg) => (
+                      {sshCertKeyAlgorithms.map((alg) => (
                         <SelectItem key={alg.value} value={alg.value}>
                           {alg.label}
                         </SelectItem>

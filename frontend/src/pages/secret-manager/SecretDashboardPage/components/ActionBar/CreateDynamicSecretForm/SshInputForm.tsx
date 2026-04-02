@@ -22,20 +22,13 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
 import { ProjectEnv } from "@app/hooks/api/types";
-
-const KEY_ALGORITHMS = [
-  { label: "ED25519 (Recommended)", value: "ED25519" },
-  { label: "RSA 2048", value: "RSA_2048" },
-  { label: "RSA 4096", value: "RSA_4096" },
-  { label: "ECDSA P-256", value: "EC_prime256v1" },
-  { label: "ECDSA P-384", value: "EC_secp384r1" }
-];
 
 const formSchema = z.object({
   provider: z.object({
     principals: z.array(z.string().trim().min(1)).min(1, "At least one principal is required"),
-    keyAlgorithm: z.string().default("ED25519")
+    keyAlgorithm: z.string().default(SshCertKeyAlgorithm.ED25519)
   }),
   defaultTTL: z.string().refine((v) => v.length > 0, "Required"),
   maxTTL: z.string().optional(),
@@ -72,7 +65,7 @@ export const SshInputForm = ({
     defaultValues: {
       provider: {
         principals: [],
-        keyAlgorithm: "ED25519"
+        keyAlgorithm: SshCertKeyAlgorithm.ED25519
       },
       defaultTTL: "1h",
       environment: isSingleEnvironmentMode && environments.length > 0 ? environments[0] : undefined
@@ -257,7 +250,7 @@ export const SshInputForm = ({
                     helperText="Algorithm for ephemeral key pairs generated per lease"
                   >
                     <Select value={value} onValueChange={onChange} className="w-full">
-                      {KEY_ALGORITHMS.map((alg) => (
+                      {sshCertKeyAlgorithms.map((alg) => (
                         <SelectItem key={alg.value} value={alg.value}>
                           {alg.label}
                         </SelectItem>
