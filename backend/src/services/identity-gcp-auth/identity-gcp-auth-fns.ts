@@ -1,5 +1,6 @@
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
+import { RE2 } from "re2";
 
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -34,6 +35,8 @@ export const validateIdTokenIdentity = async ({
   return { email: payload.email, computeEngineDetails: payload.google?.compute_engine };
 };
 
+const serviceAccountEmailRegex = new RE2(/^[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/);
+
 /**
  * Validates that the signed JWT token for a GCP service account is valid as part of GCP IAM authentication.
  * @param {string} identityId - The ID of the identity in Infisical that is being authenticated against (used as audience).
@@ -51,13 +54,17 @@ export const validateIamIdentity = async ({
   const decodedJwt = crypto.jwt().decode(serviceAccountJwt, { complete: true }) as TDecodedGcpIamAuthJwt;
   const { sub, aud } = decodedJwt.payload;
 
+  if (!sub || !serviceAccountEmailRegex.test(sub)) {
+    throw new UnauthorizedError({ message: "Invalid service account identifier" });
+  }
+
   const {
     data
   }: {
     data: {
       [key: string]: string;
     };
-  } = await axios.get(`https://www.googleapis.com/service_accounts/v1/metadata/x509/${sub}`);
+  } = await axios.get(`https://www.googleapis.com/service_accounts/v1/metadata/x509/${encodeURIComponent(sub)}`);
 
   const publicKey = data[decodedJwt.header.kid];
 
