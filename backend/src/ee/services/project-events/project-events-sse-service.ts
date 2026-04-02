@@ -7,6 +7,7 @@ import picomatch from "picomatch";
 import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -177,6 +178,17 @@ export const projectEventsSSEServiceFactory = ({
   };
 
   /**
+   * Check if user has describe access to secrets in the given environment/path.
+   * Used to prevent users from receiving events for environments they cannot access.
+   */
+  const $hasSecretAccess = (permissionCache: TSSEPermissionCache, environment: string, secretPath: string): boolean => {
+    return permissionCache.permission.can(
+      ProjectPermissionSecretActions.DescribeSecret,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+  };
+
+  /**
    * Validate that user has permission for all registered events
    * Throws ForbiddenError if any registration is not permitted
    */
@@ -196,6 +208,18 @@ export const projectEventsSSEServiceFactory = ({
         action,
         subject(permissionSubject, subjectFields)
       );
+
+      // When no environmentSlug is specified, verify the user has secret describe access.
+      // This prevents subscribing to events for environments the user cannot access.
+      if (!reg.conditions?.environmentSlug) {
+        ForbiddenError.from(permissionCache.permission).throwUnlessCan(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: subjectFields.environment,
+            secretPath: subjectFields.secretPath
+          })
+        );
+      }
     }
   };
 
@@ -266,10 +290,20 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: payload.secretPath
       };
 
-      return permissionCache.permission.can(
+      const canReceive = permissionCache.permission.can(
         action,
         subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields)
       );
+
+      if (!canReceive) return false;
+
+      // When no environmentSlug filter is specified, verify the user has
+      // secret describe access for the event's actual environment.
+      if (!reg.conditions?.environmentSlug) {
+        return $hasSecretAccess(permissionCache, payload.environment, payload.secretPath);
+      }
+
+      return true;
     });
   };
 
