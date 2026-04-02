@@ -159,15 +159,16 @@ export const secretSharingServiceFactory = ({
 
     const encryptWithRoot = kmsService.encryptWithRootKey();
 
-    // makes sure the user is not sharing secrets with users that don't have an account
-    if (emails && emails.length > 0 && accessType === SecretSharingAccessType.Organization && !allowExternalEmails) {
+    // makes sure the user is not sharing secrets with users that are not registered on Infisical without knowing it
+    if (emails && emails.length > 0 && accessType !== SecretSharingAccessType.Organization && !allowExternalEmails) {
       const platformUsers = await userDAL.findUsersByEmails(emails);
       const platformEmailSet = new Set(platformUsers.map((u) => u.email!.toLowerCase()));
       const hasUnregisteredEmail = emails.some((e) => !platformEmailSet.has(e.toLowerCase()));
 
       if (hasUnregisteredEmail) {
         throw new BadRequestError({
-          message: "One or more emails are not registered on Infisical! Use allowExternalEmails to share secrets with users outside of Infisical."
+          message:
+            "One or more emails are not registered on Infisical! Use allowExternalEmails to share secrets with users outside of Infisical."
         });
       }
     }
