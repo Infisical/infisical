@@ -7,7 +7,6 @@ import picomatch from "picomatch";
 import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -208,15 +207,15 @@ export const projectEventsSSEServiceFactory = ({
         subject(permissionSubject, subjectFields)
       );
 
-      // When no environmentSlug is specified, verify the user has secret describe
-      // access in ALL project environments. This prevents partial-access users from
-      // subscribing to wildcard events across environments they cannot access.
+      // When no environmentSlug is specified, verify the user has the action
+      // access in ALL project environments to check the SSE events
       if (!reg.conditions?.environmentSlug) {
         const secretPath = reg.conditions?.secretPath ?? "/";
         for (const env of projectEnvironments) {
           ForbiddenError.from(permissionCache.permission).throwUnlessCan(
-            ProjectPermissionSecretActions.DescribeSecret,
-            subject(ProjectPermissionSub.Secrets, {
+            // @ts-expect-error - permissionSubject is narrowed by getBusEventToSubject but TS doesn't infer it
+            action,
+            subject(permissionSubject, {
               environment: env.slug,
               secretPath
             })
