@@ -12,7 +12,7 @@ type Props = {
   state: RevealState;
   onReveal: () => void;
   onReset: () => void;
-  children: React.ReactElement;
+  children: React.ReactNode;
 };
 
 const ButtonContent = ({ state }: { state: RevealState }) => {
@@ -39,7 +39,7 @@ const ButtonContent = ({ state }: { state: RevealState }) => {
 
 export const SensitiveCredentialsGate = ({ state, onReveal, onReset, children }: Props) => {
   if (state.status === "revealed") {
-    return children;
+    return <div>{children}</div>;
   }
 
   const isMfaVerifying = state.status === "mfa-verifying";

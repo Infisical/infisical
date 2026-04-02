@@ -305,7 +305,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      description: "View full (unsanitized) PAM account credentials and resource connection details",
+      description: "View full (unsanitized) PAM account credentials",
       params: z.object({
         accountId: z.string().uuid()
       }),
