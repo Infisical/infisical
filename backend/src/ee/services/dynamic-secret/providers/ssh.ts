@@ -1,4 +1,5 @@
 import RE2 from "re2";
+import slugify from "@sindresorhus/slugify";
 
 import { BadRequestError } from "@app/lib/errors";
 
@@ -86,9 +87,7 @@ export const SshProvider = (): TDynamicProviderFns => {
       });
     }
 
-    // Build key ID: infisical-{identity.name} (alphanumeric + hyphens only)
-    const sanitizedName = identity.name.replace(new RE2(/[^a-zA-Z0-9-]/g), "-");
-    const keyId = `infisical-${sanitizedName}`;
+    const keyId = `infisical-${slugify(identity.name)}`;
 
     // Generate ephemeral key pair with configured algorithm
     const ephemeralKeyPair = await createSshKeyPair(parsed.keyAlgorithm);
