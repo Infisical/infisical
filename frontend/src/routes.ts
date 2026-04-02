@@ -480,8 +480,6 @@ export const routes = rootRoute("root.tsx", [
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
     route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
     middleware("inject-org-details.tsx", [
-      route("/organization/$", "redirects/organization-redirect.tsx"),
-      route("/projects/$", "redirects/project-redirect.tsx"),
       adminRoute,
       pamAccessRoute,
       pamDataExplorerRoute,
