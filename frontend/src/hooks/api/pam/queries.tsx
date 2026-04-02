@@ -48,7 +48,6 @@ export const pamKeys = {
     params
   ],
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
-
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
@@ -265,7 +264,6 @@ export type TPamAccountCredentialsResponse = {
   resourceName: string;
   projectId: string;
 };
-
 
 // Rotation Rules
 export const useGetPamRotationRules = (resourceId?: string) => {

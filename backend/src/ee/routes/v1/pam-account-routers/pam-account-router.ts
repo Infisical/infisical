@@ -302,7 +302,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/credentials",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     schema: {
       description: "View full (unsanitized) PAM account credentials and resource connection details",

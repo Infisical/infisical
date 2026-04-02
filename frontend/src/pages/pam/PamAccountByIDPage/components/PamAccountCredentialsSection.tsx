@@ -193,52 +193,25 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
   );
 };
 
-type FieldDef = {
+type SensitiveFieldDef = {
   key: string;
   label: string;
-  sensitive: boolean;
   multiline?: boolean;
 };
 
-const RESOURCE_FIELD_DEFS: Record<string, FieldDef[]> = {
-  [PamResourceType.Postgres]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ],
-  [PamResourceType.MySQL]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ],
-  [PamResourceType.MsSQL]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ],
+// Only defines fields that require the "View Credentials" flow to reveal.
+// Non-sensitive fields (username, auth method, etc.) are already shown by CredentialsContent above.
+const SENSITIVE_FIELD_DEFS: Record<string, SensitiveFieldDef[]> = {
+  [PamResourceType.Postgres]: [{ key: "password", label: "Password" }],
+  [PamResourceType.MySQL]: [{ key: "password", label: "Password" }],
+  [PamResourceType.MsSQL]: [{ key: "password", label: "Password" }],
   [PamResourceType.SSH]: [
-    { key: "authMethod", label: "Auth Method", sensitive: false },
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true },
-    { key: "privateKey", label: "Private Key", sensitive: true, multiline: true }
+    { key: "password", label: "Password" },
+    { key: "privateKey", label: "Private Key", multiline: true }
   ],
-  [PamResourceType.Redis]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ],
-  [PamResourceType.Kubernetes]: [
-    { key: "authMethod", label: "Auth Method", sensitive: false },
-    { key: "serviceAccountToken", label: "Service Account Token", sensitive: true }
-  ],
-  [PamResourceType.AwsIam]: [
-    { key: "targetRoleArn", label: "Target Role ARN", sensitive: false },
-    { key: "defaultSessionDuration", label: "Session Duration (s)", sensitive: false }
-  ],
-  [PamResourceType.Windows]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ],
-  [PamResourceType.ActiveDirectory]: [
-    { key: "username", label: "Username", sensitive: false },
-    { key: "password", label: "Password", sensitive: true }
-  ]
+  [PamResourceType.Redis]: [{ key: "password", label: "Password" }],
+  [PamResourceType.Windows]: [{ key: "password", label: "Password" }],
+  [PamResourceType.ActiveDirectory]: [{ key: "password", label: "Password" }]
 };
 
 const RevealedCredentials = ({
@@ -247,19 +220,18 @@ const RevealedCredentials = ({
   credentialsData: TPamAccountCredentialsResponse;
 }) => {
   const { credentials, resourceType } = credentialsData;
-  const fieldDefs = RESOURCE_FIELD_DEFS[resourceType] || [];
+  const fieldDefs = SENSITIVE_FIELD_DEFS[resourceType] || [];
 
-  const sensitiveFields = fieldDefs.filter((f) => {
-    if (!f.sensitive) return false;
+  const presentFields = fieldDefs.filter((f) => {
     const value = credentials[f.key];
     return value !== undefined && value !== null && String(value).length > 0;
   });
 
-  if (sensitiveFields.length === 0) return null;
+  if (presentFields.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-3">
-      {sensitiveFields.map((field) =>
+      {presentFields.map((field) =>
         field.multiline ? (
           <MultilineSensitiveField
             key={field.key}
@@ -287,9 +259,7 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
   )
     return null;
 
-  const hasSensitiveFields = (RESOURCE_FIELD_DEFS[account.resource.resourceType] || []).some(
-    (f) => f.sensitive
-  );
+  const hasSensitiveFields = (SENSITIVE_FIELD_DEFS[account.resource.resourceType] || []).length > 0;
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
