@@ -211,8 +211,8 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
-                                This privilege was granted via an access request, therefore it
-                                cannot be edited or deleted
+                                If you want to remove this privilege, revoke the granted access
+                                request in the approvals tab.
                               </TooltipContent>
                             </Tooltip>
                           )}

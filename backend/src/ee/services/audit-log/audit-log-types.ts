@@ -642,6 +642,9 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
+  ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -5256,6 +5259,33 @@ interface ApprovalRequestGrantRevokeEvent {
   };
 }
 
+interface AccessApprovalRequestCreateEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    isTemporary: boolean;
+    temporaryRange?: string;
+  };
+}
+
+interface AccessApprovalRequestReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW;
+  metadata: {
+    requestId: string;
+    reviewStatus: string;
+  };
+}
+
+interface AccessApprovalRequestRevokeEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    policyId: string;
+  };
+}
+
 interface CreateAcmeAccountEvent {
   type: EventType.CREATE_ACME_ACCOUNT;
   metadata: {
@@ -6210,6 +6240,9 @@ export type Event =
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
+  | AccessApprovalRequestCreateEvent
+  | AccessApprovalRequestReviewEvent
+  | AccessApprovalRequestRevokeEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
   | CreateAcmeOrderEvent

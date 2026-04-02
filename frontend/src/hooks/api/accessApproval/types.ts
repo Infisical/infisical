@@ -111,6 +111,10 @@ export type TAccessApprovalRequest = {
   editNote?: string;
   editedByUserId?: string;
   expiresAt?: Date | null;
+  approvedAt?: Date | null;
+  revokedAt?: Date | null;
+  approvedByUserId?: string | null;
+  revokedByUserId?: string | null;
 };
 
 export type TAccessApproval = {

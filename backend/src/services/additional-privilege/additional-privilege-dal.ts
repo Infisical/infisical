@@ -22,7 +22,8 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
 
     return docs.map((doc) => ({
       ...doc,
-      isLinkedToAccessApproval: Boolean(doc.accessApprovalRequestId)
+      isLinkedToAccessApproval: Boolean(doc.accessApprovalRequestId),
+      accessApprovalRequestId: doc.accessApprovalRequestId ?? null
     }));
   };
 

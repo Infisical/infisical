@@ -32,7 +32,7 @@ import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-requ
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -755,7 +755,12 @@ export const accessApprovalRequestServiceFactory = ({
           }
           await accessApprovalRequestDAL.updateById(
             accessApprovalRequest.id,
-            { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
+            {
+              privilegeId: privilegeIdToSet,
+              status: ApprovalStatus.APPROVED,
+              approvedAt: new Date(),
+              approvedByUserId: actorId
+            },
             tx
           );
 
@@ -819,6 +824,60 @@ export const accessApprovalRequestServiceFactory = ({
     return { ...reviewStatus, projectId: accessApprovalRequest.projectId };
   };
 
+  const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
+    if (!accessApprovalRequest)
+      throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+
+    const { policy } = accessApprovalRequest;
+    if (!policy) throw new NotFoundError({ message: `Policy for request '${requestId}' not found` });
+
+    const isApprover = policy.approvers.some((approver) => approver.userId === actorId);
+    if (!isApprover) throw new ForbiddenRequestError({ message: "Only policy approvers can revoke access" });
+
+    if (accessApprovalRequest.status !== ApprovalStatus.APPROVED) {
+      throw new BadRequestError({ message: "Only approved requests can be revoked" });
+    }
+
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const updatedRequest = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const result = await accessApprovalRequestDAL.updateById(
+        requestId,
+        {
+          status: ApprovalStatus.REVOKED,
+          revokedAt: new Date(),
+          revokedByUserId: actorId,
+          privilegeId: null
+        },
+        tx
+      );
+
+      if (accessApprovalRequest.privilegeId) {
+        await additionalPrivilegeDAL.deleteById(accessApprovalRequest.privilegeId, tx);
+      }
+
+      await permissionService.invalidateProjectPermissionCache(accessApprovalRequest.projectId, tx);
+
+      return result;
+    });
+
+    return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
+  };
+
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
     projectSlug,
     policyId,
@@ -849,6 +908,7 @@ export const accessApprovalRequestServiceFactory = ({
     updateAccessApprovalRequest,
     listApprovalRequests,
     reviewAccessRequest,
+    revokeAccessRequest,
     getCount
   };
 };

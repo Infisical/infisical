@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -69,6 +70,21 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         temporaryRange: req.body.temporaryRange,
         isTemporary: req.body.isTemporary,
         note: req.body.note
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_CREATE,
+          metadata: {
+            requestId: request.id,
+            policyId: request.policyId,
+            isTemporary: req.body.isTemporary,
+            ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {})
+          }
+        }
       });
 
       void server.services.telemetry
@@ -225,6 +241,19 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         bypassReason: req.body.bypassReason
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW,
+          metadata: {
+            requestId: review.requestId,
+            reviewStatus: req.body.status
+          }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalRequestReviewed,
@@ -240,6 +269,50 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         .catch(() => {});
 
       return { review };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/revoke",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.revokeAccessRequest({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE,
+          metadata: {
+            requestId: result.request.id,
+            requestedByUserId: result.request.requestedByUserId,
+            policyId: result.request.policyId
+          }
+        }
+      });
+
+      return { request: result.request };
     }
   });
 
