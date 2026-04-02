@@ -213,7 +213,7 @@ export const SshInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-label">
               Configuration
             </div>
 
@@ -253,9 +253,13 @@ export const SshInputForm = ({
                         </Button>
                       </div>
                       {principals.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {principals.map((principal, idx) => (
-                            <Tag key={principal} onClose={() => handleRemovePrincipal(idx)}>
+                            <Tag
+                              className="bg-neutral/15 text-neutral"
+                              key={principal}
+                              onClose={() => handleRemovePrincipal(idx)}
+                            >
                               {principal}
                             </Tag>
                           ))}
@@ -339,7 +343,7 @@ export const SshInputForm = ({
           subTitle="Configure the target host to trust certificates issued by this dynamic secret."
         >
           <div className="flex flex-col">
-            <span className="text-sm text-mineshaft-300">Run this command on the target host:</span>
+            <span className="text-sm text-muted">Run this command on the target host:</span>
             <div className="mt-2 flex items-center gap-1">
               <Input value={setupCommand} isDisabled />
               <IconButton
@@ -356,10 +360,10 @@ export const SshInputForm = ({
                 }}
                 className="size-8 shrink-0"
               >
-                <FontAwesomeIcon icon={faCopy} className="text-mineshaft-200" />
+                <FontAwesomeIcon icon={faCopy} className="text-label" />
               </IconButton>
             </div>
-            <div className="mt-4 flex flex-col gap-1 text-sm text-mineshaft-300">
+            <div className="mt-4 flex flex-col gap-1 text-sm text-muted">
               <span>This command will:</span>
               <span>- Install the CA certificate on the target host</span>
               <span>- Configure SSH to trust certificate-based authentication</span>

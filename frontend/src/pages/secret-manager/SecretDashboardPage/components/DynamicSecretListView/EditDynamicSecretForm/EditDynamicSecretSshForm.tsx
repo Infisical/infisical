@@ -205,7 +205,7 @@ export const EditDynamicSecretSshForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-label">
               Configuration
             </div>
 
@@ -245,9 +245,13 @@ export const EditDynamicSecretSshForm = ({
                         </Button>
                       </div>
                       {principals.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {principals.map((principal, idx) => (
-                            <Tag key={principal} onClose={() => handleRemovePrincipal(idx)}>
+                            <Tag
+                              className="bg-neutral/15 text-neutral"
+                              key={principal}
+                              onClose={() => handleRemovePrincipal(idx)}
+                            >
                               {principal}
                             </Tag>
                           ))}
@@ -283,7 +287,7 @@ export const EditDynamicSecretSshForm = ({
             <button
               type="button"
               onClick={() => setCmdOpen(!cmdOpen)}
-              className="flex w-full cursor-pointer flex-col rounded-md border border-mineshaft-500 bg-mineshaft-700 p-3 text-sm hover:bg-mineshaft-600"
+              className="flex w-full cursor-pointer flex-col rounded-md border border-border bg-container p-3 text-sm hover:bg-container-hover"
             >
               <div className="flex gap-2.5">
                 <ShieldIcon className="mt-0.5 size-6 shrink-0 text-info" />
@@ -291,14 +295,14 @@ export const EditDynamicSecretSshForm = ({
                   <div className="flex justify-between gap-2 pr-1">
                     <div className="flex flex-col text-left">
                       <span className="text-base">Certificate-Based Authentication</span>
-                      <span className="text-sm text-mineshaft-300">
+                      <span className="text-sm text-muted">
                         Run this command on target hosts to trust certificates from this dynamic
                         secret
                       </span>
                     </div>
                     <ChevronDownIcon
                       className={twMerge(
-                        "shrink-0 text-mineshaft-400 transition-transform duration-200 ease-in-out",
+                        "shrink-0 text-muted transition-transform duration-200 ease-in-out",
                         cmdOpen && "rotate-180"
                       )}
                     />
@@ -311,7 +315,7 @@ export const EditDynamicSecretSshForm = ({
                   >
                     <div className="overflow-hidden">
                       <div className="flex flex-col text-left">
-                        <span className="mt-2 text-sm text-mineshaft-300">
+                        <span className="mt-2 text-sm text-muted">
                           Run this command on the target host:
                         </span>
                         <div className="mt-1 flex items-center gap-1">
@@ -331,10 +335,10 @@ export const EditDynamicSecretSshForm = ({
                             }}
                             className="size-8 shrink-0"
                           >
-                            <FontAwesomeIcon icon={faCopy} className="text-mineshaft-200" />
+                            <FontAwesomeIcon icon={faCopy} className="text-label" />
                           </IconButton>
                         </div>
-                        <div className="mt-4 flex flex-col gap-1 text-xs text-mineshaft-300">
+                        <div className="mt-4 flex flex-col gap-1 text-xs text-muted">
                           <span>This command will:</span>
                           <span>- Install the CA certificate on the target host</span>
                           <span>- Configure SSH to trust certificate-based authentication</span>

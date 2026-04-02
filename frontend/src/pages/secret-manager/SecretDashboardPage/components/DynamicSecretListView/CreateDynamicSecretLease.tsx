@@ -18,6 +18,7 @@ import {
   Input,
   SecretInput,
   Spinner,
+  Tag,
   Tooltip
 } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -606,7 +607,7 @@ const SshLeaseOutput = ({
           </Tooltip>
         </div>
       </div>
-      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-muted">
         <p className="mr-4 break-all whitespace-pre-wrap">{data.PRIVATE_KEY}</p>
       </div>
       <div className="mb-4 flex items-center justify-between">
@@ -637,7 +638,7 @@ const SshLeaseOutput = ({
           </Tooltip>
         </div>
       </div>
-      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-muted">
         <p className="mr-4 break-all whitespace-pre-wrap">{data.SIGNED_KEY}</p>
       </div>
       <div className="flex flex-col gap-4">
@@ -672,7 +673,7 @@ const SshLeaseOutput = ({
           </div>
         </div>
       </div>
-      <p className="mt-4 text-xs text-mineshaft-400">
+      <p className="mt-4 text-xs text-muted">
         Important: Copy or download these credentials now. You will not be able to see them again
         after you close the modal.
       </p>
@@ -792,21 +793,15 @@ export const CreateSshDynamicSecretLease = ({
                         </Button>
                       </div>
                       {principals.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {principals.map((principal: string, idx: number) => (
-                            <span
+                            <Tag
+                              className="bg-neutral/15 text-neutral"
                               key={principal}
-                              className="inline-flex items-center gap-1 rounded-md bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-200"
+                              onClose={() => handleRemovePrincipal(idx)}
                             >
                               {principal}
-                              <button
-                                type="button"
-                                className="ml-1 text-mineshaft-400 hover:text-mineshaft-200"
-                                onClick={() => handleRemovePrincipal(idx)}
-                              >
-                                &times;
-                              </button>
-                            </span>
+                            </Tag>
                           ))}
                         </div>
                       )}
