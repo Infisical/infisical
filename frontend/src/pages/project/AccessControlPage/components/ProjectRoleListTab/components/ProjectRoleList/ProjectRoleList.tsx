@@ -192,7 +192,8 @@ export const ProjectRoleList = () => {
           <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
           <UnstableAlertDescription>
             <div>
-              Custom roles will require an Enterprise plan starting June 1, 2026.
+              Custom roles are part of the Infisical Enterprise plan, but were temporarily available
+              to Pro users. Enforcement will begin on June 1, 2026.
               <br />
               You can use{" "}
               <a
