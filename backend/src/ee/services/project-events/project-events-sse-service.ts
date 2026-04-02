@@ -14,6 +14,7 @@ import {
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TProjectEventsService } from "./project-events-service";
@@ -77,13 +78,15 @@ type TProjectEventsSSEServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
   keyStore: TKeyStoreFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
 };
 
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
   permissionService,
   licenseService,
-  keyStore
+  keyStore,
+  projectEnvDAL
 }: TProjectEventsSSEServiceFactoryDep) => {
   // Map: clientId -> { client, opts, permissionCache }
   const clients = new Map<
@@ -178,21 +181,17 @@ export const projectEventsSSEServiceFactory = ({
   };
 
   /**
-   * Check if user has describe access to secrets in the given environment/path.
-   * Used to prevent users from receiving events for environments they cannot access.
-   */
-  const $hasSecretAccess = (permissionCache: TSSEPermissionCache, environment: string, secretPath: string): boolean => {
-    return permissionCache.permission.can(
-      ProjectPermissionSecretActions.DescribeSecret,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  };
-
-  /**
    * Validate that user has permission for all registered events
    * Throws ForbiddenError if any registration is not permitted
    */
-  const validateRegisteredPermissions = (permissionCache: TSSEPermissionCache, register: TSSERegisterEntry[]): void => {
+  const validateRegisteredPermissions = async (
+    permissionCache: TSSEPermissionCache,
+    register: TSSERegisterEntry[],
+    projectId: string
+  ): Promise<void> => {
+    const needsAllEnvCheck = register.some((r) => !r.conditions?.environmentSlug);
+    const projectEnvironments = needsAllEnvCheck ? await projectEnvDAL.find({ projectId }) : [];
+
     for (const reg of register) {
       const permissionSubject = getBusEventToSubject(reg.event);
       const action = MutationTypeToAction[reg.event];
@@ -209,16 +208,20 @@ export const projectEventsSSEServiceFactory = ({
         subject(permissionSubject, subjectFields)
       );
 
-      // When no environmentSlug is specified, verify the user has secret describe access.
-      // This prevents subscribing to events for environments the user cannot access.
+      // When no environmentSlug is specified, verify the user has secret describe
+      // access in ALL project environments. This prevents partial-access users from
+      // subscribing to wildcard events across environments they cannot access.
       if (!reg.conditions?.environmentSlug) {
-        ForbiddenError.from(permissionCache.permission).throwUnlessCan(
-          ProjectPermissionSecretActions.DescribeSecret,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: subjectFields.environment,
-            secretPath: subjectFields.secretPath
-          })
-        );
+        const secretPath = reg.conditions?.secretPath ?? "/";
+        for (const env of projectEnvironments) {
+          ForbiddenError.from(permissionCache.permission).throwUnlessCan(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: env.slug,
+              secretPath
+            })
+          );
+        }
       }
     }
   };
@@ -235,7 +238,7 @@ export const projectEventsSSEServiceFactory = ({
       const newPermissionCache = await fetchPermission(entry.opts);
 
       // Re-validate registered permissions with refreshed permissions
-      validateRegisteredPermissions(newPermissionCache, entry.opts.register);
+      await validateRegisteredPermissions(newPermissionCache, entry.opts.register, entry.opts.projectId);
 
       entry.permissionCache = newPermissionCache;
     } catch (error) {
@@ -290,20 +293,10 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: payload.secretPath
       };
 
-      const canReceive = permissionCache.permission.can(
+      return permissionCache.permission.can(
         action,
         subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields)
       );
-
-      if (!canReceive) return false;
-
-      // When no environmentSlug filter is specified, verify the user has
-      // secret describe access for the event's actual environment.
-      if (!reg.conditions?.environmentSlug) {
-        return $hasSecretAccess(permissionCache, payload.environment, payload.secretPath);
-      }
-
-      return true;
     });
   };
 
@@ -318,7 +311,7 @@ export const projectEventsSSEServiceFactory = ({
     const permissionCache = await fetchPermission(opts);
 
     // Validate user has permission for all registered events (throws ForbiddenError if not)
-    validateRegisteredPermissions(permissionCache, opts.register);
+    await validateRegisteredPermissions(permissionCache, opts.register, opts.projectId);
 
     const plan = await licenseService.getPlan(opts.actorOrgId);
     if (!plan.eventSubscriptions) {
