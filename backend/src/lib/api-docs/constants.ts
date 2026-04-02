@@ -1377,6 +1377,7 @@ export const DASHBOARD = {
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
     search: "The text string to filter secret keys and folder names by.",
+    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
