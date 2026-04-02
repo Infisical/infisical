@@ -310,7 +310,6 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
       {hasSensitiveFields && (
         <SensitiveCredentialsGate
           state={state}
-          requireMfa={Boolean(account.requireMfa)}
           onReveal={startReveal}
           onReset={reset}
           onRetry={startReveal}
