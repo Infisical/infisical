@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
@@ -24,17 +25,42 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
-const formSchema = z.object({
-  provider: z.object({
-    principals: z.array(z.string().trim().min(1)).min(1, "At least one principal is required"),
-    keyAlgorithm: z.string().default(SshCertKeyAlgorithm.ED25519)
-  }),
-  defaultTTL: z.string().refine((v) => v.length > 0, "Required"),
-  maxTTL: z.string().optional(),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
-});
+const sshCertKeyAlgorithmsArray = sshCertKeyAlgorithms.map((a) => a.value);
+
+const formSchema = z
+  .object({
+    provider: z.object({
+      principals: z.array(z.string().trim().min(1)).min(1, "At least one principal is required"),
+      keyAlgorithm: z.enum(sshCertKeyAlgorithmsArray as [string, ...string[]])
+    }),
+    defaultTTL: z.string().superRefine((val, ctx) => {
+      const valMs = ms(val);
+      if (valMs < 60 * 1000)
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+      if (valMs > ms("10y"))
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
+    }),
+    maxTTL: z
+      .string()
+      .optional()
+      .superRefine((val, ctx) => {
+        if (!val) return;
+        const valMs = ms(val);
+        if (valMs < 60 * 1000)
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+        if (valMs > ms("10y"))
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
+      })
+      .nullable(),
+    name: slugSchema({ field: "Name" }),
+    environment: z.object({ name: z.string(), slug: z.string() })
+  })
+  .refine((d) => !d.maxTTL || ms(d.maxTTL)! >= ms(d.defaultTTL)!, {
+    path: ["maxTTL"],
+    message: "Max TTL must be greater than or equal to Default TTL"
+  });
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
@@ -68,6 +94,7 @@ export const SshInputForm = ({
         keyAlgorithm: SshCertKeyAlgorithm.ED25519
       },
       defaultTTL: "1h",
+      maxTTL: "24h",
       environment: isSingleEnvironmentMode && environments.length > 0 ? environments[0] : undefined
     }
   });
@@ -179,7 +206,7 @@ export const SshInputForm = ({
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
-                    <Input {...field} />
+                    <Input {...field} value={field.value || ""} />
                   </FormControl>
                 )}
               />
