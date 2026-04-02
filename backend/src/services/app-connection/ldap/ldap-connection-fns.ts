@@ -33,15 +33,30 @@ export const extractDomainFromDN = (dn: string): string | null => {
   return dcComponents.length > 0 ? dcComponents.join(".") : null;
 };
 
+export type LdapReferralError = Error & {
+  dn: string;
+  code: number;
+  referralSource?: "search" | "modify";
+};
+
 /**
- * Checks if an error is an LDAP Referral (code 10).
+ * Checks if an error is an LDAP Referral (code 10) without requiring `dn` to be populated.
+ * Useful for search referrals where ldapjs sets `dn` to null.
+ */
+export const isLdapReferral = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  const ldapErr = err as Error & { name?: string; code?: number };
+  return ldapErr.name === "ReferralError" || ldapErr.code === 10;
+};
+
+/**
+ * Checks if an error is an LDAP Referral (code 10) with a populated `dn`.
  * ldapjs surfaces this as a ReferralError with `dn` set to the matched DN.
  */
-export const isLdapReferralError = (err: unknown): err is Error & { dn: string; code: number } => {
-  if (!(err instanceof Error)) return false;
-  const ldapErr = err as Error & { name?: string; code?: number; dn?: unknown };
-  const isReferral = ldapErr.name === "ReferralError" || ldapErr.code === 10;
-  return isReferral && typeof ldapErr.dn === "string";
+export const isLdapReferralError = (err: unknown): err is LdapReferralError => {
+  if (!isLdapReferral(err)) return false;
+  const ldapErr = err as Error & { dn?: unknown };
+  return typeof ldapErr.dn === "string";
 };
 
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {
@@ -62,7 +77,7 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
 
 /**
  * Extracts the root domain (last two labels) from a hostname.
- * e.g. "dc1.gap.com" → "gap.com", "americas.infisical.local" → "infisical.local"
+ * e.g. "dc1.test.com" → "test.com", "americas.infisical.local" → "infisical.local"
  * Returns null for IPs or single-label hostnames where a suffix check isn't meaningful.
  */
 const getRootDomain = (hostname: string): string | null => {
