@@ -161,14 +161,14 @@ export const secretSharingServiceFactory = ({
 
     // makes sure the user is not sharing secrets with users that are not registered on Infisical without knowing it
     if (emails && emails.length > 0 && accessType !== SecretSharingAccessType.Organization && !allowExternalEmails) {
-      const platformUsers = await userDAL.findUsersByEmails(emails);
+      const platformUsers = await userDAL.getVerifiedEmailsByEmailList(emails);
       const platformEmailSet = new Set(platformUsers.map((u) => u.email!.toLowerCase()));
       const hasUnregisteredEmail = emails.some((e) => !platformEmailSet.has(e.toLowerCase()));
 
       if (hasUnregisteredEmail) {
         throw new BadRequestError({
           message:
-            "One or more emails are not registered on Infisical! Use allowExternalEmails to share secrets with users outside of Infisical."
+            "One or more recipient emails are not registered on Infisical. Set allowExternalEmails to share secrets with users outside Infisical."
         });
       }
     }

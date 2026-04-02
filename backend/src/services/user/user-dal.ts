@@ -31,7 +31,7 @@ export const userDALFactory = (db: TDbClient) => {
         isEmailVerified: true
       });
 
-  const findUsersByEmails = async (emails: string[], tx?: Knex) => {
+  const getVerifiedEmailsByEmailList = async (emails: string[], tx?: Knex) => {
     if (emails.length === 0) return [];
 
     return (tx || db.replicaNode())(TableName.Users)
@@ -39,7 +39,8 @@ export const userDALFactory = (db: TDbClient) => {
         `lower("email") IN (${emails.map(() => "?").join(",")})`,
         emails.map((e) => e.toLowerCase())
       )
-      .where({ isEmailVerified: true });
+      .where({ isEmailVerified: true })
+      .select("email");
   };
 
   const getUsersByFilter = async ({
@@ -276,6 +277,6 @@ export const userDALFactory = (db: TDbClient) => {
     getUsersByFilter,
     findAllMyAccounts,
     findUserByEmail,
-    findUsersByEmails
+    getVerifiedEmailsByEmailList
   };
 };
