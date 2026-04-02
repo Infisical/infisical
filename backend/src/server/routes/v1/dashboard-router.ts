@@ -1222,8 +1222,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const tags = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
       if (!search && !tags.length) throw new BadRequestError({ message: "Search or tags required" });
 
-      const searchHasTags = Boolean(tags.length);
-
       const allFolders = await server.services.folder.getFoldersDeepByEnvs(
         {
           projectId,
@@ -1262,27 +1260,23 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      const dynamicSecrets = searchHasTags
-        ? []
-        : await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
-            {
-              projectId,
-              folderMappings,
-              filters: sharedFilters
-            },
-            req.permission
-          );
+      const dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
+        {
+          projectId,
+          folderMappings,
+          filters: sharedFilters
+        },
+        req.permission
+      );
 
-      const secretRotations = searchHasTags
-        ? []
-        : await server.services.secretRotationV2.getQuickSearchSecretRotations(
-            {
-              projectId,
-              folderMappings,
-              filters: sharedFilters
-            },
-            req.permission
-          );
+      const secretRotations = await server.services.secretRotationV2.getQuickSearchSecretRotations(
+        {
+          projectId,
+          folderMappings,
+          filters: sharedFilters
+        },
+        req.permission
+      );
 
       for await (const environment of environments) {
         const envSecrets = secrets.filter((secret) => secret.environment === environment);
@@ -1374,32 +1368,28 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         secretRotations: sliceQuickSearch(
           searchPath ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath)) : secretRotations
         ),
-        folders: searchHasTags
-          ? []
-          : sliceQuickSearch(
-              allFolders.filter((folder) => {
-                const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
-                const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
+        folders: sliceQuickSearch(
+          allFolders.filter((folder) => {
+            const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
+            const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
 
-                if (searchPath) {
-                  if (searchPath === "/") {
-                    // only show root folders if no folder name search
-                    if (!searchName) return folderPath === searchPath;
+            if (searchPath) {
+              if (searchPath === "/") {
+                // only show root folders if no folder name search
+                if (!searchName) return folderPath === searchPath;
 
-                    // start partial match on root folders
-                    return folderName.toLowerCase().startsWith(searchName.toLowerCase());
-                  }
+                // start partial match on root folders
+                return folderName.toLowerCase().startsWith(searchName.toLowerCase());
+              }
 
-                  // support ending partial path match
-                  return (
-                    folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
-                  );
-                }
+              // support ending partial path match
+              return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
+            }
 
-                // no search path, "fuzzy" match all folders
-                return folderName.toLowerCase().includes(searchName.toLowerCase());
-              })
-            )
+            // no search path, "fuzzy" match all folders
+            return folderName.toLowerCase().includes(searchName.toLowerCase());
+          })
+        )
       };
     }
   });
