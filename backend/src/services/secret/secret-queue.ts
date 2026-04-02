@@ -14,12 +14,9 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
-import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -40,7 +37,6 @@ import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-q
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
-import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -111,11 +107,7 @@ type TSecretQueueFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  kmipClientDAL: Pick<TKmipClientDALFactory, "findById">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
-  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  scimDAL: Pick<TScimDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   kmsService: TKmsServiceFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
@@ -171,11 +163,7 @@ export const secretQueueFactory = ({
   folderDAL,
   identityDAL,
   userDAL,
-  kmipClientDAL,
   serviceTokenDAL,
-  certificateProfileDAL,
-  acmeAccountDAL,
-  scimDAL,
   webhookDAL,
   projectEnvDAL,
   smtpService,
@@ -255,38 +243,10 @@ export const secretQueueFactory = ({
           const identity = await identityDAL.findById(changedBy);
           return identity?.name || changedBy;
         }
-        case ActorType.PLATFORM:
-          return "Platform";
-        case ActorType.KMIP_CLIENT: {
-          const client = await kmipClientDAL.findById(changedBy);
-          return client?.name || "KMIP Client";
-        }
         case ActorType.SERVICE: {
           const token = await serviceTokenDAL.findById(changedBy);
           return token?.name || "Service Token";
         }
-        case ActorType.ACME_PROFILE: {
-          const profile = await certificateProfileDAL.findById(changedBy);
-          return profile?.slug || "ACME Profile";
-        }
-        case ActorType.ACME_ACCOUNT: {
-          const account = await acmeAccountDAL.findById(changedBy);
-          return account?.emails?.[0] || "ACME Account";
-        }
-        case ActorType.EST_ACCOUNT: {
-          const estProfile = await certificateProfileDAL.findById(changedBy);
-          return estProfile?.slug || "EST Account";
-        }
-        case ActorType.SCEP_ACCOUNT: {
-          const scepProfile = await certificateProfileDAL.findById(changedBy);
-          return scepProfile?.slug || "SCEP Account";
-        }
-        case ActorType.SCIM_CLIENT: {
-          const scimToken = await scimDAL.findById(changedBy);
-          return scimToken?.description || "SCIM Client";
-        }
-        case ActorType.UNKNOWN_USER:
-          return "Unknown User";
         default:
           return `Unknown Actor [${String(changedByActorType)}]`;
       }
