@@ -109,10 +109,10 @@ export const identityOidcAuthServiceFactory = ({
 
       const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
 
+      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
+
       let discoveryDoc: { jwks_uri: string };
       try {
-        await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
-
         const response = await axios.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
           {
