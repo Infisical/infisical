@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession";
 import { TPamAccountCredentialsResponse } from "@app/hooks/api/pam/queries";
@@ -9,7 +10,6 @@ export type RevealState =
   | { status: "hidden" }
   | { status: "loading" }
   | { status: "mfa-verifying" }
-  | { status: "error"; message: string }
   | { status: "revealed"; data: TPamAccountCredentialsResponse };
 
 const MFA_POLL_INTERVAL = 2000;
@@ -45,7 +45,11 @@ export const useCredentialsReveal = (accountId: string) => {
       pollIntervalRef.current = setInterval(async () => {
         if (Date.now() - startTime > MFA_TIMEOUT) {
           clearInterval(pollIntervalRef.current);
-          setState({ status: "error", message: "MFA verification timed out." });
+          createNotification({
+            type: "error",
+            text: "MFA verification timed out. If a popup did not appear, check that popups are not blocked for this site."
+          });
+          setState({ status: "hidden" });
           return;
         }
 
@@ -64,15 +68,17 @@ export const useCredentialsReveal = (accountId: string) => {
               const data = await fetchCredentials(mfaSessionId);
               setState({ status: "revealed", data });
             } catch {
-              setState({
-                status: "error",
-                message: "Failed to fetch credentials after MFA verification."
+              createNotification({
+                type: "error",
+                text: "Failed to fetch credentials after MFA verification."
               });
+              setState({ status: "hidden" });
             }
           }
         } catch {
           clearInterval(pollIntervalRef.current);
-          setState({ status: "error", message: "MFA verification failed." });
+          createNotification({ type: "error", text: "MFA verification failed." });
+          setState({ status: "hidden" });
         }
       }, MFA_POLL_INTERVAL);
     },
@@ -90,7 +96,8 @@ export const useCredentialsReveal = (accountId: string) => {
         const mfaSessionId = err.response.data.details?.mfaSessionId as string | undefined;
 
         if (!mfaSessionId) {
-          setState({ status: "error", message: "MFA session could not be created." });
+          createNotification({ type: "error", text: "MFA session could not be created." });
+          setState({ status: "hidden" });
           return;
         }
 
@@ -100,7 +107,8 @@ export const useCredentialsReveal = (accountId: string) => {
         setState({ status: "mfa-verifying" });
         startMfaPolling(mfaSessionId);
       } else {
-        setState({ status: "error", message: "Failed to fetch credentials." });
+        createNotification({ type: "error", text: "Failed to fetch credentials." });
+        setState({ status: "hidden" });
       }
     }
   }, [fetchCredentials, startMfaPolling]);

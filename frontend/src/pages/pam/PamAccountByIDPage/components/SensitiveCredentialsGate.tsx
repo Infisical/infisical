@@ -11,30 +11,12 @@ type Props = {
   state: RevealState;
   onReveal: () => void;
   onReset: () => void;
-  onRetry: () => void;
   children: React.ReactNode;
 };
 
-export const SensitiveCredentialsGate = ({
-  state,
-  onReveal,
-  onReset,
-  onRetry,
-  children
-}: Props) => {
+export const SensitiveCredentialsGate = ({ state, onReveal, onReset, children }: Props) => {
   if (state.status === "revealed") {
     return <>{children}</>;
-  }
-
-  if (state.status === "error") {
-    return (
-      <div className="flex flex-col gap-2">
-        <p className="text-destructive text-sm">{state.message}</p>
-        <Button variant="outline" size="md" isFullWidth onClick={onRetry}>
-          Retry
-        </Button>
-      </div>
-    );
   }
 
   const isPending = state.status === "loading" || state.status === "mfa-verifying";
@@ -59,7 +41,7 @@ export const SensitiveCredentialsGate = ({
                   onClick={onReveal}
                 >
                   <EyeIcon />
-                  {state.status === "mfa-verifying" ? "Waiting for MFA..." : "View Credentials"}
+                  View Credentials
                 </Button>
               </span>
             </TooltipTrigger>
