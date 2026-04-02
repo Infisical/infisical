@@ -35,7 +35,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -209,7 +208,13 @@ export const oidcConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
         // Verify the existing user's stored email domain + cross-org check
-        await verifyEmailDomainOwnership({ email: foundUser.username, orgId, emailDomainDAL, orgDAL, userId: foundUser.id });
+        await verifyEmailDomainOwnership({
+          email: foundUser.username,
+          orgId,
+          emailDomainDAL,
+          orgDAL,
+          userId: foundUser.id
+        });
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -260,21 +265,12 @@ export const oidcConfigServiceFactory = ({
           username: email.toLowerCase()
         });
 
-        if (newUser && !newUser.isEmailVerified && serverCfg.trustOidcEmails) {
-          // we automatically mark it as email-verified because we've configured trust for OIDC emails
-          newUser = await userDAL.updateById(newUser.id, {
-            isEmailVerified: serverCfg.trustOidcEmails
-          });
-        }
-
         if (!newUser) {
-          const uniqueUsername = await normalizeUsername(externalId, userDAL);
           newUser = await userDAL.create(
             {
               email,
               firstName,
-              isEmailVerified: serverCfg.trustOidcEmails,
-              username: serverCfg.trustOidcEmails ? email : uniqueUsername,
+              username: email.toLowerCase(),
               lastName,
               authMethods: [],
               isGhost: false
@@ -289,8 +285,7 @@ export const oidcConfigServiceFactory = ({
             aliasType: UserAliasType.OIDC,
             externalId,
             emails: email ? [email] : [],
-            orgId,
-            isEmailVerified: serverCfg.trustOidcEmails
+            orgId
           },
           tx
         );
@@ -519,8 +514,7 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id
     });
 
-    const serverCfg = await getServerCfg();
-    if (isActive && !serverCfg.trustOidcEmails) {
+    if (isActive) {
       const isSmtpConnected = await smtpService.verify();
       if (!isSmtpConnected) {
         throw new BadRequestError({

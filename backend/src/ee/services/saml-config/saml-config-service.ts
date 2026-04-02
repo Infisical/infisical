@@ -34,7 +34,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -648,13 +647,11 @@ export const samlConfigServiceFactory = ({
         newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
 
         if (!newUser) {
-          const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
             {
-              // TODO(auth-revamp): check if trustSamlEmails is needed
-              username: serverCfg.trustSamlEmails ? email.toLowerCase() : uniqueUsername,
+              username: email.toLowerCase(),
               email,
-              isEmailVerified: serverCfg.trustSamlEmails,
+              isEmailVerified: false,
               firstName,
               lastName,
               authMethods: [],
@@ -671,7 +668,7 @@ export const samlConfigServiceFactory = ({
             externalId,
             emails: email ? [email.toLowerCase()] : [],
             orgId,
-            isEmailVerified: serverCfg.trustSamlEmails
+            isEmailVerified: false
           },
           tx
         );

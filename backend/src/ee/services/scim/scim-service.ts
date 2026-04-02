@@ -23,7 +23,7 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -36,9 +36,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -396,12 +394,8 @@ export const scimServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    const serverCfg = await getServerCfg();
 
     const aliasType = org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML;
-    const trustScimEmails =
-      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
-
     const userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -465,14 +459,6 @@ export const scimServiceFactory = ({
               lastName,
               authMethods: [],
               isGhost: false
-            },
-            tx
-          );
-        } else if (!user.isEmailVerified && trustScimEmails) {
-          await userDAL.updateById(
-            user.id,
-            {
-              isEmailVerified: trustScimEmails
             },
             tx
           );

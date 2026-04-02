@@ -31,7 +31,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -391,7 +390,6 @@ export const ldapConfigServiceFactory = ({
   const ldapLogin = async ({
     ldapConfigId,
     externalId,
-    username,
     firstName,
     lastName,
     email,
@@ -422,10 +420,17 @@ export const ldapConfigServiceFactory = ({
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
+      // TODO(auth-revamp): migration should migrate ldap users as well
       // Verify the existing user's stored email domain + cross-org check
       const existingUser = await userDAL.findOne({ id: userAlias.userId });
       if (existingUser) {
-        await verifyEmailDomainOwnership({ email: existingUser.username, orgId, emailDomainDAL, orgDAL, userId: existingUser.id });
+        await verifyEmailDomainOwnership({
+          email: existingUser.username,
+          orgId,
+          emailDomainDAL,
+          orgDAL,
+          userId: existingUser.id
+        });
       }
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
@@ -474,12 +479,10 @@ export const ldapConfigServiceFactory = ({
         newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
 
         if (!newUser) {
-          const uniqueUsername = await normalizeUsername(username, userDAL);
           newUser = await userDAL.create(
             {
-              username: serverCfg.trustLdapEmails ? email.toLowerCase() : uniqueUsername,
+              username: email.toLowerCase(),
               email: email.toLowerCase(),
-              isEmailVerified: serverCfg.trustLdapEmails,
               firstName,
               lastName,
               authMethods: [],
@@ -492,12 +495,11 @@ export const ldapConfigServiceFactory = ({
         const newUserAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
-            username,
+            username: email.toLowerCase(),
             aliasType: UserAliasType.LDAP,
             externalId,
             emails: [email],
-            orgId,
-            isEmailVerified: serverCfg.trustLdapEmails
+            orgId
           },
           tx
         );
