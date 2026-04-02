@@ -42,6 +42,8 @@ import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -55,7 +57,7 @@ type TScimServiceFactoryDep = {
     TUserDALFactory,
     "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById" | "updateById"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete" | "update">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete" | "update" | "find">;
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
@@ -102,6 +104,7 @@ type TScimServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export const scimServiceFactory = ({
@@ -122,7 +125,8 @@ export const scimServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  scimEventsDAL
+  scimEventsDAL,
+  emailDomainDAL
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -404,18 +408,25 @@ export const scimServiceFactory = ({
       aliasType
     });
 
+    // Resolve the user ID: either from the existing alias, or by looking up the email
+    const existingUserId = userAlias?.userId ?? (await userDAL.findOne({ username: email.toLowerCase() }))?.id;
+
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL, userId: existingUserId });
+
     const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
       let user: TUsers | undefined;
       let orgMembership: TMemberships;
       if (userAlias) {
         user = await userDAL.findById(userAlias.userId, tx);
-        const effectiveMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId,
-          acceptAnyStatus: true,
+        const effectiveMembership = await membershipUserDAL.findOne(
+          {
+            actorUserId: user.id,
+            scope: AccessScope.Organization,
+            scopeOrgId: orgId
+          },
           tx
-        });
+        );
 
         if (!effectiveMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
@@ -439,73 +450,17 @@ export const scimServiceFactory = ({
             },
             tx
           );
-        } else if (effectiveMembership.actorUserId === user.id) {
-          orgMembership = effectiveMembership;
-          if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
-            orgMembership = await membershipUserDAL.updateById(
-              orgMembership.id,
-              {
-                status: OrgMembershipStatus.Accepted
-              },
-              tx
-            );
-          }
         } else {
-          // Effective access via group only; create direct membership so SCIM list/get work
-          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
-
-          orgMembership = await membershipUserDAL.create(
-            {
-              actorUserId: userAlias.userId,
-              inviteEmail: email.toLowerCase(),
-              scopeOrgId: orgId,
-              scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
-              isActive: true
-            },
-            tx
-          );
-          await membershipRoleDAL.create(
-            {
-              membershipId: orgMembership.id,
-              role,
-              customRoleId: roleId
-            },
-            tx
-          );
+          orgMembership = effectiveMembership;
         }
       } else {
-        // we fetch all users with this email
-        const usersWithSameEmail = await userDAL.find(
-          {
-            email: email.toLowerCase()
-          },
-          {
-            tx
-          }
-        );
-
-        // if there is a verified email user pick that
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          user = verifiedEmail;
-          // a user who is invited via email not logged in yet
-        } else if (userWithSameUsername) {
-          user = userWithSameUsername;
-        }
-
+        user = await userDAL.findOne({ username: email.toLowerCase() }, tx);
         if (!user) {
-          const uniqueUsername = await normalizeUsername(
-            // external id is username
-            `${firstName}-${lastName}`,
-            userDAL
-          );
           user = await userDAL.create(
             {
-              username: trustScimEmails ? email.toLowerCase() : uniqueUsername,
+              username: email.toLowerCase(),
               email: email.toLowerCase(),
-              isEmailVerified: trustScimEmails,
+              isEmailVerified: false,
               firstName,
               lastName,
               authMethods: [],
@@ -530,18 +485,19 @@ export const scimServiceFactory = ({
             externalId,
             emails: email ? [email.toLowerCase()] : [],
             orgId,
-            isEmailVerified: trustScimEmails
+            isEmailVerified: false
           },
           tx
         );
 
-        const effectiveMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: user.id,
-          orgId,
-          acceptAnyStatus: true,
+        const effectiveMembership = await membershipUserDAL.findOne(
+          {
+            actorUserId: user.id,
+            scopeOrgId: orgId,
+            scope: AccessScope.Organization
+          },
           tx
-        });
+        );
 
         if (!effectiveMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
@@ -565,40 +521,8 @@ export const scimServiceFactory = ({
             },
             tx
           );
-        } else if (effectiveMembership.actorUserId === user.id) {
-          orgMembership = effectiveMembership;
-          if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
-            orgMembership = await orgDAL.updateMembershipById(
-              orgMembership.id,
-              {
-                status: OrgMembershipStatus.Accepted
-              },
-              tx
-            );
-          }
         } else {
-          // Effective access via group only; create direct membership so SCIM list/get work
-          const { role, roleId } = await getDefaultOrgMembershipRole(org.defaultMembershipRole);
-
-          orgMembership = await membershipUserDAL.create(
-            {
-              actorUserId: user.id,
-              inviteEmail: email.toLowerCase(),
-              scopeOrgId: orgId,
-              scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
-              isActive: true
-            },
-            tx
-          );
-          await membershipRoleDAL.create(
-            {
-              membershipId: orgMembership.id,
-              role,
-              customRoleId: roleId
-            },
-            tx
-          );
+          orgMembership = effectiveMembership;
         }
       }
       await scimEventsDAL.create(
@@ -610,7 +534,7 @@ export const scimServiceFactory = ({
             email: user.email ?? "",
             firstName: user.firstName,
             lastName: user.lastName,
-            active: orgMembership.isActive
+            active: orgMembership?.isActive
           }
         },
         tx
@@ -633,7 +557,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: createdOrgMembership.id,
-      username: externalId,
+      username: email,
       firstName: createdUser.firstName,
       lastName: createdUser.lastName,
       email: createdUser.email ?? "",
@@ -653,8 +577,8 @@ export const scimServiceFactory = ({
       });
     }
 
-    const [membership] = await orgDAL
-      .findMembership({
+    const membership = await membershipUserDAL
+      .findOne({
         [`${TableName.Membership}.id` as "id"]: orgMembershipId,
         [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
         [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
@@ -672,27 +596,56 @@ export const scimServiceFactory = ({
         status: 404
       });
 
-    if (!membership.scimEnabled)
+    if (!org.scimEnabled)
       throw new ScimRequestError({
         detail: "SCIM is disabled for the organization",
         status: 403
       });
 
+    const userAliases = await userAliasDAL.find({
+      userId: membership.actorUserId,
+      orgId,
+      aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML
+    });
+    const userAliasesIds = userAliases.map((el) => el.id);
+    if (!userAliasesIds.length)
+      throw new ScimRequestError({
+        detail: "User alias not found",
+        status: 404
+      });
+
+    const user = await userDAL.findOne({ id: membership.actorUserId });
+
     const scimUser = buildScimUser({
       orgMembershipId: membership.id,
-      email: membership.email,
-      lastName: membership.lastName,
-      firstName: membership.firstName,
+      email: user.email,
+      lastName: user.lastName,
+      firstName: user.firstName,
       active: membership.isActive,
-      username: membership.externalId ?? membership.username,
+      username: user.username,
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt
     });
     scimPatch(scimUser, operations);
 
-    const serverCfg = await getServerCfg();
-    const trustScimEmails =
-      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
+    await verifyEmailDomainOwnership({
+      email: user.username,
+      orgId,
+      emailDomainDAL,
+      orgDAL,
+      userId: membership.actorUserId
+    });
+    // TODO(auth-revamp): validate username is email
+    const hasEmailChanged = scimUser.userName !== user.username;
+    if (hasEmailChanged) {
+      await verifyEmailDomainOwnership({
+        email: scimUser.userName,
+        orgId,
+        emailDomainDAL,
+        orgDAL,
+        userId: user.id
+      });
+    }
 
     await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
@@ -702,25 +655,38 @@ export const scimServiceFactory = ({
         },
         tx
       );
-      const hasEmailChanged = scimUser.emails[0].value !== membership.email;
       await userDAL.updateById(
         membership.actorUserId as string,
         {
           firstName: scimUser.name.givenName,
-          email: scimUser.emails[0].value.toLowerCase(),
+          ...(hasEmailChanged ? { username: scimUser.userName, email: scimUser.userName } : {}),
           lastName: scimUser.name.familyName,
-          isEmailVerified: hasEmailChanged ? trustScimEmails : undefined
+          isEmailVerified: hasEmailChanged ? false : undefined
         },
         tx
       );
 
+      if (hasEmailChanged) {
+        // clean up previous alias of same auth type and set the new one
+        await userAliasDAL.delete({ $in: { id: userAliasesIds } }, tx);
+        await userAliasDAL.create(
+          {
+            userId: user.id,
+            aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
+            emails: [scimUser.userName],
+            orgId,
+            externalId: userAliases[0].externalId
+          },
+          tx
+        );
+      }
       await scimEventsDAL.create(
         {
           orgId,
           eventType: ScimEvent.UPDATE_USER,
           event: {
             firstName: scimUser.name.givenName,
-            email: scimUser.emails[0].value.toLowerCase(),
+            email: scimUser.userName,
             lastName: scimUser.name.familyName,
             active: scimUser.active
           }
@@ -774,23 +740,42 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const serverCfg = await getServerCfg();
-    const hasEmailChanged = email?.toLowerCase() !== membership.email;
-    const defaultEmailVerified =
-      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
-    await userDAL.transaction(async (tx) => {
-      await userAliasDAL.update(
-        {
-          orgId,
-          aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
-          userId: membership.actorUserId as string
-        },
-        {
-          externalId
-        },
-        tx
-      );
+    const aliasType = org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML;
 
+    const userAliases = await userAliasDAL.find({
+      userId: membership.actorUserId,
+      orgId,
+      aliasType
+    });
+    if (!userAliases.length)
+      throw new ScimRequestError({
+        detail: "User alias not found",
+        status: 404
+      });
+
+    const user = await userDAL.findOne({ id: membership.actorUserId });
+
+    const hasEmailChanged = email?.toLowerCase() !== user.username;
+
+    await verifyEmailDomainOwnership({
+      email: user.username,
+      orgId,
+      emailDomainDAL,
+      orgDAL,
+      userId: membership.actorUserId
+    });
+
+    if (hasEmailChanged && email) {
+      await verifyEmailDomainOwnership({
+        email,
+        orgId,
+        emailDomainDAL,
+        orgDAL,
+        userId: membership.actorUserId
+      });
+    }
+
+    await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
         membership.id,
         {
@@ -802,12 +787,30 @@ export const scimServiceFactory = ({
         membership.actorUserId!,
         {
           firstName,
-          email: email?.toLowerCase(),
+          ...(hasEmailChanged && email ? { username: email.toLowerCase(), email: email.toLowerCase() } : {}),
           lastName,
-          isEmailVerified: hasEmailChanged ? defaultEmailVerified : undefined
+          isEmailVerified: hasEmailChanged ? false : undefined
         },
         tx
       );
+
+      if (hasEmailChanged && email) {
+        const userAliasesIds = userAliases.map((el) => el.id);
+        await userAliasDAL.delete({ $in: { id: userAliasesIds } }, tx);
+        await userAliasDAL.create(
+          {
+            userId: user.id,
+            aliasType,
+            emails: [email.toLowerCase()],
+            orgId,
+            externalId: externalId || userAliases[0].externalId
+          },
+          tx
+        );
+      } else {
+        // Update externalId on existing alias if provided and changed
+        await userAliasDAL.update({ orgId, aliasType, userId: membership.actorUserId as string }, { externalId }, tx);
+      }
 
       await scimEventsDAL.create(
         {
@@ -827,10 +830,10 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: externalId,
-      email: membership.email,
-      firstName: membership.firstName,
-      lastName: membership.lastName,
+      username: user.username,
+      email: hasEmailChanged && email ? email.toLowerCase() : user.email,
+      firstName: firstName || user.firstName,
+      lastName: lastName || user.lastName,
       active,
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt

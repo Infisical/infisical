@@ -35,6 +35,8 @@ import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -86,6 +88,7 @@ type TLdapConfigServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -108,7 +111,8 @@ export const ldapConfigServiceFactory = ({
   tokenService,
   smtpService,
   kmsService,
-  loginService
+  loginService,
+  emailDomainDAL
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -405,6 +409,9 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -415,6 +422,11 @@ export const ldapConfigServiceFactory = ({
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
+      // Verify the existing user's stored email domain + cross-org check
+      const existingUser = await userDAL.findOne({ id: userAlias.userId });
+      if (existingUser) {
+        await verifyEmailDomainOwnership({ email: existingUser.username, orgId, emailDomainDAL, orgDAL, userId: existingUser.id });
+      }
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
           {
@@ -459,41 +471,7 @@ export const ldapConfigServiceFactory = ({
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
-        const usersWithSameEmail = await userDAL.find(
-          {
-            email: email.toLowerCase()
-          },
-          {
-            tx
-          }
-        );
-
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          newUser = verifiedEmail;
-        } else if (userWithSameUsername) {
-          newUser = userWithSameUsername;
-        }
-
-        // Prevent cross-org account takeover: if an existing user was found by email,
-        // verify they are already a member of this org before binding the LDAP identity.
-        if (newUser) {
-          const [existingMembership] = await orgDAL.findMembership(
-            {
-              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
-              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-            },
-            { tx }
-          );
-          if (!existingMembership) {
-            throw new ForbiddenRequestError({
-              message:
-                "User is not a member of this organization. Please contact your organization admin to receive an invite."
-            });
-          }
-        }
+        newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(username, userDAL);

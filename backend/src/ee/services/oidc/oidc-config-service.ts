@@ -39,6 +39,8 @@ import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import {
   OIDCConfigurationType,
@@ -88,6 +90,7 @@ type TOidcConfigServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -110,7 +113,8 @@ export const oidcConfigServiceFactory = ({
   projectBotDAL,
   auditLogService,
   kmsService,
-  loginService
+  loginService,
+  emailDomainDAL
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -188,6 +192,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -201,6 +208,8 @@ export const oidcConfigServiceFactory = ({
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
+        // Verify the existing user's stored email domain + cross-org check
+        await verifyEmailDomainOwnership({ email: foundUser.username, orgId, emailDomainDAL, orgDAL, userId: foundUser.id });
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -247,59 +256,15 @@ export const oidcConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
-        const usersWithSameEmail = await userDAL.find(
-          {
-            email: email.toLowerCase()
-          },
-          {
-            tx
-          }
-        );
+        newUser = await userDAL.findOne({
+          username: email.toLowerCase()
+        });
 
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          newUser = verifiedEmail;
-        } else if (userWithSameUsername) {
-          newUser = userWithSameUsername;
-        }
-
-        if (!newUser) {
-          // this fetches user entries created via invites
-          newUser = await userDAL.findOne(
-            {
-              username: email
-            },
-            tx
-          );
-
-          if (newUser && !newUser.isEmailVerified) {
-            // we automatically mark it as email-verified because we've configured trust for OIDC emails
-            newUser = await userDAL.updateById(newUser.id, {
-              isEmailVerified: serverCfg.trustOidcEmails
-            });
-          }
-        }
-
-        // Prevent cross-org account takeover: if an existing user was found by email,
-        // verify they are already a member of this org before binding the SSO identity.
-        // Without this check, an attacker could configure OIDC on their own org with a
-        // victim's email and get a provider token signed for the victim's userId.
-        if (newUser) {
-          const [existingMembership] = await orgDAL.findMembership(
-            {
-              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
-              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-            },
-            { tx }
-          );
-          if (!existingMembership) {
-            throw new ForbiddenRequestError({
-              message:
-                "User is not a member of this organization. Please contact your organization admin to receive an invite."
-            });
-          }
+        if (newUser && !newUser.isEmailVerified && serverCfg.trustOidcEmails) {
+          // we automatically mark it as email-verified because we've configured trust for OIDC emails
+          newUser = await userDAL.updateById(newUser.id, {
+            isEmailVerified: serverCfg.trustOidcEmails
+          });
         }
 
         if (!newUser) {

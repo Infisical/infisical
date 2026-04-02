@@ -150,6 +150,62 @@ export const authLoginServiceFactory = ({
   };
 
   /*
+   * Private
+   * Determines the required MFA method based on org enforcement vs user preference.
+   */
+  const getRequiredMfaMethod = (
+    org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
+    user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
+  ): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
+    const isOrgMfaEnforced = Boolean(org.enforceMfa);
+    const isUserMfaEnabled = Boolean(user.isMfaEnabled);
+    const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
+
+    const requiredMfaMethod = isOrgMfaEnforced
+      ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
+      : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
+
+    return { isMfaRequired, requiredMfaMethod };
+  };
+
+  /*
+   * Private
+   * Issues an MFA challenge: generates an MFA JWT token and sends the email code if needed.
+   */
+  const issueMfaChallenge = async ({
+    userId,
+    email,
+    authMethod,
+    organizationId,
+    requiredMfaMethod
+  }: {
+    userId: string;
+    email?: string | null;
+    authMethod: AuthMethod;
+    organizationId?: string;
+    requiredMfaMethod: MfaMethod;
+  }) => {
+    const appCfg = getConfig();
+
+    const mfaToken = crypto.jwt().sign(
+      {
+        authMethod,
+        authTokenType: AuthTokenType.MFA_TOKEN,
+        userId,
+        organizationId
+      },
+      appCfg.AUTH_SECRET,
+      { expiresIn: appCfg.JWT_MFA_LIFETIME }
+    );
+
+    if (requiredMfaMethod === MfaMethod.EMAIL && email) {
+      await sendUserMfaCode({ userId, email });
+    }
+
+    return mfaToken;
+  };
+
+  /*
    * Generate the auth and refresh token.
    * Shared by mfa verification, login verification with mfa disabled, and select organization.
    * Note: device tracking (updateUserDeviceSession) is intentionally NOT called here —
@@ -290,31 +346,18 @@ export const authLoginServiceFactory = ({
     if (organizationId) {
       const org = await orgDAL.findById(organizationId);
       if (org) {
-        const isOrgMfaEnforced = org.enforceMfa;
-        const isUserMfaEnabled = user.isMfaEnabled;
-        const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
+        const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(org, user);
 
         if (isMfaRequired) {
           enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-          const requiredMfaMethod = isOrgMfaEnforced
-            ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
-            : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
-
-          const mfaToken = crypto.jwt().sign(
-            {
-              authMethod,
-              authTokenType: AuthTokenType.MFA_TOKEN,
-              userId: user.id,
-              organizationId
-            },
-            appCfg.AUTH_SECRET,
-            { expiresIn: appCfg.JWT_MFA_LIFETIME }
-          );
-
-          if (requiredMfaMethod === MfaMethod.EMAIL && user.email) {
-            await sendUserMfaCode({ userId: user.id, email: user.email });
-          }
+          const mfaToken = await issueMfaChallenge({
+            userId: user.id,
+            email: user.email,
+            authMethod,
+            organizationId,
+            requiredMfaMethod
+          });
 
           return { result: ProviderAuthResult.MFA_REQUIRED, mfaToken, mfaMethod: requiredMfaMethod } as const;
         }
@@ -796,8 +839,7 @@ export const authLoginServiceFactory = ({
 
     // Step 2: Fall back to email lookup for existing users without an alias yet
     if (!user) {
-      const usersByUsername = await userDAL.findUserByUsername(email);
-      user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+      user = await userDAL.findOne({ username: email });
       if (user) {
         isNewAlias = true;
       }
@@ -892,11 +934,10 @@ export const authLoginServiceFactory = ({
             });
           }
           orgId = defaultOrg.id;
-          const existingMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.USER,
-            actorId: newUser.id,
-            orgId,
-            acceptAnyStatus: true
+          const existingMembership = await orgDAL.findMembership({
+            actorUserId: newUser.id,
+            scopeOrgId: orgId,
+            scope: AccessScope.Organization
           });
 
           if (!existingMembership) {
@@ -945,20 +986,15 @@ export const authLoginServiceFactory = ({
         // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
         user = await userDAL.updateById(user.id, {
           authMethods: [...(user.authMethods || []), authMethod],
-          firstName: !user.isAccepted ? firstName : undefined,
-          lastName: !user.isAccepted ? lastName : undefined
+          firstName,
+          lastName
         });
       }
 
       // Sync email/username if the provider email has changed (user found by alias)
       const normalizedProviderEmail = email.trim().toLowerCase();
       if (existingAlias && user.email !== normalizedProviderEmail) {
-        const conflictingUsers = await userDAL.findUserByUsername(normalizedProviderEmail);
-        const conflictingUser =
-          conflictingUsers?.length > 1
-            ? conflictingUsers.find((el) => el.username === normalizedProviderEmail)
-            : conflictingUsers?.[0];
-
+        const conflictingUser = await userDAL.findOne({ username: normalizedProviderEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
             message:
@@ -972,7 +1008,10 @@ export const authLoginServiceFactory = ({
             user!.id,
             {
               username: normalizedProviderEmail,
-              email: normalizedProviderEmail
+              email: normalizedProviderEmail,
+              isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
+              isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
+              isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
             },
             tx
           );
@@ -1027,7 +1066,6 @@ export const authLoginServiceFactory = ({
           aliasType,
           externalId: providerUserId,
           emails: [email],
-          orgId: orgId || null,
           isEmailVerified: isAliasVerified
         });
         aliasId = newAlias.id;
@@ -1199,13 +1237,7 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    const isOrgMfaEnforced = rootOrg.enforceMfa;
-    const isUserMfaEnabled = user.isMfaEnabled;
-    const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
-    // Determine which MFA method should be used (org takes precedence)
-    const requiredMfaMethod = isOrgMfaEnforced
-      ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL)
-      : (user.selectedMfaMethod ?? MfaMethod.EMAIL);
+    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
     // Check if organization has changed
     const hasOrganizationChanged = decodedToken?.organizationId ? decodedToken.organizationId !== rootOrg.id : false;
     // Check if MFA method has changed
@@ -1217,24 +1249,12 @@ export const authLoginServiceFactory = ({
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-      const mfaToken = crypto.jwt().sign(
-        {
-          authMethod: decodedToken.authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: user.id
-        },
-        cfg.AUTH_SECRET,
-        {
-          expiresIn: cfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      if (requiredMfaMethod === MfaMethod.EMAIL && user.email) {
-        await sendUserMfaCode({
-          userId: user.id,
-          email: user.email
-        });
-      }
+      const mfaToken = await issueMfaChallenge({
+        userId: user.id,
+        email: user.email,
+        authMethod: decodedToken.authMethod,
+        requiredMfaMethod
+      });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
     }
@@ -1318,54 +1338,37 @@ export const authLoginServiceFactory = ({
     }
 
     // Create audit log for organization selection
-    if (isSubOrganization) {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
-          }
-        },
-        event: {
-          type: EventType.SELECT_SUB_ORGANIZATION,
-          metadata: {
-            organizationId,
-            organizationName: selectedOrg.name,
-            rootOrganizationId: selectedOrg.rootOrgId || ""
-          }
+    await auditLogService.createAuditLog({
+      orgId: organizationId,
+      ipAddress,
+      userAgent,
+      userAgentType: getUserAgentType(userAgent),
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          email: user.email,
+          userId: user.id,
+          username: user.username,
+          authMethod: decodedToken.authMethod
         }
-      });
-    } else {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
+      },
+      event: isSubOrganization
+        ? {
+            type: EventType.SELECT_SUB_ORGANIZATION,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name,
+              rootOrganizationId: selectedOrg.rootOrgId || ""
+            }
           }
-        },
-        event: {
-          type: EventType.SELECT_ORGANIZATION,
-          metadata: {
-            organizationId,
-            organizationName: selectedOrg.name
+        : {
+            type: EventType.SELECT_ORGANIZATION,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name
+            }
           }
-        }
-      });
-    }
+    });
 
     return {
       ...tokens,

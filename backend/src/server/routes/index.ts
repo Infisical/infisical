@@ -928,7 +928,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     membershipUserDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    emailDomainDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1021,7 +1022,8 @@ export const registerRoutes = async (
     kmsService,
     membershipRoleDAL,
     membershipGroupDAL,
-    loginService
+    loginService,
+    emailDomainDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1042,7 +1044,8 @@ export const registerRoutes = async (
     kmsService,
     membershipGroupDAL,
     membershipRoleDAL,
-    loginService
+    loginService,
+    emailDomainDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -2219,7 +2222,8 @@ export const registerRoutes = async (
     auditLogService,
     membershipGroupDAL,
     membershipRoleDAL,
-    loginService
+    loginService,
+    emailDomainDAL
   });
 
   const userEngagementService = userEngagementServiceFactory({

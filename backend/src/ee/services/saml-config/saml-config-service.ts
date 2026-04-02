@@ -38,6 +38,8 @@ import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -85,6 +87,7 @@ type TSamlConfigServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -105,7 +108,8 @@ export const samlConfigServiceFactory = ({
   kmsService,
   membershipRoleDAL,
   membershipGroupDAL,
-  loginService
+  loginService,
+  emailDomainDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -423,13 +427,32 @@ export const samlConfigServiceFactory = ({
         });
       }
     } else if (dto.type === "orgSlug") {
-      const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
-      if (!org) {
-        throw new NotFoundError({
-          message: `Organization with slug '${dto.orgSlug}' not found`
-        });
+      let resolvedOrgId: string | undefined;
+
+      // If orgSlug starts with @, treat the rest as a domain name and resolve via verified email domains
+      if (dto.orgSlug.startsWith("@")) {
+        const domain = dto.orgSlug.slice(1);
+        const verifiedDomain = await findOrgIdByVerifiedDomain({ domain, emailDomainDAL });
+        if (verifiedDomain) {
+          resolvedOrgId = verifiedDomain.orgId;
+        }
       }
-      samlConfig = await samlConfigDAL.findOne({ orgId: org.id });
+
+      if (dto.orgSlug.startsWith("@") && !resolvedOrgId) {
+        throw new NotFoundError({ message: `No verified domain found for '${dto.orgSlug.slice(1)}'` });
+      }
+
+      if (!resolvedOrgId) {
+        const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
+        if (!org) {
+          throw new NotFoundError({
+            message: `Organization with slug '${dto.orgSlug}' not found`
+          });
+        }
+        resolvedOrgId = org.id;
+      }
+
+      samlConfig = await samlConfigDAL.findOne({ orgId: resolvedOrgId });
     } else if (dto.type === "ssoId") {
       // TODO:
       // We made this change because saml config ids were not moved over during the migration
@@ -524,6 +547,9 @@ export const samlConfigServiceFactory = ({
       aliasType: UserAliasType.SAML
     });
 
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
@@ -535,8 +561,16 @@ export const samlConfigServiceFactory = ({
 
     let user: TUsers;
     if (userAlias) {
+      const foundUser = await userDAL.findById(userAlias.userId);
+      // Verify the existing user's stored email domain + cross-org check
+      await verifyEmailDomainOwnership({
+        email: foundUser.username,
+        orgId,
+        emailDomainDAL,
+        orgDAL,
+        userId: foundUser.id
+      });
       user = await userDAL.transaction(async (tx) => {
-        const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -611,46 +645,13 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
-        const usersWithSameEmail = await userDAL.find(
-          {
-            email: email.toLowerCase()
-          },
-          {
-            tx
-          }
-        );
-
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          newUser = verifiedEmail;
-        } else if (userWithSameUsername) {
-          newUser = userWithSameUsername;
-        }
-
-        // Prevent cross-org account takeover: if an existing user was found by email,
-        // verify they are already a member of this org before binding the SAML identity.
-        if (newUser) {
-          const [existingMembership] = await orgDAL.findMembership(
-            {
-              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
-              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-            },
-            { tx }
-          );
-          if (!existingMembership) {
-            throw new ForbiddenRequestError({
-              message:
-                "User is not a member of this organization. Please contact your organization admin to receive an invite."
-            });
-          }
-        }
+        newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
             {
+              // TODO(auth-revamp): check if trustSamlEmails is needed
               username: serverCfg.trustSamlEmails ? email.toLowerCase() : uniqueUsername,
               email,
               isEmailVerified: serverCfg.trustSamlEmails,
