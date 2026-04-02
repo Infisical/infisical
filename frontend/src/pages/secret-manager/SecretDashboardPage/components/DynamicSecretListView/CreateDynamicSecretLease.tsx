@@ -607,7 +607,7 @@ const SshLeaseOutput = ({
           </Tooltip>
         </div>
       </div>
-      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-muted">
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-label">
         <p className="mr-4 break-all whitespace-pre-wrap">{data.PRIVATE_KEY}</p>
       </div>
       <div className="mb-4 flex items-center justify-between">
@@ -638,7 +638,7 @@ const SshLeaseOutput = ({
           </Tooltip>
         </div>
       </div>
-      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-muted">
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-label">
         <p className="mr-4 break-all whitespace-pre-wrap">{data.SIGNED_KEY}</p>
       </div>
       <div className="flex flex-col gap-4">
