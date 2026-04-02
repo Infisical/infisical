@@ -1,23 +1,14 @@
 import { useMemo, useState } from "react";
 import {
-  CheckIcon,
   FilterIcon,
   FingerprintIcon,
   FolderIcon,
   KeyIcon,
   RefreshCw,
-  SearchIcon,
-  TagsIcon
+  SearchIcon
 } from "lucide-react";
 
 import {
-  Badge,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -30,12 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuSub,
-  UnstableDropdownMenuSubContent,
-  UnstableDropdownMenuSubTrigger,
   UnstableDropdownMenuTrigger,
   UnstableEmpty,
   UnstableEmptyDescription,
@@ -54,6 +40,10 @@ import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { groupBy } from "@app/lib/fn/array";
+import {
+  ResourceFilterMenuContent,
+  type ResourceTypeOption
+} from "@app/pages/secret-manager/OverviewPage/components/ResourceFilter";
 import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
@@ -78,6 +68,21 @@ type ResourceType =
   | RowType.Folder
   | RowType.SecretRotation;
 
+const QUICK_SEARCH_RESOURCE_TYPES: ResourceTypeOption[] = [
+  { type: RowType.Folder, label: "Folders", icon: <FolderIcon className="text-folder" /> },
+  {
+    type: RowType.DynamicSecret,
+    label: "Dynamic Secrets",
+    icon: <FingerprintIcon className="text-dynamic-secret" />
+  },
+  {
+    type: RowType.SecretRotation,
+    label: "Secret Rotations",
+    icon: <RefreshCw className="text-secret-rotation" />
+  },
+  { type: RowType.Secret, label: "Secrets", icon: <KeyIcon className="text-secret" /> }
+];
+
 const Content = ({
   environments,
   projectId,
@@ -89,10 +94,10 @@ const Content = ({
   const [debouncedSearch] = useDebounce(search);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
-    [RowType.Secret]: true,
-    [RowType.Folder]: true,
-    [RowType.DynamicSecret]: true,
-    [RowType.SecretRotation]: true
+    [RowType.Secret]: false,
+    [RowType.Folder]: false,
+    [RowType.DynamicSecret]: false,
+    [RowType.SecretRotation]: false
   });
   const isEnabled = Boolean(search.trim()) || Boolean(Object.values(filterTags).length);
   const { data, isPending } = useGetProjectSecretsQuickSearch(
@@ -127,14 +132,18 @@ const Content = ({
     const dynamicSecretsByEnv = groupBy(allDynamicSecrets, (ds) => ds.environment);
     const rotationsByEnv = groupBy(allRotations, (r) => r.environment.slug);
 
+    // When no resource types are checked, show all (empty filter = no filter)
+    const hasActiveResourceFilter = Object.values(showFilter).some(Boolean);
+    const showType = (type: ResourceType) => !hasActiveResourceFilter || showFilter[type];
+
     return environments
       .map((env) => {
-        const envFolders = showFilter[RowType.Folder] ? (foldersByEnv[env.slug] ?? []) : [];
-        const envSecrets = showFilter[RowType.Secret] ? (secretsByEnv[env.slug] ?? []) : [];
-        const envDynamicSecrets = showFilter[RowType.DynamicSecret]
+        const envFolders = showType(RowType.Folder) ? (foldersByEnv[env.slug] ?? []) : [];
+        const envSecrets = showType(RowType.Secret) ? (secretsByEnv[env.slug] ?? []) : [];
+        const envDynamicSecrets = showType(RowType.DynamicSecret)
           ? (dynamicSecretsByEnv[env.slug] ?? [])
           : [];
-        const envRotations = showFilter[RowType.SecretRotation]
+        const envRotations = showType(RowType.SecretRotation)
           ? (rotationsByEnv[env.slug] ?? [])
           : [];
 
@@ -158,21 +167,35 @@ const Content = ({
   const handleToggleTag = (tag: string) => {
     setFilterTags((prev) => {
       const updated = { ...prev };
-      if (prev[tag]) delete updated[tag];
-      else updated[tag] = true;
+      if (prev[tag]) {
+        delete updated[tag];
+      } else {
+        updated[tag] = true;
+        setShowFilter((f) => ({ ...f, [RowType.Secret]: true }));
+      }
       return updated;
     });
   };
 
-  const handleToggleShowType = (type: ResourceType) => {
-    setShowFilter((prev) => ({
-      ...prev,
-      [type]: !prev[type]
-    }));
+  const handleClearTags = () => {
+    setFilterTags({});
+  };
+
+  const handleToggleShowType = (type: string) => {
+    setShowFilter((prev) => {
+      const newValue = !prev[type as ResourceType];
+      if (type === RowType.Secret && !newValue) {
+        setFilterTags({});
+      }
+      return {
+        ...prev,
+        [type]: newValue
+      };
+    });
   };
 
   const hasActiveFilters =
-    Object.keys(filterTags).length > 0 || Object.values(showFilter).some((show) => !show);
+    Object.keys(filterTags).length > 0 || Object.values(showFilter).some(Boolean);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
@@ -189,68 +212,16 @@ const Content = ({
             <TooltipContent>Search Filters</TooltipContent>
           </Tooltip>
           <UnstableDropdownMenuContent align="start">
-            <UnstableDropdownMenuLabel>Filter By</UnstableDropdownMenuLabel>
-            <UnstableDropdownMenuCheckboxItem
-              checked={showFilter[RowType.Folder]}
-              onCheckedChange={() => handleToggleShowType(RowType.Folder)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <FolderIcon className="text-folder" />
-              Folders
-            </UnstableDropdownMenuCheckboxItem>
-            <UnstableDropdownMenuCheckboxItem
-              checked={showFilter[RowType.DynamicSecret]}
-              onCheckedChange={() => handleToggleShowType(RowType.DynamicSecret)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <FingerprintIcon className="text-dynamic-secret" />
-              Dynamic Secrets
-            </UnstableDropdownMenuCheckboxItem>
-            <UnstableDropdownMenuCheckboxItem
-              checked={showFilter[RowType.SecretRotation]}
-              onCheckedChange={() => handleToggleShowType(RowType.SecretRotation)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <RefreshCw className="text-secret-rotation" />
-              Secret Rotations
-            </UnstableDropdownMenuCheckboxItem>
-            <UnstableDropdownMenuCheckboxItem
-              checked={showFilter[RowType.Secret]}
-              onCheckedChange={() => handleToggleShowType(RowType.Secret)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <KeyIcon className="text-secret" />
-              Secrets
-            </UnstableDropdownMenuCheckboxItem>
-            {tags && tags.length > 0 && (
-              <UnstableDropdownMenuSub>
-                <UnstableDropdownMenuSubTrigger className="relative">
-                  <TagsIcon className="size-4 text-secret" />
-                  Tags
-                  {Object.keys(filterTags).length > 0 && (
-                    <Badge variant="project" className="absolute right-7">
-                      {Object.keys(filterTags).length}
-                    </Badge>
-                  )}
-                </UnstableDropdownMenuSubTrigger>
-                <UnstableDropdownMenuSubContent className="p-0">
-                  <Command>
-                    <CommandInput placeholder="Filter tags..." />
-                    <CommandList>
-                      <CommandEmpty>No tags found.</CommandEmpty>
-                      <CommandGroup>
-                        {tags.map(({ id, slug }) => (
-                          <CommandItem key={id} value={slug} onSelect={() => handleToggleTag(slug)}>
-                            {slug}
-                            {filterTags[slug] && <CheckIcon className="ml-auto" />}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </UnstableDropdownMenuSubContent>
-              </UnstableDropdownMenuSub>
-            )}
+            <ResourceFilterMenuContent
+              resourceTypes={QUICK_SEARCH_RESOURCE_TYPES}
+              resourceTypeFilter={showFilter}
+              onToggleResourceType={handleToggleShowType}
+              tags={tags}
+              selectedTagSlugs={filterTags}
+              onToggleTag={handleToggleTag}
+              onClearTags={handleClearTags}
+              menuLabel="Filter By"
+            />
           </UnstableDropdownMenuContent>
         </UnstableDropdownMenu>
         <InputGroup className="flex-1">

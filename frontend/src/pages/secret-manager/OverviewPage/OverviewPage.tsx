@@ -2014,12 +2014,20 @@ const OverviewPageContent = () => {
     });
   };
 
+  const handleClearTags = useCallback(() => {
+    setTagFilter({});
+  }, []);
+
   const handleToggleRowType = useCallback(
     (rowType: RowType) =>
       setFilter((state) => {
+        const newValue = !state[rowType];
+        if (rowType === RowType.Secret && !newValue) {
+          setTagFilter({});
+        }
         return {
           ...state,
-          [rowType]: !state[rowType]
+          [rowType]: newValue
         };
       }),
     []
@@ -2382,6 +2390,7 @@ const OverviewPageContent = () => {
                     tags={tags}
                     selectedTagSlugs={tagFilter}
                     onToggleTag={handleToggleTag}
+                    onClearTags={handleClearTags}
                   />
                 )}
                 <ResourceSearchInput
