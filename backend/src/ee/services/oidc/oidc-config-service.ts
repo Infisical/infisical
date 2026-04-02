@@ -581,6 +581,12 @@ export const oidcConfigServiceFactory = ({
     if (jwksUri) {
       await blockLocalAndPrivateIpAddresses(jwksUri);
     }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -667,6 +673,12 @@ export const oidcConfigServiceFactory = ({
     if (jwksUri) {
       await blockLocalAndPrivateIpAddresses(jwksUri);
     }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -739,6 +751,8 @@ export const oidcConfigServiceFactory = ({
         });
       }
       await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
