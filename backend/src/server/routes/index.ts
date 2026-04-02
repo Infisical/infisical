@@ -1985,7 +1985,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     projectDAL,
     secretV2BridgeService,
-    folderCommitDAL
+    folderCommitDAL,
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
