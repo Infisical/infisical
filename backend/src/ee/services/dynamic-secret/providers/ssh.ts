@@ -1,5 +1,5 @@
-import RE2 from "re2";
 import slugify from "@sindresorhus/slugify";
+import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 
