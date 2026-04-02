@@ -75,8 +75,7 @@ export const OrgMembersSection = () => {
     if (urlAction === "invite-members") {
       handlePopUpOpen("addMember");
       navigate({
-        to: ROUTE_PATHS.Organization.AccessControlPage.path,
-        params: (params) => params,
+        to: ".",
         search: ({ action, ...search }) => search
       });
     }
