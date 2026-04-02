@@ -195,32 +195,81 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         "LDAP password rotation — attempting modify operation"
       );
 
-      await executeWithPotentialGateway(
-        { ...connection, credentials: targetCredentials },
-        gatewayV2Service,
-        async (client) => {
-          const userDn = await getDN(dn, client);
+      // The gateway proxy (withGatewayV2Proxy) wraps all errors into a generic
+      // BadRequestError, destroying the ldapjs error metadata (name, code, dn)
+      // that the referral chase loop needs. We capture the raw referral error
+      // here so we can re-throw it after the proxy's catch block runs.
+      let capturedReferralError: LdapReferralError | undefined;
 
-          logger.info(
-            { inputDn: dn, resolvedDn: userDn, url: modifyUrl },
-            "LDAP password rotation — DN resolved, executing modify"
-          );
-
-          await new Promise<void>((resolve, reject) => {
-            client.modify(userDn, changes, (err) => {
-              if (err) {
-                logger.debug(
-                  { error: err.message, errorCode: (err as { code?: number }).code, targetDn: userDn, url: modifyUrl },
-                  "LDAP modify returned an error (may be a referral — handled upstream)"
+      try {
+        await executeWithPotentialGateway(
+          { ...connection, credentials: targetCredentials },
+          gatewayV2Service,
+          async (client) => {
+            let userDn: string;
+            try {
+              userDn = await getDN(dn, client);
+            } catch (getDnErr) {
+              if (isLdapReferral(getDnErr)) {
+                const ldapErr = getDnErr as Partial<LdapReferralError> & Error;
+                logger.info(
+                  {
+                    errorMessage: ldapErr.message,
+                    errorName: ldapErr.name,
+                    errorCode: (ldapErr as { code?: number }).code,
+                    errorDn: ldapErr.dn != null ? String(ldapErr.dn) : null,
+                    targetDn: dn,
+                    url: modifyUrl
+                  },
+                  "LDAP raw search referral — captured before gateway proxy"
                 );
-                reject(err);
-              } else {
-                resolve();
+                capturedReferralError = getDnErr as LdapReferralError;
               }
+              throw getDnErr;
+            }
+
+            logger.info(
+              { inputDn: dn, resolvedDn: userDn, url: modifyUrl },
+              "LDAP password rotation — DN resolved, executing modify"
+            );
+
+            await new Promise<void>((resolve, reject) => {
+              client.modify(userDn, changes, (err) => {
+                if (err) {
+                  if (isLdapReferral(err)) {
+                    const ldapErr = err as Partial<LdapReferralError> & Error;
+                    logger.info(
+                      {
+                        errorMessage: err.message,
+                        errorName: ldapErr.name,
+                        errorCode: (ldapErr as { code?: number }).code,
+                        errorDn: ldapErr.dn != null ? String(ldapErr.dn) : null,
+                        targetDn: userDn,
+                        url: modifyUrl
+                      },
+                      "LDAP raw modify referral — captured before gateway proxy"
+                    );
+                    capturedReferralError = err as unknown as LdapReferralError;
+                  } else {
+                    logger.info(
+                      { errorMessage: err.message, errorName: err.name, targetDn: userDn, url: modifyUrl },
+                      "LDAP modify raw error (non-referral)"
+                    );
+                  }
+                  reject(err);
+                } else {
+                  resolve();
+                }
+              });
             });
-          });
+          }
+        );
+      } catch (proxyErr) {
+        if (capturedReferralError) {
+          throw capturedReferralError;
         }
-      );
+        throw proxyErr;
+      }
 
       logger.info({ targetDn: dn, url: modifyUrl }, "LDAP password rotation — modify succeeded");
     };
