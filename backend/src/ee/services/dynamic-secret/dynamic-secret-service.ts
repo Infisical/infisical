@@ -842,7 +842,8 @@ export const dynamicSecretServiceFactory = ({
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       subject(ProjectPermissionSub.DynamicSecrets, {
         environment: folder.environment.envSlug,
-        secretPath
+        secretPath,
+        metadata: dynamicSecretCfg.metadata
       })
     );
 
