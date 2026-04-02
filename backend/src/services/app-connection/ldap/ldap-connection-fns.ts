@@ -55,8 +55,8 @@ export const isLdapReferral = (err: unknown): boolean => {
  */
 export const isLdapReferralError = (err: unknown): err is LdapReferralError => {
   if (!isLdapReferral(err)) return false;
-  const ldapErr = err as Error & { dn?: unknown };
-  return typeof ldapErr.dn === "string";
+  const ldapErr = err as Error & { dn?: unknown; code?: unknown };
+  return typeof ldapErr.dn === "string" && typeof ldapErr.code === "number";
 };
 
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {
