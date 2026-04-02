@@ -199,28 +199,42 @@ type SensitiveFieldDef = {
   multiline?: boolean;
 };
 
-// Only defines fields that require the "View Credentials" flow to reveal.
+// Returns sensitive fields that require the "View Credentials" flow to reveal.
 // Non-sensitive fields (username, auth method, etc.) are already shown by CredentialsContent above.
-const SENSITIVE_FIELD_DEFS: Record<string, SensitiveFieldDef[]> = {
-  [PamResourceType.Postgres]: [{ key: "password", label: "Password" }],
-  [PamResourceType.MySQL]: [{ key: "password", label: "Password" }],
-  [PamResourceType.MsSQL]: [{ key: "password", label: "Password" }],
-  [PamResourceType.SSH]: [
-    { key: "password", label: "Password" },
-    { key: "privateKey", label: "Private Key", multiline: true }
-  ],
-  [PamResourceType.Redis]: [{ key: "password", label: "Password" }],
-  [PamResourceType.Windows]: [{ key: "password", label: "Password" }],
-  [PamResourceType.ActiveDirectory]: [{ key: "password", label: "Password" }]
+// When adding a new resource type, add a case here if it has credentials hidden from the sanitized view.
+const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
+  const { resourceType } = account.resource;
+
+  switch (resourceType) {
+    case PamResourceType.Postgres:
+    case PamResourceType.MySQL:
+    case PamResourceType.MsSQL:
+    case PamResourceType.Redis:
+    case PamResourceType.Windows:
+    case PamResourceType.ActiveDirectory:
+      return [{ key: "password", label: "Password" }];
+
+    case PamResourceType.SSH: {
+      const { authMethod } = account.credentials as TSSHCredentials;
+      if (authMethod === SSHAuthMethod.Password) return [{ key: "password", label: "Password" }];
+      if (authMethod === SSHAuthMethod.PublicKey)
+        return [{ key: "privateKey", label: "Private Key", multiline: true }];
+      return [];
+    }
+
+    default:
+      return [];
+  }
 };
 
 const RevealedCredentials = ({
-  credentialsData
+  credentialsData,
+  fieldDefs
 }: {
   credentialsData: TPamAccountCredentialsResponse;
+  fieldDefs: SensitiveFieldDef[];
 }) => {
-  const { credentials, resourceType } = credentialsData;
-  const fieldDefs = SENSITIVE_FIELD_DEFS[resourceType] || [];
+  const { credentials } = credentialsData;
 
   const presentFields = fieldDefs.filter((f) => {
     const value = credentials[f.key];
@@ -259,7 +273,8 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
   )
     return null;
 
-  const hasSensitiveFields = (SENSITIVE_FIELD_DEFS[account.resource.resourceType] || []).length > 0;
+  const sensitiveFieldDefs = getSensitiveFieldDefs(account);
+  const hasSensitiveFields = sensitiveFieldDefs.length > 0;
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
@@ -284,7 +299,9 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
           onReset={reset}
           onRetry={startReveal}
         >
-          {state.status === "revealed" && <RevealedCredentials credentialsData={state.data} />}
+          {state.status === "revealed" && (
+            <RevealedCredentials credentialsData={state.data} fieldDefs={sensitiveFieldDefs} />
+          )}
         </SensitiveCredentialsGate>
       )}
     </div>

@@ -64,7 +64,12 @@ import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
-import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
+import {
+  decryptAccount,
+  decryptAccountCredentials,
+  encryptAccountCredentials,
+  hasSensitiveCredentials
+} from "./pam-account-fns";
 import {
   TAccessAccountDTO,
   TCreateAccountDTO,
@@ -1404,6 +1409,17 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    // Decrypt early so we can check if there are sensitive fields before triggering MFA
+    const credentials = await decryptAccountCredentials({
+      encryptedCredentials: accountWithResource.encryptedCredentials,
+      kmsService,
+      projectId: accountWithResource.projectId
+    });
+
+    if (!hasSensitiveCredentials(accountWithResource.resource.resourceType, credentials)) {
+      throw new BadRequestError({ message: "This account has no sensitive credentials to view" });
+    }
+
     if (!mfaSessionId && accountWithResource.requireMfa) {
       const project = await projectDAL.findById(accountWithResource.projectId);
       if (!project)
@@ -1455,13 +1471,6 @@ export const pamAccountServiceFactory = ({
 
       await mfaSessionService.deleteMfaSession(mfaSessionId);
     }
-
-    // Decrypt credentials
-    const credentials = await decryptAccountCredentials({
-      encryptedCredentials: accountWithResource.encryptedCredentials,
-      kmsService,
-      projectId: accountWithResource.projectId
-    });
 
     return {
       credentials,
