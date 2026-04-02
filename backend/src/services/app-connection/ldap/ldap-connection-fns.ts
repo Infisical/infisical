@@ -46,7 +46,7 @@ export type LdapReferralError = Error & {
 export const isLdapReferral = (err: unknown): boolean => {
   if (!(err instanceof Error)) return false;
   const ldapErr = err as Error & { name?: string; code?: number };
-  return ldapErr.name === "ReferralError" || ldapErr.code === 10;
+  return ldapErr.name === "ReferralError" && ldapErr.code === 10;
 };
 
 /**
