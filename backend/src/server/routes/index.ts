@@ -734,7 +734,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -747,7 +748,8 @@ export const registerRoutes = async (
     roleDAL,
     permissionService,
     orgDAL,
-    groupDAL
+    groupDAL,
+    licenseService
   });
 
   const roleService = roleServiceFactory({
@@ -757,7 +759,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
