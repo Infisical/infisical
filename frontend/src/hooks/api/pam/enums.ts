@@ -34,6 +34,12 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
+export enum TerminalChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp"
+}
+
 // Accounts
 export enum PamAccountOrderBy {
   Name = "name"

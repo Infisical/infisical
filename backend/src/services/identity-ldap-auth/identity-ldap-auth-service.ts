@@ -32,6 +32,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -343,6 +344,10 @@ export const identityLdapAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
+
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -541,6 +546,10 @@ export const identityLdapAuthServiceFactory = ({
       (accessTokenTTL || identityLdapAuth.accessTokenTTL) > (accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const { permission: orgPermission } = await permissionService.getOrgPermission({

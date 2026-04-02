@@ -1698,7 +1698,9 @@ export const registerRoutes = async (
     licenseService,
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2845,8 +2847,10 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     projectDAL,
+    userDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

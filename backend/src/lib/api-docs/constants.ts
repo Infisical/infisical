@@ -1321,7 +1321,9 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to get the access list for.",
     projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
-    secretPath: "The folder path where the secret is located."
+    secretPath: "The folder path where the secret is located.",
+    includeAllEntities:
+      "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
   }
 } as const;
 

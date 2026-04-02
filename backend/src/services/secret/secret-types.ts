@@ -236,6 +236,7 @@ export type TGetSecretAccessListDTO = {
   environment: string;
   secretPath: string;
   secretName: string;
+  includeAllEntities?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {

@@ -14,8 +14,10 @@ import {
   buildReferralUrl,
   executeWithPotentialGateway,
   extractDomainFromDN,
+  isLdapReferral,
   isLdapReferralError,
   LdapProvider,
+  LdapReferralError,
   TLdapConnection
 } from "@app/services/app-connection/ldap";
 
@@ -45,11 +47,32 @@ const getDN = async (dn: string, client: Client): Promise<string> => {
     .join(",");
 
   return new Promise((resolve, reject) => {
-    // Perform the search
+    const handleSearchError = (error: Error) => {
+      // Search referrals (code 10) have err.dn === null, unlike modify referrals.
+      // We attach the search base DN so the upstream referral chase loop can
+      // extract the target domain and redirect to the correct DC.
+      if (isLdapReferral(error)) {
+        const ldapErr = error as Partial<LdapReferralError> & Error;
+        if (!ldapErr.dn || typeof ldapErr.dn !== "string") {
+          ldapErr.dn = base;
+        }
+        ldapErr.referralSource = "search";
+        logger.info(
+          { searchBase: base, upn: dn, referralDn: ldapErr.dn },
+          "LDAP DN resolution received referral — propagating for upstream chase"
+        );
+        reject(error);
+        return;
+      }
+
+      logger.error(error, "LDAP Failed to get DN");
+      reject(new Error(`Provider Resolve DN Error: ${error.message}`));
+    };
+
     client.search(base, opts, (err, res) => {
       if (err) {
-        logger.error(err, "LDAP Failed to get DN");
-        reject(new Error(`Provider Resolve DN Error: ${err.message}`));
+        handleSearchError(err);
+        return;
       }
 
       let userDn: string | null;
@@ -59,8 +82,7 @@ const getDN = async (dn: string, client: Client): Promise<string> => {
       });
 
       res.on("error", (error) => {
-        logger.error(error, "LDAP Failed to get DN");
-        reject(new Error(`Provider Resolve DN Error: ${error.message}`));
+        handleSearchError(error);
       });
 
       res.on("end", () => {
@@ -241,15 +263,16 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           throw new Error(`${prefix} — ${errObj.message}`);
         }
 
-        const referralDn = String((caughtErr as { dn: string })?.dn);
-        const referralCode = Number((caughtErr as { code: number })?.code);
-        const referralName = String((caughtErr as { name: string })?.name);
+        const referralErr = caughtErr;
+        const referralSource = referralErr.referralSource === "search" ? "search" : "modify";
+        const { dn: referralDn, code: referralCode, name: referralName } = referralErr;
 
         if (hop === MAX_REFERRAL_HOPS) {
           logger.error(
             {
               ...rotationContext,
               maxHops: MAX_REFERRAL_HOPS,
+              referralSource,
               lastReferralDn: referralDn,
               lastUrl: currentCredentials.url
             },
@@ -267,13 +290,14 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           {
             ...rotationContext,
             hop: hop + 1,
+            referralSource,
             rawErrorDn: referralDn,
             rawErrorCode: referralCode,
             rawErrorName: referralName,
             extractedReferralDomain: referralDomain,
             currentUrl: currentCredentials.url
           },
-          "LDAP referral received — inspecting error details"
+          `LDAP referral received during ${referralSource} — inspecting error details`
         );
 
         if (!referralDomain) {
@@ -291,12 +315,13 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           {
             ...rotationContext,
             hop: hop + 1,
+            referralSource,
             referralDomain,
             referredUrl,
             matchedDn: referralDn,
             originalUrl: credentials.url
           },
-          "LDAP referral detected — chasing to referred domain controller"
+          `LDAP referral detected during ${referralSource} — chasing to referred domain controller`
         );
 
         currentCredentials = { ...connectionCredentials, url: referredUrl };
