@@ -155,8 +155,13 @@ export const ShareSecretForm = ({
 
     if (processedEmails && processedEmails.length > 0) {
       setSecretLink("");
+
+      const showAccountRequiredMessage = !allowExternalEmails && !isOrgAccess;
+
       createNotification({
-        text: "If the provided email is associated with an Infisical account they will receive a link",
+        text: showAccountRequiredMessage
+          ? `If the provided ${processedEmails.length > 1 ? "emails are" : "email is"} associated with an Infisical account they will receive a link`
+          : `Secret link has been sent to the provided ${processedEmails.length > 1 ? "emails" : "email"}`,
         type: "success"
       });
     } else {
