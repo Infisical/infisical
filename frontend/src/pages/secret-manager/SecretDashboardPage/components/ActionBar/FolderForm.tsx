@@ -3,8 +3,18 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
-import { TextArea } from "@app/components/v2/TextArea/TextArea";
+import {
+  Button,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  TextArea,
+  UnstableInput
+} from "@app/components/v3";
 
 type Props = {
   onCreateFolder?: (folderName: string, description: string | null) => Promise<void>;
@@ -27,10 +37,8 @@ const formSchema = z.object({
   name: z
     .string()
     .trim()
-    .regex(
-      /^[a-zA-Z0-9-_]+$/,
-      "Folder name can only contain letters, numbers, dashes, and underscores"
-    ),
+    .max(255, "Name cannot exceed 255 characters")
+    .regex(/^[a-zA-Z0-9-_]+$/, "Name can only contain letters, numbers, dashes, and underscores"),
   description: z.string().optional()
 });
 type TFormData = z.infer<typeof formSchema>;
@@ -82,15 +90,19 @@ export const FolderForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form className="min-w-0" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         control={control}
         name="name"
         defaultValue=""
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Folder Name" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="Type your folder name" />
-          </FormControl>
+          <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldContent>
+              <UnstableInput {...field} placeholder="Type your folder name" />
+            </FieldContent>
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
         )}
       />
       <Controller
@@ -98,38 +110,34 @@ export const FolderForm = ({
         name="description"
         defaultValue=""
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Folder Description"
-            isError={Boolean(error)}
-            tooltipText={
-              showDescriptionOverwriteWarning ? descriptionOverwriteWarningMessage : undefined
-            }
-            isOptional
-            errorText={error?.message}
-            className="flex-1"
-          >
-            <TextArea
-              placeholder="Folder description"
-              {...field}
-              rows={3}
-              ref={descriptionRef}
-              onInput={handleInput}
-              className="thin-scrollbar w-full resize-none! bg-mineshaft-900"
-              maxLength={255}
-            />
-          </FormControl>
+          <Field className="mt-4">
+            <FieldLabel>Description</FieldLabel>
+            <FieldContent>
+              <TextArea
+                placeholder="Folder description"
+                {...field}
+                rows={3}
+                ref={descriptionRef}
+                onInput={handleInput}
+                className="thin-scrollbar resize-none!"
+                maxLength={255}
+              />
+            </FieldContent>{" "}
+            {!error && showDescriptionOverwriteWarning && (
+              <FieldDescription>{descriptionOverwriteWarningMessage}</FieldDescription>
+            )}
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
         )}
       />
-      <div className="mt-8 flex items-center">
-        <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
-          {isEdit ? "Save" : "Create"}
+      <DialogFooter className="mt-4">
+        <DialogClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </DialogClose>
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEdit ? "Update" : "Add"} Folder
         </Button>
-        <ModalClose asChild>
-          <Button variant="plain" colorSchema="secondary">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
