@@ -212,6 +212,7 @@ function AddMemberPopover({
     if (!canAddParentOrgUsers || !parentOrgAvailableUsers) return [];
     return parentOrgAvailableUsers.map((u) => ({
       username: u.username,
+      email: u.email ?? u.username,
       label:
         u.firstName && u.lastName
           ? `${u.firstName} ${u.lastName}`
@@ -249,9 +250,12 @@ function AddMemberPopover({
     try {
       // If parent org users are selected, add them to the sub-org first
       if (selectedParentOrgUsers.size > 0) {
+        const parentEmails = availableParentUsers
+          .filter((u) => selectedParentOrgUsers.has(u.username))
+          .map((u) => u.email);
         await addUsersToOrg({
           organizationId: currentOrg.id,
-          inviteeEmails: [...selectedParentOrgUsers],
+          inviteeEmails: parentEmails,
           organizationRoleSlug: currentOrg.defaultMembershipRole
         });
       }
