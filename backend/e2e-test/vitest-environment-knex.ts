@@ -23,7 +23,6 @@ import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal"
 import { bootstrapCheck } from "@app/server/boot-strap-check";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -76,12 +75,9 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queueJobsDAL = queueJobsDALFactory(db);
-      const queue = queueServiceFactory(envCfg, queueJobsDAL);
+      const queue = queueServiceFactory(envCfg);
       const keyValueStoreDAL = keyValueStoreDALFactory(db);
       const keyStore = keyStoreFactory(envCfg, keyValueStoreDAL);
-
-      await queue.initialize();
 
       const server = await main({
         db,

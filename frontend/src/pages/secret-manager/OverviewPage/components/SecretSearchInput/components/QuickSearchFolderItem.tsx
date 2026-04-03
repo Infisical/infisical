@@ -1,45 +1,58 @@
-import { faChevronRight, faFolder } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronRightIcon, FolderIcon } from "lucide-react";
 
-import { Td, Tooltip, Tr } from "@app/components/v2";
-import { reverseTruncate } from "@app/helpers/reverseTruncate";
-import { TDashboardProjectSecretsQuickSearch } from "@app/hooks/api/dashboard/types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableTableCell,
+  UnstableTableRow
+} from "@app/components/v3";
+import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 
 type Props = {
-  folderGroup: TDashboardProjectSecretsQuickSearch["folders"][string];
+  folder: TSecretFolder & { envId: string; path: string };
+  envSlug: string;
   onClose: () => void;
 };
 
-export const QuickSearchFolderItem = ({ folderGroup, onClose }: Props) => {
+export const QuickSearchFolderItem = ({ folder, envSlug, onClose }: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
 
-  const [groupFolder] = folderGroup;
-
   const handleNavigate = () => {
     navigate({
-      search: (prev) => ({ ...prev, secretPath: groupFolder.path })
+      search: (prev) => ({
+        ...prev,
+        search: "",
+        filterBy: undefined,
+        secretPath: folder.path,
+        environments: [envSlug]
+      })
     });
     onClose();
   };
 
   return (
-    <Tr
-      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
-      onClick={handleNavigate}
-    >
-      <Td className="w-full whitespace-nowrap">
-        <FontAwesomeIcon className="text-yellow-700" icon={faFolder} />
-        <Tooltip content={groupFolder.path} className="max-w-8xl">
-          <div className="ml-2 inline-block">{reverseTruncate(groupFolder.path)}</div>
+    <UnstableTableRow className="group cursor-pointer" onClick={handleNavigate}>
+      <UnstableTableCell>
+        <FolderIcon className="text-folder" />
+      </UnstableTableCell>
+      <UnstableTableCell isTruncatable>
+        <span className="truncate font-medium">{folder.name}</span>
+      </UnstableTableCell>
+      <UnstableTableCell isTruncatable>
+        <Tooltip delayDuration={1000}>
+          <TooltipTrigger asChild>
+            <span className="truncate text-foreground">{folder.path}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-lg">{folder.path}</TooltipContent>
         </Tooltip>
-      </Td>
-      <Td />
-      <Td>
-        <FontAwesomeIcon icon={faChevronRight} />
-      </Td>
-    </Tr>
+      </UnstableTableCell>
+      <UnstableTableCell className="text-right">
+        <ChevronRightIcon className="ml-auto size-4 text-muted" />
+      </UnstableTableCell>
+    </UnstableTableRow>
   );
 };

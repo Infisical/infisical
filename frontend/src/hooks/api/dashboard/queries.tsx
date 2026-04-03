@@ -89,6 +89,7 @@ export const dashboardKeys = {
 
 export const fetchProjectSecretsOverview = async ({
   environments,
+  tags,
   ...params
 }: TGetDashboardProjectSecretsOverviewDTO) => {
   const { data } = await apiRequest.get<DashboardProjectSecretsOverviewResponse>(
@@ -96,7 +97,14 @@ export const fetchProjectSecretsOverview = async ({
     {
       params: {
         ...params,
-        environments: encodeURIComponent(environments.join(","))
+        environments: encodeURIComponent(environments.join(",")),
+        tags: encodeURIComponent(
+          Object.entries(tags ?? {})
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .filter(([_, enabled]) => enabled)
+            .map(([tag]) => tag)
+            .join(",")
+        )
       }
     }
   );
@@ -168,6 +176,7 @@ export const useGetProjectSecretsOverview = (
     orderBy = DashboardSecretsOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
     search = "",
+    tags,
     includeSecrets,
     includeFolders,
     includeImports,
@@ -194,6 +203,7 @@ export const useGetProjectSecretsOverview = (
     queryKey: dashboardKeys.getProjectSecretsOverview({
       secretPath,
       search,
+      tags,
       limit,
       orderBy,
       orderDirection,
@@ -210,6 +220,7 @@ export const useGetProjectSecretsOverview = (
       const resp = fetchProjectSecretsOverview({
         secretPath,
         search,
+        tags,
         limit,
         orderBy,
         orderDirection,

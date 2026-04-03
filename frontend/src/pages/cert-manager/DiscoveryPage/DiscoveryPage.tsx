@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
@@ -18,7 +18,11 @@ import { DiscoveryJobsTab, InstallationsTab } from "./components";
 export const DiscoveryPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const [selectedTab, setSelectedTab] = useState("jobs");
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/"
+  });
+
+  const activeTab = selectedTab || "jobs";
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
@@ -38,17 +42,8 @@ export const DiscoveryPage = () => {
           }
           description="Discover and track SSL/TLS certificates across your infrastructure."
         />
-        <Tabs orientation="vertical" value={selectedTab} onValueChange={setSelectedTab}>
-          <TabList>
-            <Tab variant="project" value="jobs">
-              Jobs
-            </Tab>
-            <Tab variant="project" value="installations">
-              Installations
-            </Tab>
-          </TabList>
-
-          <TabPanel value="jobs">
+        <div>
+          {activeTab === "jobs" && (
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionPkiDiscoveryActions.Read}
@@ -56,9 +51,8 @@ export const DiscoveryPage = () => {
             >
               <DiscoveryJobsTab projectId={currentProject?.id || ""} />
             </ProjectPermissionCan>
-          </TabPanel>
-
-          <TabPanel value="installations">
+          )}
+          {activeTab === "installations" && (
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionPkiCertificateInstallationActions.Read}
@@ -66,8 +60,8 @@ export const DiscoveryPage = () => {
             >
               <InstallationsTab projectId={currentProject?.id || ""} />
             </ProjectPermissionCan>
-          </TabPanel>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );

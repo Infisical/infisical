@@ -12,6 +12,7 @@ import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
   GetSecretVersionsDTO,
   SecretAccessListEntry,
+  SecretAccessListGroupEntry,
   SecretType,
   SecretV3Raw,
   SecretV3RawResponse,
@@ -45,9 +46,13 @@ export const secretKeys = {
     projectId,
     environment,
     secretPath,
-    secretKey
+    secretKey,
+    includeAllEntities
   }: TGetSecretAccessListDTO) =>
-    ["secret-access-list", { projectId, environment, secretPath, secretKey }] as const,
+    [
+      "secret-access-list",
+      { projectId, environment, secretPath, secretKey, includeAllEntities }
+    ] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
   getSecretReferences: (dto: TGetSecretReferencesDTO) => ["secret-references", dto]
 };
@@ -300,14 +305,15 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
     queryKey: secretKeys.getSecretAccessList(dto),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        groups: SecretAccessListEntry[];
+        groups: SecretAccessListGroupEntry[];
         identities: SecretAccessListEntry[];
         users: SecretAccessListEntry[];
       }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
         params: {
           projectId: dto.projectId,
           environment: dto.environment,
-          secretPath: dto.secretPath
+          secretPath: dto.secretPath,
+          includeAllEntities: dto.includeAllEntities
         }
       });
 

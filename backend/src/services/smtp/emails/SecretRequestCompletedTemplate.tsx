@@ -8,13 +8,15 @@ interface SecretRequestCompletedTemplateProps extends Omit<BaseEmailWrapperProps
   name?: string;
   senderUsername?: string;
   secretRequestUrl: string;
+  isPasswordProtected?: boolean;
 }
 
 export const SecretRequestCompletedTemplate = ({
   name,
   siteUrl,
   senderUsername,
-  secretRequestUrl
+  secretRequestUrl,
+  isPasswordProtected
 }: SecretRequestCompletedTemplateProps) => {
   return (
     <BaseEmailWrapper title="Shared Secret" preview="A secret has been shared with you." siteUrl={siteUrl}>
@@ -31,6 +33,11 @@ export const SecretRequestCompletedTemplate = ({
           )}{" "}
           with you.
         </Text>
+        {isPasswordProtected && (
+          <Text className="text-[13px] text-gray-500">
+            This secret is password protected. You will need the password provided by the sender to view it.
+          </Text>
+        )}
       </Section>
       <Section className="text-center">
         <BaseButton href={secretRequestUrl}>View Secret</BaseButton>

@@ -6,6 +6,7 @@ import {
   IdentityActor,
   KmipClientActor,
   PlatformActor,
+  ScepAccountActor,
   ScimClientActor,
   ServiceActor,
   UnknownUserActor,
@@ -87,7 +88,21 @@ export enum PostHogEventTypes {
   SecretRotationV2Created = "Secret Rotation V2 Created",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
-  GatewayCertExchanged = "Gateway Cert Exchanged"
+  GatewayCertExchanged = "Gateway Cert Exchanged",
+  PamResourceCreated = "PAM Resource Created",
+  PamResourceDeleted = "PAM Resource Deleted",
+  PamAccountCreated = "PAM Account Created",
+  PamAccountDeleted = "PAM Account Deleted",
+  PamAccountAccessed = "PAM Account Accessed",
+  PamAccountRotated = "PAM Account Rotated",
+  PamSessionStarted = "PAM Session Started",
+  PamSessionEnded = "PAM Session Ended",
+  PamWebAccessStarted = "PAM Web Access Started",
+  PamDiscoverySourceCreated = "PAM Discovery Source Created",
+  PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
+  PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
+  PamRotationRuleCreated = "PAM Rotation Rule Created",
+  PamRotationRuleDeleted = "PAM Rotation Rule Deleted"
 }
 
 export type TSecretModifiedEvent = {
@@ -116,7 +131,8 @@ export type TSecretModifiedEvent = {
       | AcmeAccountActor
       | AcmeProfileActor
       | KmipClientActor
-      | EstAccountActor;
+      | EstAccountActor
+      | ScepAccountActor;
   };
 };
 
@@ -710,6 +726,90 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
+export type TPamResourceEvent = {
+  event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
+  properties: {
+    resourceType: string;
+    projectId: string;
+  };
+};
+
+export type TPamAccountEvent = {
+  event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
+  properties: {
+    resourceType: string;
+    projectId: string;
+  };
+};
+
+export type TPamAccountAccessedEvent = {
+  event: PostHogEventTypes.PamAccountAccessed;
+  properties: {
+    resourceType: string;
+    projectId: string;
+    duration: number;
+  };
+};
+
+export type TPamAccountRotatedEvent = {
+  event: PostHogEventTypes.PamAccountRotated;
+  properties: {
+    resourceType: string;
+    projectId: string;
+  };
+};
+
+export type TPamSessionStartedEvent = {
+  event: PostHogEventTypes.PamSessionStarted;
+  properties: {
+    projectId: string;
+  };
+};
+
+export type TPamSessionEndedEvent = {
+  event: PostHogEventTypes.PamSessionEnded;
+  properties: {
+    resourceType: string;
+    projectId: string;
+  };
+};
+
+export type TPamWebAccessStartedEvent = {
+  event: PostHogEventTypes.PamWebAccessStarted;
+  properties: {
+    projectId: string;
+  };
+};
+
+export type TPamDiscoveryEvent = {
+  event:
+    | PostHogEventTypes.PamDiscoverySourceCreated
+    | PostHogEventTypes.PamDiscoverySourceDeleted
+    | PostHogEventTypes.PamDiscoveryScanTriggered;
+  properties: {
+    discoveryType: string;
+    projectId: string;
+  };
+};
+
+export type TPamRotationRuleCreatedEvent = {
+  event: PostHogEventTypes.PamRotationRuleCreated;
+  properties: {
+    resourceType: string;
+    projectId: string;
+    enabled: boolean;
+    hasSchedule: boolean;
+  };
+};
+
+export type TPamRotationRuleDeletedEvent = {
+  event: PostHogEventTypes.PamRotationRuleDeleted;
+  properties: {
+    resourceType: string;
+    projectId: string;
+  };
+};
+
 export type TPostHogEvent = { distinctId: string; organizationId?: string; organizationName?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -769,4 +869,14 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
+  | TPamResourceEvent
+  | TPamAccountEvent
+  | TPamAccountAccessedEvent
+  | TPamAccountRotatedEvent
+  | TPamSessionStartedEvent
+  | TPamSessionEndedEvent
+  | TPamWebAccessStartedEvent
+  | TPamDiscoveryEvent
+  | TPamRotationRuleCreatedEvent
+  | TPamRotationRuleDeletedEvent
 );

@@ -4,7 +4,8 @@ import {
   PamAccountView,
   PamResourceOrderBy,
   PamResourceType,
-  PamSessionStatus
+  PamSessionStatus,
+  TerminalChannelType
 } from "../enums";
 import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
@@ -72,6 +73,7 @@ export type TPamCommandLog = {
 export type TTerminalEvent = {
   timestamp: string;
   eventType: "input" | "output" | "resize" | "error";
+  channelType?: TerminalChannelType; // Optional for backwards compatibility with existing logs
   data: string; // Base64 encoded binary data
   elapsedTime: number; // Seconds since session start (for replay)
 };
@@ -118,6 +120,7 @@ export type TPamSession = {
   createdAt: string;
   updatedAt: string;
   logs: TPamSessionLog[];
+  gatewayIdentityId?: string | null;
 };
 
 // Resource DTOs

@@ -45,7 +45,7 @@ type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus">;
   projectEnvDAL: TProjectEnvDALFactory;

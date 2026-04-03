@@ -33,6 +33,9 @@ export default defineConfig({
   entry: ["./src", "!./src/**/*.dev.ts"],
   sourceMap: true,
   skipNodeModulesBundle: true,
+  // ts-node/register is only needed when running TS files directly (knex CLI in dev).
+  // Override skipNodeModulesBundle for ts-node so the esbuild plugin can replace it with an empty shim.
+  noExternal: ["ts-node"],
   esbuildPlugins: [
     {
       // esm directory import are not allowed
@@ -40,6 +43,17 @@ export default defineConfig({
       // this plugin will append it automatically on build time to all imports
       name: "commonjs-esm-directory-import",
       setup(build) {
+        // ts-node/register is only needed for running TS files directly (knex CLI in dev).
+        // In production builds, the code is already compiled so ts-node is not needed.
+        build.onResolve({ filter: /^ts-node/ }, () => ({
+          path: "ts-node-shim",
+          namespace: "ts-node-shim"
+        }));
+        build.onLoad({ filter: /.*/, namespace: "ts-node-shim" }, () => ({
+          contents: "",
+          loader: "js"
+        }));
+
         build.onResolve({ filter: /.*/ }, async (args) => {
           if (args.importer) {
             if (args.kind === "import-statement") {

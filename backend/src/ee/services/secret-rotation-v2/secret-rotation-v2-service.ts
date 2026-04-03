@@ -25,6 +25,7 @@ import {
   expandSecretRotation,
   getNextUtcRotationInterval,
   getSecretRotationRotateSecretJobOptions,
+  getWebhookSanitizedErrorMessage,
   listSecretRotationOptions,
   parseRotationErrorMessage,
   throwOnImmutableParameterUpdate
@@ -83,6 +84,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
@@ -924,6 +926,44 @@ export const secretRotationV2ServiceFactory = ({
     return expandSecretRotation(secretRotation, kmsService);
   };
 
+  const triggerFailedWebhook = async (
+    projectId: string,
+    environment: { slug: string; name: string; id: string },
+    error: unknown,
+    folder: { id: string; path: string },
+    secretRotation: TSecretRotationV2Raw,
+    isManualRotation: boolean
+  ) => {
+    const webhookErrorMessage = getWebhookSanitizedErrorMessage(error);
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.SecretRotationFailed,
+        payload: {
+          projectId,
+          environment: environment.slug,
+          secretPath: folder.path,
+          rotationName: secretRotation.name,
+          triggeredManually: isManualRotation,
+          errorMessage: webhookErrorMessage
+        }
+      },
+      {
+        jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        }
+      }
+    );
+  };
+
   const rotateGeneratedCredentials = async (
     secretRotation: TSecretRotationV2Raw,
     {
@@ -1098,6 +1138,10 @@ export const secretRotationV2ServiceFactory = ({
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
 
+      if (isManualRotation) {
+        await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
+      }
+
       if (isFinalAttempt) {
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -1118,6 +1162,7 @@ export const secretRotationV2ServiceFactory = ({
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);
+          await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
         }
       }
 

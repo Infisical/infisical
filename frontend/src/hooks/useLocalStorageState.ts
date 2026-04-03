@@ -22,8 +22,16 @@ const getLocalStorageItem = (key: string): string | null => {
 };
 
 const useLocalStorageSubscribe = (callback: (e: StorageEvent) => void) => {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  // Only react to same-tab storage events (manually dispatched, storageArea is null).
+  // Ignore cross-tab native storage events (storageArea is set) to prevent
+  // other tabs from updating this tab's state.
+  const handler = (e: StorageEvent) => {
+    if (!e.storageArea) {
+      callback(e);
+    }
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
 };
 
 const getLocalStorageServerSnapshot = (): never => {
