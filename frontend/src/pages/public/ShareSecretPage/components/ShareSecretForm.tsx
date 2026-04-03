@@ -156,7 +156,7 @@ export const ShareSecretForm = ({
     if (processedEmails && processedEmails.length > 0) {
       setSecretLink("");
       createNotification({
-        text: "if the provided email is associated with an infisical account they will receive a link",
+        text: "If the provided email is associated with an Infisical account they will receive a link",
         type: "success"
       });
     } else {
