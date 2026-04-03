@@ -129,6 +129,7 @@ export const CreateSecretForm = ({
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
     const delimitters = [":", "="];
     const pastedContent = e.clipboardData.getData("text");
     const { key, value } = getKeyValue(pastedContent, delimitters);
@@ -138,13 +139,21 @@ export const CreateSecretForm = ({
       secretKeyInputRef.current.selectionStart === 0 &&
       secretKeyInputRef.current.selectionEnd === secretKeyInputRef.current.value.length;
 
-    if (!secretKey || isWholeKeyHighlighted) {
-      e.preventDefault();
+    if (!secretKey || isWholeKeyHighlighted || value) {
       const keyStr = autoCapitalize ? key.toUpperCase() : key;
       setValue("key", keyStr);
       if (value) {
         setValue("value", value);
       }
+    } else {
+      const selectionStart = secretKeyInputRef.current?.selectionStart || 0;
+      const selectionEnd = secretKeyInputRef.current?.selectionEnd || 0;
+      const currentKey = secretKey || "";
+      
+      const keyStr = autoCapitalize ? key.toUpperCase() : key;
+      const newKey = currentKey.substring(0, selectionStart) + keyStr + currentKey.substring(selectionEnd);
+      
+      setValue("key", newKey);
     }
   };
 
