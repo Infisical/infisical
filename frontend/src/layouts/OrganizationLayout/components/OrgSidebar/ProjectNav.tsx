@@ -10,6 +10,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { AINav } from "./AINav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
+import { NexusNav } from "./NexusNav";
 import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
 import { SecretScanningNav } from "./SecretScanningNav";
@@ -42,7 +43,8 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.SSH]: SshNav,
   [ProjectType.PAM]: PamNav,
   [ProjectType.AI]: AINav,
-  [ProjectType.SecretScanning]: SecretScanningNav
+  [ProjectType.SecretScanning]: SecretScanningNav,
+  [ProjectType.Nexus]: NexusNav
 };
 
 // --- Project nav wrapper ---

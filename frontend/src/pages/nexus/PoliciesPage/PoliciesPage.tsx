@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faColumns, faLock, faMagnifyingGlass, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import {
+  faColumns,
+  faLock,
+  faMagnifyingGlass,
+  faShieldHalved
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -33,17 +38,138 @@ const topViolatedPolicies = [
 ];
 
 const policies = [
-  { name: "Organization Default PQC Baseline", category: "All", subCategory: "PQC", mode: "Enforcing", type: "User-defined", state: true, compliance: "NIST", controlId: "SC-12 SC-13", violated: "1,245", updated: "Feb 20, 2026" },
-  { name: "Minimum AES Key Size 128 bits", category: "Symmetric Keys", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "-", updated: "Nov 21, 2025" },
-  { name: "Weak Post-Quantum Security Posture", category: "Certificates", subCategory: "PQC", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "SC-12 SC-13 RA-5 PM-30", violated: "-", updated: "Nov 21, 2025" },
-  { name: "AES Keys < 256 Bits are PQC Unsafe", category: "Symmetric Keys", subCategory: "PQC", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "74", updated: "Nov 21, 2025" },
-  { name: "Ensure Keys Based on Quantum-Safe Algorithms", category: "Asymmetric Keys", subCategory: "PQC", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "779", updated: "Nov 21, 2025" },
-  { name: "PQC Unsafe Protocols (SSL2-TLSv1.2)", category: "Protocols", subCategory: "PQC", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "840", updated: "Nov 21, 2025" },
-  { name: "Disallow DSA Keys", category: "Asymmetric Keys", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "178", updated: "Nov 21, 2025" },
-  { name: "Certificate Validity Period Check", category: "Certificates", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "SC-12", violated: "61", updated: "Nov 21, 2025" },
-  { name: "Small RSA Key Length", category: "Asymmetric Keys", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "59", updated: "Nov 21, 2025" },
-  { name: "TLS 1.2 Cipher Suite Compliance", category: "Protocols", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: false, compliance: "NIST", controlId: "SC-13", violated: "49", updated: "Nov 21, 2025" },
-  { name: "Weak Signature Algorithm", category: "Certificates", subCategory: "Classical", mode: "Monitoring", type: "System-defined", state: true, compliance: "NIST", controlId: "-", violated: "6", updated: "Nov 21, 2025" }
+  {
+    name: "Organization Default PQC Baseline",
+    category: "All",
+    subCategory: "PQC",
+    mode: "Enforcing",
+    type: "User-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "SC-12 SC-13",
+    violated: "1,245",
+    updated: "Feb 20, 2026"
+  },
+  {
+    name: "Minimum AES Key Size 128 bits",
+    category: "Symmetric Keys",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "-",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Weak Post-Quantum Security Posture",
+    category: "Certificates",
+    subCategory: "PQC",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "SC-12 SC-13 RA-5 PM-30",
+    violated: "-",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "AES Keys < 256 Bits are PQC Unsafe",
+    category: "Symmetric Keys",
+    subCategory: "PQC",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "74",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Ensure Keys Based on Quantum-Safe Algorithms",
+    category: "Asymmetric Keys",
+    subCategory: "PQC",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "779",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "PQC Unsafe Protocols (SSL2-TLSv1.2)",
+    category: "Protocols",
+    subCategory: "PQC",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "840",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Disallow DSA Keys",
+    category: "Asymmetric Keys",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "178",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Certificate Validity Period Check",
+    category: "Certificates",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "SC-12",
+    violated: "61",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Small RSA Key Length",
+    category: "Asymmetric Keys",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "59",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "TLS 1.2 Cipher Suite Compliance",
+    category: "Protocols",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: false,
+    compliance: "NIST",
+    controlId: "SC-13",
+    violated: "49",
+    updated: "Nov 21, 2025"
+  },
+  {
+    name: "Weak Signature Algorithm",
+    category: "Certificates",
+    subCategory: "Classical",
+    mode: "Monitoring",
+    type: "System-defined",
+    state: true,
+    compliance: "NIST",
+    controlId: "-",
+    violated: "6",
+    updated: "Nov 21, 2025"
+  }
 ];
 
 const InfisicalTooltip = ({ active, payload }: any) => {
@@ -98,7 +224,7 @@ export const PoliciesPage = () => {
           {/* Card 1 - Compliance Status */}
           <div className="flex flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+              <p className="text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
                 Compliance Status
               </p>
               <select className="rounded border border-mineshaft-600 bg-mineshaft-900 px-2 py-1 text-[10px] text-mineshaft-400 outline-none">
@@ -147,10 +273,12 @@ export const PoliciesPage = () => {
 
           {/* Card 2 - Violations Distribution */}
           <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-1 text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
               Total Violations Distribution
             </p>
-            <p className="mb-4 text-2xl font-semibold text-mineshaft-100">{violationsTotal.toLocaleString()}</p>
+            <p className="mb-4 text-2xl font-semibold text-mineshaft-100">
+              {violationsTotal.toLocaleString()}
+            </p>
             <div className="mb-3 flex h-4 w-full overflow-visible">
               {violationsDistribution.map((item, index) => (
                 <div
@@ -158,7 +286,7 @@ export const PoliciesPage = () => {
                   className={`group/bar relative ${item.bgClass} ${index === 0 ? "rounded-l-full" : ""} ${index === violationsDistribution.length - 1 ? "rounded-r-full" : ""}`}
                   style={{ width: `${(item.value / violationsTotal) * 100}%` }}
                 >
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-800 px-3 py-2 text-xs shadow-md opacity-0 transition-opacity group-hover/bar:opacity-100">
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border border-mineshaft-500 bg-mineshaft-800 px-3 py-2 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover/bar:opacity-100">
                     <p className="text-mineshaft-400">{item.name}</p>
                     <p className="font-medium text-mineshaft-100">{item.value.toLocaleString()}</p>
                   </div>
@@ -169,7 +297,9 @@ export const PoliciesPage = () => {
               {violationsDistribution.map((item) => (
                 <div key={item.name} className="flex items-center gap-1">
                   <span className={`h-2 w-2 rounded-full ${item.bgClass}`} />
-                  <span className="text-mineshaft-400">{item.name}: {item.value.toLocaleString()}</span>
+                  <span className="text-mineshaft-400">
+                    {item.name}: {item.value.toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>
@@ -177,7 +307,7 @@ export const PoliciesPage = () => {
 
           {/* Card 3 - Top Violated Policies */}
           <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-3 text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
               Top Violated Policies
             </p>
             <div className="flex flex-col">
@@ -286,16 +416,25 @@ export const PoliciesPage = () => {
                 <th className="w-8 px-4 py-3">
                   <input type="checkbox" className="rounded border-mineshaft-600" />
                 </th>
-                {["POLICY NAME", "CATEGORY", "SUB-CATEGORY", "MODE", "TYPE", "STATE", "COMPLIANCE", "CONTROL ID", "VIOLATED ASSETS", "LAST UPDATED"].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-mineshaft-400"
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {[
+                  "POLICY NAME",
+                  "CATEGORY",
+                  "SUB-CATEGORY",
+                  "MODE",
+                  "TYPE",
+                  "STATE",
+                  "COMPLIANCE",
+                  "CONTROL ID",
+                  "VIOLATED ASSETS",
+                  "LAST UPDATED"
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-3 text-left text-[11px] font-medium tracking-[0.05em] text-mineshaft-400 uppercase"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -332,10 +471,7 @@ export const PoliciesPage = () => {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon
-                          icon={faLock}
-                          className="h-3 w-3 text-mineshaft-400"
-                        />
+                        <FontAwesomeIcon icon={faLock} className="h-3 w-3 text-mineshaft-400" />
                         <span className="text-xs text-mineshaft-100">{policy.name}</span>
                       </div>
                     </td>

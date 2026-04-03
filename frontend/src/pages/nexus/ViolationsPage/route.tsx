@@ -8,10 +8,7 @@ export const Route = createFileRoute(
   component: ViolationsPage,
   beforeLoad: ({ context }) => {
     return {
-      breadcrumbs: [
-        ...context.breadcrumbs,
-        { label: "Violations" }
-      ]
+      breadcrumbs: [...context.breadcrumbs, { label: "Violations" }]
     };
   }
 });

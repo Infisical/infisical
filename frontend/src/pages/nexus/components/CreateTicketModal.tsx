@@ -3,7 +3,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 
 const formSchema = z.object({
   ticketSystem: z.string().min(1, "Ticket system is required"),
@@ -53,10 +61,22 @@ export const CreateTicketModal = ({ isOpen, onOpenChange }: Props) => {
             name="ticketSystem"
             defaultValue=""
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Ticket System" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select system">
+              <FormControl
+                label="Ticket System"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Select
+                  {...field}
+                  onValueChange={onChange}
+                  className="w-full"
+                  placeholder="Select system"
+                >
                   {["Jira Cloud - INFRA", "ServiceNow - SEC", "Linear - Crypto Team"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                    <SelectItem value={v} key={v}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </Select>
               </FormControl>
@@ -66,7 +86,12 @@ export const CreateTicketModal = ({ isOpen, onOpenChange }: Props) => {
             control={control}
             name="summary"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Summary" isRequired isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Summary"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Input {...field} placeholder="Brief description of the issue" />
               </FormControl>
             )}
@@ -78,7 +103,9 @@ export const CreateTicketModal = ({ isOpen, onOpenChange }: Props) => {
               <FormControl label="Priority" isError={Boolean(error)} errorText={error?.message}>
                 <Select {...field} onValueChange={onChange} className="w-full">
                   {["Critical", "High", "Medium", "Low"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                    <SelectItem value={v} key={v}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </Select>
               </FormControl>

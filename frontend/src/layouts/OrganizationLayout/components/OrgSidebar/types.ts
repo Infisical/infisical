@@ -7,7 +7,8 @@ export const PROJECT_TYPE_PATH: Record<ProjectType, string> = {
   [ProjectType.KMS]: "kms",
   [ProjectType.PAM]: "pam",
   [ProjectType.SecretScanning]: "secret-scanning",
-  [ProjectType.AI]: "ai"
+  [ProjectType.AI]: "ai",
+  [ProjectType.Nexus]: "nexus"
 };
 
 export type SubmenuItem = {

@@ -1,5 +1,5 @@
-import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -18,7 +18,15 @@ import {
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, PageHeader, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Modal,
+  ModalContent,
+  PageHeader,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -117,7 +125,7 @@ export const OverviewPage = () => {
         <div className="mb-6 grid grid-cols-4 gap-4">
           {/* Enterprise Risk Score */}
           <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
               Enterprise Risk Score
             </p>
             <div className="flex items-baseline gap-1">
@@ -145,7 +153,7 @@ export const OverviewPage = () => {
 
           {/* PQC Readiness */}
           <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
               PQC Readiness
             </p>
             <span className="text-3xl font-semibold text-mineshaft-100">11.17%</span>
@@ -172,7 +180,7 @@ export const OverviewPage = () => {
 
           {/* Total Violations */}
           <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
               Total Violations
             </p>
             <span className="text-3xl font-semibold text-mineshaft-100">1,700</span>
@@ -195,7 +203,7 @@ export const OverviewPage = () => {
 
           {/* Scanned Objects */}
           <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+            <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
               Scanned Objects
             </p>
             <span className="text-3xl font-semibold text-mineshaft-100">3,665</span>
@@ -274,7 +282,7 @@ export const OverviewPage = () => {
                 { label: "Protocols", total: "116", classical: "49", pqc: "67" }
               ].map((col) => (
                 <div key={col.label}>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+                  <p className="mb-2 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
                     {col.label}
                   </p>
                   <p className="text-lg font-semibold text-mineshaft-100">{col.total}</p>
@@ -293,7 +301,7 @@ export const OverviewPage = () => {
             </div>
 
             <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+              <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
                 Ticket Status Overview
               </p>
               <div className="flex items-center gap-4">
@@ -356,7 +364,10 @@ export const OverviewPage = () => {
                     tick={{ fill: "#5c6170", fontSize: 10 }}
                     width={20}
                   />
-                  <Tooltip content={<InfisicalTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                  <Tooltip
+                    content={<InfisicalTooltip />}
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="score"
@@ -369,7 +380,7 @@ export const OverviewPage = () => {
             </div>
 
             <div className="mt-5 border-t border-mineshaft-600 pt-4">
-              <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-mineshaft-400">
+              <p className="mb-3 text-[11px] font-medium tracking-wider text-mineshaft-400 uppercase">
                 Quick Actions
               </p>
               <div className="flex flex-col gap-2">
@@ -422,7 +433,10 @@ export const OverviewPage = () => {
                   tickLine={false}
                   tick={{ fill: "#a1a5ab", fontSize: 11 }}
                 />
-                <Tooltip content={<InfisicalTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Tooltip
+                  content={<InfisicalTooltip />}
+                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                />
                 <Bar dataKey="count" radius={[0, 3, 3, 0]}>
                   {classicalViolations.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -446,17 +460,38 @@ export const OverviewPage = () => {
           handlePopUpToggle("runDiscoveryScan", isOpen);
         }}
       >
-        <ModalContent title="Run Discovery Scan" subTitle="Initiate an on-demand scan of your infrastructure.">
+        <ModalContent
+          title="Run Discovery Scan"
+          subTitle="Initiate an on-demand scan of your infrastructure."
+        >
           <form onSubmit={handleScanSubmit(onScanSubmit)}>
             <Controller
               control={scanControl}
               name="scanJob"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl label="Scan Job" isRequired isError={Boolean(error)} errorText={error?.message}>
-                  <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select a job">
-                    {["prod-network-scan", "k8s-cluster-prod", "infisical-pki", "infisical-kms", "ct-log-monitor"].map((v) => (
-                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                <FormControl
+                  label="Scan Job"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select a job"
+                  >
+                    {[
+                      "prod-network-scan",
+                      "k8s-cluster-prod",
+                      "infisical-pki",
+                      "infisical-kms",
+                      "ct-log-monitor"
+                    ].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -469,17 +504,31 @@ export const OverviewPage = () => {
                 <FormControl label="Scope" isError={Boolean(error)} errorText={error?.message}>
                   <Select {...field} onValueChange={onChange} className="w-full">
                     {["Full Scan", "Quick Scan", "Incremental"].map((v) => (
-                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
                     ))}
                   </Select>
                 </FormControl>
               )}
             />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isScanSubmitting} isDisabled={isScanSubmitting} className="mr-4">
+              <Button
+                type="submit"
+                isLoading={isScanSubmitting}
+                isDisabled={isScanSubmitting}
+                className="mr-4"
+              >
                 Start Scan
               </Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetScan(); handlePopUpToggle("runDiscoveryScan", false); }}>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetScan();
+                  handlePopUpToggle("runDiscoveryScan", false);
+                }}
+              >
                 Cancel
               </Button>
             </div>

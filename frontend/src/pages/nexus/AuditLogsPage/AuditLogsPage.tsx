@@ -208,12 +208,7 @@ export const AuditLogsPage = () => {
                 </TBody>
               </Table>
             </TableContainer>
-            <Button
-              className="mt-4 px-4 py-3 text-sm"
-              isFullWidth
-              variant="outline_bg"
-              isDisabled
-            >
+            <Button className="mt-4 px-4 py-3 text-sm" isFullWidth variant="outline_bg" isDisabled>
               End of logs
             </Button>
           </div>

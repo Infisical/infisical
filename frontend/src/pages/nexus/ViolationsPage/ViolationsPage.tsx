@@ -1,8 +1,14 @@
 import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { faCheckCircle, faDownload, faEllipsis, faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faDownload,
+  faEllipsis,
+  faMagnifyingGlass,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,16 +36,116 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CreateTicketModal } from "../components";
 
 const violations = [
-  { severity: "Critical", policy: "Non Quantum-Safe Algorithm", category: "PQC", asset: "key-a1b2c3 (RSA-2048)", assetType: "Asymmetric Key", itAsset: "Secrets-Prod", detected: "Feb 24, 2026", status: "Open", assignedTo: "ashwin@infisical.com" },
-  { severity: "Critical", policy: "PQC Unsafe Protocols (SSL2-TLSv1.2)", category: "PQC", asset: "192.168.1.50:443 (TLS 1.0)", assetType: "Protocol", itAsset: "Legacy App", detected: "Feb 24, 2026", status: "Open", assignedTo: "daniel@infisical.com" },
-  { severity: "Critical", policy: "Expired Certificate", category: "Classical", asset: "api.acmecorp.com (RSA-2048)", assetType: "Certificate", itAsset: "API Gateway", detected: "Feb 23, 2026", status: "In Progress", assignedTo: "arsh@infisical.com" },
-  { severity: "High", policy: "Ensure Keys Based on Quantum-Safe Algorithms", category: "PQC", asset: "key-j1k2l3 (ECDSA-256)", assetType: "Asymmetric Key", itAsset: "KMS_TEST", detected: "Feb 23, 2026", status: "Open", assignedTo: "ashwin@infisical.com" },
-  { severity: "High", policy: "Small RSA Key Length", category: "Classical", asset: "db.internal.corp (RSA-2048)", assetType: "Certificate", itAsset: "Database Cluster", detected: "Feb 22, 2026", status: "Accepted Risk", assignedTo: "carlos@infisical.com" },
-  { severity: "High", policy: "Disallow DSA Keys", category: "Classical", asset: "key-x9y8z7 (DSA-1024)", assetType: "Asymmetric Key", itAsset: "Secrets-Staging", detected: "Feb 22, 2026", status: "Open", assignedTo: "" },
-  { severity: "Medium", policy: "Certificate Validity Period Check", category: "Classical", asset: "cdn.acmecorp.com (ECDSA-384)", assetType: "Certificate", itAsset: "CDN Edge", detected: "Feb 21, 2026", status: "Resolved", assignedTo: "daniel@infisical.com" },
-  { severity: "Medium", policy: "AES Keys < 256 Bits are PQC Unsafe", category: "PQC", asset: "key-m4n5o6 (AES-128)", assetType: "Symmetric Key", itAsset: "Secrets-Prod", detected: "Feb 21, 2026", status: "Open", assignedTo: "" },
-  { severity: "Medium", policy: "Weak Signature Algorithm", category: "Classical", asset: "vault.acmecorp.com (SHA-1)", assetType: "Certificate", itAsset: "Vault Server", detected: "Feb 20, 2026", status: "Open", assignedTo: "arsh@infisical.com" },
-  { severity: "High", policy: "TLS 1.2 Cipher Suite Compliance", category: "Classical", asset: "10.0.5.33:443 (RC4-SHA)", assetType: "Protocol", itAsset: "Staging Server", detected: "Feb 20, 2026", status: "Open", assignedTo: "" }
+  {
+    severity: "Critical",
+    policy: "Non Quantum-Safe Algorithm",
+    category: "PQC",
+    asset: "key-a1b2c3 (RSA-2048)",
+    assetType: "Asymmetric Key",
+    itAsset: "Secrets-Prod",
+    detected: "Feb 24, 2026",
+    status: "Open",
+    assignedTo: "ashwin@infisical.com"
+  },
+  {
+    severity: "Critical",
+    policy: "PQC Unsafe Protocols (SSL2-TLSv1.2)",
+    category: "PQC",
+    asset: "192.168.1.50:443 (TLS 1.0)",
+    assetType: "Protocol",
+    itAsset: "Legacy App",
+    detected: "Feb 24, 2026",
+    status: "Open",
+    assignedTo: "daniel@infisical.com"
+  },
+  {
+    severity: "Critical",
+    policy: "Expired Certificate",
+    category: "Classical",
+    asset: "api.acmecorp.com (RSA-2048)",
+    assetType: "Certificate",
+    itAsset: "API Gateway",
+    detected: "Feb 23, 2026",
+    status: "In Progress",
+    assignedTo: "arsh@infisical.com"
+  },
+  {
+    severity: "High",
+    policy: "Ensure Keys Based on Quantum-Safe Algorithms",
+    category: "PQC",
+    asset: "key-j1k2l3 (ECDSA-256)",
+    assetType: "Asymmetric Key",
+    itAsset: "KMS_TEST",
+    detected: "Feb 23, 2026",
+    status: "Open",
+    assignedTo: "ashwin@infisical.com"
+  },
+  {
+    severity: "High",
+    policy: "Small RSA Key Length",
+    category: "Classical",
+    asset: "db.internal.corp (RSA-2048)",
+    assetType: "Certificate",
+    itAsset: "Database Cluster",
+    detected: "Feb 22, 2026",
+    status: "Accepted Risk",
+    assignedTo: "carlos@infisical.com"
+  },
+  {
+    severity: "High",
+    policy: "Disallow DSA Keys",
+    category: "Classical",
+    asset: "key-x9y8z7 (DSA-1024)",
+    assetType: "Asymmetric Key",
+    itAsset: "Secrets-Staging",
+    detected: "Feb 22, 2026",
+    status: "Open",
+    assignedTo: ""
+  },
+  {
+    severity: "Medium",
+    policy: "Certificate Validity Period Check",
+    category: "Classical",
+    asset: "cdn.acmecorp.com (ECDSA-384)",
+    assetType: "Certificate",
+    itAsset: "CDN Edge",
+    detected: "Feb 21, 2026",
+    status: "Resolved",
+    assignedTo: "daniel@infisical.com"
+  },
+  {
+    severity: "Medium",
+    policy: "AES Keys < 256 Bits are PQC Unsafe",
+    category: "PQC",
+    asset: "key-m4n5o6 (AES-128)",
+    assetType: "Symmetric Key",
+    itAsset: "Secrets-Prod",
+    detected: "Feb 21, 2026",
+    status: "Open",
+    assignedTo: ""
+  },
+  {
+    severity: "Medium",
+    policy: "Weak Signature Algorithm",
+    category: "Classical",
+    asset: "vault.acmecorp.com (SHA-1)",
+    assetType: "Certificate",
+    itAsset: "Vault Server",
+    detected: "Feb 20, 2026",
+    status: "Open",
+    assignedTo: "arsh@infisical.com"
+  },
+  {
+    severity: "High",
+    policy: "TLS 1.2 Cipher Suite Compliance",
+    category: "Classical",
+    asset: "10.0.5.33:443 (RC4-SHA)",
+    assetType: "Protocol",
+    itAsset: "Staging Server",
+    detected: "Feb 20, 2026",
+    status: "Open",
+    assignedTo: ""
+  }
 ];
 
 function SeverityDot({ severity }: { severity: string }) {
@@ -101,7 +207,7 @@ function ViolationDrawer({
       </div>
       <div className="flex-1 overflow-y-auto p-5">
         <div className="mb-5">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Asset Detail
           </h4>
           <div className="flex flex-col gap-2 text-xs">
@@ -123,7 +229,7 @@ function ViolationDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Policy Description
           </h4>
           <p className="text-xs leading-relaxed text-mineshaft-400">
@@ -134,7 +240,7 @@ function ViolationDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Remediation Recommendation
           </h4>
           <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3">
@@ -146,7 +252,7 @@ function ViolationDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Source
           </h4>
           <span className="text-xs text-mineshaft-400">
@@ -155,7 +261,7 @@ function ViolationDrawer({
         </div>
 
         <div className="border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Linked Tickets
           </h4>
           <div className="flex items-center gap-2 text-xs">
@@ -304,7 +410,7 @@ export const ViolationsPage = () => {
               key={card.label}
               className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 px-5 py-3"
             >
-              <p className="text-[10px] uppercase tracking-wider text-mineshaft-400">
+              <p className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
                 {card.label}
               </p>
               <p className={`text-xl font-semibold ${card.cls}`}>{card.value}</p>
@@ -322,7 +428,9 @@ export const ViolationsPage = () => {
             >
               <option value="">All Policies</option>
               {uniquePolicies.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
             </select>
             <select
@@ -341,7 +449,9 @@ export const ViolationsPage = () => {
             >
               <option value="">Asset Type</option>
               {uniqueAssetTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </select>
             <select
@@ -351,7 +461,9 @@ export const ViolationsPage = () => {
             >
               <option value="">Severity</option>
               {uniqueSeverities.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
             <select
@@ -361,10 +473,16 @@ export const ViolationsPage = () => {
             >
               <option value="">Status</option>
               {uniqueStatuses.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
-            {(policyFilter || categoryFilter || assetTypeFilter || severityFilter || statusFilter) && (
+            {(policyFilter ||
+              categoryFilter ||
+              assetTypeFilter ||
+              severityFilter ||
+              statusFilter) && (
               <button
                 type="button"
                 onClick={() => {
@@ -408,16 +526,25 @@ export const ViolationsPage = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-mineshaft-600">
-                {["SEVERITY", "POLICY NAME", "CATEGORY", "ASSET", "ASSET TYPE", "LINKED IT ASSET", "ASSIGNED TO", "DETECTED", "STATUS", ""].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-mineshaft-400"
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {[
+                  "SEVERITY",
+                  "POLICY NAME",
+                  "CATEGORY",
+                  "ASSET",
+                  "ASSET TYPE",
+                  "LINKED IT ASSET",
+                  "ASSIGNED TO",
+                  "DETECTED",
+                  "STATUS",
+                  ""
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[11px] font-medium tracking-[0.05em] text-mineshaft-400 uppercase"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -526,14 +653,27 @@ export const ViolationsPage = () => {
           handlePopUpToggle("acceptRisk", isOpen);
         }}
       >
-        <ModalContent title="Accept Risk" subTitle="Document the justification for accepting this violation risk.">
+        <ModalContent
+          title="Accept Risk"
+          subTitle="Document the justification for accepting this violation risk."
+        >
           <form onSubmit={handleRiskSubmit(onRiskSubmit)}>
             <Controller
               control={riskControl}
               name="justification"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Justification" isRequired isError={Boolean(error)} errorText={error?.message}>
-                  <TextArea {...field} placeholder="Explain why this risk is acceptable..." reSize="none" rows={4} />
+                <FormControl
+                  label="Justification"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <TextArea
+                    {...field}
+                    placeholder="Explain why this risk is acceptable..."
+                    reSize="none"
+                    rows={4}
+                  />
                 </FormControl>
               )}
             />
@@ -541,16 +681,32 @@ export const ViolationsPage = () => {
               control={riskControl}
               name="reviewDate"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Review Date" isError={Boolean(error)} errorText={error?.message}>
+                <FormControl
+                  label="Review Date"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
                   <Input {...field} placeholder="YYYY-MM-DD (optional)" />
                 </FormControl>
               )}
             />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isRiskSubmitting} isDisabled={isRiskSubmitting} className="mr-4">
+              <Button
+                type="submit"
+                isLoading={isRiskSubmitting}
+                isDisabled={isRiskSubmitting}
+                className="mr-4"
+              >
                 Accept Risk
               </Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetRisk(); handlePopUpToggle("acceptRisk", false); }}>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetRisk();
+                  handlePopUpToggle("acceptRisk", false);
+                }}
+              >
                 Cancel
               </Button>
             </div>
@@ -573,10 +729,22 @@ export const ViolationsPage = () => {
               name="resolutionType"
               defaultValue=""
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl label="Resolution Type" isRequired isError={Boolean(error)} errorText={error?.message}>
-                  <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select resolution type">
+                <FormControl
+                  label="Resolution Type"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select resolution type"
+                  >
                     {["Remediated", "False Positive", "Mitigating Control"].map((v) => (
-                      <SelectItem value={v} key={v}>{v}</SelectItem>
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -586,16 +754,37 @@ export const ViolationsPage = () => {
               control={resolveControl}
               name="resolutionNotes"
               render={({ field, fieldState: { error } }) => (
-                <FormControl label="Resolution Notes" isError={Boolean(error)} errorText={error?.message}>
-                  <TextArea {...field} placeholder="Optional notes about the resolution..." reSize="none" rows={3} />
+                <FormControl
+                  label="Resolution Notes"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <TextArea
+                    {...field}
+                    placeholder="Optional notes about the resolution..."
+                    reSize="none"
+                    rows={3}
+                  />
                 </FormControl>
               )}
             />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isResolveSubmitting} isDisabled={isResolveSubmitting} className="mr-4">
+              <Button
+                type="submit"
+                isLoading={isResolveSubmitting}
+                isDisabled={isResolveSubmitting}
+                className="mr-4"
+              >
                 Resolve
               </Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetResolve(); handlePopUpToggle("resolveViolation", false); }}>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetResolve();
+                  handlePopUpToggle("resolveViolation", false);
+                }}
+              >
                 Cancel
               </Button>
             </div>

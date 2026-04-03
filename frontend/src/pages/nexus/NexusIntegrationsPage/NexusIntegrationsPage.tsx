@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { Helmet } from "react-helmet";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -36,33 +36,130 @@ const subNavItems = [
 type SubNav = (typeof subNavItems)[number];
 
 const ticketIntegrations = [
-  { name: "Jira Cloud - INFRA", system: "Jira Cloud", project: "INFRA", trigger: "Critical + High Violations", status: "Active", lastSync: "Feb 24, 2026" },
-  { name: "ServiceNow - SEC", system: "ServiceNow", project: "SEC-OPS", trigger: "All Violations", status: "Active", lastSync: "Feb 24, 2026" },
-  { name: "Linear - Crypto Team", system: "Linear", project: "CRY", trigger: "New Critical Violations", status: "Paused", lastSync: "Feb 20, 2026" }
+  {
+    name: "Jira Cloud - INFRA",
+    system: "Jira Cloud",
+    project: "INFRA",
+    trigger: "Critical + High Violations",
+    status: "Active",
+    lastSync: "Feb 24, 2026"
+  },
+  {
+    name: "ServiceNow - SEC",
+    system: "ServiceNow",
+    project: "SEC-OPS",
+    trigger: "All Violations",
+    status: "Active",
+    lastSync: "Feb 24, 2026"
+  },
+  {
+    name: "Linear - Crypto Team",
+    system: "Linear",
+    project: "CRY",
+    trigger: "New Critical Violations",
+    status: "Paused",
+    lastSync: "Feb 20, 2026"
+  }
 ];
 
 const alertIntegrations = [
-  { name: "Cert Expiry Alert", event: "Certificate Expiry (< 10 days)", channel: "Slack (#security-alerts)", threshold: "< 10 days", status: "Active", lastTriggered: "Feb 23, 2026" },
-  { name: "Critical Violation Alert", event: "New Critical Violation", channel: "PagerDuty", threshold: "-", status: "Active", lastTriggered: "Feb 24, 2026" },
-  { name: "Risk Score Alert", event: "Risk Score > 5.0", channel: "Email (security@acmecorp.com)", threshold: "> 5.0", status: "Active", lastTriggered: "Never" },
-  { name: "Scan Complete", event: "Discovery Scan Completed", channel: "Slack (#infra)", threshold: "-", status: "Active", lastTriggered: "Feb 24, 2026" }
+  {
+    name: "Cert Expiry Alert",
+    event: "Certificate Expiry (< 10 days)",
+    channel: "Slack (#security-alerts)",
+    threshold: "< 10 days",
+    status: "Active",
+    lastTriggered: "Feb 23, 2026"
+  },
+  {
+    name: "Critical Violation Alert",
+    event: "New Critical Violation",
+    channel: "PagerDuty",
+    threshold: "-",
+    status: "Active",
+    lastTriggered: "Feb 24, 2026"
+  },
+  {
+    name: "Risk Score Alert",
+    event: "Risk Score > 5.0",
+    channel: "Email (security@acmecorp.com)",
+    threshold: "> 5.0",
+    status: "Active",
+    lastTriggered: "Never"
+  },
+  {
+    name: "Scan Complete",
+    event: "Discovery Scan Completed",
+    channel: "Slack (#infra)",
+    threshold: "-",
+    status: "Active",
+    lastTriggered: "Feb 24, 2026"
+  }
 ];
 
 const siemConnections = [
-  { name: "Splunk Production", platform: "Splunk", exportType: "Real-time Stream", status: "Active", lastExport: "Feb 24, 2026" },
-  { name: "Sentinel SOC", platform: "Microsoft Sentinel", exportType: "Batch (Hourly)", status: "Active", lastExport: "Feb 24, 2026" }
+  {
+    name: "Splunk Production",
+    platform: "Splunk",
+    exportType: "Real-time Stream",
+    status: "Active",
+    lastExport: "Feb 24, 2026"
+  },
+  {
+    name: "Sentinel SOC",
+    platform: "Microsoft Sentinel",
+    exportType: "Batch (Hourly)",
+    status: "Active",
+    lastExport: "Feb 24, 2026"
+  }
 ];
 
 const cloudProviders = [
-  { provider: "AWS", name: "AWS ACM Sync", source: "us-east-1, us-west-2", status: "Synced", lastSynced: "Feb 24, 2026" },
-  { provider: "AWS", name: "AWS KMS Sync", source: "us-east-1", status: "Synced", lastSynced: "Feb 24, 2026" },
-  { provider: "Azure", name: "Azure Key Vault", source: "prod-keyvault", status: "Synced", lastSynced: "Feb 23, 2026" },
-  { provider: "GCP", name: "GCP CAS", source: "project-crypto", status: "Error", lastSynced: "Feb 20, 2026" }
+  {
+    provider: "AWS",
+    name: "AWS ACM Sync",
+    source: "us-east-1, us-west-2",
+    status: "Synced",
+    lastSynced: "Feb 24, 2026"
+  },
+  {
+    provider: "AWS",
+    name: "AWS KMS Sync",
+    source: "us-east-1",
+    status: "Synced",
+    lastSynced: "Feb 24, 2026"
+  },
+  {
+    provider: "Azure",
+    name: "Azure Key Vault",
+    source: "prod-keyvault",
+    status: "Synced",
+    lastSynced: "Feb 23, 2026"
+  },
+  {
+    provider: "GCP",
+    name: "GCP CAS",
+    source: "project-crypto",
+    status: "Error",
+    lastSynced: "Feb 20, 2026"
+  }
 ];
 
 const externalScanners = [
-  { name: "Qualys TLS Scan", platform: "Qualys", source: "External Perimeter Scan", status: "Active", lastImport: "Feb 22, 2026" },
-  { name: "Shodan Monitor", platform: "Shodan", source: "acmecorp.com domains", status: "Active", lastImport: "Feb 24, 2026" }
+  {
+    name: "Qualys TLS Scan",
+    platform: "Qualys",
+    source: "External Perimeter Scan",
+    status: "Active",
+    lastImport: "Feb 22, 2026"
+  },
+  {
+    name: "Shodan Monitor",
+    platform: "Shodan",
+    source: "acmecorp.com domains",
+    status: "Active",
+    lastImport: "Feb 24, 2026"
+  }
 ];
 
 function IntegrationStatusBadge({ status }: { status: string }) {
@@ -129,12 +226,14 @@ function ThreeDotMenu({ name, onDelete }: { name: string; onDelete: () => void }
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => createNotification({ text: `Editing "${name}" coming soon.`, type: "info" })}>
+        <DropdownMenuItem
+          onClick={() =>
+            createNotification({ text: `Editing "${name}" coming soon.`, type: "info" })
+          }
+        >
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onDelete}>
-          Delete
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onDelete}>Delete</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -154,24 +253,69 @@ export const NexusIntegrationsPage = () => {
   ] as const);
 
   // Ticket form
-  const { handleSubmit: handleTicketSubmit, control: ticketControl, reset: resetTicket, formState: { isSubmitting: isTicketSubmitting } } = useForm<TTicketSchema>({ resolver: zodResolver(ticketSchema) });
-  const onTicketSubmit = () => { createNotification({ text: "Ticket integration added.", type: "success" }); resetTicket(); handlePopUpToggle("addIntegration", false); };
+  const {
+    handleSubmit: handleTicketSubmit,
+    control: ticketControl,
+    reset: resetTicket,
+    formState: { isSubmitting: isTicketSubmitting }
+  } = useForm<TTicketSchema>({ resolver: zodResolver(ticketSchema) });
+  const onTicketSubmit = () => {
+    createNotification({ text: "Ticket integration added.", type: "success" });
+    resetTicket();
+    handlePopUpToggle("addIntegration", false);
+  };
 
   // Alert form
-  const { handleSubmit: handleAlertSubmit, control: alertControl, reset: resetAlert, formState: { isSubmitting: isAlertSubmitting } } = useForm<TAlertSchema>({ resolver: zodResolver(alertSchema) });
-  const onAlertSubmit = () => { createNotification({ text: "Alert created.", type: "success" }); resetAlert(); handlePopUpToggle("createAlert", false); };
+  const {
+    handleSubmit: handleAlertSubmit,
+    control: alertControl,
+    reset: resetAlert,
+    formState: { isSubmitting: isAlertSubmitting }
+  } = useForm<TAlertSchema>({ resolver: zodResolver(alertSchema) });
+  const onAlertSubmit = () => {
+    createNotification({ text: "Alert created.", type: "success" });
+    resetAlert();
+    handlePopUpToggle("createAlert", false);
+  };
 
   // SIEM form
-  const { handleSubmit: handleSiemSubmit, control: siemControl, reset: resetSiem, formState: { isSubmitting: isSiemSubmitting } } = useForm<TSiemSchema>({ resolver: zodResolver(siemSchema) });
-  const onSiemSubmit = () => { createNotification({ text: "SIEM connection added.", type: "success" }); resetSiem(); handlePopUpToggle("addConnection", false); };
+  const {
+    handleSubmit: handleSiemSubmit,
+    control: siemControl,
+    reset: resetSiem,
+    formState: { isSubmitting: isSiemSubmitting }
+  } = useForm<TSiemSchema>({ resolver: zodResolver(siemSchema) });
+  const onSiemSubmit = () => {
+    createNotification({ text: "SIEM connection added.", type: "success" });
+    resetSiem();
+    handlePopUpToggle("addConnection", false);
+  };
 
   // Cloud sync form
-  const { handleSubmit: handleCloudSubmit, control: cloudControl, reset: resetCloud, formState: { isSubmitting: isCloudSubmitting } } = useForm<TCloudSyncSchema>({ resolver: zodResolver(cloudSyncSchema) });
-  const onCloudSubmit = () => { createNotification({ text: "Cloud sync added.", type: "success" }); resetCloud(); handlePopUpToggle("addSync", false); };
+  const {
+    handleSubmit: handleCloudSubmit,
+    control: cloudControl,
+    reset: resetCloud,
+    formState: { isSubmitting: isCloudSubmitting }
+  } = useForm<TCloudSyncSchema>({ resolver: zodResolver(cloudSyncSchema) });
+  const onCloudSubmit = () => {
+    createNotification({ text: "Cloud sync added.", type: "success" });
+    resetCloud();
+    handlePopUpToggle("addSync", false);
+  };
 
   // Scanner form
-  const { handleSubmit: handleScannerSubmit, control: scannerControl, reset: resetScanner, formState: { isSubmitting: isScannerSubmitting } } = useForm<TScannerSchema>({ resolver: zodResolver(scannerSchema) });
-  const onScannerSubmit = () => { createNotification({ text: "Scanner added.", type: "success" }); resetScanner(); handlePopUpToggle("addScanner", false); };
+  const {
+    handleSubmit: handleScannerSubmit,
+    control: scannerControl,
+    reset: resetScanner,
+    formState: { isSubmitting: isScannerSubmitting }
+  } = useForm<TScannerSchema>({ resolver: zodResolver(scannerSchema) });
+  const onScannerSubmit = () => {
+    createNotification({ text: "Scanner added.", type: "success" });
+    resetScanner();
+    handlePopUpToggle("addScanner", false);
+  };
 
   return (
     <div className="h-full bg-bunker-800">
@@ -230,13 +374,19 @@ export const NexusIntegrationsPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-mineshaft-600">
-                      {["NAME", "SYSTEM", "PROJECT/QUEUE", "TRIGGER", "STATUS", "LAST SYNC", ""].map(
-                        (h) => (
-                          <th key={h} className={thClass}>
-                            {h}
-                          </th>
-                        )
-                      )}
+                      {[
+                        "NAME",
+                        "SYSTEM",
+                        "PROJECT/QUEUE",
+                        "TRIGGER",
+                        "STATUS",
+                        "LAST SYNC",
+                        ""
+                      ].map((h) => (
+                        <th key={h} className={thClass}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -258,7 +408,12 @@ export const NexusIntegrationsPage = () => {
                         </td>
                         <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastSync}</td>
                         <td className="px-4 py-3">
-                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
+                          <ThreeDotMenu
+                            name={item.name}
+                            onDelete={() =>
+                              handlePopUpOpen("deleteIntegration", { name: item.name })
+                            }
+                          />
                         </td>
                       </tr>
                     ))}
@@ -287,13 +442,19 @@ export const NexusIntegrationsPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-mineshaft-600">
-                      {["NAME", "EVENT TYPE", "CHANNEL", "THRESHOLD", "STATUS", "LAST TRIGGERED", ""].map(
-                        (h) => (
-                          <th key={h} className={thClass}>
-                            {h}
-                          </th>
-                        )
-                      )}
+                      {[
+                        "NAME",
+                        "EVENT TYPE",
+                        "CHANNEL",
+                        "THRESHOLD",
+                        "STATUS",
+                        "LAST TRIGGERED",
+                        ""
+                      ].map((h) => (
+                        <th key={h} className={thClass}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -315,7 +476,12 @@ export const NexusIntegrationsPage = () => {
                           {item.lastTriggered}
                         </td>
                         <td className="px-4 py-3">
-                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
+                          <ThreeDotMenu
+                            name={item.name}
+                            onDelete={() =>
+                              handlePopUpOpen("deleteIntegration", { name: item.name })
+                            }
+                          />
                         </td>
                       </tr>
                     ))}
@@ -344,13 +510,11 @@ export const NexusIntegrationsPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-mineshaft-600">
-                      {["NAME", "PLATFORM", "EXPORT TYPE", "STATUS", "LAST EXPORT", ""].map(
-                        (h) => (
-                          <th key={h} className={thClass}>
-                            {h}
-                          </th>
-                        )
-                      )}
+                      {["NAME", "PLATFORM", "EXPORT TYPE", "STATUS", "LAST EXPORT", ""].map((h) => (
+                        <th key={h} className={thClass}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -369,7 +533,12 @@ export const NexusIntegrationsPage = () => {
                         </td>
                         <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastExport}</td>
                         <td className="px-4 py-3">
-                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
+                          <ThreeDotMenu
+                            name={item.name}
+                            onDelete={() =>
+                              handlePopUpOpen("deleteIntegration", { name: item.name })
+                            }
+                          />
                         </td>
                       </tr>
                     ))}
@@ -427,11 +596,14 @@ export const NexusIntegrationsPage = () => {
                         <td className="px-4 py-3">
                           <IntegrationStatusBadge status={item.status} />
                         </td>
-                        <td className="px-4 py-3 text-xs text-mineshaft-400">
-                          {item.lastSynced}
-                        </td>
+                        <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastSynced}</td>
                         <td className="px-4 py-3">
-                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
+                          <ThreeDotMenu
+                            name={item.name}
+                            onDelete={() =>
+                              handlePopUpOpen("deleteIntegration", { name: item.name })
+                            }
+                          />
                         </td>
                       </tr>
                     ))}
@@ -483,11 +655,14 @@ export const NexusIntegrationsPage = () => {
                         <td className="px-4 py-3">
                           <IntegrationStatusBadge status={item.status} />
                         </td>
-                        <td className="px-4 py-3 text-xs text-mineshaft-400">
-                          {item.lastImport}
-                        </td>
+                        <td className="px-4 py-3 text-xs text-mineshaft-400">{item.lastImport}</td>
                         <td className="px-4 py-3">
-                          <ThreeDotMenu name={item.name} onDelete={() => handlePopUpOpen("deleteIntegration", { name: item.name })} />
+                          <ThreeDotMenu
+                            name={item.name}
+                            onDelete={() =>
+                              handlePopUpOpen("deleteIntegration", { name: item.name })
+                            }
+                          />
                         </td>
                       </tr>
                     ))}
@@ -502,41 +677,120 @@ export const NexusIntegrationsPage = () => {
       {/* Add Ticket Integration Modal */}
       <Modal
         isOpen={popUp.addIntegration.isOpen}
-        onOpenChange={(isOpen) => { if (!isOpen) resetTicket(); handlePopUpToggle("addIntegration", isOpen); }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetTicket();
+          handlePopUpToggle("addIntegration", isOpen);
+        }}
       >
-        <ModalContent title="Add Ticket Integration" subTitle="Connect a ticket system for automated violation tracking.">
+        <ModalContent
+          title="Add Ticket Integration"
+          subTitle="Connect a ticket system for automated violation tracking."
+        >
           <form onSubmit={handleTicketSubmit(onTicketSubmit)}>
-            <Controller control={ticketControl} name="name" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. Jira Cloud - INFRA" />
-              </FormControl>
-            )} />
-            <Controller control={ticketControl} name="system" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="System" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select system">
-                  {["Jira", "ServiceNow", "Linear", "GitHub", "Azure DevOps"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={ticketControl} name="project" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Project / Queue" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. INFRA or SEC-OPS" />
-              </FormControl>
-            )} />
-            <Controller control={ticketControl} name="trigger" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Trigger" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select trigger">
-                  {["All Violations", "Critical + High Violations", "New Critical Violations", "PQC Violations Only"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
+            <Controller
+              control={ticketControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Name"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. Jira Cloud - INFRA" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={ticketControl}
+              name="system"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="System"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select system"
+                  >
+                    {["Jira", "ServiceNow", "Linear", "GitHub", "Azure DevOps"].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={ticketControl}
+              name="project"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Project / Queue"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. INFRA or SEC-OPS" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={ticketControl}
+              name="trigger"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Trigger"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select trigger"
+                  >
+                    {[
+                      "All Violations",
+                      "Critical + High Violations",
+                      "New Critical Violations",
+                      "PQC Violations Only"
+                    ].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isTicketSubmitting} isDisabled={isTicketSubmitting} className="mr-4">Add Integration</Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetTicket(); handlePopUpToggle("addIntegration", false); }}>Cancel</Button>
+              <Button
+                type="submit"
+                isLoading={isTicketSubmitting}
+                isDisabled={isTicketSubmitting}
+                className="mr-4"
+              >
+                Add Integration
+              </Button>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetTicket();
+                  handlePopUpToggle("addIntegration", false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </ModalContent>
@@ -545,41 +799,116 @@ export const NexusIntegrationsPage = () => {
       {/* Create Alert Modal */}
       <Modal
         isOpen={popUp.createAlert.isOpen}
-        onOpenChange={(isOpen) => { if (!isOpen) resetAlert(); handlePopUpToggle("createAlert", isOpen); }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetAlert();
+          handlePopUpToggle("createAlert", isOpen);
+        }}
       >
-        <ModalContent title="Create Alert" subTitle="Configure a new alert for cryptographic events.">
+        <ModalContent
+          title="Create Alert"
+          subTitle="Configure a new alert for cryptographic events."
+        >
           <form onSubmit={handleAlertSubmit(onAlertSubmit)}>
-            <Controller control={alertControl} name="name" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. Cert Expiry Alert" />
-              </FormControl>
-            )} />
-            <Controller control={alertControl} name="eventType" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Event Type" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select event type">
-                  {["Certificate Expiry", "New Critical Violation", "Risk Score Threshold", "Discovery Scan Completed", "Policy Violation"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={alertControl} name="channel" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Channel" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select channel">
-                  {["Slack", "PagerDuty", "Email", "Microsoft Teams", "Webhook"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={alertControl} name="threshold" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Threshold" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. < 10 days or > 5.0 (optional)" />
-              </FormControl>
-            )} />
+            <Controller
+              control={alertControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Name"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. Cert Expiry Alert" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={alertControl}
+              name="eventType"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Event Type"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select event type"
+                  >
+                    {[
+                      "Certificate Expiry",
+                      "New Critical Violation",
+                      "Risk Score Threshold",
+                      "Discovery Scan Completed",
+                      "Policy Violation"
+                    ].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={alertControl}
+              name="channel"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Channel"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select channel"
+                  >
+                    {["Slack", "PagerDuty", "Email", "Microsoft Teams", "Webhook"].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={alertControl}
+              name="threshold"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl label="Threshold" isError={Boolean(error)} errorText={error?.message}>
+                  <Input {...field} placeholder="e.g. < 10 days or > 5.0 (optional)" />
+                </FormControl>
+              )}
+            />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isAlertSubmitting} isDisabled={isAlertSubmitting} className="mr-4">Create Alert</Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetAlert(); handlePopUpToggle("createAlert", false); }}>Cancel</Button>
+              <Button
+                type="submit"
+                isLoading={isAlertSubmitting}
+                isDisabled={isAlertSubmitting}
+                className="mr-4"
+              >
+                Create Alert
+              </Button>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetAlert();
+                  handlePopUpToggle("createAlert", false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </ModalContent>
@@ -588,36 +917,109 @@ export const NexusIntegrationsPage = () => {
       {/* Add SIEM Connection Modal */}
       <Modal
         isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isOpen) => { if (!isOpen) resetSiem(); handlePopUpToggle("addConnection", isOpen); }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetSiem();
+          handlePopUpToggle("addConnection", isOpen);
+        }}
       >
-        <ModalContent title="Add SIEM Connection" subTitle="Export cryptographic risk data to a SIEM/SOAR platform.">
+        <ModalContent
+          title="Add SIEM Connection"
+          subTitle="Export cryptographic risk data to a SIEM/SOAR platform."
+        >
           <form onSubmit={handleSiemSubmit(onSiemSubmit)}>
-            <Controller control={siemControl} name="name" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. Splunk Production" />
-              </FormControl>
-            )} />
-            <Controller control={siemControl} name="platform" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Platform" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select platform">
-                  {["Splunk", "Microsoft Sentinel", "IBM QRadar", "Elastic Security", "Google Chronicle"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={siemControl} name="exportType" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Export Type" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select export type">
-                  {["Real-time Stream", "Batch (Hourly)", "Batch (Daily)", "On-demand"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
+            <Controller
+              control={siemControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Name"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. Splunk Production" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={siemControl}
+              name="platform"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Platform"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select platform"
+                  >
+                    {[
+                      "Splunk",
+                      "Microsoft Sentinel",
+                      "IBM QRadar",
+                      "Elastic Security",
+                      "Google Chronicle"
+                    ].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={siemControl}
+              name="exportType"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Export Type"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select export type"
+                  >
+                    {["Real-time Stream", "Batch (Hourly)", "Batch (Daily)", "On-demand"].map(
+                      (v) => (
+                        <SelectItem value={v} key={v}>
+                          {v}
+                        </SelectItem>
+                      )
+                    )}
+                  </Select>
+                </FormControl>
+              )}
+            />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isSiemSubmitting} isDisabled={isSiemSubmitting} className="mr-4">Add Connection</Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetSiem(); handlePopUpToggle("addConnection", false); }}>Cancel</Button>
+              <Button
+                type="submit"
+                isLoading={isSiemSubmitting}
+                isDisabled={isSiemSubmitting}
+                className="mr-4"
+              >
+                Add Connection
+              </Button>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetSiem();
+                  handlePopUpToggle("addConnection", false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </ModalContent>
@@ -626,32 +1028,89 @@ export const NexusIntegrationsPage = () => {
       {/* Add Cloud Sync Modal */}
       <Modal
         isOpen={popUp.addSync.isOpen}
-        onOpenChange={(isOpen) => { if (!isOpen) resetCloud(); handlePopUpToggle("addSync", isOpen); }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetCloud();
+          handlePopUpToggle("addSync", isOpen);
+        }}
       >
-        <ModalContent title="Add Cloud Sync" subTitle="Sync certificates and keys from a cloud provider.">
+        <ModalContent
+          title="Add Cloud Sync"
+          subTitle="Sync certificates and keys from a cloud provider."
+        >
           <form onSubmit={handleCloudSubmit(onCloudSubmit)}>
-            <Controller control={cloudControl} name="provider" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Provider" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select provider">
-                  {["AWS", "Azure", "GCP"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={cloudControl} name="name" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. AWS ACM Sync" />
-              </FormControl>
-            )} />
-            <Controller control={cloudControl} name="source" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Source" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. us-east-1, us-west-2" />
-              </FormControl>
-            )} />
+            <Controller
+              control={cloudControl}
+              name="provider"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Provider"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select provider"
+                  >
+                    {["AWS", "Azure", "GCP"].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={cloudControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Name"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. AWS ACM Sync" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={cloudControl}
+              name="source"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Source"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. us-east-1, us-west-2" />
+                </FormControl>
+              )}
+            />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isCloudSubmitting} isDisabled={isCloudSubmitting} className="mr-4">Add Sync</Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetCloud(); handlePopUpToggle("addSync", false); }}>Cancel</Button>
+              <Button
+                type="submit"
+                isLoading={isCloudSubmitting}
+                isDisabled={isCloudSubmitting}
+                className="mr-4"
+              >
+                Add Sync
+              </Button>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetCloud();
+                  handlePopUpToggle("addSync", false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </ModalContent>
@@ -660,32 +1119,89 @@ export const NexusIntegrationsPage = () => {
       {/* Add Scanner Modal */}
       <Modal
         isOpen={popUp.addScanner.isOpen}
-        onOpenChange={(isOpen) => { if (!isOpen) resetScanner(); handlePopUpToggle("addScanner", isOpen); }}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetScanner();
+          handlePopUpToggle("addScanner", isOpen);
+        }}
       >
-        <ModalContent title="Add Scanner" subTitle="Import results from a third-party scanning tool.">
+        <ModalContent
+          title="Add Scanner"
+          subTitle="Import results from a third-party scanning tool."
+        >
           <form onSubmit={handleScannerSubmit(onScannerSubmit)}>
-            <Controller control={scannerControl} name="name" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. Qualys TLS Scan" />
-              </FormControl>
-            )} />
-            <Controller control={scannerControl} name="platform" defaultValue="" render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Platform" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select platform">
-                  {["Qualys", "Shodan", "Nessus", "Censys", "CertSpotter"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )} />
-            <Controller control={scannerControl} name="source" render={({ field, fieldState: { error } }) => (
-              <FormControl label="Source" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g. External Perimeter Scan" />
-              </FormControl>
-            )} />
+            <Controller
+              control={scannerControl}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Name"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. Qualys TLS Scan" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={scannerControl}
+              name="platform"
+              defaultValue=""
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Platform"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    onValueChange={onChange}
+                    className="w-full"
+                    placeholder="Select platform"
+                  >
+                    {["Qualys", "Shodan", "Nessus", "Censys", "CertSpotter"].map((v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={scannerControl}
+              name="source"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Source"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="e.g. External Perimeter Scan" />
+                </FormControl>
+              )}
+            />
             <div className="mt-7 flex items-center">
-              <Button type="submit" isLoading={isScannerSubmitting} isDisabled={isScannerSubmitting} className="mr-4">Add Scanner</Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => { resetScanner(); handlePopUpToggle("addScanner", false); }}>Cancel</Button>
+              <Button
+                type="submit"
+                isLoading={isScannerSubmitting}
+                isDisabled={isScannerSubmitting}
+                className="mr-4"
+              >
+                Add Scanner
+              </Button>
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  resetScanner();
+                  handlePopUpToggle("addScanner", false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </ModalContent>

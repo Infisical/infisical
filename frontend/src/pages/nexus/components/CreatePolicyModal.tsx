@@ -3,7 +3,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent, Select, SelectItem, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem,
+  TextArea
+} from "@app/components/v2";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Policy name is required"),
@@ -53,7 +62,12 @@ export const CreatePolicyModal = ({ isOpen, onOpenChange }: Props) => {
             control={control}
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Policy Name" isRequired isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Policy Name"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Input {...field} placeholder="e.g. Enforce PQC-safe algorithms" />
               </FormControl>
             )}
@@ -63,11 +77,25 @@ export const CreatePolicyModal = ({ isOpen, onOpenChange }: Props) => {
             name="category"
             defaultValue=""
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Category" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select category">
-                  {["Symmetric Keys", "Asymmetric Keys", "Certificates", "Protocols", "All"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
-                  ))}
+              <FormControl
+                label="Category"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Select
+                  {...field}
+                  onValueChange={onChange}
+                  className="w-full"
+                  placeholder="Select category"
+                >
+                  {["Symmetric Keys", "Asymmetric Keys", "Certificates", "Protocols", "All"].map(
+                    (v) => (
+                      <SelectItem value={v} key={v}>
+                        {v}
+                      </SelectItem>
+                    )
+                  )}
                 </Select>
               </FormControl>
             )}
@@ -77,10 +105,22 @@ export const CreatePolicyModal = ({ isOpen, onOpenChange }: Props) => {
             name="subCategory"
             defaultValue=""
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Sub-Category" isRequired isError={Boolean(error)} errorText={error?.message}>
-                <Select {...field} onValueChange={onChange} className="w-full" placeholder="Select sub-category">
+              <FormControl
+                label="Sub-Category"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
+                <Select
+                  {...field}
+                  onValueChange={onChange}
+                  className="w-full"
+                  placeholder="Select sub-category"
+                >
                   {["PQC", "Classical"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                    <SelectItem value={v} key={v}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </Select>
               </FormControl>
@@ -90,10 +130,16 @@ export const CreatePolicyModal = ({ isOpen, onOpenChange }: Props) => {
             control={control}
             name="enforcementMode"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Enforcement Mode" isError={Boolean(error)} errorText={error?.message}>
+              <FormControl
+                label="Enforcement Mode"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Select {...field} onValueChange={onChange} className="w-full">
                   {["Monitoring", "Enforcing"].map((v) => (
-                    <SelectItem value={v} key={v}>{v}</SelectItem>
+                    <SelectItem value={v} key={v}>
+                      {v}
+                    </SelectItem>
                   ))}
                 </Select>
               </FormControl>
@@ -104,7 +150,12 @@ export const CreatePolicyModal = ({ isOpen, onOpenChange }: Props) => {
             name="description"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
-                <TextArea {...field} placeholder="Optional policy description..." reSize="none" rows={3} />
+                <TextArea
+                  {...field}
+                  placeholder="Optional policy description..."
+                  reSize="none"
+                  rows={3}
+                />
               </FormControl>
             )}
           />

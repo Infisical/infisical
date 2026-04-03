@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { DiscoveryPage } from "./DiscoveryPage";
 
 export const Route = createFileRoute(
@@ -7,10 +8,7 @@ export const Route = createFileRoute(
   component: DiscoveryPage,
   beforeLoad: ({ context }) => {
     return {
-      breadcrumbs: [
-        ...context.breadcrumbs,
-        { label: "Discovery" }
-      ]
+      breadcrumbs: [...context.breadcrumbs, { label: "Discovery" }]
     };
   }
 });

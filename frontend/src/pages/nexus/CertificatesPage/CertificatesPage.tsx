@@ -62,7 +62,9 @@ function DonutChart({
   size?: "sm" | "lg";
 }) {
   return (
-    <div className={`relative shrink-0 ${size === "lg" ? "h-[160px] w-[160px]" : "h-[120px] w-[120px]"}`}>
+    <div
+      className={`relative shrink-0 ${size === "lg" ? "h-[160px] w-[160px]" : "h-[120px] w-[120px]"}`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -81,7 +83,9 @@ function DonutChart({
           <Tooltip content={<InfisicalTooltip />} wrapperStyle={{ zIndex: 50 }} />
         </PieChart>
       </ResponsiveContainer>
-      <span className={`pointer-events-none absolute inset-0 flex items-center justify-center font-semibold text-mineshaft-100 ${size === "lg" ? "text-lg" : "text-sm"}`}>
+      <span
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center font-semibold text-mineshaft-100 ${size === "lg" ? "text-lg" : "text-sm"}`}
+      >
         {centerLabel}
       </span>
     </div>
@@ -122,7 +126,14 @@ export const CertificatesPage = () => {
                   strokeWidth="10"
                   strokeLinecap="round"
                 />
-                <text x="80" y="70" textAnchor="middle" fill="#e2e8f0" fontSize="22" fontWeight="600">
+                <text
+                  x="80"
+                  y="70"
+                  textAnchor="middle"
+                  fill="#e2e8f0"
+                  fontSize="22"
+                  fontWeight="600"
+                >
                   15.2%
                 </text>
                 <text x="80" y="88" textAnchor="middle" fill="#7c8189" fontSize="10">
@@ -218,10 +229,7 @@ export const CertificatesPage = () => {
                 {caDonut.map((ca, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: ca.fill }}
-                      />
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ca.fill }} />
                       <span className="text-mineshaft-400">{ca.name}</span>
                     </div>
                     <span className="text-mineshaft-400">{ca.value}</span>
@@ -232,9 +240,7 @@ export const CertificatesPage = () => {
           </div>
 
           <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-            <h2 className="mb-1 text-sm font-semibold text-mineshaft-100">
-              Expiring Certificates
-            </h2>
+            <h2 className="mb-1 text-sm font-semibold text-mineshaft-100">Expiring Certificates</h2>
             <p className="mb-4 text-2xl font-semibold text-mineshaft-100">499</p>
             <div className="flex flex-col gap-1.5">
               {expiringRanges.map((range, i) => {
@@ -252,7 +258,7 @@ export const CertificatesPage = () => {
                     />
                     <div className="relative flex items-center justify-between">
                       <span className="text-xs text-mineshaft-300">{range.range}</span>
-                      <span className="text-xs font-medium tabular-nums text-mineshaft-200">
+                      <span className="text-xs font-medium text-mineshaft-200 tabular-nums">
                         {range.count}
                       </span>
                     </div>

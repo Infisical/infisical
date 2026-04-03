@@ -34,41 +34,288 @@ const tabs = ["Endpoints", "Keys", "Certificates", "Protocols"] as const;
 type Tab = (typeof tabs)[number];
 
 const endpointData = [
-  { scanId: "SCN-0041", country: "US", host: "10.0.1.15", port: 443, protocol: "TLS", version: "1.3", cipher: "TLS_AES_256_GCM_SHA384", strength: "HIGH" },
-  { scanId: "SCN-0042", country: "US", host: "10.0.1.22", port: 443, protocol: "TLS", version: "1.2", cipher: "ECDHE-RSA-AES128-GCM-SHA256", strength: "MEDIUM" },
-  { scanId: "SCN-0043", country: "DE", host: "172.16.3.8", port: 8443, protocol: "TLS", version: "1.3", cipher: "TLS_CHACHA20_POLY1305_SHA256", strength: "HIGH" },
-  { scanId: "SCN-0044", country: "GB", host: "192.168.1.50", port: 443, protocol: "TLS", version: "1.0", cipher: "DHE-RSA-AES128-SHA", strength: "LOW" },
-  { scanId: "SCN-0045", country: "US", host: "10.0.2.100", port: 443, protocol: "TLS", version: "1.2", cipher: "ECDHE-ECDSA-AES256-GCM-SHA384", strength: "HIGH" },
-  { scanId: "SCN-0046", country: "JP", host: "10.0.5.33", port: 443, protocol: "SSL", version: "3.0", cipher: "RC4-SHA", strength: "LOW" },
-  { scanId: "SCN-0047", country: "US", host: "172.16.0.12", port: 8443, protocol: "TLS", version: "1.3", cipher: "TLS_AES_128_GCM_SHA256", strength: "HIGH" },
-  { scanId: "SCN-0048", country: "FR", host: "10.0.3.77", port: 443, protocol: "TLS", version: "1.2", cipher: "AES256-GCM-SHA384", strength: "MEDIUM" },
-  { scanId: "SCN-0049", country: "IN", host: "10.0.4.91", port: 8080, protocol: "TLS", version: "1.0", cipher: "DES-CBC3-SHA", strength: "LOW", expiredCert: true }
+  {
+    scanId: "SCN-0041",
+    country: "US",
+    host: "10.0.1.15",
+    port: 443,
+    protocol: "TLS",
+    version: "1.3",
+    cipher: "TLS_AES_256_GCM_SHA384",
+    strength: "HIGH"
+  },
+  {
+    scanId: "SCN-0042",
+    country: "US",
+    host: "10.0.1.22",
+    port: 443,
+    protocol: "TLS",
+    version: "1.2",
+    cipher: "ECDHE-RSA-AES128-GCM-SHA256",
+    strength: "MEDIUM"
+  },
+  {
+    scanId: "SCN-0043",
+    country: "DE",
+    host: "172.16.3.8",
+    port: 8443,
+    protocol: "TLS",
+    version: "1.3",
+    cipher: "TLS_CHACHA20_POLY1305_SHA256",
+    strength: "HIGH"
+  },
+  {
+    scanId: "SCN-0044",
+    country: "GB",
+    host: "192.168.1.50",
+    port: 443,
+    protocol: "TLS",
+    version: "1.0",
+    cipher: "DHE-RSA-AES128-SHA",
+    strength: "LOW"
+  },
+  {
+    scanId: "SCN-0045",
+    country: "US",
+    host: "10.0.2.100",
+    port: 443,
+    protocol: "TLS",
+    version: "1.2",
+    cipher: "ECDHE-ECDSA-AES256-GCM-SHA384",
+    strength: "HIGH"
+  },
+  {
+    scanId: "SCN-0046",
+    country: "JP",
+    host: "10.0.5.33",
+    port: 443,
+    protocol: "SSL",
+    version: "3.0",
+    cipher: "RC4-SHA",
+    strength: "LOW"
+  },
+  {
+    scanId: "SCN-0047",
+    country: "US",
+    host: "172.16.0.12",
+    port: 8443,
+    protocol: "TLS",
+    version: "1.3",
+    cipher: "TLS_AES_128_GCM_SHA256",
+    strength: "HIGH"
+  },
+  {
+    scanId: "SCN-0048",
+    country: "FR",
+    host: "10.0.3.77",
+    port: 443,
+    protocol: "TLS",
+    version: "1.2",
+    cipher: "AES256-GCM-SHA384",
+    strength: "MEDIUM"
+  },
+  {
+    scanId: "SCN-0049",
+    country: "IN",
+    host: "10.0.4.91",
+    port: 8080,
+    protocol: "TLS",
+    version: "1.0",
+    cipher: "DES-CBC3-SHA",
+    strength: "LOW",
+    expiredCert: true
+  }
 ];
 
 const keysData = [
-  { keyId: "key-a1b2c3", project: "Secrets-Prod", type: "Asymmetric", algo: "RSA", length: 2048, pqcSafe: false, created: "Jan 15, 2025", expires: "Jan 15, 2027", violations: 3 },
-  { keyId: "key-d4e5f6", project: "KMS_TEST", type: "Asymmetric", algo: "ML-KEM-768", length: 768, pqcSafe: true, created: "Feb 01, 2026", expires: "Feb 01, 2028", violations: 0 },
-  { keyId: "key-g7h8i9", project: "Secrets-Staging", type: "Symmetric", algo: "AES", length: 256, pqcSafe: true, created: "Mar 10, 2025", expires: "Mar 10, 2027", violations: 0 },
-  { keyId: "key-j1k2l3", project: "KMS_TEST", type: "Asymmetric", algo: "ECDSA", length: 256, pqcSafe: false, created: "Jun 20, 2024", expires: "Jun 20, 2026", violations: 2 },
-  { keyId: "key-m4n5o6", project: "Secrets-Prod", type: "Symmetric", algo: "AES", length: 128, pqcSafe: false, created: "Aug 05, 2024", expires: "Aug 05, 2026", violations: 1 },
-  { keyId: "key-p7q8r9", project: "KMS_TEST", type: "Asymmetric", algo: "RSA", length: 4096, pqcSafe: false, created: "Dec 12, 2024", expires: "Dec 12, 2026", violations: 1 }
+  {
+    keyId: "key-a1b2c3",
+    project: "Secrets-Prod",
+    type: "Asymmetric",
+    algo: "RSA",
+    length: 2048,
+    pqcSafe: false,
+    created: "Jan 15, 2025",
+    expires: "Jan 15, 2027",
+    violations: 3
+  },
+  {
+    keyId: "key-d4e5f6",
+    project: "KMS_TEST",
+    type: "Asymmetric",
+    algo: "ML-KEM-768",
+    length: 768,
+    pqcSafe: true,
+    created: "Feb 01, 2026",
+    expires: "Feb 01, 2028",
+    violations: 0
+  },
+  {
+    keyId: "key-g7h8i9",
+    project: "Secrets-Staging",
+    type: "Symmetric",
+    algo: "AES",
+    length: 256,
+    pqcSafe: true,
+    created: "Mar 10, 2025",
+    expires: "Mar 10, 2027",
+    violations: 0
+  },
+  {
+    keyId: "key-j1k2l3",
+    project: "KMS_TEST",
+    type: "Asymmetric",
+    algo: "ECDSA",
+    length: 256,
+    pqcSafe: false,
+    created: "Jun 20, 2024",
+    expires: "Jun 20, 2026",
+    violations: 2
+  },
+  {
+    keyId: "key-m4n5o6",
+    project: "Secrets-Prod",
+    type: "Symmetric",
+    algo: "AES",
+    length: 128,
+    pqcSafe: false,
+    created: "Aug 05, 2024",
+    expires: "Aug 05, 2026",
+    violations: 1
+  },
+  {
+    keyId: "key-p7q8r9",
+    project: "KMS_TEST",
+    type: "Asymmetric",
+    algo: "RSA",
+    length: 4096,
+    pqcSafe: false,
+    created: "Dec 12, 2024",
+    expires: "Dec 12, 2026",
+    violations: 1
+  }
 ];
 
 const certsData = [
-  { cn: "*.acmecorp.com", serial: "3A:F2:1B:9C:04:D8", source: "Managed", status: "Healthy", issued: "Jan 10, 2026", expires: "Jan 10, 2027", algo: "ECDSA-256", pqcSafe: false, violations: 0 },
-  { cn: "api.acmecorp.com", serial: "7B:E4:2C:A1:08:F3", source: "Discovered", status: "Expired", issued: "Nov 01, 2024", expires: "Nov 01, 2025", algo: "RSA-2048", pqcSafe: false, violations: 2 },
-  { cn: "db.internal.corp", serial: "1D:C8:3E:B5:0A:27", source: "Imported", status: "Expiring Soon", issued: "Aug 15, 2025", expires: "Mar 02, 2026", algo: "RSA-2048", pqcSafe: false, violations: 1 },
-  { cn: "mail.acmecorp.com", serial: "9F:A6:4D:C2:0E:19", source: "Managed", status: "Healthy", issued: "Feb 20, 2026", expires: "Feb 20, 2027", algo: "Ed25519", pqcSafe: true, violations: 0 },
-  { cn: "vault.acmecorp.com", serial: "5E:B1:7A:D9:02:84", source: "Discovered", status: "Revoked", issued: "Sep 05, 2024", expires: "Sep 05, 2025", algo: "RSA-4096", pqcSafe: false, violations: 1 },
-  { cn: "cdn.acmecorp.com", serial: "2C:D7:8F:E4:06:B5", source: "Managed", status: "Healthy", issued: "Dec 01, 2025", expires: "Dec 01, 2026", algo: "ECDSA-384", pqcSafe: false, violations: 0 }
+  {
+    cn: "*.acmecorp.com",
+    serial: "3A:F2:1B:9C:04:D8",
+    source: "Managed",
+    status: "Healthy",
+    issued: "Jan 10, 2026",
+    expires: "Jan 10, 2027",
+    algo: "ECDSA-256",
+    pqcSafe: false,
+    violations: 0
+  },
+  {
+    cn: "api.acmecorp.com",
+    serial: "7B:E4:2C:A1:08:F3",
+    source: "Discovered",
+    status: "Expired",
+    issued: "Nov 01, 2024",
+    expires: "Nov 01, 2025",
+    algo: "RSA-2048",
+    pqcSafe: false,
+    violations: 2
+  },
+  {
+    cn: "db.internal.corp",
+    serial: "1D:C8:3E:B5:0A:27",
+    source: "Imported",
+    status: "Expiring Soon",
+    issued: "Aug 15, 2025",
+    expires: "Mar 02, 2026",
+    algo: "RSA-2048",
+    pqcSafe: false,
+    violations: 1
+  },
+  {
+    cn: "mail.acmecorp.com",
+    serial: "9F:A6:4D:C2:0E:19",
+    source: "Managed",
+    status: "Healthy",
+    issued: "Feb 20, 2026",
+    expires: "Feb 20, 2027",
+    algo: "Ed25519",
+    pqcSafe: true,
+    violations: 0
+  },
+  {
+    cn: "vault.acmecorp.com",
+    serial: "5E:B1:7A:D9:02:84",
+    source: "Discovered",
+    status: "Revoked",
+    issued: "Sep 05, 2024",
+    expires: "Sep 05, 2025",
+    algo: "RSA-4096",
+    pqcSafe: false,
+    violations: 1
+  },
+  {
+    cn: "cdn.acmecorp.com",
+    serial: "2C:D7:8F:E4:06:B5",
+    source: "Managed",
+    status: "Healthy",
+    issued: "Dec 01, 2025",
+    expires: "Dec 01, 2026",
+    algo: "ECDSA-384",
+    pqcSafe: false,
+    violations: 0
+  }
 ];
 
 const protocolsData = [
-  { host: "10.0.1.15", port: 443, protocol: "TLS", version: "1.3", cipher: "TLS_AES_256_GCM_SHA384", strength: "HIGH", itAsset: "Web Server Prod", lastScanned: "Feb 24, 2026" },
-  { host: "10.0.1.22", port: 443, protocol: "TLS", version: "1.2", cipher: "ECDHE-RSA-AES128-GCM-SHA256", strength: "MEDIUM", itAsset: "API Gateway", lastScanned: "Feb 24, 2026" },
-  { host: "172.16.3.8", port: 8443, protocol: "TLS", version: "1.3", cipher: "TLS_CHACHA20_POLY1305_SHA256", strength: "HIGH", itAsset: "Database Cluster", lastScanned: "Feb 23, 2026" },
-  { host: "192.168.1.50", port: 443, protocol: "TLS", version: "1.0", cipher: "DHE-RSA-AES128-SHA", strength: "LOW", itAsset: "Legacy App", lastScanned: "Feb 22, 2026" },
-  { host: "10.0.5.33", port: 443, protocol: "SSL", version: "3.0", cipher: "RC4-SHA", strength: "LOW", itAsset: "Staging Server", lastScanned: "Feb 24, 2026" }
+  {
+    host: "10.0.1.15",
+    port: 443,
+    protocol: "TLS",
+    version: "1.3",
+    cipher: "TLS_AES_256_GCM_SHA384",
+    strength: "HIGH",
+    itAsset: "Web Server Prod",
+    lastScanned: "Feb 24, 2026"
+  },
+  {
+    host: "10.0.1.22",
+    port: 443,
+    protocol: "TLS",
+    version: "1.2",
+    cipher: "ECDHE-RSA-AES128-GCM-SHA256",
+    strength: "MEDIUM",
+    itAsset: "API Gateway",
+    lastScanned: "Feb 24, 2026"
+  },
+  {
+    host: "172.16.3.8",
+    port: 8443,
+    protocol: "TLS",
+    version: "1.3",
+    cipher: "TLS_CHACHA20_POLY1305_SHA256",
+    strength: "HIGH",
+    itAsset: "Database Cluster",
+    lastScanned: "Feb 23, 2026"
+  },
+  {
+    host: "192.168.1.50",
+    port: 443,
+    protocol: "TLS",
+    version: "1.0",
+    cipher: "DHE-RSA-AES128-SHA",
+    strength: "LOW",
+    itAsset: "Legacy App",
+    lastScanned: "Feb 22, 2026"
+  },
+  {
+    host: "10.0.5.33",
+    port: 443,
+    protocol: "SSL",
+    version: "3.0",
+    cipher: "RC4-SHA",
+    strength: "LOW",
+    itAsset: "Staging Server",
+    lastScanned: "Feb 24, 2026"
+  }
 ];
 
 function StrengthBadge({ strength }: { strength: string }) {
@@ -128,7 +375,7 @@ function AssetDrawer({
       </div>
       <div className="flex-1 overflow-y-auto p-5">
         <div className="mb-5">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Overview
           </h4>
           <div className="flex flex-col gap-2 text-xs">
@@ -149,7 +396,7 @@ function AssetDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Linked IT Asset
           </h4>
           <span className="cursor-pointer text-sm text-blue-400 hover:underline">
@@ -159,7 +406,7 @@ function AssetDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             PQC Status
           </h4>
           <span className="text-xs text-green-400">Safe</span>
@@ -169,14 +416,14 @@ function AssetDrawer({
         </div>
 
         <div className="mb-5 border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Policy Violations
           </h4>
           <p className="text-xs text-green-400">No violations</p>
         </div>
 
         <div className="border-t border-mineshaft-600 pt-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-mineshaft-400">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
             Remediation
           </h4>
           <p className="text-xs text-mineshaft-400">
@@ -358,11 +605,16 @@ export const CryptographicAssetsPage = () => {
 
   const activeData = useMemo(() => {
     switch (activeTab) {
-      case "Endpoints": return filteredEndpoints;
-      case "Keys": return filteredKeys;
-      case "Certificates": return filteredCerts;
-      case "Protocols": return filteredProtocols;
-      default: return [];
+      case "Endpoints":
+        return filteredEndpoints;
+      case "Keys":
+        return filteredKeys;
+      case "Certificates":
+        return filteredCerts;
+      case "Protocols":
+        return filteredProtocols;
+      default:
+        return [];
     }
   }, [activeTab, filteredEndpoints, filteredKeys, filteredCerts, filteredProtocols]);
 
@@ -388,7 +640,11 @@ export const CryptographicAssetsPage = () => {
             <button
               key={tab}
               type="button"
-              onClick={() => { setActiveTab(tab); setPage(1); setFilters(defaultFilters); }}
+              onClick={() => {
+                setActiveTab(tab);
+                setPage(1);
+                setFilters(defaultFilters);
+              }}
               className={`px-4 py-2.5 text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? "border-b-2 border-mineshaft-100 text-mineshaft-100"
@@ -412,7 +668,10 @@ export const CryptographicAssetsPage = () => {
                 type="text"
                 placeholder="Search by host, key ID, CN, algorithm..."
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-64 bg-transparent text-xs text-mineshaft-100 placeholder-mineshaft-500 outline-none"
               />
             </div>
@@ -427,7 +686,10 @@ export const CryptographicAssetsPage = () => {
                     isFiltered && "border-primary/50 text-primary"
                   )}
                 >
-                  <FontAwesomeIcon icon={isFiltered ? faCheckCircle : faFilter} className="h-3.5 w-3.5" />
+                  <FontAwesomeIcon
+                    icon={isFiltered ? faCheckCircle : faFilter}
+                    className="h-3.5 w-3.5"
+                  />
                   Filter
                 </IconButton>
               </DropdownMenuTrigger>
@@ -449,7 +711,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.strength}
-                      onChange={(e) => { setFilters((f) => ({ ...f, strength: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, strength: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} mb-3 w-full`}
                     >
                       <option value="">All</option>
@@ -463,7 +728,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.version}
-                      onChange={(e) => { setFilters((f) => ({ ...f, version: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, version: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} w-full`}
                     >
                       <option value="">All</option>
@@ -482,7 +750,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.keyType}
-                      onChange={(e) => { setFilters((f) => ({ ...f, keyType: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, keyType: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} mb-3 w-full`}
                     >
                       <option value="">All</option>
@@ -495,7 +766,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.pqcSafe}
-                      onChange={(e) => { setFilters((f) => ({ ...f, pqcSafe: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, pqcSafe: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} w-full`}
                     >
                       <option value="">All</option>
@@ -512,7 +786,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.certSource}
-                      onChange={(e) => { setFilters((f) => ({ ...f, certSource: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, certSource: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} mb-3 w-full`}
                     >
                       <option value="">All</option>
@@ -526,7 +803,10 @@ export const CryptographicAssetsPage = () => {
                     </DropdownMenuLabel>
                     <select
                       value={filters.certStatus}
-                      onChange={(e) => { setFilters((f) => ({ ...f, certStatus: e.target.value })); setPage(1); }}
+                      onChange={(e) => {
+                        setFilters((f) => ({ ...f, certStatus: e.target.value }));
+                        setPage(1);
+                      }}
                       className={`${selectClass} w-full`}
                     >
                       <option value="">All</option>
@@ -564,8 +844,20 @@ export const CryptographicAssetsPage = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-mineshaft-600 bg-mineshaft-900">
-                  {["SCAN ID", "COUNTRY", "HOST", "PORT", "PROTOCOL", "VERSION", "CIPHER SUITE", "STRENGTH", "FLAGS"].map((h) => (
-                    <th key={h} className={thClass}>{h}</th>
+                  {[
+                    "SCAN ID",
+                    "COUNTRY",
+                    "HOST",
+                    "PORT",
+                    "PROTOCOL",
+                    "VERSION",
+                    "CIPHER SUITE",
+                    "STRENGTH",
+                    "FLAGS"
+                  ].map((h) => (
+                    <th key={h} className={thClass}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -577,14 +869,22 @@ export const CryptographicAssetsPage = () => {
                     <td className={`${tdClass} font-mono text-mineshaft-100`}>{row.host}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.port}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.protocol}</td>
-                    <td className={tdClass}><VersionBadge version={row.version} /></td>
+                    <td className={tdClass}>
+                      <VersionBadge version={row.version} />
+                    </td>
                     <td className={`${tdClass} font-mono text-mineshaft-400`}>{row.cipher}</td>
-                    <td className={tdClass}><StrengthBadge strength={row.strength} /></td>
+                    <td className={tdClass}>
+                      <StrengthBadge strength={row.strength} />
+                    </td>
                     <td className={tdClass}>
                       {"expiredCert" in row && row.expiredCert ? (
                         <div className="flex gap-1">
-                          <span className="rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400">Expired Cert</span>
-                          <span className="rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400">Weak Protocol</span>
+                          <span className="rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
+                            Expired Cert
+                          </span>
+                          <span className="rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
+                            Weak Protocol
+                          </span>
                         </div>
                       ) : null}
                     </td>
@@ -598,8 +898,20 @@ export const CryptographicAssetsPage = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-mineshaft-600 bg-mineshaft-900">
-                  {["KEY ID", "SOURCE PROJECT", "TYPE", "ALGORITHM", "KEY LENGTH", "PQC SAFE?", "CREATED", "EXPIRES", "VIOLATIONS"].map((h) => (
-                    <th key={h} className={thClass}>{h}</th>
+                  {[
+                    "KEY ID",
+                    "SOURCE PROJECT",
+                    "TYPE",
+                    "ALGORITHM",
+                    "KEY LENGTH",
+                    "PQC SAFE?",
+                    "CREATED",
+                    "EXPIRES",
+                    "VIOLATIONS"
+                  ].map((h) => (
+                    <th key={h} className={thClass}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -612,7 +924,9 @@ export const CryptographicAssetsPage = () => {
                     <td className={`${tdClass} text-mineshaft-100`}>{row.algo}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.length}</td>
                     <td className={tdClass}>
-                      <span className={`text-[11px] ${row.pqcSafe ? "text-green-400" : "text-red-400"}`}>
+                      <span
+                        className={`text-[11px] ${row.pqcSafe ? "text-green-400" : "text-red-400"}`}
+                      >
                         {row.pqcSafe ? "Safe" : "Unsafe"}
                       </span>
                     </td>
@@ -635,8 +949,20 @@ export const CryptographicAssetsPage = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-mineshaft-600 bg-mineshaft-900">
-                  {["CN / SAN", "SERIAL NUMBER", "SOURCE", "STATUS", "ISSUED AT", "EXPIRING AT", "ALGORITHM", "PQC SAFE?", "VIOLATIONS"].map((h) => (
-                    <th key={h} className={thClass}>{h}</th>
+                  {[
+                    "CN / SAN",
+                    "SERIAL NUMBER",
+                    "SOURCE",
+                    "STATUS",
+                    "ISSUED AT",
+                    "EXPIRING AT",
+                    "ALGORITHM",
+                    "PQC SAFE?",
+                    "VIOLATIONS"
+                  ].map((h) => (
+                    <th key={h} className={thClass}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -644,14 +970,20 @@ export const CryptographicAssetsPage = () => {
                 {(paginatedData as typeof certsData).map((row, i) => (
                   <tr key={i} className={trClass} onClick={() => setDrawerOpen(true)}>
                     <td className={`${tdClass} text-mineshaft-100`}>{row.cn}</td>
-                    <td className={`${tdClass} font-mono text-[11px] text-mineshaft-400`}>{row.serial}</td>
+                    <td className={`${tdClass} font-mono text-[11px] text-mineshaft-400`}>
+                      {row.serial}
+                    </td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.source}</td>
-                    <td className={tdClass}><StatusBadge status={row.status} /></td>
+                    <td className={tdClass}>
+                      <StatusBadge status={row.status} />
+                    </td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.issued}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.expires}</td>
                     <td className={`${tdClass} text-mineshaft-100`}>{row.algo}</td>
                     <td className={tdClass}>
-                      <span className={`text-[11px] ${row.pqcSafe ? "text-green-400" : "text-red-400"}`}>
+                      <span
+                        className={`text-[11px] ${row.pqcSafe ? "text-green-400" : "text-red-400"}`}
+                      >
                         {row.pqcSafe ? "Safe" : "Unsafe"}
                       </span>
                     </td>
@@ -672,8 +1004,19 @@ export const CryptographicAssetsPage = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-mineshaft-600 bg-mineshaft-900">
-                  {["HOST", "PORT", "PROTOCOL", "VERSION", "CIPHER SUITE", "STRENGTH", "IT ASSET", "LAST SCANNED"].map((h) => (
-                    <th key={h} className={thClass}>{h}</th>
+                  {[
+                    "HOST",
+                    "PORT",
+                    "PROTOCOL",
+                    "VERSION",
+                    "CIPHER SUITE",
+                    "STRENGTH",
+                    "IT ASSET",
+                    "LAST SCANNED"
+                  ].map((h) => (
+                    <th key={h} className={thClass}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -683,9 +1026,13 @@ export const CryptographicAssetsPage = () => {
                     <td className={`${tdClass} font-mono text-mineshaft-100`}>{row.host}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.port}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.protocol}</td>
-                    <td className={tdClass}><VersionBadge version={row.version} /></td>
+                    <td className={tdClass}>
+                      <VersionBadge version={row.version} />
+                    </td>
                     <td className={`${tdClass} font-mono text-mineshaft-400`}>{row.cipher}</td>
-                    <td className={tdClass}><StrengthBadge strength={row.strength} /></td>
+                    <td className={tdClass}>
+                      <StrengthBadge strength={row.strength} />
+                    </td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.itAsset}</td>
                     <td className={`${tdClass} text-mineshaft-400`}>{row.lastScanned}</td>
                   </tr>
@@ -703,7 +1050,10 @@ export const CryptographicAssetsPage = () => {
               <span>Items per page:</span>
               <select
                 value={perPage}
-                onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
                 className="rounded border border-mineshaft-600 bg-mineshaft-900 px-2 py-1 text-xs text-mineshaft-100 outline-none"
               >
                 <option value={20}>20</option>
@@ -720,7 +1070,9 @@ export const CryptographicAssetsPage = () => {
               >
                 <FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
               </button>
-              <span className="text-mineshaft-100">{page} of {totalPages.toLocaleString()}</span>
+              <span className="text-mineshaft-100">
+                {page} of {totalPages.toLocaleString()}
+              </span>
               <button
                 type="button"
                 disabled={page >= totalPages}

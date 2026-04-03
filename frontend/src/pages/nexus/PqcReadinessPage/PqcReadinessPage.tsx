@@ -116,14 +116,7 @@ export const PqcReadinessPage = () => {
         {entry?.pqcSafe && (
           <g transform="translate(-145, -6)">
             <rect width="46" height="14" rx="3" fill="#68d391" fillOpacity={0.15} />
-            <text
-              x="23"
-              y="10"
-              textAnchor="middle"
-              fill="#68d391"
-              fontSize={8}
-              fontWeight="600"
-            >
+            <text x="23" y="10" textAnchor="middle" fill="#68d391" fontSize={8} fontWeight="600">
               PQC-Safe
             </text>
           </g>
@@ -225,130 +218,142 @@ export const PqcReadinessPage = () => {
 
         {/* IT Assets & Protocol Usage - Side by Side */}
         <div className="mb-6 grid grid-cols-2 gap-4">
-        {/* IT Assets Section */}
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-mineshaft-100">IT Assets</h2>
-            <div className="flex items-center gap-2">
-              <select
-                value={itAssetTypeFilter}
-                onChange={(e) => setItAssetTypeFilter(e.target.value)}
-                className="rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-1.5 text-xs text-mineshaft-400 outline-none focus:border-blue-400"
-              >
-                <option value="">All Types</option>
-                <option value="Application">Application</option>
-                <option value="Database">Database</option>
-                <option value="Service">Service</option>
-              </select>
-              {itAssetTypeFilter && (
-                <button
-                  type="button"
-                  onClick={() => setItAssetTypeFilter("")}
-                  className="rounded-md px-3 py-1.5 text-xs text-primary hover:bg-primary/10"
+          {/* IT Assets Section */}
+          <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-mineshaft-100">IT Assets</h2>
+              <div className="flex items-center gap-2">
+                <select
+                  value={itAssetTypeFilter}
+                  onChange={(e) => setItAssetTypeFilter(e.target.value)}
+                  className="rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-1.5 text-xs text-mineshaft-400 outline-none focus:border-blue-400"
                 >
-                  Clear filter
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-8">
-            {/* Bubble Visualization */}
-            <div className="relative flex h-[140px] w-[220px] items-center justify-center">
-              <div className="flex items-end gap-4">
-                {[...filteredItAssets].sort((a, b) => b.count - a.count).map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-center rounded-full border bg-mineshaft-800 text-center"
-                    style={{ borderColor: item.color, width: item.size, height: item.size }}
+                  <option value="">All Types</option>
+                  <option value="Application">Application</option>
+                  <option value="Database">Database</option>
+                  <option value="Service">Service</option>
+                </select>
+                {itAssetTypeFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setItAssetTypeFilter("")}
+                    className="rounded-md px-3 py-1.5 text-xs text-primary hover:bg-primary/10"
                   >
-                    <div>
-                      <p className={`font-semibold text-mineshaft-100 ${item.size >= 100 ? "text-lg" : "text-sm"}`}>
+                    Clear filter
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-8">
+              {/* Bubble Visualization */}
+              <div className="relative flex h-[140px] w-[220px] items-center justify-center">
+                <div className="flex items-end gap-4">
+                  {[...filteredItAssets]
+                    .sort((a, b) => b.count - a.count)
+                    .map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex items-center justify-center rounded-full border bg-mineshaft-800 text-center"
+                        style={{ borderColor: item.color, width: item.size, height: item.size }}
+                      >
+                        <div>
+                          <p
+                            className={`font-semibold text-mineshaft-100 ${item.size >= 100 ? "text-lg" : "text-sm"}`}
+                          >
+                            {item.count.toLocaleString()}
+                          </p>
+                          <p
+                            className={`text-mineshaft-400 ${item.size >= 100 ? "text-[10px]" : "text-[9px]"}`}
+                          >
+                            {item.shortLabel}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Stat Breakdown */}
+              <div className="flex-1">
+                <div className="flex flex-col gap-3">
+                  {filteredItAssets.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex items-center justify-between border-b border-mineshaft-600 pb-3 last:border-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-sm"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-sm text-mineshaft-100">{item.label}</span>
+                      </div>
+                      <span className="text-sm text-mineshaft-400">
                         {item.count.toLocaleString()}
-                      </p>
-                      <p className={`text-mineshaft-400 ${item.size >= 100 ? "text-[10px]" : "text-[9px]"}`}>
-                        {item.shortLabel}
-                      </p>
+                      </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Stat Breakdown */}
-            <div className="flex-1">
-              <div className="flex flex-col gap-3">
-                {filteredItAssets.map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-between border-b border-mineshaft-600 pb-3 last:border-0"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-mineshaft-100">{item.label}</span>
-                    </div>
-                    <span className="text-sm text-mineshaft-400">
-                      {item.count.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Protocol Distribution */}
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-mineshaft-100">
-              Protocol Usage Across IT Assets
-            </h2>
-            <span className="cursor-pointer text-xs text-mineshaft-400 hover:text-mineshaft-100">
-              View all &rarr;
-            </span>
-          </div>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={protocolData} barSize={28}>
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#7c8189", fontSize: 10 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#7c8189", fontSize: 10 }}
-                  width={40}
-                />
-                <Tooltip content={<InfisicalTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {protocolData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-4 text-[10px]">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-400" />
-              <span className="text-mineshaft-400">Safe (TLSv1.3)</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-yellow-400" />
-              <span className="text-mineshaft-400">Mixed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-400" />
-              <span className="text-mineshaft-400">Unsafe</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-mineshaft-400" />
-              <span className="text-mineshaft-400">Other</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Protocol Distribution */}
+          <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-mineshaft-100">
+                Protocol Usage Across IT Assets
+              </h2>
+              <span className="cursor-pointer text-xs text-mineshaft-400 hover:text-mineshaft-100">
+                View all &rarr;
+              </span>
+            </div>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={protocolData} barSize={28}>
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#7c8189", fontSize: 10 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#7c8189", fontSize: 10 }}
+                    width={40}
+                  />
+                  <Tooltip
+                    content={<InfisicalTooltip />}
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {protocolData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-4 text-[10px]">
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-400" />
+                <span className="text-mineshaft-400">Safe (TLSv1.3)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                <span className="text-mineshaft-400">Mixed</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-red-400" />
+                <span className="text-mineshaft-400">Unsafe</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-mineshaft-400" />
+                <span className="text-mineshaft-400">Other</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Two-column Key Breakdown */}
@@ -358,7 +363,9 @@ export const PqcReadinessPage = () => {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-mineshaft-100">Asymmetric Keys</h2>
-                <p className="mt-1 text-2xl font-semibold text-mineshaft-100">{asymmetricTotal.toLocaleString()}</p>
+                <p className="mt-1 text-2xl font-semibold text-mineshaft-100">
+                  {asymmetricTotal.toLocaleString()}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <select
@@ -399,7 +406,10 @@ export const PqcReadinessPage = () => {
                     tickLine={false}
                     tick={<AsymmetricKeyTick />}
                   />
-                  <Tooltip content={<InfisicalTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                  <Tooltip
+                    content={<InfisicalTooltip />}
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                     {filteredAsymmetricKeys.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -418,7 +428,9 @@ export const PqcReadinessPage = () => {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-mineshaft-100">Symmetric Keys</h2>
-                <p className="mt-1 text-2xl font-semibold text-mineshaft-100">{symmetricTotal.toLocaleString()}</p>
+                <p className="mt-1 text-2xl font-semibold text-mineshaft-100">
+                  {symmetricTotal.toLocaleString()}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <select
@@ -458,7 +470,10 @@ export const PqcReadinessPage = () => {
                     tickLine={false}
                     tick={{ fill: "#e2e8f0", fontSize: 10 }}
                   />
-                  <Tooltip content={<InfisicalTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                  <Tooltip
+                    content={<InfisicalTooltip />}
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                     {filteredSymmetricKeys.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -475,9 +490,7 @@ export const PqcReadinessPage = () => {
 
         {/* Cryptographic Library Usage */}
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-5">
-          <h2 className="mb-4 text-sm font-semibold text-mineshaft-100">
-            Cryptographic Libraries
-          </h2>
+          <h2 className="mb-4 text-sm font-semibold text-mineshaft-100">Cryptographic Libraries</h2>
           <div className="grid grid-cols-2 gap-6">
             {/* By Library */}
             <div>
