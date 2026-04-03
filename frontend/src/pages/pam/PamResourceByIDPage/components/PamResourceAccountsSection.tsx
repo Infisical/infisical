@@ -329,9 +329,12 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     <div className="rounded-lg border border-border bg-container">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h3 className="text-lg font-medium">Accounts</h3>
+          <h3 className="text-lg font-medium">
+            {isDomainContext ? "Domain Accounts" : "Accounts"}
+          </h3>
           <p className="text-sm text-muted">
-            Accounts associated with this resource that can be used for access
+            Accounts associated with this {isDomainContext ? "domain" : "resource"} that can be used
+            for access
           </p>
         </div>
         <ProjectPermissionCan
