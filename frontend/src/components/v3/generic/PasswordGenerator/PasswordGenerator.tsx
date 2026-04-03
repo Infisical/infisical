@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
-import { CheckIcon, CopyIcon, KeyRoundIcon, RefreshCwIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  KeyRoundIcon,
+  RefreshCwIcon,
+  ShieldCheckIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import picomatch from "picomatch";
 import RandExp from "randexp";
 
@@ -220,6 +227,14 @@ export const PasswordGenerator = ({
     [selectedRule]
   );
 
+  const hasRegexLengthConflict = useMemo(() => {
+    const hasRegex = valueConstraints.some((c) => c.type === ConstraintType.RegexPattern);
+    const hasLength = valueConstraints.some(
+      (c) => c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength
+    );
+    return hasRegex && hasLength;
+  }, [valueConstraints]);
+
   // Auto-select matching rule only when exactly one environment is selected
   useEffect(() => {
     if (!applicableRules.length) {
@@ -344,7 +359,22 @@ export const PasswordGenerator = ({
 
           {selectedRule ? (
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-accent">Constraints</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-accent">Constraints</Label>
+                {hasRegexLengthConflict && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TriangleAlertIcon className="size-3.5 shrink-0 text-warning" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-64">
+                      When a regex pattern is set, it takes precedence over min/max length
+                      constraints. Consider defining length requirements directly in your regex
+                      pattern instead.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {valueConstraints.map((constraint) => (
                   <span key={constraint.type} className="text-xs">
