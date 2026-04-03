@@ -79,7 +79,7 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
   const minLength = minLengthStr ? parseInt(minLengthStr, 10) : 16;
   const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : 64;
 
-  let middle = "";
+  let middle: string | undefined;
 
   if (regexValue) {
     // Regex takes full precedence over min/max length constraints
@@ -90,7 +90,7 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
     }
   }
 
-  if (!middle) {
+  if (middle === undefined) {
     const fixedLength = prefix.length + suffix.length;
     const targetMin = Math.max(minLength - fixedLength, 1);
     const targetMax = Math.max(maxLength - fixedLength, 1);
