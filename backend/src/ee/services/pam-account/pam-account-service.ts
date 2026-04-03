@@ -1477,6 +1477,7 @@ export const pamAccountServiceFactory = ({
       resourceType: accountWithResource.resource.resourceType,
       accountId: accountWithResource.id,
       accountName: accountWithResource.name,
+      resourceId: accountWithResource.resource.id,
       resourceName: accountWithResource.resource.name,
       projectId: accountWithResource.projectId
     };

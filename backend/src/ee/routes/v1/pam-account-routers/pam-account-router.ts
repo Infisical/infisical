@@ -336,7 +336,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           metadata: {
             accountId: result.accountId,
             accountName: result.accountName,
-            resourceName: result.resourceName,
+            resourceId: result.resourceId,
             resourceType: result.resourceType
           }
         }

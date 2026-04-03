@@ -293,7 +293,14 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
       </div>
       <CredentialsContent account={account} />
       {hasSensitiveFields && (
-        <SensitiveCredentialsGate state={state} onReveal={startReveal} onReset={reset}>
+        <SensitiveCredentialsGate
+          state={state}
+          accountName={account.name}
+          resourceName={account.resource.name}
+          metadata={account.metadata}
+          onReveal={startReveal}
+          onReset={reset}
+        >
           {state.status === "revealed" && (
             <RevealedCredentials credentialsData={state.data} fieldDefs={sensitiveFieldDefs} />
           )}

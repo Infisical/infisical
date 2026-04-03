@@ -4858,7 +4858,7 @@ interface PamAccountReadCredentialsEvent {
   metadata: {
     accountId: string;
     accountName: string;
-    resourceName: string;
+    resourceId: string;
     resourceType: string;
   };
 }

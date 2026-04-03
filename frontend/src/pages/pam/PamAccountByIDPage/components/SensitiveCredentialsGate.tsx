@@ -1,4 +1,5 @@
 import React from "react";
+import { subject } from "@casl/ability";
 import { EyeIcon, LoaderCircleIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -10,6 +11,9 @@ import { type RevealState } from "./useCredentialsReveal";
 
 type Props = {
   state: RevealState;
+  accountName: string;
+  resourceName: string;
+  metadata?: { key: string; value: string }[];
   onReveal: () => void;
   onReset: () => void;
   children: React.ReactNode;
@@ -37,7 +41,15 @@ const ButtonContent = ({ state }: { state: RevealState }) => {
   );
 };
 
-export const SensitiveCredentialsGate = ({ state, onReveal, onReset, children }: Props) => {
+export const SensitiveCredentialsGate = ({
+  state,
+  accountName,
+  resourceName,
+  metadata,
+  onReveal,
+  onReset,
+  children
+}: Props) => {
   if (state.status === "revealed") {
     return <div>{children}</div>;
   }
@@ -49,7 +61,11 @@ export const SensitiveCredentialsGate = ({ state, onReveal, onReset, children }:
     <div className="flex flex-col gap-2">
       <ProjectPermissionCan
         I={ProjectPermissionPamAccountActions.ReadCredentials}
-        a={ProjectPermissionSub.PamAccounts}
+        a={subject(ProjectPermissionSub.PamAccounts, {
+          resourceName,
+          accountName,
+          metadata: metadata ?? []
+        })}
       >
         {(isAllowed) => (
           <Tooltip>
