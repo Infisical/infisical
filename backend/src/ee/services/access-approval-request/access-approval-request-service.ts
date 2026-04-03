@@ -835,6 +835,15 @@ export const accessApprovalRequestServiceFactory = ({
     if (!accessApprovalRequest)
       throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
 
+    await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
     const { policy } = accessApprovalRequest;
     if (!policy) throw new NotFoundError({ message: `Policy for request '${requestId}' not found` });
 
@@ -844,15 +853,6 @@ export const accessApprovalRequestServiceFactory = ({
     if (accessApprovalRequest.status !== ApprovalStatus.APPROVED) {
       throw new BadRequestError({ message: "Only approved requests can be revoked" });
     }
-
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: accessApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
 
     const updatedRequest = await accessApprovalRequestDAL.transaction(async (tx) => {
       const result = await accessApprovalRequestDAL.updateById(
