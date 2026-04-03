@@ -84,6 +84,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;
     };
+    projectId: string;
   }>;
   listApprovalRequests: (arg: TListApprovalRequestsDTO) => Promise<{
     requests: {

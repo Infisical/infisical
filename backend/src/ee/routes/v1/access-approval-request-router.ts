@@ -346,7 +346,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { request } = await server.services.accessApprovalRequest.updateAccessApprovalRequest({
+      const { request, projectId } = await server.services.accessApprovalRequest.updateAccessApprovalRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -355,6 +355,22 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         editNote: req.body.editNote,
         requestId: req.params.requestId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_UPDATE,
+          metadata: {
+            requestId: request.id,
+            policyId: request.policyId,
+            temporaryRange: req.body.temporaryRange,
+            editNote: req.body.editNote
+          }
+        }
+      });
+
       return { approval: request };
     }
   });

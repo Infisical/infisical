@@ -346,7 +346,7 @@ export const ReviewAccessRequestModal = ({
         </div>
         <div className="">
           <div className="mt-4 mb-2 text-mineshaft-200">
-            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
               <GenericFieldLabel label="Environment">{accessDetails.env}</GenericFieldLabel>
               <GenericFieldLabel truncate label="Secret Path">
                 {accessDetails.secretPath}

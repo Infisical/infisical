@@ -10,6 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
+import { TAccessApprovalRequestDALFactory } from "../../ee/services/access-approval-request/access-approval-request-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
@@ -46,6 +47,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "deleteByProjectAndUserIds">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -64,6 +66,7 @@ export const projectMembershipServiceFactory = ({
   secretReminderRecipientsDAL,
   notificationService,
   additionalPrivilegeDAL,
+  accessApprovalRequestDAL,
   membershipUserDAL,
   userDAL,
   membershipRoleDAL
@@ -293,6 +296,12 @@ export const projectMembershipServiceFactory = ({
     );
 
     const memberships = await membershipUserDAL.transaction(async (tx) => {
+      await accessApprovalRequestDAL.deleteByProjectAndUserIds(
+        projectId,
+        projectMembers.map((membership) => membership.user.id),
+        tx
+      );
+
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -380,6 +389,8 @@ export const projectMembershipServiceFactory = ({
     }
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await accessApprovalRequestDAL.deleteByProjectAndUserIds(project.id, [actorId], tx);
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,

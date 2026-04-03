@@ -484,7 +484,7 @@ export const accessApprovalRequestServiceFactory = ({
       return approvalRequest;
     });
 
-    return { request: approval };
+    return { request: approval, projectId: accessApprovalRequest.projectId };
   };
 
   const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({

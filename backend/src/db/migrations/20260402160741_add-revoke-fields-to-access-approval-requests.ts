@@ -31,7 +31,7 @@ export async function up(knex: Knex): Promise<void> {
   if (hasPrivilegeId) {
     await knex.schema.alterTable(TableName.AccessApprovalRequest, (t) => {
       t.dropForeign("privilegeId");
-      t.foreign("privilegeId").references("id").inTable(TableName.AdditionalPrivilege).onDelete("SET NULL");
+      t.foreign("privilegeId").references("id").inTable(TableName.AdditionalPrivilege).onDelete("CASCADE");
     });
   }
 }

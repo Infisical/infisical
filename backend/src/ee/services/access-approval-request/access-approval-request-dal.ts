@@ -237,6 +237,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
     finalizedCount: number;
   }>;
   resetReviewByPolicyId: (policyId: string, tx?: Knex) => Promise<void>;
+  deleteByProjectAndUserIds: (projectId: string, userIds: string[], tx?: Knex) => Promise<void>;
 }
 
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
@@ -860,11 +861,33 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     }
   };
 
+  const deleteByProjectAndUserIds: TAccessApprovalRequestDALFactory["deleteByProjectAndUserIds"] = async (
+    projectId,
+    userIds,
+    tx
+  ) => {
+    try {
+      await (tx || db)(TableName.AccessApprovalRequest)
+        .whereIn(
+          "policyId",
+          (tx || db)(TableName.AccessApprovalPolicy)
+            .select(`${TableName.AccessApprovalPolicy}.id`)
+            .join(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+            .where(`${TableName.Environment}.projectId`, projectId)
+        )
+        .whereIn("requestedByUserId", userIds)
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteByProjectAndUserIds" });
+    }
+  };
+
   return {
     ...accessApprovalRequestOrm,
     findById,
     findRequestsWithPrivilegeByPolicyIds,
     getCount,
-    resetReviewByPolicyId
+    resetReviewByPolicyId,
+    deleteByProjectAndUserIds
   };
 };

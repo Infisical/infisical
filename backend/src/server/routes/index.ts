@@ -1187,6 +1187,7 @@ export const registerRoutes = async (
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
+    accessApprovalRequestDAL,
     membershipRoleDAL
   });
 
