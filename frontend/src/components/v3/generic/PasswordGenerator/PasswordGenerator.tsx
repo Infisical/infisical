@@ -1,13 +1,25 @@
-import { useMemo, useState } from "react";
-import { CheckIcon, CopyIcon, KeyRoundIcon, RefreshCwIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { components, OptionProps } from "react-select";
+import { CheckIcon, CopyIcon, KeyRoundIcon, RefreshCwIcon, ShieldCheckIcon } from "lucide-react";
+import picomatch from "picomatch";
+import RandExp from "randexp";
 
 import { useTimedReset } from "@app/hooks";
+import {
+  ConstraintTarget,
+  ConstraintType,
+  TConstraint,
+  TSecretValidationRule,
+  useListSecretValidationRules
+} from "@app/hooks/api/secretValidationRules";
 
+import { Badge } from "../Badge";
 import { Button } from "../Button";
 import { Checkbox } from "../Checkbox";
 import { UnstableIconButton } from "../IconButton";
 import { Label } from "../Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
+import { FilterableSelect } from "../ReactSelect";
 
 type PasswordOptionsType = {
   length: number;
@@ -17,24 +29,138 @@ type PasswordOptionsType = {
   useSpecialChars: boolean;
 };
 
+type RuleOption = {
+  label: string;
+  value: string;
+  matchesCurrentScope: boolean;
+};
+
+const NONE_RULE_OPTION: RuleOption = {
+  label: "None (custom)",
+  value: "",
+  matchesCurrentScope: false
+};
+
+const getValueConstraints = (rule: TSecretValidationRule): TConstraint[] =>
+  rule.inputs.constraints.filter((c) => c.appliesTo === ConstraintTarget.SecretValue);
+
+const hasValueConstraints = (rule: TSecretValidationRule): boolean =>
+  getValueConstraints(rule).length > 0;
+
+const doesRuleMatchScope = (
+  rule: TSecretValidationRule,
+  secretPath?: string,
+  selectedEnvironments?: { slug: string }[],
+  environments?: { id: string; slug: string }[]
+): boolean => {
+  if (!secretPath) return false;
+
+  if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
+    return false;
+  }
+
+  if (rule.envId && environments && selectedEnvironments?.length) {
+    const ruleEnvSlug = environments.find((e) => e.id === rule.envId)?.slug;
+    if (!ruleEnvSlug) return false;
+    return selectedEnvironments.some((se) => se.slug === ruleEnvSlug);
+  }
+
+  // Rule applies to all environments (envId is null) and path matches
+  return true;
+};
+
+const generateFromConstraints = (constraints: TConstraint[]): string => {
+  const prefix = constraints.find((c) => c.type === ConstraintType.RequiredPrefix)?.value || "";
+  const suffix = constraints.find((c) => c.type === ConstraintType.RequiredSuffix)?.value || "";
+  const regexValue = constraints.find((c) => c.type === ConstraintType.RegexPattern)?.value;
+  const minLengthStr = constraints.find((c) => c.type === ConstraintType.MinLength)?.value;
+  const maxLengthStr = constraints.find((c) => c.type === ConstraintType.MaxLength)?.value;
+
+  const minLength = minLengthStr ? parseInt(minLengthStr, 10) : 16;
+  const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : 64;
+
+  let middle = "";
+
+  if (regexValue) {
+    try {
+      const randexp = new RandExp(new RegExp(regexValue));
+      const maxRepetition = Math.min(maxLength - prefix.length - suffix.length, 100);
+      randexp.max = Math.max(maxRepetition, 1);
+      middle = randexp.gen();
+    } catch {
+      // Fall through to manual generation if regex is invalid
+    }
+  }
+
+  if (!middle) {
+    const fixedLength = prefix.length + suffix.length;
+    const targetMin = Math.max(minLength - fixedLength, 1);
+    const targetMax = Math.max(maxLength - fixedLength, 1);
+    const randomLength = Math.max(Math.min(targetMin, targetMax), 1);
+
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
+    const randomBytes = new Uint32Array(randomLength);
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < randomLength; i += 1) {
+      middle += charset[randomBytes[i] % charset.length];
+    }
+  }
+
+  return prefix + middle + suffix;
+};
+
+const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
+  [ConstraintType.RequiredPrefix]: "Prefix",
+  [ConstraintType.RequiredSuffix]: "Suffix",
+  [ConstraintType.RegexPattern]: "Pattern",
+  [ConstraintType.MinLength]: "Min length",
+  [ConstraintType.MaxLength]: "Max length"
+};
+
+const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
+  <components.Option isSelected={isSelected} {...props}>
+    <div className="flex cursor-pointer flex-row items-center justify-between">
+      <div className="flex items-center gap-2 truncate">
+        <p className="truncate">{children}</p>
+        {props.data.matchesCurrentScope && (
+          <Badge variant="project">
+            <ShieldCheckIcon className="size-3" />
+            Current scope
+          </Badge>
+        )}
+      </div>
+      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
+    </div>
+  </components.Option>
+);
+
 export type PasswordGeneratorProps = {
   onUsePassword?: (password: string) => void;
   isDisabled?: boolean;
   minLength?: number;
   maxLength?: number;
+  projectId?: string;
+  secretPath?: string;
+  environments?: { id: string; slug: string }[];
+  selectedEnvironments?: { slug: string }[];
 };
 
 export const PasswordGenerator = ({
   onUsePassword,
   isDisabled = false,
   minLength = 12,
-  maxLength = 64
+  maxLength = 64,
+  projectId,
+  secretPath,
+  environments,
+  selectedEnvironments
 }: PasswordGeneratorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy"
   });
   const [refresh, setRefresh] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<string>("");
   const [passwordOptions, setPasswordOptions] = useState<PasswordOptionsType>({
     length: minLength,
     useUppercase: true,
@@ -43,7 +169,69 @@ export const PasswordGenerator = ({
     useSpecialChars: true
   });
 
+  const { data: allRules } = useListSecretValidationRules(
+    { projectId: projectId || "" },
+    { enabled: Boolean(projectId) }
+  );
+
+  const applicableRules = useMemo(
+    () => (allRules || []).filter((r) => r.isActive && hasValueConstraints(r)),
+    [allRules]
+  );
+
+  const ruleOptions: RuleOption[] = useMemo(
+    () => [
+      NONE_RULE_OPTION,
+      ...applicableRules.map((r) => ({
+        label: r.name,
+        value: r.id,
+        matchesCurrentScope:
+          selectedEnvironments?.length === 1 &&
+          doesRuleMatchScope(r, secretPath, selectedEnvironments, environments)
+      }))
+    ],
+    [applicableRules, secretPath, selectedEnvironments, environments]
+  );
+
+  const selectedRule = useMemo(
+    () => applicableRules.find((r) => r.id === selectedRuleId),
+    [applicableRules, selectedRuleId]
+  );
+
+  const selectedRuleOption = useMemo(
+    () => ruleOptions.find((o) => o.value === selectedRuleId) || NONE_RULE_OPTION,
+    [ruleOptions, selectedRuleId]
+  );
+
+  const valueConstraints = useMemo(
+    () => (selectedRule ? getValueConstraints(selectedRule) : []),
+    [selectedRule]
+  );
+
+  // Auto-select matching rule only when exactly one environment is selected
+  useEffect(() => {
+    if (!applicableRules.length) {
+      setSelectedRuleId("");
+      return;
+    }
+
+    // Multiple environments selected — default to custom
+    if (!selectedEnvironments || selectedEnvironments.length !== 1) {
+      setSelectedRuleId("");
+      return;
+    }
+
+    const match = applicableRules.find((rule) =>
+      doesRuleMatchScope(rule, secretPath, selectedEnvironments, environments)
+    );
+    setSelectedRuleId(match?.id || "");
+  }, [applicableRules, selectedEnvironments, secretPath, environments]);
+
   const password = useMemo(() => {
+    if (selectedRule && valueConstraints.length > 0) {
+      return generateFromConstraints(valueConstraints);
+    }
+
     const charset = {
       uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
       lowercase: "abcdefghijklmnopqrstuvwxyz",
@@ -68,7 +256,7 @@ export const PasswordGenerator = ({
 
     return newPassword;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passwordOptions, refresh]);
+  }, [passwordOptions, refresh, selectedRule, valueConstraints]);
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -86,6 +274,8 @@ export const PasswordGenerator = ({
     setIsOpen(false);
   };
 
+  const showRuleSelector = applicableRules.length > 0;
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -99,6 +289,28 @@ export const PasswordGenerator = ({
             <p className="text-sm font-medium">Generate Random Value</p>
             <p className="mt-0.5 text-xs text-muted">Generate strong unique values</p>
           </div>
+
+          {showRuleSelector && (
+            <div>
+              <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-accent">
+                <ShieldCheckIcon className="size-3" />
+                Validation Rule
+              </Label>
+              <FilterableSelect<RuleOption>
+                options={ruleOptions}
+                value={selectedRuleOption}
+                onChange={(option) => {
+                  setSelectedRuleId((option as RuleOption | null)?.value || "");
+                  setRefresh((prev) => !prev);
+                }}
+                getOptionLabel={(o) => o.label}
+                getOptionValue={(o) => o.value}
+                isClearable={false}
+                isSearchable={false}
+                components={{ Option: RuleOptionComponent }}
+              />
+            </div>
+          )}
 
           <div className="rounded-md border border-border bg-container/50 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -118,64 +330,97 @@ export const PasswordGenerator = ({
             </div>
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <Label className="text-xs text-accent">Length: {passwordOptions.length}</Label>
+          {selectedRule ? (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-accent">Constraints</Label>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {valueConstraints.map((constraint) => (
+                  <span key={constraint.type} className="text-xs text-muted">
+                    <span className="font-medium text-foreground/70">
+                      {CONSTRAINT_LABELS[constraint.type]}:
+                    </span>{" "}
+                    <span className="font-mono">{constraint.value}</span>
+                  </span>
+                ))}
+              </div>
             </div>
-            <input
-              type="range"
-              min={minLength}
-              max={maxLength}
-              value={passwordOptions.length}
-              onChange={(e) =>
-                setPasswordOptions({ ...passwordOptions, length: Number(e.target.value) })
-              }
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-foreground/10 accent-project [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:shadow-sm"
-            />
-          </div>
+          ) : (
+            <>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <Label className="text-xs text-accent">Length: {passwordOptions.length}</Label>
+                </div>
+                <input
+                  type="range"
+                  min={minLength}
+                  max={maxLength}
+                  value={passwordOptions.length}
+                  onChange={(e) =>
+                    setPasswordOptions({
+                      ...passwordOptions,
+                      length: Number(e.target.value)
+                    })
+                  }
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-foreground/10 accent-project [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:shadow-sm"
+                />
+              </div>
 
-          <div className="flex flex-wrap gap-6">
-            <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <Checkbox
-                variant="project"
-                isChecked={passwordOptions.useUppercase}
-                onCheckedChange={(checked) =>
-                  setPasswordOptions({ ...passwordOptions, useUppercase: checked as boolean })
-                }
-              />
-              A-Z
-            </Label>
-            <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <Checkbox
-                variant="project"
-                isChecked={passwordOptions.useLowercase}
-                onCheckedChange={(checked) =>
-                  setPasswordOptions({ ...passwordOptions, useLowercase: checked as boolean })
-                }
-              />
-              a-z
-            </Label>
-            <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <Checkbox
-                variant="project"
-                isChecked={passwordOptions.useNumbers}
-                onCheckedChange={(checked) =>
-                  setPasswordOptions({ ...passwordOptions, useNumbers: checked as boolean })
-                }
-              />
-              0-9
-            </Label>
-            <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <Checkbox
-                variant="project"
-                isChecked={passwordOptions.useSpecialChars}
-                onCheckedChange={(checked) =>
-                  setPasswordOptions({ ...passwordOptions, useSpecialChars: checked as boolean })
-                }
-              />
-              -_.~!*
-            </Label>
-          </div>
+              <div className="flex flex-wrap gap-6">
+                <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                  <Checkbox
+                    variant="project"
+                    isChecked={passwordOptions.useUppercase}
+                    onCheckedChange={(checked) =>
+                      setPasswordOptions({
+                        ...passwordOptions,
+                        useUppercase: checked as boolean
+                      })
+                    }
+                  />
+                  A-Z
+                </Label>
+                <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                  <Checkbox
+                    variant="project"
+                    isChecked={passwordOptions.useLowercase}
+                    onCheckedChange={(checked) =>
+                      setPasswordOptions({
+                        ...passwordOptions,
+                        useLowercase: checked as boolean
+                      })
+                    }
+                  />
+                  a-z
+                </Label>
+                <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                  <Checkbox
+                    variant="project"
+                    isChecked={passwordOptions.useNumbers}
+                    onCheckedChange={(checked) =>
+                      setPasswordOptions({
+                        ...passwordOptions,
+                        useNumbers: checked as boolean
+                      })
+                    }
+                  />
+                  0-9
+                </Label>
+                <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                  <Checkbox
+                    variant="project"
+                    isChecked={passwordOptions.useSpecialChars}
+                    onCheckedChange={(checked) =>
+                      setPasswordOptions({
+                        ...passwordOptions,
+                        useSpecialChars: checked as boolean
+                      })
+                    }
+                  />
+                  -_.~!*
+                </Label>
+              </div>
+            </>
+          )}
 
           {onUsePassword && (
             <Button variant="project" size="xs" onClick={usePassword} className="w-full">
