@@ -321,7 +321,6 @@
                 "group": "Installation methods",
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
-                  "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
                   "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
@@ -539,7 +538,6 @@
                     "group": "Agent",
                     "pages": [
                       "integrations/platforms/infisical-agent",
-                      "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
