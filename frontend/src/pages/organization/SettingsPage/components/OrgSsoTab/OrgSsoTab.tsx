@@ -72,7 +72,8 @@ export const OrgSsoTab = withPermission(
     const hasUnconfiguredSaml = !isSamlConfigured && shouldDisplaySection(LoginMethod.SAML);
     const hasUnconfiguredOidc = !isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC);
     const hasUnconfiguredLdap = !isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP);
-    const hasUnconfiguredProviders = hasUnconfiguredSaml || hasUnconfiguredOidc || hasUnconfiguredLdap;
+    const hasUnconfiguredProviders =
+      hasUnconfiguredSaml || hasUnconfiguredOidc || hasUnconfiguredLdap;
 
     if (areConfigsLoading) {
       return <ContentLoader />;
@@ -115,9 +116,7 @@ export const OrgSsoTab = withPermission(
             <>
               <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
                 <div>
-                  <p className="text-xl font-medium text-gray-200">
-                    Connect an Identity Provider
-                  </p>
+                  <p className="text-xl font-medium text-gray-200">Connect an Identity Provider</p>
                   <p className="mt-1 mb-2 text-gray-400">
                     Connect your identity provider to simplify user management with options like
                     SAML, OIDC, and LDAP.
