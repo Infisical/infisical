@@ -20,6 +20,7 @@ import { UnstableIconButton } from "../IconButton";
 import { Label } from "../Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { FilterableSelect } from "../ReactSelect";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 type PasswordOptionsType = {
   length: number;
@@ -36,7 +37,7 @@ type RuleOption = {
 };
 
 const NONE_RULE_OPTION: RuleOption = {
-  label: "None (custom)",
+  label: "None (Custom Generation)",
   value: "",
   matchesCurrentScope: false
 };
@@ -127,10 +128,17 @@ const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<Rul
       <div className="flex items-center gap-2 truncate">
         <p className="truncate">{children}</p>
         {props.data.matchesCurrentScope && (
-          <Badge variant="project">
-            <ShieldCheckIcon className="size-3" />
-            Current scope
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="project">
+                <ShieldCheckIcon className="size-3" />
+                Current scope
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              This validation rule applies to the current environment and folder
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
       {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
@@ -339,11 +347,11 @@ export const PasswordGenerator = ({
               <Label className="text-xs text-accent">Constraints</Label>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {valueConstraints.map((constraint) => (
-                  <span key={constraint.type} className="text-xs text-muted">
-                    <span className="font-medium text-foreground/70">
+                  <span key={constraint.type} className="text-xs">
+                    <span className="font-medium text-muted">
                       {CONSTRAINT_LABELS[constraint.type]}:
                     </span>{" "}
-                    <span className="font-mono">{constraint.value}</span>
+                    <span className="font-mono text-label">{constraint.value}</span>
                   </span>
                 ))}
               </div>
