@@ -3496,12 +3496,7 @@ const projectManagerTemplate = (
     { subject: ProjectPermissionSub.Role, actions: Object.values(ProjectPermissionActions) },
     {
       subject: ProjectPermissionSub.Settings,
-      actions: [
-        ProjectPermissionActions.Read,
-        ProjectPermissionActions.Edit,
-        ProjectPermissionActions.Create,
-        ProjectPermissionActions.Delete
-      ]
+      actions: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit]
     },
     ...additionalPermissions
   ]
