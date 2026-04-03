@@ -183,7 +183,7 @@ export const identityLdapAuthServiceFactory = ({
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
       });
     }
-    if (organizationSlug) {
+    if (organizationSlug && org.slug !== organizationSlug) {
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 

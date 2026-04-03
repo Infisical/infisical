@@ -510,7 +510,7 @@ export const identityTokenAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    if (organizationSlug) {
+    if (organizationSlug && org.slug !== organizationSlug) {
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 

@@ -267,7 +267,7 @@ export const identityUaServiceFactory = ({
               accessTokenMaxTTL: 1000000000
             };
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
