@@ -122,7 +122,7 @@ export const FolderForm = ({
                 className="thin-scrollbar resize-none!"
                 maxLength={255}
               />
-            </FieldContent>{" "}
+            </FieldContent>
             {!error && showDescriptionOverwriteWarning && (
               <FieldDescription>{descriptionOverwriteWarningMessage}</FieldDescription>
             )}
