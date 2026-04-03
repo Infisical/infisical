@@ -82,11 +82,9 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
   let middle = "";
 
   if (regexValue) {
+    // Regex takes full precedence over min/max length constraints
     try {
-      const randexp = new RandExp(new RegExp(regexValue));
-      const maxRepetition = Math.min(maxLength - prefix.length - suffix.length, 100);
-      randexp.max = Math.max(maxRepetition, 1);
-      middle = randexp.gen();
+      middle = new RandExp(new RegExp(regexValue)).gen();
     } catch {
       // Fall through to manual generation if regex is invalid
     }
@@ -96,7 +94,11 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
     const fixedLength = prefix.length + suffix.length;
     const targetMin = Math.max(minLength - fixedLength, 1);
     const targetMax = Math.max(maxLength - fixedLength, 1);
-    const randomLength = Math.max(Math.min(targetMin, targetMax), 1);
+    const lengthRange = Math.max(targetMax - targetMin, 0);
+    const randomLength =
+      lengthRange > 0
+        ? targetMin + (crypto.getRandomValues(new Uint32Array(1))[0] % (lengthRange + 1))
+        : Math.max(targetMin, 1);
 
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
     const randomBytes = new Uint32Array(randomLength);
