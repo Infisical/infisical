@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EllipsisVerticalIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +50,7 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -352,11 +353,7 @@ type SheetState =
 
 export const SecretValidationRulesTab = () => {
   const { currentProject } = useProject();
-  const { permission } = useProjectPermission();
-  const canModifySettings = permission.can(
-    ProjectPermissionActions.Edit,
-    ProjectPermissionSub.Settings
-  );
+
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -451,15 +448,31 @@ export const SecretValidationRulesTab = () => {
               Define validation constraints for secret keys and values
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="xs"
-            disabled={!canModifySettings}
-            onClick={() => setSheetState({ open: true, mode: "create" })}
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.Settings}
           >
-            <PlusIcon className="size-4" />
-            Create Rule
-          </Button>
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      isDisabled={!isAllowed}
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setSheetState({ open: true, mode: "create" })}
+                    >
+                      <PlusIcon className="size-4" />
+                      Create Rule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" hidden={isAllowed}>
+                  <p>Access restricted</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden px-4">
           <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
@@ -477,15 +490,31 @@ export const SecretValidationRulesTab = () => {
                   </UnstableEmptyDescription>
                 </UnstableEmptyHeader>
                 <UnstableEmptyContent>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={!canModifySettings}
-                    onClick={() => setSheetState({ open: true, mode: "create" })}
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={ProjectPermissionSub.Settings}
                   >
-                    <PlusIcon className="size-4" />
-                    Create Rule
-                  </Button>
+                    {(isAllowed) => (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              isDisabled={!isAllowed}
+                              onClick={() => setSheetState({ open: true, mode: "create" })}
+                            >
+                              <PlusIcon className="size-4" />
+                              Create Rule
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" hidden={isAllowed}>
+                          <p>Access restricted</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ProjectPermissionCan>
                 </UnstableEmptyContent>
               </UnstableEmpty>
             ) : (
@@ -540,23 +569,37 @@ export const SecretValidationRulesTab = () => {
                               </UnstableIconButton>
                             </UnstableDropdownMenuTrigger>
                             <UnstableDropdownMenuContent align="end">
-                              <UnstableDropdownMenuItem
-                                isDisabled={!canModifySettings}
-                                onClick={() =>
-                                  setSheetState({ open: true, mode: "edit", ruleId: rule.id })
-                                }
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Edit}
+                                a={ProjectPermissionSub.Settings}
                               >
-                                <PencilIcon className="mr-2 size-4" />
-                                Edit
-                              </UnstableDropdownMenuItem>
-                              <UnstableDropdownMenuItem
-                                variant="danger"
-                                isDisabled={!canModifySettings}
-                                onClick={() => setDeleteRuleId(rule.id)}
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    isDisabled={!isAllowed}
+                                    onClick={() =>
+                                      setSheetState({ open: true, mode: "edit", ruleId: rule.id })
+                                    }
+                                  >
+                                    <PencilIcon className="mr-2 size-4" />
+                                    Edit
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Delete}
+                                a={ProjectPermissionSub.Settings}
                               >
-                                <TrashIcon className="mr-2 size-4" />
-                                Delete
-                              </UnstableDropdownMenuItem>
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    variant="danger"
+                                    isDisabled={!isAllowed}
+                                    onClick={() => setDeleteRuleId(rule.id)}
+                                  >
+                                    <TrashIcon className="mr-2 size-4" />
+                                    Delete
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
                             </UnstableDropdownMenuContent>
                           </UnstableDropdownMenu>
                         </UnstableTableCell>
