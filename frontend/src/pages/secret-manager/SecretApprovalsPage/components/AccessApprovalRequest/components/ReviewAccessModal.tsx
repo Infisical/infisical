@@ -18,6 +18,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
+  DeleteActionModal,
   FormControl,
   GenericFieldLabel,
   IconButton,
@@ -29,7 +30,11 @@ import {
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
+import {
+  useListWorkspaceGroups,
+  useReviewAccessRequest,
+  useRevokeAccessRequest
+} from "@app/hooks/api";
 import {
   Approver,
   ApproverType,
@@ -100,7 +105,7 @@ export const ReviewAccessRequestModal = ({
   members: TWorkspaceUser[];
   onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
-  const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
+  const [isLoading, setIsLoading] = useState<"approved" | "rejected" | "revoked" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
 
   const [bypassReason, setBypassReason] = useState("");
@@ -108,7 +113,10 @@ export const ReviewAccessRequestModal = ({
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
 
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
+    "editRequest",
+    "revokeConfirm"
+  ] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
@@ -151,6 +159,7 @@ export const ReviewAccessRequestModal = ({
   };
 
   const reviewAccessRequest = useReviewAccessRequest();
+  const revokeAccessRequest = useRevokeAccessRequest();
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -197,6 +206,26 @@ export const ReviewAccessRequestModal = ({
       onOpenChange
     ]
   );
+
+  const handleRevoke = useCallback(async () => {
+    setIsLoading("revoked");
+    try {
+      await revokeAccessRequest.mutateAsync({
+        requestId: request.id,
+        projectSlug
+      });
+      createNotification({
+        title: "Access revoked",
+        text: "The access has been successfully revoked",
+        type: "success"
+      });
+    } catch {
+      setIsLoading(null);
+      return;
+    }
+    setIsLoading(null);
+    onOpenChange(false);
+  }, [revokeAccessRequest, request, projectSlug, onOpenChange]);
 
   const approverSequence = useMemo(() => {
     const policy = policies.find((el) => el.id === request.policy.id);
@@ -261,13 +290,19 @@ export const ReviewAccessRequestModal = ({
 
   const hasRejected = request.status === ApprovalStatus.REJECTED;
   const hasApproved = request.status === ApprovalStatus.APPROVED;
+  const hasRevoked = request.status === ApprovalStatus.REVOKED;
   const hasExpired =
-    !hasApproved && !hasRejected && request.expiresAt && new Date(request.expiresAt) < new Date();
+    !hasApproved &&
+    !hasRejected &&
+    !hasRevoked &&
+    request.expiresAt &&
+    new Date(request.expiresAt) < new Date();
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
 
   const shouldBlockRequestActions =
     hasRejected ||
     hasApproved ||
+    hasRevoked ||
     hasExpired ||
     isReviewedByMe ||
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
@@ -275,6 +310,11 @@ export const ReviewAccessRequestModal = ({
   const renderCompletedMessages = () => {
     if (hasExpired) return "This request has expired.";
     if (hasRejected) return "This request has been rejected.";
+    if (hasRevoked) {
+      const revokedByMember = members.find((m) => m.user.id === request.revokedByUserId);
+      const revokedByEmail = revokedByMember?.user.email;
+      return `This access has been revoked${revokedByEmail ? ` by ${revokedByEmail}` : ""}.`;
+    }
     if (hasApproved) return "This request has been approved.";
     if (isReviewedByMe) return "You have reviewed this request.";
     return "You are not the reviewer in this step.";
@@ -306,7 +346,7 @@ export const ReviewAccessRequestModal = ({
         </div>
         <div className="">
           <div className="mt-4 mb-2 text-mineshaft-200">
-            <div className="flex flex-wrap gap-8">
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
               <GenericFieldLabel label="Environment">{accessDetails.env}</GenericFieldLabel>
               <GenericFieldLabel truncate label="Secret Path">
                 {accessDetails.secretPath}
@@ -370,10 +410,20 @@ export const ReviewAccessRequestModal = ({
                   </span>
                 </GenericFieldLabel>
               )}
-              {hasApproved && (
+              {(hasApproved || hasRevoked) && (request.approvedAt || hasApproved) && (
                 <GenericFieldLabel label="Approved At">
                   <span className="text-green-400">
-                    {format(new Date(request.updatedAt), "MMM d, yyyy h:mm aa")}
+                    {format(
+                      new Date(request.approvedAt || request.updatedAt),
+                      "MMM d, yyyy h:mm aa"
+                    )}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {hasRevoked && request.revokedAt && (
+                <GenericFieldLabel label="Revoked At">
+                  <span className="text-red-400">
+                    {format(new Date(request.revokedAt), "MMM d, yyyy h:mm aa")}
                   </span>
                 </GenericFieldLabel>
               )}
@@ -539,6 +589,7 @@ export const ReviewAccessRequestModal = ({
                 isReviewedByMe && "border-l-green-400",
                 !approverSequence.isMyReviewInThisSequence && "border-l-primary-400",
                 hasRejected && "border-l-red-500",
+                hasRevoked && "border-l-red-500",
                 hasExpired && "border-l-red-500"
               )}
             >
@@ -606,8 +657,30 @@ export const ReviewAccessRequestModal = ({
               </div>
             </>
           )}
+          {hasApproved && request.isApprover && (
+            <div className="mt-4">
+              <Button
+                isDisabled={Boolean(isLoading)}
+                onClick={() => handlePopUpOpen("revokeConfirm")}
+                size="sm"
+                colorSchema="danger"
+                variant="outline_bg"
+              >
+                Revoke Access
+              </Button>
+            </div>
+          )}
         </div>
       </ModalContent>
+      <DeleteActionModal
+        isOpen={popUp.revokeConfirm.isOpen}
+        onChange={(isOpenState) => handlePopUpToggle("revokeConfirm", isOpenState)}
+        title="Revoke access?"
+        subTitle="This will immediately remove the privilege granted by this access request. This action cannot be undone."
+        deleteKey="confirm"
+        buttonText="Revoke Access"
+        onDeleteApproved={handleRevoke}
+      />
     </Modal>
   );
 };

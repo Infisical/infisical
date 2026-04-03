@@ -13,7 +13,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
-import { BanIcon, CheckIcon, ClipboardCheckIcon, LucideIcon, TimerIcon } from "lucide-react";
+import {
+  BanIcon,
+  CheckIcon,
+  ClipboardCheckIcon,
+  LucideIcon,
+  ShieldBanIcon,
+  TimerIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -157,6 +164,7 @@ export const AccessApprovalRequest = ({
         (request) =>
           !request.policy.deletedAt &&
           !request.isApproved &&
+          request.status !== ApprovalStatus.REVOKED &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
           !isRequestExpired(request)
       );
@@ -165,6 +173,7 @@ export const AccessApprovalRequest = ({
         (request) =>
           request.policy.deletedAt ||
           request.isApproved ||
+          request.status === ApprovalStatus.REVOKED ||
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
           isRequestExpired(request)
       );
@@ -223,6 +232,8 @@ export const AccessApprovalRequest = ({
         icon: null
       };
 
+      const isRevoked = request.status === ApprovalStatus.REVOKED;
+
       const isAccessExpired =
         request.privilege &&
         request.isApproved &&
@@ -231,6 +242,7 @@ export const AccessApprovalRequest = ({
       const hasRequestExpired =
         !isAccepted &&
         !isRejectedByAnyone &&
+        !isRevoked &&
         request.expiresAt &&
         new Date(request.expiresAt) < new Date();
 
@@ -240,6 +252,13 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: TimerIcon,
           tooltipContent: `Expired ${format(request.expiresAt!, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isRevoked)
+        displayData = {
+          label: "Revoked",
+          type: "danger",
+          icon: ShieldBanIcon,
+          tooltipContent: `Revoked ${format(request.revokedAt!, "M/d/yyyy h:mm aa")}`
         };
       else if (isAccessExpired)
         displayData = {

@@ -26,6 +26,14 @@ export async function up(knex: Knex): Promise<void> {
       }
     });
   }
+
+  const hasPrivilegeId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "privilegeId");
+  if (hasPrivilegeId) {
+    await knex.schema.alterTable(TableName.AccessApprovalRequest, (t) => {
+      t.dropForeign("privilegeId");
+      t.foreign("privilegeId").references("id").inTable(TableName.AdditionalPrivilege).onDelete("SET NULL");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -33,6 +41,14 @@ export async function down(knex: Knex): Promise<void> {
   const hasRevokedAt = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "revokedAt");
   const hasApprovedByUserId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "approvedByUserId");
   const hasRevokedByUserId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "revokedByUserId");
+
+  const hasPrivilegeId = await knex.schema.hasColumn(TableName.AccessApprovalRequest, "privilegeId");
+  if (hasPrivilegeId) {
+    await knex.schema.alterTable(TableName.AccessApprovalRequest, (t) => {
+      t.dropForeign("privilegeId");
+      t.foreign("privilegeId").references("id").inTable(TableName.AdditionalPrivilege);
+    });
+  }
 
   if (hasApprovedAt || hasRevokedAt || hasApprovedByUserId || hasRevokedByUserId) {
     await knex.schema.alterTable(TableName.AccessApprovalRequest, (t) => {
