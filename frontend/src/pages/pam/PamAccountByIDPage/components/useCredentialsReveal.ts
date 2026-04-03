@@ -19,12 +19,14 @@ export const useCredentialsReveal = (accountId: string) => {
   const [state, setState] = useState<RevealState>({ status: "hidden" });
   const mfaPopupRef = useRef<Window | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | undefined>();
+  const isPollingRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (mfaPopupRef.current && !mfaPopupRef.current.closed) {
       mfaPopupRef.current.close();
     }
+    isPollingRef.current = false;
   }, []);
 
   const fetchCredentials = useCallback(
@@ -43,17 +45,20 @@ export const useCredentialsReveal = (accountId: string) => {
       const startTime = Date.now();
 
       pollIntervalRef.current = setInterval(async () => {
-        if (Date.now() - startTime > MFA_TIMEOUT) {
-          clearInterval(pollIntervalRef.current);
-          createNotification({
-            type: "error",
-            text: "MFA verification timed out. If a popup did not appear, check that popups are not blocked for this site."
-          });
-          setState({ status: "hidden" });
-          return;
-        }
+        if (isPollingRef.current) return;
+        isPollingRef.current = true;
 
         try {
+          if (Date.now() - startTime > MFA_TIMEOUT) {
+            clearInterval(pollIntervalRef.current);
+            createNotification({
+              type: "error",
+              text: "MFA verification timed out. If a popup did not appear, check that popups are not blocked for this site."
+            });
+            setState({ status: "hidden" });
+            return;
+          }
+
           const resp = await apiRequest.get<TMfaSessionStatusResponse>(
             `/api/v2/mfa-sessions/${mfaSessionId}/status`
           );
@@ -79,6 +84,8 @@ export const useCredentialsReveal = (accountId: string) => {
           clearInterval(pollIntervalRef.current);
           createNotification({ type: "error", text: "MFA verification failed." });
           setState({ status: "hidden" });
+        } finally {
+          isPollingRef.current = false;
         }
       }, MFA_POLL_INTERVAL);
     },
