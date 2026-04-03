@@ -5,6 +5,7 @@ import { CheckIcon, ClockAlertIcon, ClockIcon, EditIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { FormControl, Spinner } from "@app/components/v2";
 import {
@@ -26,8 +27,13 @@ import {
   UnstableInput
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
+import {
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
+import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
@@ -219,6 +225,12 @@ type FormProps = {
 
 const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
 
   const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
 
@@ -234,6 +246,15 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
   });
 
   const handleRoleUpdate = async (data: TForm) => {
+    const hasCustomRole = Object.keys(data)
+      .filter((el) => Boolean(data[el].isChecked))
+      .some((slug) => isCustomProjectRole(slug));
+
+    if (hasCustomRole && subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
+
     const selectedRoles = Object.keys(data)
       .filter((el) => Boolean(data[el].isChecked))
       .map((el) => {
@@ -355,6 +376,12 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           Save
         </Button>
       </div>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
+      />
     </form>
   );
 };

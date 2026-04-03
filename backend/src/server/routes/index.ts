@@ -734,7 +734,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -747,7 +748,8 @@ export const registerRoutes = async (
     roleDAL,
     permissionService,
     orgDAL,
-    groupDAL
+    groupDAL,
+    licenseService
   });
 
   const roleService = roleServiceFactory({
@@ -757,7 +759,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1467,7 +1470,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     webhookDAL,
     auditLogService,
+    identityDAL,
     userDAL,
+    serviceTokenDAL,
     projectMembershipDAL,
     smtpService,
     projectDAL,
@@ -1698,7 +1703,9 @@ export const registerRoutes = async (
     licenseService,
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -1983,7 +1990,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     projectDAL,
     secretV2BridgeService,
-    folderCommitDAL
+    folderCommitDAL,
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -2845,8 +2853,10 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     projectDAL,
+    userDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

@@ -1,14 +1,21 @@
 import { ForbiddenError } from "@casl/ability";
+import net from "net";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
@@ -19,8 +26,10 @@ import { TUpdateSessionLogsDTO } from "./pam-session-types";
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   projectDAL: TProjectDALFactory;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -28,8 +37,10 @@ export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFacto
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   projectDAL,
+  userDAL,
   permissionService,
-  kmsService
+  kmsService,
+  gatewayV2Service
 }: TPamSessionServiceFactoryDep) => {
   // Helper to check and update expired sessions when viewing session details (redundancy for scheduled job)
   // Only applies to non-gateway sessions (e.g., AWS IAM) - gateway sessions are managed by the gateway
@@ -100,7 +111,7 @@ export const pamSessionServiceFactory = ({
       ProjectPermissionSub.PamSessions
     );
 
-    const sessions = await pamSessionDAL.find({ projectId });
+    const sessions = await pamSessionDAL.findByProjectId(projectId);
 
     return {
       sessions: await Promise.all(sessions.map((session) => decryptSession(session, projectId, kmsService)))
@@ -190,24 +201,92 @@ export const pamSessionServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only identities and users can perform this action" });
     }
 
-    if (session.status === PamSessionStatus.Ended) {
-      return {
-        session,
-        projectId: project.id
-      };
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+    if (!updatedSession) {
+      if (session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
+        throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
+      }
+      return { session, projectId: project.id, alreadyEnded: true };
     }
 
-    if (session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting) {
-      throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
-    }
-
-    const updatedSession = await pamSessionDAL.updateById(sessionId, {
-      endedAt: new Date(),
-      status: PamSessionStatus.Ended
-    });
-
-    return { session: updatedSession, projectId: project.id };
+    return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
-  return { getById, list, updateLogsById, endSessionById };
+  const terminateSessionById = async (sessionId: string, actor: OrgServiceActor) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const project = await projectDAL.findById(session.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: session.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamSessionActions.Terminate,
+      ProjectPermissionSub.PamSessions
+    );
+
+    // Atomic update: only transitions active/starting → terminated
+    const updatedSession = await pamSessionDAL.terminateSessionById(sessionId);
+    if (!updatedSession) {
+      return { session, projectId: project.id, alreadyEnded: true };
+    }
+
+    // Fire-and-forget ALPN cancellation for gateway sessions
+    if (session.gatewayId) {
+      void (async () => {
+        let relayConn: net.Socket | null = null;
+        try {
+          const user = await userDAL.findById(actor.id);
+          const certs = await gatewayV2Service.getPAMConnectionDetails({
+            gatewayId: session.gatewayId,
+            sessionId,
+            resourceType: session.resourceType as PamResource,
+            // host/port are embedded in cert extensions for routing but not used for cancellation —
+            // real values are encrypted in PamResource.encryptedConnectionDetails and not worth decrypting here
+            host: "0.0.0.0",
+            port: 0,
+            actorMetadata: { id: actor.id, type: actor.type, name: user?.email ?? "" }
+          });
+          if (!certs) {
+            logger.error(
+              { sessionId, gatewayId: session.gatewayId },
+              `Failed to get gateway [gatewayId=${session.gatewayId}] connection details for PAM session [sessionId=${sessionId}] termination`
+            );
+            return;
+          }
+          relayConn = await createRelayConnection({
+            relayHost: certs.relayHost,
+            clientCertificate: certs.relay.clientCertificate,
+            clientPrivateKey: certs.relay.clientPrivateKey,
+            serverCertificateChain: certs.relay.serverCertificateChain
+          });
+          const cancelConn = await createGatewayConnection(
+            relayConn,
+            certs.gateway,
+            GatewayProxyProtocol.PamSessionCancellation
+          );
+          cancelConn.end();
+        } catch (err) {
+          logger.error(
+            { sessionId, err },
+            `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`
+          );
+        } finally {
+          relayConn?.destroy();
+        }
+      })();
+    }
+
+    return { session: updatedSession, projectId: project.id, alreadyEnded: false };
+  };
+
+  return { getById, list, updateLogsById, endSessionById, terminateSessionById };
 };

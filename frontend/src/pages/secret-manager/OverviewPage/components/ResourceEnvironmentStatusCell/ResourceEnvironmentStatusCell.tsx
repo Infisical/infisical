@@ -5,7 +5,7 @@ import {
   GitBranchIcon,
   ImportIcon,
   LucideIcon,
-  XIcon
+  MinusIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -31,8 +31,8 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
       break;
     case "missing":
       tooltipContent = "Missing from environment";
-      iconClassName = "text-danger";
-      Icon = XIcon;
+      iconClassName = "text-muted";
+      Icon = MinusIcon;
       break;
     case "empty":
       tooltipContent = "Empty value in environment";

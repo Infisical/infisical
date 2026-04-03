@@ -18,7 +18,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
-import { matchesAllowedEmailDomain } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -575,6 +575,19 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
+
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
       configurationType,
@@ -654,6 +667,19 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
@@ -710,6 +736,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
       issuer = await Issuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
@@ -723,6 +750,9 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,

@@ -22,6 +22,7 @@ import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
+import { SshProvider } from "./ssh";
 import { TotpProvider } from "./totp";
 import { VerticaProvider } from "./vertica";
 
@@ -55,5 +56,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),
-  [DynamicSecretProviders.Couchbase]: CouchbaseProvider()
+  [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
+  [DynamicSecretProviders.Ssh]: SshProvider()
 });

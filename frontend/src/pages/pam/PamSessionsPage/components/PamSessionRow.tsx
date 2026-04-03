@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
+import { GavelIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -24,9 +25,19 @@ import {
   Tr
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { PAM_RESOURCE_TYPE_MAP, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionPamSessionActions,
+  ProjectPermissionSub
+} from "@app/context";
+import {
+  PAM_RESOURCE_TYPE_MAP,
+  PamSessionStatus,
+  TPamSession,
+  TTerminalEvent
+} from "@app/hooks/api/pam";
 
+import { PamTerminateSessionModal } from "../../components/PamTerminateSessionModal";
 import { formatLogContent } from "../../PamSessionsByIDPage/components/PamSessionLogsSection.utils";
 import { aggregateTerminalEvents } from "../../PamSessionsByIDPage/components/terminal-utils";
 import { PamSessionStatusBadge } from "./PamSessionStatusBadge";
@@ -40,6 +51,7 @@ type Props = {
 export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
   const router = useRouter();
   const [showAllLogs, setShowAllLogs] = useState(false);
+  const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false);
 
   const {
     id,
@@ -51,8 +63,12 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
     actorName,
     actorEmail,
     createdAt,
-    endedAt
+    endedAt,
+    gatewayIdentityId
   } = session;
+
+  const isActive = status === PamSessionStatus.Active || status === PamSessionStatus.Starting;
+  const isGatewaySession = !!gatewayIdentityId;
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
 
@@ -167,12 +183,39 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
+                  {isGatewaySession && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionPamSessionActions.Terminate}
+                      a={ProjectPermissionSub.PamSessions}
+                    >
+                      {(isAllowed: boolean) => (
+                        <DropdownMenuItem
+                          isDisabled={!isAllowed || !isActive}
+                          className="text-red-600"
+                          icon={<GavelIcon size={14} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsTerminateDialogOpen(true);
+                          }}
+                        >
+                          Terminate Session
+                        </DropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </Tooltip>
           </div>
         </Td>
       </Tr>
+
+      <PamTerminateSessionModal
+        sessionId={id}
+        projectId={projectId}
+        isOpen={isTerminateDialogOpen}
+        onOpenChange={setIsTerminateDialogOpen}
+      />
 
       {filteredLogs.length > 0 && (
         <Tr>

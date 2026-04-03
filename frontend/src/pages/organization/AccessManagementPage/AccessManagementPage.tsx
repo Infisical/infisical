@@ -52,12 +52,6 @@ export const AccessManagementPage = () => {
       component: OrgMembersTab
     },
     {
-      key: OrgAccessControlTabSections.Groups,
-      label: "Groups",
-      isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
-      component: OrgGroupsTab
-    },
-    {
       key: OrgAccessControlTabSections.Identities,
       label: "Machine Identities",
       isHidden: permission.cannot(
@@ -65,6 +59,12 @@ export const AccessManagementPage = () => {
         OrgPermissionSubjects.Identity
       ),
       component: OrgIdentityTab
+    },
+    {
+      key: OrgAccessControlTabSections.Groups,
+      label: "Groups",
+      isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
+      component: OrgGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Roles,

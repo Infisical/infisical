@@ -12,6 +12,8 @@ import {
   SecretsSchema,
   SecretType
 } from "@app/db/schemas";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -137,6 +139,8 @@ type TSecretServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -162,7 +166,9 @@ export const secretServiceFactory = ({
   licenseService,
   reminderService,
   secretVersionV2DAL,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1198,7 +1204,7 @@ export const secretServiceFactory = ({
     ...v2Params
   }: Pick<
     TGetSecretsRawDTO,
-    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search"
+    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
   > & { environments: string[]; isInternal?: boolean }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -1231,7 +1237,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environments,
     ...params
-  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "tagSlugs"> & {
+  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive"> & {
     environments: string[];
     isInternal?: boolean;
   }) => {
@@ -1283,7 +1289,7 @@ export const secretServiceFactory = ({
   };
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
-    const { environment, secretPath, secretName, projectId } = dto;
+    const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
@@ -1351,15 +1357,27 @@ export const secretServiceFactory = ({
       };
     };
 
-    const usersWithAccess = userPermissions.map(attachAllowedActions).filter((user) => user.allowedActions.length > 0);
-    const identitiesWithAccess = identityPermissions
-      .map(attachAllowedActions)
-      .filter((identity) => identity.allowedActions.length > 0);
-    const groupsWithAccess = groupPermissions
-      .map(attachAllowedActions)
-      .filter((group) => group.allowedActions.length > 0);
+    const hasAccess = (entity: { allowedActions: string[] }) => entity.allowedActions.length > 0;
+    const filterFn = includeAllEntities ? () => true : hasAccess;
 
-    return { users: usersWithAccess, identities: identitiesWithAccess, groups: groupsWithAccess };
+    const users = userPermissions.map(attachAllowedActions).filter(filterFn);
+    const identities = identityPermissions.map(attachAllowedActions).filter(filterFn);
+    const groupsWithActions = groupPermissions.map(attachAllowedActions).filter(filterFn);
+
+    // Fetch group member user IDs and identity IDs
+    const groupIds = groupsWithActions.map((g) => g.id);
+    const [userGroupMemberships, identityGroupMemberships] = await Promise.all([
+      groupIds.length > 0 ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : [],
+      groupIds.length > 0 ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
+    ]);
+
+    const groups = groupsWithActions.map((group) => ({
+      ...group,
+      userIds: userGroupMemberships.filter((m) => m.groupId === group.id).map((m) => m.userId),
+      identityIds: identityGroupMemberships.filter((m) => m.groupId === group.id).map((m) => m.identityId)
+    }));
+
+    return { users, identities, groups };
   };
 
   const getAccessibleSecrets = async ({
