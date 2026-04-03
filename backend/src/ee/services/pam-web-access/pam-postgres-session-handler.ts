@@ -48,7 +48,11 @@ export const handlePostgresSession = async (
       getTypeParser: (oid: number) => {
         // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
         // so the Data Explorer UI displays human-readable literals.
-        if (oid === 16) return (val: string | Buffer) => (String(val) === "t" ? "true" : "false");
+        if (oid === 16)
+          return (val: string | Buffer) => {
+            const raw = typeof val === "string" ? val : val.toString("utf8");
+            return raw === "t" ? "true" : "false";
+          };
         return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
       }
     }
