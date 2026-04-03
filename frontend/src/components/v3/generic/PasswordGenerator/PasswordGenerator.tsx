@@ -91,6 +91,8 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
   }
 
   if (middle === undefined) {
+    middle = "";
+
     const fixedLength = prefix.length + suffix.length;
     const targetMin = Math.max(minLength - fixedLength, 1);
     const targetMax = Math.max(maxLength - fixedLength, 1);
