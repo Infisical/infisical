@@ -74,17 +74,19 @@ export const useGetOrganizations = () => {
   });
 };
 
+export const fetchOrganizationsWithSubOrgs = async () => {
+  const {
+    data: { organizations }
+  } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
+    "/api/v1/organization/accessible-with-sub-orgs"
+  );
+  return organizations;
+};
+
 export const useGetOrganizationsWithSubOrgs = () => {
   return useQuery({
     queryKey: organizationKeys.getUserOrganizationsWithSubOrgs,
-    queryFn: async () => {
-      const {
-        data: { organizations }
-      } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
-        "/api/v1/organization/accessible-with-sub-orgs"
-      );
-      return organizations;
-    }
+    queryFn: fetchOrganizationsWithSubOrgs
   });
 };
 

@@ -14,7 +14,6 @@ import {
   ProjectType,
   SecretFoldersSchema,
   SortDirection,
-  UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";

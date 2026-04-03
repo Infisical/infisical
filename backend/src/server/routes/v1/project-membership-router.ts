@@ -44,7 +44,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               lastName: true,
               id: true,
               username: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -114,7 +116,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               lastName: true,
               id: true,
               username: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -192,7 +196,9 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               firstName: true,
               lastName: true,
               id: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),

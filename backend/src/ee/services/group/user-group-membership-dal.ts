@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -87,11 +87,6 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         })
         .whereNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .leftJoin<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
         .select(
           db.ref("id").withSchema(TableName.UserGroupMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
@@ -100,7 +95,6 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         )
         .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
         .whereNotIn(`${TableName.UserGroupMembership}.userId`, (bd) => {
@@ -110,9 +104,9 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
             .whereIn(`${TableName.UserGroupMembership}.groupId`, groups);
         });
 
-      return members.map(({ email, username, firstName, lastName, userId, publicKey, ...data }) => ({
+      return members.map(({ email, username, firstName, lastName, userId, publicKey: "", ...data }) => ({
         ...data,
-        user: { email, username, firstName, lastName, id: userId, publicKey }
+        user: { email, username, firstName, lastName, id: userId, publicKey: "" }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find group members not in project" });

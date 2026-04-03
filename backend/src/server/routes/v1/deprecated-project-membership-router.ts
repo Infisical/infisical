@@ -8,7 +8,6 @@ import {
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode,
-  UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -46,7 +45,9 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
               lastName: true,
               id: true,
               username: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -115,7 +116,9 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
               lastName: true,
               id: true,
               username: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -192,7 +195,9 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
               firstName: true,
               lastName: true,
               id: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            }).extend({
+              publicKey: z.string().optional().nullable()
+            }),
             roles: z.array(
               z.object({
                 id: z.string(),
