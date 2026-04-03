@@ -2373,10 +2373,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Settings",
     description: "Configure project-level settings and preferences",
     actions: [
+      { label: "Read", value: "read", description: "View project settings" },
       { label: "Create", value: "create", description: "Create new project settings" },
       { label: "Modify", value: "edit", description: "Change project settings and configuration" },
-      { label: "Delete", value: "delete", description: "Delete project settings" },
-      { label: "Read", value: "read", description: "View project settings" }
+      { label: "Remove", value: "delete", description: "Remove project settings" }
     ]
   },
   [ProjectPermissionSub.Environments]: {

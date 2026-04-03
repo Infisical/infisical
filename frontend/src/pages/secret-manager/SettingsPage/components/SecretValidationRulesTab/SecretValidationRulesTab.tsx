@@ -448,10 +448,7 @@ export const SecretValidationRulesTab = () => {
               Define validation constraints for secret keys and values
             </p>
           </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.Settings}
-          >
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
             {(isAllowed) => (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -491,7 +488,7 @@ export const SecretValidationRulesTab = () => {
                 </UnstableEmptyHeader>
                 <UnstableEmptyContent>
                   <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
+                    I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Settings}
                   >
                     {(isAllowed) => (
@@ -586,7 +583,7 @@ export const SecretValidationRulesTab = () => {
                                 )}
                               </ProjectPermissionCan>
                               <ProjectPermissionCan
-                                I={ProjectPermissionActions.Delete}
+                                I={ProjectPermissionActions.Edit}
                                 a={ProjectPermissionSub.Settings}
                               >
                                 {(isAllowed) => (
