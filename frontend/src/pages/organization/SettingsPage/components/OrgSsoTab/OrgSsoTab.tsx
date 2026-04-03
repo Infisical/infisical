@@ -63,120 +63,28 @@ export const OrgSsoTab = withPermission(
     const isLdapConfigured = ldapConfig && ldapConfig.url;
     const isGoogleConfigured = shouldDisplaySection(LoginMethod.GOOGLE);
 
-    const shouldShowCreateIdentityProviderView =
-      !isOidcConfigured && !isSamlConfigured && !isLdapConfigured;
+    const isSsoDisabledByAdmin =
+      !shouldDisplaySection(LoginMethod.SAML) &&
+      !shouldDisplaySection(LoginMethod.OIDC) &&
+      !shouldDisplaySection(LoginMethod.LDAP);
 
-    const createIdentityProviderView =
-      shouldDisplaySection(LoginMethod.SAML) ||
-      shouldDisplaySection(LoginMethod.OIDC) ||
-      shouldDisplaySection(LoginMethod.LDAP) ? (
-        <>
-          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-            <div>
-              <p className="text-xl font-medium text-gray-200">Connect an Identity Provider</p>
-              <p className="mt-1 mb-2 text-gray-400">
-                Connect your identity provider to simplify user management with options like SAML,
-                OIDC, and LDAP.
-              </p>
-            </div>
-            {shouldDisplaySection(LoginMethod.SAML) && (
-              <div
-                className={twMerge(
-                  "mt-4 flex items-center justify-between",
-                  (shouldDisplaySection(LoginMethod.OIDC) ||
-                    shouldDisplaySection(LoginMethod.LDAP)) &&
-                    "border-b border-mineshaft-500 pb-4"
-                )}
-              >
-                <p className="text-lg text-gray-200">SAML</p>
-                <Button
-                  colorSchema="secondary"
-                  onClick={() => {
-                    if (!subscription?.samlSSO) {
-                      handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
-                      return;
-                    }
+    // Determine which unconfigured providers can still be connected
+    const hasUnconfiguredSaml = !isSamlConfigured && shouldDisplaySection(LoginMethod.SAML);
+    const hasUnconfiguredOidc = !isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC);
+    const hasUnconfiguredLdap = !isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP);
+    const hasUnconfiguredProviders = hasUnconfiguredSaml || hasUnconfiguredOidc || hasUnconfiguredLdap;
 
-                    handlePopUpOpen("addSSO");
-                  }}
-                >
-                  Connect
-                </Button>
-              </div>
-            )}
-            {shouldDisplaySection(LoginMethod.OIDC) && (
-              <div
-                className={twMerge(
-                  "mt-4 flex items-center justify-between",
-                  shouldDisplaySection(LoginMethod.LDAP) && "border-b border-mineshaft-500 pb-4"
-                )}
-              >
-                <p className="text-lg text-gray-200">OIDC</p>
-                <Button
-                  colorSchema="secondary"
-                  onClick={() => {
-                    if (!subscription?.oidcSSO) {
-                      handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO" });
-                      return;
-                    }
+    if (areConfigsLoading) {
+      return <ContentLoader />;
+    }
 
-                    handlePopUpOpen("addOIDC");
-                  }}
-                >
-                  Connect
-                </Button>
-              </div>
-            )}
-            {shouldDisplaySection(LoginMethod.LDAP) && (
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-lg text-gray-200">LDAP</p>
-                <Button
-                  colorSchema="secondary"
-                  onClick={() => {
-                    if (!subscription?.ldap) {
-                      handlePopUpOpen("upgradePlan", {
-                        featureName: "LDAP",
-                        isEnterpriseFeature: true
-                      });
-                      return;
-                    }
-
-                    handlePopUpOpen("addLDAP");
-                  }}
-                >
-                  Connect
-                </Button>
-              </div>
-            )}
-          </div>
-          <SSOModal
-            hideDelete
-            popUp={popUp}
-            handlePopUpClose={handlePopUpClose}
-            handlePopUpToggle={handlePopUpToggle}
-          />
-          <OIDCModal
-            hideDelete
-            popUp={popUp}
-            handlePopUpClose={handlePopUpClose}
-            handlePopUpToggle={handlePopUpToggle}
-          />
-          <LDAPModal
-            hideDelete
-            popUp={popUp}
-            handlePopUpClose={handlePopUpClose}
-            handlePopUpToggle={handlePopUpToggle}
-          />
-        </>
-      ) : (
+    if (isSsoDisabledByAdmin) {
+      return (
         <EmptyState title="" iconSize="2x" className="pt-14 pb-10!">
           <p className="text-center text-lg">Single Sign-On (SSO) has been disabled</p>
           <p className="text-center">Contact your server administrator</p>
         </EmptyState>
       );
-
-    if (areConfigsLoading) {
-      return <ContentLoader />;
     }
 
     return (
@@ -193,9 +101,7 @@ export const OrgSsoTab = withPermission(
             />
           )}
 
-          {shouldShowCreateIdentityProviderView ? (
-            createIdentityProviderView
-          ) : (
+          {(isSamlConfigured || isOidcConfigured || isLdapConfigured) && (
             <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
@@ -203,6 +109,108 @@ export const OrgSsoTab = withPermission(
                 {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
               </div>
             </div>
+          )}
+
+          {hasUnconfiguredProviders && (
+            <>
+              <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+                <div>
+                  <p className="text-xl font-medium text-gray-200">
+                    Connect an Identity Provider
+                  </p>
+                  <p className="mt-1 mb-2 text-gray-400">
+                    Connect your identity provider to simplify user management with options like
+                    SAML, OIDC, and LDAP.
+                  </p>
+                </div>
+                {hasUnconfiguredSaml && (
+                  <div
+                    className={twMerge(
+                      "mt-4 flex items-center justify-between",
+                      (hasUnconfiguredOidc || hasUnconfiguredLdap) &&
+                        "border-b border-mineshaft-500 pb-4"
+                    )}
+                  >
+                    <p className="text-lg text-gray-200">SAML</p>
+                    <Button
+                      colorSchema="secondary"
+                      onClick={() => {
+                        if (!subscription?.samlSSO) {
+                          handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
+                          return;
+                        }
+
+                        handlePopUpOpen("addSSO");
+                      }}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                )}
+                {hasUnconfiguredOidc && (
+                  <div
+                    className={twMerge(
+                      "mt-4 flex items-center justify-between",
+                      hasUnconfiguredLdap && "border-b border-mineshaft-500 pb-4"
+                    )}
+                  >
+                    <p className="text-lg text-gray-200">OIDC</p>
+                    <Button
+                      colorSchema="secondary"
+                      onClick={() => {
+                        if (!subscription?.oidcSSO) {
+                          handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO" });
+                          return;
+                        }
+
+                        handlePopUpOpen("addOIDC");
+                      }}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                )}
+                {hasUnconfiguredLdap && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-lg text-gray-200">LDAP</p>
+                    <Button
+                      colorSchema="secondary"
+                      onClick={() => {
+                        if (!subscription?.ldap) {
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "LDAP",
+                            isEnterpriseFeature: true
+                          });
+                          return;
+                        }
+
+                        handlePopUpOpen("addLDAP");
+                      }}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <SSOModal
+                hideDelete
+                popUp={popUp}
+                handlePopUpClose={handlePopUpClose}
+                handlePopUpToggle={handlePopUpToggle}
+              />
+              <OIDCModal
+                hideDelete
+                popUp={popUp}
+                handlePopUpClose={handlePopUpClose}
+                handlePopUpToggle={handlePopUpToggle}
+              />
+              <LDAPModal
+                hideDelete
+                popUp={popUp}
+                handlePopUpClose={handlePopUpClose}
+                handlePopUpToggle={handlePopUpToggle}
+              />
+            </>
           )}
         </div>
         <UpgradePlanModal
