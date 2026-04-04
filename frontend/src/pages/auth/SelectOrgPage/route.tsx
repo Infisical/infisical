@@ -2,14 +2,14 @@ import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-ro
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { selectOrganization } from "@app/hooks/api/auth/queries";
 import {
   fetchOrganizationsWithSubOrgs,
   organizationKeys
 } from "@app/hooks/api/organization/queries";
-import { selectOrganization } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 
-import { SelectOrganizationPage } from "./SelectOrgPage";
+import { SelectOrgPage } from "./SelectOrgPage";
 
 export const SelectOrganizationPageQueryParams = z.object({
   org_id: z.string().optional().catch(""),
@@ -22,7 +22,7 @@ export const SelectOrganizationPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/select-organization")({
-  component: SelectOrganizationPage,
+  component: SelectOrgPage,
   validateSearch: zodValidator(SelectOrganizationPageQueryParams),
   search: {
     middlewares: [
@@ -81,6 +81,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         });
       }
     } catch (error) {
+      console.error(error);
       // If it's a redirect, re-throw it
       if (error instanceof Error && error.message === "REDIRECT") throw error;
       // For redirect objects from TanStack Router

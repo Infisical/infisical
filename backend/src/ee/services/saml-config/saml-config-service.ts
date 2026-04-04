@@ -16,6 +16,7 @@ import {
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -420,19 +421,20 @@ export const samlConfigServiceFactory = ({
   const getSaml: TSamlConfigServiceFactory["getSaml"] = async (dto) => {
     let samlConfig: TSamlConfigs | undefined;
     if (dto.type === "org") {
-      samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
+      samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId, isActive: true });
       if (!samlConfig) {
         throw new NotFoundError({
           message: `SAML configuration for organization with ID '${dto.orgId}' not found`
         });
       }
     } else if (dto.type === "domain") {
-      let resolvedOrgId: string | undefined;
-
       // If orgSlug starts with @, treat the rest as a domain name and resolve via verified email domains
       const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: dto.domain, emailDomainDAL });
       if (verifiedDomain) {
-        resolvedOrgId = verifiedDomain.orgId;
+        const resolvedOrgId = verifiedDomain.orgId;
+        samlConfig = await samlConfigDAL.findOne({ orgId: resolvedOrgId, isActive: true });
+      } else {
+        logger.error(`No verified domain found for domain '${dto.domain}'`);
       }
 
       // if (!resolvedOrgId) {
@@ -444,8 +446,6 @@ export const samlConfigServiceFactory = ({
       //   }
       //   resolvedOrgId = org.id;
       // }
-
-      samlConfig = await samlConfigDAL.findOne({ orgId: resolvedOrgId });
     } else if (dto.type === "ssoId") {
       // TODO:
       // We made this change because saml config ids were not moved over during the migration
@@ -745,7 +745,12 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
+    let callbackPort;
+    try {
+      callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
+    } catch {
+      // relayState is invalid JSON, ignore and proceed without a callback port
+    }
 
     const callbackResult = await loginService.processProviderCallback({
       user,

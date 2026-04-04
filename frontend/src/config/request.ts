@@ -62,41 +62,33 @@ apiRequest.interceptors.response.use(
   async (error) => {
     const { response, config } = error;
 
-    if (response && (response.status === 401 || response.status === 403)) {
-      const currentToken = getAuthToken();
-      const isAuthenticatedRequest = Boolean(currentToken);
+    if (
+      response &&
+      response.status === 401 &&
+      isTokenExpiredError(response.data?.message || "") &&
+      getAuthToken() &&
+      !(config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry
+    ) {
+      (config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry = true;
 
-      if (isAuthenticatedRequest) {
-        const errorMessage = response.data?.message || "";
-
-        // Attempt transparent token refresh on expiration
-        if (
-          isTokenExpiredError(errorMessage) &&
-          !(config as AxiosRequestConfig & { _retry?: boolean })._retry
-        ) {
-          (config as AxiosRequestConfig & { _retry?: boolean })._retry = true;
-
-          try {
-            // Deduplicate concurrent refresh attempts
-            if (!refreshPromise) {
-              refreshPromise = fetchAuthToken()
-                .then((data) => data.token)
-                .finally(() => {
-                  refreshPromise = null;
-                });
-            }
-
-            const newToken = await refreshPromise;
-
-            // Retry the original request with the new token
-            // eslint-disable-next-line no-param-reassign
-            config.headers.Authorization = `Bearer ${newToken}`;
-            return apiRequest(config);
-          } catch {
-            // Refresh failed — fall through to redirect logic below
-          }
+      try {
+        // Deduplicate concurrent refresh attempts
+        if (!refreshPromise) {
+          refreshPromise = fetchAuthToken()
+            .then((data) => data.token)
+            .finally(() => {
+              refreshPromise = null;
+            });
         }
 
+        const newToken = await refreshPromise;
+
+        // Retry the original request with the new token
+        // eslint-disable-next-line no-param-reassign
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return await apiRequest(config);
+      } catch {
+        // Refresh failed — clear session and redirect to login
         if (!isRedirecting) {
           isRedirecting = true;
 
@@ -117,7 +109,7 @@ apiRequest.interceptors.response.use(
             sessionStorage.setItem(
               SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
               JSON.stringify({
-                expiry: formatISO(addSeconds(new Date(), 300)), // 5 minutes
+                expiry: formatISO(addSeconds(new Date(), 300)),
                 data: window.location.href
               })
             );
@@ -127,7 +119,7 @@ apiRequest.interceptors.response.use(
 
           setTimeout(() => {
             window.location.href = "/login";
-          }, 2000); // 2 seconds to read the notification
+          }, 2000);
 
           setTimeout(resetRedirectingFlag, 3000);
 

@@ -192,7 +192,8 @@ export const authLoginServiceFactory = ({
         authMethod,
         authTokenType: AuthTokenType.MFA_TOKEN,
         userId,
-        organizationId
+        organizationId,
+        email
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -342,31 +343,28 @@ export const authLoginServiceFactory = ({
       return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken } as const;
     }
 
-    // Step 2: For org-scoped IdP flows, check MFA before issuing tokens
+    // Step 2: For org-scoped IdP flows with MFA, issue tokens without org scope
+    // so the user gets a session (for TOTP setup) but must go through selectOrganization
+    // which handles MFA before granting org access.
     if (organizationId) {
       const org = await orgDAL.findById(organizationId);
       if (org) {
-        const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(org, user);
+        const { isMfaRequired } = getRequiredMfaMethod(org, user);
 
         if (isMfaRequired) {
-          enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-
-          const mfaToken = await issueMfaChallenge({
+          const tokens = await generateUserTokens({
             userId: user.id,
-            email: user.email,
-            authMethod,
-            organizationId,
-            requiredMfaMethod
+            ip,
+            userAgent,
+            authMethod
           });
 
-          return { result: ProviderAuthResult.MFA_REQUIRED, mfaToken, mfaMethod: requiredMfaMethod } as const;
+          return { result: ProviderAuthResult.SESSION, tokens } as const;
         }
       }
     }
 
-    // Step 3: All clear — issue session tokens
-    // For OAuth (no org): tokens without org context, MFA deferred to selectOrganization
-    // For IdP (with org): tokens with org context, MFA already passed above
+    // Step 3: No MFA — issue org-scoped session tokens
     const tokens = await generateUserTokens({
       userId: user.id,
       ip,

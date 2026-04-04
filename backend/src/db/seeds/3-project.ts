@@ -141,7 +141,7 @@ const createUserWithGhostUser = async (
 
   const user = await userDAL.findUserEncKeyByUserId(userId, knex);
 
-  if (!user || !user.publicKey) {
+  if (!user) {
     throw new Error("User not found");
   }
 
@@ -150,7 +150,7 @@ const createUserWithGhostUser = async (
     userPrivateKey: encKeys.plainPrivateKey,
     members: [
       {
-        userPublicKey: user.publicKey,
+        userPublicKey: "",
         orgMembershipId: userOrgMembershipId
       }
     ]

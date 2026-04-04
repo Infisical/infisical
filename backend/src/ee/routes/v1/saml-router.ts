@@ -294,12 +294,6 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         return res.redirect(`${appCfg.SITE_URL}/login/select-organization`);
       }
 
-      if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`
-        );
-      }
-
       if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
         return res.redirect(`${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`);
       }

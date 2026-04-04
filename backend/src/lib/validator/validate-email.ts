@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { getDomain } from "tldts";
+
 import { BadRequestError } from "../errors";
 
 export const isDisposableEmail = async (emails: string | string[]) => {

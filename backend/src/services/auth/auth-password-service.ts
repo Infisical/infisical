@@ -12,7 +12,6 @@ import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import {
-  ResetPasswordV2Type,
   TResetPasswordV2DTO,
   TResetPasswordViaBackupKeyDTO,
   TSetupPasswordViaBackupKeyDTO
@@ -35,7 +34,7 @@ export const authPaswordServiceFactory = ({
   smtpService,
   totpConfigDAL
 }: TAuthPasswordServiceFactoryDep) => {
-  const resetPasswordV2 = async ({ userId, newPassword, type, oldPassword }: TResetPasswordV2DTO) => {
+  const resetPasswordV2 = async ({ userId, newPassword, oldPassword }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
 
     const user = await userDAL.findUserEncKeyByUserId(userId);
@@ -51,26 +50,17 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
-    // we check the old password if the user is resetting their password while logged in
-    if (type === ResetPasswordV2Type.LoggedInReset) {
-      if (!user.hashedPassword) {
-        throw new BadRequestError({ message: "Unable to change password, no password is set" });
-      }
-      if (!oldPassword) {
-        throw new BadRequestError({ message: "Current password is required." });
-      }
-
-      const isValid = await crypto.hashing().compareHash(oldPassword, user.hashedPassword);
-      if (!isValid) {
-        throw new BadRequestError({ message: "Incorrect current password." });
-      }
+    if (!user.hashedPassword) {
+      throw new BadRequestError({ message: "Unable to change password, no password is set" });
     }
 
-    if (user.encryptionVersion !== UserEncryption.V2) {
-      throw new BadRequestError({
-        message: "Cannot reset password without current credentials or recovery method",
-        name: "Reset password"
-      });
+    if (!oldPassword) {
+      throw new BadRequestError({ message: "Current password is required." });
+    }
+
+    const isValid = await crypto.hashing().compareHash(oldPassword, user.hashedPassword);
+    if (!isValid) {
+      throw new BadRequestError({ message: "Incorrect current password." });
     }
 
     const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);

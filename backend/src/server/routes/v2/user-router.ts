@@ -363,7 +363,31 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       description: "Retrieve the current user on the request",
       response: {
         200: z.object({
-          user: UsersSchema.omit({ hashedPassword: true })
+          user: z.object({
+            id: z.string().uuid(),
+            email: z.string().nullable().optional(),
+            authMethods: z.string().array().nullable().optional(),
+            superAdmin: z.boolean().default(false).nullable().optional(),
+            firstName: z.string().nullable().optional(),
+            lastName: z.string().nullable().optional(),
+            isAccepted: z.boolean().default(false).nullable().optional(),
+            isMfaEnabled: z.boolean().default(false).nullable().optional(),
+            mfaMethods: z.string().array().nullable().optional(),
+            devices: z.unknown().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            isGhost: z.boolean().default(false),
+            username: z.string(),
+            isEmailVerified: z.boolean().default(false).nullable().optional(),
+            consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
+            isLocked: z.boolean().default(false).nullable().optional(),
+            temporaryLockDateEnd: z.date().nullable().optional(),
+            consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional(),
+            selectedMfaMethod: z.string().nullable().optional(),
+            isGitHubVerified: z.boolean().nullable().optional(),
+            isGitLabVerified: z.boolean().nullable().optional(),
+            isGoogleVerified: z.boolean().nullable().optional()
+          })
         })
       }
     },

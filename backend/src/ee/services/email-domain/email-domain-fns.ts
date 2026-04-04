@@ -39,13 +39,13 @@ export const verifyEmailDomainOwnership = async ({
 
   if (!verifiedDomain) {
     throw new BadRequestError({
-      message: `Invalid email domain`
+      message: "You organization does not have a verified domain for this email address"
     });
   }
 
   if (verifiedDomain.orgId !== orgId) {
     throw new BadRequestError({
-      message: `Invalid email domain`
+      message: "Your organization does not have a verified domain for this email address"
     });
   }
 };

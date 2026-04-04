@@ -130,8 +130,6 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           secure: appCfg.HTTPS_ENABLED
         });
         nextUrl = `${appCfg.SITE_URL}/login/select-organization`;
-      } else if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
-        nextUrl = `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`;
       } else if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
         nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`;
       } else {

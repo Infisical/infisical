@@ -6,7 +6,6 @@ import {
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode,
-  UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";

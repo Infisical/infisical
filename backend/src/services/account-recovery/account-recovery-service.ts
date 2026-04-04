@@ -9,7 +9,6 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { UserEncryption } from "@app/services/user/user-types";
 
 import { validatePasswordResetAuthorization } from "../auth/auth-fns";
 
@@ -114,7 +113,7 @@ export const accountRecoveryServiceFactory = ({
       { expiresIn: cfg.JWT_SIGNUP_LIFETIME }
     );
 
-    return { token, user, userEncryptionVersion: userEnc.encryptionVersion as UserEncryption };
+    return { token, user, userEncryptionVersion: 2 };
   };
 
   const enableEmailAuthForUser = async (token: string) => {

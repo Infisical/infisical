@@ -397,12 +397,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       );
     }
 
-    if (passportResult.result === ProviderAuthResult.MFA_REQUIRED) {
-      return res.redirect(
-        `${appCfg.SITE_URL}/login/select-organization?mfaToken=${encodeURIComponent(passportResult.mfaToken)}&mfaMethod=${passportResult.mfaMethod}`
-      );
-    }
-
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
       const serverCfg = await getServerCfg();
       return res.redirect(
