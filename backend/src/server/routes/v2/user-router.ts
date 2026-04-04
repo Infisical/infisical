@@ -386,7 +386,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
             selectedMfaMethod: z.string().nullable().optional(),
             isGitHubVerified: z.boolean().nullable().optional(),
             isGitLabVerified: z.boolean().nullable().optional(),
-            isGoogleVerified: z.boolean().nullable().optional()
+            isGoogleVerified: z.boolean().nullable().optional(),
+            encryptedPrivateKey: z.string().nullable().optional(),
+            iv: z.string().nullable().optional(),
+            tag: z.string().nullable().optional(),
+            salt: z.string().nullable().optional(),
+            protectedKey: z.string().nullable().optional(),
+            protectedKeyIV: z.string().nullable().optional(),
+            protectedKeyTag: z.string().nullable().optional()
           })
         })
       }

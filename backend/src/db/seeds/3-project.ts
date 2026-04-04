@@ -141,16 +141,18 @@ const createUserWithGhostUser = async (
 
   const user = await userDAL.findUserEncKeyByUserId(userId, knex);
 
-  if (!user) {
+  if (!user || !user.id) {
     throw new Error("User not found");
   }
+
+  const userEnc = await knex(TableName.UserEncryptionKey).where({ userId: user.id }).first();
 
   const [projectAdmin] = assignWorkspaceKeysToMembers({
     decryptKey: latestKey,
     userPrivateKey: encKeys.plainPrivateKey,
     members: [
       {
-        userPublicKey: "",
+        userPublicKey: userEnc?.publicKey || "",
         orgMembershipId: userOrgMembershipId
       }
     ]

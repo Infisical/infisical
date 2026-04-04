@@ -74,6 +74,7 @@ services:
       POSTGRES_PASSWORD: infisical
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical-test
+    command: postgres -c max_locks_per_transaction=512
 
   backend:
     container_name: infisical-dev-api

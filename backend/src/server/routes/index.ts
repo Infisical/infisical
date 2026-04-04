@@ -3198,6 +3198,12 @@ export const registerRoutes = async (
     caAutoRenewalQueue
   });
 
+  // Expose services globally for e2e tests (only available inside the encapsulated plugin context)
+  if (process.env.NODE_ENV === "test") {
+    // @ts-expect-error type - expose for e2e test access
+    globalThis.testServices = server.services;
+  }
+
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
