@@ -225,7 +225,7 @@ export const SecretEditTableRow = ({
     setFocus,
     getFieldState,
     watch,
-    formState: { isDirty, isSubmitting }
+    formState: { isDirty, dirtyFields, isSubmitting }
   } = useForm({
     defaultValues: {
       // In batch mode with a pending value change, use defaultValue (from merged data which
@@ -925,7 +925,10 @@ export const SecretEditTableRow = ({
           />
         </div>
         <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
-          {isDirty && !isImportedSecret && !isBatchMode ? (
+          {isDirty &&
+          (dirtyFields.key || dirtyFields.value) &&
+          !isImportedSecret &&
+          !isBatchMode ? (
             <>
               <ProjectPermissionCan
                 I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
