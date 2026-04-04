@@ -94,7 +94,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("id").withSchema(TableName.Users).as("userId")
         )
         .where({ isGhost: false }) // MAKE SURE USER IS NOT A GHOST USER
         .whereNotIn(`${TableName.UserGroupMembership}.userId`, (bd) => {
@@ -104,7 +104,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
             .whereIn(`${TableName.UserGroupMembership}.groupId`, groups);
         });
 
-      return members.map(({ email, username, firstName, lastName, userId, publicKey: "", ...data }) => ({
+      return members.map(({ email, username, firstName, lastName, userId, ...data }) => ({
         ...data,
         user: { email, username, firstName, lastName, id: userId, publicKey: "" }
       }));

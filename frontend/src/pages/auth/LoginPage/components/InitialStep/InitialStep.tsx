@@ -88,7 +88,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
   };
 
   const redirectToOidc = (orgSlug: string) => {
-    const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
+    const redirectUrl = `/api/v1/sso/oidc/login?domain=${orgSlug}${
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
     window.location.assign(redirectUrl);

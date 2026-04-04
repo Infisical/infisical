@@ -26,15 +26,15 @@ apiRequest.interceptors.request.use((config) => {
   const providerAuthToken = SecurityClient.getProviderAuthToken();
 
   if (config.headers) {
-    if (token) {
+    if (mfaTempToken) {
+      // eslint-disable-next-line no-param-reassign
+      config.headers.Authorization = `Bearer ${mfaTempToken}`;
+    } else if (token) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${token}`;
     } else if (signupTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${signupTempToken}`;
-    } else if (mfaTempToken) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers.Authorization = `Bearer ${mfaTempToken}`;
     } else if (providerAuthToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${providerAuthToken}`;

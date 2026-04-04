@@ -17,7 +17,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain, validateEmail } from "@app/lib/validator";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -39,7 +39,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import {
   OIDCConfigurationType,
@@ -193,6 +193,8 @@ export const oidcConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+    const sanitizedEmail = email.toLowerCase();
+    validateEmail(sanitizedEmail);
 
     let userAlias = await userAliasDAL.findOne({
       externalId,
@@ -231,7 +233,7 @@ export const oidcConfigServiceFactory = ({
               actorUserId: userAlias.userId,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -244,15 +246,6 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
-            },
-            tx
-          );
         }
 
         return foundUser;
@@ -262,7 +255,7 @@ export const oidcConfigServiceFactory = ({
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
         newUser = await userDAL.findOne({
-          username: email.toLowerCase()
+          username: sanitizedEmail
         });
 
         if (!newUser) {
@@ -270,7 +263,7 @@ export const oidcConfigServiceFactory = ({
             {
               email,
               firstName,
-              username: email.toLowerCase(),
+              username: sanitizedEmail,
               lastName,
               authMethods: [],
               isGhost: false
@@ -309,9 +302,9 @@ export const oidcConfigServiceFactory = ({
               actorUserId: newUser.id,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true,
-              inviteEmail: email.toLowerCase()
+              inviteEmail: sanitizedEmail
             },
             tx
           );
@@ -320,15 +313,6 @@ export const oidcConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );
@@ -654,22 +638,23 @@ export const oidcConfigServiceFactory = ({
     return oidcCfg;
   };
 
-  const getOrgAuthStrategy = async (orgSlug: string, callbackPort?: string) => {
+  const getOrgAuthStrategy = async (domain: string, callbackPort?: string) => {
     const appCfg = getConfig();
+    const verifiedDomain = await findOrgIdByVerifiedDomain({ domain, emailDomainDAL });
 
-    const org = await orgDAL.findOne({
-      slug: orgSlug
-    });
-
-    if (!org) {
-      throw new NotFoundError({
-        message: `Organization with slug '${orgSlug}' not found`
+    if (!verifiedDomain) {
+      throw new ForbiddenRequestError({
+        message: "Failed to authenticate with OIDC SSO"
       });
     }
 
+    const org = await orgDAL.findOne({
+      id: verifiedDomain.orgId
+    });
+
     const oidcCfg = await getOidc({
       type: "internal",
-      organizationId: org.id
+      organizationId: verifiedDomain.orgId
     });
 
     if (!oidcCfg || !oidcCfg.isActive) {

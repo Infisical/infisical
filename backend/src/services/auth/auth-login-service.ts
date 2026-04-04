@@ -375,6 +375,19 @@ export const authLoginServiceFactory = ({
       organizationId
     });
 
+    // Step 4: Promote any Invited memberships to Accepted now that the user has authenticated
+    if (organizationId) {
+      await membershipUserDAL.update(
+        {
+          actorUserId: user.id,
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization,
+          status: OrgMembershipStatus.Invited
+        },
+        { status: OrgMembershipStatus.Accepted }
+      );
+    }
+
     return { result: ProviderAuthResult.SESSION, tokens } as const;
   };
 
@@ -1147,12 +1160,12 @@ export const authLoginServiceFactory = ({
     if (!user || !user.isAccepted)
       throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
-    // Check user membership in the sub-organization (direct or via group)
+    // Check user membership in the organization (accept any status — promotion happens after auth)
     const orgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.USER,
       actorId: user.id,
       orgId: organizationId,
-      status: OrgMembershipStatus.Accepted
+      acceptAnyStatus: true
     });
 
     if (!orgMembership) {
@@ -1184,12 +1197,11 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      // Check user membership in the root organization
+      // Check user membership in the root organization (accept any status — promotion happens after auth)
       const rootOrgMembership = await membershipUserDAL.findOne({
         actorUserId: user.id,
         scopeOrgId: selectedOrg.rootOrgId,
-        scope: AccessScope.Organization,
-        status: OrgMembershipStatus.Accepted
+        scope: AccessScope.Organization
       });
 
       if (!rootOrgMembership) {
@@ -1253,7 +1265,8 @@ export const authLoginServiceFactory = ({
         userId: user.id,
         email: user.email,
         authMethod: decodedToken.authMethod,
-        requiredMfaMethod
+        requiredMfaMethod,
+        organizationId: rootOrg.id
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
@@ -1271,6 +1284,17 @@ export const authLoginServiceFactory = ({
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
     });
+
+    // Promote any Invited memberships to Accepted now that the user has authenticated into this org
+    await membershipUserDAL.update(
+      {
+        actorUserId: user.id,
+        scopeOrgId: organizationId,
+        scope: AccessScope.Organization,
+        status: OrgMembershipStatus.Invited
+      },
+      { status: OrgMembershipStatus.Accepted }
+    );
 
     // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
     const isAuthEnforcedBypass =

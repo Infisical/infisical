@@ -52,6 +52,7 @@ import {
 } from "./ldap-config-types";
 import { searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
+import { validateEmail } from "@app/lib/validator/validate-email";
 
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
@@ -409,6 +410,8 @@ export const ldapConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+    const sanitizedEmail = email.toLowerCase();
+    validateEmail(sanitizedEmail);
 
     let userAlias = await userAliasDAL.findOne({
       externalId,
@@ -449,7 +452,7 @@ export const ldapConfigServiceFactory = ({
               actorUserId: userAlias.userId,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -462,27 +465,19 @@ export const ldapConfigServiceFactory = ({
             },
             tx
           );
-        } else if (orgMembership.status === OrgMembershipStatus.Invited) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
-            },
-            tx
-          );
         }
       });
     } else {
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
-        newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
+        newUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
 
         if (!newUser) {
           newUser = await userDAL.create(
             {
-              username: email.toLowerCase(),
-              email: email.toLowerCase(),
+              username: sanitizedEmail,
+              email: sanitizedEmail,
               firstName,
               lastName,
               authMethods: [],
@@ -495,10 +490,10 @@ export const ldapConfigServiceFactory = ({
         const newUserAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
-            username: email.toLowerCase(),
+            username: sanitizedEmail,
             aliasType: UserAliasType.LDAP,
             externalId,
-            emails: [email],
+            emails: [sanitizedEmail],
             orgId
           },
           tx
@@ -522,9 +517,9 @@ export const ldapConfigServiceFactory = ({
               actorUserId: newUser.id,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true,
-              inviteEmail: email.toLowerCase()
+              inviteEmail: sanitizedEmail
             },
             tx
           );
@@ -537,14 +532,6 @@ export const ldapConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
-            },
-            tx
-          );
         }
 
         return newUserAlias;

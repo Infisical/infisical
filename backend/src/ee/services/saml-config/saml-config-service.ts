@@ -16,6 +16,7 @@ import {
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -425,31 +426,24 @@ export const samlConfigServiceFactory = ({
           message: `SAML configuration for organization with ID '${dto.orgId}' not found`
         });
       }
-    } else if (dto.type === "orgSlug") {
+    } else if (dto.type === "domain") {
       let resolvedOrgId: string | undefined;
 
       // If orgSlug starts with @, treat the rest as a domain name and resolve via verified email domains
-      if (dto.orgSlug.startsWith("@")) {
-        const domain = dto.orgSlug.slice(1);
-        const verifiedDomain = await findOrgIdByVerifiedDomain({ domain, emailDomainDAL });
-        if (verifiedDomain) {
-          resolvedOrgId = verifiedDomain.orgId;
-        }
+      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: dto.domain, emailDomainDAL });
+      if (verifiedDomain) {
+        resolvedOrgId = verifiedDomain.orgId;
       }
 
-      if (dto.orgSlug.startsWith("@") && !resolvedOrgId) {
-        throw new NotFoundError({ message: `No verified domain found for '${dto.orgSlug.slice(1)}'` });
-      }
-
-      if (!resolvedOrgId) {
-        const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
-        if (!org) {
-          throw new NotFoundError({
-            message: `Organization with slug '${dto.orgSlug}' not found`
-          });
-        }
-        resolvedOrgId = org.id;
-      }
+      // if (!resolvedOrgId) {
+      //   const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
+      //   if (!org) {
+      //     throw new NotFoundError({
+      //       message: `Organization with slug '${dto.orgSlug}' not found`
+      //     });
+      //   }
+      //   resolvedOrgId = org.id;
+      // }
 
       samlConfig = await samlConfigDAL.findOne({ orgId: resolvedOrgId });
     } else if (dto.type === "ssoId") {
@@ -548,6 +542,8 @@ export const samlConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+    const sanitizedEmail = email.toLowerCase();
+    validateEmail(sanitizedEmail);
 
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
@@ -588,7 +584,7 @@ export const samlConfigServiceFactory = ({
               inviteEmail: email,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -598,15 +594,6 @@ export const samlConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );
@@ -644,12 +631,12 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
-        newUser = await userDAL.findOne({ username: email.toLowerCase() }, tx);
+        newUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
 
         if (!newUser) {
           newUser = await userDAL.create(
             {
-              username: email.toLowerCase(),
+              username: sanitizedEmail,
               email,
               isEmailVerified: false,
               firstName,
@@ -666,7 +653,7 @@ export const samlConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
-            emails: email ? [email.toLowerCase()] : [],
+            emails: email ? [sanitizedEmail] : [],
             orgId,
             isEmailVerified: false
           },
@@ -692,9 +679,9 @@ export const samlConfigServiceFactory = ({
               actorUserId: newUser.id,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true,
-              inviteEmail: email.toLowerCase()
+              inviteEmail: sanitizedEmail
             },
             tx
           );
@@ -703,15 +690,6 @@ export const samlConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );

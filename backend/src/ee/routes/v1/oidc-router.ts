@@ -75,24 +75,24 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        orgSlug: z.string().trim(),
+        domain: z.string().trim(),
         callbackPort: z.string().trim().optional()
       })
     },
     preValidation: [
       async (req, res) => {
-        const { orgSlug, callbackPort } = req.query;
+        const { domain, callbackPort } = req.query;
 
         // ensure fresh session state per login attempt
         await req.session.regenerate();
 
-        req.session.set<any>("oidcOrgSlug", orgSlug);
+        req.session.set<any>("oidcDomain", domain);
 
         if (callbackPort) {
           req.session.set<any>("callbackPort", callbackPort);
         }
 
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(domain, callbackPort);
         return (
           passport.authenticate(oidcStrategy as Strategy, {
             scope: "profile email openid"
@@ -109,9 +109,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     preValidation: [
       async (req, res) => {
-        const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
+        const oidcDomain = req.session.get<any>("oidcDomain");
         const callbackPort = req.session.get<any>("callbackPort");
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcDomain, callbackPort);
 
         return (
           passport.authenticate(oidcStrategy as Strategy, {

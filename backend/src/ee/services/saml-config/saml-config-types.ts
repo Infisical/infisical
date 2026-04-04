@@ -41,8 +41,8 @@ export type TGetSamlCfgDTO =
       actorOrgId: string;
     }
   | {
-      type: "orgSlug";
-      orgSlug: string;
+      type: "domain";
+      domain: string;
     }
   | {
       type: "ssoId";

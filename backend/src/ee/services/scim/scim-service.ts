@@ -22,6 +22,7 @@ import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } f
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -373,6 +374,9 @@ export const scimServiceFactory = ({
   }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
+    const sanitizedEmail = email.toLowerCase();
+    validateEmail(sanitizedEmail);
+
     const org = await orgDAL.findOrgById(orgId);
     if (!org)
       throw new ScimRequestError({
@@ -403,7 +407,7 @@ export const scimServiceFactory = ({
     });
 
     // Resolve the user ID: either from the existing alias, or by looking up the email
-    const existingUserId = userAlias?.userId ?? (await userDAL.findOne({ username: email.toLowerCase() }))?.id;
+    const existingUserId = userAlias?.userId ?? (await userDAL.findOne({ username: sanitizedEmail }))?.id;
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL, userId: existingUserId });
@@ -428,10 +432,10 @@ export const scimServiceFactory = ({
           orgMembership = await membershipUserDAL.create(
             {
               actorUserId: userAlias.userId,
-              inviteEmail: email.toLowerCase(),
+              inviteEmail: sanitizedEmail,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -448,12 +452,12 @@ export const scimServiceFactory = ({
           orgMembership = effectiveMembership;
         }
       } else {
-        user = await userDAL.findOne({ username: email.toLowerCase() }, tx);
+        user = await userDAL.findOne({ username: sanitizedEmail }, tx);
         if (!user) {
           user = await userDAL.create(
             {
-              username: email.toLowerCase(),
-              email: email.toLowerCase(),
+              username: sanitizedEmail,
+              email: sanitizedEmail,
               isEmailVerified: false,
               firstName,
               lastName,
@@ -469,7 +473,7 @@ export const scimServiceFactory = ({
             userId: user.id,
             aliasType,
             externalId,
-            emails: email ? [email.toLowerCase()] : [],
+            emails: email ? [sanitizedEmail] : [],
             orgId,
             isEmailVerified: false
           },
@@ -491,10 +495,10 @@ export const scimServiceFactory = ({
           orgMembership = await membershipUserDAL.create(
             {
               actorUserId: user.id,
-              inviteEmail: email.toLowerCase(),
+              inviteEmail: sanitizedEmail,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: user.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -601,6 +605,11 @@ export const scimServiceFactory = ({
       });
 
     const user = await userDAL.findOne({ id: membership.actorUserId });
+    if (!user)
+      throw new ScimRequestError({
+        detail: "User not found",
+        status: 404
+      });
 
     const scimUser = buildScimUser({
       orgMembershipId: membership.id,
@@ -608,11 +617,20 @@ export const scimServiceFactory = ({
       lastName: user.lastName,
       firstName: user.firstName,
       active: membership.isActive,
-      username: user.username,
+      username: userAliases?.[0]?.externalId ?? user.username,
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt
     });
     scimPatch(scimUser, operations);
+
+    // email is our identifier - changing that user must delete this user and provision a new one
+    if (scimUser.emails?.[0]?.value !== user?.email) {
+      throw new ScimRequestError({
+        detail: "Email cannot be changed",
+        status: 404,
+        mutability: "immutable"
+      });
+    }
 
     await verifyEmailDomainOwnership({
       email: user.username,
@@ -621,18 +639,6 @@ export const scimServiceFactory = ({
       orgDAL,
       userId: membership.actorUserId
     });
-    // TODO(auth-revamp): validate username is email
-    const hasEmailChanged = scimUser.userName !== user.username;
-    if (hasEmailChanged) {
-      await verifyEmailDomainOwnership({
-        email: scimUser.userName,
-        orgId,
-        emailDomainDAL,
-        orgDAL,
-        userId: user.id
-      });
-    }
-
     await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
         membership.id,
@@ -645,27 +651,11 @@ export const scimServiceFactory = ({
         membership.actorUserId as string,
         {
           firstName: scimUser.name.givenName,
-          ...(hasEmailChanged ? { username: scimUser.userName, email: scimUser.userName } : {}),
-          lastName: scimUser.name.familyName,
-          isEmailVerified: hasEmailChanged ? false : undefined
+          lastName: scimUser.name.familyName
         },
         tx
       );
 
-      if (hasEmailChanged) {
-        // clean up previous alias of same auth type and set the new one
-        await userAliasDAL.delete({ $in: { id: userAliasesIds } }, tx);
-        await userAliasDAL.create(
-          {
-            userId: user.id,
-            aliasType: org.orgAuthMethod === OrgAuthMethod.OIDC ? UserAliasType.OIDC : UserAliasType.SAML,
-            emails: [scimUser.userName],
-            orgId,
-            externalId: userAliases[0].externalId
-          },
-          tx
-        );
-      }
       await scimEventsDAL.create(
         {
           orgId,
@@ -699,6 +689,9 @@ export const scimServiceFactory = ({
         detail: "Neither SAML or OIDC SSO is configured",
         status: 400
       });
+    }
+    if (email) {
+      validateEmail(email.toLowerCase());
     }
 
     const [membership] = await orgDAL
@@ -741,7 +734,14 @@ export const scimServiceFactory = ({
 
     const user = await userDAL.findOne({ id: membership.actorUserId });
 
-    const hasEmailChanged = email?.toLowerCase() !== user.username;
+    // email is our identifier - changing that user must delete this user and provision a new one
+    if (email && (user.email !== email || user.username !== email)) {
+      throw new ScimRequestError({
+        detail: "Email cannot be changed",
+        status: 404,
+        mutability: "immutable"
+      });
+    }
 
     await verifyEmailDomainOwnership({
       email: user.username,
@@ -750,16 +750,6 @@ export const scimServiceFactory = ({
       orgDAL,
       userId: membership.actorUserId
     });
-
-    if (hasEmailChanged && email) {
-      await verifyEmailDomainOwnership({
-        email,
-        orgId,
-        emailDomainDAL,
-        orgDAL,
-        userId: membership.actorUserId
-      });
-    }
 
     await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
@@ -773,30 +763,13 @@ export const scimServiceFactory = ({
         membership.actorUserId!,
         {
           firstName,
-          ...(hasEmailChanged && email ? { username: email.toLowerCase(), email: email.toLowerCase() } : {}),
-          lastName,
-          isEmailVerified: hasEmailChanged ? false : undefined
+          lastName
         },
         tx
       );
 
-      if (hasEmailChanged && email) {
-        const userAliasesIds = userAliases.map((el) => el.id);
-        await userAliasDAL.delete({ $in: { id: userAliasesIds } }, tx);
-        await userAliasDAL.create(
-          {
-            userId: user.id,
-            aliasType,
-            emails: [email.toLowerCase()],
-            orgId,
-            externalId: externalId || userAliases[0].externalId
-          },
-          tx
-        );
-      } else {
-        // Update externalId on existing alias if provided and changed
-        await userAliasDAL.update({ orgId, aliasType, userId: membership.actorUserId as string }, { externalId }, tx);
-      }
+      // Update externalId on existing alias if provided and changed
+      await userAliasDAL.update({ orgId, aliasType, userId: membership.actorUserId as string }, { externalId }, tx);
 
       await scimEventsDAL.create(
         {
@@ -816,8 +789,8 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: membership.id,
-      username: user.username,
-      email: hasEmailChanged && email ? email.toLowerCase() : user.email,
+      username: externalId || user.username,
+      email: user.email,
       firstName: firstName || user.firstName,
       lastName: lastName || user.lastName,
       active,
@@ -1064,6 +1037,7 @@ export const scimServiceFactory = ({
       if (members && members.length) {
         const orgMemberships = await membershipUserDAL.find({
           scope: AccessScope.Organization,
+          scopeOrgId: orgId,
           $in: {
             id: members.map((member) => member.value)
           }

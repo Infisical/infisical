@@ -63,8 +63,15 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         const result = await selectOrganization({ organizationId: orgId });
 
         if (result.isMfaEnabled) {
-          // MFA required — let the page handle it
-          return;
+          // MFA required — redirect back to this page with MFA params so the component renders MFA immediately
+          throw redirect({
+            to: "/login/select-organization",
+            search: {
+              mfaToken: result.token,
+              mfaMethod: result.mfaMethod,
+              org_id: orgId
+            }
+          });
         }
 
         setAuthToken(result.token);

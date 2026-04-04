@@ -52,14 +52,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
-            const { samlConfigId, orgSlug } = req.params;
+            const { samlConfigId, domain } = req.params;
 
             let ssoLookupDetails: TGetSamlCfgDTO;
 
-            if (orgSlug) {
+            if (domain) {
               ssoLookupDetails = {
-                type: "orgSlug",
-                orgSlug
+                type: "domain",
+                domain
               };
             } else if (samlConfigId) {
               ssoLookupDetails = {
@@ -200,14 +200,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   );
 
   server.route({
-    url: "/redirect/saml2/organizations/:orgSlug",
+    url: "/redirect/saml2/organizations/:domain",
     method: "GET",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        orgSlug: z.string().trim()
+        domain: z.string().trim()
       }),
       querystring: z.object({
         callback_port: z.string().optional()

@@ -1,6 +1,6 @@
 import { getHostname } from "tldts";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+// import { AccessScope, TableName } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -18,9 +18,9 @@ import { EmailDomainStatus } from "./email-domain-types";
 export const verifyEmailDomainOwnership = async ({
   email,
   orgId,
-  emailDomainDAL,
-  orgDAL,
-  userId
+  emailDomainDAL
+  // orgDAL,
+  // userId
 }: {
   email: string;
   orgId: string;
@@ -37,27 +37,15 @@ export const verifyEmailDomainOwnership = async ({
     status: EmailDomainStatus.Verified
   });
 
-  if (verifiedDomain) {
-    if (verifiedDomain.orgId !== orgId) {
-      throw new BadRequestError({
-        message: `The email domain "${emailDomain}" is verified by another organization. This operation is not allowed.`
-      });
-    }
-    return;
+  if (!verifiedDomain) {
+    throw new BadRequestError({
+      message: `Invalid email domain`
+    });
   }
 
-  // Tier 2: No verified domain — check if user exists in other orgs
-  if (!userId) return;
-
-  const existingMemberships = await orgDAL.findMembership({
-    [`${TableName.Membership}.actorUserId` as "actorUserId"]: userId,
-    [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-  });
-
-  const belongsToOtherOrg = existingMemberships.some((m) => m.scopeOrgId !== orgId);
-  if (belongsToOtherOrg) {
+  if (verifiedDomain.orgId !== orgId) {
     throw new BadRequestError({
-      message: `This user belongs to another organization. To manage users with this email domain, please verify "${emailDomain}" in your organization's email domain settings first.`
+      message: `Invalid email domain`
     });
   }
 };

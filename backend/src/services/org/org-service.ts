@@ -992,14 +992,9 @@ export const orgServiceFactory = ({
       isEmailVerified: true
     });
 
+    // If user already completed signup, they'll be promoted to Accepted
+    // when they authenticate via selectOrganization or processProviderCallback
     if (user.isAccepted) {
-      // this means user has already completed signup process
-      // isAccepted is set true when keys are exchanged
-      await orgDAL.updateMembershipById(orgMembership.id, {
-        scopeOrgId: orgId,
-        status: OrgMembershipStatus.Accepted
-      });
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return { user };
     }
 
