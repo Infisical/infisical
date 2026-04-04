@@ -423,12 +423,10 @@ export const externalMigrationServiceFactory = ({
     }
 
     const existingConfig = await vaultExternalMigrationConfigDAL.findById(id);
+    const configDoesNotExist = !existingConfig;
+    const configBelongsToDifferentOrg = existingConfig?.orgId !== actor.orgId;
 
-    if (!existingConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
-    }
-
-    if (existingConfig.orgId !== actor.orgId) {
+    if (configDoesNotExist || configBelongsToDifferentOrg) {
       throw new NotFoundError({ message: "Vault migration config not found" });
     }
 
