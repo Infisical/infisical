@@ -429,7 +429,7 @@ export const externalMigrationServiceFactory = ({
     }
 
     if (existingConfig.orgId !== actor.orgId) {
-      throw new ForbiddenRequestError({ message: "Config does not belong to this organization" });
+      throw new NotFoundError({ message: "Vault migration config not found" });
     }
 
     if (connectionId) {
