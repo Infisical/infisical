@@ -31,6 +31,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -83,7 +84,10 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityJwtAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -100,13 +104,21 @@ export const identityJwtAuthServiceFactory = ({
       const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
       if (!decodedToken) {
         throw new UnauthorizedError({
-          message: "Invalid JWT"
+          message: "Invalid JWT",
+          detail: {
+            reasonCode: "invalid_jwt",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
+        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+
         let client: JwksClient;
         if (identityJwtAuth.jwksUrl.includes("https:")) {
           const decryptedJwksCaCert = orgDataKeyDecryptor({
@@ -132,7 +144,13 @@ export const identityJwtAuthServiceFactory = ({
         } catch (error) {
           if (error instanceof jwt.JsonWebTokenError) {
             throw new UnauthorizedError({
-              message: `Access denied: ${error.message}`
+              message: `Access denied: ${error.message}`,
+              detail: {
+                reasonCode: "jwt_verification_failed",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -158,7 +176,13 @@ export const identityJwtAuthServiceFactory = ({
 
         if (!isMatchAnyKey) {
           throw new UnauthorizedError({
-            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`
+            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`,
+            detail: {
+              reasonCode: "jwt_verification_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -174,7 +198,13 @@ export const identityJwtAuthServiceFactory = ({
       if (identityJwtAuth.boundSubject) {
         if (!tokenData.sub) {
           throw new UnauthorizedError({
-            message: "Access denied: token has no subject field"
+            message: "Access denied: token has no subject field",
+            detail: {
+              reasonCode: "missing_subject",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -188,7 +218,13 @@ export const identityJwtAuthServiceFactory = ({
       if (identityJwtAuth.boundAudiences) {
         if (!tokenData.aud) {
           throw new UnauthorizedError({
-            message: "Access denied: token has no audience field"
+            message: "Access denied: token has no audience field",
+            detail: {
+              reasonCode: "missing_audience",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -198,7 +234,13 @@ export const identityJwtAuthServiceFactory = ({
             .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
         ) {
           throw new UnauthorizedError({
-            message: "Access denied: token audience not allowed"
+            message: "Access denied: token audience not allowed",
+            detail: {
+              reasonCode: "audience_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -210,20 +252,32 @@ export const identityJwtAuthServiceFactory = ({
 
           if (!value) {
             throw new UnauthorizedError({
-              message: `Access denied: token has no ${claimKey} field`
+              message: `Access denied: token has no ${claimKey} field`,
+              detail: {
+                reasonCode: "missing_claim",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
           // handle both single and multi-valued claims
           if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
             throw new UnauthorizedError({
-              message: `Access denied: claim mismatch for field ${claimKey}`
+              message: `Access denied: claim mismatch for field ${claimKey}`,
+              detail: {
+                reasonCode: "claim_mismatch",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
         });
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -239,7 +293,13 @@ export const identityJwtAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -421,6 +481,10 @@ export const identityJwtAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (configurationType === JwtConfigurationType.JWKS && jwksUrl) {
+      await blockLocalAndPrivateIpAddresses(jwksUrl);
+    }
+
     const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
@@ -548,6 +612,10 @@ export const identityJwtAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
+
+    if (jwksUrl) {
+      await blockLocalAndPrivateIpAddresses(jwksUrl);
+    }
 
     const updateQuery: TIdentityJwtAuthsUpdate = {
       boundIssuer,

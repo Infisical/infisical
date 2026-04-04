@@ -1445,7 +1445,7 @@ export const SecretEditTableRow = ({
                           isDisabled={!secretId || isCreatable || isImportedSecret}
                         >
                           <UsersIcon />
-                          Access Insights
+                          View Access
                         </UnstableDropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="left">
@@ -1550,13 +1550,13 @@ export const SecretEditTableRow = ({
               <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
                 <SheetContent
                   onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="gap-y-0"
+                  className="gap-y-0 sm:max-w-6xl"
                   side="right"
                 >
                   <SheetHeader>
-                    <SheetTitle>Access Insights</SheetTitle>
+                    <SheetTitle>Secret Access Insights</SheetTitle>
                     <SheetDescription>
-                      View users, groups, and identities with access to this secret
+                      View and manage user, group, and machine identity access to this secret
                     </SheetDescription>
                   </SheetHeader>
                   <UnstableSeparator />

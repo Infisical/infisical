@@ -173,7 +173,7 @@ Supports conditions and permission inversion.
 | Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
 | `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `describeSecret` | View secret details such as key, path, metadata, tags, and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |

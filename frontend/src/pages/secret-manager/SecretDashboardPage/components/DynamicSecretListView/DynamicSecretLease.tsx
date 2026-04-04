@@ -44,7 +44,7 @@ type Props = {
   onClose: () => void;
 };
 
-const DYNAMIC_SECRETS_WITHOUT_RENEWAL = [DynamicSecretProviders.Github];
+const DYNAMIC_SECRETS_WITHOUT_RENEWAL = [DynamicSecretProviders.Github, DynamicSecretProviders.Ssh];
 
 export const DynamicSecretLease = ({
   projectSlug,

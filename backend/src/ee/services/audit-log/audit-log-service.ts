@@ -115,7 +115,7 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
       return;
     }
-    // add all cases in which project id or org id cannot be added
+    // Events that don't require projectId or orgId (login events where org context may not be available)
     if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });

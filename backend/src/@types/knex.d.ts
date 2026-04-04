@@ -371,6 +371,12 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepEnrollmentConfigs,
+  TPkiScepEnrollmentConfigsInsert,
+  TPkiScepEnrollmentConfigsUpdate,
+  TPkiScepTransactions,
+  TPkiScepTransactionsInsert,
+  TPkiScepTransactionsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -419,9 +425,6 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
-  TQueueJobs,
-  TQueueJobsInsert,
-  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -856,6 +859,16 @@ declare module "knex/types/tables" {
       TPkiEstEnrollmentConfigs,
       TPkiEstEnrollmentConfigsInsert,
       TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiScepEnrollmentConfigs,
+      TPkiScepEnrollmentConfigsInsert,
+      TPkiScepEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiScepTransaction]: KnexOriginal.CompositeTableType<
+      TPkiScepTransactions,
+      TPkiScepTransactionsInsert,
+      TPkiScepTransactionsUpdate
     >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
@@ -1719,7 +1732,6 @@ declare module "knex/types/tables" {
       TOrganizationAssetsUpdate
     >;
 
-    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
     [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,

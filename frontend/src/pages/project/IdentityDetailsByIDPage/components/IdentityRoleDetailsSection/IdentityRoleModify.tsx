@@ -10,6 +10,7 @@ import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -31,9 +32,11 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
+import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
+import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
@@ -69,8 +72,14 @@ type Props = {
 
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
   const { projectId } = useProject();
+  const { subscription } = useSubscription();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
   const { permission } = useProjectPermission();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
   const isIdentityEditDisabled = permission.cannot(
     ProjectPermissionIdentityActions.Edit,
     ProjectPermissionSub.Identity
@@ -149,6 +158,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
 
   const handleRoleUpdate = async (data: TRoleForm) => {
     if (updateProjectIdentityMembership.isPending) return;
+
+    const hasCustomRole = data.roles.some((el) => isCustomProjectRole(el.slug));
+    if (hasCustomRole && subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
 
     const sanitizedRoles = data.roles.map((el) => {
       const { isTemporary } = el.temporaryAccess;
@@ -405,6 +420,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
           Save Roles
         </Button>
       </div>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
+      />
     </form>
   );
 };

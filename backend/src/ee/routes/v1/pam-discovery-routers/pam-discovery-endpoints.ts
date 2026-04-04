@@ -8,8 +8,10 @@ import {
 } from "@app/ee/services/pam-discovery/pam-discovery-schemas";
 import { TPamDiscoverySource } from "@app/ee/services/pam-discovery/pam-discovery-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
   server,
@@ -127,6 +129,18 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamDiscoverySourceCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            discoveryType,
+            projectId: req.body.projectId
+          }
+        })
+        .catch(() => {});
+
       return { source };
     }
   });
@@ -216,6 +230,18 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamDiscoverySourceDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            discoveryType,
+            projectId: source.projectId
+          }
+        })
+        .catch(() => {});
+
       return { source };
     }
   });
@@ -258,6 +284,18 @@ export const registerPamDiscoveryEndpoints = <T extends TPamDiscoverySource>({
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamDiscoveryScanTriggered,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            discoveryType,
+            projectId: discoverySource.projectId
+          }
+        })
+        .catch(() => {});
 
       return { message };
     }

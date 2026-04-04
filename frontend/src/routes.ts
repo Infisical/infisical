@@ -440,11 +440,7 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", "organization/NetworkingPage/route.tsx"),
-
-  // Added these dummy routes to avoid errors when navigating from the organization-redirect and project-redirect
-  route("/projects/$", ""),
-  route("/$", "")
+  route("/networking", "organization/NetworkingPage/route.tsx")
 ]);
 
 export const routes = rootRoute("root.tsx", [
@@ -484,8 +480,6 @@ export const routes = rootRoute("root.tsx", [
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
     route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
     middleware("inject-org-details.tsx", [
-      route("/organization/$", "redirects/organization-redirect.tsx"),
-      route("/projects/$", "redirects/project-redirect.tsx"),
       adminRoute,
       pamAccessRoute,
       pamDataExplorerRoute,

@@ -100,6 +100,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   orderBy?: DashboardSecretsOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  tags?: Record<string, boolean>;
   includeSecrets?: boolean;
   includeFolders?: boolean;
   includeDynamicSecrets?: boolean;

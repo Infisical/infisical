@@ -32,6 +32,7 @@ import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/Or
 import { withPermission } from "@app/hoc";
 import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
@@ -76,7 +77,7 @@ export const IdentitySection = withPermission(
       ? subscription.identitiesUsed < subscription.identityLimit
       : true;
 
-    const isEnterprise = subscription?.slug === "enterprise";
+    const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
       await deleteMutateAsync({

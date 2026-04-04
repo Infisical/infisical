@@ -44,7 +44,8 @@ export const useListProjectIdentityMemberships = (
     limit = 100,
     orderBy = ProjectIdentityOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
-    search = ""
+    search = "",
+    roles = []
   }: TListProjectIdentitiesDTO,
   options?: Omit<
     UseQueryOptions<
@@ -63,7 +64,8 @@ export const useListProjectIdentityMemberships = (
       limit,
       orderBy,
       orderDirection,
-      search
+      search,
+      roles
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -73,6 +75,10 @@ export const useListProjectIdentityMemberships = (
         orderDirection: String(orderDirection),
         identityName: String(search)
       });
+
+      if (roles.length) {
+        params.set("roles", roles.join(","));
+      }
 
       const { data } = await apiRequest.get<TProjectIdentityMembershipsListV2>(
         `/api/v1/projects/${projectId}/memberships/identities`,

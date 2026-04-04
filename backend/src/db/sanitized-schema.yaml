@@ -728,8 +728,6 @@ tables:
       - description
       - createdAt
       - updatedAt
-      - rotationEnabled
-      - rotationIntervalSeconds
       - lastRotatedAt
       - rotationStatus
 

@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -13,28 +13,15 @@ import { CodeSigningRequestsTab } from "../ApprovalsPage/components/CodeSigningR
 import { CreateSignerModal } from "./components/CreateSignerModal";
 import { SignersTable } from "./components/SignersTable";
 
-enum CodeSigningTabs {
-  Signers = "signers",
-  Approvals = "approvals"
-}
-
-enum ApprovalSubTabs {
-  Requests = "requests",
-  Policies = "policies",
-  Grants = "grants"
-}
-
 export const CodeSigningPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const { tab, subtab } = useSearch({ strict: false }) as { tab?: string; subtab?: string };
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/"
+  });
+
+  const activeTab = selectedTab || "signers";
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(
-    tab === "approvals" ? CodeSigningTabs.Approvals : CodeSigningTabs.Signers
-  );
-  const [approvalSubTab, setApprovalSubTab] = useState(
-    (subtab as ApprovalSubTabs) || ApprovalSubTabs.Requests
-  );
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
@@ -47,55 +34,17 @@ export const CodeSigningPage = () => {
           title="Code Signing"
           description="Manage signers and control who can sign artifacts."
         />
-
-        <Tabs
-          orientation="vertical"
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as CodeSigningTabs)}
-        >
-          <TabList>
-            <Tab variant="project" value={CodeSigningTabs.Signers}>
-              Signers
-            </Tab>
-            <Tab variant="project" value={CodeSigningTabs.Approvals}>
-              Approvals
-            </Tab>
-          </TabList>
-
-          <TabPanel value={CodeSigningTabs.Signers}>
+        <div>
+          {activeTab === "signers" && (
             <SignersTable
               projectId={currentProject.id}
               onCreateSigner={() => setIsCreateOpen(true)}
             />
-          </TabPanel>
-          <TabPanel value={CodeSigningTabs.Approvals}>
-            <Tabs
-              value={approvalSubTab}
-              onValueChange={(value) => setApprovalSubTab(value as ApprovalSubTabs)}
-            >
-              <TabList>
-                <Tab variant="project" value={ApprovalSubTabs.Requests}>
-                  Requests
-                </Tab>
-                <Tab variant="project" value={ApprovalSubTabs.Policies}>
-                  Policies
-                </Tab>
-                <Tab variant="project" value={ApprovalSubTabs.Grants}>
-                  Grants
-                </Tab>
-              </TabList>
-              <TabPanel value={ApprovalSubTabs.Requests}>
-                <CodeSigningRequestsTab />
-              </TabPanel>
-              <TabPanel value={ApprovalSubTabs.Policies}>
-                <CodeSigningPolicyTab />
-              </TabPanel>
-              <TabPanel value={ApprovalSubTabs.Grants}>
-                <CodeSigningGrantsTab />
-              </TabPanel>
-            </Tabs>
-          </TabPanel>
-        </Tabs>
+          )}
+          {activeTab === "signing-requests" && <CodeSigningRequestsTab />}
+          {activeTab === "signing-policies" && <CodeSigningPolicyTab />}
+          {activeTab === "grants" && <CodeSigningGrantsTab />}
+        </div>
       </div>
       <CreateSignerModal
         isOpen={isCreateOpen}

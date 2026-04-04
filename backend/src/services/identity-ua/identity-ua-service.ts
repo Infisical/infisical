@@ -85,7 +85,8 @@ export const identityUaServiceFactory = ({
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
       throw new UnauthorizedError({
-        message: "Invalid credentials"
+        message: "Invalid credentials",
+        detail: { reasonCode: "client_id_not_found" }
       });
     }
 
@@ -113,7 +114,13 @@ export const identityUaServiceFactory = ({
 
       if (lockout && lockout.lockedOut) {
         throw new UnauthorizedError({
-          message: "This identity auth method is temporarily locked, please try again later"
+          message: "This identity auth method is temporarily locked, please try again later",
+          detail: {
+            reasonCode: "temporarily_locked",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -157,7 +164,13 @@ export const identityUaServiceFactory = ({
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
-                message: "This identity auth method is temporarily locked, please try again later"
+                message: "This identity auth method is temporarily locked, please try again later",
+                detail: {
+                  reasonCode: "temporarily_locked",
+                  identityId: identityUa.identityId,
+                  orgId: identity.orgId,
+                  identityName: identity.name
+                }
               });
             }
 
@@ -186,7 +199,15 @@ export const identityUaServiceFactory = ({
           }
         }
 
-        throw new UnauthorizedError({ message: "Invalid credentials" });
+        throw new UnauthorizedError({
+          message: "Invalid credentials",
+          detail: {
+            reasonCode: "invalid_client_secret",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
         await keyStore.deleteItem(LOCKOUT_KEY);
@@ -205,7 +226,13 @@ export const identityUaServiceFactory = ({
           });
 
           throw new UnauthorizedError({
-            message: "Access denied due to expired client secret"
+            message: "Access denied due to expired client secret",
+            detail: {
+              reasonCode: "client_secret_expired",
+              identityId: identityUa.identityId,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
@@ -217,7 +244,13 @@ export const identityUaServiceFactory = ({
           isClientSecretRevoked: true
         });
         throw new UnauthorizedError({
-          message: "Access denied due to client secret usage limit reached"
+          message: "Access denied due to client secret usage limit reached",
+          detail: {
+            reasonCode: "client_secret_usage_limit_reached",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -234,7 +267,7 @@ export const identityUaServiceFactory = ({
               accessTokenMaxTTL: 1000000000
             };
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -251,7 +284,13 @@ export const identityUaServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identityUa.identityId,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

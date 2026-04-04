@@ -120,10 +120,17 @@ export function ShortTextCell<TData>({
           tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: initialValue });
           cellRef.current?.blur();
         }
-      } else if (isFocused && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
+      } else if (
+        isFocused &&
+        !readOnly &&
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
         // Handle typing to pre-fill the value when editing starts
         prefilledRef.current = event.key;
         setValue(event.key);
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: event.key });
 
         queueMicrotask(() => {
           if (cellRef.current && cellRef.current.contentEditable === "true") {
@@ -625,6 +632,7 @@ export function UrlCell<TData>({
         // Handle typing to pre-fill the value when editing starts
         prefilledRef.current = event.key;
         setValue(event.key);
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: event.key });
 
         queueMicrotask(() => {
           if (cellRef.current && cellRef.current.contentEditable === "true") {

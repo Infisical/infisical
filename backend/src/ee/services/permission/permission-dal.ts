@@ -493,8 +493,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
           qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`).andOn(
-            `${TableName.Membership}.scopeOrgId`,
-            `${TableName.AdditionalPrivilege}.orgId`
+            `${TableName.Membership}.scopeProjectId`,
+            `${TableName.AdditionalPrivilege}.projectId`
           );
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
@@ -684,8 +684,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
           qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`).andOn(
-            `${TableName.Membership}.scopeOrgId`,
-            `${TableName.AdditionalPrivilege}.orgId`
+            `${TableName.Membership}.scopeProjectId`,
+            `${TableName.AdditionalPrivilege}.projectId`
           );
         })
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)

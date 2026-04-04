@@ -48,24 +48,18 @@ export const secretRotationV2QueueServiceFactory = async ({
     logger.warn("Secret Rotation V2 is in development mode.");
   }
 
-  queueService.start(
-    QueueName.SecretRotationV2RotateSecrets,
-    async (job) => {
-      await rotateSecretsFns({
-        job: {
-          id: job.id || job.data?.rotationId,
-          retryCount: job.attemptsMade + 1,
-          retryLimit: job.opts.attempts || 1,
-          data: job.data
-        },
-        secretRotationV2DAL,
-        secretRotationV2Service
-      });
-    },
-    {
-      persistence: true
-    }
-  );
+  queueService.start(QueueName.SecretRotationV2RotateSecrets, async (job) => {
+    await rotateSecretsFns({
+      job: {
+        id: job.id || job.data?.rotationId,
+        retryCount: job.attemptsMade + 1,
+        retryLimit: job.opts.attempts || 1,
+        data: job.data
+      },
+      secretRotationV2DAL,
+      secretRotationV2Service
+    });
+  });
 
   queueService.start(QueueName.SecretRotationV2, async (job) => {
     if (job.name === QueueJobs.SecretRotationV2QueueRotations) {

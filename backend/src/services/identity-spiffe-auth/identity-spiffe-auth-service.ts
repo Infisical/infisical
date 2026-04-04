@@ -291,7 +291,10 @@ export const identitySpiffeAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identitySpiffeAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -317,18 +320,46 @@ export const identitySpiffeAuthServiceFactory = ({
             orgId: identity.orgId,
             forceRefresh: true
           }));
-          tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
+          try {
+            tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
+          } catch (retryError) {
+            if (retryError instanceof UnauthorizedError) {
+              retryError.detail = {
+                reasonCode: "jwt_svid_verification_failed",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              };
+            }
+            throw retryError;
+          }
         } else {
+          if (verifyError instanceof UnauthorizedError) {
+            verifyError.detail = {
+              reasonCode: "jwt_svid_verification_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            };
+          }
           throw verifyError;
         }
       }
 
       if (!validateSpiffeClaims(tokenData, identitySpiffeAuth)) {
-        throw new UnauthorizedError({ message: "Access denied" });
+        throw new UnauthorizedError({
+          message: "Access denied",
+          detail: {
+            reasonCode: "spiffe_claims_invalid",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
       }
 
       // Sub-org resolution
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
           if (!subOrg) {
@@ -343,7 +374,13 @@ export const identitySpiffeAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

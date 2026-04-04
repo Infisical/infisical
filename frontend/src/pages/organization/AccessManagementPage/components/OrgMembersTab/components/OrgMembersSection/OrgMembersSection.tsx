@@ -33,6 +33,7 @@ import {
   useUser
 } from "@app/context";
 import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { useDeleteOrgMembershipBatch } from "@app/hooks/api/users/queries";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -89,7 +90,7 @@ export const OrgMembersSection = () => {
     ? subscription.identitiesUsed < subscription.identityLimit
     : true;
 
-  const isEnterprise = subscription?.slug === "enterprise";
+  const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
 
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
@@ -333,6 +334,7 @@ export const OrgMembersSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}

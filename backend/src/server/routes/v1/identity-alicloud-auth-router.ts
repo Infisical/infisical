@@ -4,12 +4,13 @@ import { z } from "zod";
 import { IdentityAlicloudAuthsSchema, IdentityAuthMethod } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALICLOUD_AUTH, ApiDocsTags } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { validateArns } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -79,43 +80,73 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
       }
     },
     handler: async (req) => {
-      const { identityAliCloudAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityAliCloudAuth.login(req.body);
+      try {
+        const { identityAliCloudAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityAliCloudAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
-          metadata: {
-            identityId: identityAliCloudAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityAliCloudAuthId: identityAliCloudAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
+            metadata: {
+              identityId: identityAliCloudAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityAliCloudAuthId: identityAliCloudAuth.id
+            }
           }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.MachineIdentityLogin,
-          distinctId: `identity-${identityAliCloudAuth.identityId}`,
-          organizationId: identity.orgId,
-          properties: {
-            identityId: identityAliCloudAuth.identityId,
-            orgId: identity.orgId,
-            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
-          }
-        })
-        .catch((error) => {
-          logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
         });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityAliCloudAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityAliCloudAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityAliCloudAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.ALICLOUD_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityAliCloudAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 

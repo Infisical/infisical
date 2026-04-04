@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const RotationRuleResponseSchema = z.object({
   id: z.string().uuid(),
@@ -117,6 +119,20 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamRotationRuleCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: resource.resourceType,
+            projectId: resource.projectId,
+            enabled: rule.enabled,
+            hasSchedule: Boolean(rule.intervalSeconds)
+          }
+        })
+        .catch(() => {});
+
       return { rule };
     }
   });
@@ -223,6 +239,18 @@ export const registerPamResourceRotationRulesRouter = async (server: FastifyZodP
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamRotationRuleDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: resource.resourceType,
+            projectId: resource.projectId
+          }
+        })
+        .catch(() => {});
 
       return { rule };
     }

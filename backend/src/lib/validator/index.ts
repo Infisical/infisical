@@ -10,5 +10,5 @@ export {
   validateSmbPassword,
   validateWindowsUsername
 } from "./validate-smb";
-export { blockLocalAndPrivateIpAddresses } from "./validate-url";
+export { blockLocalAndPrivateIpAddresses, ssrfSafeGet, ssrfSafePost, validateSsrfUrl } from "./validate-url";
 export { isUuidV4 } from "./validate-uuid";
