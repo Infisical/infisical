@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-duplicate-type-constituents */
-import { TMongoDBAccountCredentials, TMongoDBResourceConnectionDetails } from "../../mongodb/mongodb-resource-types";
 import { TMsSQLAccountCredentials, TMsSQLResourceConnectionDetails } from "../../mssql/mssql-resource-types";
 import { TMySQLAccountCredentials, TMySQLResourceConnectionDetails } from "../../mysql/mysql-resource-types";
 import {
@@ -10,11 +9,6 @@ import {
 export type TSqlResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
-  | TMsSQLResourceConnectionDetails
-  | TMongoDBResourceConnectionDetails;
+  | TMsSQLResourceConnectionDetails;
 
-export type TSqlAccountCredentials =
-  | TPostgresAccountCredentials
-  | TMySQLAccountCredentials
-  | TMsSQLAccountCredentials
-  | TMongoDBAccountCredentials;
+export type TSqlAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TMsSQLAccountCredentials;
