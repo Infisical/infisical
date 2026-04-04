@@ -272,7 +272,9 @@ export const SecretEditTableRow = ({
         originalValueRef.current = sharedValueData.value ?? null;
         return;
       }
-      setValue("value", sharedValueData.value ?? null);
+      reset((prev) => ({ ...prev, value: sharedValueData.value ?? null }), {
+        keepDirtyValues: true
+      });
       originalValueRef.current = sharedValueData.value ?? null;
     }
   }, [sharedValueData]);
