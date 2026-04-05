@@ -175,7 +175,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         maxAge: 0
       });
 
-      return { token: tokens.accessToken };
+      return { token: tokens.accessToken, encryptionVersion: 2 };
     }
   });
 
