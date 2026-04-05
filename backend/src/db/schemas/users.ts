@@ -29,9 +29,9 @@ export const UsersSchema = z.object({
   consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional(),
   selectedMfaMethod: z.string().nullable().optional(),
   hashedPassword: z.string().nullable().optional(),
+  isGoogleVerified: z.boolean().nullable().optional(),
   isGitHubVerified: z.boolean().nullable().optional(),
-  isGitLabVerified: z.boolean().nullable().optional(),
-  isGoogleVerified: z.boolean().nullable().optional()
+  isGitLabVerified: z.boolean().nullable().optional()
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;
