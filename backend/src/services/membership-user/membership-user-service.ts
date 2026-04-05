@@ -230,7 +230,7 @@ export const membershipUserServiceFactory = ({
       !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
 
     const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
-    await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
+    await factory.onCreateMembershipUserGuard({ ...dto, data: { ...dto.data, roles: rolesToUse } }, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => {
       let status: OrgMembershipStatus | undefined;
       if (scopeData.scope === AccessScope.Organization) {

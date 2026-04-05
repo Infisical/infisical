@@ -1,12 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -21,7 +25,7 @@ import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TOrgMembershipUserScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   userDAL: Pick<TUserDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -68,7 +72,35 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+
+    const rolesToValidate = dto.data.roles
+      .map(({ role }) => role)
+      .filter((role) => role !== OrgMembershipRole.NoAccess);
+    if (rolesToValidate.length > 0) {
+      const permissionRoles = await permissionService.getOrgPermissionByRoles(rolesToValidate, dto.permission.orgId);
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+      for (const permissionRole of permissionRoles) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionMemberActions.GrantPrivileges,
+          OrgPermissionSubjects.Member,
+          permission,
+          permissionRole.permission
+        );
+        if (!permissionBoundary.isValid) {
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to invite user",
+              shouldUseNewPrivilegeSystem,
+              OrgPermissionMemberActions.GrantPrivileges,
+              OrgPermissionSubjects.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+        }
+      }
+    }
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
@@ -203,7 +235,35 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
+
+    const rolesToValidate = dto.data.roles
+      .map(({ role }) => role)
+      .filter((role) => role !== OrgMembershipRole.NoAccess);
+    if (rolesToValidate.length > 0) {
+      const permissionRoles = await permissionService.getOrgPermissionByRoles(rolesToValidate, dto.permission.orgId);
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+      for (const permissionRole of permissionRoles) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionMemberActions.GrantPrivileges,
+          OrgPermissionSubjects.Member,
+          permission,
+          permissionRole.permission
+        );
+        if (!permissionBoundary.isValid) {
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update user",
+              shouldUseNewPrivilegeSystem,
+              OrgPermissionMemberActions.GrantPrivileges,
+              OrgPermissionSubjects.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+        }
+      }
+    }
   };
 
   const onDeleteMembershipUserGuard: TMembershipUserScopeFactory["onDeleteMembershipUserGuard"] = async (dto) => {
@@ -215,7 +275,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {
@@ -227,7 +287,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   };
 
   const onGetMembershipUserByUserIdGuard: TMembershipUserScopeFactory["onGetMembershipUserByUserIdGuard"] = async (
@@ -241,7 +301,7 @@ export const newOrgMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   };
 
   return {

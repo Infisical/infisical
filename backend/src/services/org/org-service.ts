@@ -19,10 +19,15 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
+  OrgPermissionMemberActions,
   OrgPermissionSecretShareAction,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -30,7 +35,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName } from "@app/queue";
@@ -229,7 +240,7 @@ export const orgServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
@@ -265,7 +276,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findOrgMembersByUsername(orgId, emails);
 
@@ -796,7 +807,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
 
     const foundMembership = await membershipUserDAL.findOne({
       id: membershipId,
@@ -826,6 +837,31 @@ export const orgServiceFactory = ({
       userRole = OrgMembershipRole.Custom;
       userRoleId = customRole.id;
     }
+
+    if (role && role !== OrgMembershipRole.NoAccess) {
+      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], orgId);
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(orgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionMemberActions.GrantPrivileges,
+        OrgPermissionSubjects.Member,
+        permission,
+        rolePermissionDetails.permission
+      );
+
+      if (!permissionBoundary.isValid) {
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to update user org membership",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionMemberActions.GrantPrivileges,
+            OrgPermissionSubjects.Member
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+      }
+    }
+
     const membership = await orgDAL.transaction(async (tx) => {
       // this is because if isActive is undefined then this would fail due to knexjs error
       const [updatedOrgMembership] =
@@ -885,7 +921,7 @@ export const orgServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
     const invitingUser = await userDAL.findOne({ id: actorId });
 
@@ -1042,7 +1078,7 @@ export const orgServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(membershipId);
     if (!membership) {
@@ -1070,7 +1106,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
 
     const [deletedMembership] = await deleteOrgMembershipsFn({
       orgMembershipIds: [membershipId],
@@ -1104,7 +1140,7 @@ export const orgServiceFactory = ({
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
 
     if (membershipIds.includes(userId)) {
       throw new BadRequestError({ message: "You cannot delete your own organization membership" });
@@ -1143,7 +1179,7 @@ export const orgServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
 
     const membership = await orgMembershipDAL.findOrgMembershipById(orgMembershipId);
     if (!membership) {
