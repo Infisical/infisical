@@ -63,6 +63,6 @@ export type TProcessProviderCallbackDTO = {
 };
 
 export type TProviderAuthResult =
-  | { result: ProviderAuthResult.SESSION; tokens: { access: string; refresh: string } }
-  | { result: ProviderAuthResult.MFA_REQUIRED; mfaToken: string; mfaMethod: MfaMethod }
-  | { result: ProviderAuthResult.SIGNUP_REQUIRED; signupToken: string };
+  | { result: ProviderAuthResult.SESSION; tokens: { access: string; refresh: string }; callbackPort?: string }
+  | { result: ProviderAuthResult.MFA_REQUIRED; mfaToken: string; mfaMethod: MfaMethod; callbackPort?: string }
+  | { result: ProviderAuthResult.SIGNUP_REQUIRED; signupToken: string; callbackPort?: string };

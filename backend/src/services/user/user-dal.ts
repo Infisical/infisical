@@ -19,18 +19,6 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
-  const findUserByUsername = async (username: string, tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.Users).whereRaw('lower("username") = :username', {
-      username: username.toLowerCase()
-    });
-
-  const findUserByEmail = async (email: string, tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.Users)
-      .whereRaw('lower("email") = :email', { email: email.toLowerCase() })
-      .where({
-        isEmailVerified: true
-      });
-
   const getUsersByFilter = async ({
     limit,
     offset,
@@ -259,7 +247,6 @@ export const userDALFactory = (db: TDbClient) => {
 
   return {
     ...userOrm,
-    findUserByUsername,
     findUserEncKeyByUsername,
     findUserEncKeyByUserIdsBatch,
     findUserEncKeyByUserId,
@@ -271,7 +258,6 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    findAllMyAccounts,
-    findUserByEmail
+    findAllMyAccounts
   };
 };

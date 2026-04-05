@@ -15,6 +15,7 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -75,24 +76,35 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        domain: z.string().trim(),
+        domain: z.string().trim().optional(),
+        orgSlug: z.string().trim().optional(),
         callbackPort: z.string().trim().optional()
       })
     },
     preValidation: [
       async (req, res) => {
-        const { domain, callbackPort } = req.query;
+        const { domain, orgSlug, callbackPort } = req.query;
+
+        const identifier = domain || orgSlug;
+        if (!identifier) {
+          throw new BadRequestError({ message: "Missing domain or orgSlug query parameter" });
+        }
 
         // ensure fresh session state per login attempt
         await req.session.regenerate();
 
-        req.session.set<any>("oidcDomain", domain);
+        req.session.set<any>("oidcIdentifier", identifier);
+        req.session.set<any>("oidcIdentifierType", domain ? "domain" : "orgSlug");
 
         if (callbackPort) {
           req.session.set<any>("callbackPort", callbackPort);
         }
 
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(domain, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(
+          identifier,
+          domain ? "domain" : "orgSlug",
+          callbackPort
+        );
         return (
           passport.authenticate(oidcStrategy as Strategy, {
             scope: "profile email openid"
@@ -109,9 +121,14 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     preValidation: [
       async (req, res) => {
-        const oidcDomain = req.session.get<any>("oidcDomain");
+        const oidcIdentifier = req.session.get<any>("oidcIdentifier");
+        const oidcIdentifierType = req.session.get<any>("oidcIdentifierType") || "domain";
         const callbackPort = req.session.get<any>("callbackPort");
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcDomain, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(
+          oidcIdentifier,
+          oidcIdentifierType,
+          callbackPort
+        );
 
         return (
           passport.authenticate(oidcStrategy as Strategy, {
@@ -125,6 +142,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       await req.session.destroy();
       const passportResult = req.passportUser;
+      const cbPort = passportResult.callbackPort;
 
       if (passportResult.result === ProviderAuthResult.SESSION) {
         void res.setCookie("jid", passportResult.tokens.refresh, {
@@ -134,11 +152,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           secure: appCfg.HTTPS_ENABLED
         });
         addAuthOriginDomainCookie(res);
-        return res.redirect(`${appCfg.SITE_URL}/login/select-organization`);
+        return res.redirect(`${appCfg.SITE_URL}/login/select-organization${cbPort ? `?callback_port=${cbPort}` : ""}`);
       }
 
       if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-        return res.redirect(`${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`);
+        return res.redirect(
+          `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${cbPort ? `&callback_port=${cbPort}` : ""}`
+        );
       }
 
       throw new Error("Unexpected auth result");

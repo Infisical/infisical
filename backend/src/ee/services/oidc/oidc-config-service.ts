@@ -638,23 +638,32 @@ export const oidcConfigServiceFactory = ({
     return oidcCfg;
   };
 
-  const getOrgAuthStrategy = async (domain: string, callbackPort?: string) => {
+  const getOrgAuthStrategy = async (
+    identifier: string,
+    identifierType: "domain" | "orgSlug" = "domain",
+    callbackPort?: string
+  ) => {
     const appCfg = getConfig();
-    const verifiedDomain = await findOrgIdByVerifiedDomain({ domain, emailDomainDAL });
 
-    if (!verifiedDomain) {
-      throw new ForbiddenRequestError({
-        message: "Failed to authenticate with OIDC SSO"
-      });
+    let resolvedOrgId: string;
+
+    if (identifierType === "domain") {
+      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: identifier, emailDomainDAL });
+      if (!verifiedDomain) {
+        throw new ForbiddenRequestError({ message: "Failed to authenticate with OIDC SSO" });
+      }
+      resolvedOrgId = verifiedDomain.orgId;
+    } else {
+      const org = await orgDAL.findOne({ slug: identifier, rootOrgId: null });
+      if (!org) {
+        throw new ForbiddenRequestError({ message: "Failed to authenticate with OIDC SSO" });
+      }
+      resolvedOrgId = org.id;
     }
-
-    const org = await orgDAL.findOne({
-      id: verifiedDomain.orgId
-    });
 
     const oidcCfg = await getOidc({
       type: "internal",
-      organizationId: verifiedDomain.orgId
+      organizationId: resolvedOrgId
     });
 
     if (!oidcCfg || !oidcCfg.isActive) {
@@ -662,6 +671,7 @@ export const oidcConfigServiceFactory = ({
         message: "Failed to authenticate with OIDC SSO"
       });
     }
+    const org = await orgDAL.findOne({ id: resolvedOrgId });
 
     let issuer: Issuer;
     if (oidcCfg.configurationType === OIDCConfigurationType.DISCOVERY_URL) {

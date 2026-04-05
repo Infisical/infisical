@@ -45,6 +45,10 @@ export type TGetSamlCfgDTO =
       domain: string;
     }
   | {
+      type: "orgSlug";
+      orgSlug: string;
+    }
+  | {
       type: "ssoId";
       id: string;
     };

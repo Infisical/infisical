@@ -52,7 +52,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
-            const { samlConfigId, domain } = req.params;
+            const { samlConfigId, domain, orgSlug } = req.params;
 
             let ssoLookupDetails: TGetSamlCfgDTO;
 
@@ -60,6 +60,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               ssoLookupDetails = {
                 type: "domain",
                 domain
+              };
+            } else if (orgSlug) {
+              ssoLookupDetails = {
+                type: "orgSlug",
+                orgSlug
               };
             } else if (samlConfigId) {
               ssoLookupDetails = {
@@ -200,7 +205,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   );
 
   server.route({
-    url: "/redirect/saml2/organizations/:domain",
+    url: "/redirect/saml2/organizations/domain/:domain",
     method: "GET",
     config: {
       rateLimit: readLimit
@@ -208,6 +213,35 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({
         domain: z.string().trim()
+      }),
+      querystring: z.object({
+        callback_port: z.string().optional()
+      })
+    },
+    preValidation: (req, res) =>
+      (
+        passport.authenticate("saml", {
+          failureRedirect: "/",
+          additionalParams: {
+            RelayState: JSON.stringify({
+              spInitiated: true,
+              callbackPort: req.query.callback_port ?? ""
+            })
+          }
+        } as any) as any
+      )(req, res),
+    handler: () => {}
+  });
+
+  server.route({
+    url: "/redirect/saml2/organizations/:orgSlug",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        orgSlug: z.string().trim()
       }),
       querystring: z.object({
         callback_port: z.string().optional()
@@ -282,6 +316,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     ) as any, // this is due to zod type difference
     handler: (req, res) => {
       const passportResult = req.passportUser;
+      const cbPort = passportResult.callbackPort;
 
       if (passportResult.result === ProviderAuthResult.SESSION) {
         void res.setCookie("jid", passportResult.tokens.refresh, {
@@ -291,11 +326,13 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           secure: appCfg.HTTPS_ENABLED
         });
         addAuthOriginDomainCookie(res);
-        return res.redirect(`${appCfg.SITE_URL}/login/select-organization`);
+        return res.redirect(`${appCfg.SITE_URL}/login/select-organization${cbPort ? `?callback_port=${cbPort}` : ""}`);
       }
 
       if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-        return res.redirect(`${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`);
+        return res.redirect(
+          `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${cbPort ? `&callback_port=${cbPort}` : ""}`
+        );
       }
 
       throw new BadRequestError({ message: "Unexpected auth result" });

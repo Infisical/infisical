@@ -268,7 +268,8 @@
                       "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
-                  }
+                  },
+                  "documentation/platform/email-domain"
                 ]
               },
               {

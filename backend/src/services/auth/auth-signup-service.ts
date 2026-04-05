@@ -1,8 +1,8 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { isDisposableEmail } from "@app/lib/validator";
+import { isDisposableEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -43,6 +43,7 @@ export const authSignupServiceFactory = ({
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
     const sanitizedEmail = email.trim().toLowerCase();
+    validateEmail(email);
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new Error("Provided a disposable email");
@@ -94,6 +95,7 @@ export const authSignupServiceFactory = ({
 
   const verifyEmailSignup = async (email: string, code: string) => {
     const sanitizedEmail = email.trim().toLowerCase();
+    validateEmail(email);
     const user = await userDAL.findOne({ username: sanitizedEmail });
 
     // Always call validateTokenForUser so the response time includes
@@ -229,6 +231,19 @@ export const authSignupServiceFactory = ({
       }
       if (!user.isAccepted) {
         userUpdates.isAccepted = true;
+      }
+
+      if (userAlias?.orgId) {
+        await orgDAL.updateMembership(
+          {
+            actorUserId: user.id,
+            scope: AccessScope.Organization,
+            scopeOrgId: userAlias.orgId
+          },
+          {
+            status: OrgMembershipStatus.Accepted
+          }
+        );
       }
 
       user = await userDAL.updateById(user.id, userUpdates);

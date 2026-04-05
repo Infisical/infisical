@@ -32,9 +32,7 @@ export const accountRecoveryServiceFactory = ({
    */
   const sendRecoveryEmail = async (email: string) => {
     const sendEmail = async () => {
-      const users = await userDAL.findUserByUsername(email);
-      // akhilmhdh: case sensitive email resolution
-      const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
+      const user = await userDAL.findOne({ username: email });
       if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
       if (user && user.isAccepted) {
@@ -86,11 +84,7 @@ export const accountRecoveryServiceFactory = ({
    */
   const verifyRecoveryEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const users = await userDAL.findUserByUsername(email);
-    // akhilmhdh: case sensitive email resolution
-    const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
-    if (!user) throw new BadRequestError({ message: "Failed to find user data" });
-    // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
+    const user = await userDAL.findOne({ username: email });
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");
     }

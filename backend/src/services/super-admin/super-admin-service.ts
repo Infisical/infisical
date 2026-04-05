@@ -23,7 +23,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { isDisposableEmail } from "@app/lib/validator";
+import { isDisposableEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -780,6 +780,21 @@ export const superAdminServiceFactory = ({
       });
     }
 
+    const invalidEmailFormats = inviteAdminEmails.filter((email) => {
+      try {
+        validateEmail(email);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    if (invalidEmailFormats.length > 0) {
+      throw new BadRequestError({
+        message: `Invalid email formats: ${invalidEmailFormats.join(", ")}`,
+        name: "InviteUser"
+      });
+    }
+
     const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
       const org = await orgService.createOrganization(
         {
@@ -792,30 +807,19 @@ export const superAdminServiceFactory = ({
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
       for await (const inviteeEmail of inviteAdminEmails) {
-        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
-        let inviteeUser =
-          usersByUsername?.length > 1
-            ? usersByUsername.find((el) => el.username === inviteeEmail)
-            : usersByUsername?.[0];
-
+        let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
         // if the user doesn't exist we create the user with the email
         if (!inviteeUser) {
-          // TODO(carlos): will be removed once the function receives usernames instead of emails
-          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
-          if (usersByEmail?.length === 1) {
-            [inviteeUser] = usersByEmail;
-          } else {
-            inviteeUser = await userDAL.create(
-              {
-                isAccepted: false,
-                email: inviteeEmail,
-                username: inviteeEmail,
-                authMethods: [AuthMethod.EMAIL],
-                isGhost: false
-              },
-              tx
-            );
-          }
+          inviteeUser = await userDAL.create(
+            {
+              isAccepted: false,
+              email: inviteeEmail,
+              username: inviteeEmail,
+              authMethods: [AuthMethod.EMAIL],
+              isGhost: false
+            },
+            tx
+          );
         }
 
         const inviteeUserId = inviteeUser?.id;

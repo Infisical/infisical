@@ -945,9 +945,7 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const usersByUsername = await userDAL.findUserByUsername(email);
-    const user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+    const user = await userDAL.findOne({ username: email });
     if (!user) {
       throw new NotFoundError({ message: "User not found" });
     }

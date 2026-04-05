@@ -383,6 +383,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     const isAdminLogin = req.session.get("isAdminLogin");
     await req.session.destroy();
     const passportResult = req.passportUser;
+    const cbPort = passportResult.callbackPort;
 
     if (passportResult.result === ProviderAuthResult.SESSION) {
       void res.setCookie("jid", passportResult.tokens.refresh, {
@@ -392,18 +393,27 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
       addAuthOriginDomainCookie(res);
+      const sessionParams = [
+        isAdminLogin ? `isAdminLogin=${isAdminLogin}` : "",
+        cbPort ? `callback_port=${cbPort}` : ""
+      ]
+        .filter(Boolean)
+        .join("&");
       return res.redirect(
-        `${appCfg.SITE_URL}/login/select-organization${isAdminLogin ? `?isAdminLogin=${isAdminLogin}` : ""}`
+        `${appCfg.SITE_URL}/login/select-organization${sessionParams ? `?${sessionParams}` : ""}`
       );
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
       const serverCfg = await getServerCfg();
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${
-          serverCfg.defaultAuthOrgId && !appCfg.isCloud ? `&defaultOrgAllowed=true` : ""
-        }`
-      );
+      const signupParams = [
+        `token=${encodeURIComponent(passportResult.signupToken)}`,
+        serverCfg.defaultAuthOrgId && !appCfg.isCloud ? "defaultOrgAllowed=true" : "",
+        cbPort ? `callback_port=${cbPort}` : ""
+      ]
+        .filter(Boolean)
+        .join("&");
+      return res.redirect(`${appCfg.SITE_URL}/signup/sso?${signupParams}`);
     }
 
     throw new BadRequestError({ message: "Unexpected auth result" });

@@ -421,31 +421,24 @@ export const samlConfigServiceFactory = ({
   const getSaml: TSamlConfigServiceFactory["getSaml"] = async (dto) => {
     let samlConfig: TSamlConfigs | undefined;
     if (dto.type === "org") {
-      samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId, isActive: true });
+      samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
       if (!samlConfig) {
         throw new NotFoundError({
           message: `SAML configuration for organization with ID '${dto.orgId}' not found`
         });
       }
     } else if (dto.type === "domain") {
-      // If orgSlug starts with @, treat the rest as a domain name and resolve via verified email domains
       const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: dto.domain, emailDomainDAL });
-      if (verifiedDomain) {
-        const resolvedOrgId = verifiedDomain.orgId;
-        samlConfig = await samlConfigDAL.findOne({ orgId: resolvedOrgId, isActive: true });
-      } else {
-        logger.error(`No verified domain found for domain '${dto.domain}'`);
+      if (!verifiedDomain) {
+        throw new NotFoundError({ message: `No verified domain found for '${dto.domain}'` });
       }
-
-      // if (!resolvedOrgId) {
-      //   const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
-      //   if (!org) {
-      //     throw new NotFoundError({
-      //       message: `Organization with slug '${dto.orgSlug}' not found`
-      //     });
-      //   }
-      //   resolvedOrgId = org.id;
-      // }
+      samlConfig = await samlConfigDAL.findOne({ orgId: verifiedDomain.orgId, isActive: true });
+    } else if (dto.type === "orgSlug") {
+      const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
+      if (!org) {
+        throw new NotFoundError({ message: `Organization with slug '${dto.orgSlug}' not found` });
+      }
+      samlConfig = await samlConfigDAL.findOne({ orgId: org.id, isActive: true });
     } else if (dto.type === "ssoId") {
       // TODO:
       // We made this change because saml config ids were not moved over during the migration

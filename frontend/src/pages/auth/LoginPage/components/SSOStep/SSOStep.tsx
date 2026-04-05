@@ -44,7 +44,7 @@ export const SSOStep = ({ setSection, type }: Props) => {
     saveLastLogin({ method: matchingMethod, orgSlug: ssoEmail });
 
     if (type === "SAML") {
-      window.location.href = `/api/v1/sso/redirect/saml2/organizations/${identifier}${
+      window.location.href = `/api/v1/sso/redirect/saml2/organizations/domain/${identifier}${
         callbackPort ? `?callback_port=${callbackPort}` : ""
       }`;
     } else {

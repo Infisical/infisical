@@ -120,6 +120,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     }) as any,
     handler: (req, res) => {
       const passportResult = req.passportUser;
+      const cbPort = passportResult.callbackPort;
       let nextUrl;
 
       if (passportResult.result === ProviderAuthResult.SESSION) {
@@ -129,9 +130,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });
-        nextUrl = `${appCfg.SITE_URL}/login/select-organization`;
+        nextUrl = `${appCfg.SITE_URL}/login/select-organization${cbPort ? `?callback_port=${cbPort}` : ""}`;
       } else if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-        nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}`;
+        nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${cbPort ? `&callback_port=${cbPort}` : ""}`;
       } else {
         throw new BadRequestError({ message: "Unexpected auth result" });
       }

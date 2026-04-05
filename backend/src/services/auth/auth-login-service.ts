@@ -26,6 +26,7 @@ import {
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -340,7 +341,7 @@ export const authLoginServiceFactory = ({
         { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
       );
 
-      return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken } as const;
+      return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken, callbackPort } as const;
     }
 
     // Step 2: For org-scoped IdP flows with MFA, issue tokens without org scope
@@ -359,7 +360,7 @@ export const authLoginServiceFactory = ({
             authMethod
           });
 
-          return { result: ProviderAuthResult.SESSION, tokens } as const;
+          return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
         }
       }
     }
@@ -386,7 +387,7 @@ export const authLoginServiceFactory = ({
       );
     }
 
-    return { result: ProviderAuthResult.SESSION, tokens } as const;
+    return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
   };
 
   /*
@@ -839,6 +840,8 @@ export const authLoginServiceFactory = ({
     userAgent
   }: TOauthLoginDTO) => {
     const aliasType = authMethodToAliasType(authMethod);
+    const normalizedEmail = email.trim().toLowerCase();
+    validateEmail(normalizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
@@ -850,7 +853,7 @@ export const authLoginServiceFactory = ({
 
     // Step 2: Fall back to email lookup for existing users without an alias yet
     if (!user) {
-      user = await userDAL.findOne({ username: email });
+      user = await userDAL.findOne({ username: normalizedEmail });
       if (user) {
         isNewAlias = true;
       }
@@ -925,8 +928,8 @@ export const authLoginServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
-            username: email.trim().toLowerCase(),
-            email: email.trim().toLowerCase(),
+            username: normalizedEmail,
+            email: normalizedEmail,
             isEmailVerified: false,
             isAccepted: false,
             firstName,
@@ -957,7 +960,7 @@ export const authLoginServiceFactory = ({
             const membership = await membershipUserDAL.create(
               {
                 actorUserId: newUser.id,
-                inviteEmail: email,
+                inviteEmail: normalizedEmail,
                 scopeOrgId: orgId,
                 scope: AccessScope.Organization,
                 status: OrgMembershipStatus.Accepted,
@@ -981,7 +984,7 @@ export const authLoginServiceFactory = ({
             userId: newUser.id,
             aliasType,
             externalId: providerUserId,
-            emails: [email],
+            emails: [normalizedEmail],
             orgId: orgId || null,
             isEmailVerified: false
           },
@@ -1002,10 +1005,8 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      // Sync email/username if the provider email has changed (user found by alias)
-      const normalizedProviderEmail = email.trim().toLowerCase();
-      if (existingAlias && user.email !== normalizedProviderEmail) {
-        const conflictingUser = await userDAL.findOne({ username: normalizedProviderEmail });
+      if (existingAlias && user.email !== normalizedEmail) {
+        const conflictingUser = await userDAL.findOne({ username: normalizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
             message:
@@ -1018,8 +1019,8 @@ export const authLoginServiceFactory = ({
           const updatedUser = await userDAL.updateById(
             user!.id,
             {
-              username: normalizedProviderEmail,
-              email: normalizedProviderEmail,
+              username: normalizedEmail,
+              email: normalizedEmail,
               isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
               isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
               isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
@@ -1030,7 +1031,7 @@ export const authLoginServiceFactory = ({
           await userAliasDAL.updateById(
             existingAlias.id,
             {
-              emails: [normalizedProviderEmail]
+              emails: [normalizedEmail]
             },
             tx
           );
