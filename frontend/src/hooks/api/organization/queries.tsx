@@ -22,11 +22,7 @@ import {
   UpdateOrgDTO
 } from "./types";
 
-export type TOrgWithSubOrgs = {
-  id: string;
-  name: string;
-  slug: string;
-  createdAt: string;
+export type TOrgWithSubOrgs = Organization & {
   userJoinedAt?: string | null;
   subOrganizations: { id: string; name: string; slug: string; userJoinedAt?: string | null }[];
 };

@@ -17,7 +17,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
-  useGetOrganizations,
   useGetOrganizationsWithSubOrgs,
   useGetUser,
   useLogoutUser,
@@ -25,12 +24,10 @@ import {
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
 import { getAuthToken, isLoggedIn, setAuthToken } from "@app/hooks/api/reactQuery";
-import { Organization } from "@app/hooks/api/types";
 import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
-// Shared org row component to avoid repeating the same layout + userJoinedAt logic
 const OrgRow = ({
   name,
   label,
@@ -84,8 +81,7 @@ export const SelectOrgPage = () => {
     mfa_pending: mfaPending
   } = search;
 
-  const organizations = useGetOrganizations();
-  const orgsWithSubOrgs = useGetOrganizationsWithSubOrgs();
+  const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
   const selectOrg = useSelectOrganization();
   const { data: user, isPending: userLoading } = useGetUser();
   const logout = useLogoutUser();
@@ -95,31 +91,6 @@ export const SelectOrgPage = () => {
   const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
-
-  const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
-
-  // Build a flat lookup map: orgId → { org (full Organization), rootOrg? (for sub-orgs) }
-  const orgLookup = useMemo(() => {
-    const map = new Map<string, { org: Organization; rootOrg?: Organization }>();
-    if (!organizations.data || !orgsWithSubOrgs.data) return map;
-
-    organizations.data.forEach((fullOrg) => {
-      map.set(fullOrg.id, { org: fullOrg });
-    });
-
-    orgsWithSubOrgs.data.forEach((entry) => {
-      const rootOrg = organizations.data.find((o) => o.id === entry.id);
-      if (!rootOrg) return;
-
-      entry.subOrganizations.forEach((sub) => {
-        if (!map.has(sub.id)) {
-          map.set(sub.id, { org: { ...rootOrg, id: sub.id }, rootOrg });
-        }
-      });
-    });
-
-    return map;
-  }, [organizations.data, orgsWithSubOrgs.data]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -131,11 +102,11 @@ export const SelectOrgPage = () => {
   }, [logout, navigate]);
 
   const filteredOrgs = useMemo(() => {
-    if (!orgsWithSubOrgs.data) return [];
-    if (!searchTerm.trim()) return orgsWithSubOrgs.data;
+    if (!orgs) return [];
+    if (!searchTerm.trim()) return orgs;
 
     const term = searchTerm.toLowerCase();
-    return orgsWithSubOrgs.data
+    return orgs
       .filter(
         (org) =>
           org.name.toLowerCase().includes(term) ||
@@ -147,12 +118,12 @@ export const SelectOrgPage = () => {
           ? org.subOrganizations
           : org.subOrganizations.filter((sub) => sub.name.toLowerCase().includes(term))
       }));
-  }, [orgsWithSubOrgs.data, searchTerm]);
+  }, [orgs, searchTerm]);
 
   const totalOrgCount = useMemo(() => {
-    if (!orgsWithSubOrgs.data) return 0;
-    return orgsWithSubOrgs.data.reduce((sum, org) => sum + 1 + org.subOrganizations.length, 0);
-  }, [orgsWithSubOrgs.data]);
+    if (!orgs) return 0;
+    return orgs.reduce((sum, org) => sum + 1 + org.subOrganizations.length, 0);
+  }, [orgs]);
 
   const filteredSubOrgs = useMemo(() => {
     if (!selectedRootOrg) return [];
@@ -161,11 +132,13 @@ export const SelectOrgPage = () => {
     return selectedRootOrg.subOrganizations.filter((sub) => sub.name.toLowerCase().includes(term));
   }, [selectedRootOrg, searchTerm]);
 
+  // For sub-orgs, inherit the root org's SSO settings but override the ID
   const handleSelectOrganization = useCallback(
-    async (organization: Organization) => {
-      const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isBreakglassRoute;
+    async (org: TOrgWithSubOrgs, subOrgId?: string) => {
+      const targetOrgId = subOrgId || org.id;
+      const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
 
-      if (isBreakglassRoute && !organization.bypassOrgAuthEnabled) {
+      if (isBreakglassRoute && !org.bypassOrgAuthEnabled) {
         createNotification({
           text: "This organization does not have bypass org auth enabled",
           type: "error"
@@ -173,24 +146,23 @@ export const SelectOrgPage = () => {
         return;
       }
 
-      // SSO enforcement: block and notify instead of logging out
-      if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
+      if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
         const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
 
         let ssoRequired = false;
         let ssoType = "";
 
-        if (organization.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
+        if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
           ssoRequired = true;
           ssoType = "Google SSO";
         } else if (
-          organization.orgAuthMethod === AuthMethod.OIDC &&
+          org.orgAuthMethod === AuthMethod.OIDC &&
           authToken.authMethod !== AuthMethod.OIDC
         ) {
           ssoRequired = true;
           ssoType = "OIDC SSO";
         } else if (
-          organization.orgAuthMethod === AuthMethod.SAML &&
+          org.orgAuthMethod === AuthMethod.SAML &&
           !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
         ) {
           ssoRequired = true;
@@ -212,7 +184,7 @@ export const SelectOrgPage = () => {
 
       try {
         const result = await selectOrg.mutateAsync({
-          organizationId: organization.id,
+          organizationId: targetOrgId,
           userAgent: callbackPort ? UserAgentType.CLI : undefined
         });
         token = result.token;
@@ -232,7 +204,7 @@ export const SelectOrgPage = () => {
           setRequiredMfaMethod(mfaMethod);
         }
         toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleSelectOrganization(organization));
+        setMfaSuccessCallback(() => () => handleSelectOrganization(org, subOrgId));
         return;
       }
 
@@ -266,61 +238,46 @@ export const SelectOrgPage = () => {
         navigate({ to: "/cli-redirect" });
       } else {
         setAuthToken(token);
-        navigateUserToOrg({ navigate, organizationId: organization.id });
+        navigateUserToOrg({ navigate, organizationId: targetOrgId });
       }
     },
     [selectOrg, callbackPort, isBreakglassRoute, user, router, toggleShowMfa, navigate]
   );
 
-  const handleLoginById = useCallback(
-    (id: string) => {
-      const entry = orgLookup.get(id);
-      if (entry) {
-        handleSelectOrganization(entry.org);
-        return;
-      }
-      createNotification({ text: "Organization not found", type: "error" });
-    },
-    [orgLookup, handleSelectOrganization]
-  );
-
-  const handleCliRedirect = useCallback(() => {
-    const authToken = getAuthToken();
-
-    if (authToken && !callbackPort) {
-      const decodedJwt = jwtDecode(authToken) as any;
-      if (decodedJwt?.organizationId) {
-        navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
-      }
-    }
-
-    if (!isLoggedIn()) {
-      navigate({ to: "/login" });
-    }
-  }, [callbackPort, navigate]);
-
   // CLI redirect on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => {
-    if (callbackPort) handleCliRedirect();
+    if (callbackPort) {
+      const authToken = getAuthToken();
+      if (authToken && !callbackPort) {
+        const decodedJwt = jwtDecode(authToken) as any;
+        if (decodedJwt?.organizationId) {
+          navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
+        }
+      }
+      if (!isLoggedIn()) {
+        navigate({ to: "/login" });
+      }
+    }
   }, []);
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => {
-    if (mfaPending && defaultSelectedOrg) {
+    const defaultOrg = orgs?.find((o) => o.id === orgId);
+    if (mfaPending && defaultOrg) {
       const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
       if (storedMfaToken) {
         sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
         SecurityClient.setMfaToken(storedMfaToken);
         toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleSelectOrganization(defaultSelectedOrg));
+        setMfaSuccessCallback(() => () => handleSelectOrganization(defaultOrg));
       }
     }
-  }, [mfaPending, defaultSelectedOrg]);
+  }, [mfaPending, orgs, orgId]);
 
   const renderListContent = () => {
-    if (orgsWithSubOrgs.isPending) {
+    if (orgsLoading) {
       return (
         <div className="flex justify-center py-6">
           <Spinner size="sm" />
@@ -334,11 +291,8 @@ export const SelectOrgPage = () => {
           <OrgRow
             name={selectedRootOrg.name}
             label="Root organization"
-            joinedAt={
-              selectedRootOrg.userJoinedAt ??
-              organizations.data?.find((o) => o.id === selectedRootOrg.id)?.userJoinedAt
-            }
-            onClick={() => handleLoginById(selectedRootOrg.id)}
+            joinedAt={selectedRootOrg.userJoinedAt}
+            onClick={() => handleSelectOrganization(selectedRootOrg)}
             variant="root"
           />
           <p className="px-1 pt-1 text-xs font-medium tracking-wider text-mineshaft-400 uppercase">
@@ -354,7 +308,7 @@ export const SelectOrgPage = () => {
                 key={sub.id}
                 name={sub.name}
                 joinedAt={sub.userJoinedAt}
-                onClick={() => handleLoginById(sub.id)}
+                onClick={() => handleSelectOrganization(selectedRootOrg, sub.id)}
                 variant="sub"
               />
             ))
@@ -367,13 +321,11 @@ export const SelectOrgPage = () => {
       return <p className="py-4 text-center text-sm text-mineshaft-400">No organizations found</p>;
     }
 
-    const isSearching = !!searchTerm.trim();
+    const isSearching = Boolean(searchTerm.trim());
     return (
       <div className="space-y-2">
         {filteredOrgs.map((org) => {
           const hasSubOrgs = org.subOrganizations.length > 0;
-          const joinedAt =
-            org.userJoinedAt ?? organizations.data?.find((o) => o.id === org.id)?.userJoinedAt;
 
           return (
             <div key={org.id}>
@@ -381,15 +333,15 @@ export const SelectOrgPage = () => {
                 <div className="relative overflow-clip rounded-md border border-mineshaft-600 text-gray-200 shadow-md">
                   <button
                     type="button"
-                    onClick={() => handleLoginById(org.id)}
+                    onClick={() => handleSelectOrganization(org)}
                     aria-label={`Login to ${org.name}`}
                     className="group relative z-10 flex w-full cursor-pointer items-center justify-between bg-mineshaft-700 px-4 py-3 transition-colors hover:bg-mineshaft-600"
                   >
                     <div className="flex flex-col items-start gap-1.5">
                       <p className="truncate transition-colors">{org.name}</p>
-                      {joinedAt && (
+                      {org.userJoinedAt && (
                         <p className="text-xs text-mineshaft-400">
-                          Member since {format(new Date(joinedAt), "MMM d yyyy")}
+                          Member since {format(new Date(org.userJoinedAt), "MMM d yyyy")}
                         </p>
                       )}
                     </div>
@@ -409,8 +361,8 @@ export const SelectOrgPage = () => {
               ) : (
                 <OrgRow
                   name={org.name}
-                  joinedAt={joinedAt}
-                  onClick={() => handleLoginById(org.id)}
+                  joinedAt={org.userJoinedAt}
+                  onClick={() => handleSelectOrganization(org)}
                 />
               )}
 
@@ -422,7 +374,7 @@ export const SelectOrgPage = () => {
                       name={sub.name}
                       label="Sub-organization"
                       joinedAt={sub.userJoinedAt}
-                      onClick={() => handleLoginById(sub.id)}
+                      onClick={() => handleSelectOrganization(org, sub.id)}
                       variant="sub"
                     />
                   ))}

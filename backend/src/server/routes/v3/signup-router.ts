@@ -90,7 +90,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/complete-account/signup",
+    url: "/complete-account",
     method: "POST",
     config: {
       rateLimit: authRateLimit
@@ -109,8 +109,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         }),
         z.object({
           type: z.literal(CompleteAccountType.Alias),
-          code: z.string().trim(),
-          organizationName: GenericResourceNameSchema.optional()
+          code: z.string().trim()
         })
       ]),
       response: {

@@ -1,0 +1,180 @@
+---
+title: "Email Domain Verification"
+description: "Learn how to verify your organization's email domains for secure SSO and user provisioning."
+---
+
+<Info>
+  Email Domain Verification is a paid feature. If you're using Infisical Cloud,
+  then it is available under the **Pro Tier**. If you're self-hosting Infisical,
+  then you should contact sales@infisical.com to purchase an enterprise license
+  to use it.
+</Info>
+
+## Overview
+
+Email Domain Verification allows organizations to prove ownership of their email domains (e.g., `company.com`) through DNS verification. Once verified, the domain is exclusively linked to your organization, enabling:
+
+- **Secure SSO login** — Users can log in via SAML, OIDC, or LDAP using just their work email. Infisical automatically routes them to the correct organization's identity provider.
+- **SCIM provisioning** — SCIM user provisioning requires a verified email domain to ensure only authorized organizations can manage users.
+- **Simplified login experience** — Users enter their work email to login in via SSO.
+
+## How It Works
+
+Email domain verification uses DNS TXT records to prove ownership. The flow is:
+
+1. **Add a domain** — Enter the domain you want to verify (e.g., `company.com`).
+2. **Get a verification code** — Infisical generates a unique verification code and DNS record name.
+3. **Add a DNS TXT record** — Add the verification record to your domain's DNS configuration.
+4. **Verify** — Infisical checks the DNS TXT record and marks the domain as verified.
+
+The verification code expires after **7 days**. You must complete verification within this window.
+
+### DNS Record Format
+
+| Field            | Value                                               |
+| ---------------- | --------------------------------------------------- |
+| **Record Type**  | TXT                                                 |
+| **Record Name**  | `_infisical-verification.yourdomain.com`            |
+| **Record Value** | `infisical-domain-verification=<verification-code>` |
+
+<Note>
+  Some DNS providers automatically append your domain to the record name. In
+  that case, enter only `_infisical-verification` as the host/name.
+</Note>
+
+## Setting Up Email Domain Verification
+
+<Steps>
+  <Step title="Navigate to Email Domain Settings">
+    Go to **Organization Settings** → **Authentication** → scroll down to the **Email Domains** section.
+
+    {/* ![Email Domains Section](/images/platform/email-domain/email-domains-section.png) */}
+
+  </Step>
+
+  <Step title="Add an Email Domain">
+    Click **Add domain** and enter the domain you want to verify (e.g., `company.com`).
+
+    {/* ![Add Domain Modal](/images/platform/email-domain/add-domain-modal.png) */}
+
+    Click **Add Domain** to create the verification request.
+
+  </Step>
+
+  <Step title="Copy DNS Verification Details">
+    After adding the domain, click the **eye icon** (View details & Verify) on the pending domain row.
+
+    A modal will show you the DNS TXT record details:
+    - **Record Name** — The DNS hostname to add the TXT record to.
+    - **Record Value** — The verification string to use as the TXT record value.
+
+    Copy both values using the copy buttons.
+
+    {/* ![Verification Details Modal](/images/platform/email-domain/verification-modal.png) */}
+
+  </Step>
+
+  <Step title="Add the DNS TXT Record">
+    Go to your domain's DNS management panel (e.g., Cloudflare, Route 53, GoDaddy) and add a new TXT record with the copied values.
+
+    | Setting | Value |
+    |---------|-------|
+    | Type | TXT |
+    | Name/Host | `_infisical-verification` (or `_infisical-verification.yourdomain.com`) |
+    | Value/Content | `infisical-domain-verification=<your-code>` |
+    | TTL | Auto or 3600 |
+
+    <Note>
+      DNS changes can take up to **48 hours** to propagate, though most providers update within minutes.
+    </Note>
+
+  </Step>
+
+  <Step title="Verify the Domain">
+    Return to the Infisical Email Domains section and click **View details & Verify** on the pending domain.
+
+    Click the **Verify Domain** button. Infisical will perform a DNS TXT lookup to confirm the record exists and matches.
+
+    Once verified, the domain status changes to **Verified** and it's exclusively linked to your organization.
+
+    {/* ![Verified Domain](/images/platform/email-domain/verified-domain.png) */}
+
+  </Step>
+</Steps>
+
+## SSO Login with Email Domain
+
+Once your domain is verified, users can log in via SSO by entering their work email instead of an organization slug.
+
+<Steps>
+  <Step title="Go to the Login Page">
+    Navigate to the Infisical login page and select **SAML SSO** or **OIDC SSO**.
+  </Step>
+
+  <Step title="Enter Work Email">
+    Enter your full work email (e.g., `you@company.com`). Infisical extracts the domain and looks up the verified domain to find your organization's SSO configuration.
+
+    {/* ![SSO Email Login](/images/platform/email-domain/sso-email-login.png) */}
+
+  </Step>
+
+  <Step title="Authenticate via IdP">
+    You'll be redirected to your organization's identity provider (Okta, Azure AD, Google Workspace, etc.) to complete authentication.
+  </Step>
+</Steps>
+
+## Domain Hierarchy
+
+Email domains are verified at the exact domain level:
+
+- Verifying `company.com` covers only `user@company.com` — **not** `user@sub.company.com`.
+- Each subdomain must be verified separately if you want SSO to work for subdomain email addresses.
+- You can verify both a parent domain and its subdomains independently.
+
+## Platform-Level Uniqueness
+
+Each domain can only be verified by **one organization** across the entire Infisical instance:
+
+- If Organization A verifies `company.com`, Organization B cannot verify or claim the same domain.
+- This prevents cross-organization user provisioning attacks where a malicious org could claim users by email domain.
+
+## SCIM Integration
+
+When [SCIM provisioning](/documentation/platform/scim/overview) is enabled, email domain verification is **required**:
+
+- SCIM `POST /Users` requests are validated against the organization's verified domains.
+- If the user's email domain is not verified by the SCIM token's organization, the request is rejected.
+- SCIM `PATCH` and `PUT` operations that change a user's email are blocked — email is treated as an immutable identifier.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What happens if DNS verification fails?">
+    If the DNS TXT record is not found or doesn't match, verification will fail with an error message.
+    Common causes include DNS propagation delays (wait and retry), incorrect record name (some providers
+    auto-append the domain), or extra whitespace/quotes in the record value.
+  </Accordion>
+
+<Accordion title="Can I verify a domain that's already verified by another organization?">
+  No. Each domain is platform-unique. If another organization has already
+  verified a domain, you'll receive an error when trying to add it. Contact your
+  Infisical administrator to resolve domain ownership conflicts.
+</Accordion>
+
+<Accordion title="What happens if I delete a verified domain?">
+  Deleting a verified domain removes the domain claim from your organization.
+  SSO login via that domain will stop working, and SCIM provisioning for users
+  with that domain will be blocked. Another organization could then verify and
+  claim the domain.
+</Accordion>
+
+<Accordion title="Do I need to verify domains for email/password login?">
+  No. Email domain verification is required only for SSO (SAML, OIDC, LDAP) and
+  SCIM provisioning flows. Email/password login is not affected.
+</Accordion>
+
+<Accordion title="Does verifying a parent domain cover all subdomains?">
+  No. Each subdomain must be verified independently. Verifying `company.com`
+  does not automatically cover `app.company.com` or `dev.company.com`.
+</Accordion>
+</AccordionGroup>

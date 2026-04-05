@@ -110,9 +110,9 @@ export const membershipUserServiceFactory = ({
       const invalidEmails = newUserEmails.filter((el) => {
         try {
           validateEmail(el);
-          return true;
-        } catch {
           return false;
+        } catch (err) {
+          return true;
         }
       });
       if (invalidEmails.length > 0) {

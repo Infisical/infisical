@@ -321,8 +321,7 @@ export const authLoginServiceFactory = ({
   }: TProcessProviderCallbackDTO) => {
     const appCfg = getConfig();
 
-    // Step 1: If user is not fully set up or alias needs verification, issue a signup token
-    if (!user.isAccepted || !isAliasVerified) {
+    if (!user.isAccepted || isEmailVerified || !isAliasVerified) {
       const signupToken = crypto.jwt().sign(
         {
           authTokenType: AuthTokenType.SIGNUP_TOKEN,
@@ -344,37 +343,14 @@ export const authLoginServiceFactory = ({
       return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken, callbackPort } as const;
     }
 
-    // Step 2: For org-scoped IdP flows with MFA, issue tokens without org scope
-    // so the user gets a session (for TOTP setup) but must go through selectOrganization
-    // which handles MFA before granting org access.
-    if (organizationId) {
-      const org = await orgDAL.findById(organizationId);
-      if (org) {
-        const { isMfaRequired } = getRequiredMfaMethod(org, user);
-
-        if (isMfaRequired) {
-          const tokens = await generateUserTokens({
-            userId: user.id,
-            ip,
-            userAgent,
-            authMethod
-          });
-
-          return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
-        }
-      }
-    }
-
-    // Step 3: No MFA — issue org-scoped session tokens
+    // let them select the org and do the mfa
     const tokens = await generateUserTokens({
       userId: user.id,
       ip,
       userAgent,
-      authMethod,
-      organizationId
+      authMethod
     });
 
-    // Step 4: Promote any Invited memberships to Accepted now that the user has authenticated
     if (organizationId) {
       await membershipUserDAL.update(
         {

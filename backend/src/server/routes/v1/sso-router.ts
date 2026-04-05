@@ -145,7 +145,7 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           const ghEmails = await fetchGithubEmails(accessToken);
-          const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
+          const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary && gitHubEmail.verified)[0];
 
           if (!email) throw new Error("No primary email found");
 

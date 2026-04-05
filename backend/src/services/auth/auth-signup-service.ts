@@ -1,7 +1,7 @@
 import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -9,7 +9,6 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
@@ -164,13 +163,10 @@ export const authSignupServiceFactory = ({
     // checking rejection conditions, so the response time is constant regardless of
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
-
+    let organizationId: string | undefined;
     if (dto.type === CompleteAccountType.Email) {
-      const sanitizedEmail = dto.email.trim().toLowerCase();
-      const userByEmail = await userDAL.findOne({ username: sanitizedEmail });
-
       // Determine rejection before hashing, but don't throw yet
-      const shouldReject = !user || user.isAccepted || !userByEmail || userByEmail.id !== user?.id;
+      const shouldReject = !user || user.isAccepted;
 
       // Always hash the password so bcrypt cost is incurred regardless of validity
       const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
@@ -185,6 +181,29 @@ export const authSignupServiceFactory = ({
           { firstName: dto.firstName, lastName: dto.lastName, isAccepted: true, hashedPassword },
           tx
         );
+
+        // Step 4: Check org membership — create org if self-signup with no existing membership
+        const existingMemberships = await orgDAL.findMembership(
+          {
+            actorUserId: user.id,
+            scope: AccessScope.Organization
+          },
+          { tx }
+        );
+        const isInvitedUser = existingMemberships.length > 0;
+        if (!isInvitedUser && dto.organizationName) {
+          const org = await orgService.createOrganization(
+            {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              orgName: dto.organizationName
+            },
+            tx
+          );
+
+          organizationId = org.id;
+        }
+
         return { ...us, hashedPassword: null };
       });
       user = updatedUser;
@@ -250,31 +269,6 @@ export const authSignupServiceFactory = ({
       authMethod = decodedToken.authMethod;
     }
 
-    // Step 4: Check org membership — create org if self-signup with no existing membership
-    const existingMemberships = await orgDAL.findMembership({
-      actorUserId: user.id,
-      scope: AccessScope.Organization
-    });
-    const isInvitedUser = existingMemberships.length > 0;
-
-    let { organizationId } = decodedToken;
-    if (!isInvitedUser) {
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
-        throw new ForbiddenRequestError({ message: "Signups are disabled" });
-      }
-
-      if (dto.organizationName) {
-        const org = await orgService.createOrganization({
-          userId: user.id,
-          userEmail: user.email ?? user.username,
-          orgName: dto.organizationName
-        });
-
-        organizationId = org.id;
-      }
-    }
-
     // Step 5: Issue session tokens
     const tokens = await loginService.generateUserTokens({
       userId: user.id,
@@ -286,7 +280,6 @@ export const authSignupServiceFactory = ({
 
     return {
       user,
-      isInvitedUser,
       accessToken: tokens.access,
       refreshToken: tokens.refresh,
       authMethod

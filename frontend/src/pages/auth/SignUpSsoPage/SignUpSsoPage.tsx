@@ -16,8 +16,7 @@ import {
   UnstableCard,
   UnstableCardContent,
   UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableInput
+  UnstableCardTitle
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
@@ -68,8 +67,6 @@ export const SignupSsoPage = () => {
   const token = search.token as string;
 
   const [code, setCode] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
-  const [orgNameError, setOrgNameError] = useState(false);
 
   const completeAccountSignup = useCompleteAccountSignup();
 
@@ -80,10 +77,7 @@ export const SignupSsoPage = () => {
     authMethod?: string;
     isEmailVerified?: boolean;
     isAliasVerified?: boolean;
-    organizationId?: string;
   };
-
-  const needsOrgName = !decoded.organizationId;
 
   const { mutateAsync: sendEmailVerificationCode } = useSendEmailVerificationCode();
 
@@ -92,16 +86,9 @@ export const SignupSsoPage = () => {
   }, [token]);
 
   const handleSubmit = async () => {
-    if (needsOrgName && !organizationName.trim()) {
-      setOrgNameError(true);
-      return;
-    }
-    setOrgNameError(false);
-
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
-      code,
-      organizationName: organizationName || undefined
+      code
     });
 
     SecurityClient.setSignupToken("");
@@ -112,10 +99,10 @@ export const SignupSsoPage = () => {
       text: "Successfully verified",
       type: "success"
     });
-    if (decoded.organizationId || organizationId) {
+    if (organizationId) {
       navigate({
         to: "/organizations/$orgId/projects",
-        params: { orgId: decoded.organizationId || organizationId || "" }
+        params: { orgId: organizationId }
       });
     } else {
       navigate({ to: "/login/select-organization" });
@@ -187,22 +174,6 @@ export const SignupSsoPage = () => {
                     className="code-input-v3 mt-2 mb-2"
                   />
                 </div>
-                {needsOrgName && (
-                  <div className="mt-4 w-full">
-                    <p className="mb-1 ml-1 text-sm font-medium text-label">Organization Name</p>
-                    <UnstableInput
-                      value={organizationName}
-                      onChange={(e) => {
-                        setOrganizationName(e.target.value);
-                        if (e.target.value.trim()) setOrgNameError(false);
-                      }}
-                      placeholder="acme"
-                      maxLength={64}
-                      className="h-10"
-                    />
-                    {orgNameError && <FieldError>Please enter an organization name.</FieldError>}
-                  </div>
-                )}
                 {completeAccountSignup.isError && (
                   <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
                 )}

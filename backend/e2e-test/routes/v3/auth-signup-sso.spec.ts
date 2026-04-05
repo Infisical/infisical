@@ -110,7 +110,7 @@ describe("Auth SSO Signup V3", () => {
     // Complete account with alias type
     const res = await testServer.inject({
       method: "POST",
-      url: "/api/v3/signup/complete-account/signup",
+      url: "/api/v3/signup/complete-account",
       headers: {
         authorization: `Bearer ${result.signupToken}`
       },
@@ -150,7 +150,7 @@ describe("Auth SSO Signup V3", () => {
 
     const res = await testServer.inject({
       method: "POST",
-      url: "/api/v3/signup/complete-account/signup",
+      url: "/api/v3/signup/complete-account",
       headers: {
         authorization: `Bearer ${result.signupToken}`
       },

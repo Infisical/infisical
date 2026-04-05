@@ -7,7 +7,6 @@ type TCompleteAccountBase = {
   ip: string;
   userAgent: string;
   authorization: string;
-  organizationName?: string;
 };
 
 type TCompleteAccountEmail = TCompleteAccountBase & {
@@ -17,6 +16,7 @@ type TCompleteAccountEmail = TCompleteAccountBase & {
   firstName: string;
   lastName?: string;
   attributionSource?: string;
+  organizationName?: string;
 };
 
 type TCompleteAccountAlias = TCompleteAccountBase & {

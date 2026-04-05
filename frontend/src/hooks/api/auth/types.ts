@@ -108,7 +108,6 @@ export type CompleteAccountSignupDTO =
   | {
       type: "alias";
       code: string;
-      organizationName?: string;
     };
 
 export type VerifySignupInviteDTO = {

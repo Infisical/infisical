@@ -101,7 +101,7 @@ describe("Auth Email Signup V3", () => {
     // Step 3: Complete account
     const res = await testServer.inject({
       method: "POST",
-      url: "/api/v3/signup/complete-account/signup",
+      url: "/api/v3/signup/complete-account",
       headers: {
         authorization: `Bearer ${signupToken}`
       },
@@ -125,7 +125,7 @@ describe("Auth Email Signup V3", () => {
   test("Complete account without signup token fails", async () => {
     const res = await testServer.inject({
       method: "POST",
-      url: "/api/v3/signup/complete-account/signup",
+      url: "/api/v3/signup/complete-account",
       body: {
         type: "email",
         email: "notoken@localhost.local",

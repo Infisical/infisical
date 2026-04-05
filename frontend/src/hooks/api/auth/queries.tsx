@@ -144,7 +144,7 @@ export const useOauthTokenExchange = () => {
 };
 
 export const completeAccountSignup = async (details: CompleteAccountSignupDTO) => {
-  const { data } = await apiRequest.post("/api/v3/signup/complete-account/signup", details);
+  const { data } = await apiRequest.post("/api/v3/signup/complete-account", details);
   return data;
 };
 
