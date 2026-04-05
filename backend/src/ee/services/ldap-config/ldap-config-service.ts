@@ -640,7 +640,6 @@ export const ldapConfigServiceFactory = ({
     const callbackResult = await loginService.processProviderCallback({
       user,
       authMethod: AuthMethod.LDAP,
-      isAliasVerified: Boolean(userAlias.isEmailVerified),
       isEmailVerified: Boolean(userAlias.isEmailVerified),
       aliasId: userAlias.id,
       ip,

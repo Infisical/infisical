@@ -125,12 +125,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, authMethod } = await server.services.signup.completeAccount({
-        ...req.body,
-        ip: req.realIp,
-        userAgent,
-        authorization: req.headers.authorization as string
-      });
+      const { user, accessToken, refreshToken, authMethod, organizationId } =
+        await server.services.signup.completeAccount({
+          ...req.body,
+          ip: req.realIp,
+          userAgent,
+          authorization: req.headers.authorization as string
+        });
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");

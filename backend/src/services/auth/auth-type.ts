@@ -100,7 +100,6 @@ export type AuthModeSignUpTokenPayload = {
   userId: string;
   authMethod: AuthMethod;
   isEmailVerified: boolean;
-  isAliasVerified: boolean;
   aliasId?: string;
   organizationId?: string;
   callbackPort?: string;

@@ -627,7 +627,7 @@ export const scimServiceFactory = ({
     if (scimUser.emails?.[0]?.value !== user?.email) {
       throw new ScimRequestError({
         detail: "Email cannot be changed",
-        status: 404,
+        status: 400,
         mutability: "immutable"
       });
     }
@@ -680,7 +680,7 @@ export const scimServiceFactory = ({
     orgId,
     lastName,
     firstName,
-    email,
+    email: unsanitizedEmail,
     externalId
   }) => {
     const org = await orgDAL.findOrgById(orgId);
@@ -690,6 +690,8 @@ export const scimServiceFactory = ({
         status: 400
       });
     }
+
+    const email = unsanitizedEmail?.toLowerCase();
     if (email) {
       validateEmail(email.toLowerCase());
     }
@@ -738,7 +740,7 @@ export const scimServiceFactory = ({
     if (email && (user.email !== email || user.username !== email)) {
       throw new ScimRequestError({
         detail: "Email cannot be changed",
-        status: 404,
+        status: 400,
         mutability: "immutable"
       });
     }

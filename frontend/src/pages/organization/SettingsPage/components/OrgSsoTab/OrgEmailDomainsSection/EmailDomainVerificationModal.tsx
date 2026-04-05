@@ -100,8 +100,8 @@ export const EmailDomainVerificationModal = ({
             </div>
           </div>
           <p className="text-xs text-gray-500">
-            DNS changes may take up to 48 hours to propagate. The verification code expires 7 days
-            after creation.
+            DNS changes typically take a few minutes to propagate, but in some cases may take up to
+            48 hours. The verification code expires 7 days after creation.
           </p>
           <div className="flex items-center space-x-4">
             <Button size="sm" onClick={handleVerify} isLoading={isPending} isDisabled={isPending}>

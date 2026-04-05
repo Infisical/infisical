@@ -311,7 +311,6 @@ export const authLoginServiceFactory = ({
   const processProviderCallback = async ({
     user,
     authMethod,
-    isAliasVerified,
     isEmailVerified,
     aliasId,
     ip,
@@ -321,14 +320,13 @@ export const authLoginServiceFactory = ({
   }: TProcessProviderCallbackDTO) => {
     const appCfg = getConfig();
 
-    if (!user.isAccepted || isEmailVerified || !isAliasVerified) {
+    if (!user.isAccepted || !isEmailVerified) {
       const signupToken = crypto.jwt().sign(
         {
           authTokenType: AuthTokenType.SIGNUP_TOKEN,
           userId: user.id,
           authMethod,
           isEmailVerified,
-          isAliasVerified,
           aliasId,
           organizationId,
           callbackPort,
@@ -1088,7 +1086,6 @@ export const authLoginServiceFactory = ({
     const callbackResult = await processProviderCallback({
       user,
       authMethod,
-      isAliasVerified,
       isEmailVerified: isAliasVerified,
       aliasId,
       ip,

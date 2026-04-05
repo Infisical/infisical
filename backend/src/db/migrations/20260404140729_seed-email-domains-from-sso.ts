@@ -2,6 +2,7 @@
 import crypto from "node:crypto";
 
 import { Knex } from "knex";
+import { getDomain } from "tldts";
 
 import { TableName } from "../schemas";
 
@@ -111,6 +112,10 @@ export async function up(knex: Knex): Promise<void> {
     const { org_id: orgId, domain, alias_count: aliasCount } = row;
     // eslint-disable-next-line no-continue
     if (!domain || domain.length < 3) continue;
+    const isDomain = getDomain(domain);
+
+    // eslint-disable-next-line no-continue
+    if (!isDomain) continue;
 
     // Skip public/shared email providers — these are not org-owned domains
     // eslint-disable-next-line no-continue

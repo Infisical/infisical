@@ -429,7 +429,6 @@ export const oidcConfigServiceFactory = ({
     const callbackResult = await loginService.processProviderCallback({
       user,
       authMethod: AuthMethod.OIDC,
-      isAliasVerified: Boolean(userAlias.isEmailVerified),
       isEmailVerified: Boolean(userAlias.isEmailVerified),
       aliasId: userAlias.id,
       ip,

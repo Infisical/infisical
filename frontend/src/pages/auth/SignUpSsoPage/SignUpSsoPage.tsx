@@ -76,7 +76,6 @@ export const SignupSsoPage = () => {
     lastName?: string;
     authMethod?: string;
     isEmailVerified?: boolean;
-    isAliasVerified?: boolean;
   };
 
   const { mutateAsync: sendEmailVerificationCode } = useSendEmailVerificationCode();

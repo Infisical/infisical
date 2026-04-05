@@ -172,7 +172,7 @@ export const authSignupServiceFactory = ({
       const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
 
       if (shouldReject) {
-        throw new BadRequestError({ message: "Failed to complete account for complete user" });
+        throw new BadRequestError({ message: "Invalid or expired verification code" });
       }
 
       const updatedUser = await authDAL.transaction(async (tx) => {
@@ -282,7 +282,8 @@ export const authSignupServiceFactory = ({
       user,
       accessToken: tokens.access,
       refreshToken: tokens.refresh,
-      authMethod
+      authMethod,
+      organizationId
     };
   };
 

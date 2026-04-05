@@ -747,7 +747,6 @@ export const samlConfigServiceFactory = ({
     const callbackResult = await loginService.processProviderCallback({
       user,
       authMethod: authProvider as AuthMethod,
-      isAliasVerified: Boolean(userAlias.isEmailVerified),
       isEmailVerified: Boolean(userAlias.isEmailVerified),
       aliasId: userAlias.id,
       ip,

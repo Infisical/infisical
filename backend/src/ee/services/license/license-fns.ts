@@ -71,14 +71,14 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   rbac: false,
   githubOrgSync: false,
   customRateLimits: false,
-  subOrganization: true,
+  subOrganization: false,
   customAlerts: false,
   secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,
   auditLogStreamLimit: 3,
-  samlSSO: true,
+  samlSSO: false,
   enforceGoogleSSO: false,
   hsm: false,
   oidcSSO: false,
@@ -101,7 +101,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiEst: false,
   pkiAcme: false,
   pkiScep: false,
-  enforceMfa: true,
+  enforceMfa: false,
   projectTemplates: false,
   kmip: false,
   gateway: false,
@@ -115,7 +115,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
-  emailDomainVerification: true
+  emailDomainVerification: false
 });
 
 export const setupLicenseRequestWithStore = (

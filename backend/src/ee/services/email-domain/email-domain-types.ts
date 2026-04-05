@@ -19,8 +19,3 @@ export type TListEmailDomainsDTO = TOrgPermission;
 export type TDeleteEmailDomainDTO = {
   emailDomainId: string;
 } & TOrgPermission;
-
-export type TValidateEmailDomainResult = {
-  status: "ALLOWED" | "BLOCKED";
-  orgId?: string;
-};

@@ -2,11 +2,13 @@ import crypto from "node:crypto";
 import { Resolver } from "node:dns/promises";
 
 import { ForbiddenError } from "@casl/ability";
+import RE2 from "re2";
 import { getDomain, getHostname, getSubdomain } from "tldts";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
@@ -17,7 +19,6 @@ import {
   TCreateEmailDomainDTO,
   TDeleteEmailDomainDTO,
   TListEmailDomainsDTO,
-  TValidateEmailDomainResult,
   TVerifyEmailDomainDTO
 } from "./email-domain-types";
 
@@ -45,6 +46,7 @@ const DNS_RECORD_PREFIX = "_infisical-verification";
 const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
 const domainLabelValidator = characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
+const tldRegex = new RE2(/^[a-zA-Z]+$/);
 
 const isValidDomain = (domain: string): boolean => {
   const parts = domain.split(".");
@@ -58,22 +60,9 @@ const isValidDomain = (domain: string): boolean => {
 
   // TLD must be at least 2 chars and alphabetic only
   const tld = parts[parts.length - 1];
-  if (tld.length < 2 || !/^[a-zA-Z]+$/.test(tld)) return false;
+  if (tld.length < 2 || !tldRegex.test(tld)) return false;
 
   return true;
-};
-
-const buildDomainHierarchy = (domain: string): string[] => {
-  const parts = domain.split(".");
-  const hierarchy: string[] = [];
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    const candidate = parts.slice(i).join(".");
-    // Skip single-label entries (e.g. "com")
-    if (candidate.includes(".")) {
-      hierarchy.push(candidate);
-    }
-  }
-  return hierarchy;
 };
 
 export const emailDomainServiceFactory = ({
@@ -127,23 +116,20 @@ export const emailDomainServiceFactory = ({
 
     // Domains are platform-level unique. Use a transaction with a lock to prevent races.
     const emailDomain = await emailDomainDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.EmailDomainCreationLock()]);
       // Check if any org (including this one) already has this domain verified
       const platformExisting = await emailDomainDAL.findOne(
         { domain: normalizedDomain, status: EmailDomainStatus.Verified },
         tx
       );
       if (platformExisting) {
-        throw new BadRequestError({
-          message: "This domain is already verified by another organization."
-        });
+        return { error: "This domain is already verified by another organization.", data: null };
       }
 
       // Check if this org already has a pending/expired record for this domain
       const orgExisting = await emailDomainDAL.findOne({ orgId, domain: normalizedDomain }, tx);
       if (orgExisting) {
-        throw new BadRequestError({
-          message: "This domain is already pending verification or has expired."
-        });
+        return { error: "This domain is already pending verification or has expired.", data: null };
       }
 
       const created = await emailDomainDAL.create(
@@ -160,10 +146,14 @@ export const emailDomainServiceFactory = ({
         tx
       );
 
-      return created;
+      return { error: null, data: created };
     });
 
-    return emailDomain;
+    if (emailDomain.error) {
+      throw new BadRequestError({ message: emailDomain.error });
+    }
+
+    return emailDomain.data!;
   };
 
   const verifyEmailDomain = async ({
@@ -294,40 +284,10 @@ export const emailDomainServiceFactory = ({
     return emailDomainRecord;
   };
 
-  const validateEmailDomain = async (email: string): Promise<TValidateEmailDomainResult> => {
-    const emailParts = email.split("@");
-    const emailDomain = emailParts[1]?.toLowerCase();
-    if (!emailDomain) {
-      return { status: "ALLOWED" };
-    }
-
-    const hierarchy = buildDomainHierarchy(emailDomain);
-
-    // Check the exact domain first
-    const exactMatch = await emailDomainDAL.findOne({ domain: emailDomain, status: EmailDomainStatus.Verified });
-    if (exactMatch) {
-      return { status: "ALLOWED", orgId: exactMatch.orgId };
-    }
-
-    // Walk up the hierarchy to check if any parent domain is verified
-    for (let i = 1; i < hierarchy.length; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      const parentMatch = await emailDomainDAL.findOne({ domain: hierarchy[i], status: EmailDomainStatus.Verified });
-      if (parentMatch) {
-        // Parent is verified but exact domain is not — block
-        return { status: "BLOCKED" };
-      }
-    }
-
-    // No verified domain found at any level — no restriction applies
-    return { status: "ALLOWED" };
-  };
-
   return {
     createEmailDomain,
     verifyEmailDomain,
     listEmailDomains,
-    deleteEmailDomain,
-    validateEmailDomain
+    deleteEmailDomain
   };
 };

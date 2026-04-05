@@ -53,7 +53,6 @@ export type TProcessProviderCallbackDTO = {
     temporaryLockDateEnd?: Date | null;
   };
   authMethod: AuthMethod;
-  isAliasVerified: boolean;
   isEmailVerified: boolean;
   aliasId?: string;
   ip: string;
