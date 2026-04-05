@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import {
-  OrgPermissionActions,
+  OrgPermissionEmailDomainActions,
   OrgPermissionSubjects,
   useOrgPermission,
   useSubscription
@@ -36,7 +36,7 @@ export const OrgEmailDomainsSection = () => {
           </div>
           {hasEmailDomainVerification && (
             <OrgPermissionCan
-              I={OrgPermissionActions.Create}
+              I={OrgPermissionEmailDomainActions.Create}
               a={OrgPermissionSubjects.EmailDomains}
             >
               {(isAllowed) => (
@@ -63,7 +63,10 @@ export const OrgEmailDomainsSection = () => {
           </div>
         ) : (
           <div>
-            {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.EmailDomains) ? (
+            {permission.can(
+              OrgPermissionEmailDomainActions.Read,
+              OrgPermissionSubjects.EmailDomains
+            ) ? (
               <OrgEmailDomainsTable />
             ) : (
               <PermissionDeniedBanner />

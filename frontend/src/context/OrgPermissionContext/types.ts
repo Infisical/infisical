@@ -75,6 +75,13 @@ export enum OrgPermissionSubjects {
   EmailDomains = "email-domains"
 }
 
+export enum OrgPermissionEmailDomainActions {
+  Read = "read",
+  Create = "create",
+  VerifyDomain = "verify-domain",
+  Delete = "delete"
+}
+
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
@@ -171,6 +178,6 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionActions, OrgPermissionSubjects.EmailDomains];
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

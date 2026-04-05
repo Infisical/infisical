@@ -298,16 +298,6 @@ export const authLoginServiceFactory = ({
     return { access: accessToken, refresh: refreshToken };
   };
 
-  /*
-   * Shared pipeline called by all provider callbacks (OAuth, SAML, OIDC, LDAP).
-   * Decides whether to:
-   *   - Issue a session (refresh + access tokens)
-   *   - Require MFA (for org-scoped IdP flows where org is already known)
-   *   - Require signup/alias verification
-   *
-   * For OAuth (no organizationId): MFA is deferred to selectOrganization.
-   * For IdP (SAML/OIDC/LDAP with organizationId): MFA is checked here.
-   */
   const processProviderCallback = async ({
     user,
     authMethod,

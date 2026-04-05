@@ -29,7 +29,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionEmailDomainActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteEmailDomain, useGetEmailDomains } from "@app/hooks/api";
 
@@ -139,7 +143,7 @@ export const OrgEmailDomainsTable = () => {
                     <div className="flex items-center justify-end gap-2">
                       {emailDomain.status === "pending" && (
                         <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
+                          I={OrgPermissionEmailDomainActions.VerifyDomain}
                           a={OrgPermissionSubjects.EmailDomains}
                         >
                           {(isAllowed) => (
@@ -157,7 +161,7 @@ export const OrgEmailDomainsTable = () => {
                         </OrgPermissionCan>
                       )}
                       <OrgPermissionCan
-                        I={OrgPermissionActions.Delete}
+                        I={OrgPermissionEmailDomainActions.Delete}
                         an={OrgPermissionSubjects.EmailDomains}
                       >
                         {(isAllowed) => (

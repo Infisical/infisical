@@ -5,79 +5,20 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
-import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionEmailDomainActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
 
-const PERMISSIONS = [
-  { action: "read", label: "View" },
-  { action: "create", label: "Create" },
-  { action: "edit", label: "Modify" },
-  { action: "delete", label: "Remove" }
+const PERMISSION_ACTIONS = [
+  { action: OrgPermissionEmailDomainActions.Read, label: "View domains" },
+  { action: OrgPermissionEmailDomainActions.Create, label: "Add domains" },
+  { action: OrgPermissionEmailDomainActions.VerifyDomain, label: "Verify domains" },
+  { action: OrgPermissionEmailDomainActions.Delete, label: "Delete domains" }
 ] as const;
-
-const SECRET_SCANNING_PERMISSIONS = [
-  { action: "read", label: "View risks" },
-  { action: "create", label: "Add integrations" },
-  { action: "edit", label: "Edit risk status" },
-  { action: "delete", label: "Remove integrations" }
-] as const;
-
-const INCIDENT_CONTACTS_PERMISSIONS = [
-  { action: "read", label: "View contacts" },
-  { action: "create", label: "Add new contacts" },
-  { action: "edit", label: "Edit contacts" },
-  { action: "delete", label: "Remove contacts" }
-] as const;
-
-const MEMBERS_PERMISSIONS = [
-  { action: "read", label: "View all members" },
-  { action: "create", label: "Invite members" },
-  { action: "edit", label: "Edit members" },
-  { action: "delete", label: "Remove members" }
-] as const;
-
-const PROJECT_TEMPLATES_PERMISSIONS = [
-  { action: "read", label: "View & Apply" },
-  { action: "create", label: "Create" },
-  { action: "edit", label: "Modify" },
-  { action: "delete", label: "Remove" }
-] as const;
-
-const getPermissionList = (formName: Props["formName"]) => {
-  switch (formName) {
-    case "member":
-      return MEMBERS_PERMISSIONS;
-    case OrgPermissionSubjects.ProjectTemplates:
-      return PROJECT_TEMPLATES_PERMISSIONS;
-    case "secret-scanning":
-      return SECRET_SCANNING_PERMISSIONS;
-    case "incident-contact":
-      return INCIDENT_CONTACTS_PERMISSIONS;
-    default:
-      return PERMISSIONS;
-  }
-};
 
 type Props = {
   isEditable: boolean;
-  title: string;
-  formName: keyof Omit<
-    Exclude<TFormSchema["permissions"], undefined>,
-    | "project"
-    | "organization-admin-console"
-    | "kmip"
-    | "gateway"
-    | "relay"
-    | "secret-share"
-    | "billing"
-    | "audit-logs"
-    | "machine-identity-auth-template"
-    | "sub-organization"
-    | "sso"
-    | "email-domains"
-  >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
 };
@@ -85,29 +26,28 @@ type Props = {
 enum Permission {
   NoAccess = "no-access",
   ReadOnly = "read-only",
-  FullAccess = "full-acess",
+  FullAccess = "full-access",
   Custom = "custom"
 }
 
-export const RolePermissionRow = ({ isEditable, title, formName, control, setValue }: Props) => {
+export const OrgPermissionEmailDomainRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
   const rule = useWatch({
     control,
-    name: `permissions.${formName}`
+    name: "permissions.email-domains"
   });
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSIONS.length;
+    const totalActions = PERMISSION_ACTIONS.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
-
+    if (score === 1 && rule?.[OrgPermissionEmailDomainActions.Read]) return Permission.ReadOnly;
     return Permission.Custom;
   }, [rule, isCustom]);
 
@@ -115,13 +55,6 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
     if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
     else setIsCustom.off();
   }, [selectedPermissionCategory]);
-
-  useEffect(() => {
-    const isRowCustom = selectedPermissionCategory === Permission.Custom;
-    if (isRowCustom) {
-      setIsRowExpanded.on();
-    }
-  }, []);
 
   const handlePermissionChange = (val: Permission) => {
     if (val === Permission.Custom) {
@@ -131,34 +64,38 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
     }
     setIsCustom.off();
 
+    const allFalse = {
+      [OrgPermissionEmailDomainActions.Read]: false,
+      [OrgPermissionEmailDomainActions.Create]: false,
+      [OrgPermissionEmailDomainActions.VerifyDomain]: false,
+      [OrgPermissionEmailDomainActions.Delete]: false
+    };
+
     switch (val) {
       case Permission.NoAccess:
+        setValue("permissions.email-domains", allFalse, { shouldDirty: true });
+        break;
+      case Permission.ReadOnly:
         setValue(
-          `permissions.${formName}`,
-          { read: false, edit: false, create: false, delete: false },
+          "permissions.email-domains",
+          { ...allFalse, [OrgPermissionEmailDomainActions.Read]: true },
           { shouldDirty: true }
         );
         break;
       case Permission.FullAccess:
         setValue(
-          `permissions.${formName}`,
-          { read: true, edit: true, create: true, delete: true },
-          { shouldDirty: true }
-        );
-        break;
-      case Permission.ReadOnly:
-        setValue(
-          `permissions.${formName}`,
-          { read: true, edit: false, create: false, delete: false },
+          "permissions.email-domains",
+          {
+            [OrgPermissionEmailDomainActions.Read]: true,
+            [OrgPermissionEmailDomainActions.Create]: true,
+            [OrgPermissionEmailDomainActions.VerifyDomain]: true,
+            [OrgPermissionEmailDomainActions.Delete]: true
+          },
           { shouldDirty: true }
         );
         break;
       default:
-        setValue(
-          `permissions.${formName}`,
-          { read: false, edit: false, create: false, delete: false },
-          { shouldDirty: true }
-        );
+        setValue("permissions.email-domains", allFalse, { shouldDirty: true });
         break;
     }
   };
@@ -172,7 +109,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
         <Td className="w-4">
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
-        <Td className="w-full select-none">{title}</Td>
+        <Td className="w-full select-none">Email Domains</Td>
         <Td>
           <Select
             value={selectedPermissionCategory}
@@ -193,15 +130,15 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
         <Tr>
           <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
             <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
-              {getPermissionList(formName).map(({ action, label }) => {
+              {PERMISSION_ACTIONS.map(({ action, label }) => {
                 return (
                   <Controller
-                    name={`permissions.${formName}.${action}`}
-                    key={`permissions.${formName}.${action}`}
+                    name={`permissions.email-domains.${action}`}
+                    key={`permissions.email-domains.${action}`}
                     control={control}
                     render={({ field }) => (
                       <Checkbox
-                        isChecked={Boolean(field.value)}
+                        isChecked={field.value}
                         onCheckedChange={(e) => {
                           if (!isEditable) {
                             createNotification({
@@ -212,7 +149,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.${formName}.${action}`}
+                        id={`permissions.email-domains.${action}`}
                       >
                         {label}
                       </Checkbox>

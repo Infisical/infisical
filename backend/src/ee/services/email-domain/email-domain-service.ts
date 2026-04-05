@@ -6,7 +6,7 @@ import RE2 from "re2";
 import { getDomain, getHostname, getSubdomain } from "tldts";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -86,7 +86,10 @@ export const emailDomainServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.EmailDomains);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionEmailDomainActions.Create,
+      OrgPermissionSubjects.EmailDomains
+    );
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.emailDomainVerification) {
@@ -172,7 +175,10 @@ export const emailDomainServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.EmailDomains);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionEmailDomainActions.VerifyDomain,
+      OrgPermissionSubjects.EmailDomains
+    );
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.emailDomainVerification) {
@@ -235,7 +241,10 @@ export const emailDomainServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.EmailDomains);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionEmailDomainActions.Read,
+      OrgPermissionSubjects.EmailDomains
+    );
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.emailDomainVerification) {
@@ -264,7 +273,10 @@ export const emailDomainServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.EmailDomains);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionEmailDomainActions.Delete,
+      OrgPermissionSubjects.EmailDomains
+    );
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.emailDomainVerification) {
