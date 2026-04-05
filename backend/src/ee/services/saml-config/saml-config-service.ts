@@ -16,7 +16,6 @@ import {
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";

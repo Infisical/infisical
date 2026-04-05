@@ -128,11 +128,8 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
       searchParams.append("is_admin_login", "true");
     }
     const qs = searchParams.toString();
-    const popup = window.open(`/api/v1/sso/redirect/${method}${qs ? `?${qs}` : ""}`);
-    if (popup) {
-      saveLastLogin({ method });
-    }
-    window.close();
+    saveLastLogin({ method });
+    window.location.replace(`/api/v1/sso/redirect/${method}${qs ? `?${qs}` : ""}`);
   };
 
   const isLastUsedMethod = (method: LoginMethod) => lastLogin?.method === method;

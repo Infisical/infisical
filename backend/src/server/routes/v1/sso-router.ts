@@ -399,9 +399,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       ]
         .filter(Boolean)
         .join("&");
-      return res.redirect(
-        `${appCfg.SITE_URL}/login/select-organization${sessionParams ? `?${sessionParams}` : ""}`
-      );
+      return res.redirect(`${appCfg.SITE_URL}/login/select-organization${sessionParams ? `?${sessionParams}` : ""}`);
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {

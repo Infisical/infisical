@@ -32,30 +32,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/me/emails/verify",
-    config: {
-      rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
-      })
-    },
-    schema: {
-      operationId: "verifyEmailVerificationCode",
-      body: z.object({
-        username: z.string().trim(),
-        code: z.string().trim()
-      }),
-      response: {
-        200: z.object({})
-      }
-    },
-    handler: async (req) => {
-      await server.services.user.verifyEmailVerificationCode(req.body.username, req.body.code);
-      return {};
-    }
-  });
-
-  server.route({
     method: "PATCH",
     url: "/me/mfa",
     config: {

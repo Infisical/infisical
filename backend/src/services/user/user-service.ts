@@ -97,35 +97,6 @@ export const userServiceFactory = ({
     });
   };
 
-  const verifyEmailVerificationCode = async (username: string, code: string) => {
-    // akhilmhdh: case sensitive email resolution
-    const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
-    if (!user.email)
-      throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
-
-    const token = await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id,
-      code
-    });
-
-    if (token?.aliasId) {
-      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
-      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${token.aliasId}' not found` });
-      if (userAlias?.isEmailVerified)
-        throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
-
-      await userAliasDAL.updateById(token.aliasId, { isEmailVerified: true });
-    }
-    const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
-
-    await userDAL.updateById(user.id, {
-      isEmailVerified: true,
-      username: userEmails?.length === 1 && userEmails?.[0]?.id === user.id ? user.email.toLowerCase() : undefined
-    });
-  };
-
   const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
     const user = await userDAL.findById(userId);
 
@@ -456,6 +427,7 @@ export const userServiceFactory = ({
   const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
     // akhilmhdh: case sensitive email resolution
     const user = await userDAL.findOne({ username });
+
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
@@ -477,7 +449,6 @@ export const userServiceFactory = ({
 
   return {
     sendEmailVerificationCode,
-    verifyEmailVerificationCode,
     updateUserMfa,
     updateUserName,
     updateAuthMethods,
