@@ -32,12 +32,12 @@ func nullUUID(id uuid.UUID) sql.Null[uuid.UUID] {
 //	prod: root -> d
 func buildTestTree() *FolderLookup {
 	rows := []folderRow{
-		{ID: rootDevID, Name: "root", ParentID: sql.Null[uuid.UUID]{}, EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderA, Name: "a", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderB, Name: "b", ParentID: nullUUID(folderA), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderC, Name: "c", ParentID: nullUUID(folderB), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: rootProdID, Name: "root", ParentID: sql.Null[uuid.UUID]{}, EnvID: prodEnvID, EnvSlug: "prod", EnvName: "Production"},
-		{ID: folderD, Name: "d", ParentID: nullUUID(rootProdID), EnvID: prodEnvID, EnvSlug: "prod", EnvName: "Production"},
+		{ID: rootDevID, Name: "root", ParentID: sql.Null[uuid.UUID]{}, EnvID: devEnvID},
+		{ID: folderA, Name: "a", ParentID: nullUUID(rootDevID), EnvID: devEnvID},
+		{ID: folderB, Name: "b", ParentID: nullUUID(folderA), EnvID: devEnvID},
+		{ID: folderC, Name: "c", ParentID: nullUUID(folderB), EnvID: devEnvID},
+		{ID: rootProdID, Name: "root", ParentID: sql.Null[uuid.UUID]{}, EnvID: prodEnvID},
+		{ID: folderD, Name: "d", ParentID: nullUUID(rootProdID), EnvID: prodEnvID},
 	}
 	return newFolderLookup(rows)
 }
@@ -70,139 +70,85 @@ func TestSplitPath(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// GetByPathEnvSlug
+// GetByPath
 // ---------------------------------------------------------------------------
 
-func TestGetByPathEnvSlug(t *testing.T) {
+func TestGetByPath(t *testing.T) {
 	l := buildTestTree()
 
 	t.Run("root path with leading slash", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "/")
+		node, ok := l.GetByPath(devEnvID, "/")
 		require.True(t, ok)
 		assert.Equal(t, rootDevID, node.ID)
 	})
 
 	t.Run("root path empty string", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "")
+		node, ok := l.GetByPath(devEnvID, "")
 		require.True(t, ok)
 		assert.Equal(t, rootDevID, node.ID)
 	})
 
 	t.Run("nested path with leading slash", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "/a/b/c")
+		node, ok := l.GetByPath(devEnvID, "/a/b/c")
 		require.True(t, ok)
 		assert.Equal(t, folderC, node.ID)
 	})
 
 	t.Run("nested path without leading slash", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "a/b/c")
+		node, ok := l.GetByPath(devEnvID, "a/b/c")
 		require.True(t, ok)
 		assert.Equal(t, folderC, node.ID)
 	})
 
 	t.Run("nested path with trailing slash", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "/a/b/c/")
+		node, ok := l.GetByPath(devEnvID, "/a/b/c/")
 		require.True(t, ok)
 		assert.Equal(t, folderC, node.ID)
 	})
 
 	t.Run("partial path", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("dev", "/a/b")
+		node, ok := l.GetByPath(devEnvID, "/a/b")
 		require.True(t, ok)
 		assert.Equal(t, folderB, node.ID)
 	})
 
 	t.Run("nonexistent path", func(t *testing.T) {
-		_, ok := l.GetByPathEnvSlug("dev", "/a/x")
+		_, ok := l.GetByPath(devEnvID, "/a/x")
 		assert.False(t, ok)
 	})
 
-	t.Run("nonexistent env slug", func(t *testing.T) {
-		_, ok := l.GetByPathEnvSlug("staging", "/a")
+	t.Run("nonexistent env ID", func(t *testing.T) {
+		_, ok := l.GetByPath(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/a")
 		assert.False(t, ok)
 	})
 
 	t.Run("path exists in dev but not prod", func(t *testing.T) {
-		_, ok := l.GetByPathEnvSlug("prod", "/a/b/c")
+		_, ok := l.GetByPath(prodEnvID, "/a/b/c")
 		assert.False(t, ok)
 	})
 
 	t.Run("prod env first-level folder", func(t *testing.T) {
-		node, ok := l.GetByPathEnvSlug("prod", "/d")
+		node, ok := l.GetByPath(prodEnvID, "/d")
 		require.True(t, ok)
 		assert.Equal(t, folderD, node.ID)
 	})
 }
 
 // ---------------------------------------------------------------------------
-// GetByPathEnvID
+// GetByID
 // ---------------------------------------------------------------------------
 
-func TestGetByPathEnvID(t *testing.T) {
+func TestGetByID(t *testing.T) {
 	l := buildTestTree()
 
-	t.Run("resolves by env ID", func(t *testing.T) {
-		node, ok := l.GetByPathEnvID(devEnvID, "/a/b")
-		require.True(t, ok)
-		assert.Equal(t, folderB, node.ID)
-	})
-
-	t.Run("root by env ID", func(t *testing.T) {
-		node, ok := l.GetByPathEnvID(prodEnvID, "/")
-		require.True(t, ok)
-		assert.Equal(t, rootProdID, node.ID)
-	})
-
-	t.Run("unknown env ID", func(t *testing.T) {
-		_, ok := l.GetByPathEnvID(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/a")
-		assert.False(t, ok)
-	})
-}
-
-// ---------------------------------------------------------------------------
-// GetByIDAndEnvID
-// ---------------------------------------------------------------------------
-
-func TestGetByIDAndEnvID(t *testing.T) {
-	l := buildTestTree()
-
-	t.Run("matching env", func(t *testing.T) {
-		node, ok := l.GetByIDAndEnvID(devEnvID, folderA)
+	t.Run("existing folder", func(t *testing.T) {
+		node, ok := l.GetByID(folderA)
 		require.True(t, ok)
 		assert.Equal(t, folderA, node.ID)
 	})
 
-	t.Run("wrong env", func(t *testing.T) {
-		_, ok := l.GetByIDAndEnvID(prodEnvID, folderA)
-		assert.False(t, ok)
-	})
-
 	t.Run("nonexistent folder ID", func(t *testing.T) {
-		_, ok := l.GetByIDAndEnvID(devEnvID, uuid.MustParse("99999999-9999-9999-9999-999999999999"))
-		assert.False(t, ok)
-	})
-}
-
-// ---------------------------------------------------------------------------
-// GetByIDAndEnvSlug
-// ---------------------------------------------------------------------------
-
-func TestGetByIDAndEnvSlug(t *testing.T) {
-	l := buildTestTree()
-
-	t.Run("matching slug", func(t *testing.T) {
-		node, ok := l.GetByIDAndEnvSlug("dev", folderB)
-		require.True(t, ok)
-		assert.Equal(t, folderB, node.ID)
-	})
-
-	t.Run("wrong slug", func(t *testing.T) {
-		_, ok := l.GetByIDAndEnvSlug("prod", folderB)
-		assert.False(t, ok)
-	})
-
-	t.Run("nonexistent slug", func(t *testing.T) {
-		_, ok := l.GetByIDAndEnvSlug("staging", folderB)
+		_, ok := l.GetByID(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
 		assert.False(t, ok)
 	})
 }
@@ -240,82 +186,28 @@ func TestGetPathByID(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// GetEnv / GetEnvBySlug
-// ---------------------------------------------------------------------------
-
-func TestGetEnv(t *testing.T) {
-	l := buildTestTree()
-
-	t.Run("by ID", func(t *testing.T) {
-		env, ok := l.GetEnv(devEnvID)
-		require.True(t, ok)
-		assert.Equal(t, "dev", env.Slug)
-		assert.Equal(t, "Development", env.Name)
-	})
-
-	t.Run("by slug", func(t *testing.T) {
-		env, ok := l.GetEnvBySlug("prod")
-		require.True(t, ok)
-		assert.Equal(t, prodEnvID, env.ID)
-		assert.Equal(t, "Production", env.Name)
-	})
-
-	t.Run("unknown ID", func(t *testing.T) {
-		_, ok := l.GetEnv(uuid.MustParse("99999999-9999-9999-9999-999999999999"))
-		assert.False(t, ok)
-	})
-
-	t.Run("unknown slug", func(t *testing.T) {
-		_, ok := l.GetEnvBySlug("staging")
-		assert.False(t, ok)
-	})
-}
-
-// ---------------------------------------------------------------------------
-// FolderNode.GetEnv
-// ---------------------------------------------------------------------------
-
-func TestNodeGetEnv(t *testing.T) {
-	l := buildTestTree()
-
-	node, ok := l.GetByPathEnvSlug("prod", "/d")
-	require.True(t, ok)
-
-	env := node.GetEnv(l)
-	require.NotNil(t, env)
-	assert.Equal(t, "prod", env.Slug)
-}
-
-// ---------------------------------------------------------------------------
 // Empty tree
 // ---------------------------------------------------------------------------
 
 func TestEmptyTree(t *testing.T) {
 	l := newFolderLookup(nil)
 
-	_, ok := l.GetByPathEnvSlug("dev", "/")
+	_, ok := l.GetByPath(devEnvID, "/")
 	assert.False(t, ok)
 
 	_, ok = l.GetPathByID(uuid.New())
 	assert.False(t, ok)
-
-	_, ok = l.GetEnv(uuid.New())
-	assert.False(t, ok)
 }
 
 // ---------------------------------------------------------------------------
-// Environment isolation
+// GetSubTree
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// GetTreeByPathEnvSlug / GetTreeByPathEnvID
-// ---------------------------------------------------------------------------
-
-func TestGetTreeByPathEnvSlug(t *testing.T) {
+func TestGetSubTree(t *testing.T) {
 	l := buildTestTree()
 
 	t.Run("root returns entire env subtree", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+		nodes, ok := l.GetSubTree(devEnvID, "/")
 		require.True(t, ok)
 		require.Len(t, nodes, 4) // root, a, b, c
 
@@ -330,7 +222,7 @@ func TestGetTreeByPathEnvSlug(t *testing.T) {
 	})
 
 	t.Run("subtree from mid-level", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a")
+		nodes, ok := l.GetSubTree(devEnvID, "/a")
 		require.True(t, ok)
 		require.Len(t, nodes, 3) // a, b, c
 		assert.Equal(t, folderA, nodes[0].ID)
@@ -339,7 +231,7 @@ func TestGetTreeByPathEnvSlug(t *testing.T) {
 	})
 
 	t.Run("subtree from deeper level", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a/b")
+		nodes, ok := l.GetSubTree(devEnvID, "/a/b")
 		require.True(t, ok)
 		require.Len(t, nodes, 2) // b, c
 		assert.Equal(t, folderB, nodes[0].ID)
@@ -347,14 +239,14 @@ func TestGetTreeByPathEnvSlug(t *testing.T) {
 	})
 
 	t.Run("leaf node returns single element", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/a/b/c")
+		nodes, ok := l.GetSubTree(devEnvID, "/a/b/c")
 		require.True(t, ok)
 		require.Len(t, nodes, 1)
 		assert.Equal(t, folderC, nodes[0].ID)
 	})
 
 	t.Run("prod root subtree", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvSlug("prod", "/")
+		nodes, ok := l.GetSubTree(prodEnvID, "/")
 		require.True(t, ok)
 		require.Len(t, nodes, 2) // root, d
 		assert.Equal(t, rootProdID, nodes[0].ID)
@@ -362,43 +254,27 @@ func TestGetTreeByPathEnvSlug(t *testing.T) {
 	})
 
 	t.Run("nonexistent path", func(t *testing.T) {
-		_, ok := l.GetSubTreeByPathEnvSlug("dev", "/x/y")
+		_, ok := l.GetSubTree(devEnvID, "/x/y")
 		assert.False(t, ok)
 	})
 
 	t.Run("nonexistent env", func(t *testing.T) {
-		_, ok := l.GetSubTreeByPathEnvSlug("staging", "/")
+		_, ok := l.GetSubTree(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/")
 		assert.False(t, ok)
 	})
 }
 
-func TestGetTreeByPathEnvID(t *testing.T) {
-	l := buildTestTree()
-
-	t.Run("returns subtree by env ID", func(t *testing.T) {
-		nodes, ok := l.GetSubTreeByPathEnvID(devEnvID, "/a")
-		require.True(t, ok)
-		require.Len(t, nodes, 3)
-		assert.Equal(t, folderA, nodes[0].ID)
-	})
-
-	t.Run("unknown env ID", func(t *testing.T) {
-		_, ok := l.GetSubTreeByPathEnvID(uuid.MustParse("99999999-9999-9999-9999-999999999999"), "/")
-		assert.False(t, ok)
-	})
-}
-
-func TestGetTreeChildrenSortedByName(t *testing.T) {
+func TestGetSubTreeChildrenSortedByName(t *testing.T) {
 	// Build a tree with multiple children at the same level to verify sort order.
 	rows := []folderRow{
-		{ID: rootDevID, Name: "root", EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderC, Name: "cherry", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderA, Name: "apple", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
-		{ID: folderB, Name: "banana", ParentID: nullUUID(rootDevID), EnvID: devEnvID, EnvSlug: "dev", EnvName: "Development"},
+		{ID: rootDevID, Name: "root", EnvID: devEnvID},
+		{ID: folderC, Name: "cherry", ParentID: nullUUID(rootDevID), EnvID: devEnvID},
+		{ID: folderA, Name: "apple", ParentID: nullUUID(rootDevID), EnvID: devEnvID},
+		{ID: folderB, Name: "banana", ParentID: nullUUID(rootDevID), EnvID: devEnvID},
 	}
 	l := newFolderLookup(rows)
 
-	nodes, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+	nodes, ok := l.GetSubTree(devEnvID, "/")
 	require.True(t, ok)
 	require.Len(t, nodes, 4)
 
@@ -408,32 +284,36 @@ func TestGetTreeChildrenSortedByName(t *testing.T) {
 	assert.Equal(t, "cherry", nodes[3].Name)
 }
 
-func TestGetTreeEmptyTree(t *testing.T) {
+func TestGetSubTreeEmptyTree(t *testing.T) {
 	l := newFolderLookup(nil)
-	_, ok := l.GetSubTreeByPathEnvSlug("dev", "/")
+	_, ok := l.GetSubTree(devEnvID, "/")
 	assert.False(t, ok)
 }
+
+// ---------------------------------------------------------------------------
+// Environment isolation
+// ---------------------------------------------------------------------------
 
 func TestEnvironmentIsolation(t *testing.T) {
 	l := buildTestTree()
 
 	t.Run("same folder name in different envs are distinct", func(t *testing.T) {
-		devRoot, ok := l.GetByPathEnvSlug("dev", "/")
+		devRoot, ok := l.GetByPath(devEnvID, "/")
 		require.True(t, ok)
 
-		prodRoot, ok := l.GetByPathEnvSlug("prod", "/")
+		prodRoot, ok := l.GetByPath(prodEnvID, "/")
 		require.True(t, ok)
 
 		assert.NotEqual(t, devRoot.ID, prodRoot.ID)
 	})
 
 	t.Run("folder from one env not reachable via other env path", func(t *testing.T) {
-		// folderD belongs to prod
-		_, ok := l.GetByIDAndEnvID(devEnvID, folderD)
+		// folderD belongs to prod — not reachable via dev
+		_, ok := l.GetByPath(devEnvID, "/d")
 		assert.False(t, ok)
 
-		// folderA belongs to dev
-		_, ok = l.GetByIDAndEnvSlug("prod", folderA)
+		// folderA belongs to dev — not reachable via prod
+		_, ok = l.GetByPath(prodEnvID, "/a")
 		assert.False(t, ok)
 	})
 }
