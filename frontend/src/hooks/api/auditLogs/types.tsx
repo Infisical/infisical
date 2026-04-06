@@ -917,6 +917,16 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   };
 }
 
+interface PamAccountReadCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountName: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1003,7 +1013,8 @@ export type Event =
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
   | IntegrationSyncedEvent
-  | ClearIdentityLdapAuthLockoutsEvent;
+  | ClearIdentityLdapAuthLockoutsEvent
+  | PamAccountReadCredentialsEvent;
 
 export type AuditLog = {
   id: string;
