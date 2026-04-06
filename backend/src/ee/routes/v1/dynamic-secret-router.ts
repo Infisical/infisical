@@ -573,6 +573,40 @@ echo ""
   });
 
   server.route({
+    method: "GET",
+    url: "/ssh-ca-public-key/:dynamicSecretId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.DynamicSecrets],
+      operationId: "getSshDynamicSecretCaPublicKey",
+      description: "Get the SSH CA public key for a dynamic secret",
+      params: z.object({
+        dynamicSecretId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          caPublicKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
+        dynamicSecretId: req.params.dynamicSecretId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { caPublicKey };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/entra-id/users",
     config: {
