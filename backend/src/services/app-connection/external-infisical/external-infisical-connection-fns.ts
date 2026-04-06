@@ -97,7 +97,10 @@ export const validateExternalInfisicalConnectionCredentials = async (
         message: "Machine identity not found in this instance."
       });
     }
-    await validateAccessTokenCredentials(inputCredentials);
+    await validateAccessTokenCredentials({
+      ...inputCredentials,
+      instanceUrl: removeTrailingSlash(`http://127.0.0.1:${appCfg.PORT}`)
+    });
     return inputCredentials;
   }
 
