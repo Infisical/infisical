@@ -1,11 +1,11 @@
 ---
 title: "Infisical Sync"
-description: "Learn how to configure an Infisical Sync to replicate secrets between Infisical instances."
+description: "Learn how to configure an Infisical Sync to replicate secrets between Infisical instances or between projects on the same instance."
 ---
 
 **Prerequisites:**
 
-    - Set up and add secrets to [Infisical Cloud](https://app.infisical.com) or a self hosted instance
+    - Set up and add secrets to [Infisical Cloud](https://app.infisical.com) or a self-hosted instance
     - Create an [Infisical Connection](/integrations/app-connections/external-infisical)
 
 <Tabs>
@@ -23,16 +23,19 @@ description: "Learn how to configure an Infisical Sync to replicate secrets betw
             - **Secret Path**: The folder path to retrieve secrets from.
 
 
-        4. Configure the **Destination** on the remote Infisical instance, then click **Next**.
+        4. Configure the **Destination** where secrets should be written, then click **Next**.
         ![Configure Destination](/images/secret-syncs/external-infisical/external-infisical-destination.png)
 
             - **Infisical Connection**: The Infisical Connection to authenticate with.
-            - **Project**: The Secret Manager project on the remote Infisical instance to sync secrets to.
-            - **Environment**: The environment inside the selected remote project.
+            - **Project**: The Secret Manager project to sync secrets to (on the destination Infisical instance).
+            - **Environment**: The environment inside the selected destination project.
             - **Secret Path**: The folder path inside the selected environment.
         <Note>
-            The Machine Identity used in the connection must have at least **Member** role on the target project in the remote instance.
+            The Machine Identity used in the connection must have at least the **Member** role on the target project in the destination instance.
         </Note>
+        <Tip>
+            **Same instance (cross-project):** Set the connection’s **Instance URL** to the same base URL you use to access this Infisical (for self-hosted, it should match your configured [`SITE_URL`](/self-hosting/configuration/envars)). Choose a **destination project** that is different from the sync’s source project. If the project you want does not appear in the list, confirm that the Machine Identity in the connection has access to that project.
+        </Tip>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/external-infisical/external-infisical-options.png)
