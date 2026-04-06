@@ -244,10 +244,15 @@ const unbindCertKeyFromVserver = async (
   }
 };
 
-const deleteCertKey = async (session: TNetScalerSession, certKeyName: string): Promise<void> => {
+const deleteCertKey = async (
+  session: TNetScalerSession,
+  certKeyName: string,
+  deleteFromDevice = false
+): Promise<void> => {
+  const args = deleteFromDevice ? "?args=deletefromdevice:true" : "";
   await session.makeRequest({
     method: "DELETE",
-    url: `${session.baseUrl}/sslcertkey/${encodeURIComponent(certKeyName)}`,
+    url: `${session.baseUrl}/sslcertkey/${encodeURIComponent(certKeyName)}${args}`,
     headers: session.headers
   });
 };
@@ -288,9 +293,7 @@ const removeNetScalerCertificate = async (
     await unbindCertKeyFromVserver(session, config.vserverName, certKeyName);
   }
 
-  await deleteCertKey(session, certKeyName);
-  await deleteFile(session, `${certKeyName}.cer`);
-  await deleteFile(session, `${certKeyName}.key`);
+  await deleteCertKey(session, certKeyName, true);
 };
 
 export const netScalerPkiSyncFactory = ({
