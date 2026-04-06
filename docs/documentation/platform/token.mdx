@@ -62,13 +62,16 @@ of the `/common` path within the development environment of the project; the tok
 
   </Accordion>
   <Accordion title="Can you provide examples for using glob patterns?">
-    1. `/**`: This pattern matches all folders at any depth in the directory structure. For example, it would match folders like `/folder1/`, `/folder1/subfolder/`, and so on.
+    **Important:** The `/` character acts as a path separator. A single `*` does **not** match across `/` boundaries — use `**` to match across multiple path segments.
 
-    2. `/*`: This pattern matches all immediate subfolders in the current directory. It does not match any folders at a deeper level. For example, it would match folders like `/folder1/`, `/folder2/`, but not `/folder1/subfolder/`.
-
-    3. `/*/*`: This pattern matches all subfolders at a depth of two levels in the current directory. It does not match any folders at a shallower or deeper level. For example, it would match folders like `/folder1/subfolder/`, `/folder2/subfolder/`, but not `/folder1/` or `/folder1/subfolder/subsubfolder/`.
-
-    4. `/folder1/*`: This pattern matches all immediate subfolders within the `/folder1/` directory. It does not match any folders outside of `/folder1/`, nor does it match any subfolders within those immediate subfolders. For example, it would match folders like `/folder1/subfolder1/`, `/folder1/subfolder2/`, but not `/folder2/subfolder/`.
+    | Pattern | Matches | Does not match |
+    |---------|---------|----------------|
+    | `/**` | `/folder1/`, `/folder1/subfolder/`, any depth | — |
+    | `/*` | `/folder1/`, `/folder2/` | `/folder1/subfolder/` |
+    | `/*/*` | `/folder1/subfolder/` | `/folder1/`, `/a/b/c/` |
+    | `/folder1/*` | `/folder1/subfolder1/`, `/folder1/subfolder2/` | `/folder2/subfolder/`, `/folder1/a/b/` |
+    | `/services/**` | `/services/api/`, `/services/api/v1/` | `/other/api/` |
+    | `/{dev,staging}/*` | `/dev/secrets/`, `/staging/config/` | `/prod/secrets/` |
 
   </Accordion>
 </AccordionGroup>

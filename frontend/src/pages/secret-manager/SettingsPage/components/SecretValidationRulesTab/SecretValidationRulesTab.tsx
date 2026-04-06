@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EllipsisVerticalIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { GlobPatternTooltip, ProjectPermissionCan } from "@app/components/permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -231,12 +231,7 @@ const RuleFormContent = ({
                         <InfoIcon className="size-4 text-muted" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs text-wrap">
-                        {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
-                        <p>
-                          The folder path is a glob pattern to match secret paths. As an example,
-                          /** will match all paths, /services/* will match all paths in the
-                          /services folder and its subfolders.
-                        </p>
+                        <GlobPatternTooltip />
                       </TooltipContent>
                     </Tooltip>
                   </div>

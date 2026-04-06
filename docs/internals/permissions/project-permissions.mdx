@@ -443,8 +443,18 @@ When defining conditions for permissions, you can use the following operators to
 | `$eq` | Equals (exact string match) | `string` |
 | `$ne` | Not equals | `string` |
 | `$in` | In array (matches any value in list) | `string[]` |
-| `$glob` | Glob pattern matching (supports `*` and `?` wildcards) | `string` |
+| `$glob` | [Glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (supports `*`, `**`, `?`, and `{a,b}` wildcards) | `string` |
 | `$elemMatch` | Element match for nested objects/arrays | `object` |
+
+<Note>
+When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
+
+| Pattern | Matches | Does not match |
+|---------|---------|----------------|
+| `/app/*` | `/app/config`, `/app/secrets` | `/app/config/db` |
+| `/app/**` | `/app/config`, `/app/config/db`, `/app/config/db/primary` | `/other/config` |
+| `/{dev,staging}/*` | `/dev/secrets`, `/staging/config` | `/prod/secrets` |
+</Note>
 
 ## Condition Keys Reference
 

@@ -273,12 +273,9 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
 
   return useMutation<Project, object, UpdateAuditLogsRetentionDTO>({
     mutationFn: async ({ projectId, auditLogsRetentionDays }) => {
-      const { data } = await apiRequest.put(
-        `/api/v1/projects/${projectId}/audit-logs-retention`,
-        {
-          auditLogsRetentionDays
-        }
-      );
+      const { data } = await apiRequest.put(`/api/v1/projects/${projectId}/audit-logs-retention`, {
+        auditLogsRetentionDays
+      });
       return data.project;
     },
     onSuccess: () => {

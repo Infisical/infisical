@@ -93,7 +93,7 @@ In the following steps, we explore how to create and use identities to access th
     - **Access Token Trusted IPs**: List of allowed IP ranges (defaults to `0.0.0.0/0`)
 
     <Tip>If you are unsure about what to configure for the subject, audience, and claims fields, you can inspect the JWT token from your Azure DevOps pipeline by adding a debug step that outputs the token claims.</Tip>
-    <Info>The `subject`, `audiences`, and `claims` fields support glob pattern matching; however, we highly recommend using hardcoded values whenever possible.</Info>
+    <Info>The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (e.g., `user-*`, `{admin,service}-**`); however, we highly recommend using hardcoded values whenever possible.</Info>
     </Step>
     <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
