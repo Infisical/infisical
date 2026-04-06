@@ -5,16 +5,18 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const ExternalMigrationConfigsSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
-  namespace: z.string().nullable().optional(),
+  provider: z.string(),
+  encryptedConfig: zodBuffer,
   connectionId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  provider: z.string().default("vault")
+  updatedAt: z.date()
 });
 
 export type TExternalMigrationConfigs = z.infer<typeof ExternalMigrationConfigsSchema>;

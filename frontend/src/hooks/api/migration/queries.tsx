@@ -5,9 +5,8 @@ import { apiRequest } from "@app/config/request";
 import {
   ExternalMigrationProviders,
   TDopplerEnvironment,
-  TDopplerExternalMigrationConfig,
   TDopplerProject,
-  TVaultExternalMigrationConfig,
+  TExternalMigrationConfig,
   VaultDatabaseRole,
   VaultKubernetesAuthRole,
   VaultKubernetesRole,
@@ -19,7 +18,7 @@ export const externalMigrationQueryKeys = {
     "custom-migration-available",
     provider
   ],
-  vaultConfigs: () => ["vault-external-migration-configs"],
+  configs: (provider: ExternalMigrationProviders) => ["external-migration-configs", provider],
   vaultNamespaces: () => ["vault-namespaces"],
   vaultPolicies: (namespace?: string) => ["vault-policies", namespace],
   vaultMounts: (namespace?: string) => ["vault-mounts", namespace],
@@ -53,7 +52,6 @@ export const externalMigrationQueryKeys = {
     namespace,
     mountPath
   ],
-  dopplerConfigs: () => ["doppler-external-migration-configs"],
   dopplerProjects: (configId?: string) => ["doppler-projects", configId],
   dopplerEnvironments: (configId?: string, projectSlug?: string) => [
     "doppler-environments",
@@ -72,12 +70,12 @@ export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProvid
   });
 };
 
-export const useGetVaultExternalMigrationConfigs = () => {
+export const useGetExternalMigrationConfigs = (provider: ExternalMigrationProviders) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultConfigs(),
+    queryKey: externalMigrationQueryKeys.configs(provider),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ configs: TVaultExternalMigrationConfig[] }>(
-        "/api/v3/external-migration/vault/configs"
+      const { data } = await apiRequest.get<{ configs: TExternalMigrationConfig[] }>(
+        `/api/v3/external-migration/${provider}/configs`
       );
       return data.configs;
     }
@@ -275,18 +273,6 @@ export const useGetVaultLdapRoles = (enabled = true, namespace?: string, mountPa
       return data.roles;
     },
     enabled: enabled && !!namespace && !!mountPath
-  });
-};
-
-export const useGetDopplerExternalMigrationConfigs = () => {
-  return useQuery({
-    queryKey: externalMigrationQueryKeys.dopplerConfigs(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ configs: TDopplerExternalMigrationConfig[] }>(
-        "/api/v3/external-migration/doppler/configs"
-      );
-      return data.configs;
-    }
   });
 };
 

@@ -4,20 +4,48 @@ export enum ExternalMigrationProviders {
   Doppler = "doppler"
 }
 
-export type TDopplerExternalMigrationConfig = {
+export type TExternalMigrationConfig = {
   id: string;
   orgId: string;
-  connectionId: string | null;
   provider: string;
+  connectionId: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TExternalMigrationVaultInput = {
+  provider: ExternalMigrationProviders.Vault;
+  config: { namespace: string };
+};
+
+export type TExternalMigrationDopplerInput = {
+  provider: ExternalMigrationProviders.Doppler;
+  config: Record<string, never>;
+};
+
+export type TExternalMigrationInput = TExternalMigrationVaultInput | TExternalMigrationDopplerInput;
+
+export type TCreateExternalMigrationConfigDTO = {
+  connectionId: string;
+  input: TExternalMigrationInput;
+};
+
+export type TUpdateExternalMigrationConfigDTO = {
+  id: string;
+  connectionId: string | null;
+  input: TExternalMigrationInput;
+};
+
+export type TDeleteExternalMigrationConfigDTO = {
+  provider: ExternalMigrationProviders;
+  id: string;
 };
 
 export type TDopplerProject = {
   id: string;
   slug: string;
   name: string;
-  description: string;
+  description?: string | null;
 };
 
 export type TDopplerEnvironment = {
@@ -40,15 +68,6 @@ export enum VaultImportStatus {
   Imported = "imported",
   ApprovalRequired = "approval-required"
 }
-
-export type TVaultExternalMigrationConfig = {
-  id: string;
-  orgId: string;
-  namespace: string;
-  connectionId: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
 
 export type TImportVaultSecretsDTO = {
   projectId: string;

@@ -142,12 +142,11 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  useGetDopplerExternalMigrationConfigs,
-  useGetVaultExternalMigrationConfigs,
+  useGetExternalMigrationConfigs,
   useImportDopplerSecrets,
   useImportVaultSecrets
 } from "@app/hooks/api/migration";
-import { VaultImportStatus } from "@app/hooks/api/migration/types";
+import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -289,9 +288,9 @@ const OverviewPageContent = () => {
   const { subscription } = useSubscription();
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { data: dopplerConfigs = [] } = useGetDopplerExternalMigrationConfigs();
+  const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Doppler);
   const dopplerImportConfigs = useMemo(
     () => dopplerConfigs.filter((c) => c.connectionId),
     [dopplerConfigs]

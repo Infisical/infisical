@@ -26,10 +26,13 @@ import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
-  useCreateVaultExternalMigrationConfig,
-  useUpdateVaultExternalMigrationConfig
+  useCreateExternalMigrationConfig,
+  useUpdateExternalMigrationConfig
 } from "@app/hooks/api/migration";
-import { TVaultExternalMigrationConfig } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationProviders,
+  TExternalMigrationConfig
+} from "@app/hooks/api/migration/types";
 
 const schema = z.object({
   namespace: z
@@ -43,7 +46,7 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  editConfig?: TVaultExternalMigrationConfig;
+  editConfig?: TExternalMigrationConfig;
 };
 
 export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) => {
@@ -57,9 +60,9 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
   );
 
   const { mutateAsync: createConfig, isPending: isCreating } =
-    useCreateVaultExternalMigrationConfig();
+    useCreateExternalMigrationConfig();
   const { mutateAsync: updateConfig, isPending: isUpdating } =
-    useUpdateVaultExternalMigrationConfig();
+    useUpdateExternalMigrationConfig();
 
   const {
     control,
@@ -77,18 +80,23 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
   useEffect(() => {
     if (isOpen) {
       reset({
-        namespace: editConfig?.namespace || "",
+        namespace: "",
         connectionId: editConfig?.connectionId || ""
       });
     }
   }, [isOpen, editConfig, reset]);
 
   const onFormSubmit = async (data: FormData) => {
+    const input = {
+      provider: ExternalMigrationProviders.Vault as const,
+      config: { namespace: data.namespace }
+    };
+
     if (isEdit && editConfig) {
       await updateConfig({
         id: editConfig.id,
-        namespace: data.namespace,
-        connectionId: data.connectionId
+        connectionId: data.connectionId,
+        input
       });
       createNotification({
         type: "success",
@@ -96,8 +104,8 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
       });
     } else {
       await createConfig({
-        namespace: data.namespace,
-        connectionId: data.connectionId
+        connectionId: data.connectionId,
+        input
       });
       createNotification({
         type: "success",

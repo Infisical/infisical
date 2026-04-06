@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Download, Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -32,25 +32,18 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
-  useDeleteDopplerExternalMigrationConfig,
-  useDeleteVaultExternalMigrationConfig,
-  useGetDopplerExternalMigrationConfigs,
-  useGetVaultExternalMigrationConfigs
+  useDeleteExternalMigrationConfig,
+  useGetExternalMigrationConfigs
 } from "@app/hooks/api/migration";
 import {
-  TDopplerExternalMigrationConfig,
-  TVaultExternalMigrationConfig
+  ExternalMigrationProviders,
+  TExternalMigrationConfig
 } from "@app/hooks/api/migration/types";
 
 import { DopplerConfigModal } from "./DopplerConfigModal";
-import { DopplerImportModal } from "./DopplerImportModal";
 import { MigrationConfigDeleteDialog } from "./MigrationConfigDeleteDialog";
 import { SelectInPlatformMigrationProviderModal } from "./SelectInPlatformMigrationProviderModal";
 import { VaultNamespaceConfigModal } from "./VaultNamespaceConfigModal";
-
-type TMergedRow =
-  | { kind: "vault"; config: TVaultExternalMigrationConfig }
-  | { kind: "doppler"; config: TDopplerExternalMigrationConfig };
 
 const SKELETON_ROW_KEYS = ["sk-1", "sk-2", "sk-3"] as const;
 
@@ -58,44 +51,31 @@ export const InPlatformMigrationSection = () => {
   const [isProviderPickerOpen, setIsProviderPickerOpen] = useState(false);
 
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
-  const [vaultEditConfig, setVaultEditConfig] = useState<
-    TVaultExternalMigrationConfig | undefined
-  >();
+  const [vaultEditConfig, setVaultEditConfig] = useState<TExternalMigrationConfig | undefined>();
 
   const [dopplerConfigModalOpen, setDopplerConfigModalOpen] = useState(false);
   const [dopplerEditConfig, setDopplerEditConfig] = useState<
-    TDopplerExternalMigrationConfig | undefined
+    TExternalMigrationConfig | undefined
   >();
 
-  const [dopplerImportModalOpen, setDopplerImportModalOpen] = useState(false);
-  const [dopplerImportConfig, setDopplerImportConfig] =
-    useState<TDopplerExternalMigrationConfig | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [configToDelete, setConfigToDelete] = useState<TExternalMigrationConfig | null>(null);
 
-  const [vaultDeleteOpen, setVaultDeleteOpen] = useState(false);
-  const [vaultToDelete, setVaultToDelete] = useState<TVaultExternalMigrationConfig | null>(null);
-
-  const [dopplerDeleteOpen, setDopplerDeleteOpen] = useState(false);
-  const [dopplerToDelete, setDopplerToDelete] = useState<TDopplerExternalMigrationConfig | null>(
-    null
+  const { data: vaultConfigs = [], isPending: isVaultLoading } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
   );
-
-  const { data: vaultConfigs = [], isPending: isVaultLoading } =
-    useGetVaultExternalMigrationConfigs();
-  const { data: dopplerConfigs = [], isPending: isDopplerLoading } =
-    useGetDopplerExternalMigrationConfigs();
+  const { data: dopplerConfigs = [], isPending: isDopplerLoading } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Doppler
+  );
 
   const { currentOrg } = useOrganization();
   const { data: appConnections = [] } = useListAppConnections();
 
-  const { mutateAsync: deleteVaultConfig } = useDeleteVaultExternalMigrationConfig();
-  const { mutateAsync: deleteDopplerConfig } = useDeleteDopplerExternalMigrationConfig();
+  const { mutateAsync: deleteConfig } = useDeleteExternalMigrationConfig();
 
   const mergedRows = useMemo(() => {
-    const rows: TMergedRow[] = [
-      ...vaultConfigs.map((config) => ({ kind: "vault" as const, config })),
-      ...dopplerConfigs.map((config) => ({ kind: "doppler" as const, config }))
-    ];
-    rows.sort((a, b) => b.config.createdAt.localeCompare(a.config.createdAt));
+    const rows: TExternalMigrationConfig[] = [...vaultConfigs, ...dopplerConfigs];
+    rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return rows;
   }, [vaultConfigs, dopplerConfigs]);
 
@@ -107,8 +87,10 @@ export const InPlatformMigrationSection = () => {
     return connection?.name || "Unknown";
   };
 
-  const providerApp = (row: TMergedRow): TInPlatformMigrationApp =>
-    row.kind === "vault" ? AppConnection.HCVault : AppConnection.Doppler;
+  const providerApp = (config: TExternalMigrationConfig): TInPlatformMigrationApp =>
+    config.provider === ExternalMigrationProviders.Vault
+      ? AppConnection.HCVault
+      : AppConnection.Doppler;
 
   const openAddForProvider = (app: TInPlatformMigrationApp) => {
     if (app === AppConnection.HCVault) {
@@ -120,26 +102,18 @@ export const InPlatformMigrationSection = () => {
     }
   };
 
-  const handleVaultDeleteConfirm = async () => {
-    if (!vaultToDelete) return;
-    await deleteVaultConfig({ id: vaultToDelete.id });
+  const handleDeleteConfirm = async () => {
+    if (!configToDelete) return;
+    await deleteConfig({
+      id: configToDelete.id,
+      provider: configToDelete.provider as ExternalMigrationProviders
+    });
     createNotification({
       type: "success",
-      text: "Namespace configuration deleted successfully"
+      text: "Migration configuration deleted successfully"
     });
-    setVaultDeleteOpen(false);
-    setVaultToDelete(null);
-  };
-
-  const handleDopplerDeleteConfirm = async () => {
-    if (!dopplerToDelete) return;
-    await deleteDopplerConfig({ id: dopplerToDelete.id });
-    createNotification({
-      type: "success",
-      text: "Doppler configuration deleted successfully"
-    });
-    setDopplerDeleteOpen(false);
-    setDopplerToDelete(null);
+    setDeleteOpen(false);
+    setConfigToDelete(null);
   };
 
   const renderTable = () => {
@@ -149,7 +123,6 @@ export const InPlatformMigrationSection = () => {
           <UnstableTableHeader>
             <UnstableTableRow>
               <UnstableTableHead>Platform</UnstableTableHead>
-              <UnstableTableHead>Namespace</UnstableTableHead>
               <UnstableTableHead>Connection</UnstableTableHead>
               <UnstableTableHead className="w-12 text-right" />
             </UnstableTableRow>
@@ -159,9 +132,6 @@ export const InPlatformMigrationSection = () => {
               <UnstableTableRow key={key}>
                 <UnstableTableCell>
                   <Skeleton className="h-4 w-36" />
-                </UnstableTableCell>
-                <UnstableTableCell>
-                  <Skeleton className="h-4 w-28" />
                 </UnstableTableCell>
                 <UnstableTableCell>
                   <Skeleton className="h-4 w-32" />
@@ -195,18 +165,18 @@ export const InPlatformMigrationSection = () => {
         <UnstableTableHeader>
           <UnstableTableRow>
             <UnstableTableHead>Platform</UnstableTableHead>
-            <UnstableTableHead>Namespace</UnstableTableHead>
             <UnstableTableHead>Connection</UnstableTableHead>
             <UnstableTableHead className="w-12 text-right" />
           </UnstableTableRow>
         </UnstableTableHeader>
         <UnstableTableBody>
-          {mergedRows.map((row) => {
-            const app = providerApp(row);
+          {mergedRows.map((config) => {
+            const app = providerApp(config);
             const { name, imageFileName } = getInPlatformMigrationProviderMeta(app);
+            const isDoppler = config.provider === ExternalMigrationProviders.Doppler;
 
             return (
-              <UnstableTableRow key={`${row.kind}-${row.config.id}`}>
+              <UnstableTableRow key={config.id}>
                 <UnstableTableCell>
                   <div className="flex items-center gap-2">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-bunker-500 p-1">
@@ -214,7 +184,7 @@ export const InPlatformMigrationSection = () => {
                         src={`/images/integrations/${imageFileName}`}
                         alt=""
                         className={
-                          row.kind === "doppler"
+                          isDoppler
                             ? "max-h-5 max-w-5 object-contain"
                             : "max-h-full max-w-full object-contain"
                         }
@@ -223,10 +193,7 @@ export const InPlatformMigrationSection = () => {
                     <span className="text-sm text-mineshaft-200">{name}</span>
                   </div>
                 </UnstableTableCell>
-                <UnstableTableCell className="text-sm text-mineshaft-300">
-                  {row.kind === "vault" ? row.config.namespace : "—"}
-                </UnstableTableCell>
-                <UnstableTableCell>{getConnectionName(row.config.connectionId)}</UnstableTableCell>
+                <UnstableTableCell>{getConnectionName(config.connectionId)}</UnstableTableCell>
                 <UnstableTableCell className="text-right">
                   <UnstableDropdownMenu>
                     <UnstableDropdownMenuTrigger asChild>
@@ -240,25 +207,14 @@ export const InPlatformMigrationSection = () => {
                       </UnstableIconButton>
                     </UnstableDropdownMenuTrigger>
                     <UnstableDropdownMenuContent align="end" className="min-w-40">
-                      {row.kind === "doppler" && (
-                        <UnstableDropdownMenuItem
-                          onClick={() => {
-                            setDopplerImportConfig(row.config);
-                            setDopplerImportModalOpen(true);
-                          }}
-                        >
-                          <Download />
-                          Import secrets
-                        </UnstableDropdownMenuItem>
-                      )}
                       <UnstableDropdownMenuItem
                         onClick={() => {
-                          if (row.kind === "vault") {
-                            setVaultEditConfig(row.config);
-                            setVaultModalOpen(true);
-                          } else {
-                            setDopplerEditConfig(row.config);
+                          if (isDoppler) {
+                            setDopplerEditConfig(config);
                             setDopplerConfigModalOpen(true);
+                          } else {
+                            setVaultEditConfig(config);
+                            setVaultModalOpen(true);
                           }
                         }}
                       >
@@ -268,13 +224,8 @@ export const InPlatformMigrationSection = () => {
                       <UnstableDropdownMenuItem
                         variant="danger"
                         onClick={() => {
-                          if (row.kind === "vault") {
-                            setVaultToDelete(row.config);
-                            setVaultDeleteOpen(true);
-                          } else {
-                            setDopplerToDelete(row.config);
-                            setDopplerDeleteOpen(true);
-                          }
+                          setConfigToDelete(config);
+                          setDeleteOpen(true);
                         }}
                       >
                         <Trash2 />
@@ -348,37 +299,15 @@ export const InPlatformMigrationSection = () => {
         editConfig={dopplerEditConfig}
       />
 
-      {dopplerImportConfig && (
-        <DopplerImportModal
-          isOpen={dopplerImportModalOpen}
-          onOpenChange={(open) => {
-            setDopplerImportModalOpen(open);
-            if (!open) setDopplerImportConfig(null);
-          }}
-          config={dopplerImportConfig}
-        />
-      )}
-
       <MigrationConfigDeleteDialog
-        isOpen={vaultDeleteOpen}
-        title={`Delete namespace configuration for "${vaultToDelete?.namespace}"?`}
+        isOpen={deleteOpen}
+        title="Delete migration configuration?"
         onChange={(open) => {
-          setVaultDeleteOpen(open);
-          if (!open) setVaultToDelete(null);
+          setDeleteOpen(open);
+          if (!open) setConfigToDelete(null);
         }}
         deleteKey="confirm"
-        onDeleteApproved={handleVaultDeleteConfirm}
-      />
-
-      <MigrationConfigDeleteDialog
-        isOpen={dopplerDeleteOpen}
-        title="Delete Doppler configuration?"
-        onChange={(open) => {
-          setDopplerDeleteOpen(open);
-          if (!open) setDopplerToDelete(null);
-        }}
-        deleteKey="confirm"
-        onDeleteApproved={handleDopplerDeleteConfirm}
+        onDeleteApproved={handleDeleteConfirm}
       />
     </div>
   );

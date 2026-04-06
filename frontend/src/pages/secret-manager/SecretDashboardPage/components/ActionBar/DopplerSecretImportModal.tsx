@@ -15,7 +15,7 @@ import {
 } from "@app/components/v2";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useGetDopplerEnvironments, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
-import { TDopplerExternalMigrationConfig } from "@app/hooks/api/migration/types";
+import { TExternalMigrationConfig } from "@app/hooks/api/migration/types";
 
 const schema = z.object({
   configId: z.string().min(1, "Doppler configuration is required"),
@@ -28,7 +28,7 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  configs: TDopplerExternalMigrationConfig[];
+  configs: TExternalMigrationConfig[];
   environment: string;
   secretPath: string;
   onImport: (dopplerProject: string, dopplerEnvironment: string, configId: string) => Promise<void>;

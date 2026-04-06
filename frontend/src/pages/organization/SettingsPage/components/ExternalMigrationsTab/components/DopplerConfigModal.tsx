@@ -25,10 +25,13 @@ import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
-  useCreateDopplerExternalMigrationConfig,
-  useUpdateDopplerExternalMigrationConfig
+  useCreateExternalMigrationConfig,
+  useUpdateExternalMigrationConfig
 } from "@app/hooks/api/migration";
-import { TDopplerExternalMigrationConfig } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationProviders,
+  TExternalMigrationConfig
+} from "@app/hooks/api/migration/types";
 
 const schema = z.object({
   connectionId: z.string().min(1, "Connection is required")
@@ -39,7 +42,7 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  editConfig?: TDopplerExternalMigrationConfig;
+  editConfig?: TExternalMigrationConfig;
 };
 
 export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) => {
@@ -53,9 +56,9 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
   );
 
   const { mutateAsync: createConfig, isPending: isCreating } =
-    useCreateDopplerExternalMigrationConfig();
+    useCreateExternalMigrationConfig();
   const { mutateAsync: updateConfig, isPending: isUpdating } =
-    useUpdateDopplerExternalMigrationConfig();
+    useUpdateExternalMigrationConfig();
 
   const {
     control,
@@ -78,11 +81,16 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
   }, [isOpen, editConfig, reset]);
 
   const onFormSubmit = async (data: FormData) => {
+    const input = {
+      provider: ExternalMigrationProviders.Doppler as const,
+      config: {} as Record<string, never>
+    };
+
     if (isEdit && editConfig) {
-      await updateConfig({ id: editConfig.id, connectionId: data.connectionId });
+      await updateConfig({ id: editConfig.id, connectionId: data.connectionId, input });
       createNotification({ type: "success", text: "Doppler configuration updated successfully" });
     } else {
-      await createConfig({ connectionId: data.connectionId });
+      await createConfig({ connectionId: data.connectionId, input });
       createNotification({ type: "success", text: "Doppler configuration created successfully" });
     }
     reset();

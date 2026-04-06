@@ -7,10 +7,12 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { projectKeys } from "../projects";
 import { externalMigrationQueryKeys } from "./queries";
 import {
-  TDopplerExternalMigrationConfig,
+  TCreateExternalMigrationConfigDTO,
+  TDeleteExternalMigrationConfigDTO,
+  TExternalMigrationConfig,
   TImportDopplerSecretsDTO,
   TImportVaultSecretsDTO,
-  TVaultExternalMigrationConfig,
+  TUpdateExternalMigrationConfigDTO,
   VaultImportStatus
 } from "./types";
 
@@ -100,127 +102,57 @@ export const useImportVaultSecrets = () => {
   });
 };
 
-export const useCreateVaultExternalMigrationConfig = () => {
+export const useCreateExternalMigrationConfig = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    TVaultExternalMigrationConfig,
-    Error,
-    { connectionId: string; namespace: string }
-  >({
-    mutationFn: async ({ connectionId, namespace }) => {
-      const { data } = await apiRequest.post<{ config: TVaultExternalMigrationConfig }>(
-        "/api/v3/external-migration/vault/configs",
-        {
-          connectionId,
-          namespace
-        }
+  return useMutation<TExternalMigrationConfig, Error, TCreateExternalMigrationConfigDTO>({
+    mutationFn: async ({ connectionId, input }) => {
+      const { data } = await apiRequest.post<{ config: TExternalMigrationConfig }>(
+        `/api/v3/external-migration/${input.provider}/configs`,
+        { connectionId, input }
       );
       return data.config;
     },
-    onSuccess: () => {
+    onSuccess: (_, { input }) => {
       queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.vaultConfigs()
+        queryKey: externalMigrationQueryKeys.configs(input.provider)
       });
     }
   });
 };
 
-export const useUpdateVaultExternalMigrationConfig = () => {
+export const useUpdateExternalMigrationConfig = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    TVaultExternalMigrationConfig,
-    Error,
-    { id: string; connectionId: string; namespace: string }
-  >({
-    mutationFn: async ({ id, connectionId, namespace }) => {
-      const { data } = await apiRequest.put<{ config: TVaultExternalMigrationConfig }>(
-        `/api/v3/external-migration/vault/configs/${id}`,
-        {
-          connectionId,
-          namespace
-        }
+  return useMutation<TExternalMigrationConfig, Error, TUpdateExternalMigrationConfigDTO>({
+    mutationFn: async ({ id, connectionId, input }) => {
+      const { data } = await apiRequest.put<{ config: TExternalMigrationConfig }>(
+        `/api/v3/external-migration/${input.provider}/configs/${id}`,
+        { connectionId, input }
       );
       return data.config;
     },
-    onSuccess: () => {
+    onSuccess: (_, { input }) => {
       queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.vaultConfigs()
+        queryKey: externalMigrationQueryKeys.configs(input.provider)
       });
     }
   });
 };
 
-export const useDeleteVaultExternalMigrationConfig = () => {
+export const useDeleteExternalMigrationConfig = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TVaultExternalMigrationConfig, Error, { id: string }>({
-    mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete<{ config: TVaultExternalMigrationConfig }>(
-        `/api/v3/external-migration/vault/configs/${id}`
+  return useMutation<TExternalMigrationConfig, Error, TDeleteExternalMigrationConfigDTO>({
+    mutationFn: async ({ provider, id }) => {
+      const { data } = await apiRequest.delete<{ config: TExternalMigrationConfig }>(
+        `/api/v3/external-migration/${provider}/configs/${id}`
       );
       return data.config;
     },
-    onSuccess: () => {
+    onSuccess: (_, { provider }) => {
       queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.vaultConfigs()
-      });
-    }
-  });
-};
-
-export const useCreateDopplerExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TDopplerExternalMigrationConfig, Error, { connectionId: string }>({
-    mutationFn: async ({ connectionId }) => {
-      const { data } = await apiRequest.post<{ config: TDopplerExternalMigrationConfig }>(
-        "/api/v3/external-migration/doppler/configs",
-        { connectionId }
-      );
-      return data.config;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.dopplerConfigs()
-      });
-    }
-  });
-};
-
-export const useUpdateDopplerExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TDopplerExternalMigrationConfig, Error, { id: string; connectionId: string }>({
-    mutationFn: async ({ id, connectionId }) => {
-      const { data } = await apiRequest.put<{ config: TDopplerExternalMigrationConfig }>(
-        `/api/v3/external-migration/doppler/configs/${id}`,
-        { connectionId }
-      );
-      return data.config;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.dopplerConfigs()
-      });
-    }
-  });
-};
-
-export const useDeleteDopplerExternalMigrationConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<TDopplerExternalMigrationConfig, Error, { id: string }>({
-    mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete<{ config: TDopplerExternalMigrationConfig }>(
-        `/api/v3/external-migration/doppler/configs/${id}`
-      );
-      return data.config;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalMigrationQueryKeys.dopplerConfigs()
+        queryKey: externalMigrationQueryKeys.configs(provider)
       });
     }
   });

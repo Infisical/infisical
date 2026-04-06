@@ -25,7 +25,7 @@ export type TDopplerProject = {
   id: string;
   slug: string;
   name: string;
-  description: string;
+  description?: string | null;
 };
 
 export type TDopplerEnvironment = {

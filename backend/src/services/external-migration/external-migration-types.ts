@@ -1,6 +1,7 @@
 import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { ExternalMigrationProviders, TExternalMigrationConfig } from "./external-migration-schemas";
 
 export enum KvVersion {
   V1 = "1",
@@ -123,12 +124,6 @@ export enum ExternalPlatforms {
   Doppler = "Doppler"
 }
 
-export enum ExternalMigrationProviders {
-  Vault = "vault",
-  EnvKey = "env-key",
-  Doppler = "doppler"
-}
-
 export enum VaultImportStatus {
   Imported = "imported",
   ApprovalRequired = "approval-required"
@@ -173,7 +168,20 @@ export type TUpdateVaultExternalMigrationDTO = {
   actor: OrgServiceActor;
 };
 
-export type TDeleteVaultExternalMigrationDTO = {
+export type TCreateExternalMigrationDTO = {
+  config: TExternalMigrationConfig;
+  connectionId: string;
+  actor: OrgServiceActor;
+};
+
+export type TUpdateExternalMigrationDTO = {
+  id: string;
+  config: TExternalMigrationConfig;
+  connectionId: string | null;
+  actor: OrgServiceActor;
+};
+
+export type TDeleteExternalMigrationDTO = {
   id: string;
   actor: OrgServiceActor;
 };
