@@ -33,9 +33,23 @@ export const extractDomainFromDN = (dn: string): string | null => {
   return dcComponents.length > 0 ? dcComponents.join(".") : null;
 };
 
+/**
+ * Extracts the hostname from an LDAP referral URL.
+ * e.g. "ldap://dc2.americas.test.com:389/CN=user,DC=americas,DC=test,DC=com" → "dc2.americas.test.com"
+ */
+export const extractHostFromReferralUrl = (referralUrl: string): string | null => {
+  try {
+    const url = new URL(referralUrl);
+    return url.hostname || null;
+  } catch {
+    return null;
+  }
+};
+
 export type LdapReferralError = Error & {
   dn: string;
   code: number;
+  referrals: string[];
   referralSource?: "search" | "modify";
 };
 
@@ -50,13 +64,14 @@ export const isLdapReferral = (err: unknown): boolean => {
 };
 
 /**
- * Checks if an error is an LDAP Referral (code 10) with a populated `dn`.
- * ldapjs surfaces this as a ReferralError with `dn` set to the matched DN.
+ * Type guard for a fully-formed LDAP Referral: code 10 with `dn` (string) and `referrals` (array).
+ * With the Infisical ldapjs fork (v3.0.8), `referrals` carries the actual target URLs from the
+ * LDAPResult, which is the primary source for determining the chase target.
  */
 export const isLdapReferralError = (err: unknown): err is LdapReferralError => {
   if (!isLdapReferral(err)) return false;
-  const ldapErr = err as Error & { dn?: unknown; code?: unknown };
-  return typeof ldapErr.dn === "string" && typeof ldapErr.code === "number";
+  const ldapErr = err as Error & { dn?: unknown; code?: unknown; referrals?: unknown };
+  return typeof ldapErr.dn === "string" && typeof ldapErr.code === "number" && Array.isArray(ldapErr.referrals);
 };
 
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {

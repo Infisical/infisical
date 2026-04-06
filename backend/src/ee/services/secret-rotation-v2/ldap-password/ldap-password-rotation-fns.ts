@@ -14,6 +14,7 @@ import {
   buildReferralUrl,
   executeWithPotentialGateway,
   extractDomainFromDN,
+  extractHostFromReferralUrl,
   isLdapReferral,
   isLdapReferralError,
   LdapProvider,
@@ -48,17 +49,21 @@ const getDN = async (dn: string, client: Client): Promise<string> => {
 
   return new Promise((resolve, reject) => {
     const handleSearchError = (error: Error) => {
-      // Search referrals (code 10) have err.dn === null, unlike modify referrals.
-      // We attach the search base DN so the upstream referral chase loop can
-      // extract the target domain and redirect to the correct DC.
       if (isLdapReferral(error)) {
         const ldapErr = error as Partial<LdapReferralError> & Error;
-        if (!ldapErr.dn || typeof ldapErr.dn !== "string") {
-          ldapErr.dn = base;
+        // Search referrals from AD often have an empty matchedDN.
+        // Set dn to the search base so extractDomainFromDN has a fallback.
+        if (!ldapErr.dn) {
+          (ldapErr as { dn: string }).dn = base;
         }
-        ldapErr.referralSource = "search";
+        (ldapErr as { referralSource: string }).referralSource = "search";
         logger.info(
-          { searchBase: base, upn: dn, referralDn: ldapErr.dn },
+          {
+            searchBase: base,
+            upn: dn,
+            referralDn: ldapErr.dn,
+            referralUrls: (ldapErr as { referrals?: string[] }).referrals ?? []
+          },
           "LDAP DN resolution received referral — propagating for upstream chase"
         );
         reject(error);
@@ -196,9 +201,9 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       );
 
       // The gateway proxy (withGatewayV2Proxy) wraps all errors into a generic
-      // BadRequestError, destroying the ldapjs error metadata (name, code, dn)
-      // that the referral chase loop needs. We capture the raw referral error
-      // here so we can re-throw it after the proxy's catch block runs.
+      // BadRequestError, destroying the ldapjs error metadata (name, code, dn,
+      // referrals) that the referral chase loop needs. We capture the raw
+      // referral error here so we can re-throw it after the proxy's catch block.
       let capturedReferralError: LdapReferralError | undefined;
 
       try {
@@ -210,20 +215,17 @@ export const ldapPasswordRotationFactory: TRotationFactory<
             try {
               userDn = await getDN(dn, client);
             } catch (getDnErr) {
-              if (isLdapReferral(getDnErr)) {
-                const ldapErr = getDnErr as Partial<LdapReferralError> & Error;
+              if (isLdapReferralError(getDnErr)) {
                 logger.info(
                   {
-                    errorMessage: ldapErr.message,
-                    errorName: ldapErr.name,
-                    errorCode: (ldapErr as { code?: number }).code,
-                    errorDn: ldapErr.dn != null ? String(ldapErr.dn) : null,
+                    errorDn: getDnErr.dn,
+                    referralUrls: getDnErr.referrals,
                     targetDn: dn,
                     url: modifyUrl
                   },
-                  "LDAP raw search referral — captured before gateway proxy"
+                  "LDAP search referral — captured before gateway proxy"
                 );
-                capturedReferralError = getDnErr as LdapReferralError;
+                capturedReferralError = getDnErr;
               }
               throw getDnErr;
             }
@@ -236,24 +238,21 @@ export const ldapPasswordRotationFactory: TRotationFactory<
             await new Promise<void>((resolve, reject) => {
               client.modify(userDn, changes, (err) => {
                 if (err) {
-                  if (isLdapReferral(err)) {
-                    const ldapErr = err as Partial<LdapReferralError> & Error;
+                  if (isLdapReferralError(err)) {
                     logger.info(
                       {
-                        errorMessage: err.message,
-                        errorName: ldapErr.name,
-                        errorCode: (ldapErr as { code?: number }).code,
-                        errorDn: ldapErr.dn != null ? String(ldapErr.dn) : null,
+                        errorDn: err.dn,
+                        referralUrls: err.referrals,
                         targetDn: userDn,
                         url: modifyUrl
                       },
-                      "LDAP raw modify referral — captured before gateway proxy"
+                      "LDAP modify referral — captured before gateway proxy"
                     );
-                    capturedReferralError = err as unknown as LdapReferralError;
+                    capturedReferralError = err;
                   } else {
-                    logger.info(
+                    logger.debug(
                       { errorMessage: err.message, errorName: err.name, targetDn: userDn, url: modifyUrl },
-                      "LDAP modify raw error (non-referral)"
+                      "LDAP modify error (non-referral)"
                     );
                   }
                   reject(err);
@@ -290,7 +289,6 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         }
         break;
       } catch (caughtErr) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         if (!isLdapReferralError(caughtErr)) {
           const errObj = caughtErr instanceof Error ? caughtErr : new Error(String(caughtErr));
           const prefix = referredUrl
@@ -314,7 +312,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
         const referralErr = caughtErr;
         const referralSource = referralErr.referralSource === "search" ? "search" : "modify";
-        const { dn: referralDn, code: referralCode, name: referralName } = referralErr;
+        const { dn: referralDn, referrals: referralUrls } = referralErr;
 
         if (hop === MAX_REFERRAL_HOPS) {
           logger.error(
@@ -323,6 +321,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
               maxHops: MAX_REFERRAL_HOPS,
               referralSource,
               lastReferralDn: referralDn,
+              referralUrls,
               lastUrl: currentCredentials.url
             },
             "LDAP password rotation — maximum referral hops exceeded"
@@ -333,41 +332,64 @@ export const ldapPasswordRotationFactory: TRotationFactory<
           );
         }
 
-        const referralDomain = extractDomainFromDN(referralDn);
+        // Primary: extract the target host directly from the referral URLs returned by AD
+        let referralTarget: string | null = null;
+        let targetSource = "none";
+
+        if (referralUrls.length > 0) {
+          referralTarget = extractHostFromReferralUrl(referralUrls[0]);
+          if (referralTarget) targetSource = "referral URL";
+        }
+
+        // Fallback: extract domain from the matchedDN if referral URLs were empty
+        if (!referralTarget) {
+          const domainFromDn = extractDomainFromDN(referralDn);
+          if (domainFromDn) {
+            referralTarget = domainFromDn;
+            targetSource = "matched DN";
+          }
+        }
 
         logger.info(
           {
             ...rotationContext,
             hop: hop + 1,
             referralSource,
-            rawErrorDn: referralDn,
-            rawErrorCode: referralCode,
-            rawErrorName: referralName,
-            extractedReferralDomain: referralDomain,
+            referralDn,
+            referralUrls,
+            referralTarget,
+            targetSource,
             currentUrl: currentCredentials.url
           },
-          `LDAP referral received during ${referralSource} — inspecting error details`
+          `LDAP referral received during ${referralSource} — resolving chase target`
         );
 
-        if (!referralDomain) {
-          logger.error(
-            { ...rotationContext, rawErrorDn: referralDn },
-            "LDAP password rotation — could not extract domain from referral DN (no DC= components found)"
-          );
+        if (!referralTarget) {
           throw new Error(
-            `Provider Modify Error: Referral received but could not determine target domain from DN: ${referralDn}`
+            `Provider Modify Error: Referral received but could not determine target — referralUrls: [${referralUrls.join(", ")}], matchedDN: ${referralDn}`
           );
         }
 
-        referredUrl = buildReferralUrl(credentials.url, referralDomain);
+        referredUrl = buildReferralUrl(credentials.url, referralTarget);
+
+        if (referredUrl === currentCredentials.url) {
+          logger.error(
+            { ...rotationContext, referredUrl, targetSource, referralSource },
+            "LDAP password rotation — referral chase would loop to the same URL, aborting"
+          );
+          throw new Error(
+            `Provider Modify Error: Referral chase loop detected — referred URL ${referredUrl} is the same as the current URL`
+          );
+        }
+
         logger.info(
           {
             ...rotationContext,
             hop: hop + 1,
             referralSource,
-            referralDomain,
+            referralTarget,
+            targetSource,
             referredUrl,
-            matchedDn: referralDn,
             originalUrl: credentials.url
           },
           `LDAP referral detected during ${referralSource} — chasing to referred domain controller`
