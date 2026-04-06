@@ -106,7 +106,7 @@ In the following steps, we explore how to create and use identities to access th
     <Info>
     The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching; however, we highly recommend using hardcoded values whenever possible.
     
-    Note that `*` matches any characters **including** `/` and other separators. Use specific patterns to avoid overly broad matching.
+    Note that `*` acts as `**` in JWT auth and matches any characters **including** `/` and other separators. Use specific patterns to avoid overly broad matching.
 
     | Pattern | Matches | Does not match |
     |---------|---------|----------------|

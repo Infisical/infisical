@@ -95,14 +95,6 @@ In the following steps, we explore how to create and use identities to access th
     <Tip>If you are unsure about what to configure for the subject, audience, and claims fields, you can inspect the JWT token from your Azure DevOps pipeline by adding a debug step that outputs the token claims.</Tip>
     <Info>
     The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching; however, we highly recommend using hardcoded values whenever possible.
-    
-    Note that `*` matches any characters **including** `:` and `/`. Use specific patterns to avoid overly broad matching.
-
-    | Pattern | Matches | Does not match |
-    |---------|---------|----------------|
-    | `repo:my-org/my-repo:*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:environment:prod` | `repo:other-org/my-repo:ref:refs/heads/main` |
-    | `repo:my-org/{app,api}:*` | `repo:my-org/app:ref:refs/heads/main`, `repo:my-org/api:environment:prod` | `repo:my-org/web:ref:refs/heads/main` |
-    | `repo:my-org/my-repo:ref:refs/heads/*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:ref:refs/heads/dev` | `repo:my-org/my-repo:environment:prod` |
     </Info>
     </Step>
     <Step title="Adding an identity to a project">
