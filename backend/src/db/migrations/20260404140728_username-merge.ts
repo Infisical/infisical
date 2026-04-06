@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
-import { TableName } from "../schemas";
+import { AccessScope, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   // ============================================================
@@ -77,27 +77,31 @@ export async function up(knex: Knex): Promise<void> {
     if (!userIds || userIds.length < 2) continue;
 
     // Get details for all users in this group
-    const usersDetail = await knex.raw(
-      `SELECT id, username, "isEmailVerified", "isAccepted"
-       FROM "${TableName.Users}" WHERE id = ANY(?) ORDER BY "createdAt" ASC`,
-      [userIds]
-    );
-    const users = usersDetail.rows as {
-      id: string;
-      username: string;
-      isEmailVerified: boolean | null;
-      isAccepted: boolean | null;
-    }[];
+    const users = await knex(TableName.Users)
+      .select("id", "username", "isEmailVerified", "isAccepted")
+      .whereIn("id", userIds)
+      .orderBy("createdAt", "asc");
 
-    // Delete incomplete users (not verified OR not accepted)
-    const incompleteIds = users.filter((u) => !u.isEmailVerified || !u.isAccepted).map((u) => u.id);
+    // Find orphan users (no org membership) among duplicates
+    const memberships = await knex(TableName.Membership)
+      .select("actorUserId")
+      .distinct("actorUserId")
+      .whereIn("actorUserId", userIds)
+      .where("scope", AccessScope.Organization);
 
-    if (incompleteIds.length > 0) {
-      await knex.raw(`DELETE FROM "${TableName.Users}" WHERE id = ANY(?)`, [incompleteIds]);
+    const usersWithMembership = new Set(memberships.map((r) => r.actorUserId));
+
+    // Delete: incomplete users (not verified OR not accepted) + orphan users (no org membership)
+    const deletableIds = users
+      .filter((u) => !u.isEmailVerified || !u.isAccepted || !usersWithMembership.has(u.id))
+      .map((u) => u.id);
+
+    if (deletableIds.length > 0) {
+      await knex(TableName.Users).whereIn("id", deletableIds).del();
     }
 
     // Check what's left
-    const remaining = users.filter((u) => !incompleteIds.includes(u.id));
+    const remaining = users.filter((u) => !deletableIds.includes(u.id));
     // eslint-disable-next-line no-continue
     if (remaining.length <= 1) continue;
 
@@ -112,11 +116,9 @@ export async function up(knex: Knex): Promise<void> {
         // that would conflict (unique constraint), the update will fail for that row.
         // So we do it in two steps: update what we can, leave the rest for CASCADE delete.
         try {
-          await knex.raw(
-            `UPDATE "${ref.table_name}" SET "${ref.column_name}" = ?
-             WHERE "${ref.column_name}" = ANY(?)`,
-            [winner.id, loserIds]
-          );
+          await knex(ref.table_name)
+            .whereIn(ref.column_name, loserIds)
+            .update({ [ref.column_name]: winner.id });
         } catch {
           // Unique constraint violation — some rows couldn't be reassigned.
           // That's fine — they'll be cleaned up by CASCADE when the loser user is deleted.
@@ -125,7 +127,7 @@ export async function up(knex: Knex): Promise<void> {
 
       // Now delete losers — any remaining CASCADE refs will be cleaned up,
       // SET NULL refs were already reassigned or will be nulled
-      await knex.raw(`DELETE FROM "${TableName.Users}" WHERE id = ANY(?)`, [loserIds]);
+      await knex(TableName.Users).whereIn("id", loserIds).del();
     }
   }
 

@@ -6,7 +6,6 @@ import { DatabaseError } from "@app/lib/errors";
 
 export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 
-// TODO(auth-revamp): check the count
 export const licenseDALFactory = (db: TDbClient) => {
   const countOfOrgMembers = async (orgId: string | null, tx?: Knex) => {
     try {

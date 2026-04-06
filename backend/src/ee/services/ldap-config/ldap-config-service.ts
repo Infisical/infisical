@@ -423,7 +423,6 @@ export const ldapConfigServiceFactory = ({
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
-      // TODO(auth-revamp): migration should migrate ldap users as well
       // Verify the existing user's stored email domain + cross-org check
       const existingUser = await userDAL.findOne({ id: userAlias.userId });
       if (existingUser) {
