@@ -106,13 +106,13 @@ In the following steps, we explore how to create and use identities to access th
     <Info>
     The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching; however, we highly recommend using hardcoded values whenever possible.
     
-    Note that `*` does not match across `/` boundaries — use `**` to match across path segments.
+    Note that `*` matches any characters **including** `/` and other separators. Use specific patterns to avoid overly broad matching.
 
     | Pattern | Matches | Does not match |
     |---------|---------|----------------|
-    | `user-*` | `user-admin`, `user-readonly` | `user-team/lead` |
-    | `{admin,service}-**` | `admin-api`, `service-db/primary` | `user-api` |
-    | `system:serviceaccount:*:my-sa` | `system:serviceaccount:default:my-sa` | `system:serviceaccount:ns/sub:my-sa` |
+    | `user-*` | `user-admin`, `user-readonly`, `user-team/lead` | `admin-api` |
+    | `{admin,service}-*` | `admin-api`, `service-db/primary` | `user-api` |
+    | `system:serviceaccount:default:*` | `system:serviceaccount:default:my-sa`, `system:serviceaccount:default:other-sa` | `system:serviceaccount:kube-system:my-sa` |
     </Info>
     </Step>
 

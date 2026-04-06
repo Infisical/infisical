@@ -24,9 +24,29 @@ export const GlobPatternTooltip = () => (
       </li>
     </ul>
     <p className="text-mineshaft-400">
-      path/<code className="text-yellow-500/80">**</code> will match all nested paths.{" "}
-      <code className="text-yellow-500/80">**</code> on its own will match everything. Use with
-      caution.
+      We highly recommend using hardcoded values whenever possible.
+    </p>
+  </div>
+);
+
+export const BashGlobPatternTooltip = () => (
+  <div className="space-y-1.5 text-left text-xs">
+    <p className="text-sm font-medium text-mineshaft-200">Glob pattern matching:</p>
+    <ul className="list-disc pl-3.5 text-mineshaft-300">
+      <li>
+        <code className="text-yellow-500/80">*</code> matches any characters (including{" "}
+        <code className="text-yellow-500/80">/</code>)
+        <br />
+        <span className="text-mineshaft-400">user/* matches user/admin and user/admin/service</span>
+      </li>
+      <li>
+        <code className="text-yellow-500/80">?</code> matches exactly one character
+        <br />
+        <span className="text-mineshaft-400">admin-? matches admin-1 but not admin-12</span>
+      </li>
+    </ul>
+    <p className="text-mineshaft-400">
+      We highly recommend using hardcoded values whenever possible.
     </p>
   </div>
 );

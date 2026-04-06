@@ -8,7 +8,7 @@ import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { GlobPatternTooltip } from "@app/components/permissions";
+import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -322,7 +322,7 @@ export const IdentityOidcAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip content={<GlobPatternTooltip />}>
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -340,7 +340,7 @@ export const IdentityOidcAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip content={<GlobPatternTooltip />}>
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -361,7 +361,7 @@ export const IdentityOidcAuthForm = ({
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
-                          <Tooltip content={<GlobPatternTooltip />}>
+                          <Tooltip content={<BashGlobPatternTooltip />}>
                             <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                           </Tooltip>
                         ) : undefined
