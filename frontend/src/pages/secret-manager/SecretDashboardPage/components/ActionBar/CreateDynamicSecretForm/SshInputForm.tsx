@@ -108,11 +108,10 @@ export const SshInputForm = ({
   const [principalInput, setPrincipalInput] = useState("");
   const [isPublicKeyRevealed, setIsPublicKeyRevealed] = useState(false);
 
-  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } =
-    useGetDynamicSecretSshCaPublicKey(
-      createdDynamicSecretId ?? "",
-      isPublicKeyRevealed && Boolean(createdDynamicSecretId)
-    );
+  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } = useGetDynamicSecretSshCaPublicKey(
+    createdDynamicSecretId ?? "",
+    isPublicKeyRevealed && Boolean(createdDynamicSecretId)
+  );
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -389,13 +388,11 @@ export const SshInputForm = ({
               </span>
               <div className="mt-2 flex items-center gap-1">
                 <Input
-                  value={
-                    isCaPublicKeyLoading
-                      ? "Loading..."
-                      : isPublicKeyRevealed && caPublicKey
-                        ? caPublicKey
-                        : "●●●●●●●●●●●●●●●●●●●●●●●●"
-                  }
+                  value={(() => {
+                    if (isCaPublicKeyLoading) return "Loading...";
+                    if (isPublicKeyRevealed && caPublicKey) return caPublicKey;
+                    return "●●●●●●●●●●●●●●●●●●●●●●●●";
+                  })()}
                   isDisabled
                 />
                 {isCaPublicKeyLoading ? (

@@ -108,8 +108,10 @@ export const EditDynamicSecretSshForm = ({
   const [cmdOpen, setCmdOpen] = useState(false);
   const [isPublicKeyRevealed, setIsPublicKeyRevealed] = useState(false);
 
-  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } =
-    useGetDynamicSecretSshCaPublicKey(dynamicSecret.id, isPublicKeyRevealed);
+  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } = useGetDynamicSecretSshCaPublicKey(
+    dynamicSecret.id,
+    isPublicKeyRevealed
+  );
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -359,13 +361,11 @@ export const EditDynamicSecretSshForm = ({
                           </span>
                           <div className="mt-1 flex items-center gap-1">
                             <Input
-                              value={
-                                isCaPublicKeyLoading
-                                  ? "Loading..."
-                                  : isPublicKeyRevealed && caPublicKey
-                                    ? caPublicKey
-                                    : "●●●●●●●●●●●●●●●●●●●●●●●●"
-                              }
+                              value={(() => {
+                                if (isCaPublicKeyLoading) return "Loading...";
+                                if (isPublicKeyRevealed && caPublicKey) return caPublicKey;
+                                return "●●●●●●●●●●●●●●●●●●●●●●●●";
+                              })()}
                               isDisabled
                             />
                             {isCaPublicKeyLoading ? (
@@ -373,7 +373,9 @@ export const EditDynamicSecretSshForm = ({
                             ) : (
                               <>
                                 <Tooltip
-                                  content={isPublicKeyRevealed ? "Hide public key" : "Reveal public key"}
+                                  content={
+                                    isPublicKeyRevealed ? "Hide public key" : "Reveal public key"
+                                  }
                                 >
                                   <IconButton
                                     ariaLabel="toggle public key visibility"
