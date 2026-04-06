@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { removeTrailingSlash } from "@app/lib/fn/string";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -46,11 +47,13 @@ type TRemoteContext = {
 const getRemoteContext = async (secretSync: TExternalInfisicalSyncWithCredentials): Promise<TRemoteContext> => {
   const { credentials } = secretSync.connection;
   const appCfg = getConfig();
-  const isSelfSync = appCfg.SITE_URL?.replace(/\/$/, "") === credentials.instanceUrl.replace(/\/$/, "");
+  const isSelfSync =
+    appCfg.SITE_URL !== undefined &&
+    removeTrailingSlash(appCfg.SITE_URL) === removeTrailingSlash(credentials.instanceUrl);
   if (!isSelfSync) {
     await blockLocalAndPrivateIpAddresses(credentials.instanceUrl);
   }
-  const baseUrl = isSelfSync ? `http://127.0.0.1:${appCfg.PORT}` : credentials.instanceUrl.replace(/\/$/, "");
+  const baseUrl = isSelfSync ? `http://127.0.0.1:${appCfg.PORT}` : removeTrailingSlash(credentials.instanceUrl);
   const effectiveCredentials = isSelfSync ? { ...credentials, instanceUrl: baseUrl } : credentials;
   const accessToken = await getExternalInfisicalAccessToken(effectiveCredentials);
   return { accessToken, baseUrl };

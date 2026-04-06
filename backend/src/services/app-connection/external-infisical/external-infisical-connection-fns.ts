@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn/string";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 
@@ -60,7 +61,9 @@ export const validateExternalInfisicalConnectionCredentials = async (
   const { credentials: inputCredentials } = config;
 
   const appCfg = getConfig();
-  const isSelfSync = appCfg.SITE_URL?.replace(/\/$/, "") === inputCredentials.instanceUrl.replace(/\/$/, "");
+  const isSelfSync =
+    appCfg.SITE_URL !== undefined &&
+    removeTrailingSlash(appCfg.SITE_URL) === removeTrailingSlash(inputCredentials.instanceUrl);
 
   if (isSelfSync) {
     // For self-sync, validate the machine identity exists in this instance via DAL.
@@ -87,7 +90,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
   if (localIdentity) {
     throw new BadRequestError({
       message:
-        "Cannot create an Infisical connection targeting the same instance. Use a machine identity from a different Infisical instance."
+        "This machine identity belongs to this instance, but the Instance URL points to a different one. Use a machine identity from the target instance, or set the Instance URL to this deployment for same-instance sync."
     });
   }
 
@@ -109,7 +112,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
 
 const getInternalBaseUrl = (instanceUrl: string): string | null => {
   const appCfg = getConfig();
-  if (appCfg.SITE_URL?.replace(/\/$/, "") === instanceUrl.replace(/\/$/, "")) {
+  if (appCfg.SITE_URL !== undefined && removeTrailingSlash(appCfg.SITE_URL) === removeTrailingSlash(instanceUrl)) {
     return `http://127.0.0.1:${appCfg.PORT}`;
   }
   return null;
@@ -128,7 +131,7 @@ const getAuthHeaders = async (connection: TExternalInfisicalConnection) => {
 };
 
 const getBaseUrl = (connection: TExternalInfisicalConnection) =>
-  getInternalBaseUrl(connection.credentials.instanceUrl) ?? connection.credentials.instanceUrl.replace(/\/$/, "");
+  getInternalBaseUrl(connection.credentials.instanceUrl) ?? removeTrailingSlash(connection.credentials.instanceUrl);
 
 export const listProjects = async (connection: TExternalInfisicalConnection): Promise<TRemoteProject[]> => {
   const baseUrl = getBaseUrl(connection);
