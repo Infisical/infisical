@@ -54,6 +54,25 @@ export const getExternalInfisicalAccessToken = async (credentials: {
   return data.accessToken;
 };
 
+const validateAccessTokenCredentials = async (credentials: {
+  instanceUrl: string;
+  machineIdentityClientId: string;
+  machineIdentityClientSecret: string;
+}): Promise<void> => {
+  try {
+    await getExternalInfisicalAccessToken(credentials);
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to validate connection: verify credentials"
+    });
+  }
+};
+
 export const validateExternalInfisicalConnectionCredentials = async (
   config: TExternalInfisicalConnectionConfig,
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">
@@ -78,6 +97,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
         message: "Machine identity not found in this instance."
       });
     }
+    await validateAccessTokenCredentials(inputCredentials);
     return inputCredentials;
   }
 
@@ -94,18 +114,7 @@ export const validateExternalInfisicalConnectionCredentials = async (
     });
   }
 
-  try {
-    await getExternalInfisicalAccessToken(inputCredentials);
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
-      });
-    }
-    throw new BadRequestError({
-      message: "Unable to validate connection: verify credentials"
-    });
-  }
+  await validateAccessTokenCredentials(inputCredentials);
 
   return inputCredentials;
 };
