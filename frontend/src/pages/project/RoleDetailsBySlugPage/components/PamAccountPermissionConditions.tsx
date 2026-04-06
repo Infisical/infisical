@@ -15,19 +15,9 @@ export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Pro
       position={position}
       selectOptions={[
         {
-          value: "resourceName",
-          label: "Resource Name",
-          description: "PAM resource name"
-        },
-        {
           value: "accountName",
           label: "Account Name",
           description: "PAM account name"
-        },
-        {
-          value: "resourceType",
-          label: "Resource Type",
-          description: "PAM resource type (e.g. postgres, mysql, ssh)"
         },
         {
           value: "metadataKey",
@@ -38,6 +28,16 @@ export const PamAccountPermissionConditions = ({ position = 0, isDisabled }: Pro
           value: "metadataValue",
           label: "Metadata Value",
           description: "The value of a metadata pair (use with $elemMatch for nested matching)"
+        },
+        {
+          value: "resourceName",
+          label: "Resource Name",
+          description: "PAM resource name"
+        },
+        {
+          value: "resourceType",
+          label: "Resource Type",
+          description: "PAM resource type (e.g. postgres, mysql, ssh)"
         }
       ]}
     />
