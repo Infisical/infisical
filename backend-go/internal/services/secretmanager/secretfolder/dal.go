@@ -17,9 +17,7 @@ type folderRow struct {
 	ID       uuid.UUID           `alias:"secret_folders.id"`
 	Name     string              `alias:"secret_folders.name"`
 	ParentID sql.Null[uuid.UUID] `alias:"secret_folders.parent_id"`
-	EnvID    uuid.UUID           `alias:"project_environments.id"`
-	EnvSlug  string              `alias:"project_environments.slug"`
-	EnvName  string              `alias:"project_environments.name"`
+	EnvID    uuid.UUID           `alias:"secret_folders.env_id"`
 }
 
 type DAL struct {
@@ -30,21 +28,27 @@ func NewDAL(db pg.DB) *DAL {
 	return &DAL{db: db}
 }
 
-func (d *DAL) GetFoldersByProjectID(ctx context.Context, projectID string) ([]folderRow, error) {
+func (d *DAL) GetFoldersByProjectAndEnvIDs(ctx context.Context, projectID string, envIDs []uuid.UUID) ([]folderRow, error) {
 	sf := table.SecretFolders
 	pe := table.ProjectEnvironments
+
+	envExpressions := make([]postgres.Expression, len(envIDs))
+	for i, id := range envIDs {
+		envExpressions[i] = postgres.UUID(id)
+	}
 
 	stmt := postgres.SELECT(
 		sf.ID,
 		sf.Name,
 		sf.ParentId,
-		pe.ID,
-		pe.Slug,
-		pe.Name,
+		sf.EnvId,
 	).FROM(
 		sf.INNER_JOIN(pe, sf.EnvId.EQ(pe.ID)),
 	).WHERE(
-		pe.ProjectId.EQ(postgres.String(projectID)),
+		postgres.AND(
+			pe.ProjectId.EQ(postgres.String(projectID)),
+			sf.EnvId.IN(envExpressions...),
+		),
 	)
 
 	var rows []folderRow
