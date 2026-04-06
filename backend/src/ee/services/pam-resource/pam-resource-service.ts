@@ -79,7 +79,11 @@ export const pamResourceServiceFactory = ({
 
     const canReadResources = permission.can(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType, metadata: resourceMetadata })
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        resourceType: resource.resourceType,
+        metadata: resourceMetadata
+      })
     );
 
     if (!canReadResources) {
@@ -108,7 +112,11 @@ export const pamResourceServiceFactory = ({
       if (!hasAccountAccess) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType, metadata: resourceMetadata })
+          subject(ProjectPermissionSub.PamResources, {
+            name: resource.name,
+            resourceType: resource.resourceType,
+            metadata: resourceMetadata
+          })
         );
       }
     }
