@@ -112,8 +112,8 @@ ingress:
   enabled: true
   # -- Hostname for ingress access, e.g., app.example.com
   hostName: ""
-  # -- Specifies the ingress class, useful for multi-ingress setups
-  ingressClassName: infisical-nginx
+  # -- Specifies the ingress class. When not set, defaults to "infisical-nginx" if the bundled ingress-nginx is enabled, or "nginx" otherwise.
+  ingressClassName: ""
 
   nginx:
     # -- Enable NGINX-specific settings, if using NGINX ingress controller
