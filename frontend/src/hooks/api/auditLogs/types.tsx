@@ -4,7 +4,7 @@ import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
-export type AuditLogMigrationStatus = {
+export type AuditLogPostgresStorageStatus = {
   clickHouseConfigured: boolean;
   auditLogGenerationDisabled: boolean;
   auditLogStorageDisabled: boolean;

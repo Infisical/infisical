@@ -4,12 +4,12 @@ import { apiRequest } from "@app/config/request";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
-import { AuditLog, AuditLogMigrationStatus, TGetAuditLogsFilter } from "./types";
+import { AuditLog, AuditLogPostgresStorageStatus, TGetAuditLogsFilter } from "./types";
 
 export const auditLogKeys = {
   getAuditLogs: (projectId: string | null, filters: TGetAuditLogsFilter) =>
     [{ projectId, filters }, "audit-logs"] as const,
-  migrationStatus: ["audit-logs-migration-status"] as const
+  postgresStorageStatus: ["audit-logs-postgres-storage-status"] as const
 };
 
 export const useGetAuditLogs = (
@@ -55,16 +55,16 @@ export const useGetAuditLogs = (
   });
 };
 
-const fetchAuditLogMigrationStatus = async () => {
-  const { data } = await apiRequest.get<AuditLogMigrationStatus>(
-    "/api/v1/organization/audit-logs/migration-status"
+const fetchAuditLogPostgresStorageStatus = async () => {
+  const { data } = await apiRequest.get<AuditLogPostgresStorageStatus>(
+    "/api/v1/organization/audit-logs/postgres-storage-status"
   );
   return data;
 };
 
-export const useGetAuditLogMigrationStatus = () => {
+export const useGetAuditLogPostgresStorageStatus = () => {
   return useQuery({
-    queryKey: auditLogKeys.migrationStatus,
-    queryFn: fetchAuditLogMigrationStatus
+    queryKey: auditLogKeys.postgresStorageStatus,
+    queryFn: fetchAuditLogPostgresStorageStatus
   });
 };

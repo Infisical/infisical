@@ -263,7 +263,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/audit-logs/migration-status",
+    url: "/audit-logs/postgres-storage-status",
     config: {
       rateLimit: readLimit
     },
@@ -277,9 +277,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.auditLog.getAuditLogMigrationStatus({
+      return server.services.auditLog.getAuditLogPostgresStorageStatus({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

@@ -117,13 +117,13 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
-  getAuditLogMigrationStatus: (arg: TOrgPermission) => Promise<{
+  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
     clickHouseConfigured: boolean;
     auditLogGenerationDisabled: boolean;
     auditLogStorageDisabled: boolean;
     auditLogRowCount: number;
   }>;
-  checkClickHouseMigrationAlert: () => Promise<void>;
+  checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;

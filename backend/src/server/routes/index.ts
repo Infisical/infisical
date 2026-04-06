@@ -830,7 +830,6 @@ export const registerRoutes = async (
     keyStore,
     smtpService,
     userDAL,
-    orgDAL,
     notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({

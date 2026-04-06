@@ -15,8 +15,9 @@ import {
   useSubscription
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission, withProjectPermission } from "@app/hoc";
-import { useGetAuditLogMigrationStatus } from "@app/hooks/api/auditLogs";
+import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -53,15 +54,16 @@ const LogsSectionComponent = ({
 }: Props) => {
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
-  const { data: migrationStatus } = useGetAuditLogMigrationStatus();
+  const { data: postgresStorageStatus } = useGetAuditLogPostgresStorageStatus();
 
   const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
   const showClickHouseWarning =
-    migrationStatus &&
-    !migrationStatus.clickHouseConfigured &&
-    !migrationStatus.auditLogStorageDisabled &&
-    !migrationStatus.auditLogGenerationDisabled &&
-    migrationStatus.auditLogRowCount >= AUDIT_LOG_ROW_WARNING_THRESHOLD;
+    !isInfisicalCloud() &&
+    postgresStorageStatus &&
+    !postgresStorageStatus.clickHouseConfigured &&
+    !postgresStorageStatus.auditLogStorageDisabled &&
+    !postgresStorageStatus.auditLogGenerationDisabled &&
+    postgresStorageStatus.auditLogRowCount >= AUDIT_LOG_ROW_WARNING_THRESHOLD;
 
   const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
     eventType: presets?.eventType || [],

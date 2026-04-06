@@ -23,7 +23,7 @@ import { TServiceTokenServiceFactory } from "../service-token/service-token-serv
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
-  auditLogService: Pick<TAuditLogServiceFactory, "checkClickHouseMigrationAlert">;
+  auditLogService: Pick<TAuditLogServiceFactory, "checkPostgresAuditLogVolumeMigrationAlert">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens">;
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
@@ -92,8 +92,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await serviceTokenService.notifyExpiringTokens();
         await scimService.notifyExpiringTokens();
         await orgService.notifyInvitedUsers();
-        await auditLogDAL.pruneAuditLog();
-        await auditLogService.checkClickHouseMigrationAlert();
+        await auditLogService.checkPostgresAuditLogVolumeMigrationAlert();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await queueJobsDAL.pruneQueueJobs();
@@ -103,6 +102,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
         }
         await approvalRequestGrantsDAL.markExpiredGrants();
+        await auditLogDAL.pruneAuditLog();
         logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
       } catch (error) {
         logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);

@@ -9,7 +9,6 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -23,6 +22,7 @@ import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } fro
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
+const AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -32,7 +32,6 @@ type TAuditLogServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
-  orgDAL: Pick<TOrgDALFactory, "findAllOrgsByUserId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -44,7 +43,6 @@ export const auditLogServiceFactory = ({
   keyStore,
   smtpService,
   userDAL,
-  orgDAL,
   notificationService
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
   const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
@@ -147,7 +145,7 @@ export const auditLogServiceFactory = ({
     return auditLogQueue.pushToLog(el);
   };
 
-  const getAuditLogMigrationStatus: TAuditLogServiceFactory["getAuditLogMigrationStatus"] = async ({
+  const getAuditLogPostgresStorageStatus: TAuditLogServiceFactory["getAuditLogPostgresStorageStatus"] = async ({
     actorAuthMethod,
     actorId,
     actorOrgId,
@@ -178,22 +176,22 @@ export const auditLogServiceFactory = ({
     };
   };
 
-  const checkClickHouseMigrationAlert = async () => {
+  const checkPostgresAuditLogVolumeMigrationAlert = async () => {
     const appCfg = getConfig();
     const isClickHouseConfigured = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
-    if (isClickHouseConfigured) return;
+    if (isClickHouseConfigured || appCfg.isCloud) return;
 
     const rowCount: number = await auditLogDAL.getApproximateRowCount();
 
     if (rowCount < AUDIT_LOG_ROW_WARNING_THRESHOLD) return;
 
-    const lastAlertedAt: string | null = await keyStore.getItem("audit-log-migration-alert-last-row-count");
-    const lastAlertedRowCount = lastAlertedAt ? Number(lastAlertedAt) : 0;
+    const lastAlertedRowCountStr: string | null = await keyStore.getItem("audit-log-migration-alert-last-row-count");
+    const lastAlertedRowCount = lastAlertedRowCountStr ? Number(lastAlertedRowCountStr) : 0;
 
     if (lastAlertedRowCount > 0 && rowCount < lastAlertedRowCount + AUDIT_LOG_ALERT_ROW_INCREMENT) return;
 
     logger.info(
-      `checkClickHouseMigrationAlert: alert triggered (rowCount=${rowCount}, lastAlerted=${lastAlertedRowCount})`
+      `checkPostgresAuditLogVolumeMigrationAlert: alert triggered (rowCount=${rowCount}, lastAlerted=${lastAlertedRowCount})`
     );
 
     const superAdminsResult: { users: TUsers[]; total: number } = await userDAL.getUsersByFilter({
@@ -210,35 +208,21 @@ export const auditLogServiceFactory = ({
     );
 
     if (adminsWithEmail.length > 0) {
-      const emailResults = await Promise.allSettled(
-        adminsWithEmail.map((admin) =>
-          smtpService.sendMail({
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            template: SmtpTemplates.AuditLogMigrationAlert,
-            subjectLine: "Action recommended: Optimize your audit log storage",
-            recipients: [admin.email],
-            substitutions: {
-              siteUrl: appCfg.SITE_URL
-            }
-          })
-        )
-      );
-
-      const failedEmails = emailResults.filter((r) => r.status === "rejected");
-      if (failedEmails.length > 0) {
-        logger.error({ failedCount: failedEmails.length }, "Failed to send some audit log migration alert emails");
+      const recipientEmails = [...new Set(adminsWithEmail.map((admin) => admin.email))];
+      try {
+        await smtpService.sendMail({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          template: SmtpTemplates.AuditLogMigrationAlert,
+          subjectLine: "Action recommended: Optimize your audit log storage",
+          recipients: recipientEmails,
+          substitutions: {
+            siteUrl: appCfg.SITE_URL
+          }
+        });
+      } catch (error) {
+        logger.error(error, "Failed to send audit log migration alert email");
       }
     }
-
-    const adminOrgMap = new Map<string, string>();
-    await Promise.all(
-      superAdminsResult.users.map(async (admin: TUsers) => {
-        const orgs = await orgDAL.findAllOrgsByUserId(admin.id);
-        if (orgs.length > 0) {
-          adminOrgMap.set(admin.id, orgs[0].id);
-        }
-      })
-    );
 
     await notificationService
       .createUserNotifications(
@@ -247,22 +231,25 @@ export const auditLogServiceFactory = ({
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           type: NotificationType.AUDIT_LOG_MIGRATION_RECOMMENDED,
           title: "Optimize your audit log storage",
-          body: "Your audit log volume is growing. To keep searches fast and reduce database load, we recommend streaming logs to an external destination like Splunk or using the built-in ClickHouse integration.",
-          link: adminOrgMap.has(admin.id) ? `/organizations/${adminOrgMap.get(admin.id)}/audit-logs` : undefined
+          body: "Your audit log volume is growing. To keep searches fast and reduce database load, we recommend streaming logs to an external destination like Splunk or using the built-in ClickHouse integration."
         }))
       )
       .catch((error) => {
         logger.error(error, "Failed to create audit log migration alert notifications");
       });
 
-    await keyStore.setItemWithExpiry("audit-log-migration-alert-last-row-count", 31536000, String(rowCount));
-    logger.info(`checkClickHouseMigrationAlert: alert sent to super admins (rowCount=${rowCount})`);
+    await keyStore.setItemWithExpiry(
+      "audit-log-migration-alert-last-row-count",
+      AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS,
+      String(rowCount)
+    );
+    logger.info(`checkPostgresAuditLogVolumeMigrationAlert: alert sent to super admins (rowCount=${rowCount})`);
   };
 
   return {
     createAuditLog,
     listAuditLogs,
-    getAuditLogMigrationStatus,
-    checkClickHouseMigrationAlert
+    getAuditLogPostgresStorageStatus,
+    checkPostgresAuditLogVolumeMigrationAlert
   };
 };
