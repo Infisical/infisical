@@ -43,7 +43,7 @@ A helm chart to deploy Infisical
 | ingress.annotations | object | `{}` | Custom annotations for ingress resource |
 | ingress.enabled | bool | `true` | Enable or disable ingress configuration |
 | ingress.hostName | string | `""` | Hostname for ingress access, e.g., app.example.com |
-| ingress.ingressClassName | string | `"nginx"` | Specifies the ingress class, useful for multi-ingress setups |
+| ingress.ingressClassName | string | `"infisical-nginx"` | Specifies the ingress class, useful for multi-ingress setups |
 | ingress.nginx.enabled | bool | `true` | Enable NGINX-specific settings, if using NGINX ingress controller |
 | ingress.tls | list | `[]` | TLS settings for HTTPS access |
 | nameOverride | string | `""` | Overrides the default release name |
@@ -63,3 +63,7 @@ A helm chart to deploy Infisical
 | redis.fullnameOverride | string | `"redis"` | Full name override for Redis resources |
 | redis.name | string | `"redis"` | Redis resource name |
 | redis.usePassword | bool | `true` | Requires a password for Redis authentication |
+| ingress-nginx.controller.ingressClassResource.name | string | `"infisical-nginx"` | IngressClass name used by the bundled NGINX controller. Uses a unique name to avoid conflicts with existing cluster ingress controllers |
+| ingress-nginx.controller.ingressClassResource.controllerValue | string | `"k8s.io/infisical-nginx"` | Controller value for the bundled IngressClass |
+| ingress-nginx.controller.ingressClassResource.default | bool | `false` | Whether the bundled IngressClass should be set as the cluster default |
+| ingress-nginx.controller.ingressClass | string | `"infisical-nginx"` | Ingress class the bundled controller watches for |

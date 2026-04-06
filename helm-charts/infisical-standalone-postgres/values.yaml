@@ -113,7 +113,7 @@ ingress:
   # -- Hostname for ingress access, e.g., app.example.com
   hostName: ""
   # -- Specifies the ingress class, useful for multi-ingress setups
-  ingressClassName: nginx
+  ingressClassName: infisical-nginx
 
   nginx:
     # -- Enable NGINX-specific settings, if using NGINX ingress controller
@@ -187,3 +187,15 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
+
+# -- Configuration for the bundled ingress-nginx subchart (only applies when ingress.nginx.enabled=true)
+ingress-nginx:
+  controller:
+    ingressClassResource:
+      # -- Use a unique IngressClass name so the bundled controller only serves Infisical's Ingress,
+      # -- not other Ingresses in the cluster that use the common "nginx" class.
+      name: infisical-nginx
+      controllerValue: k8s.io/infisical-nginx
+      # -- Do not set this as the default IngressClass for the cluster
+      default: false
+    ingressClass: infisical-nginx
