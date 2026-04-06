@@ -79,7 +79,7 @@ export const ExternalInfisicalSyncFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Project"
-            tooltipText="The project on the remote Infisical instance to sync secrets to. Ensure the machine identity used by this connection has access to the project."
+            tooltipText="The project on the Infisical instance to sync secrets to. Ensure the machine identity used by this connection has access to the project."
           >
             <FilterableSelect
               isLoading={isProjectsLoading && Boolean(connectionId)}
@@ -107,7 +107,7 @@ export const ExternalInfisicalSyncFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Environment"
-            tooltipText="The environment on the remote Infisical instance"
+            tooltipText="The environment on the Infisical instance"
           >
             <FilterableSelect
               isLoading={isProjectsLoading && Boolean(connectionId)}
@@ -135,7 +135,7 @@ export const ExternalInfisicalSyncFields = () => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Secret path"
-            tooltipText="The folder path on the remote Infisical instance to sync secrets to"
+            tooltipText="The folder path on the Infisical instance to sync secrets to"
           >
             <SecretPathInput
               isDisabled={!connectionId || !projectId || !environmentSlug}
