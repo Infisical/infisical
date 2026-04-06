@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -18,9 +19,12 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  Tag
+  Spinner,
+  Tag,
+  Tooltip
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useGetDynamicSecretSshCaPublicKey } from "@app/hooks/api/dynamicSecret";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
@@ -102,6 +106,13 @@ export const SshInputForm = ({
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [createdDynamicSecretId, setCreatedDynamicSecretId] = useState<string | null>(null);
   const [principalInput, setPrincipalInput] = useState("");
+  const [isPublicKeyRevealed, setIsPublicKeyRevealed] = useState(false);
+
+  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } =
+    useGetDynamicSecretSshCaPublicKey(
+      createdDynamicSecretId ?? "",
+      isPublicKeyRevealed && Boolean(createdDynamicSecretId)
+    );
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -343,7 +354,8 @@ export const SshInputForm = ({
           subTitle="Configure the target host to trust certificates issued by this dynamic secret."
         >
           <div className="flex flex-col">
-            <span className="text-sm text-muted">Run this command on the target host:</span>
+            <span className="text-sm font-medium">Option 1: Automatic Setup</span>
+            <span className="mt-1 text-sm text-muted">Run this command on the target host:</span>
             <div className="mt-2 flex items-center gap-1">
               <Input value={setupCommand} isDisabled />
               <IconButton
@@ -368,6 +380,68 @@ export const SshInputForm = ({
               <span>- Install the CA certificate on the target host</span>
               <span>- Configure SSH to trust certificate-based authentication</span>
               <span>- Restart the SSH service</span>
+            </div>
+
+            <div className="mt-4 border-t border-border pt-4">
+              <span className="text-sm font-medium">Option 2: Manual Setup</span>
+              <span className="mt-1 block text-sm text-muted">
+                Manually install the CA public key on your target host:
+              </span>
+              <div className="mt-2 flex items-center gap-1">
+                <Input
+                  value={
+                    isCaPublicKeyLoading
+                      ? "Loading..."
+                      : isPublicKeyRevealed && caPublicKey
+                        ? caPublicKey
+                        : "●●●●●●●●●●●●●●●●●●●●●●●●"
+                  }
+                  isDisabled
+                />
+                {isCaPublicKeyLoading ? (
+                  <Spinner size="xs" className="size-8 shrink-0" />
+                ) : (
+                  <>
+                    <Tooltip
+                      content={isPublicKeyRevealed ? "Hide public key" : "Reveal public key"}
+                    >
+                      <IconButton
+                        ariaLabel="toggle public key visibility"
+                        variant="plain"
+                        colorSchema="secondary"
+                        size="sm"
+                        onClick={() => setIsPublicKeyRevealed((prev) => !prev)}
+                        className="size-8 shrink-0"
+                      >
+                        <FontAwesomeIcon
+                          icon={isPublicKeyRevealed ? faEyeSlash : faEye}
+                          className="text-label"
+                        />
+                      </IconButton>
+                    </Tooltip>
+                    {isPublicKeyRevealed && caPublicKey && (
+                      <Tooltip content="Copy public key">
+                        <IconButton
+                          ariaLabel="copy"
+                          variant="plain"
+                          colorSchema="secondary"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(caPublicKey);
+                            createNotification({
+                              text: "CA public key copied to clipboard",
+                              type: "info"
+                            });
+                          }}
+                          className="size-8 shrink-0"
+                        >
+                          <FontAwesomeIcon icon={faCopy} className="text-label" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="mt-6 flex justify-end">

@@ -18,7 +18,9 @@ export const dynamicSecretKeys = {
   }: Pick<TListDynamicSecretDTO, "path" | "environmentSlug" | "projectSlug">) =>
     [{ projectSlug, environmentSlug, path }, "dynamic-secrets"] as const,
   details: ({ path, environmentSlug, projectSlug, name }: TDetailsDynamicSecretDTO) =>
-    [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const
+    [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const,
+  sshCaPublicKey: (dynamicSecretId: string) =>
+    [{ dynamicSecretId }, "dynamic-secret-ssh-ca-public-key"] as const
 };
 
 export const useGetDynamicSecrets = ({
@@ -96,6 +98,20 @@ export const useGetDynamicSecretProviderData = ({
       return data;
     },
     enabled
+  });
+};
+
+export const useGetDynamicSecretSshCaPublicKey = (dynamicSecretId: string, enabled = true) => {
+  return useQuery({
+    queryKey: dynamicSecretKeys.sshCaPublicKey(dynamicSecretId),
+    enabled: Boolean(dynamicSecretId) && enabled,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ caPublicKey: string }>(
+        `/api/v1/dynamic-secrets/ssh-ca-public-key/${dynamicSecretId}`
+      );
+
+      return data.caPublicKey;
+    }
   });
 };
 

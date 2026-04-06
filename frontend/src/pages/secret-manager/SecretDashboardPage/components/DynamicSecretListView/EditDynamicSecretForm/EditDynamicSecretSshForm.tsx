@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDownIcon, ShieldIcon } from "lucide-react";
@@ -17,9 +18,12 @@ import {
   Input,
   Select,
   SelectItem,
-  Tag
+  Spinner,
+  Tag,
+  Tooltip
 } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
+import { useGetDynamicSecretSshCaPublicKey } from "@app/hooks/api/dynamicSecret";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
@@ -102,6 +106,10 @@ export const EditDynamicSecretSshForm = ({
 
   const [principalInput, setPrincipalInput] = useState("");
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [isPublicKeyRevealed, setIsPublicKeyRevealed] = useState(false);
+
+  const { data: caPublicKey, isLoading: isCaPublicKeyLoading } =
+    useGetDynamicSecretSshCaPublicKey(dynamicSecret.id, isPublicKeyRevealed);
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -343,6 +351,71 @@ export const EditDynamicSecretSshForm = ({
                           <span>- Install the CA certificate on the target host</span>
                           <span>- Configure SSH to trust certificate-based authentication</span>
                           <span>- Restart the SSH service</span>
+                        </div>
+
+                        <div className="mt-4 border-t border-border pt-3">
+                          <span className="text-sm text-muted">
+                            Or manually install the CA public key on your target host:
+                          </span>
+                          <div className="mt-1 flex items-center gap-1">
+                            <Input
+                              value={
+                                isCaPublicKeyLoading
+                                  ? "Loading..."
+                                  : isPublicKeyRevealed && caPublicKey
+                                    ? caPublicKey
+                                    : "●●●●●●●●●●●●●●●●●●●●●●●●"
+                              }
+                              isDisabled
+                            />
+                            {isCaPublicKeyLoading ? (
+                              <Spinner size="xs" className="size-8 shrink-0" />
+                            ) : (
+                              <>
+                                <Tooltip
+                                  content={isPublicKeyRevealed ? "Hide public key" : "Reveal public key"}
+                                >
+                                  <IconButton
+                                    ariaLabel="toggle public key visibility"
+                                    variant="plain"
+                                    colorSchema="secondary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsPublicKeyRevealed((prev) => !prev);
+                                    }}
+                                    className="size-8 shrink-0"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={isPublicKeyRevealed ? faEyeSlash : faEye}
+                                      className="text-label"
+                                    />
+                                  </IconButton>
+                                </Tooltip>
+                                {isPublicKeyRevealed && caPublicKey && (
+                                  <Tooltip content="Copy public key">
+                                    <IconButton
+                                      ariaLabel="copy"
+                                      variant="plain"
+                                      colorSchema="secondary"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(caPublicKey);
+                                        createNotification({
+                                          text: "CA public key copied to clipboard",
+                                          type: "info"
+                                        });
+                                      }}
+                                      className="size-8 shrink-0"
+                                    >
+                                      <FontAwesomeIcon icon={faCopy} className="text-label" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
