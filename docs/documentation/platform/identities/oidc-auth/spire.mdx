@@ -129,6 +129,15 @@ In the following steps, we explore how to create and use identities to access th
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
     <Tip>SPIRE JWT-SVIDs contain standard claims like `sub` (SPIFFE ID), `aud` (audience), `exp`, and `iat`. The audience is typically specified when requesting the JWT-SVID (e.g., `spire-agent api fetch jwt -audience infisical`).</Tip>
     <Info>The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (e.g., `spiffe://example.org/ns/*`, `{dev,staging}-*`); however, we highly recommend using hardcoded SPIFFE IDs whenever possible for better security.</Info>
+
+    Note that `*` does not match across `:` or `/` boundaries — use `**` when you need to match across separators.
+
+    | Pattern | Matches | Does not match |
+    |---------|---------|----------------|
+    | `repo:my-org/*:ref:refs/heads/main` | `repo:my-org/any-repo:ref:refs/heads/main` | `repo:my-org/repo:ref:refs/heads/dev` |
+    | `repo:my-org/my-repo:*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:environment:prod` | `repo:other-org/my-repo:ref:refs/heads/main` |
+    | `repo:my-org/{app,api}:*` | `repo:my-org/app:ref:refs/heads/main`, `repo:my-org/api:environment:prod` | `repo:my-org/web:ref:refs/heads/main` |
+    
     </Step>
     <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.

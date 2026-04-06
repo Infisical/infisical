@@ -6,7 +6,7 @@ import { Input } from "../v2/Input";
 
 export const GlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="text-sm font-medium text-mineshaft-200">Glob pattern matching:</p>
+    <p className="text-sm font-medium text-mineshaft-200">This field supports glob patterns:</p>
     <ul className="list-disc pl-3.5 text-mineshaft-300">
       <li>
         <code className="text-yellow-500/80">*</code> matches a single path segment
@@ -31,13 +31,15 @@ export const GlobPatternTooltip = () => (
 
 export const BashGlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="text-sm font-medium text-mineshaft-200">Glob pattern matching:</p>
+    <p className="text-sm font-medium text-mineshaft-200">This field supports glob patterns:</p>
     <ul className="list-disc pl-3.5 text-mineshaft-300">
       <li>
         <code className="text-yellow-500/80">*</code> matches any characters (including{" "}
         <code className="text-yellow-500/80">/</code>)
         <br />
-        <span className="text-mineshaft-400">user/* matches user/admin and user/admin/service</span>
+        <span className="text-mineshaft-400">
+          user/* matches user/admin, user/admin/service, etc.
+        </span>
       </li>
       <li>
         <code className="text-yellow-500/80">?</code> matches exactly one character
