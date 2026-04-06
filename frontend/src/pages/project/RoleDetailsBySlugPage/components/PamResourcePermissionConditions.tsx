@@ -20,6 +20,11 @@ export const PamResourcePermissionConditions = ({ position = 0, isDisabled }: Pr
           description: "PAM resource name"
         },
         {
+          value: "resourceType",
+          label: "Resource Type",
+          description: "PAM resource type (e.g. postgres, mysql, ssh)"
+        },
+        {
           value: "metadataKey",
           label: "Metadata Key",
           description: "The key of a metadata pair (use with $elemMatch for nested matching)"

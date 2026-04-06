@@ -79,7 +79,7 @@ export const pamResourceServiceFactory = ({
 
     const canReadResources = permission.can(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType, metadata: resourceMetadata })
     );
 
     if (!canReadResources) {
@@ -99,6 +99,7 @@ export const pamResourceServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
             accountName: account.name,
+            resourceType: resource.resourceType,
             metadata: accountMetadata[account.id] || []
           })
         );
@@ -107,7 +108,7 @@ export const pamResourceServiceFactory = ({
       if (!hasAccountAccess) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+          subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType, metadata: resourceMetadata })
         );
       }
     }
@@ -150,6 +151,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.PamResources, {
         name,
+        resourceType,
         metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
@@ -266,6 +268,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: currentMetadata
       })
     );
@@ -276,6 +279,7 @@ export const pamResourceServiceFactory = ({
         ProjectPermissionActions.Edit,
         subject(ProjectPermissionSub.PamResources, {
           name: name ?? resource.name,
+          resourceType: resource.resourceType,
           metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
@@ -442,6 +446,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[id] || []
       })
     );
@@ -527,6 +532,7 @@ export const pamResourceServiceFactory = ({
           ProjectPermissionActions.Read,
           subject(ProjectPermissionSub.PamResources, {
             name: resource.name,
+            resourceType: resource.resourceType,
             metadata: metadataByResourceId[resource.id] || []
           })
         )
@@ -585,6 +591,7 @@ export const pamResourceServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
             accountName: account.accountName,
+            resourceType: resource.resourceType,
             metadata: account.metadata
           })
         )
@@ -634,6 +641,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[resourceId] || []
       })
     );
@@ -710,6 +718,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[adServerResourceId] || []
       })
     );
@@ -754,6 +763,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[resource.id] || []
       })
     );
