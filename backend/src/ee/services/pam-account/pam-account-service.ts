@@ -812,7 +812,7 @@ export const pamAccountServiceFactory = ({
 
     const { host, port } =
       resourceType !== PamResource.Kubernetes
-        ? connectionDetails
+        ? (connectionDetails as { host: string; port?: number })
         : (() => {
             const url = new URL(connectionDetails.url);
             let portNumber: number | undefined;
@@ -1038,9 +1038,6 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    // Pass connection details as-is to the gateway/CLI.
-    // For MongoDB SRV hosts (port is undefined), the CLI receives port=0 (Go zero value)
-    // and handles SRV resolution natively via mongodb+srv://.
     return {
       credentials: {
         ...decryptedResource.connectionDetails,

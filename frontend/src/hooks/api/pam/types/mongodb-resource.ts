@@ -4,7 +4,6 @@ import { TBasePamResource } from "./base-resource";
 
 export type TMongoDBConnectionDetails = {
   host: string;
-  port?: number;
   database: string;
   sslEnabled: boolean;
   sslRejectUnauthorized: boolean;

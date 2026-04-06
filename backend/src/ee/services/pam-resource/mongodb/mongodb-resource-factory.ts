@@ -55,7 +55,23 @@ const makeMongoDBConnection = (
     : `${encodeURIComponent(actualUsername)}:${encodeURIComponent(actualPassword)}@`;
 
   const encodedDatabase = encodeURIComponent(connectionDetails.database);
-  const uri = `mongodb://${authPart}localhost:${proxyPort}/${encodedDatabase}?authSource=admin&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
+
+  // Determine authSource: extract from host URI if present, otherwise default to "admin"
+  // (most MongoDB deployments authenticate users against the admin database).
+  let authSource = "admin";
+  if (host.startsWith("mongodb://") || host.startsWith("mongodb+srv://")) {
+    try {
+      const parsed = new URL(host);
+      const uriAuthSource = parsed.searchParams.get("authSource");
+      if (uriAuthSource) {
+        authSource = uriAuthSource;
+      }
+    } catch {
+      // Invalid URI — fall through to default
+    }
+  }
+
+  const uri = `mongodb://${authPart}localhost:${proxyPort}/${encodedDatabase}?authSource=${encodeURIComponent(authSource)}&directConnection=true&serverSelectionTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}&connectTimeoutMS=${EXTERNAL_REQUEST_TIMEOUT}`;
 
   const mongoClient = new MongoClient(uri, {
     ...(sslEnabled && {
@@ -96,7 +112,7 @@ const makeMongoDBConnection = (
 
 /**
  * For MongoDB SRV connections, resolve the SRV record to discover the actual host and port.
- * This is only called when port is absent (undefined), which explicitly indicates an SRV host.
+ * Used for relay routing — the relay needs a concrete host:port for the TCP tunnel.
  */
 const resolveMongoSrvHost = async (host: string): Promise<{ host: string; port: number }> => {
   const records = await resolveSrv(`_mongodb._tcp.${host}`);
@@ -106,6 +122,39 @@ const resolveMongoSrvHost = async (host: string): Promise<{ host: string; port: 
   throw new BadRequestError({
     message: `Unable to resolve SRV record for MongoDB host "${host}". Ensure the host is a valid SRV domain, or provide a port for direct connections.`
   });
+};
+
+/**
+ * Parse the MongoDB host field to extract the hostname and port for relay routing.
+ * The host field can be:
+ * - A full URI: mongodb+srv://cluster.abc.net/mydb?authSource=admin
+ * - A full URI: mongodb://host:27017/mydb
+ * - A bare SRV hostname: cluster.abc.net
+ * - A host:port: host:27017
+ * - A replica set: h1:p1,h2:p2
+ */
+const parseMongoHostForRelay = (host: string): { hostname: string; port?: number; isSRV: boolean } => {
+  // Full URI — parse hostname from it
+  if (host.startsWith("mongodb+srv://")) {
+    const parsed = new URL(host);
+    return { hostname: parsed.hostname, isSRV: true };
+  }
+  if (host.startsWith("mongodb://")) {
+    const parsed = new URL(host);
+    const parsedPort = parsed.port ? parseInt(parsed.port, 10) : undefined;
+    return { hostname: parsed.hostname, port: parsedPort, isSRV: false };
+  }
+
+  // Plain host spec
+  if (!host.includes(":") && !host.includes(",")) {
+    // Bare hostname — SRV
+    return { hostname: host, isSRV: true };
+  }
+
+  // host:port or h1:p1,h2:p2 — take first host for relay routing
+  const firstHost = host.split(",")[0];
+  const [hostname, portStr] = firstHost.split(":");
+  return { hostname, port: parseInt(portStr, 10) || 27017, isSRV: false };
 };
 
 const executeWithGateway = async <T>(
@@ -120,11 +169,16 @@ const executeWithGateway = async <T>(
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
 
-  // For MongoDB without a port, the host is an SRV domain — resolve it to get actual host:port.
-  let resolvedHost = connectionDetails.host;
-  let resolvedPort: number = connectionDetails.port ?? 0;
-  if (!connectionDetails.port) {
-    const resolved = await resolveMongoSrvHost(connectionDetails.host);
+  // Parse the host field to extract hostname/port for relay routing.
+  // The host can be a plain hostname, host:port, or a full MongoDB URI.
+  const parsed = parseMongoHostForRelay(connectionDetails.host);
+
+  let resolvedHost = parsed.hostname;
+  let resolvedPort: number = parsed.port ?? 0;
+
+  // For SRV hosts, resolve to a concrete host:port for the relay tunnel
+  if (parsed.isSRV) {
+    const resolved = await resolveMongoSrvHost(parsed.hostname);
     resolvedHost = resolved.host;
     resolvedPort = resolved.port;
   }
@@ -144,10 +198,10 @@ const executeWithGateway = async <T>(
     throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
   }
 
-  // For MongoDB SRV, override the host in connection details so TLS servername matches the resolved host
+  // For SRV, override the host in connection details so TLS servername matches the resolved host
   const effectiveConfig =
-    resolvedHost !== connectionDetails.host
-      ? { ...config, connectionDetails: { ...connectionDetails, host: resolvedHost, port: resolvedPort } }
+    resolvedHost !== parsed.hostname
+      ? { ...config, connectionDetails: { ...connectionDetails, host: resolvedHost } }
       : config;
 
   return withGatewayV2Proxy(

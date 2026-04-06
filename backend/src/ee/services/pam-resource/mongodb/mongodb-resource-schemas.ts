@@ -12,12 +12,11 @@ import {
 } from "../pam-resource-schemas";
 
 // Resources
-// MongoDB has its own connection schema because port is optional (SRV hosts don't use a port).
-// Other databases (Postgres, MySQL, MsSQL) continue to use BaseSqlResourceConnectionDetailsSchema
-// where port is required.
+// MongoDB uses its own connection schema. The host field accepts a MongoDB URI
+// (mongodb+srv://... or mongodb://...), a bare SRV hostname, host:port, or
+// comma-separated replica set hosts. Port is embedded in the host field.
 export const MongoDBResourceConnectionDetailsSchema = z.object({
-  host: z.string().trim().min(1).max(255),
-  port: z.coerce.number().optional(),
+  host: z.string().trim().min(1).max(1024),
   database: z.string().trim().min(1).max(255),
   sslEnabled: z.boolean(),
   sslRejectUnauthorized: z.boolean(),
