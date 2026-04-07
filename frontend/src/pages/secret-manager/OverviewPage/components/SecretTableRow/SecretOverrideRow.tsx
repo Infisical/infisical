@@ -75,6 +75,8 @@ export const SecretOverrideRow = ({
   const { currentProject } = useProject();
   const [isOverrideFieldFocused, setIsOverrideFieldFocused] = useToggle();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
+  const showMenuWhileFocused = isHoveringActionZone || isDeleteDialogOpen;
 
   const fetchOverrideValueParams = {
     environment,
@@ -180,13 +182,13 @@ export const SecretOverrideRow = ({
   }, [isCreatingOverride]);
 
   return (
-    <div className="flex w-full cursor-text items-center space-x-1.5 rounded py-1.5">
+    <div className="relative flex w-full cursor-text items-center space-x-1.5 rounded py-1.5">
       {!isSingleEnvView && (
         <div className="mr-1 flex shrink-0 items-center gap-1 text-xs text-override">
           <GitBranchIcon className="size-3.5" />
         </div>
       )}
-      <div className="grow pr-2">
+      <div className={twMerge("grow pr-2", isOverrideFieldFocused && "pr-14")}>
         <Controller
           control={control}
           name="value"
@@ -209,142 +211,171 @@ export const SecretOverrideRow = ({
           )}
         />
       </div>
-      <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
-        {isDirty ? (
-          <>
-            <ProjectPermissionCan
-              I={
-                isCreatingOverride ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit
-              }
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <UnstableIconButton
-                        size="xs"
-                        variant="success"
-                        isDisabled={isSubmitting || !isAllowed}
-                        onClick={handleSubmit(handleFormSubmit)}
-                      >
-                        <SaveIcon />
-                      </UnstableIconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isCreatingOverride ? "Create Override" : "Save Override"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-            </ProjectPermissionCan>
-            <div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <UnstableIconButton
-                    variant="danger"
-                    size="xs"
-                    onClick={handleFormReset}
-                    isDisabled={isSubmitting}
-                  >
-                    <Undo2Icon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isCreatingOverride ? "Remove Override" : "Undo Changes"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center space-x-1.5">
-            <Tooltip delayDuration={300} disableHoverableContent>
-              <TooltipTrigger>
-                <UnstableIconButton
-                  onClick={() => {
-                    setFocus("value", { shouldSelect: true });
-                  }}
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
-                  )}
-                >
-                  <EditIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit Override</TooltipContent>
-            </Tooltip>
-            {!isCreatingOverride && (
-              <Tooltip delayDuration={300} disableHoverableContent>
-                <TooltipTrigger>
-                  <UnstableIconButton
-                    isDisabled={!canFetchOverrideValue}
-                    onClick={handleCopyOverrideToClipboard}
-                    variant="ghost"
-                    size="xs"
-                    className={twMerge(
-                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
-                    )}
-                  >
-                    <CopyIcon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Override</TooltipContent>
-              </Tooltip>
+      {isDirty && (
+        <div
+          className={twMerge(
+            "absolute z-20 flex items-center gap-1.5 px-0.5 py-0.5",
+            isSingleEnvView ? "-top-[1.5px] -right-2.5" : "top-[0px] -right-1.5"
+          )}
+        >
+          <ProjectPermissionCan
+            I={isCreatingOverride ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+            a={subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName,
+              secretTags: ["*"]
+            })}
+          >
+            {(isAllowed) => (
+              <div>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <UnstableIconButton
+                      size="xs"
+                      variant="success"
+                      isDisabled={isSubmitting || !isAllowed}
+                      onClick={handleSubmit(handleFormSubmit)}
+                    >
+                      <SaveIcon />
+                    </UnstableIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isCreatingOverride ? "Create Override" : "Save Override"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             )}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogMedia>
-                    <TrashIcon />
-                  </AlertDialogMedia>
-                  <AlertDialogTitle>Remove Override</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to remove this personal override? The shared secret value
-                    will be used instead.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction variant="danger" onClick={handleDeleteOverride}>
-                    Remove
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Tooltip delayDuration={300} disableHoverableContent>
-              <TooltipTrigger>
+          </ProjectPermissionCan>
+          <div>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <UnstableIconButton
-                  onClick={
-                    isCreatingOverride
-                      ? () => {
-                          onCreatingOverrideChange(false);
-                          reset({ value: null });
-                        }
-                      : () => setIsDeleteDialogOpen(true)
-                  }
-                  variant="ghost"
+                  variant="danger"
                   size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
-                  )}
+                  onClick={handleFormReset}
+                  isDisabled={isSubmitting}
                 >
-                  <TrashIcon />
+                  <Undo2Icon />
                 </UnstableIconButton>
               </TooltipTrigger>
               <TooltipContent>
-                {isCreatingOverride ? "Cancel Override" : "Remove Override"}
+                {isCreatingOverride ? "Remove Override" : "Undo Changes"}
               </TooltipContent>
             </Tooltip>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+      {isOverrideFieldFocused && !isDirty && (
+        <div
+          className="absolute top-0 right-0 bottom-0 z-10 w-10"
+          onMouseEnter={() => setIsHoveringActionZone(true)}
+          onMouseLeave={() => setIsHoveringActionZone(false)}
+        />
+      )}
+      {!isDirty && (
+        <div
+          onMouseEnter={() => setIsHoveringActionZone(true)}
+          onMouseLeave={() => setIsHoveringActionZone(false)}
+          className={twMerge(
+            "absolute z-20",
+            "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+            "pointer-events-none opacity-0 transition-all duration-300",
+            "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+            isDeleteDialogOpen && "pointer-events-auto gap-1 opacity-100",
+            isOverrideFieldFocused &&
+              !showMenuWhileFocused &&
+              "group-hover:pointer-events-none group-hover:gap-0 group-hover:opacity-0",
+            isOverrideFieldFocused &&
+              showMenuWhileFocused &&
+              "pointer-events-auto gap-1 opacity-100",
+            isSingleEnvView ? "-top-[1.5px] -right-2.5" : "-top-[1.5px] -right-1.5"
+          )}
+        >
+          <Tooltip delayDuration={300} disableHoverableContent>
+            <TooltipTrigger>
+              <UnstableIconButton
+                onClick={() => {
+                  setFocus("value", { shouldSelect: true });
+                }}
+                variant="ghost"
+                size="xs"
+                className={twMerge(
+                  "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                  isDeleteDialogOpen && "w-7"
+                )}
+              >
+                <EditIcon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent>Edit Override</TooltipContent>
+          </Tooltip>
+          {!isCreatingOverride && (
+            <Tooltip delayDuration={300} disableHoverableContent>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  isDisabled={!canFetchOverrideValue}
+                  onClick={handleCopyOverrideToClipboard}
+                  variant="ghost"
+                  size="xs"
+                  className={twMerge(
+                    "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                    isDeleteDialogOpen && "w-7"
+                  )}
+                >
+                  <CopyIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>Copy Override</TooltipContent>
+            </Tooltip>
+          )}
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogMedia>
+                  <TrashIcon />
+                </AlertDialogMedia>
+                <AlertDialogTitle>Remove Override</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to remove this personal override? The shared secret value
+                  will be used instead.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="danger" onClick={handleDeleteOverride}>
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Tooltip delayDuration={300} disableHoverableContent>
+            <TooltipTrigger>
+              <UnstableIconButton
+                onClick={
+                  isCreatingOverride
+                    ? () => {
+                        onCreatingOverrideChange(false);
+                        reset({ value: null });
+                      }
+                    : () => setIsDeleteDialogOpen(true)
+                }
+                variant="ghost"
+                size="xs"
+                className={twMerge(
+                  "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger",
+                  isDeleteDialogOpen && "w-7"
+                )}
+              >
+                <TrashIcon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isCreatingOverride ? "Cancel Override" : "Remove Override"}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 };

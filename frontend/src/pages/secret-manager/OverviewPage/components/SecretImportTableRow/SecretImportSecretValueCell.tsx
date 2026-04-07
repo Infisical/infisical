@@ -1,4 +1,5 @@
 import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretInput } from "@app/components/v2";
@@ -30,7 +31,8 @@ export const SecretImportSecretValueCell = ({
   const {
     data: secretValue,
     isPending: isPendingSecretValue,
-    isError: isErrorFetchingSecretValue
+    isError: isErrorFetchingSecretValue,
+    refetch: refetchSecretValue
   } = useGetSecretValue(
     {
       environment,
@@ -52,19 +54,29 @@ export const SecretImportSecretValueCell = ({
   };
 
   const handleCopyValue = async () => {
-    const value = getValue();
-    if (value && value !== HIDDEN_SECRET_VALUE) {
-      await navigator.clipboard.writeText(value);
+    try {
+      if (secretValue?.value) {
+        await navigator.clipboard.writeText(secretValue.value);
+      } else {
+        const { data } = await refetchSecretValue();
+        await navigator.clipboard.writeText(data?.value ?? "");
+      }
       setIsCopied(true);
       createNotification({
         type: "success",
         text: "Copied secret to clipboard"
       });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to fetch secret value."
+      });
     }
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative flex items-center gap-2">
       <div className="flex-1">
         <SecretInput
           value={getValue()}
@@ -73,19 +85,28 @@ export const SecretImportSecretValueCell = ({
           isReadOnly
         />
       </div>
-      <Tooltip>
-        <TooltipTrigger>
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
-            onClick={handleCopyValue}
-          >
-            {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-          </UnstableIconButton>
-        </TooltipTrigger>
-        <TooltipContent>{isCopied ? "Copied" : "Copy value"}</TooltipContent>
-      </Tooltip>
+      <div
+        className={twMerge(
+          "absolute top-1/2 -right-1.5 z-20 -translate-y-1/2",
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        )}
+      >
+        <Tooltip>
+          <TooltipTrigger>
+            <UnstableIconButton
+              variant="ghost"
+              size="xs"
+              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              onClick={handleCopyValue}
+            >
+              {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+            </UnstableIconButton>
+          </TooltipTrigger>
+          <TooltipContent>{isCopied ? "Copied" : "Copy value"}</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 };

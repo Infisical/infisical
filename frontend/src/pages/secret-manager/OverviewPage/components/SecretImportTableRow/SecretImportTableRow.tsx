@@ -330,8 +330,8 @@ export const SecretImportTableRow = ({
                     variant="ghost"
                     size="xs"
                     className={twMerge(
-                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                      resyncSecretReplication.isPending && "w-7 animate-spin opacity-100"
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      resyncSecretReplication.isPending && "w-7 animate-spin"
                     )}
                     isDisabled={!isAllowed}
                     onClick={(e) => {
@@ -355,7 +355,13 @@ export const SecretImportTableRow = ({
     if (!singleEnvImport) return null;
 
     return (
-      <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        )}
+      >
         {renderReplicationStatus(singleEnvImport, singleEnvSlug)}
         <ProjectPermissionCan
           I={ProjectPermissionActions.Delete}
@@ -372,7 +378,7 @@ export const SecretImportTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   isDisabled={!isAllowed}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -578,7 +584,7 @@ export const SecretImportTableRow = ({
       <UnstableTableRow
         ref={isSingleEnvView ? (sortableRef as React.Ref<HTMLTableRowElement>) : undefined}
         onClick={handleRowClick}
-        className={twMerge("group", isDragging && "opacity-50")}
+        className={twMerge("group hover:z-10", isDragging && "opacity-50")}
       >
         <UnstableTableCell
           className={twMerge(
@@ -615,7 +621,7 @@ export const SecretImportTableRow = ({
           isTruncatable
           colSpan={isSingleEnvView ? 2 : undefined}
         >
-          <div className="flex w-full items-center">
+          <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">
               <Badge variant="neutral">
                 <LayersIcon />
@@ -625,7 +631,9 @@ export const SecretImportTableRow = ({
               <span className="truncate">{importPath}</span>
             </div>
             {isSingleEnvView && (
-              <div className="ml-auto flex items-center">{renderSingleEnvActions()}</div>
+              <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
+                {renderSingleEnvActions()}
+              </div>
             )}
           </div>
         </UnstableTableCell>

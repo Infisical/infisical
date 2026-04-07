@@ -218,7 +218,7 @@ export const SecretTableRow = ({
     <>
       <UnstableTableRow
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
-        className={twMerge("group", pendingActionRowClass(singleEnvPendingAction))}
+        className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
       >
         <UnstableTableCell
           className={twMerge(
@@ -312,7 +312,7 @@ export const SecretTableRow = ({
           <UnstableTableCell
             isTruncatable
             className={twMerge(
-              "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover group-hover:pr-18",
+              "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
               isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
             )}
           >
@@ -323,7 +323,15 @@ export const SecretTableRow = ({
             >
               {secretKey}
             </span>
-            <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center transition-all duration-500 group-hover:space-x-1.5">
+            <div
+              className={twMerge(
+                "absolute z-20",
+                "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+                "pointer-events-none opacity-0 transition-all duration-300",
+                "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+                "top-1/2 right-[3px] -translate-y-1/2"
+              )}
+            >
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
                   <UnstableIconButton
@@ -334,7 +342,7 @@ export const SecretTableRow = ({
                       e.stopPropagation();
                       copyTokenToClipboard();
                     }}
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   >
                     {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
                   </UnstableIconButton>
@@ -350,7 +358,7 @@ export const SecretTableRow = ({
                       setIsEditSecretNameOpen(true);
                       e.stopPropagation();
                     }}
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   >
                     <EditIcon />
                   </UnstableIconButton>
@@ -488,7 +496,7 @@ export const SecretTableRow = ({
                     return (
                       <>
                         <UnstableTableRow
-                          className="group"
+                          className="group hover:z-10"
                           key={`secret-expanded-${slug}-${secretKey}`}
                         >
                           <UnstableTableCell

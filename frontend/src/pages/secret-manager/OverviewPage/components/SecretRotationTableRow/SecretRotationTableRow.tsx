@@ -97,7 +97,13 @@ export const SecretRotationTableRow = ({
         secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
 
     return (
-      <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        )}
+      >
         <ProjectPermissionCan
           I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
           a={subject(ProjectPermissionSub.SecretRotation, {
@@ -114,7 +120,7 @@ export const SecretRotationTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
@@ -141,7 +147,7 @@ export const SecretRotationTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onRotate(secretRotation)}
                 >
@@ -169,7 +175,7 @@ export const SecretRotationTableRow = ({
                   <UnstableIconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                     isDisabled={!isAllowed}
                     onClick={() => onReconcile(secretRotation)}
                   >
@@ -199,7 +205,7 @@ export const SecretRotationTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onEdit(secretRotation)}
                 >
@@ -226,7 +232,7 @@ export const SecretRotationTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   onClick={() => onDelete(secretRotation)}
                   isDisabled={!isAllowed}
                 >
@@ -245,7 +251,7 @@ export const SecretRotationTableRow = ({
     <>
       <UnstableTableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group"
+        className="group hover:z-10"
       >
         <UnstableTableCell
           className={twMerge(
@@ -270,7 +276,7 @@ export const SecretRotationTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvRotation ? (
-            <div className="flex w-full items-center">
+            <div className="relative flex w-full items-center">
               <span className="truncate">{secretRotationName}</span>
               <Badge variant="neutral" className="mx-2.5">
                 <img
@@ -289,10 +295,14 @@ export const SecretRotationTableRow = ({
                 </Tooltip>
               )}
               {isSingleEnvView && singleEnvRotation && (
-                <div className="ml-auto flex items-center">
-                  <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
-                  {renderActionButtons(singleEnvRotation)}
-                </div>
+                <>
+                  <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-32">
+                    <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
+                  </div>
+                  <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
+                    {renderActionButtons(singleEnvRotation)}
+                  </div>
+                </>
               )}
             </div>
           ) : (
@@ -354,9 +364,9 @@ export const SecretRotationTableRow = ({
                       const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
 
                       return (
-                        <UnstableTableRow className="group relative">
-                          <UnstableTableCell>
-                            <div className="flex w-full flex-wrap items-center">
+                        <UnstableTableRow className="group relative hover:z-10">
+                          <UnstableTableCell colSpan={2}>
+                            <div className="relative flex w-full flex-wrap items-center">
                               <span>{envName}</span>
                               <Badge variant="neutral" className="mx-2.5">
                                 <img
@@ -376,12 +386,12 @@ export const SecretRotationTableRow = ({
                                   <TooltipContent>{description}</TooltipContent>
                                 </Tooltip>
                               )}
-                            </div>
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <div className="flex items-center">
-                              <SecretRotationV2StatusBadge secretRotation={secretRotation} />
-                              {renderActionButtons(secretRotation)}
+                              <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-32">
+                                <SecretRotationV2StatusBadge secretRotation={secretRotation} />
+                              </div>
+                              <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
+                                {renderActionButtons(secretRotation)}
+                              </div>
                             </div>
                           </UnstableTableCell>
                         </UnstableTableRow>

@@ -130,7 +130,13 @@ export const DynamicSecretTableRow = ({
     const isRevoking = dynamicSecret.status === DynamicSecretStatus.Deleting;
 
     return (
-      <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
+      <div
+        className={twMerge(
+          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+          "pointer-events-none opacity-0 transition-all duration-300",
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+        )}
+      >
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.Lease}
           a={subject(ProjectPermissionSub.DynamicSecrets, {
@@ -145,7 +151,7 @@ export const DynamicSecretTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -173,7 +179,7 @@ export const DynamicSecretTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -201,7 +207,7 @@ export const DynamicSecretTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -230,7 +236,7 @@ export const DynamicSecretTableRow = ({
                   <UnstableIconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                     isDisabled={!isAllowed}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -259,7 +265,7 @@ export const DynamicSecretTableRow = ({
                 <UnstableIconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   isDisabled={!isAllowed || isRevoking}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -281,7 +287,7 @@ export const DynamicSecretTableRow = ({
     <>
       <UnstableTableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group"
+        className="group hover:z-10"
       >
         <UnstableTableCell
           className={twMerge(
@@ -306,13 +312,13 @@ export const DynamicSecretTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvDynamicSecret ? (
-            <div className="flex w-full items-center">
+            <div className="relative flex w-full items-center">
               <span className="truncate">{dynamicSecretName}</span>
               <Badge variant="neutral" className="ml-2">
                 {DYNAMIC_SECRET_PROVIDER_NAMES[singleEnvDynamicSecret.type]}
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
-              <div className="ml-auto flex items-center">
+              <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderActionButtons(singleEnvDynamicSecret)}
               </div>
             </div>
@@ -383,19 +389,17 @@ export const DynamicSecretTableRow = ({
                       const dynamicSecret = getDynamicSecretByName(slug, dynamicSecretName)!;
 
                       return (
-                        <UnstableTableRow key={slug} className="group relative">
-                          <UnstableTableCell>
-                            <div className="flex w-full flex-wrap items-center">
+                        <UnstableTableRow key={slug} className="group relative hover:z-10">
+                          <UnstableTableCell colSpan={2}>
+                            <div className="relative flex w-full flex-wrap items-center">
                               <span>{envName}</span>
                               <Badge variant="neutral" className="ml-2">
                                 {DYNAMIC_SECRET_PROVIDER_NAMES[dynamicSecret.type]}
                               </Badge>
                               {renderStatusIndicator(dynamicSecret)}
-                            </div>
-                          </UnstableTableCell>
-                          <UnstableTableCell>
-                            <div className="flex items-center">
-                              {renderActionButtons(dynamicSecret)}
+                              <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
+                                {renderActionButtons(dynamicSecret)}
+                              </div>
                             </div>
                           </UnstableTableCell>
                         </UnstableTableRow>
