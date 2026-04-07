@@ -89,10 +89,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
   if (!account) return null;
 
   const showDataExplorer = account.resource.resourceType === PamResourceType.Postgres;
-  const showWebAccess =
-    showDataExplorer ||
+  const showConsole =
     account.resource.resourceType === PamResourceType.SSH ||
     account.resource.resourceType === PamResourceType.Redis;
+  const showWebAccess = showDataExplorer || showConsole;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -177,21 +177,23 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     Open Data Explorer
                   </Link>
                 )}
-                <Link
-                  to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId,
-                    resourceType: account.resource.resourceType,
-                    resourceId: account.resource.id,
-                    accountId: account.id
-                  }}
-                  target="_blank"
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-2 text-sm font-medium text-mineshaft-200 transition-colors hover:bg-mineshaft-600"
-                >
-                  <FontAwesomeIcon icon={faTerminal} />
-                  Open Console
-                </Link>
+                {showConsole && (
+                  <Link
+                    to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId,
+                      resourceType: account.resource.resourceType,
+                      resourceId: account.resource.id,
+                      accountId: account.id
+                    }}
+                    target="_blank"
+                    className="flex w-full items-center justify-center gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-2 text-sm font-medium text-mineshaft-200 transition-colors hover:bg-mineshaft-600"
+                  >
+                    <FontAwesomeIcon icon={faTerminal} />
+                    Open Console
+                  </Link>
+                )}
               </div>
             </div>
           </>
