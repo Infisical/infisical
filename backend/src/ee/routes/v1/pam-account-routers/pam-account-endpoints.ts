@@ -28,6 +28,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     requireMfa?: C["requireMfa"];
     internalMetadata?: Record<string, unknown>;
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
+    policyId?: string | null;
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
@@ -36,6 +37,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     requireMfa?: C["requireMfa"];
     internalMetadata?: Record<string, unknown>;
     metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
+    policyId?: string | null;
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {

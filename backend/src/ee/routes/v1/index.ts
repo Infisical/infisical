@@ -27,6 +27,7 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { registerPamAccountPolicyRouter } from "./pam-account-policy-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
@@ -202,6 +203,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+      await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
       await pamRouter.register(
         async (pamDiscoveryRouter) => {
           await pamDiscoveryRouter.register(registerPamDiscoveryRouter);

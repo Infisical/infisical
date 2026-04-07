@@ -5,20 +5,24 @@ import { apiRequest } from "@app/config/request";
 import { pamKeys } from "./queries";
 import {
   TCreatePamAccountDTO,
+  TCreatePamAccountPolicyDTO,
   TCreatePamFolderDTO,
   TCreatePamResourceDTO,
   TCreatePamRotationRuleDTO,
   TDeletePamAccountDTO,
+  TDeletePamAccountPolicyDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
   TDeletePamRotationRuleDTO,
   TPamAccount,
+  TPamAccountPolicy,
   TPamFolder,
   TPamResource,
   TPamRotationRule,
   TPamSession,
   TReorderPamRotationRulesDTO,
   TUpdatePamAccountDTO,
+  TUpdatePamAccountPolicyDTO,
   TUpdatePamFolderDTO,
   TUpdatePamResourceDTO,
   TUpdatePamRotationRuleDTO
@@ -422,6 +426,58 @@ export const useTerminatePamSession = () => {
     onSuccess: (_, { projectId, sessionId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listSessions(projectId) });
       queryClient.invalidateQueries({ queryKey: pamKeys.getSession(sessionId) });
+    }
+  });
+};
+
+// Account Policies
+export const useCreatePamAccountPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreatePamAccountPolicyDTO) => {
+      const { data } = await apiRequest.post<{ policy: TPamAccountPolicy }>(
+        "/api/v1/pam/account-policies",
+        params
+      );
+
+      return data.policy;
+    },
+    onSuccess: ({ projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
+    }
+  });
+};
+
+export const useUpdatePamAccountPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ policyId, ...params }: TUpdatePamAccountPolicyDTO) => {
+      const { data } = await apiRequest.patch<{ policy: TPamAccountPolicy }>(
+        `/api/v1/pam/account-policies/${policyId}`,
+        params
+      );
+
+      return data.policy;
+    },
+    onSuccess: ({ projectId, id }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccountPolicy(id) });
+    }
+  });
+};
+
+export const useDeletePamAccountPolicy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ policyId }: TDeletePamAccountPolicyDTO) => {
+      const { data } = await apiRequest.delete<{ policy: TPamAccountPolicy }>(
+        `/api/v1/pam/account-policies/${policyId}`
+      );
+
+      return data.policy;
+    },
+    onSuccess: ({ projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
     }
   });
 };

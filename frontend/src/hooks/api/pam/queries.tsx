@@ -9,6 +9,7 @@ import {
   TListPamResourcesDTO,
   TPamAccount,
   TPamAccountDependency,
+  TPamAccountPolicy,
   TPamResource,
   TPamResourceDependency,
   TPamRotationRule,
@@ -19,6 +20,7 @@ export const pamKeys = {
   all: ["pam"] as const,
   resource: () => [...pamKeys.all, "resource"] as const,
   account: () => [...pamKeys.all, "account"] as const,
+  accountPolicy: () => [...pamKeys.all, "account-policy"] as const,
   session: () => [...pamKeys.all, "session"] as const,
   listResourceOptions: () => [...pamKeys.resource(), "options"] as const,
   listResources: ({ projectId, ...params }: TListPamResourcesDTO) => [
@@ -50,6 +52,13 @@ export const pamKeys = {
   getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
+  listAccountPolicies: (projectId: string, search?: string) => [
+    ...pamKeys.accountPolicy(),
+    "list",
+    projectId,
+    { search }
+  ],
+  getAccountPolicy: (policyId: string) => [...pamKeys.accountPolicy(), "get", policyId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -307,6 +316,59 @@ export const useListPamSessions = (
       });
 
       return data.sessions;
+    },
+    ...options
+  });
+};
+
+// Account Policies
+export const useListPamAccountPolicies = (
+  projectId: string,
+  search?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TPamAccountPolicy[],
+      unknown,
+      TPamAccountPolicy[],
+      ReturnType<typeof pamKeys.listAccountPolicies>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.listAccountPolicies(projectId, search),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ policies: TPamAccountPolicy[] }>(
+        "/api/v1/pam/account-policies",
+        { params: { projectId, search } }
+      );
+
+      return data.policies;
+    },
+    ...options
+  });
+};
+
+export const useGetPamAccountPolicy = (
+  policyId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TPamAccountPolicy,
+      unknown,
+      TPamAccountPolicy,
+      ReturnType<typeof pamKeys.getAccountPolicy>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getAccountPolicy(policyId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ policy: TPamAccountPolicy }>(
+        `/api/v1/pam/account-policies/${policyId}`
+      );
+
+      return data.policy;
     },
     ...options
   });

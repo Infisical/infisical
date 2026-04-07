@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
@@ -42,13 +43,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          credentials: SessionCredentialsSchema
+          credentials: SessionCredentialsSchema,
+          policyRules: PolicyRulesResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId, account, sessionStarted } =
+      const { credentials, policyRules, projectId, account, sessionStarted } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
@@ -90,7 +92,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           .catch(() => {});
       }
 
-      return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
+      return {
+        credentials: credentials as z.infer<typeof SessionCredentialsSchema>,
+        policyRules
+      };
     }
   });
 
