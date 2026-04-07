@@ -111,6 +111,16 @@ export const useCredentialsReveal = (accountId: string) => {
         // Immediately open MFA popup and start polling
         const mfaUrl = `${window.location.origin}/mfa-session/${mfaSessionId}`;
         mfaPopupRef.current = window.open(mfaUrl, "_blank");
+
+        if (!mfaPopupRef.current) {
+          createNotification({
+            type: "error",
+            text: "Could not open MFA popup. Please allow popups for this site."
+          });
+          setState({ status: "hidden" });
+          return;
+        }
+
         setState({ status: "mfa-verifying" });
         startMfaPolling(mfaSessionId);
       } else {
