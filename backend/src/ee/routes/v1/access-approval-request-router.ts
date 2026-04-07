@@ -193,7 +193,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
                 status: z.string()
               })
               .array(),
-            requestedByUser: approvalRequestUser
+            requestedByUser: approvalRequestUser,
+            approvedByUser: approvalRequestUser.nullable(),
+            revokedByUser: approvalRequestUser.nullable()
           }).array()
         })
       }

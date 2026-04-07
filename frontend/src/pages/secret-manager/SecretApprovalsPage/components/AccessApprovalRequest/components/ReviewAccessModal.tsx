@@ -311,8 +311,7 @@ export const ReviewAccessRequestModal = ({
     if (hasExpired) return "This request has expired.";
     if (hasRejected) return "This request has been rejected.";
     if (hasRevoked) {
-      const revokedByMember = members.find((m) => m.user.id === request.revokedByUserId);
-      const revokedByEmail = revokedByMember?.user.email;
+      const revokedByEmail = request.revokedByUser?.email;
       return `This access has been revoked${revokedByEmail ? ` by ${revokedByEmail}` : ""}.`;
     }
     if (hasApproved) return "This request has been approved.";
@@ -504,7 +503,28 @@ export const ReviewAccessRequestModal = ({
                           <div className="flex flex-row flex-wrap gap-2">
                             {approver?.user?.map((el, idx) => {
                               const member = approverSequence?.membersGroupById?.[el.id]?.[0];
-                              if (!member) return null;
+
+                              if (!member) {
+                                const policyApprover = request.policy.approvers.find(
+                                  (a) => a.userId === el.id
+                                );
+                                return (
+                                  <div className="flex items-center" key={el.id}>
+                                    <span className="flex items-center gap-2 opacity-40">
+                                      {policyApprover?.email || policyApprover?.username || el.id}
+                                      <span className="text-xs">
+                                        <Tooltip content="This user has been removed from the project.">
+                                          <Badge variant="neutral">
+                                            <BanIcon />
+                                            Removed
+                                          </Badge>
+                                        </Tooltip>
+                                      </span>
+                                    </span>
+                                    {idx < approver.user.length - 1 && ","}
+                                  </div>
+                                );
+                              }
 
                               return member.user.isOrgMembershipActive ? (
                                 <div className="flex items-center" key={member.user.id}>
@@ -513,7 +533,7 @@ export const ReviewAccessRequestModal = ({
                                 </div>
                               ) : (
                                 <div className="flex items-center" key={member.user.id}>
-                                  <span className="flex items-center opacity-40">
+                                  <span className="flex items-center gap-2 opacity-40">
                                     {member.user.username}
                                     <span className="text-xs">
                                       <Tooltip content="This user has been deactivated and no longer has an active organization membership.">

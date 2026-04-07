@@ -129,6 +129,20 @@ export interface TAccessApprovalRequestServiceFactory {
         lastName: string | null | undefined;
         username: string;
       };
+      approvedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
+      revokedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
       privilege: {
         membershipId: string;
         userId: string;

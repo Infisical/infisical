@@ -258,7 +258,9 @@ export const AccessApprovalRequest = ({
           label: "Revoked",
           type: "danger",
           icon: ShieldBanIcon,
-          tooltipContent: `Revoked ${format(request.revokedAt!, "M/d/yyyy h:mm aa")}`
+          tooltipContent: request.revokedAt
+            ? `Revoked ${format(request.revokedAt, "M/d/yyyy h:mm aa")}`
+            : undefined
         };
       else if (isAccessExpired)
         displayData = {

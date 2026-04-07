@@ -116,6 +116,20 @@ export type TAccessApprovalRequest = {
   revokedAt?: Date | null;
   approvedByUserId?: string | null;
   revokedByUserId?: string | null;
+  approvedByUser?: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  } | null;
+  revokedByUser?: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId: string;
+    username: string;
+  } | null;
 };
 
 export type TAccessApproval = {
