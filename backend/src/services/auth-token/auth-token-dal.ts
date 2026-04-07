@@ -100,13 +100,13 @@ export const tokenDALFactory = (db: TDbClient) => {
     sessionId: string,
     userId: string,
     tx?: Knex
-  ): Promise<TAuthTokenSessions | undefined> => {
+  ): Promise<{ refreshVersion: number; id: string } | undefined> => {
     try {
       const [session] = await (tx || db)(TableName.AuthTokenSession)
         .where({ id: sessionId, userId })
         .increment("refreshVersion", 1)
         .update({ lastUsed: new Date() })
-        .returning("*");
+        .returning(["refreshVersion", "id"]);
       return session;
     } catch (error) {
       throw new DatabaseError({ error, name: "IncrementRefreshVersion" });

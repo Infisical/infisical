@@ -28,6 +28,8 @@ type TAuthSignupDep = {
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
 };
 
+const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
@@ -100,7 +102,6 @@ export const authSignupServiceFactory = ({
     // Always call validateTokenForUser so the response time includes
     // the bcrypt cost regardless of whether the user exists.
     // Use a dummy userId when there's no valid user.
-    const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
     const shouldReject = !user || user.isAccepted;
 
     try {
@@ -145,14 +146,13 @@ export const authSignupServiceFactory = ({
    */
   const completeAccount = async (dto: TCompleteAccountDTO) => {
     const appCfg = getConfig();
-    const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
     // Step 1: Extract and validate the signup token
     const tokenValue = extractBearerToken(dto.authorization);
     const decodedToken = crypto.jwt().verify(tokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
 
     if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
-      throw new UnauthorizedError({ message: "Invalid token type" });
+      throw new UnauthorizedError({ message: "Invalid token" });
     }
 
     // Step 2: Find the user
@@ -172,7 +172,7 @@ export const authSignupServiceFactory = ({
       const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
 
       if (shouldReject) {
-        throw new BadRequestError({ message: "Invalid or expired verification code" });
+        throw new BadRequestError({ message: "Invalid token" });
       }
 
       const updatedUser = await authDAL.transaction(async (tx) => {
@@ -210,12 +210,13 @@ export const authSignupServiceFactory = ({
       authMethod = AuthMethod.EMAIL;
     } else {
       // Alias verification
-      const userAlias = decodedToken.aliasId
-        ? await userAliasDAL.findOne({
-            id: decodedToken.aliasId,
-            userId: user?.id ?? DUMMY_USER_ID
-          })
-        : null;
+      const userAlias =
+        decodedToken.aliasId && user?.id
+          ? await userAliasDAL.findOne({
+              id: decodedToken.aliasId,
+              userId: user?.id
+            })
+          : null;
 
       // Determine rejection before token validation, but don't throw yet
       const shouldReject = !user || !decodedToken.aliasId || !userAlias;
@@ -229,11 +230,11 @@ export const authSignupServiceFactory = ({
           code: dto.code
         });
       } catch {
-        throw new BadRequestError({ message: "Invalid or expired verification code" });
+        throw new BadRequestError({ message: "Invalid token" });
       }
 
       if (shouldReject) {
-        throw new BadRequestError({ message: "Invalid or expired verification code" });
+        throw new BadRequestError({ message: "Invalid token" });
       }
 
       // Mark alias as verified

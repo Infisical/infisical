@@ -121,13 +121,11 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       }
 
       let newRefreshToken: string | undefined;
-      let sessionForAccessToken = tokenVersion;
 
       if (!isGraceHit) {
         // Normal rotation: issue new refresh token and invalidate the old one
         const rotation = await server.services.authToken.rotateRefreshToken(decodedToken, tokenVersion);
         newRefreshToken = rotation.newRefreshToken;
-        sessionForAccessToken = rotation.updatedSession;
       }
 
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
@@ -150,8 +148,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           authMethod: decodedToken.authMethod,
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: decodedToken.userId,
-          tokenVersionId: sessionForAccessToken.id,
-          accessVersion: sessionForAccessToken.accessVersion,
+          tokenVersionId: tokenVersion.id,
+          accessVersion: tokenVersion.accessVersion,
           organizationId: decodedToken.organizationId,
           ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
           isMfaVerified: decodedToken.isMfaVerified,

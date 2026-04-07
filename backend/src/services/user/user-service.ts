@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -58,7 +59,9 @@ export const userServiceFactory = ({
   userAliasDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
-    const { authType, aliasId, username, authTokenType } = crypto.jwt().decode(token) as {
+    const config = getConfig();
+
+    const { authType, aliasId, username, authTokenType } = crypto.jwt().verify(token, config.AUTH_SECRET) as {
       authType: string;
       aliasId?: string;
       username: string;
@@ -67,7 +70,7 @@ export const userServiceFactory = ({
     if (authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
 
     const user = await userDAL.findOne({ username });
-    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+    if (!user) throw new BadRequestError({ message: "Invalid token" });
 
     let { isEmailVerified } = user;
     if (aliasId) {
@@ -76,10 +79,8 @@ export const userServiceFactory = ({
       isEmailVerified = userAlias.isEmailVerified;
     }
 
-    if (!user.email)
-      throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
-    if (isEmailVerified)
-      throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
+    if (!user.email) throw new BadRequestError({ message: "Invalid token" });
+    if (isEmailVerified) throw new BadRequestError({ name: "Invalid token" });
 
     const userToken = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -219,13 +220,10 @@ export const userServiceFactory = ({
   }: TUpdateUserEmailDTO & { otpCode: string }) => {
     const newEmail = sanitizeEmail(unsanitizedEmail);
     validateEmail(newEmail);
+
     const changedUser = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
-
-      if (user.authMethods?.includes(AuthMethod.LDAP)) {
-        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
-      }
 
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {

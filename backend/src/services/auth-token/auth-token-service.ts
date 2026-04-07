@@ -12,6 +12,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
+import { logger } from "@app/lib/logger";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
@@ -138,11 +139,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
 
     // Now perform the logical checks *after* the constant-time work is done.
-    if (!token) throw new Error("Failed to find token");
+    if (!token) throw new Error("Invalid token");
 
-    if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
+    if (!token.expiresAt || new Date(token.expiresAt) < new Date()) {
       await tokenDAL.delete({ type, userId, orgId });
-      throw new Error("Token expired. Please try again");
+      throw new Error("Invalid token");
     }
 
     if (!isValidToken) {
@@ -188,7 +189,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (!refreshToken)
       throw new NotFoundError({
         name: "AuthTokenNotFound",
-        message: "Failed to find refresh token"
+        message: "Invalid token"
       });
 
     const decodedToken = crypto.jwt().verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
@@ -203,7 +204,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
     if (!tokenVersion)
       throw new UnauthorizedError({
-        message: "Valid token version not found",
+        message: "Invalid token",
         name: "InvalidToken"
       });
 
