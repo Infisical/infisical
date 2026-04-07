@@ -313,17 +313,17 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "GET",
+    method: "POST",
     url: "/:accountId/credentials",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       description: "View full (unsanitized) PAM account credentials",
       params: z.object({
         accountId: z.string().uuid()
       }),
-      querystring: z.object({
+      body: z.object({
         mfaSessionId: z.string().optional()
       }),
       response: {
@@ -334,7 +334,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pamAccount.viewCredentials({
         accountId: req.params.accountId,
-        mfaSessionId: req.query.mfaSessionId,
+        mfaSessionId: req.body.mfaSessionId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,

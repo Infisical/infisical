@@ -31,9 +31,9 @@ export const useCredentialsReveal = (accountId: string) => {
 
   const fetchCredentials = useCallback(
     async (mfaSessionId?: string) => {
-      const { data } = await apiRequest.get<TPamAccountCredentialsResponse>(
+      const { data } = await apiRequest.post<TPamAccountCredentialsResponse>(
         `/api/v1/pam/accounts/${accountId}/credentials`,
-        { params: mfaSessionId ? { mfaSessionId } : undefined }
+        mfaSessionId ? { mfaSessionId } : {}
       );
       return data;
     },
