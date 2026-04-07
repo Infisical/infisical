@@ -518,6 +518,7 @@ export type CertificatePolicySubjectFields = {
 
 export type PamAccountSubjectFields = {
   resourceName: string;
+  resourceType: string;
   accountName: string;
   metadata?: { key: string; value: string }[];
 };

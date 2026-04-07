@@ -137,8 +137,8 @@ const SensitiveField = ({ label, value }: { label: string; value: string }) => {
     initialState: ""
   });
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
     setCopied("copied");
   };
 
@@ -169,8 +169,8 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
     initialState: ""
   });
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
     setCopied("copied");
   };
 
@@ -297,6 +297,7 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
           state={state}
           accountName={account.name}
           resourceName={account.resource.name}
+          resourceType={account.resource.resourceType}
           metadata={account.metadata}
           onReveal={() => {
             if (!account.credentialsConfigured) {

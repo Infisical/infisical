@@ -13,6 +13,7 @@ type Props = {
   state: RevealState;
   accountName: string;
   resourceName: string;
+  resourceType: string;
   metadata?: { key: string; value: string }[];
   onReveal: () => void;
   onReset: () => void;
@@ -45,6 +46,7 @@ export const SensitiveCredentialsGate = ({
   state,
   accountName,
   resourceName,
+  resourceType,
   metadata,
   onReveal,
   onReset,
@@ -63,6 +65,7 @@ export const SensitiveCredentialsGate = ({
         I={ProjectPermissionPamAccountActions.ReadCredentials}
         a={subject(ProjectPermissionSub.PamAccounts, {
           resourceName,
+          resourceType,
           accountName,
           metadata: metadata ?? []
         })}
