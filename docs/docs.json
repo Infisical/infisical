@@ -142,6 +142,7 @@
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
+                      "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
@@ -322,7 +323,6 @@
                 "group": "Installation methods",
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
-                  "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
                   "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
@@ -540,7 +540,6 @@
                     "group": "Agent",
                     "pages": [
                       "integrations/platforms/infisical-agent",
-                      "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
@@ -815,7 +814,8 @@
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
                   "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+                  "documentation/platform/pki/certificate-syncs/netscaler"
                 ]
               },
               {
@@ -950,6 +950,7 @@
                   "cli/commands/secrets",
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
+                  "cli/commands/pam",
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -1636,6 +1637,18 @@
                       "api-reference/endpoints/app-connections/mysql/create",
                       "api-reference/endpoints/app-connections/mysql/update",
                       "api-reference/endpoints/app-connections/mysql/delete"
+                    ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/netscaler/list",
+                      "api-reference/endpoints/app-connections/netscaler/available",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-id",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-name",
+                      "api-reference/endpoints/app-connections/netscaler/create",
+                      "api-reference/endpoints/app-connections/netscaler/update",
+                      "api-reference/endpoints/app-connections/netscaler/delete"
                     ]
                   },
                   {
@@ -3100,6 +3113,18 @@
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
                     ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/netscaler/list",
+                      "api-reference/endpoints/pki/syncs/netscaler/get-by-id",
+                      "api-reference/endpoints/pki/syncs/netscaler/create",
+                      "api-reference/endpoints/pki/syncs/netscaler/update",
+                      "api-reference/endpoints/pki/syncs/netscaler/delete",
+                      "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                    ]
                   }
                 ]
               }
@@ -3470,7 +3495,8 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE"
+      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE",
+      "apiHost": "https://p.infisical.com"
     },
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"

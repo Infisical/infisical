@@ -422,6 +422,14 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can update vault external migration" });
     }
 
+    const existingConfig = await vaultExternalMigrationConfigDAL.findById(id);
+    const configDoesNotExist = !existingConfig;
+    const configBelongsToDifferentOrg = existingConfig?.orgId !== actor.orgId;
+
+    if (configDoesNotExist || configBelongsToDifferentOrg) {
+      throw new NotFoundError({ message: "Vault migration config not found" });
+    }
+
     if (connectionId) {
       const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
         AppConnection.HCVault,

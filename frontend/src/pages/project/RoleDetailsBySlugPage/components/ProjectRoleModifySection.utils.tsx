@@ -240,7 +240,8 @@ const PamAccountPolicyActionSchema = z.object({
 });
 
 const PamSessionPolicyActionSchema = z.object({
-  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
+  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
 });
 
 const PamDiscoveryPolicyActionSchema = z.object({
@@ -1791,10 +1792,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
     if (subject === ProjectPermissionSub.PamSessions) {
       const canRead = action.includes(ProjectPermissionPamSessionActions.Read);
+      const canTerminate = action.includes(ProjectPermissionPamSessionActions.Terminate);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
+      if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
     }
 
     if (subject === ProjectPermissionSub.PamDiscovery) {
@@ -3144,6 +3147,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read",
         value: ProjectPermissionPamSessionActions.Read,
         description: "View PAM session history and recordings"
+      },
+      {
+        label: "Terminate",
+        value: ProjectPermissionPamSessionActions.Terminate,
+        description: "Terminate active PAM sessions"
       }
     ]
   },

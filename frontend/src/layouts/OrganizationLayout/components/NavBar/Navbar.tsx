@@ -82,6 +82,7 @@ import {
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
@@ -552,7 +553,9 @@ export const Navbar = () => {
         )}
       </div>
 
-      {subscription && subscription.slug === "starter" && !subscription.has_used_trial ? (
+      {subscription &&
+      subscription.slug === SubscriptionPlanTypes.Starter &&
+      !subscription.has_used_trial ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

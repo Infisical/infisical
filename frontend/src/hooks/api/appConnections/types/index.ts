@@ -36,6 +36,7 @@ import { TMongoDBConnection } from "./mongodb-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TNetlifyConnection } from "./netlify-connection";
+import { TNetScalerConnection } from "./netscaler-connection";
 import { TNorthflankConnection } from "./northflank-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
@@ -90,6 +91,7 @@ export * from "./mongodb-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
 export * from "./netlify-connection";
+export * from "./netscaler-connection";
 export * from "./northflank-connection";
 export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
@@ -167,6 +169,7 @@ export type TAppConnection =
   | TVenafiConnection
   | TExternalInfisicalConnection
   | TPowerDNSConnection;
+  | TNetScalerConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

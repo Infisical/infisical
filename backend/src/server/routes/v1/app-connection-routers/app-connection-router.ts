@@ -119,6 +119,10 @@ import {
   SanitizedNetlifyConnectionSchema
 } from "@app/services/app-connection/netlify";
 import {
+  NetScalerConnectionListItemSchema,
+  SanitizedNetScalerConnectionSchema
+} from "@app/services/app-connection/netscaler";
+import {
   NorthflankConnectionListItemSchema,
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
@@ -224,6 +228,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedPowerDNSConnectionSchema.options
+  ...SanitizedNetScalerConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -282,6 +287,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VenafiConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
   PowerDNSConnectionListItemSchema
+  NetScalerConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

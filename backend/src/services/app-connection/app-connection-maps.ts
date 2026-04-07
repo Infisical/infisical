@@ -56,6 +56,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Venafi]: "Venafi TLS Protect Cloud",
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.PowerDNS]: "PowerDNS"
+  [AppConnection.NetScaler]: "NetScaler"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -114,4 +115,5 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Venafi]: AppConnectionPlanType.Regular,
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.PowerDNS]: AppConnectionPlanType.Regular
+  [AppConnection.NetScaler]: AppConnectionPlanType.Regular
 };

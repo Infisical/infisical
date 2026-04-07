@@ -62,10 +62,13 @@ import {
   UnstableTableRow
 } from "@app/components/v3";
 import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
+  useOrgPermission,
   useProject,
   useProjectPermission,
   useUser
@@ -75,7 +78,13 @@ import {
   ProjectPermissionSecretActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import {
+  useAddUsersToOrg,
+  useAddUserToWsNonE2EE,
+  useGetOrgUsers,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
+import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
@@ -150,11 +159,15 @@ function AddMemberPopover({
   environment: string;
   secretPath: string;
 }) {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { permission: orgPermission } = useOrgPermission();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set());
+  const [selectedParentOrgUsers, setSelectedParentOrgUsers] = useState<Set<string>>(
+    () => new Set()
+  );
   const [selectedActions, setSelectedActions] = useState<{ value: string; label: string }[]>([
     { value: ProjectPermissionSecretActions.DescribeSecret, label: "Describe" },
     { value: ProjectPermissionSecretActions.ReadValue, label: "Read Value" }
@@ -162,18 +175,26 @@ function AddMemberPopover({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canGrantAccess =
+    orgPermission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) &&
     permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
     permission.can(
       ProjectPermissionMemberActions.AssignAdditionalPrivileges,
       ProjectPermissionSub.Member
-    );
+    ) &&
+    permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+
+  const canAddParentOrgUsers =
+    isSubOrganization &&
+    orgPermission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
 
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { data: parentOrgAvailableUsers } = useGetAvailableOrgUsers(canAddParentOrgUsers);
   const { data: projectMembers } = useGetWorkspaceUsers(currentProject.id);
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+  const { mutateAsync: addUsersToOrg } = useAddUsersToOrg();
   const { mutateAsync: createPrivilege } = useCreateProjectUserAdditionalPrivilege();
 
-  const availableUsers = useMemo(() => {
+  const availableOrgUsers = useMemo(() => {
     if (!orgUsers || !projectMembers) return [];
     const projectUsernames = new Set(projectMembers.map((m) => m.user.username));
     return orgUsers
@@ -187,7 +208,19 @@ function AddMemberPopover({
       }));
   }, [orgUsers, projectMembers]);
 
-  const toggleUser = (username: string) => {
+  const availableParentUsers = useMemo(() => {
+    if (!canAddParentOrgUsers || !parentOrgAvailableUsers) return [];
+    return parentOrgAvailableUsers.map((u) => ({
+      username: u.username,
+      email: u.email ?? u.username,
+      label:
+        u.firstName && u.lastName
+          ? `${u.firstName} ${u.lastName}`
+          : u.firstName || u.lastName || u.username
+    }));
+  }, [canAddParentOrgUsers, parentOrgAvailableUsers]);
+
+  const toggleUser = (username: string, source: "org" | "parent-org") => {
     setSelectedUsers((prev) => {
       const next = new Set(prev);
       if (next.has(username)) {
@@ -197,6 +230,17 @@ function AddMemberPopover({
       }
       return next;
     });
+    if (source === "parent-org") {
+      setSelectedParentOrgUsers((prev) => {
+        const next = new Set(prev);
+        if (next.has(username)) {
+          next.delete(username);
+        } else {
+          next.add(username);
+        }
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -204,6 +248,18 @@ function AddMemberPopover({
 
     setIsSubmitting(true);
     try {
+      // If parent org users are selected, add them to the sub-org first
+      if (selectedParentOrgUsers.size > 0) {
+        const parentEmails = availableParentUsers
+          .filter((u) => selectedParentOrgUsers.has(u.username))
+          .map((u) => u.email);
+        await addUsersToOrg({
+          organizationId: currentOrg.id,
+          inviteeEmails: parentEmails,
+          organizationRoleSlug: currentOrg.defaultMembershipRole
+        });
+      }
+
       const result = (await addUserToProject({
         projectId: currentProject.id,
         orgId: currentOrg.id,
@@ -238,6 +294,7 @@ function AddMemberPopover({
         type: "success"
       });
       setSelectedUsers(new Set());
+      setSelectedParentOrgUsers(new Set());
       setIsOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -252,7 +309,9 @@ function AddMemberPopover({
             <UserPlusIcon /> Grant Organization User Access
           </Button>
         </TooltipTrigger>
-        <TooltipContent>You do not have permission to add members to this project</TooltipContent>
+        <TooltipContent>
+          You do not have permission to add members to this project and manage their permissions
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -266,25 +325,47 @@ function AddMemberPopover({
       </PopoverTrigger>
       <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg p-0">
         <Command>
-          <CommandInput placeholder="Search organization users..." />
+          <CommandInput placeholder="Search users..." />
           <CommandList>
             <CommandEmpty>No users available to add.</CommandEmpty>
-            <CommandGroup>
-              {availableUsers.map((user) => (
-                <CommandItem
-                  key={user.username}
-                  value={user.username}
-                  keywords={[user.label]}
-                  onSelect={() => toggleUser(user.username)}
-                >
-                  <CheckIcon
-                    className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
-                  />
-                  <span className="truncate">{user.label}</span>
-                  <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {availableOrgUsers.length > 0 && (
+              <CommandGroup
+                heading={isSubOrganization ? "Sub-Organization Users" : "Organization Users"}
+              >
+                {availableOrgUsers.map((user) => (
+                  <CommandItem
+                    key={user.username}
+                    value={user.username}
+                    keywords={[user.label]}
+                    onSelect={() => toggleUser(user.username, "org")}
+                  >
+                    <CheckIcon
+                      className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
+                    />
+                    <span className="truncate">{user.label}</span>
+                    <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {canAddParentOrgUsers && availableParentUsers.length > 0 && (
+              <CommandGroup heading="Organization Users">
+                {availableParentUsers.map((user) => (
+                  <CommandItem
+                    key={`parent-${user.username}`}
+                    value={`parent-${user.username}`}
+                    keywords={[user.label, user.username]}
+                    onSelect={() => toggleUser(user.username, "parent-org")}
+                  >
+                    <CheckIcon
+                      className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
+                    />
+                    <span className="truncate">{user.label}</span>
+                    <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
         <div className="border-t border-border px-3 py-2">
@@ -300,6 +381,13 @@ function AddMemberPopover({
           />
         </div>
         <div className="border-t border-border px-3 py-2">
+          {selectedParentOrgUsers.size > 0 && (
+            <p className="mb-1 text-xs text-muted">
+              {selectedParentOrgUsers.size} user
+              {selectedParentOrgUsers.size !== 1 ? "s" : ""} will be added to this sub-organization
+              first.
+            </p>
+          )}
           <Button
             variant="project"
             size="sm"
@@ -308,9 +396,9 @@ function AddMemberPopover({
             isPending={isSubmitting}
             onClick={handleSubmit}
           >
-            <PlusIcon />
-            Add {selectedUsers.size > 0 ? selectedUsers.size : ""} User
-            {selectedUsers.size !== 1 ? "s" : ""}
+            <UserPlusIcon />
+            Grant {selectedUsers.size > 0 ? selectedUsers.size : ""} User
+            {selectedUsers.size !== 1 ? "s" : ""} Access
           </Button>
         </div>
       </PopoverContent>

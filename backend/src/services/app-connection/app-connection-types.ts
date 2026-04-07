@@ -217,6 +217,12 @@ import {
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
 import {
+  TNetScalerConnection,
+  TNetScalerConnectionConfig,
+  TNetScalerConnectionInput,
+  TValidateNetScalerConnectionCredentialsSchema
+} from "./netscaler";
+import {
   TNorthflankConnection,
   TNorthflankConnectionConfig,
   TNorthflankConnectionInput,
@@ -373,6 +379,7 @@ export type TAppConnection = { id: string } & (
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
+  | TNetScalerConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -438,6 +445,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TExternalInfisicalConnectionInput
+  | TNetScalerConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -531,7 +539,8 @@ export type TAppConnectionConfig =
   | TCircleCIConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
-  | TExternalInfisicalConnectionConfig;
+  | TExternalInfisicalConnectionConfig
+  | TNetScalerConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -587,7 +596,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
-  | TValidateExternalInfisicalConnectionCredentialsSchema;
+  | TValidateExternalInfisicalConnectionCredentialsSchema
+  | TValidateNetScalerConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

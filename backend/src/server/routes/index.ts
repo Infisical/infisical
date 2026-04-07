@@ -705,7 +705,8 @@ export const registerRoutes = async (
     projectEventsService,
     permissionService,
     licenseService,
-    keyStore
+    keyStore,
+    projectEnvDAL
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -734,7 +735,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -747,7 +749,8 @@ export const registerRoutes = async (
     roleDAL,
     permissionService,
     orgDAL,
-    groupDAL
+    groupDAL,
+    licenseService
   });
 
   const roleService = roleServiceFactory({
@@ -757,7 +760,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1267,6 +1271,10 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
+  const pamResourceDAL = pamResourceDALFactory(db);
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
     sshCertificateAuthorityDAL,
     sshCertificateAuthoritySecretDAL,
@@ -1420,7 +1428,14 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     notificationService,
-    smtpService
+    smtpService,
+    appConnectionDAL,
+    dynamicSecretDAL,
+    pamResourceDAL,
+    pamDiscoverySourceDAL,
+    identityKubernetesAuthDAL,
+    aiMcpServerDAL,
+    pkiDiscoveryConfigDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -1467,7 +1482,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     webhookDAL,
     auditLogService,
+    identityDAL,
     userDAL,
+    serviceTokenDAL,
     projectMembershipDAL,
     smtpService,
     projectDAL,
@@ -1985,7 +2002,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     projectDAL,
     secretV2BridgeService,
-    folderCommitDAL
+    folderCommitDAL,
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -2331,7 +2349,8 @@ export const registerRoutes = async (
     certificateSecretDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
-    certificateSyncDAL
+    certificateSyncDAL,
+    gatewayV2Service
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2765,18 +2784,16 @@ export const registerRoutes = async (
   });
 
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamResourceDAL = pamResourceDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
   const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
   const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
@@ -2847,8 +2864,10 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     projectDAL,
+    userDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

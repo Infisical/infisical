@@ -89,6 +89,14 @@ export const identityServiceFactory = ({
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
     const isCustomRole = Boolean(rolePermissionDetails?.role);
+    if (isCustomRole) {
+      const plan = await licenseService.getPlan(orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
     if (role !== OrgMembershipRole.NoAccess) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
@@ -210,6 +218,14 @@ export const identityServiceFactory = ({
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
+      if (isCustomRole) {
+        const plan = await licenseService.getPlan(actorOrgId);
+        if (!plan?.rbac)
+          throw new BadRequestError({
+            message:
+              "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+          });
+      }
       const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.GrantPrivileges,

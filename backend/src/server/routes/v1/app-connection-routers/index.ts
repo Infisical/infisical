@@ -38,6 +38,7 @@ import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
+import { registerNetScalerConnectionRouter } from "./netscaler-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
@@ -115,4 +116,5 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.PowerDNS]: registerPowerDNSConnectionRouter
+    [AppConnection.NetScaler]: registerNetScalerConnectionRouter
   };

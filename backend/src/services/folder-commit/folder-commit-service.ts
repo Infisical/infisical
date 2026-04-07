@@ -1917,7 +1917,8 @@ export const folderCommitServiceFactory = ({
     actorType: ActorType,
     projectId: string,
     message?: string
-  ) => {
+  ): Promise<{ affectedFolderIds: string[] }> => {
+    const affectedFolderIds: string[] = [];
     await folderCommitDAL.transaction(async (tx) => {
       const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
       if (!targetCommit) {
@@ -2022,9 +2023,12 @@ export const folderCommitServiceFactory = ({
             reconstructUpToCommit: targetCommit.commitId.toString(),
             tx
           });
+          affectedFolderIds.push(folder.id);
         }
       }
     });
+
+    return { affectedFolderIds };
   };
 
   const getLatestCommit = async ({
@@ -2156,7 +2160,8 @@ export const folderCommitServiceFactory = ({
       message: "Changes reverted successfully",
       originalCommitId: commitId,
       revertCommitId: latestCommit?.id,
-      changesReverted: revertResult.totalChanges
+      changesReverted: revertResult.totalChanges,
+      folderId: commitToRevert.folderId
     };
   };
 

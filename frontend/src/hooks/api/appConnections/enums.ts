@@ -54,4 +54,5 @@ export enum AppConnection {
   Venafi = "venafi",
   ExternalInfisical = "external-infisical",
   PowerDNS = "powerdns"
+  NetScaler = "netscaler"
 }

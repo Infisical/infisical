@@ -64,6 +64,7 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     app: string;
     credentials: Record<string, unknown>;
     orgId: string;
+    gatewayId?: string;
   };
 };
 

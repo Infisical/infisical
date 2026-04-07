@@ -3,13 +3,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
+import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
@@ -47,11 +49,22 @@ const Content = ({ role, onClose }: ContentProps) => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
 
   const createRole = useCreateProjectRole();
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
+    if (subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
+
     const sanitizedPermission = role.permissions.map((permission) => {
       if (
         // if contains new secret action the legacy one can be stripped off
@@ -94,52 +107,70 @@ const Content = ({ role, onClose }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleDuplicateRole)}>
-      <Controller
-        control={control}
-        defaultValue=""
-        name="name"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Name" isError={Boolean(error)} errorText={error?.message} isRequired>
-            <Input {...field} placeholder="Billing Team" />
-          </FormControl>
-        )}
+    <>
+      <form onSubmit={handleSubmit(handleDuplicateRole)}>
+        <Controller
+          control={control}
+          defaultValue=""
+          name="name"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Name"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              isRequired
+            >
+              <Input {...field} placeholder="Billing Team" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue=""
+          name="slug"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Slug"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              isRequired
+            >
+              <Input {...field} placeholder="billing" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          defaultValue=""
+          name="description"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
+              <Input {...field} placeholder="To manage billing" />
+            </FormControl>
+          )}
+        />
+        <div className="flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            Duplicate Role
+          </Button>
+          <Button colorSchema="secondary" variant="plain" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
       />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="slug"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Slug" isError={Boolean(error)} errorText={error?.message} isRequired>
-            <Input {...field} placeholder="billing" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="description"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="To manage billing" />
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Duplicate Role
-        </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={onClose}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    </>
   );
 };
 

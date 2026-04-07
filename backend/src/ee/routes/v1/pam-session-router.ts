@@ -166,23 +166,70 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { session, projectId } = await server.services.pamSession.endSessionById(
+      const { session, projectId, alreadyEnded } = await server.services.pamSession.endSessionById(
         req.params.sessionId,
         req.permission
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.PAM_SESSION_END,
-          metadata: {
-            sessionId: req.params.sessionId,
-            accountName: session.accountName
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_END,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: session.accountName
+            }
           }
-        }
-      });
+        });
+      }
+
+      return { session };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/terminate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Terminate an active PAM session",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          session: PamSessionsSchema.omit({
+            encryptedLogsBlob: true
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { session, projectId, alreadyEnded } = await server.services.pamSession.terminateSessionById(
+        req.params.sessionId,
+        req.permission
+      );
+
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_TERMINATE,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: session.accountName
+            }
+          }
+        });
+      }
 
       await server.services.telemetry
         .sendPostHogEvents({

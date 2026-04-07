@@ -661,7 +661,13 @@ export const useGetAvailableOrgUsers = (enabled = true) =>
     queryKey: organizationKeys.getAvailableUsers(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        users: { username: string; id: string; firstName: string; lastName: string }[];
+        users: {
+          username: string;
+          id: string;
+          email?: string | null;
+          firstName: string;
+          lastName: string;
+        }[];
       }>("/api/v1/organization/users/available");
 
       return data.users;
