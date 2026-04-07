@@ -2444,7 +2444,6 @@ const OverviewPageContent = () => {
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                   />
                 )}
-                {!isSingleEnvView && <SecretSyncStatusBadgeOverview />}
               </div>
             </div>
           </UnstableCardHeader>
@@ -2564,7 +2563,9 @@ const OverviewPageContent = () => {
                           : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                       </TooltipContent>
                     </Tooltip>
-                    <SecretSyncStatusBadgeOverview />
+                    <SecretSyncStatusBadgeOverview
+                      environmentSlugs={visibleEnvs.map((e) => e.slug)}
+                    />
                   </div>
                 )}
                 <SecretDropzone
@@ -2802,7 +2803,9 @@ const OverviewPageContent = () => {
                                       : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                                   </TooltipContent>
                                 </Tooltip>
-                                <SecretSyncStatusBadgeOverview />
+                                <SecretSyncStatusBadgeOverview
+                                  environmentSlugs={visibleEnvs.map((e) => e.slug)}
+                                />
                               </div>
                             </div>
                           </UnstableTableHead>

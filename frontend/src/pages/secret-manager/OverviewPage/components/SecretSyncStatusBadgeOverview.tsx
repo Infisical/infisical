@@ -17,7 +17,11 @@ type BadgeState = {
   tooltipTitle: string;
 };
 
-export const SecretSyncStatusBadgeOverview = () => {
+type Props = {
+  environmentSlugs?: string[];
+};
+
+export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
   const navigate = useNavigate();
   const { projectId } = useProject();
   const orgId = useParams({
@@ -26,20 +30,27 @@ export const SecretSyncStatusBadgeOverview = () => {
   });
 
   const { data: secretSyncs = [] } = useListSecretSyncs(projectId, {
-    refetchInterval: 10_000
+    refetchInterval: 20_000
   });
 
+  const filteredSyncs = useMemo(() => {
+    if (!environmentSlugs || environmentSlugs.length === 0) return secretSyncs;
+    return secretSyncs.filter(
+      (s) => s.environment && environmentSlugs.includes(s.environment.slug)
+    );
+  }, [secretSyncs, environmentSlugs]);
+
   const { runningSyncs, failedSyncs, succeededSyncs } = useMemo(() => {
-    const running = secretSyncs.filter(
+    const running = filteredSyncs.filter(
       (s) => s.syncStatus === SecretSyncStatus.Running || s.syncStatus === SecretSyncStatus.Pending
     );
-    const failed = secretSyncs.filter((s) => s.syncStatus === SecretSyncStatus.Failed);
-    const succeeded = secretSyncs.filter((s) => s.syncStatus === SecretSyncStatus.Succeeded);
+    const failed = filteredSyncs.filter((s) => s.syncStatus === SecretSyncStatus.Failed);
+    const succeeded = filteredSyncs.filter((s) => s.syncStatus === SecretSyncStatus.Succeeded);
     return { runningSyncs: running, failedSyncs: failed, succeededSyncs: succeeded };
-  }, [secretSyncs]);
+  }, [filteredSyncs]);
 
   const badgeState = useMemo((): BadgeState | null => {
-    if (secretSyncs.length === 0) return null;
+    if (filteredSyncs.length === 0) return null;
 
     if (runningSyncs.length > 0) {
       return {
@@ -72,7 +83,7 @@ export const SecretSyncStatusBadgeOverview = () => {
     }
 
     return null;
-  }, [secretSyncs, runningSyncs, failedSyncs, succeededSyncs]);
+  }, [filteredSyncs, runningSyncs, failedSyncs, succeededSyncs]);
 
   const displayedSyncs = useMemo(() => {
     if (runningSyncs.length > 0) return runningSyncs;
