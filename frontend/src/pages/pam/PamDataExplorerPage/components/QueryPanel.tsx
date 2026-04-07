@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@app/components/v3/utils";
 
@@ -39,7 +39,7 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
     }
   }, []);
 
-  const handleRun = useCallback(async () => {
+  const handleRun = async () => {
     if (!tab.sql.trim() || isRunning) return;
     setIsRunning(true);
     setError(null);
@@ -52,15 +52,10 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
     } finally {
       setIsRunning(false);
     }
-  }, [tab.sql, isRunning, executeQuery]);
-
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
+  };
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging) return undefined;
 
     const onMouseMove = (e: MouseEvent) => {
       const container = containerRef.current;
@@ -99,11 +94,19 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
             "h-1 shrink-0 cursor-row-resize bg-mineshaft-600 transition-colors hover:bg-primary/50",
             isDragging && "bg-primary/50"
           )}
-          onMouseDown={onMouseDown}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
         />
 
         <div className="min-h-0 flex-1 overflow-hidden bg-bunker-800">
-          <QueryResultsTable result={result} error={error} isRunning={isRunning} tableDetail={tableDetail} />
+          <QueryResultsTable
+            result={result}
+            error={error}
+            isRunning={isRunning}
+            tableDetail={tableDetail}
+          />
         </div>
       </div>
     </div>

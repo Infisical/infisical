@@ -197,14 +197,16 @@ export const handlePostgresSession = async (
               // multiple statements (simple query protocol). We take the last result so the
               // caller always sees a single consistent response — same behaviour as psql.
               const startTime = performance.now();
-              const rawResult = await pgClient.query(message.sql);
+              const rawResult = (await pgClient.query(message.sql)) as
+                | pg.QueryResult<Record<string, unknown>>
+                | pg.QueryResult<Record<string, unknown>>[];
               const executionTimeMs = Math.round(performance.now() - startTime);
               const MAX_ROWS = 1000;
               const result = Array.isArray(rawResult) ? rawResult[rawResult.length - 1] : rawResult;
               sendResponse({
                 type: PostgresServerMessageType.QueryResult,
                 id: message.id,
-                rows: (result.rows ?? []).slice(0, MAX_ROWS) as Record<string, unknown>[],
+                rows: (result.rows ?? []).slice(0, MAX_ROWS),
                 fields: (result.fields ?? []).map((f) => ({ name: f.name })),
                 rowCount: result.rowCount,
                 command: result.command ?? "",

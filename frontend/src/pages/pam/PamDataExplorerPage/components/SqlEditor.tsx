@@ -66,16 +66,5 @@ export function SqlEditor({ value, onChange, onExecute }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync external value changes into the editor
-  useEffect(() => {
-    const view = viewRef.current;
-    if (view) {
-      const current = view.state.doc.toString();
-      if (current !== value) {
-        view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
-      }
-    }
-  }, [value]);
-
   return <div ref={containerRef} className="h-full w-full" />;
 }

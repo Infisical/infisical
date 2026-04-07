@@ -239,10 +239,6 @@ export const PamDataExplorerPage = () => {
     setActiveTab(BROWSE_TAB_ID);
   }, [pendingTableSwitch, selectedSchema, loadTableDetail, setActiveTab]);
 
-  const handleChangeCountUpdate = useCallback((count: number) => {
-    unsavedChangeCountRef.current = count;
-  }, []);
-
   const handleFullRefresh = useCallback(async () => {
     // 1. Re-fetch tables for current schema (picks up new/dropped tables)
     setIsLoadingTables(true);
@@ -468,7 +464,9 @@ export const PamDataExplorerPage = () => {
             </button>
           </div>
 
-          <div className={cn("flex flex-1 overflow-hidden", activeTabId !== BROWSE_TAB_ID && "hidden")}>
+          <div
+            className={cn("flex flex-1 overflow-hidden", activeTabId !== BROWSE_TAB_ID && "hidden")}
+          >
             {selectedTable ? (
               <DataExplorerGrid
                 key={`${selectedSchema}.${selectedTable}`}
@@ -478,7 +476,9 @@ export const PamDataExplorerPage = () => {
                 table={selectedTable}
                 executeQuery={executeQuery}
                 isLoading={isLoadingDetail}
-                onChangeCountUpdate={handleChangeCountUpdate}
+                onChangeCountUpdate={(count) => {
+                  unsavedChangeCountRef.current = count;
+                }}
                 onFullRefresh={handleFullRefresh}
               />
             ) : (
