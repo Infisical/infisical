@@ -34,7 +34,14 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     } catch (err) {
       if ((err as { code: string })?.code !== "ENOTFOUND") throw err;
 
-      const resolvedIps = (await dns.lookup(validUrl.hostname, { all: true, family: 4 })).map(({ address }) => address);
+      const entries = await dns.lookup(validUrl.hostname, { all: true, family: 4 });
+
+      if (!entries || entries.length === 0) {
+        throw new BadRequestError({ message: "Could not resolve hostname to any IPv4 address" });
+      }
+
+      const resolvedIps = entries.map(({ address }) => address);
+
       inputHostIps.push(...resolvedIps);
     }
   }
