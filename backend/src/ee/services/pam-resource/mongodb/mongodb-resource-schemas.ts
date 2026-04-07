@@ -57,7 +57,7 @@ export const MongoDBResourceConnectionDetailsSchema = z.object({
     .trim()
     .min(1)
     .max(64)
-    .regex(/^[a-zA-Z0-9_\-]+$/, "Database name can only contain letters, numbers, underscores, and hyphens"),
+    .regex(/^[a-zA-Z0-9_-]+$/, "Database name can only contain letters, numbers, underscores, and hyphens"),
   sslEnabled: z.boolean(),
   sslRejectUnauthorized: z.boolean(),
   sslCertificate: z
