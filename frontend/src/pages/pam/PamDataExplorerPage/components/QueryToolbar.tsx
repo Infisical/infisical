@@ -2,7 +2,7 @@ import { PlayIcon } from "lucide-react";
 
 import { Button } from "@app/components/v3/generic/Button";
 
-const isMac = navigator.userAgent.includes("Mac");
+const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
 
 type QueryResult = {
   rowCount: number | null;
