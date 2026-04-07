@@ -2579,7 +2579,7 @@ const OverviewPageContent = () => {
                   <UnstableTable ref={tableRef} className="border-separate border-spacing-0">
                     <UnstableTableHeader>
                       <UnstableTableRow className="h-10">
-                        <UnstableTableHead className="sticky left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container">
+                        <UnstableTableHead className="left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container">
                           <Checkbox
                             variant="project"
                             isDisabled={totalCount === 0 || hasPendingBatchChanges}
@@ -2590,7 +2590,7 @@ const OverviewPageContent = () => {
                           />
                         </UnstableTableHead>
                         <UnstableTableHead
-                          className="sticky left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
+                          className="left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
                           onClick={() =>
                             setOrderDirection((prev) =>
                               prev === OrderByDirection.ASC
