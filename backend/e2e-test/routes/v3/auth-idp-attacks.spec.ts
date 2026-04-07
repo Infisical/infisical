@@ -128,11 +128,11 @@ describe("Auth IdP Attack Vector Tests", () => {
         userAgent: "test-agent"
       });
 
-      createdUserIds.push(result.user.id);
+      createdUserIds.push(result.userId);
 
       const db = getDb();
       const [membership] = await db(TableName.Membership).where({
-        actorUserId: result.user.id,
+        actorUserId: result.userId,
         scopeOrgId: ORG_A_ID,
         scope: AccessScope.Organization
       });

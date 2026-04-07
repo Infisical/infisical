@@ -55,12 +55,12 @@ describe("Auth SSO Signup V3", () => {
 
     expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
     expect(result.signupToken).toBeDefined();
-    createdUserIds.push(result.user.id);
+    createdUserIds.push(result.userId);
 
     // Verify the signup token is a valid SIGNUP_TOKEN JWT
     const decoded = decode(result.signupToken) as Record<string, unknown>;
     expect(decoded.authTokenType).toBe(AuthTokenType.SIGNUP_TOKEN);
-    expect(decoded.userId).toBe(result.user.id);
+    expect(decoded.userId).toBe(result.userId);
   });
 
   test("Email verification code is sent for new SSO user", async () => {
@@ -99,7 +99,7 @@ describe("Auth SSO Signup V3", () => {
     });
 
     expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
-    createdUserIds.push(result.user.id);
+    createdUserIds.push(result.userId);
 
     // Extract verification code from email
     const emails = smtp().getEmails();
@@ -127,7 +127,7 @@ describe("Auth SSO Signup V3", () => {
 
     // Verify user is now accepted
     const db = getDb();
-    const user = await db(TableName.Users).where({ id: result.user.id }).first();
+    const user = await db(TableName.Users).where({ id: result.userId }).first();
     expect(user?.isAccepted).toBe(true);
     expect(user?.isEmailVerified).toBe(true);
   });
@@ -146,7 +146,7 @@ describe("Auth SSO Signup V3", () => {
       userAgent: "test-agent"
     });
 
-    createdUserIds.push(result.user.id);
+    createdUserIds.push(result.userId);
 
     const res = await testServer.inject({
       method: "POST",

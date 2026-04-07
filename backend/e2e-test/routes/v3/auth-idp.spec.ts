@@ -53,12 +53,12 @@ describe("Auth IdP Service-Level Tests", () => {
         userAgent: "test-agent"
       });
 
-      expect(result.user).toBeDefined();
-      createdUserIds.push(result.user.id);
+      expect(result.userId).toBeDefined();
+      createdUserIds.push(result.userId);
 
       const db = getDb();
       const [membership] = await db(TableName.Membership).where({
-        actorUserId: result.user.id,
+        actorUserId: result.userId,
         scopeOrgId: TEST_ORG_ID,
         scope: AccessScope.Organization
       });
@@ -83,7 +83,7 @@ describe("Auth IdP Service-Level Tests", () => {
 
       expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
       expect(result).toHaveProperty("signupToken");
-      createdUserIds.push(result.user.id);
+      createdUserIds.push(result.userId);
     });
 
     test("Same externalId reuses existing user", async () => {
@@ -100,7 +100,7 @@ describe("Auth IdP Service-Level Tests", () => {
         ip: "127.0.0.1",
         userAgent: "test-agent"
       });
-      createdUserIds.push(result1.user.id);
+      createdUserIds.push(result1.userId);
 
       const result2 = await getServices().saml.samlLogin({
         externalId,
@@ -113,7 +113,7 @@ describe("Auth IdP Service-Level Tests", () => {
         userAgent: "test-agent"
       });
 
-      expect(result2.user.id).toBe(result1.user.id);
+      expect(result2.userId).toBe(result1.userId);
     });
 
     test("Login without verified domain throws", async () => {
@@ -226,8 +226,8 @@ describe("Auth IdP Service-Level Tests", () => {
         userAgent: "test-agent"
       });
 
-      expect(result.user).toBeDefined();
-      createdUserIds.push(result.user.id);
+      expect(result.userId).toBeDefined();
+      createdUserIds.push(result.userId);
 
       const db = getDb();
       const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
@@ -249,7 +249,7 @@ describe("Auth IdP Service-Level Tests", () => {
       });
 
       expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
-      createdUserIds.push(result.user.id);
+      createdUserIds.push(result.userId);
     });
 
     test("Same externalId reuses existing user", async () => {
@@ -265,7 +265,7 @@ describe("Auth IdP Service-Level Tests", () => {
         ip: "127.0.0.1",
         userAgent: "test-agent"
       });
-      createdUserIds.push(result1.user.id);
+      createdUserIds.push(result1.userId);
 
       const result2 = await getServices().oidc.oidcLogin({
         externalId,
@@ -277,7 +277,7 @@ describe("Auth IdP Service-Level Tests", () => {
         userAgent: "test-agent"
       });
 
-      expect(result2.user.id).toBe(result1.user.id);
+      expect(result2.userId).toBe(result1.userId);
     });
 
     test("Login without verified domain throws", async () => {
