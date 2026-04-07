@@ -16,6 +16,7 @@ import {
   TPamFolder,
   TPamResource,
   TPamRotationRule,
+  TPamSession,
   TReorderPamRotationRulesDTO,
   TUpdatePamAccountDTO,
   TUpdatePamFolderDTO,
@@ -404,6 +405,23 @@ export const useDeletePamFolder = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    }
+  });
+};
+
+export const useTerminatePamSession = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId }: { sessionId: string; projectId: string }) => {
+      const { data } = await apiRequest.post<{ session: TPamSession }>(
+        `/api/v1/pam/sessions/${sessionId}/terminate`
+      );
+
+      return data.session;
+    },
+    onSuccess: (_, { projectId, sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.listSessions(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getSession(sessionId) });
     }
   });
 };

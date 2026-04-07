@@ -1,90 +1,66 @@
-import {
-  faCheck,
-  faChevronRight,
-  faCopy,
-  faEye,
-  faFolder,
-  faKey
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { CurlyBracesIcon, TagsIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { CheckIcon, ChevronRightIcon, CopyIcon, KeyIcon, SearchIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  IconButton,
-  Td,
+  Badge,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableIconButton,
+  UnstableTableCell,
+  UnstableTableRow
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import { reverseTruncate } from "@app/helpers/reverseTruncate";
 import { useTimedReset } from "@app/hooks";
 import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
-import { TDashboardProjectSecretsQuickSearch } from "@app/hooks/api/dashboard/types";
-import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
-  environments: ProjectEnv[];
-  secretGroup: TDashboardProjectSecretsQuickSearch["secrets"][string];
+  secret: SecretV3RawSanitized;
+  envSlug: string;
   onClose: () => void;
-  isSingleEnv?: boolean;
   tags: string[];
   search: string;
 };
 
-export const QuickSearchSecretItem = ({
-  secretGroup,
-  environments,
-  onClose,
-  tags,
-  isSingleEnv,
-  search
-}: Props) => {
+export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
-  const envSlugMap = new Map(environments.map((env) => [env.slug, env]));
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false
   });
 
   const { currentProject } = useProject();
 
-  const [groupSecret] = secretGroup;
-
   const handleNavigate = () => {
     navigate({
       search: (prev) => ({
         ...prev,
-        secretPath: groupSecret.path,
-        search: groupSecret.key,
-        tags: tags.length ? tags.join(",") : undefined
+        secretPath: secret.path,
+        search: secret.key,
+        tags: tags.length ? tags.join(",") : undefined,
+        filterBy: "secret",
+        environments: [envSlug]
       })
     });
     onClose();
   };
 
-  const handleCopy = async (env: string) => {
+  const handleCopy = async () => {
     try {
       const data = await fetchSecretValue({
-        environment: groupSecret.env,
-        secretPath: groupSecret.path!,
-        secretKey: groupSecret.key,
+        environment: secret.env,
+        secretPath: secret.path!,
+        secretKey: secret.key,
         projectId: currentProject.id
       });
 
       navigator.clipboard.writeText(data.valueOverride ?? data.value!);
       createNotification({
         type: "info",
-        title: isSingleEnv ? "Secret value copied." : `Secret value copied from ${env}.`,
+        title: "Secret value copied.",
         text: ""
       });
       setIsUrlCopied(true);
@@ -97,17 +73,13 @@ export const QuickSearchSecretItem = ({
     }
   };
 
-  const secretGroupTags = secretGroup.flatMap((secret) => secret.tags);
-
   const tagMatch =
     search.trim() &&
-    secretGroupTags?.find((tag) => tag && tag.slug.toLowerCase().includes(search.toLowerCase()));
-
-  const secretGroupMetadata = secretGroup.flatMap((secret) => secret.secretMetadata);
+    secret.tags?.find((tag) => tag && tag.slug.toLowerCase().includes(search.toLowerCase()));
 
   const metadataMatch =
     search.trim() &&
-    secretGroupMetadata?.find(
+    secret.secretMetadata?.find(
       (metadata) =>
         metadata &&
         (metadata.key.toLowerCase().includes(search.toLowerCase()) ||
@@ -115,159 +87,70 @@ export const QuickSearchSecretItem = ({
     );
 
   return (
-    <Tr
-      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
-      onClick={handleNavigate}
-    >
-      <Td className="w-full">
-        <div className="inline-flex max-w-[20rem] flex-col">
-          <span className="truncate">
-            <FontAwesomeIcon className="mr-2 self-center text-bunker-300" icon={faKey} />
-            {groupSecret.key}
-          </span>
-          <span className="text-xs text-mineshaft-400">
-            <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
-            <Tooltip className="max-w-8xl" content={groupSecret.path}>
-              <span>{reverseTruncate(groupSecret.path ?? "")}</span>
-            </Tooltip>
-          </span>
-        </div>
-      </Td>
-      <Td>
-        <div className="flex w-full items-center justify-end gap-4">
+    <UnstableTableRow className="group cursor-pointer" onClick={handleNavigate}>
+      <UnstableTableCell>
+        <KeyIcon className="text-secret" />
+      </UnstableTableCell>
+      <UnstableTableCell isTruncatable>
+        <span className="truncate font-medium">{secret.key}</span>
+      </UnstableTableCell>
+      <UnstableTableCell isTruncatable>
+        <Tooltip delayDuration={1000}>
+          <TooltipTrigger asChild>
+            <span className="truncate text-foreground">{secret.path}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-lg">{secret.path}</TooltipContent>
+        </Tooltip>
+      </UnstableTableCell>
+      <UnstableTableCell className="text-right">
+        <div className="flex items-center justify-end gap-1">
           {tagMatch && (
-            <Badge variant="neutral">
-              <TagsIcon />
-              {tagMatch.slug}
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="info">
+                  <SearchIcon />
+                  {tagMatch.slug}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>Search matched tag</TooltipContent>
+            </Tooltip>
           )}
           {metadataMatch && !tagMatch && (
-            <Badge variant="neutral">
-              <CurlyBracesIcon />
-              Metadata
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="info">
+                  <SearchIcon />
+                  Metadata
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>Search matched metadata</TooltipContent>
+            </Tooltip>
           )}
-          {isSingleEnv ? (
-            <Tooltip
-              isDisabled={!groupSecret?.secretValueHidden}
-              content={
-                groupSecret?.secretValueHidden
-                  ? "You do not have permission to view this secret value"
-                  : ""
-              }
-            >
-              <IconButton
-                size="md"
-                isDisabled={groupSecret?.secretValueHidden}
-                variant="plain"
-                colorSchema="secondary"
-                ariaLabel="Copy secret value"
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UnstableIconButton
+                variant="ghost"
+                className="mr-2"
+                size="xs"
+                isDisabled={secret.secretValueHidden}
+                aria-label="Copy secret value"
                 onClick={(e) => {
                   e.stopPropagation();
-                  const el = envSlugMap.get(groupSecret.env)?.name;
-                  if (el) {
-                    handleCopy(el);
-                  }
+                  handleCopy();
                 }}
               >
-                <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
-              </IconButton>
-            </Tooltip>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  size="md"
-                  variant="plain"
-                  colorSchema="secondary"
-                  ariaLabel="Copy secret value"
-                >
-                  <FontAwesomeIcon icon={isUrlCopied ? faCheck : faCopy} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Copy Value From...</DropdownMenuLabel>
-                {secretGroup.map((secret) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const el = envSlugMap.get(secret.env)?.name;
-                      if (el) {
-                        handleCopy(el);
-                      }
-                    }}
-                    key={secret.id}
-                  >
-                    <p className="text-sm">{envSlugMap.get(secret.env)?.name}</p>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Tooltip
-                isDisabled={!groupSecret?.secretValueHidden}
-                content={
-                  groupSecret?.secretValueHidden
-                    ? "You do not have permission to view this secret value"
-                    : ""
-                }
-              >
-                <IconButton
-                  size="md"
-                  isDisabled={groupSecret?.secretValueHidden}
-                  variant="plain"
-                  colorSchema="secondary"
-                  ariaLabel="View secret value"
-                >
-                  <FontAwesomeIcon icon={faEye} />
-                </IconButton>
-              </Tooltip>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Hover to Reveal...</DropdownMenuLabel>
-              {secretGroup.map((secret) => (
-                <DropdownMenuItem
-                  className="group"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const el = envSlugMap.get(secret.env)?.name;
-                    if (el) {
-                      handleCopy(el);
-                    }
-                  }}
-                  key={secret.id}
-                >
-                  <Tooltip side="left" sideOffset={18} content="Click to copy to clipboard">
-                    <div>
-                      {!isSingleEnv && (
-                        <span className="text-xs text-mineshaft-400">
-                          {envSlugMap.get(secret.env)?.name}
-                        </span>
-                      )}
-                      <p
-                        className={twMerge(
-                          "hidden w-48 max-w-48 truncate text-sm group-hover:block",
-                          !secret.value && "text-mineshaft-400"
-                        )}
-                      >
-                        {secret.value || "EMPTY"}
-                      </p>
-                      <p className="w-48 text-sm group-hover:!hidden">
-                        ***************************
-                      </p>
-                    </div>
-                  </Tooltip>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent>
+              {secret.secretValueHidden
+                ? "You do not have permission to view this secret value"
+                : "Copy secret value"}
+            </TooltipContent>
+          </Tooltip>
+          <ChevronRightIcon className="size-4 text-muted" />
         </div>
-      </Td>
-      <Td>
-        <FontAwesomeIcon icon={faChevronRight} />
-      </Td>
-    </Tr>
+      </UnstableTableCell>
+    </UnstableTableRow>
   );
 };

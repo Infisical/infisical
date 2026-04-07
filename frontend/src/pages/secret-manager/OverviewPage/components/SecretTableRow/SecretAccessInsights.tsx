@@ -2,32 +2,50 @@ import { useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
 import {
+  BanIcon,
+  CheckIcon,
   ExternalLinkIcon,
+  FilterIcon,
   HardDriveIcon,
-  MoreVerticalIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
   PlusIcon,
+  SearchIcon,
+  TriangleAlertIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
-  EmptyMedia,
-  Item,
-  ItemContent,
-  ItemFooter,
-  ItemGroup,
-  ItemTitle,
+  Button,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  FilterableSelect,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   Skeleton,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
@@ -35,21 +53,41 @@ import {
   UnstableEmptyDescription,
   UnstableEmptyHeader,
   UnstableEmptyTitle,
-  UnstableIconButton
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
 } from "@app/components/v3";
 import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
+  useOrgPermission,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useUser
 } from "@app/context";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionSecretActions
+} from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  useAddUsersToOrg,
+  useAddUserToWsNonE2EE,
+  useGetOrgUsers,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
+import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
+import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
-import { camelCaseToSpaces } from "@app/lib/fn/string";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
 import { MembershipProjectAdditionalPrivilegeModifySection } from "@app/pages/project/MemberDetailsByIDPage/components/MemberProjectAdditionalPrivilegeSection/MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -66,113 +104,305 @@ type EditingPrivilege = {
   name: string;
 };
 
-function AccessCard({
-  entry,
-  linkTo,
-  linkParams,
-  onEdit,
-  canEdit = true
-}: {
-  entry: SecretAccessListEntry;
-  linkTo?: string;
-  linkParams?: Record<string, string>;
-  onEdit?: () => void;
-  canEdit?: boolean;
-}) {
-  const cardContent = (
-    <>
-      <ItemContent className="overflow-hidden">
-        <ItemTitle className="w-full overflow-hidden">
-          <span className="truncate">{entry.name}</span>
-        </ItemTitle>
-      </ItemContent>
-      <ItemFooter>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {entry.allowedActions.map((action) => (
-            <Badge key={action} className="capitalize" variant="neutral">
-              {camelCaseToSpaces(action)}
-            </Badge>
-          ))}
-        </div>
-      </ItemFooter>
-    </>
-  );
+type AccessRowType = "user" | "identity" | "group";
 
-  if (linkTo && linkParams) {
+type AccessRow = {
+  type: AccessRowType;
+  entry: SecretAccessListEntry;
+  linkTo: string;
+  linkParams: Record<string, string>;
+  canEdit: boolean;
+  isSelf?: boolean;
+  onEdit?: () => void;
+  inheritedFromGroups?: string[];
+  inheritedActions?: Set<string>;
+};
+
+const PERMISSION_COLUMNS = [
+  {
+    action: ProjectPermissionSecretActions.DescribeAndReadValue,
+    label: "Read",
+    isLegacy: true
+  },
+  { action: ProjectPermissionSecretActions.DescribeSecret, label: "Describe", isLegacy: false },
+  { action: ProjectPermissionSecretActions.ReadValue, label: "Read Value", isLegacy: false },
+  { action: ProjectPermissionSecretActions.Create, label: "Create", isLegacy: false },
+  { action: ProjectPermissionSecretActions.Edit, label: "Edit", isLegacy: false },
+  { action: ProjectPermissionSecretActions.Delete, label: "Delete", isLegacy: false }
+] as const;
+
+const TYPE_CONFIG: Record<AccessRowType, { icon: typeof UserIcon; label: string }> = {
+  user: { icon: UserIcon, label: "User" },
+  identity: { icon: HardDriveIcon, label: "Machine Identity" },
+  group: { icon: UsersIcon, label: "Group" }
+};
+
+const ALL_TYPE_FILTERS: AccessRowType[] = ["user", "identity", "group"];
+
+const SECRET_ACTION_OPTIONS = [
+  { action: ProjectPermissionSecretActions.DescribeSecret, label: "Describe" },
+  { action: ProjectPermissionSecretActions.ReadValue, label: "Read Value" },
+  { action: ProjectPermissionSecretActions.Create, label: "Create" },
+  { action: ProjectPermissionSecretActions.Edit, label: "Edit" },
+  { action: ProjectPermissionSecretActions.Delete, label: "Delete" }
+].map((opt) => ({
+  value: opt.action,
+  label: opt.label
+}));
+
+function AddMemberPopover({
+  secretKey,
+  environment,
+  secretPath
+}: {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+}) {
+  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const { permission: orgPermission } = useOrgPermission();
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set());
+  const [selectedParentOrgUsers, setSelectedParentOrgUsers] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [selectedActions, setSelectedActions] = useState<{ value: string; label: string }[]>([
+    { value: ProjectPermissionSecretActions.DescribeSecret, label: "Describe" },
+    { value: ProjectPermissionSecretActions.ReadValue, label: "Read Value" }
+  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const canGrantAccess =
+    orgPermission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) &&
+    permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
+    permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Member
+    ) &&
+    permission.can(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+
+  const canAddParentOrgUsers =
+    isSubOrganization &&
+    orgPermission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+
+  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { data: parentOrgAvailableUsers } = useGetAvailableOrgUsers(canAddParentOrgUsers);
+  const { data: projectMembers } = useGetWorkspaceUsers(currentProject.id);
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+  const { mutateAsync: addUsersToOrg } = useAddUsersToOrg();
+  const { mutateAsync: createPrivilege } = useCreateProjectUserAdditionalPrivilege();
+
+  const availableOrgUsers = useMemo(() => {
+    if (!orgUsers || !projectMembers) return [];
+    const projectUsernames = new Set(projectMembers.map((m) => m.user.username));
+    return orgUsers
+      .filter(({ user: u }) => !projectUsernames.has(u.username))
+      .map(({ user: u }) => ({
+        username: u.username,
+        label:
+          u.firstName && u.lastName
+            ? `${u.firstName} ${u.lastName}`
+            : u.firstName || u.lastName || u.email || u.username
+      }));
+  }, [orgUsers, projectMembers]);
+
+  const availableParentUsers = useMemo(() => {
+    if (!canAddParentOrgUsers || !parentOrgAvailableUsers) return [];
+    return parentOrgAvailableUsers.map((u) => ({
+      username: u.username,
+      email: u.email ?? u.username,
+      label:
+        u.firstName && u.lastName
+          ? `${u.firstName} ${u.lastName}`
+          : u.firstName || u.lastName || u.username
+    }));
+  }, [canAddParentOrgUsers, parentOrgAvailableUsers]);
+
+  const toggleUser = (username: string, source: "org" | "parent-org") => {
+    setSelectedUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) {
+        next.delete(username);
+      } else {
+        next.add(username);
+      }
+      return next;
+    });
+    if (source === "parent-org") {
+      setSelectedParentOrgUsers((prev) => {
+        const next = new Set(prev);
+        if (next.has(username)) {
+          next.delete(username);
+        } else {
+          next.add(username);
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (selectedUsers.size === 0 || selectedActions.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      // If parent org users are selected, add them to the sub-org first
+      if (selectedParentOrgUsers.size > 0) {
+        const parentEmails = availableParentUsers
+          .filter((u) => selectedParentOrgUsers.has(u.username))
+          .map((u) => u.email);
+        await addUsersToOrg({
+          organizationId: currentOrg.id,
+          inviteeEmails: parentEmails,
+          organizationRoleSlug: currentOrg.defaultMembershipRole
+        });
+      }
+
+      const result = (await addUserToProject({
+        projectId: currentProject.id,
+        orgId: currentOrg.id,
+        usernames: [...selectedUsers],
+        roleSlugs: ["no-access"]
+      })) as { memberships: { id: string; userId: string }[] };
+
+      const privilegePermissions = [
+        {
+          action: selectedActions.map((a) => a.value),
+          subject: ProjectPermissionSub.Secrets,
+          conditions: {
+            environment,
+            secretPath,
+            secretName: { $eq: secretKey }
+          }
+        }
+      ];
+
+      await Promise.all(
+        result.memberships.map((membership) =>
+          createPrivilege({
+            projectMembershipId: membership.id,
+            type: { isTemporary: false },
+            permissions: privilegePermissions
+          })
+        )
+      );
+
+      createNotification({
+        text: `Added ${selectedUsers.size} user${selectedUsers.size > 1 ? "s" : ""} with access to this secret`,
+        type: "success"
+      });
+      setSelectedUsers(new Set());
+      setSelectedParentOrgUsers(new Set());
+      setIsOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!canGrantAccess) {
     return (
-      <Item variant="outline" asChild className="group relative">
-        <Link to={linkTo as "."} params={linkParams}>
-          <div className="flex w-full items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">{cardContent}</div>
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
-                <UnstableIconButton
-                  size="xs"
-                  variant="ghost"
-                  className="absolute top-1 right-1 shrink-0"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <MoreVerticalIcon />
-                </UnstableIconButton>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                {onEdit && (
-                  <Tooltip open={canEdit ? false : undefined}>
-                    <TooltipTrigger>
-                      <UnstableDropdownMenuItem
-                        isDisabled={!canEdit}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onEdit();
-                        }}
-                      >
-                        <PlusIcon />
-                        Add Additional Privilege
-                      </UnstableDropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      You do not have permission to perform this action
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                <UnstableDropdownMenuItem asChild>
-                  <Link to={linkTo as "."} params={linkParams} target="_blank">
-                    <ExternalLinkIcon />
-                    Manage Access
-                  </Link>
-                </UnstableDropdownMenuItem>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
-          </div>
-        </Link>
-      </Item>
+      <Tooltip>
+        <TooltipTrigger>
+          <Button variant="project" isDisabled aria-label="Add user to project">
+            <UserPlusIcon /> Grant Organization User Access
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          You do not have permission to add members to this project and manage their permissions
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
-  return <Item variant="outline">{cardContent}</Item>;
-}
-
-function SectionHeader({
-  icon,
-  title,
-  count
-}: {
-  icon: React.ReactNode;
-  title: string;
-  count: number;
-}) {
   return (
-    <div className="mb-3 flex items-center gap-2">
-      {icon}
-      <span className="text-sm font-medium tracking-wide text-label">{title}</span>
-      <Badge variant="neutral" className="text-xs">
-        {count}
-      </Badge>
-    </div>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="project" aria-label="Add user to project">
+          <UserPlusIcon /> Grant Organization User Access
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg p-0">
+        <Command>
+          <CommandInput placeholder="Search users..." />
+          <CommandList>
+            <CommandEmpty>No users available to add.</CommandEmpty>
+            {availableOrgUsers.length > 0 && (
+              <CommandGroup
+                heading={isSubOrganization ? "Sub-Organization Users" : "Organization Users"}
+              >
+                {availableOrgUsers.map((user) => (
+                  <CommandItem
+                    key={user.username}
+                    value={user.username}
+                    keywords={[user.label]}
+                    onSelect={() => toggleUser(user.username, "org")}
+                  >
+                    <CheckIcon
+                      className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
+                    />
+                    <span className="truncate">{user.label}</span>
+                    <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {canAddParentOrgUsers && availableParentUsers.length > 0 && (
+              <CommandGroup heading="Organization Users">
+                {availableParentUsers.map((user) => (
+                  <CommandItem
+                    key={`parent-${user.username}`}
+                    value={`parent-${user.username}`}
+                    keywords={[user.label, user.username]}
+                    onSelect={() => toggleUser(user.username, "parent-org")}
+                  >
+                    <CheckIcon
+                      className={`size-4 ${selectedUsers.has(user.username) ? "opacity-100" : "opacity-0"}`}
+                    />
+                    <span className="truncate">{user.label}</span>
+                    <span className="ml-auto truncate text-xs text-muted">{user.username}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+        <div className="border-t border-border px-3 py-2">
+          <span className="mb-1 block text-xs text-muted">Grant access:</span>
+          <FilterableSelect
+            isMulti
+            value={selectedActions}
+            onChange={(opts) =>
+              setSelectedActions([...(opts as { value: string; label: string }[])])
+            }
+            options={SECRET_ACTION_OPTIONS}
+            placeholder="Select permissions..."
+          />
+        </div>
+        <div className="border-t border-border px-3 py-2">
+          {selectedParentOrgUsers.size > 0 && (
+            <p className="mb-1 text-xs text-muted">
+              {selectedParentOrgUsers.size} user
+              {selectedParentOrgUsers.size !== 1 ? "s" : ""} will be added to this sub-organization
+              first.
+            </p>
+          )}
+          <Button
+            variant="project"
+            size="sm"
+            className="w-full"
+            isDisabled={selectedUsers.size === 0 || selectedActions.length === 0}
+            isPending={isSubmitting}
+            onClick={handleSubmit}
+          >
+            <UserPlusIcon />
+            Grant {selectedUsers.size > 0 ? selectedUsers.size : ""} User
+            {selectedUsers.size !== 1 ? "s" : ""} Access
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -180,8 +410,24 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { user: currentUser } = useUser();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
+  const [showAllEntities, setShowAllEntities] = useState(true);
+
+  const toggleTypeFilter = (type: AccessRowType) => {
+    setTypeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
 
   const initialPermissions = useMemo(
     () => ({
@@ -214,158 +460,368 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     projectId: currentProject.id,
     environment,
     secretPath,
-    secretKey
+    secretKey,
+    includeAllEntities: showAllEntities
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6 p-4">
-        {Array.from({ length: 3 }).map((_, sectionIndex) => (
-          <div key={`section-skeleton-${String(sectionIndex)}`}>
-            <div className="mb-3 flex items-center gap-2">
-              <Skeleton className="size-4 rounded" />
-              <Skeleton className="h-4 w-24 rounded" />
-              <Skeleton className="h-5 w-6 rounded" />
-            </div>
-            <div className="flex flex-col gap-4">
-              {Array.from({ length: 2 }).map((__, itemIndex) => (
-                <Skeleton
-                  key={`section-skeleton-${String(itemIndex)}`}
-                  className="h-[69.25px] rounded-md"
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const flatRows = useMemo<AccessRow[]>(() => {
+    if (!secretAccessList) return [];
+    const baseUrl = getProjectBaseURL(currentProject.type);
 
-  const hasUsers = secretAccessList && secretAccessList.users.length > 0;
-  const hasIdentities = secretAccessList && secretAccessList.identities.length > 0;
-  const hasGroups = secretAccessList && secretAccessList.groups.length > 0;
-  const hasAnyAccess = hasUsers || hasIdentities || hasGroups;
+    // Build lookup: for each user/identity, find groups they belong to that have access
+    const groupsWithAccess = secretAccessList.groups.filter((g) => g.allowedActions.length > 0);
 
-  if (!hasAnyAccess) {
-    return (
-      <UnstableEmpty className="bg-transparent">
-        <UnstableEmptyHeader>
-          <EmptyMedia variant="icon">
-            <UsersIcon />
-          </EmptyMedia>
-          <UnstableEmptyTitle>No Access Found</UnstableEmptyTitle>
-          <UnstableEmptyDescription>
-            No users, groups, or identities have direct access to this secret.
-          </UnstableEmptyDescription>
-        </UnstableEmptyHeader>
-      </UnstableEmpty>
-    );
-  }
+    const getGroupInheritance = (
+      entityId: string,
+      directActions: string[],
+      memberField: "userIds" | "identityIds"
+    ) => {
+      const matchingGroups = groupsWithAccess.filter((g) => g[memberField].includes(entityId));
+      const groupNames = matchingGroups.map((g) => g.name);
+      const inherited = new Set<string>(
+        matchingGroups
+          .flatMap((g) => g.allowedActions)
+          .filter((action) => !directActions.includes(action))
+      );
+      return { groupNames, inherited };
+    };
+
+    return [
+      ...secretAccessList.users.map((user): AccessRow => {
+        const { groupNames: inheritedFromGroups, inherited: inheritedActions } =
+          getGroupInheritance(user.id, user.allowedActions, "userIds");
+        return {
+          type: "user",
+          entry: user,
+          linkTo: `${baseUrl}/members/$membershipId`,
+          linkParams: {
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            membershipId: user.membershipId
+          },
+          isSelf: user.name === currentUser.username,
+          canEdit:
+            user.name !== currentUser.username &&
+            permission.can(
+              ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+              subject(ProjectPermissionSub.Member, { userEmail: user.name })
+            ),
+          onEdit: () =>
+            setEditingPrivilege({
+              type: "user",
+              membershipId: user.membershipId,
+              name: user.name
+            }),
+          inheritedFromGroups,
+          inheritedActions
+        };
+      }),
+      ...secretAccessList.identities.map((identity): AccessRow => {
+        const { groupNames: identityInheritedGroups, inherited: identityInheritedActions } =
+          getGroupInheritance(identity.id, identity.allowedActions, "identityIds");
+        return {
+          type: "identity",
+          entry: identity,
+          linkTo: `${baseUrl}/identities/$identityId`,
+          linkParams: {
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            identityId: identity.id
+          },
+          canEdit: permission.can(
+            ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+            subject(ProjectPermissionSub.Identity, { identityId: identity.id })
+          ),
+          onEdit: () =>
+            setEditingPrivilege({
+              type: "identity",
+              membershipId: identity.membershipId,
+              identityId: identity.id,
+              name: identity.name
+            }),
+          inheritedFromGroups: identityInheritedGroups,
+          inheritedActions: identityInheritedActions
+        };
+      }),
+      ...secretAccessList.groups.map(
+        (group): AccessRow => ({
+          type: "group",
+          entry: group,
+          linkTo: `${baseUrl}/groups/$groupId`,
+          linkParams: {
+            orgId: currentOrg.id,
+            projectId: currentProject.id,
+            groupId: group.id
+          },
+          canEdit: false
+        })
+      )
+    ];
+  }, [secretAccessList, permission, currentOrg.id, currentProject, setEditingPrivilege]);
+
+  const hasLegacyRead = useMemo(
+    () =>
+      flatRows.some((row) =>
+        row.entry.allowedActions.includes(ProjectPermissionSecretActions.DescribeAndReadValue)
+      ),
+    [flatRows]
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      flatRows.filter(
+        (row) =>
+          (typeFilters.size === 0 || typeFilters.has(row.type)) &&
+          row.entry.name.toLowerCase().includes(searchFilter.trim().toLowerCase())
+      ),
+    [flatRows, searchFilter, typeFilters]
+  );
+
+  const visibleColumns = useMemo(
+    () => PERMISSION_COLUMNS.filter((col) => !col.isLegacy || hasLegacyRead),
+    [hasLegacyRead]
+  );
+
+  const isFilterActive = typeFilters.size > 0;
 
   return (
     <>
-      <div className="flex thin-scrollbar flex-col gap-6 overflow-y-auto p-4">
-        {hasUsers && (
-          <div>
-            <SectionHeader
-              icon={<UserIcon className="size-4 text-accent" />}
-              title="Users"
-              count={secretAccessList.users.length}
+      <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
+        <div className="flex items-center gap-2">
+          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
+            <Switch
+              size="sm"
+              variant="project"
+              checked={showAllEntities}
+              onCheckedChange={setShowAllEntities}
             />
-            <ItemGroup>
-              {secretAccessList.users.map((user) => {
-                const canAssignMemberPrivileges = permission.can(
-                  ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-                  subject(ProjectPermissionSub.Member, { userEmail: user.name })
-                );
-
+            Show all members
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-3.5 text-muted" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-60">
+                When enabled, all project members are shown including those without any access to
+                this secret.
+              </TooltipContent>
+            </Tooltip>
+          </Label>
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search by name..."
+            />
+          </InputGroup>
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger asChild>
+              <UnstableIconButton
+                variant={isFilterActive ? "project" : "outline"}
+                aria-label="Filter by type"
+              >
+                <FilterIcon />
+              </UnstableIconButton>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end">
+              {ALL_TYPE_FILTERS.map((type) => {
+                const { icon: TypeIcon, label } = TYPE_CONFIG[type];
                 return (
-                  <AccessCard
-                    key={user.id}
-                    entry={user}
-                    linkTo={`${getProjectBaseURL(currentProject.type)}/members/$membershipId`}
-                    linkParams={{
-                      orgId: currentOrg.id,
-                      projectId: currentProject.id,
-                      membershipId: user.membershipId
-                    }}
-                    canEdit={canAssignMemberPrivileges}
-                    onEdit={() =>
-                      setEditingPrivilege({
-                        type: "user",
-                        membershipId: user.membershipId,
-                        name: user.name
-                      })
-                    }
-                  />
+                  <UnstableDropdownMenuCheckboxItem
+                    key={type}
+                    checked={typeFilters.has(type)}
+                    onCheckedChange={() => toggleTypeFilter(type)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <TypeIcon className="size-4" />
+                    {label}
+                  </UnstableDropdownMenuCheckboxItem>
                 );
               })}
-            </ItemGroup>
-          </div>
-        )}
-
-        {hasIdentities && (
-          <div>
-            <SectionHeader
-              icon={<HardDriveIcon className="size-4 text-accent" />}
-              title="Machine Identities"
-              count={secretAccessList.identities.length}
-            />
-            <ItemGroup>
-              {secretAccessList.identities.map((identity) => {
-                const canAssignIdentityPrivileges = permission.can(
-                  ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
-                  subject(ProjectPermissionSub.Identity, { identityId: identity.id })
-                );
-
-                return (
-                  <AccessCard
-                    key={identity.id}
-                    entry={identity}
-                    linkTo={`${getProjectBaseURL(currentProject.type)}/identities/$identityId`}
-                    linkParams={{
-                      orgId: currentOrg.id,
-                      projectId: currentProject.id,
-                      identityId: identity.id
-                    }}
-                    canEdit={canAssignIdentityPrivileges}
-                    onEdit={() =>
-                      setEditingPrivilege({
-                        type: "identity",
-                        membershipId: identity.membershipId,
-                        identityId: identity.id,
-                        name: identity.name
-                      })
-                    }
-                  />
-                );
-              })}
-            </ItemGroup>
-          </div>
-        )}
-
-        {hasGroups && (
-          <div>
-            <SectionHeader
-              icon={<UsersIcon className="size-4 text-accent" />}
-              title="Groups"
-              count={secretAccessList.groups.length}
-            />
-            <ItemGroup>
-              {secretAccessList.groups.map((group) => (
-                <AccessCard
-                  key={group.id}
-                  entry={group}
-                  linkTo={`${getProjectBaseURL(currentProject.type)}/groups/$groupId`}
-                  linkParams={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id,
-                    groupId: group.id
-                  }}
-                />
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
+          <AddMemberPopover
+            secretKey={secretKey}
+            environment={environment}
+            secretPath={secretPath}
+          />
+        </div>
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isLoading ? (
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead>Type</UnstableTableHead>
+                <UnstableTableHead>Name</UnstableTableHead>
+                {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                  <UnstableTableHead key={col.action} className="w-[100px] text-center">
+                    {col.label}
+                  </UnstableTableHead>
+                ))}
+                <UnstableTableHead className="w-10" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <UnstableTableRow key={`skeleton-row-${String(i)}`}>
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-16 rounded" />
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-24 rounded" />
+                  </UnstableTableCell>
+                  {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
+                    <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                      <Skeleton className="mx-auto h-4 w-4 rounded" />
+                    </UnstableTableCell>
+                  ))}
+                  <UnstableTableCell>
+                    <Skeleton className="h-4 w-6 rounded" />
+                  </UnstableTableCell>
+                </UnstableTableRow>
               ))}
-            </ItemGroup>
-          </div>
+            </UnstableTableBody>
+          </UnstableTable>
+        ) : filteredRows.length === 0 ? (
+          <UnstableEmpty className="border">
+            <UnstableEmptyHeader>
+              <UnstableEmptyTitle>No Results Found</UnstableEmptyTitle>
+              <UnstableEmptyDescription>
+                No users, groups, or identities match your search.
+              </UnstableEmptyDescription>
+            </UnstableEmptyHeader>
+          </UnstableEmpty>
+        ) : (
+          <UnstableTable containerClassName="overflow-auto">
+            <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+              <UnstableTableRow>
+                <UnstableTableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                  Type
+                </UnstableTableHead>
+                <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                  Name
+                </UnstableTableHead>
+                {visibleColumns.map((col) => (
+                  <UnstableTableHead
+                    key={col.action}
+                    className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
+                  >
+                    {col.isLegacy ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center gap-1">
+                            {col.label}
+                            <TriangleAlertIcon className="size-3.5 text-yellow-500" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          This is a legacy permission. Migrate to Describe and Read Value for
+                          finer-grained access control.
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      col.label
+                    )}
+                  </UnstableTableHead>
+                ))}
+                <UnstableTableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {filteredRows.map((row) => {
+                const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[row.type];
+                return (
+                  <UnstableTableRow key={`${row.type}-${row.entry.id}`}>
+                    <UnstableTableCell>
+                      <span className="flex items-center gap-2">
+                        <TypeIcon className="size-4 text-accent" />
+                        {typeLabel}
+                      </span>
+                    </UnstableTableCell>
+                    <UnstableTableCell isTruncatable className="max-w-[180px] font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate">{row.entry.name}</span>
+                        {row.inheritedFromGroups && row.inheritedFromGroups.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-foreground/5 px-1.5 py-0.5 text-xs text-muted">
+                                <UsersIcon className="size-3" />
+                                {row.inheritedFromGroups.length}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              Access through{" "}
+                              {row.inheritedFromGroups.length === 1
+                                ? `group: ${row.inheritedFromGroups[0]}`
+                                : `groups: ${row.inheritedFromGroups.join(", ")}`}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </UnstableTableCell>
+                    {visibleColumns.map((col) => {
+                      const hasDirect = row.entry.allowedActions.includes(col.action);
+                      const hasInherited = row.inheritedActions?.has(col.action);
+                      return (
+                        <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {hasDirect ? (
+                            <CheckIcon className="mx-auto size-4 text-success" />
+                          ) : hasInherited ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <UsersIcon className="mx-auto size-4 text-success" />
+                              </TooltipTrigger>
+                              <TooltipContent>Inherited from group</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <BanIcon className="mx-auto size-4 text-muted" />
+                          )}
+                        </UnstableTableCell>
+                      );
+                    })}
+                    <UnstableTableCell className="text-right">
+                      <UnstableDropdownMenu>
+                        <UnstableDropdownMenuTrigger asChild>
+                          <UnstableIconButton size="xs" variant="ghost">
+                            <MoreHorizontalIcon />
+                          </UnstableIconButton>
+                        </UnstableDropdownMenuTrigger>
+                        <UnstableDropdownMenuContent align="end">
+                          {row.onEdit && (
+                            <Tooltip open={row.canEdit ? false : undefined}>
+                              <TooltipTrigger>
+                                <UnstableDropdownMenuItem
+                                  isDisabled={!row.canEdit}
+                                  onClick={() => row.onEdit?.()}
+                                >
+                                  <PlusIcon />
+                                  Add Additional Privilege
+                                </UnstableDropdownMenuItem>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                {row.isSelf
+                                  ? "You cannot modify your own privileges"
+                                  : "You do not have permission to perform this action"}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          <UnstableDropdownMenuItem asChild>
+                            <Link to={row.linkTo as "."} params={row.linkParams} target="_blank">
+                              <ExternalLinkIcon />
+                              {row.isSelf ? "View" : "Manage"} Access
+                            </Link>
+                          </UnstableDropdownMenuItem>
+                        </UnstableDropdownMenuContent>
+                      </UnstableDropdownMenu>
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                );
+              })}
+            </UnstableTableBody>
+          </UnstableTable>
         )}
       </div>
 

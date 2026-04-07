@@ -33,6 +33,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -108,6 +109,8 @@ export const identityOidcAuthServiceFactory = ({
 
       const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
 
+      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
+
       let discoveryDoc: { jwks_uri: string };
       try {
         const response = await axios.get<{ jwks_uri: string }>(
@@ -141,6 +144,8 @@ export const identityOidcAuthServiceFactory = ({
           }
         });
       }
+
+      await blockLocalAndPrivateIpAddresses(jwksUri);
 
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
@@ -384,7 +389,7 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -592,6 +597,8 @@ export const identityOidcAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -709,6 +716,10 @@ export const identityOidcAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
+
+    if (oidcDiscoveryUrl) {
+      await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+    }
 
     const updateQuery: TIdentityOidcAuthsUpdate = {
       oidcDiscoveryUrl,

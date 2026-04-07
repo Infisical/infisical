@@ -225,7 +225,7 @@ export const SecretEditTableRow = ({
     setFocus,
     getFieldState,
     watch,
-    formState: { isDirty, isSubmitting }
+    formState: { isDirty, dirtyFields, isSubmitting }
   } = useForm({
     defaultValues: {
       // In batch mode with a pending value change, use defaultValue (from merged data which
@@ -272,7 +272,9 @@ export const SecretEditTableRow = ({
         originalValueRef.current = sharedValueData.value ?? null;
         return;
       }
-      setValue("value", sharedValueData.value ?? null);
+      reset((prev) => ({ ...prev, value: sharedValueData.value ?? null }), {
+        keepDirtyValues: true
+      });
       originalValueRef.current = sharedValueData.value ?? null;
     }
   }, [sharedValueData]);
@@ -925,7 +927,10 @@ export const SecretEditTableRow = ({
           />
         </div>
         <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
-          {isDirty && !isImportedSecret && !isBatchMode ? (
+          {isDirty &&
+          (dirtyFields.key || dirtyFields.value) &&
+          !isImportedSecret &&
+          !isBatchMode ? (
             <>
               <ProjectPermissionCan
                 I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
@@ -1550,13 +1555,13 @@ export const SecretEditTableRow = ({
               <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
                 <SheetContent
                   onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="gap-y-0"
+                  className="gap-y-0 sm:max-w-6xl"
                   side="right"
                 >
                   <SheetHeader>
                     <SheetTitle>Secret Access Insights</SheetTitle>
                     <SheetDescription>
-                      View users, groups, and identities with access to this secret
+                      View and manage user, group, and machine identity access to this secret
                     </SheetDescription>
                   </SheetHeader>
                   <UnstableSeparator />

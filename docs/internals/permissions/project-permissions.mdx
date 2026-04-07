@@ -173,7 +173,7 @@ Supports conditions and permission inversion.
 | Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
 | `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `describeSecret` | View secret details such as key, path, metadata, tags, and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
@@ -425,14 +425,28 @@ Supports conditions and permission inversion.
 
 ### Privileged Access Management (PAM)
 
+#### Subject: `pam-resources`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                        | Condition keys |
+| -------- | ---------------------------------- | ----- |
+| `read`   | View PAM resources                 | `name`, `resourceType`, `metadata` |
+| `create` | Create new PAM resources           | `name`, `resourceType`, `metadata` |
+| `edit`   | Modify existing PAM resources      | `name`, `resourceType`, `metadata` |
+| `delete` | Remove PAM resources               | `name`, `resourceType`, `metadata` |
+
 #### Subject: `pam-accounts`
 
 Supports conditions and permission inversion.
 
-| Action   | Description                                      | Condition keys |
-| -------- | ------------------------------------------------ | ----- |
-| `read`   | View PAM accounts the identity is allowed to use | `resourceName`, `accountName` |
-| `access` | Request or use access to PAM accounts            | `resourceName`, `accountName` |
+| Action             | Description                                              | Condition keys |
+| ------------------ | -------------------------------------------------------- | ----- |
+| `read`   | View PAM accounts the identity is allowed to use | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `access` | Request or use access to PAM accounts            | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `create` | Create new PAM accounts                          | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `edit`   | Modify existing PAM accounts                     | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `delete` | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
 
 ## Condition Operators
 
@@ -462,6 +476,7 @@ The following condition keys can be used to restrict permissions. Each key is av
 | `name` | Resource name | `string` |
 | `resourceName` | PAM resource name | `string` |
 | `accountName` | PAM account name | `string` |
+| `resourceType` | PAM resource type (e.g., `postgres`, `mysql`, `rdp`, `ssh`, `windows`, `active-directory`, `redis`, `mssql`, `kubernetes`, `aws-iam`) | `string` |
 | `userEmail` | User email - The email address of the user whose roles are being updated | `string` |
 | `groupName` | Group name - The name of the group whose roles are being updated | `string` |
 | `assignableRole` | Assignable roles - The roles that can be assigned to other members | `string` |

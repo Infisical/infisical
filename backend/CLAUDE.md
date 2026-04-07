@@ -128,7 +128,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpack
 
 Queue infrastructure in `src/queue/queue-service.ts`. Defines 30+ named queues via `QueueName` enum (e.g., `SecretRotation`, `AuditLog`, `IntegrationSync`, `SecretReplication`, `SecretSync`, `DynamicSecretRevocation`). Each queue has typed payloads defined in `TQueueJobTypes`.
 
-Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup. A `PersistenceQueueStatus` enum tracks durable job states (`Pending`, `Processing`, `Completed`, `Failed`, `Stuck`, `Dead`).
+Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup.
 
 Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the same DI pattern as services — they receive DALs and services as dependencies.
 

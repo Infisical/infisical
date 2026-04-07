@@ -1,8 +1,11 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FormControl, Input, Tab, TabList, TabPanel, Tabs, TextArea } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import { Tooltip, TooltipContent, TooltipTrigger, UnstableIconButton } from "@app/components/v3";
+import { useTimedReset } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
@@ -25,6 +28,12 @@ export const SqlCredentialsRotationParametersFields = () => {
   const type = watch("type");
 
   const { rotationOption } = useSecretRotationV2Option(type);
+  const [, isCopied, setCopyState] = useTimedReset({ initialState: false });
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rotationOption!.template.createUserStatement);
+    setCopyState(true);
+  };
 
   return (
     <Tabs defaultValue={ParameterTab.Statement}>
@@ -33,48 +42,53 @@ export const SqlCredentialsRotationParametersFields = () => {
         <Tab value={ParameterTab.Advanced}>Advanced</Tab>
       </TabList>
       <TabPanel value={ParameterTab.Statement}>
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Database Username 1"
-            >
-              <Input
-                value={value}
-                onChange={onChange}
-                placeholder={
-                  rotationOption.connection === AppConnection.OracleDB
-                    ? "INFISICAL_USER_1"
-                    : "infisical_user_1"
-                }
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="parameters.username1"
-        />
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Database Username 2"
-            >
-              <Input
-                value={value}
-                onChange={onChange}
-                placeholder={
-                  rotationOption.connection === AppConnection.OracleDB
-                    ? "INFISICAL_USER_2"
-                    : "infisical_user_2"
-                }
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="parameters.username2"
-        />
+        <div className="flex items-start gap-x-2">
+          <Controller
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="Database Username 1"
+                className="flex-1"
+              >
+                <Input
+                  value={value}
+                  onChange={onChange}
+                  placeholder={
+                    rotationOption.connection === AppConnection.OracleDB
+                      ? "INFISICAL_USER_1"
+                      : "infisical_user_1"
+                  }
+                />
+              </FormControl>
+            )}
+            control={control}
+            name="parameters.username1"
+          />
+          <Controller
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error)}
+                errorText={error?.message}
+                label="Database Username 2"
+                className="flex-1"
+              >
+                <Input
+                  value={value}
+                  onChange={onChange}
+                  placeholder={
+                    rotationOption.connection === AppConnection.OracleDB
+                      ? "INFISICAL_USER_2"
+                      : "infisical_user_2"
+                  }
+                />
+              </FormControl>
+            )}
+            control={control}
+            name="parameters.username2"
+          />
+        </div>
+
         <NoticeBannerV2 title="Example Create User Statement">
           <p className="mb-3 text-sm text-mineshaft-300">
             Infisical requires two database users to be created for rotation.
@@ -87,9 +101,28 @@ export const SqlCredentialsRotationParametersFields = () => {
             Below is an example statement for creating the required users. You may need to modify it
             to suit your needs.
           </p>
-          <pre className="mb-3 max-h-40 overflow-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 text-sm break-words whitespace-pre-wrap text-mineshaft-300">
-            {rotationOption!.template.createUserStatement}
-          </pre>
+          <div className="relative mb-3">
+            <pre className="max-h-[10vh] overflow-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 pr-9 text-sm break-words whitespace-pre-wrap text-mineshaft-300">
+              {rotationOption!.template.createUserStatement}
+            </pre>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className="absolute top-1.5 right-1.5 text-mineshaft-300 hover:text-mineshaft-100"
+                  onClick={handleCopy}
+                >
+                  {isCopied ? (
+                    <ClipboardCheckIcon className="size-3.5" />
+                  ) : (
+                    <CopyIcon className="size-3.5" />
+                  )}
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>{isCopied ? "Copied!" : "Copy"}</TooltipContent>
+            </Tooltip>
+          </div>
         </NoticeBannerV2>
       </TabPanel>
       <TabPanel value={ParameterTab.Advanced}>

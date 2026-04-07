@@ -166,8 +166,8 @@ export const SecretRotationV2Form = ({
   };
 
   return (
-    <form className="flex max-h-[70vh] flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+    <form className="flex max-h-[75vh] flex-col">
+      <div className="min-h-0 flex-1">
         <FormProvider {...formMethods}>
           <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
             <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">

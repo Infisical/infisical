@@ -145,6 +145,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: name,
+        resourceType: resource.resourceType,
         metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
@@ -262,6 +263,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
+        resourceType: resource.resourceType,
         metadata: currentMetadata
       })
     );
@@ -273,6 +275,7 @@ export const pamAccountServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: name ?? account.name,
+          resourceType: resource.resourceType,
           metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
@@ -427,6 +430,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
+        resourceType: resource.resourceType,
         metadata: accountMeta[id] || []
       })
     );
@@ -500,6 +504,7 @@ export const pamAccountServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: account.resource.name,
             accountName: account.name,
+            resourceType: account.resource.resourceType,
             metadata: metadataByAccountId[account.id] || []
           })
         )
@@ -556,6 +561,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
         accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType,
         metadata: accountMetadata
       })
     );
@@ -650,6 +656,7 @@ export const pamAccountServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: account.name,
+          resourceType: resource.resourceType,
           metadata: accountMeta[account.id] || []
         })
       );
@@ -1331,7 +1338,8 @@ export const pamAccountServiceFactory = ({
       ProjectPermissionPamAccountActions.TriggerRotation,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
-        accountName: accountWithResource.name
+        accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType
       })
     );
 

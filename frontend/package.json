@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "npm": ">=11.10.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -99,6 +102,7 @@
     "picomatch": "^4.0.2",
     "posthog-js": "^1.360.1",
     "qrcode": "^1.5.4",
+    "randexp": "^0.5.3",
     "react": "^18.3.1",
     "react-code-input": "^3.10.1",
     "react-complex-tree": "^2.6.1",

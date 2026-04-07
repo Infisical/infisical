@@ -54,6 +54,10 @@ export type TDetailsDynamicSecretDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetSshCaPublicKeyDTO = {
+  dynamicSecretId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type ListDynamicSecretsFilters = {
   offset?: number;
   limit?: number;
@@ -124,4 +128,5 @@ export type TDynamicSecretServiceFactory = {
     arg: TListDynamicSecretsByFolderMappingsDTO,
     actor: OrgServiceActor
   ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string; path: string }>>;
+  getSshCaPublicKey: (arg: TGetSshCaPublicKeyDTO) => Promise<{ caPublicKey: string }>;
 };

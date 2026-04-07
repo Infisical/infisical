@@ -13,6 +13,7 @@ import {
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TProjectEventsService } from "./project-events-service";
@@ -76,13 +77,15 @@ type TProjectEventsSSEServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
   keyStore: TKeyStoreFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
 };
 
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
   permissionService,
   licenseService,
-  keyStore
+  keyStore,
+  projectEnvDAL
 }: TProjectEventsSSEServiceFactoryDep) => {
   // Map: clientId -> { client, opts, permissionCache }
   const clients = new Map<
@@ -180,7 +183,14 @@ export const projectEventsSSEServiceFactory = ({
    * Validate that user has permission for all registered events
    * Throws ForbiddenError if any registration is not permitted
    */
-  const validateRegisteredPermissions = (permissionCache: TSSEPermissionCache, register: TSSERegisterEntry[]): void => {
+  const validateRegisteredPermissions = async (
+    permissionCache: TSSEPermissionCache,
+    register: TSSERegisterEntry[],
+    projectId: string
+  ): Promise<void> => {
+    const needsAllEnvCheck = register.some((r) => !r.conditions?.environmentSlug);
+    const projectEnvironments = needsAllEnvCheck ? await projectEnvDAL.find({ projectId }) : [];
+
     for (const reg of register) {
       const permissionSubject = getBusEventToSubject(reg.event);
       const action = MutationTypeToAction[reg.event];
@@ -196,6 +206,22 @@ export const projectEventsSSEServiceFactory = ({
         action,
         subject(permissionSubject, subjectFields)
       );
+
+      // When no environmentSlug is specified, verify the user has the action
+      // access in ALL project environments to check the SSE events
+      if (!reg.conditions?.environmentSlug) {
+        const secretPath = reg.conditions?.secretPath ?? "/";
+        for (const env of projectEnvironments) {
+          ForbiddenError.from(permissionCache.permission).throwUnlessCan(
+            // @ts-expect-error - permissionSubject is narrowed by getBusEventToSubject but TS doesn't infer it
+            action,
+            subject(permissionSubject, {
+              environment: env.slug,
+              secretPath
+            })
+          );
+        }
+      }
     }
   };
 
@@ -211,7 +237,7 @@ export const projectEventsSSEServiceFactory = ({
       const newPermissionCache = await fetchPermission(entry.opts);
 
       // Re-validate registered permissions with refreshed permissions
-      validateRegisteredPermissions(newPermissionCache, entry.opts.register);
+      await validateRegisteredPermissions(newPermissionCache, entry.opts.register, entry.opts.projectId);
 
       entry.permissionCache = newPermissionCache;
     } catch (error) {
@@ -284,7 +310,7 @@ export const projectEventsSSEServiceFactory = ({
     const permissionCache = await fetchPermission(opts);
 
     // Validate user has permission for all registered events (throws ForbiddenError if not)
-    validateRegisteredPermissions(permissionCache, opts.register);
+    await validateRegisteredPermissions(permissionCache, opts.register, opts.projectId);
 
     const plan = await licenseService.getPlan(opts.actorOrgId);
     if (!plan.eventSubscriptions) {

@@ -1,3 +1,14 @@
+export enum SubscriptionPlanTypes {
+  Starter = "starter",
+  Pro = "pro",
+  ProAnnual = "pro-annual",
+  Team = "team",
+  TeamAnnual = "team-annual",
+  Enterprise = "enterprise",
+  OnPrem = "one-prem",
+  OnPremEnterprise = "one-prem-enterprise"
+}
+
 export type SubscriptionPlan = {
   id: string;
   membersUsed: number;
@@ -17,7 +28,7 @@ export type SubscriptionPlan = {
   ipAllowlisting: boolean;
   rbac: boolean;
   secretVersioning: boolean;
-  slug: string;
+  slug: SubscriptionPlanTypes;
   secretApproval: boolean;
   secretRotation: boolean;
   tier: number;

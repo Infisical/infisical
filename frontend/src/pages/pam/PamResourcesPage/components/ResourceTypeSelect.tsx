@@ -30,6 +30,12 @@ const COMING_SOON_RESOURCES = [
 
 const COMING_SOON_SET = new Set(COMING_SOON_RESOURCES.map((r) => r.resource));
 
+// TODO: Temporary - hide Active Directory and RDP from resource selection
+const TEMPORARILY_HIDDEN_RESOURCES = new Set([
+  PamResourceType.ActiveDirectory,
+  PamResourceType.RDP
+]);
+
 export const ResourceTypeSelect = ({ onSelect }: Props) => {
   const { isPending, data: resourceOptions } = useListPamResourceOptions();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -37,9 +43,9 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
   const allOptions = useMemo(() => {
     if (!resourceOptions) return [];
-    return [...resourceOptions, ...COMING_SOON_RESOURCES].sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+    return [...resourceOptions, ...COMING_SOON_RESOURCES]
+      .filter((option) => !TEMPORARILY_HIDDEN_RESOURCES.has(option.resource))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [resourceOptions]);
 
   const filteredOptions = useMemo(() => {
