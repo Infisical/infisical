@@ -663,6 +663,10 @@ export const overwriteSchema: {
       {
         key: "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
         description: "Disable PostgreSQL audit log storage"
+      },
+      {
+        key: "DISABLE_AUDIT_LOG_STORAGE",
+        description: "Legacy alias for DISABLE_POSTGRES_AUDIT_LOG_STORAGE (deprecated)"
       }
     ]
   },
