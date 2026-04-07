@@ -88,6 +88,8 @@ CLIENT_ID_GITHUB_LOGIN=<your-github-oauth-app-client-id>
 CLIENT_SECRET_GITHUB_LOGIN=<your-github-oauth-app-client-secret>
 CLIENT_ID_GOOGLE_LOGIN=<your-google-oauth-client-id>
 CLIENT_SECRET_GOOGLE_LOGIN=<your-google-oauth-client-secret>
+CLIENT_ID_GITLAB_LOGIN=<your-gitlab-application-id>
+CLIENT_SECRET_GITLAB_LOGIN=<your-gitlab-application-secret>
 ```
 
 ## Useful dev commands
