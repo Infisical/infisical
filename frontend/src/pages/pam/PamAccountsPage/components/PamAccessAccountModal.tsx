@@ -88,12 +88,11 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
 
   if (!account) return null;
 
+  const showDataExplorer = account.resource.resourceType === PamResourceType.Postgres;
   const showWebAccess =
-    account.resource.resourceType === PamResourceType.Postgres ||
+    showDataExplorer ||
     account.resource.resourceType === PamResourceType.SSH ||
     account.resource.resourceType === PamResourceType.Redis;
-
-  const showDataExplorer = account.resource.resourceType === PamResourceType.Postgres;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -188,10 +187,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     accountId: account.id
                   }}
                   target="_blank"
-                  className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${showDataExplorer ? "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20" : "bg-primary text-black hover:bg-primary/80"}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-2 text-sm font-medium text-mineshaft-200 transition-colors hover:bg-mineshaft-600"
                 >
                   <FontAwesomeIcon icon={faTerminal} />
-                  {showDataExplorer ? "Open Console" : "Connect in Browser"}
+                  Open Console
                 </Link>
               </div>
             </div>

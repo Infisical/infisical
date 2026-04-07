@@ -193,16 +193,18 @@ export const handlePostgresSession = async (
 
           case PostgresClientMessageType.Query: {
             try {
-              // Multi-statement SQL (transactions) is executed via PostgreSQL's simple query
-              // protocol, which returns only the last statement's result. For transaction-wrapped
-              // batches (BEGIN;...;COMMIT;), the result is from COMMIT (no rows/fields).
+              // node-postgres returns an array of QueryResult objects when the SQL contains
+              // multiple statements (simple query protocol). We take the last result so the
+              // caller always sees a single consistent response — same behaviour as psql.
               const startTime = performance.now();
-              const result = await pgClient.query(message.sql);
+              const rawResult = await pgClient.query(message.sql);
               const executionTimeMs = Math.round(performance.now() - startTime);
+              const MAX_ROWS = 1000;
+              const result = Array.isArray(rawResult) ? rawResult[rawResult.length - 1] : rawResult;
               sendResponse({
                 type: PostgresServerMessageType.QueryResult,
                 id: message.id,
-                rows: (result.rows ?? []) as Record<string, unknown>[],
+                rows: (result.rows ?? []).slice(0, MAX_ROWS) as Record<string, unknown>[],
                 fields: (result.fields ?? []).map((f) => ({ name: f.name })),
                 rowCount: result.rowCount,
                 command: result.command ?? "",
