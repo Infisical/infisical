@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
 import picomatch from "picomatch";
@@ -55,6 +56,7 @@ import {
   useListProjectUserPrivileges,
   useRevokeAccessRequest
 } from "@app/hooks/api";
+import { projectUserPrivilegeKeys } from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
   canModifyByGrantConditions,
@@ -69,6 +71,7 @@ type Props = {
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   const { user } = useUser();
   const userId = user?.id;
   const { currentProject } = useProject();
@@ -122,6 +125,9 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     await revokeAccessRequest({
       requestId: accessApprovalRequestId,
       projectSlug: currentProject?.slug || ""
+    });
+    await queryClient.invalidateQueries({
+      queryKey: projectUserPrivilegeKeys.list(membershipDetails.id)
     });
     createNotification({ type: "success", text: "Successfully revoked access" });
     handlePopUpClose("revokeAccess");
