@@ -7,12 +7,11 @@ import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import type { FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
 
-const MAX_ROWS = 500;
-
 type QueryResult = {
   rows: Record<string, unknown>[];
   fields: FieldInfo[];
   rowCount: number | null;
+  isTruncated: boolean;
   command: string;
   executionTimeMs: number;
 };
@@ -70,8 +69,7 @@ function ResultsGrid({
   result: QueryResult;
   tableDetail: TableDetail | null;
 }) {
-  const displayRows = useMemo(() => result.rows.slice(0, MAX_ROWS), [result.rows]);
-  const isTruncated = result.rows.length > MAX_ROWS;
+  const { isTruncated } = result;
 
   const columns = useMemo(
     () => buildColumns(result.fields, tableDetail),
@@ -81,7 +79,7 @@ function ResultsGrid({
   const getRowId = useCallback((_row: RowData, index: number) => String(index), []);
 
   const gridProps = useDataGrid<RowData>({
-    data: displayRows,
+    data: result.rows,
     columns,
     getRowId,
     readOnly: true,
@@ -96,7 +94,7 @@ function ResultsGrid({
       </div>
       {isTruncated && (
         <div className="shrink-0 border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs text-yellow-500/80">
-          Showing first {MAX_ROWS} rows
+          Showing first {result.rows.length.toLocaleString()} rows (results truncated by server)
         </div>
       )}
     </div>
