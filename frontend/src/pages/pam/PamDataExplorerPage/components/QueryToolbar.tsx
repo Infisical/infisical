@@ -1,8 +1,8 @@
 import { PlayIcon } from "lucide-react";
 
-const isMac = navigator.userAgent.includes("Mac");
-
 import { Button } from "@app/components/v3/generic/Button";
+
+const isMac = navigator.userAgent.includes("Mac");
 
 type QueryResult = {
   rowCount: number | null;
@@ -24,9 +24,7 @@ export function QueryToolbar({ isRunning, result, error, onRun }: Props) {
         <PlayIcon className="size-3" />
         Run
       </Button>
-      <span className="text-xs text-mineshaft-500">
-        {isMac ? "⌘" : "Ctrl"}+Enter
-      </span>
+      <span className="text-xs text-mineshaft-500">{isMac ? "⌘" : "Ctrl"}+Enter</span>
       {!isRunning && result && !error && (
         <span className="ml-auto text-xs text-mineshaft-400">
           {result.rowCount != null
