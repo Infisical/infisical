@@ -71,7 +71,10 @@ export const identityAzureAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityAzureAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -87,7 +90,15 @@ export const identityAzureAuthServiceFactory = ({
       });
 
       if (azureIdentity.tid !== identityAzureAuth.tenantId)
-        throw new UnauthorizedError({ message: "Tenant ID mismatch" });
+        throw new UnauthorizedError({
+          message: "Tenant ID mismatch",
+          detail: {
+            reasonCode: "tenant_id_mismatch",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
 
       if (identityAzureAuth.allowedServicePrincipalIds) {
         // validate if the service principal id is in the list of allowed service principal ids
@@ -98,11 +109,19 @@ export const identityAzureAuthServiceFactory = ({
           .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
         if (!isServicePrincipalAllowed) {
-          throw new UnauthorizedError({ message: `Service principal '${azureIdentity.oid}' not allowed` });
+          throw new UnauthorizedError({
+            message: `Service principal '${azureIdentity.oid}' not allowed`,
+            detail: {
+              reasonCode: "service_principal_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
         }
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -118,7 +137,13 @@ export const identityAzureAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

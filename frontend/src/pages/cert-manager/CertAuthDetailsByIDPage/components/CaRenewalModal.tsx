@@ -17,6 +17,7 @@ import {
   CaRenewalType,
   CaSigningConfigType,
   useGetCaSigningConfig,
+  useInstallCaCertificateAdcs,
   useInstallCaCertificateVenafi,
   useRenewCa
 } from "@app/hooks/api/ca";
@@ -38,6 +39,40 @@ const schema = z
 
 export type FormData = z.infer<typeof schema>;
 
+type ExternalCaRenewalProps = {
+  description: string;
+  buttonLabel: string;
+  onRenew: () => void;
+  isRenewing: boolean;
+  onCancel: () => void;
+};
+
+const ExternalCaRenewal = ({
+  description,
+  buttonLabel,
+  onRenew,
+  isRenewing,
+  onCancel
+}: ExternalCaRenewalProps) => (
+  <div>
+    <p className="mb-4 text-sm text-mineshaft-300">{description}</p>
+    <div className="flex items-center">
+      <Button
+        className="mr-4"
+        size="sm"
+        onClick={onRenew}
+        isLoading={isRenewing}
+        isDisabled={isRenewing}
+      >
+        {buttonLabel}
+      </Button>
+      <Button colorSchema="secondary" variant="plain" onClick={onCancel}>
+        Cancel
+      </Button>
+    </div>
+  </div>
+);
+
 type Props = {
   popUp: UsePopUpState<["renewCa"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["renewCa"]>, state?: boolean) => void;
@@ -58,10 +93,14 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const isVenafi = signingConfig?.type === CaSigningConfigType.VENAFI;
+  const isAdcs = signingConfig?.type === CaSigningConfigType.AZURE_ADCS;
 
   const { mutateAsync: renewCa } = useRenewCa();
   const { mutateAsync: installVenafiCert, isPending: isVenafiRenewing } =
     useInstallCaCertificateVenafi(currentProject.id);
+  const { mutateAsync: installAdcsCert, isPending: isAdcsRenewing } = useInstallCaCertificateAdcs(
+    currentProject.id
+  );
 
   const {
     control,
@@ -129,6 +168,30 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   };
 
+  const onAdcsRenew = async () => {
+    if (!caId) return;
+
+    try {
+      await installAdcsCert({
+        caId
+      });
+
+      handlePopUpToggle("renewCa", false);
+
+      createNotification({
+        text: "Certificate renewal has been queued",
+        type: "success"
+      });
+    } catch (err) {
+      createNotification({
+        text:
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          "Failed to renew CA certificate via ADCS",
+        type: "error"
+      });
+    }
+  };
+
   return (
     <Modal
       isOpen={popUp?.renewCa?.isOpen}
@@ -138,31 +201,18 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title="Renew CA">
-        {isVenafi ? (
-          <div>
-            <p className="mb-4 text-sm text-mineshaft-300">
-              This CA is configured to use Venafi TLS Protect Cloud for signing. Clicking renew will
-              submit a new CSR to Venafi and install the renewed certificate.
-            </p>
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                onClick={onVenafiRenew}
-                isLoading={isVenafiRenewing}
-                isDisabled={isVenafiRenewing}
-              >
-                Renew via Venafi
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("renewCa", false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
+        {isVenafi || isAdcs ? (
+          <ExternalCaRenewal
+            description={
+              isVenafi
+                ? "This CA is configured to use Venafi TLS Protect Cloud for signing. Clicking renew will submit a new CSR to Venafi and install the renewed certificate."
+                : "This CA is configured to use Azure ADCS for signing. Clicking renew will submit a new CSR to ADCS and install the renewed certificate."
+            }
+            buttonLabel={isVenafi ? "Renew via Venafi" : "Renew via ADCS"}
+            onRenew={isVenafi ? onVenafiRenew : onAdcsRenew}
+            isRenewing={isVenafi ? isVenafiRenewing : isAdcsRenewing}
+            onCancel={() => handlePopUpToggle("renewCa", false)}
+          />
         ) : (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller

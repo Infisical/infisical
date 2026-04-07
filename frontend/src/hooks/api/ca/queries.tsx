@@ -210,11 +210,7 @@ export type TCaSigningConfig = {
   type: CaSigningConfigType;
   parentCaId: string | null;
   appConnectionId: string | null;
-  destinationConfig: {
-    applicationId: string;
-    issuingTemplateId: string;
-    validityPeriod?: number;
-  } | null;
+  destinationConfig: Record<string, unknown> | null;
   lastExternalCertificateId: string | null;
   createdAt: string;
   updatedAt: string;

@@ -21,16 +21,31 @@ export const ActiveDirectoryDiscoveryListItemSchema = z.object({
 export const ActiveDirectoryDiscoveryConfigurationSchema = z.object({
   domainFQDN: z.string().trim().min(1).max(255),
   dcAddress: z.string().trim().min(1).max(255),
+  // LDAP
   ldapPort: z.coerce.number().int().min(1).max(65535),
   useLdaps: z.boolean(),
-  winrmPort: z.coerce.number().int().min(1).max(65535),
-  useWinrmHttps: z.boolean(),
-  discoverDependencies: z.boolean(),
-  caCert: z
+  ldapRejectUnauthorized: z.boolean(),
+  ldapCaCert: z
     .string()
     .trim()
     .transform((val) => val || undefined)
-    .optional()
+    .optional(),
+  ldapTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  // WinRM
+  winrmPort: z.coerce.number().int().min(1).max(65535),
+  useWinrmHttps: z.boolean(),
+  winrmRejectUnauthorized: z.boolean(),
+  winrmCaCert: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  // Dependencies
+  discoverDependencies: z.boolean()
 });
 
 export const ActiveDirectoryDiscoveryCredentialsSchema = z.object({
@@ -69,7 +84,7 @@ export const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
       error: z.string().optional()
     })
     .optional(),
-  dependencyScan: z
+  machineEnumeration: z
     .object({
       status: z.nativeEnum(PamDiscoveryStepStatus),
       totalMachines: z.number().optional(),

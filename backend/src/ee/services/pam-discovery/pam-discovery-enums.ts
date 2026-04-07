@@ -54,3 +54,9 @@ export enum PamAccountDependencySource {
   Discovery = "discovery",
   Manual = "manual"
 }
+
+export enum PamDependencySyncStatus {
+  Pending = "pending",
+  Success = "success",
+  Failed = "failed"
+}

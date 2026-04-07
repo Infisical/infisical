@@ -52,7 +52,11 @@ export type TDynamicSecretKubernetesLeaseConfig = {
   namespace?: string;
 };
 
-export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig;
+export type TDynamicSecretSshLeaseConfig = {
+  principals?: string[];
+};
+
+export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig & TDynamicSecretSshLeaseConfig;
 
 export type TDynamicSecretLeaseServiceFactory = {
   create: (arg: TCreateDynamicSecretLeaseDTO) => Promise<{

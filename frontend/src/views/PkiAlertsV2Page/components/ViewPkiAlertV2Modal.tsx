@@ -129,7 +129,9 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabList>
               <Tab value="overview">Overview</Tab>
-              <Tab value="certificates">Matching Certificates</Tab>
+              {alert.eventType !== PkiAlertEventTypeV2.ISSUANCE && (
+                <Tab value="certificates">Matching Certificates</Tab>
+              )}
             </TabList>
 
             <TabPanel value="overview">
@@ -142,26 +144,28 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                       <span className="text-gray-300">{formatEventType(alert.eventType)}</span>
                     </div>
 
-                    <div>
-                      <div className="mb-1 block text-sm font-medium text-gray-400">
-                        Alert Before
-                      </div>
-                      <span className="text-gray-300">
-                        {formatAlertBefore(alert.alertBefore, "Not set")}
-                      </span>
-                    </div>
-
                     {alert.eventType === PkiAlertEventTypeV2.EXPIRATION && (
-                      <div>
-                        <div className="mb-1 block text-sm font-medium text-gray-400">
-                          Daily Alerts
+                      <>
+                        <div>
+                          <div className="mb-1 block text-sm font-medium text-gray-400">
+                            Alert Before
+                          </div>
+                          <span className="text-gray-300">
+                            {formatAlertBefore(alert.alertBefore, "Not set")}
+                          </span>
                         </div>
-                        <span className="text-gray-300">
-                          {alert.notificationConfig?.enableDailyNotification
-                            ? "Enabled"
-                            : "Disabled"}
-                        </span>
-                      </div>
+
+                        <div>
+                          <div className="mb-1 block text-sm font-medium text-gray-400">
+                            Daily Alerts
+                          </div>
+                          <span className="text-gray-300">
+                            {alert.notificationConfig?.enableDailyNotification
+                              ? "Enabled"
+                              : "Disabled"}
+                          </span>
+                        </div>
+                      </>
                     )}
 
                     <div>

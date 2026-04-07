@@ -18,7 +18,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
-import { matchesAllowedEmailDomain } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -274,6 +274,27 @@ export const oidcConfigServiceFactory = ({
             // we automatically mark it as email-verified because we've configured trust for OIDC emails
             newUser = await userDAL.updateById(newUser.id, {
               isEmailVerified: serverCfg.trustOidcEmails
+            });
+          }
+        }
+
+        // Prevent cross-org account takeover: if an existing user was found by email,
+        // verify they are already a member of this org before binding the SSO identity.
+        // Without this check, an attacker could configure OIDC on their own org with a
+        // victim's email and get a provider token signed for the victim's userId.
+        if (newUser) {
+          const [existingMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!existingMembership) {
+            throw new ForbiddenRequestError({
+              message:
+                "User is not a member of this organization. Please contact your organization admin to receive an invite."
             });
           }
         }
@@ -554,6 +575,19 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
+
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
       configurationType,
@@ -633,6 +667,19 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
@@ -689,6 +736,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
       issuer = await Issuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
@@ -702,6 +750,9 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,

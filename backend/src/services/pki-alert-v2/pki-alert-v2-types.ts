@@ -65,14 +65,24 @@ export enum PkiAlertRunStatus {
 
 export enum PkiWebhookEventType {
   CERTIFICATE_EXPIRATION = "com.infisical.pki.certificate.expiration",
+  CERTIFICATE_ISSUANCE = "com.infisical.pki.certificate.issuance",
+  CERTIFICATE_RENEWAL = "com.infisical.pki.certificate.renewal",
+  CERTIFICATE_REVOCATION = "com.infisical.pki.certificate.revocation",
   CERTIFICATE_TEST = "com.infisical.pki.certificate.test"
 }
+
+export const alertEventTypeToWebhookEventType: Record<PkiAlertEventType, PkiWebhookEventType> = {
+  [PkiAlertEventType.EXPIRATION]: PkiWebhookEventType.CERTIFICATE_EXPIRATION,
+  [PkiAlertEventType.ISSUANCE]: PkiWebhookEventType.CERTIFICATE_ISSUANCE,
+  [PkiAlertEventType.RENEWAL]: PkiWebhookEventType.CERTIFICATE_RENEWAL,
+  [PkiAlertEventType.REVOCATION]: PkiWebhookEventType.CERTIFICATE_REVOCATION
+};
 
 // Alert info used across event types
 export type TAlertInfo = {
   id: string;
   name: string;
-  alertBefore: string;
+  alertBefore?: string;
   projectId: string;
 };
 
@@ -87,6 +97,8 @@ export type TCertificateData = {
   notAfter: string;
   status: string;
   daysUntilExpiry: number;
+  revokedAt?: string;
+  revocationReason?: string;
 };
 
 export type TPkiWebhookPayload = {
@@ -193,7 +205,7 @@ export const CreateChannelSchema = z.object({
 
 export type TCreateChannel = z.infer<typeof CreateChannelSchema>;
 
-export const CreatePkiAlertV2Schema = z.object({
+export const BasePkiAlertV2Schema = z.object({
   name: z
     .string()
     .min(1)
@@ -201,7 +213,10 @@ export const CreatePkiAlertV2Schema = z.object({
     .refine(createSecureNameValidator(), "Must be a valid name (lowercase, numbers, hyphens only)"),
   description: z.string().max(1000).optional(),
   eventType: z.nativeEnum(PkiAlertEventType),
-  alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
+  alertBefore: z
+    .string()
+    .refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'")
+    .optional(),
   filters: PkiFiltersSchema,
   enabled: z.boolean().default(true),
   notificationConfig: NotificationConfigSchema.nullable().optional(),
@@ -212,9 +227,19 @@ export const CreatePkiAlertV2Schema = z.object({
     .refine((channels) => channels.some((ch) => ch.enabled), "At least one notification channel must be enabled")
 });
 
+export const CreatePkiAlertV2Schema = BasePkiAlertV2Schema.superRefine((data, ctx) => {
+  if (data.eventType === PkiAlertEventType.EXPIRATION && !data.alertBefore) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "alertBefore is required for expiration alerts",
+      path: ["alertBefore"]
+    });
+  }
+});
+
 export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
 
-export const UpdatePkiAlertV2Schema = CreatePkiAlertV2Schema.partial();
+export const UpdatePkiAlertV2Schema = BasePkiAlertV2Schema.partial();
 export type TUpdatePkiAlertV2 = z.infer<typeof UpdatePkiAlertV2Schema>;
 
 export type TCreateAlertV2DTO = TGenericPermission & {
@@ -251,7 +276,7 @@ export type TListMatchingCertificatesDTO = TGenericPermission & {
 export type TListCurrentMatchingCertificatesDTO = TGenericPermission & {
   projectId: string;
   filters: TPkiFilters;
-  alertBefore: string;
+  alertBefore?: string;
   limit?: number;
   offset?: number;
 };
@@ -266,6 +291,8 @@ export type TCertificatePreview = {
   notBefore: Date;
   notAfter: Date;
   status: string;
+  revokedAt?: Date | null;
+  revocationReason?: number | null;
 };
 
 // Channel config type for responses (webhook has hasSigningSecret instead of signingSecret)
@@ -286,7 +313,7 @@ export type TAlertV2Response = {
   name: string;
   description: string | null;
   eventType: PkiAlertEventType;
-  alertBefore: string;
+  alertBefore?: string;
   filters: TPkiFilters;
   enabled: boolean;
   projectId: string;
@@ -351,6 +378,7 @@ export type TSlackPayload = {
 export type TBuildSlackPayloadParams = {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
+  eventType: PkiAlertEventType;
   appUrl?: string;
 };
 
@@ -368,7 +396,7 @@ export type TPagerDutyPayload = {
     class: string;
     custom_details: {
       alert_name: string;
-      alert_before: string;
+      alert_before?: string;
       total_certificates: number;
       certificates: Array<{
         common_name: string;
@@ -382,9 +410,35 @@ export type TPagerDutyPayload = {
   links: Array<{ href: string; text: string }>;
 };
 
+// RFC 5280 CRL reason code to human-readable label
+const CRL_REASON_LABELS: Record<number, string> = {
+  0: "Unspecified",
+  1: "Key Compromise",
+  2: "CA Compromise",
+  3: "Affiliation Changed",
+  4: "Superseded",
+  5: "Cessation of Operation",
+  6: "Certificate Hold",
+  8: "Remove from CRL",
+  9: "Privilege Withdrawn",
+  10: "AA Compromise"
+};
+
+export const getRevocationReasonLabel = (code?: number | null): string | undefined => {
+  if (code == null) return undefined;
+  return CRL_REASON_LABELS[code] ?? `Unknown (${code})`;
+};
+
 export type TBuildPagerDutyPayloadParams = {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
   integrationKey: string;
+  eventType: PkiAlertEventType;
   appUrl?: string;
+};
+
+export type TPkiCertificateEventPayload = {
+  certificateId: string;
+  projectId: string;
+  eventType: PkiAlertEventType;
 };

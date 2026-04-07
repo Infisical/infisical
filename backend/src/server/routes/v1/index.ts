@@ -74,6 +74,7 @@ import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
+import { registerSecretValidationRuleRouter } from "./secret-validation-rule-router";
 import { registerSignerRouter } from "./signer-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
@@ -155,6 +156,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerSecretValidationRuleRouter);
       await projectRouter.register(registerGroupProjectRouter);
       await projectRouter.register(registerDeprecatedIdentityProjectMembershipRouter);
     },

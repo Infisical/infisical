@@ -49,7 +49,13 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -68,10 +74,12 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteIdentity"]>,
+    popUpName: keyof UsePopUpState<["deleteIdentity", "upgradePlan"]>,
     data?: {
-      identityId: string;
-      name: string;
+      identityId?: string;
+      name?: string;
+      text?: string;
+      isEnterpriseFeature?: boolean;
     }
   ) => void;
 };
@@ -83,6 +91,7 @@ type Filter = {
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
 
   const {
     offset,
@@ -148,6 +157,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
+    if (isCustomOrgRole(role) && subscription && !subscription?.rbac) {
+      handlePopUpOpen("upgradePlan", {
+        text: "Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
     await updateMutateAsync({
       identityId,
       role,

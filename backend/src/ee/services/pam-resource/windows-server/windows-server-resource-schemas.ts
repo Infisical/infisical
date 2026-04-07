@@ -25,7 +25,22 @@ export const WindowsResourceListItemSchema = z.object({
 export const WindowsResourceConnectionDetailsSchema = z.object({
   protocol: z.literal(WindowsProtocol.RDP),
   hostname: z.string().trim().min(1).max(255),
-  port: z.coerce.number().int().min(1).max(65535)
+  port: z.coerce.number().int().min(1).max(65535),
+
+  // WinRM config — used for rotation only, configured in the rotation policy modal
+  winrmPort: z.coerce.number().int().min(1).max(65535),
+  useWinrmHttps: z.boolean(),
+  winrmRejectUnauthorized: z.boolean(),
+  winrmCaCert: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  winrmTlsServerName: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional()
 });
 
 // Credentials (username + password for RDP)

@@ -57,7 +57,8 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.GcpIam]: "GCP IAM",
   [DynamicSecretProviders.Github]: "GitHub",
   [DynamicSecretProviders.Clickhouse]: "ClickHouse",
-  [DynamicSecretProviders.Couchbase]: "Couchbase"
+  [DynamicSecretProviders.Couchbase]: "Couchbase",
+  [DynamicSecretProviders.Ssh]: "SSH"
 };
 
 type DynamicSecretWithEnv = TDynamicSecret & { environment: string };

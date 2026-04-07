@@ -1,5 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 
+import { ActorType } from "../auth/auth-type";
+
 export type TCreateWebhookDTO = {
   environment: string;
   secretPath?: string;
@@ -34,6 +36,7 @@ export enum WebhookType {
 export enum WebhookEvents {
   SecretModified = "secrets.modified",
   SecretReminderExpired = "secrets.reminder-expired",
+  SecretRotationFailed = "secrets.rotation-failed",
   TestEvent = "test"
 }
 
@@ -45,6 +48,8 @@ type TWebhookSecretModifiedEventPayload = {
     environment: string;
     secretPath?: string;
     type?: string | null;
+    changedBy?: string;
+    changedByActorType?: ActorType;
   };
 };
 
@@ -62,4 +67,22 @@ type TWebhookSecretReminderEventPayload = {
   };
 };
 
-export type TWebhookPayloads = TWebhookSecretModifiedEventPayload | TWebhookSecretReminderEventPayload;
+type TWebhookSecretRotationFailedEventPayload = {
+  type: WebhookEvents.SecretRotationFailed;
+
+  payload: {
+    rotationName?: string;
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    secretPath?: string;
+    triggeredManually?: boolean;
+    errorMessage?: string;
+    type?: string | null;
+  };
+};
+
+export type TWebhookPayloads =
+  | TWebhookSecretModifiedEventPayload
+  | TWebhookSecretReminderEventPayload
+  | TWebhookSecretRotationFailedEventPayload;

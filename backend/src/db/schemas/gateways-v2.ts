@@ -19,7 +19,8 @@ export const GatewaysV2Schema = z.object({
   name: z.string(),
   heartbeat: z.date().nullable().optional(),
   encryptedPamSessionKey: zodBuffer.nullable().optional(),
-  healthAlertedAt: z.date().nullable().optional()
+  healthAlertedAt: z.date().nullable().optional(),
+  lastHealthCheckStatus: z.string().nullable().optional()
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

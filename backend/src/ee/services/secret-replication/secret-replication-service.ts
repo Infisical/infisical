@@ -47,6 +47,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "find"
+    | "findByFolderIds"
     | "findBySecretKeys"
     | "insertMany"
     | "bulkUpdate"

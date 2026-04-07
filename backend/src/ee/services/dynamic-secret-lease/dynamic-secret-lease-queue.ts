@@ -94,7 +94,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   const queueFailedRevocation = async (leaseId: string, dynamicSecretId: string) => {
     const appConfig = getConfig();
 
-    const retryDelaySeconds = appConfig.isDevelopmentMode ? 1 : Math.floor(applyJitter(3_600_000 * 4) / 1000); // retry every 4 hours with 20% +- jitter (convert ms to seconds for pgboss)
+    const retryDelaySeconds = appConfig.isDevelopmentMode ? 1 : Math.floor(applyJitter(3_600_000 * 4) / 1000); // retry every 4 hours with 20% +- jitter
 
     await queueService.queue(
       QueueName.DynamicSecretRevocation,
@@ -250,7 +250,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         // only add to retry queue if this is not a retry, and if the error is not a DisableRotationErrors error
         if (!isRetry && !(error instanceof DisableRotationErrors)) {
           // if revocation fails, we should stop the job and queue a new job to retry the revocation at a later time.
-          await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
+          await queueService.stopJobById(QueueName.DynamicSecretRevocation, jobId);
           await queueFailedRevocation(leaseId, dynamicSecretId);
 
           // if its the last attempt, and the error isn't a DisableRotationErrors error, send an email to the project admins (debounced)
@@ -259,8 +259,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
             // if all retries fail, we should also stop the automatic revocation job.
             // the ID of the revocation job is set to the leaseId, so we can use that to stop the job
 
-            // we dont have to stop the retry job, because if we hit this point, its the last attempt and the retry job will be stopped by pgboss itself after this point,
-            await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, leaseId);
+            // we dont have to stop the retry job, because if we hit this point, its the last attempt and BullMQ will stop it after this point
+            await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
 
             await $queueDynamicSecretLeaseRevocationFailedEmail(leaseId, dynamicSecretId);
           }
@@ -268,7 +268,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       }
       if (error instanceof DisableRotationErrors) {
         if (jobId) {
-          await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
+          await queueService.stopJobById(QueueName.DynamicSecretRevocation, jobId);
         }
       } else {
         // propagate to next part
@@ -322,7 +322,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       logger.error(error, "Failed to send dynamic secret lease revocation failed email");
       if (error instanceof DisableRotationErrors) {
         if (jobId) {
-          await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretLeaseRevocationFailedEmail, jobId);
           await queueService.stopJobById(QueueName.DynamicSecretLeaseRevocationFailedEmail, jobId);
         }
       } else {
@@ -331,19 +330,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     }
   };
 
-  queueService.start(
-    QueueName.DynamicSecretRevocation,
-    async (job) => {
-      await $dynamicSecretQueueJob(job.name, job.id as string, job.data, job.attemptsMade + 1);
-    },
-    {
-      persistence: true
-    }
-  );
+  queueService.start(QueueName.DynamicSecretRevocation, async (job) => {
+    await $dynamicSecretQueueJob(job.name, job.id as string, job.data, job.attemptsMade + 1);
+  });
 
-  // we use redis for sending the email because:
-  // 1. we are insensitive to losing the jobs in queue in case of a disaster event
-  // 2. pgboss does not support exclusive job keys on v0.10.x, and upgrading to v0.11.x which supports exclusive jobs comes with a lot of breaking changes, and we would need to manually migrate our existing jobs to the new version
   queueService.start(QueueName.DynamicSecretLeaseRevocationFailedEmail, async (job) => {
     await $dynamicSecretLeaseRevocationFailedEmailJob(job.id as string, job.data);
   });

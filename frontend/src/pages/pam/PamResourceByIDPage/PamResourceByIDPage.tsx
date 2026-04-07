@@ -34,7 +34,9 @@ import {
   PamResourceDependenciesSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
-  PamResourceRelatedResourcesSection
+  PamResourceRelatedResourcesSection,
+  PamResourceRotationPolicySection,
+  PamRotationPolicyModal
 } from "./components";
 
 const PageContent = () => {
@@ -66,6 +68,7 @@ const PageContent = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -194,17 +197,21 @@ const PageContent = () => {
 
       <div className="flex gap-6">
         {/* Left Column */}
-        <div className="flex w-80 flex-col gap-4">
+        <div className="flex w-80 shrink-0 flex-col gap-4">
           <PamResourceDetailsSection resource={resource} onEdit={() => setIsEditModalOpen(true)} />
           <PamResourceConnectionSection
             resource={resource}
             onEdit={() => setIsEditModalOpen(true)}
           />
+          <PamResourceRotationPolicySection
+            resource={resource}
+            onEdit={() => setIsRotationPolicyModalOpen(true)}
+          />
           <PamResourceMetadataSection resource={resource} />
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <TabList>
               <Tab value="accounts">Accounts</Tab>
@@ -244,6 +251,12 @@ const PageContent = () => {
         onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
         deleteKey={resource.name}
         onDeleteApproved={handleDeleteConfirm}
+      />
+
+      <PamRotationPolicyModal
+        isOpen={isRotationPolicyModalOpen}
+        onOpenChange={setIsRotationPolicyModalOpen}
+        resource={resource}
       />
     </div>
   );

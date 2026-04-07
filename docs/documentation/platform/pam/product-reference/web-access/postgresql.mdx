@@ -1,12 +1,18 @@
 ---
 title: "PostgreSQL Web Access"
 sidebarTitle: "PostgreSQL"
-description: "Run SQL queries against PostgreSQL databases directly from your browser."
+description: "Browse, query, and edit PostgreSQL databases directly from your browser."
 ---
 
-The PostgreSQL web access terminal provides a `psql`-like experience in your browser. It is designed for light, ad-hoc usage — quick queries, debugging, and administrative tasks — not as a replacement for a full database client or long-running workloads.
+![PostgreSQL Web Access](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
 
-## Connecting
+PostgreSQL web access provides two modes for interacting with your database directly from the browser: the **Data Explorer** for visual browsing and editing, and the **SQL Terminal** for running ad-hoc queries.
+
+## Data Explorer
+
+The Data Explorer is a visual interface for browsing and editing PostgreSQL tables. It provides schema and table navigation, filtering, sorting, inline editing, and full CRUD operations — all without writing SQL.
+
+### Connecting
 
 <Steps>
   <Step title="Navigate to Account">
@@ -19,10 +25,42 @@ The PostgreSQL web access terminal provides a `psql`-like experience in your bro
     ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
   </Step>
 
-  <Step title="Connect in Browser">
-    In the connect modal, click **Connect in Browser** to open the web access terminal.
+  <Step title="Open Data Explorer">
+    In the connect modal, click **Open Data Explorer** to launch the Data Explorer in a new tab.
 
-    ![Connect in Browser](/images/pam/product-reference/web-access/pg-connect-in-browser.png)
+    ![Open Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
+  </Step>
+</Steps>
+
+Once connected, you get a spreadsheet-like interface for your database where you can:
+
+- Browse tables and explore their data
+- Filter and sort to quickly find what you need
+- Edit data directly — add, update, or delete rows
+
+![Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+
+## SQL Terminal
+
+The SQL terminal provides a `psql`-like experience in your browser. It is designed for ad-hoc usage — quick queries, debugging, and administrative tasks.
+
+### Connecting
+
+<Steps>
+  <Step title="Navigate to Account">
+    Go to the **Resources** tab in your PAM project, open the PostgreSQL resource, and find the account you want to access. Click the **Connect** button next to the account.
+
+    ![Account Connect Button](/images/pam/product-reference/web-access/pg-account-connect-button.png)
+
+    Alternatively, if you are on the account page, click the **Access** button.
+
+    ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
+  </Step>
+
+  <Step title="Open Console">
+    In the connect modal, click **Open Console** to launch the SQL terminal in a new tab.
+
+    ![Connect Button](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
   </Step>
 
   <Step title="End Session">
@@ -32,7 +70,7 @@ The PostgreSQL web access terminal provides a `psql`-like experience in your bro
 
 ![Web Access Terminal](/images/pam/product-reference/web-access/pg-web-access-terminal.png)
 
-## Usage
+### Usage
 
 Once connected, you'll see a `=>` prompt. Type SQL queries as you would in `psql`:
 
@@ -45,7 +83,7 @@ Once connected, you'll see a `=>` prompt. Type SQL queries as you would in `psql
 (2 rows)
 ```
 
-### Transactions
+#### Transactions
 
 Transactions are fully supported. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` as you would in `psql`:
 
@@ -71,7 +109,10 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Is this an actual psql session?">
-        No. The web access terminal is not a `psql` client. It is a custom SQL REPL that connects directly to PostgreSQL and provides a `psql`-like experience, including familiar prompts and tabular output formatting. Backslash commands like `\dt` or `\d` are not supported.
+    <Accordion title="Is the SQL terminal an actual psql session?">
+        No. The SQL terminal is not a `psql` client. It is a custom SQL REPL that connects directly to PostgreSQL and provides a `psql`-like experience, including familiar prompts and tabular output formatting. Backslash commands like `\dt` or `\d` are not supported.
+    </Accordion>
+    <Accordion title="Can I edit data in the Data Explorer for all tables?">
+        Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
     </Accordion>
 </AccordionGroup>

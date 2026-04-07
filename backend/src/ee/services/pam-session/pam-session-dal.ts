@@ -18,6 +18,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
       .where(`${TableName.PamSession}.id`, id)
       .first();
 
@@ -50,5 +51,43 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updatedCount;
   };
 
-  return { ...orm, findById, expireSessionById, countActiveWebSessions };
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    const sessions = await (tx || db.replicaNode())(TableName.PamSession)
+      .leftJoin(TableName.PamAccount, `${TableName.PamSession}.accountId`, `${TableName.PamAccount}.id`)
+      .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .select(selectAllTableCols(TableName.PamSession))
+      .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .where(`${TableName.PamSession}.projectId`, projectId);
+
+    return sessions;
+  };
+
+  const endSessionById = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
+      .update({ status: PamSessionStatus.Ended, endedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
+  const terminateSessionById = async (sessionId: string, tx?: Knex) => {
+    const [updated] = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
+      .update({ status: PamSessionStatus.Terminated, endedAt: new Date() })
+      .returning("*");
+    return updated;
+  };
+
+  return {
+    ...orm,
+    findById,
+    findByProjectId,
+    expireSessionById,
+    countActiveWebSessions,
+    endSessionById,
+    terminateSessionById
+  };
 };

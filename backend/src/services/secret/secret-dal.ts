@@ -170,6 +170,7 @@ export const secretDALFactory = (db: TDbClient) => {
   const findManySecretsWithTags = async (
     filter: {
       secretIds: string[];
+      folderId: string;
       type: SecretType;
     },
     tx?: Knex

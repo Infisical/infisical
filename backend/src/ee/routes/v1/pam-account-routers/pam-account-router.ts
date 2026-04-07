@@ -7,6 +7,7 @@ import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/
 import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { SanitizedMsSQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
@@ -19,9 +20,11 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedAccountSchema = z
   .discriminatedUnion("resourceType", [
@@ -29,6 +32,7 @@ const SanitizedAccountSchema = z
     SanitizedSSHAccountWithResourceSchema,
     SanitizedPostgresAccountWithResourceSchema,
     SanitizedMySQLAccountWithResourceSchema,
+    SanitizedMsSQLAccountWithResourceSchema,
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
@@ -61,7 +65,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           dependencies: PamAccountDependenciesSchema.extend({
-            resourceName: z.string().nullable().optional()
+            resourceName: z.string().nullable().optional(),
+            lastSyncMessage: z.string().nullable().optional()
           }).array()
         })
       }
@@ -149,6 +154,44 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return { dependency };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          account: SanitizedAccountSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: account.resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
+
+      return { account: account as z.infer<typeof SanitizedAccountSchema> };
     }
   });
 
@@ -359,9 +402,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
+          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
@@ -412,6 +456,19 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountAccessed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: response.resourceType,
+            projectId: req.body.projectId,
+            duration: req.body.duration
+          }
+        })
+        .catch(() => {});
+
       return response;
     }
   });
@@ -453,6 +510,17 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         auditLogInfo: req.auditLogInfo,
         mfaSessionId: req.body.mfaSessionId
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamWebAccessStarted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId
+          }
+        })
+        .catch(() => {});
 
       return { ticket };
     }

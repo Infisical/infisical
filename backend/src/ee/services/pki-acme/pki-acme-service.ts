@@ -57,7 +57,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -73,7 +73,7 @@ import {
   AcmeServerInternalError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
-import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
+import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier, validateIpIdentifier } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import { TPkiAcmeQueueServiceFactory } from "./pki-acme-queue";
@@ -452,12 +452,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     alg,
     jwk,
-    payload: { onlyReturnExisting, contact, externalAccountBinding }
+    payload: { onlyReturnExisting, contact, externalAccountBinding },
+    auditLogInfo
   }: {
     profileId: string;
     alg: string;
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
@@ -505,6 +507,7 @@ export const pkiAcmeServiceFactory = ({
     }
     if (existingAccount) {
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_PROFILE,
@@ -597,6 +600,7 @@ export const pkiAcmeServiceFactory = ({
     });
 
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_PROFILE,
@@ -656,11 +660,13 @@ export const pkiAcmeServiceFactory = ({
   const createAcmeOrder = async ({
     profileId,
     accountId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     payload: TCreateAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = await validateAcmeProfile(profileId);
     const skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
@@ -670,18 +676,29 @@ export const pkiAcmeServiceFactory = ({
     //       if not, we may be able to reject it early with an unsupportedIdentifier error.
 
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
-    if (payload.identifiers.some((identifier) => identifier.type !== AcmeIdentifierType.DNS)) {
-      throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
-    }
-    if (
-      payload.identifiers.some(
-        (identifier) =>
+    for (const identifier of payload.identifiers) {
+      if (identifier.type === AcmeIdentifierType.DNS) {
+        if (
           !validateDnsIdentifier(identifier.value) ||
           isPrivateIp(identifier.value) ||
           (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
-      )
-    ) {
-      throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+        ) {
+          throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+        }
+      } else if (identifier.type === AcmeIdentifierType.IP) {
+        if (!validateIpIdentifier(identifier.value)) {
+          throw new AcmeUnsupportedIdentifierError({ message: "Invalid IP identifier" });
+        }
+        // Private IPs are allowed for IP identifiers only when ownership verification is skipped,
+        // since HTTP-01 challenges can't reach private addresses. This is the common internal PKI use case.
+        if (!skipDnsOwnershipVerification && isPrivateIp(identifier.value)) {
+          throw new AcmeUnsupportedIdentifierError({
+            message: "Private IP addresses are not allowed when ownership verification is enabled"
+          });
+        }
+      } else {
+        throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
+      }
     }
 
     const order = await acmeOrderDAL.transaction(async (tx) => {
@@ -699,11 +716,18 @@ export const pkiAcmeServiceFactory = ({
       );
       const authorizations: TPkiAcmeAuths[] = await Promise.all(
         payload.identifiers.map(async (identifier) => {
-          if (identifier.type !== AcmeIdentifierType.DNS) {
-            throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
-          }
-          if (isPrivateIp(identifier.value)) {
-            throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
+          if (identifier.type === AcmeIdentifierType.IP) {
+            if (!skipDnsOwnershipVerification && isPrivateIp(identifier.value)) {
+              throw new AcmeUnsupportedIdentifierError({
+                message: "Private IP addresses are not allowed when ownership verification is enabled"
+              });
+            }
+          } else if (identifier.type === AcmeIdentifierType.DNS) {
+            if (isPrivateIp(identifier.value)) {
+              throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
+            }
+          } else {
+            throw new AcmeUnsupportedIdentifierError({ message: "Only DNS and IP identifiers are supported" });
           }
           const auth = await acmeAuthDAL.create(
             {
@@ -721,7 +745,12 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
           if (!skipDnsOwnershipVerification) {
-            for (const challengeType of [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01]) {
+            // IP identifiers only support HTTP-01 challenges (DNS-01 doesn't apply per RFC 8738)
+            const challengeTypes =
+              identifier.type === AcmeIdentifierType.IP
+                ? [AcmeChallengeType.HTTP_01]
+                : [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01];
+            for (const challengeType of challengeTypes) {
               // eslint-disable-next-line no-await-in-loop
               await acmeChallengeDAL.create(
                 {
@@ -745,6 +774,7 @@ export const pkiAcmeServiceFactory = ({
         tx
       );
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_ACCOUNT,
@@ -952,12 +982,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     accountId,
     orderId,
-    payload
+    payload,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
 
@@ -991,27 +1023,47 @@ export const pkiAcmeServiceFactory = ({
 
         // Check and validate the CSR
         const certificateRequest = extractCertificateRequestFromCSR(csr);
-        if (
-          certificateRequest.subjectAlternativeNames?.some(
-            (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
-          )
-        ) {
-          throw new AcmeBadCSRError({ message: "Invalid CSR: Only DNS subject alternative names are supported" });
+        const allowedSanTypes = new Set([
+          CertSubjectAlternativeNameType.DNS_NAME,
+          CertSubjectAlternativeNameType.IP_ADDRESS
+        ]);
+        if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+          throw new AcmeBadCSRError({
+            message: "Invalid CSR: Only DNS and IP subject alternative names are supported"
+          });
         }
         const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
           accountId,
           orderId,
           tx
         ))!;
-        const csrIdentifierValues = new Set(
+
+        // Build a set of "type:value" pairs from CSR SANs to match against authorized identifiers
+        const sanTypeToIdentifierType: Partial<Record<CertSubjectAlternativeNameType, AcmeIdentifierType>> = {
+          [CertSubjectAlternativeNameType.DNS_NAME]: AcmeIdentifierType.DNS,
+          [CertSubjectAlternativeNameType.IP_ADDRESS]: AcmeIdentifierType.IP
+        };
+        const csrIdentifierPairs = new Set(
           (certificateRequest.subjectAlternativeNames ?? [])
-            .map((san) => san.value.toLowerCase())
-            .concat(certificateRequest.commonName ? [certificateRequest.commonName.toLowerCase()] : [])
+            .map((san) => {
+              const identifierType = sanTypeToIdentifierType[san.type];
+              return identifierType ? `${identifierType}:${san.value.toLowerCase()}` : null;
+            })
+            .filter(Boolean)
         );
+        // ACME clients (e.g., lego) set the CN to the IP address for IP certificate requests.
+        // We need to detect whether the CN is an IP to match it against the correct identifier type,
+        // otherwise "ip:127.0.0.1" in the authorization won't match "dns:127.0.0.1" from the CN.
+        if (certificateRequest.commonName) {
+          const cnType = validateIpIdentifier(certificateRequest.commonName)
+            ? AcmeIdentifierType.IP
+            : AcmeIdentifierType.DNS;
+          csrIdentifierPairs.add(`${cnType}:${certificateRequest.commonName.toLowerCase()}`);
+        }
         if (
-          csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
+          csrIdentifierPairs.size !== orderWithAuthorizations.authorizations.length ||
           !orderWithAuthorizations.authorizations.every((auth) =>
-            csrIdentifierValues.has(auth.identifierValue.toLowerCase())
+            csrIdentifierPairs.has(`${auth.identifierType}:${auth.identifierValue.toLowerCase()}`)
           )
         ) {
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
@@ -1237,12 +1289,12 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       if (certIssuanceJobData) {
-        // TODO: ideally, this should be done inside the transaction, but the pg-boss queue doesn't support external transactions
-        //       as it seems to be. we need to commit the transaction before queuing the job, otherwise the job will fail (not found error).
+        // We commit the transaction before queuing the job, otherwise the job may fail with a not-found error.
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       order = updatedOrder;
       await auditLogService.createAuditLog({
+        ...auditLogInfo,
         projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_ACCOUNT,
@@ -1275,11 +1327,13 @@ export const pkiAcmeServiceFactory = ({
   const downloadAcmeCertificate = async ({
     profileId,
     accountId,
-    orderId
+    orderId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     orderId: string;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<string>> => {
     const profile = await validateAcmeProfile(profileId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
@@ -1318,6 +1372,7 @@ export const pkiAcmeServiceFactory = ({
     const certChain = certificateChain.trim().replace("\n", "\r\n");
 
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_ACCOUNT,
@@ -1409,12 +1464,14 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     accountId,
     authzId,
-    challengeId
+    challengeId,
+    auditLogInfo
   }: {
     profileId: string;
     accountId: string;
     authzId: string;
     challengeId: string;
+    auditLogInfo: AuditLogInfo;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
@@ -1425,6 +1482,7 @@ export const pkiAcmeServiceFactory = ({
     await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
     await auditLogService.createAuditLog({
+      ...auditLogInfo,
       projectId: profile.projectId,
       actor: {
         type: ActorType.ACME_ACCOUNT,

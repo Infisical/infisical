@@ -1,47 +1,62 @@
 import { useMemo } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCopy,
-  faEdit,
-  faEllipsisV,
-  faEye,
-  faIdBadge,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { ServerIcon, WrenchIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  EyeIcon,
+  IdCardIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  ServerIcon,
+  TrashIcon,
+  TriangleAlertIcon,
+  WrenchIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  DocumentationLinkBadge,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge, DocumentationLinkBadge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -58,6 +73,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
@@ -99,7 +115,8 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
+        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
       });
       return;
     }
@@ -109,7 +126,6 @@ export const OrgRoleTable = () => {
       defaultMembershipRoleSlug
     });
     createNotification({ type: "success", text: "Successfully updated default membership role" });
-    handlePopUpClose("deleteRole");
   };
 
   const {
@@ -182,272 +198,356 @@ export const OrgRoleTable = () => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: RolesOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
 
-  const getColSortIcon = (col: RolesOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const isProPlan =
+    Boolean(subscription) &&
+    subscription.rbac &&
+    [SubscriptionPlanTypes.Pro, SubscriptionPlanTypes.ProAnnual].includes(subscription.slug);
+
+  const customRoles = filteredRoles.filter((role) => isCustomOrgRole(role.slug));
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">
+    <>
+      {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
+      {isProPlan && customRoles?.length > 0 && (
+        <UnstableAlert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            <div>
+              Custom roles are part of the Infisical Enterprise plan, but were temporarily available
+              to Pro users. Creation of new roles will be enforced starting June 1, 2026.
+              <br />
+              Please{" "}
+              <a
+                href="https://infisical.com/scheduledemo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                contact sales
+              </a>{" "}
+              to upgrade and retain access to custom roles.
+            </div>
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Roles
-          </p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/organization#roles-and-access-control" />
-        </div>
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
-          {(isAllowed) => (
-            <Button
-              variant="outline_bg"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => {
-                handlePopUpOpen("role");
-              }}
-              isDisabled={!isAllowed}
-            >
-              Add {isSubOrganization ? "Sub-" : ""}Organization Role
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization roles...`}
-        className="flex-1"
-        containerClassName="mb-4"
-      />
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(RolesOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(RolesOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>
-                <div className="flex items-center">
-                  Slug
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(RolesOrderBy.Slug)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(RolesOrderBy.Slug)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Slug)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>
-                <div className="flex items-center">
-                  Type
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(RolesOrderBy.Type)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(RolesOrderBy.Type)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Type)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th aria-label="actions" className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-            {filteredRoles?.slice(offset, perPage * page).map((role) => {
-              const { id, name, slug } = role;
-              const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
-              const isDefaultOrgRole = isCustomOrgRole(slug)
-                ? id === currentOrg?.defaultMembershipRole
-                : slug === currentOrg?.defaultMembershipRole;
-              return (
-                <Tr
-                  key={`role-list-${id}`}
-                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/roles/$roleId",
-                      params: {
-                        roleId: id,
-                        orgId
-                      }
-                    })
-                  }
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/organization#roles-and-access-control" />
+          </UnstableCardTitle>
+          <UnstableCardDescription>
+            Create and manage {isSubOrganization ? "sub-" : ""}organization roles
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
+              {(isAllowed) => (
+                <Button
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  onClick={() => {
+                    handlePopUpOpen("role");
+                  }}
+                  isDisabled={!isAllowed}
                 >
-                  <Td className="max-w-md">
-                    <div className="flex gap-x-1.5">
-                      <p className="overflow-hidden text-ellipsis whitespace-nowrap">{name}</p>
-                      {isDefaultOrgRole && (
-                        <Tooltip
-                          content={`Members joining your organization will be assigned the ${name} role unless otherwise specified.`}
-                        >
-                          <Badge variant="info">Default</Badge>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </Td>
-                  <Td className="max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
-                    {slug}
-                  </Td>
-                  <Td>
-                    <Badge variant="ghost">
-                      {isCustomOrgRole(slug) ? (
-                        <>
-                          <WrenchIcon />
-                          Custom
-                        </>
-                      ) : (
-                        <>
-                          <ServerIcon />
-                          Platform
-                        </>
-                      )}
-                    </Badge>
-                  </Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton
-                          ariaLabel="Options"
-                          colorSchema="secondary"
-                          className="w-6"
-                          variant="plain"
-                        >
-                          <FontAwesomeIcon icon={faEllipsisV} />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Edit}
-                          a={OrgPermissionSubjects.Role}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate({
-                                  to: "/organizations/$orgId/roles/$roleId",
-                                  params: {
-                                    roleId: id,
-                                    orgId
-                                  }
-                                });
-                              }}
-                              isDisabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={isNonMutatable ? faEye : faEdit} />}
-                            >
-                              {`${isNonMutatable ? "View" : "Edit"} Role`}
-                            </DropdownMenuItem>
+                  <PlusIcon />
+                  Add {isSubOrganization ? "Sub-" : ""}Organization Role
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <div>
+            <div className="mb-4">
+              <InputGroup>
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization roles...`}
+                />
+              </InputGroup>
+            </div>
+            {!isRolesLoading && !filteredRoles?.length ? (
+              <UnstableEmpty className="border">
+                <UnstableEmptyHeader>
+                  <UnstableEmptyTitle>
+                    {roles?.length
+                      ? `No ${isSubOrganization ? "sub-" : ""}organization roles match search`
+                      : "This organization does not have any roles"}
+                  </UnstableEmptyTitle>
+                  <UnstableEmptyDescription>
+                    {roles?.length ? "Adjust your search criteria." : "Add a role to get started."}
+                  </UnstableEmptyDescription>
+                </UnstableEmptyHeader>
+              </UnstableEmpty>
+            ) : (
+              <>
+                <UnstableTable>
+                  <UnstableTableHeader>
+                    <UnstableTableRow>
+                      <UnstableTableHead
+                        className="w-1/3"
+                        onClick={() => handleSort(RolesOrderBy.Name)}
+                      >
+                        Name
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Name &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Name && "opacity-30"
                           )}
-                        </OrgPermissionCan>
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Create}
-                          a={OrgPermissionSubjects.Role}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("duplicateRole", role);
-                              }}
-                              isDisabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={faCopy} />}
-                            >
-                              Duplicate Role
-                            </DropdownMenuItem>
+                        />
+                      </UnstableTableHead>
+                      <UnstableTableHead
+                        className="w-1/3"
+                        onClick={() => handleSort(RolesOrderBy.Slug)}
+                      >
+                        Slug
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Slug &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Slug && "opacity-30"
                           )}
-                        </OrgPermissionCan>
-                        {!isDefaultOrgRole && (
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.Settings}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSetRoleAsDefault(slug);
-                                }}
-                                icon={<FontAwesomeIcon icon={faIdBadge} />}
-                              >
-                                Set as Default Role
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        )}
-                        {!isNonMutatable && (
-                          <Tooltip
-                            position="left"
-                            content={
-                              isDefaultOrgRole
-                                ? "Cannot delete default organization membership role. Re-assign default to allow deletion."
-                                : ""
-                            }
-                          >
-                            <div>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Delete}
-                                a={OrgPermissionSubjects.Role}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteRole", role);
-                                    }}
-                                    icon={<FontAwesomeIcon icon={faTrash} />}
-                                    isDisabled={!isAllowed || isDefaultOrgRole}
-                                  >
-                                    Delete Role
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
+                        />
+                      </UnstableTableHead>
+                      <UnstableTableHead onClick={() => handleSort(RolesOrderBy.Type)}>
+                        Type
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Type &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Type && "opacity-30"
+                          )}
+                        />
+                      </UnstableTableHead>
+                      <UnstableTableHead className="w-5" />
+                    </UnstableTableRow>
+                  </UnstableTableHeader>
+                  <UnstableTableBody>
+                    {isRolesLoading &&
+                      Array.from({ length: perPage }).map((_, i) => (
+                        <UnstableTableRow key={`skeleton-${i + 1}`}>
+                          <UnstableTableCell>
+                            <Skeleton className="h-4 w-full" />
+                          </UnstableTableCell>
+                          <UnstableTableCell>
+                            <Skeleton className="h-4 w-full" />
+                          </UnstableTableCell>
+                          <UnstableTableCell>
+                            <Skeleton className="h-4 w-full" />
+                          </UnstableTableCell>
+                          <UnstableTableCell>
+                            <Skeleton className="h-4 w-4" />
+                          </UnstableTableCell>
+                        </UnstableTableRow>
+                      ))}
+                    {filteredRolesPage.map((role) => {
+                      const { id, name, slug } = role;
+                      const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(
+                        slug
+                      );
+                      const isDefaultOrgRole = isCustomOrgRole(slug)
+                        ? id === currentOrg?.defaultMembershipRole
+                        : slug === currentOrg?.defaultMembershipRole;
+                      return (
+                        <UnstableTableRow
+                          key={`role-list-${id}`}
+                          className="cursor-pointer"
+                          onClick={() =>
+                            navigate({
+                              to: "/organizations/$orgId/roles/$roleId",
+                              params: {
+                                roleId: id,
+                                orgId
+                              }
+                            })
+                          }
+                        >
+                          <UnstableTableCell isTruncatable>
+                            <div className="flex gap-x-1.5">
+                              <p className="truncate">{name}</p>
+                              {isDefaultOrgRole && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="info">Default</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Members joining your organization will be assigned the {name}{" "}
+                                    role unless otherwise specified.
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
-                          </Tooltip>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              );
-            })}
-          </TBody>
-        </Table>
-        {Boolean(filteredRoles?.length) && (
-          <Pagination
-            count={filteredRoles!.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!filteredRoles?.length && !isRolesLoading && (
-          <EmptyState
-            title={
-              roles?.length
-                ? "No organization roles match search..."
-                : "This organization does not have any roles"
-            }
-            icon={roles?.length ? faSearch : undefined}
-          />
-        )}
-      </TableContainer>
+                          </UnstableTableCell>
+                          <UnstableTableCell isTruncatable>{slug}</UnstableTableCell>
+                          <UnstableTableCell>
+                            <Badge variant="ghost">
+                              {isCustomOrgRole(slug) ? (
+                                <>
+                                  <WrenchIcon />
+                                  Custom
+                                </>
+                              ) : (
+                                <>
+                                  <ServerIcon />
+                                  Platform
+                                </>
+                              )}
+                            </Badge>
+                          </UnstableTableCell>
+                          <UnstableTableCell>
+                            <UnstableDropdownMenu>
+                              <UnstableDropdownMenuTrigger asChild>
+                                <UnstableIconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontalIcon />
+                                </UnstableIconButton>
+                              </UnstableDropdownMenuTrigger>
+                              <UnstableDropdownMenuContent
+                                className="min-w-48"
+                                sideOffset={2}
+                                align="end"
+                              >
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.Role}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate({
+                                          to: "/organizations/$orgId/roles/$roleId",
+                                          params: {
+                                            roleId: id,
+                                            orgId
+                                          }
+                                        });
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Create}
+                                  a={OrgPermissionSubjects.Role}
+                                >
+                                  {(isAllowed) => (
+                                    <UnstableDropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("duplicateRole", role);
+                                      }}
+                                      isDisabled={!isAllowed}
+                                    >
+                                      <CopyIcon />
+                                      Duplicate Role
+                                    </UnstableDropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                {!isDefaultOrgRole && (
+                                  <OrgPermissionCan
+                                    I={OrgPermissionActions.Edit}
+                                    a={OrgPermissionSubjects.Settings}
+                                  >
+                                    {(isAllowed) => (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <UnstableDropdownMenuItem
+                                              isDisabled={!isAllowed || isSubOrganization}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSetRoleAsDefault(slug);
+                                              }}
+                                            >
+                                              <IdCardIcon />
+                                              Set as Default Role
+                                            </UnstableDropdownMenuItem>
+                                          </div>
+                                        </TooltipTrigger>
+                                        {isSubOrganization && (
+                                          <TooltipContent side="left">
+                                            This action cannot be performed from sub-organizations.
+                                          </TooltipContent>
+                                        )}
+                                      </Tooltip>
+                                    )}
+                                  </OrgPermissionCan>
+                                )}
+                                {!isNonMutatable && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <OrgPermissionCan
+                                          I={OrgPermissionActions.Delete}
+                                          a={OrgPermissionSubjects.Role}
+                                        >
+                                          {(isAllowed) => (
+                                            <UnstableDropdownMenuItem
+                                              variant="danger"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handlePopUpOpen("deleteRole", role);
+                                              }}
+                                              isDisabled={!isAllowed || isDefaultOrgRole}
+                                            >
+                                              <TrashIcon />
+                                              Delete Role
+                                            </UnstableDropdownMenuItem>
+                                          )}
+                                        </OrgPermissionCan>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {isDefaultOrgRole && (
+                                      <TooltipContent side="left">
+                                        Cannot delete default organization membership role.
+                                        Re-assign default to allow deletion.
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                )}
+                              </UnstableDropdownMenuContent>
+                            </UnstableDropdownMenu>
+                          </UnstableTableCell>
+                        </UnstableTableRow>
+                      );
+                    })}
+                  </UnstableTableBody>
+                </UnstableTable>
+                {Boolean(filteredRoles?.length) && (
+                  <UnstablePagination
+                    count={filteredRoles!.length}
+                    page={page}
+                    perPage={perPage}
+                    onChangePage={setPage}
+                    onChangePerPage={handlePerPageChange}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </UnstableCardContent>
+      </UnstableCard>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
@@ -463,12 +563,13 @@ export const OrgRoleTable = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
         roleId={(popUp?.duplicateRole?.data as TOrgRole)?.id}
       />
-    </div>
+    </>
   );
 };

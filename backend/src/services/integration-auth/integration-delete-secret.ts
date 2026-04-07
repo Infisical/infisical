@@ -37,7 +37,7 @@ const getIntegrationSecretsV2 = async (
     secretPath: string;
     decryptor: (value: Buffer | null | undefined) => string;
   },
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">,
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">
 ) => {
@@ -298,7 +298,7 @@ export const deleteIntegrationSecrets = async ({
   integrationAuth: TIntegrationAuths;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken" | "getIntegrationAuth">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath" | "findBySecretPath">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;

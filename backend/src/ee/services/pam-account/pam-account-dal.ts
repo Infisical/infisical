@@ -155,22 +155,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAccountsDueForRotation = async (tx?: Knex) => {
-    const dbClient = tx || db.replicaNode();
-
-    const accounts = await dbClient(TableName.PamAccount)
-      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
-      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`)
-      .whereNotNull(`${TableName.PamAccount}.rotationIntervalSeconds`)
-      .where(`${TableName.PamAccount}.rotationEnabled`, true)
-      .whereRaw(
-        `COALESCE("${TableName.PamAccount}"."lastRotatedAt", "${TableName.PamAccount}"."createdAt") + "${TableName.PamAccount}"."rotationIntervalSeconds" * interval '1 second' < NOW()`
-      )
-      .select(selectAllTableCols(TableName.PamAccount));
-
-    return accounts;
-  };
-
   const findMetadataByAccountIds = async (accountIds: string[], tx?: Knex) => {
     if (!accountIds.length) return {};
     const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
@@ -186,11 +170,33 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return byAccountId;
   };
 
+  const findRotationCandidates = async (resourceIds: string[], minIntervalSeconds: number, tx?: Knex) => {
+    if (!resourceIds.length) return [];
+
+    try {
+      const cutoff = new Date(Date.now() - minIntervalSeconds * 1000);
+
+      return await (tx || db.replicaNode())(TableName.PamAccount)
+        .whereIn("resourceId", resourceIds)
+        .where((qb) => {
+          void qb.whereNot("rotationStatus", "rotating").orWhereNull("rotationStatus");
+        })
+        .where((qb) => {
+          void qb.where("lastRotatedAt", "<", cutoff).orWhere((inner) => {
+            void inner.whereNull("lastRotatedAt").andWhere("createdAt", "<", cutoff);
+          });
+        })
+        .select(selectAllTableCols(TableName.PamAccount));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find rotation candidates" });
+    }
+  };
+
   return {
     ...orm,
     findByProjectIdWithResourceDetails,
     findByIdWithResourceDetails,
-    findAccountsDueForRotation,
-    findMetadataByAccountIds
+    findMetadataByAccountIds,
+    findRotationCandidates
   };
 };

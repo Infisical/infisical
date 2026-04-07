@@ -33,6 +33,7 @@ import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
 import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
+import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
@@ -232,6 +233,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(
         async (pamResourceRouter) => {
           await pamResourceRouter.register(registerPamResourceRouter);
+          await pamResourceRouter.register(registerPamResourceRotationRulesRouter);
 
           // Provider-specific endpoints
           await Promise.all(

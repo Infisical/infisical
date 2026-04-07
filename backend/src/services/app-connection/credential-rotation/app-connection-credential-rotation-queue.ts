@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -50,50 +50,44 @@ export const appConnectionCredentialRotationQueueFactory = async ({
   }
 
   // Worker for individual rotation jobs
-  queueService.start(
-    QueueName.AppConnectionCredentialRotationRotate,
-    async (job) => {
-      const { rotationId, queuedAt, isManualRotation } = job.data;
-      const retryCount = job.attemptsMade;
-      const retryLimit = job.opts.attempts || 1;
+  queueService.start(QueueName.AppConnectionCredentialRotationRotate, async (job) => {
+    const { rotationId, queuedAt, isManualRotation } = job.data;
+    const retryCount = job.attemptsMade;
+    const retryLimit = job.opts.attempts || 1;
 
-      const logDetails = `[rotationId=${rotationId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
+    const logDetails = `[rotationId=${rotationId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-      try {
-        const rotation = await appConnectionCredentialRotationDAL.findByIdWithConnection(rotationId);
+    try {
+      const rotation = await appConnectionCredentialRotationDAL.findByIdWithConnection(rotationId);
 
-        if (!rotation) {
-          logger.warn(`credentialRotationQueue: Rotation ${rotationId} not found, skipping`);
-          return;
-        }
-
-        if (!rotation.isAutoRotationEnabled && !isManualRotation) {
-          logger.info(`credentialRotationQueue: Skipping - Auto-Rotation Disabled ${logDetails}`);
-          return;
-        }
-
-        if (rotation.lastRotatedAt && new Date(rotation.lastRotatedAt).getTime() >= new Date(queuedAt).getTime()) {
-          logger.info(`credentialRotationQueue: Skipping - Rotated Since Queue ${logDetails}`);
-          return;
-        }
-
-        await appConnectionCredentialRotationService.rotateCredentials(rotationId, {
-          jobId: job.id || uuidv4(),
-          shouldSendNotification: true,
-          isFinalAttempt: retryCount + 1 >= retryLimit,
-          isManualRotation
-        });
-
-        logger.info(`credentialRotationQueue: Credentials Rotated ${logDetails}`);
-      } catch (error) {
-        logger.error(error, `credentialRotationQueue: Failed to Rotate ${logDetails}`);
-        throw error;
+      if (!rotation) {
+        logger.warn(`credentialRotationQueue: Rotation ${rotationId} not found, skipping`);
+        return;
       }
-    },
-    {
-      persistence: true
+
+      if (!rotation.isAutoRotationEnabled && !isManualRotation) {
+        logger.info(`credentialRotationQueue: Skipping - Auto-Rotation Disabled ${logDetails}`);
+        return;
+      }
+
+      if (rotation.lastRotatedAt && new Date(rotation.lastRotatedAt).getTime() >= new Date(queuedAt).getTime()) {
+        logger.info(`credentialRotationQueue: Skipping - Rotated Since Queue ${logDetails}`);
+        return;
+      }
+
+      await appConnectionCredentialRotationService.rotateCredentials(rotationId, {
+        jobId: job.id || uuidv4(),
+        shouldSendNotification: true,
+        isFinalAttempt: retryCount + 1 >= retryLimit,
+        isManualRotation
+      });
+
+      logger.info(`credentialRotationQueue: Credentials Rotated ${logDetails}`);
+    } catch (error) {
+      logger.error(error, `credentialRotationQueue: Failed to Rotate ${logDetails}`);
+      throw error;
     }
-  );
+  });
 
   // Worker for scheduling and notifications
   queueService.start(QueueName.AppConnectionCredentialRotation, async (job) => {
@@ -216,16 +210,10 @@ export const appConnectionCredentialRotationQueueFactory = async ({
   });
 
   // Schedule the cron job
-  await queueService.queue(
+  await queueService.upsertJobScheduler(
     QueueName.AppConnectionCredentialRotation,
-    QueueJobs.AppConnectionCredentialRotationQueueRotations,
-    undefined,
-    {
-      jobId: "app-connection-credential-rotation-cron",
-      repeat: {
-        pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
-        key: "app-connection-credential-rotation-cron"
-      }
-    }
+    `${JOB_SCHEDULER_PREFIX}:app-connection-credential-rotation-cron`,
+    { pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *" },
+    { name: QueueJobs.AppConnectionCredentialRotationQueueRotations }
   );
 };

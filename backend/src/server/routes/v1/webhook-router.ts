@@ -4,8 +4,10 @@ import { WebhooksSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export const sanitizedWebhookSchema = WebhooksSchema.pick({
@@ -82,6 +84,18 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             isDisabled: webhook.isDisabled,
             secretPath: webhook.secretPath
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.WebhookCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.body.projectId,
+          environment: webhook.environment.slug,
+          webhookId: webhook.id,
+          type: req.body.type
         }
       });
 

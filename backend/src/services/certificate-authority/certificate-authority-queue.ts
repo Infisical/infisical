@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
@@ -112,19 +112,12 @@ export const certificateAuthorityQueueFactory = ({
     // Daily at midnight UTC; only CRLs expiring before next run are rebuilt
     const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 0 * * *";
 
-    // clear previous repeatable job
-    await queueService.stopRepeatableJob(
+    await queueService.upsertJobScheduler(
       QueueName.CaCrlRotation,
-      QueueJobs.CaCrlRotation,
-      { pattern: cronPattern, utc: true },
-      QueueJobs.CaCrlRotation
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.CaCrlRotation}`,
+      { pattern: cronPattern },
+      { name: QueueJobs.CaCrlRotation, opts: { delay: 5000 } }
     );
-
-    await queueService.queue(QueueName.CaCrlRotation, QueueJobs.CaCrlRotation, undefined, {
-      delay: 5000,
-      jobId: QueueJobs.CaCrlRotation,
-      repeat: { pattern: cronPattern, utc: true, key: QueueJobs.CaCrlRotation }
-    });
   };
 
   const orderCertificateForSubscriber = async ({ subscriberId, caType }: TOrderCertificateForSubscriberDTO) => {

@@ -370,10 +370,7 @@ export const ConditionsFields = ({
                               }}
                             >
                               <SelectTrigger
-                                className={twMerge(
-                                  "w-full",
-                                  lhsError?.message && "border-danger/25"
-                                )}
+                                className={twMerge("w-full", lhsError?.message && "border-danger")}
                               >
                                 <SelectValue />
                               </SelectTrigger>
@@ -449,7 +446,7 @@ export const ConditionsFields = ({
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent position="popper">
-                                    {renderOperatorSelectItems(condition.lhs)}
+                                    {renderOperatorSelectItems(condition.lhs, subject)}
                                   </SelectContent>
                                 </Select>
                               )}
@@ -470,7 +467,7 @@ export const ConditionsFields = ({
                           <div className="grow">
                             <UnstableInput
                               {...rhsField}
-                              className={twMerge(rhsError?.message && "border-danger/25")}
+                              className={twMerge(rhsError?.message && "border-danger")}
                             />
                           </div>
                           <Tooltip>

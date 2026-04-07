@@ -112,6 +112,7 @@ const LogsSectionComponent = ({
               filters={searchFilters}
               onFiltersChange={setSearchFilters}
               hasProjectContext={Boolean(project)}
+              projectId={project?.id}
             />
             {searchFilters.length > 0 && (
               <p className="mt-2 text-xs text-mineshaft-400">
@@ -125,7 +126,7 @@ const LogsSectionComponent = ({
             refetchInterval={refetchInterval}
             filter={{
               eventMetadata: logFilter?.eventMetadata,
-              actor: logFilter?.actor,
+              actor: searchDerived.actor || logFilter?.actor,
               projectId: project?.id || searchDerived.projectId || logFilter?.project?.id,
               actorType: searchDerived.actorType || presets?.actorType,
               eventType:

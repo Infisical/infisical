@@ -1,38 +1,29 @@
-import { faArrowUpRightFromSquare, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CircleHelpIcon, ExternalLinkIcon } from "lucide-react";
 
-import { FormLabel, Tooltip } from "../v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../v3";
 
 // To give users example of possible values of TTL
 export const TtlFormLabel = ({ label }: { label: string }) => (
-  <div>
-    <FormLabel
-      label={label}
-      icon={
-        <Tooltip
-          className="max-w-lg"
-          content={
-            <span>
-              Examples: 30m, 1h, 3d, etc.{" "}
-              <a
-                href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-500 hover:text-mineshaft-100"
-              >
-                See More Examples{" "}
-                <FontAwesomeIcon size="xs" className="mt-0.5" icon={faArrowUpRightFromSquare} />
-              </a>
-            </span>
-          }
-        >
-          <FontAwesomeIcon
-            icon={faQuestionCircle}
-            size="sm"
-            className="relative right-1 mt-0.5 text-mineshaft-300"
-          />
-        </Tooltip>
-      }
-    />
-  </div>
+  <span className="inline-flex items-center gap-1">
+    {label}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <CircleHelpIcon className="size-3.5 text-muted" />
+      </TooltipTrigger>
+      <TooltipContent className="max-w-lg">
+        <span>
+          Examples: 30m, 1h, 3d, etc.{" "}
+          <a
+            href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium"
+          >
+            <span className="underline underline-offset-2">See More Examples</span>{" "}
+            <ExternalLinkIcon className="mb-0.5 inline size-3" />
+          </a>
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  </span>
 );

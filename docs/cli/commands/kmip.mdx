@@ -1,0 +1,294 @@
+---
+title: "infisical kmip"
+description: "Run the Infisical KMIP server or manage its systemd service"
+---
+
+<Tabs>
+  <Tab title="Start KMIP server">
+    ```bash
+    infisical kmip start \
+      --identity-client-id=<client-id> \
+      --identity-client-secret=<client-secret> \
+      --hostnames-or-ips=<hostnames-or-ips>
+    ```
+  </Tab>
+  <Tab title="Start as background daemon (Linux only)">
+    ```bash
+    sudo infisical kmip systemd install \
+      --identity-client-id=<client-id> \
+      --identity-client-secret=<client-secret> \
+      --hostnames-or-ips=<hostnames-or-ips>
+    ```
+  </Tab>
+</Tabs>
+
+## Description
+
+The Infisical KMIP server provides Key Management Interoperability Protocol (KMIP) support for integration with KMIP-compatible clients. It acts as a proxy between your KMIP clients and Infisical KMS, enabling standardized key management operations.
+
+For detailed information about KMIP integration, PKI setup, and client configuration, see the [KMIP Integration Guide](/documentation/platform/kms/kmip).
+
+## Subcommands & flags
+
+<AccordionGroup>
+<Accordion title="infisical kmip start" defaultOpen="true">
+  Run the Infisical KMIP server in the foreground. The server authenticates to Infisical using a machine identity and proxies KMIP requests to Infisical KMS.
+
+```bash
+infisical kmip start \
+  --identity-client-id=<client-id> \
+  --identity-client-secret=<client-secret> \
+  --hostnames-or-ips=<hostnames-or-ips>
+```
+
+Once started, the KMIP server will:
+
+- Authenticate to Infisical using the provided machine identity credentials
+- Listen for incoming KMIP client connections
+- Proxy KMIP operations (Create, Get, Activate, Revoke, etc.) to Infisical KMS
+- Handle mTLS authentication for KMIP clients
+
+### Flags
+
+  <AccordionGroup>
+  <Accordion title="--identity-client-id">
+    The client ID of the machine identity for Universal Auth authentication.
+
+    ```bash
+    # Example
+    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
+
+  </Accordion>
+
+  <Accordion title="--identity-client-secret">
+    The client secret of the machine identity for Universal Auth authentication.
+
+    ```bash
+    # Example
+    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
+
+  </Accordion>
+
+  <Accordion title="--hostnames-or-ips">
+    Comma-separated list of hostnames or IP addresses for the KMIP server certificate. These should match how clients will connect to the server.
+
+    ```bash
+    # Example
+    infisical kmip start --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips="kmip.example.com,10.0.1.50"
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    infisical kmip start --domain=https://app.your-domain.com --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_API_URL`.
+
+  </Accordion>
+
+  <Accordion title="--listen-address">
+    The address for the KMIP server to listen on. Default: `localhost:5696`.
+
+    ```bash
+    # Example - listen on all interfaces
+    infisical kmip start --listen-address="0.0.0.0:5696" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_LISTEN_ADDRESS`.
+
+  </Accordion>
+
+  <Accordion title="--server-name">
+    The name of the KMIP server. Default: `kmip-server`.
+
+    ```bash
+    # Example
+    infisical kmip start --server-name="production-kmip" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_NAME`.
+
+  </Accordion>
+
+  <Accordion title="--certificate-ttl">
+    The TTL duration for the server certificate. Default: `1y`.
+
+    ```bash
+    # Example
+    infisical kmip start --certificate-ttl="6m" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_CERTIFICATE_TTL`.
+
+  </Accordion>
+  </AccordionGroup>
+
+</Accordion>
+
+<Accordion title="infisical kmip systemd install">
+  Install and enable the KMIP server as a systemd service. This command must be run with sudo on Linux.
+
+```bash
+sudo infisical kmip systemd install \
+  --identity-client-id=<client-id> \
+  --identity-client-secret=<client-secret> \
+  --hostnames-or-ips=<hostnames-or-ips>
+```
+
+### Requirements
+
+- Must be run on Linux
+- Must be run with root/sudo privileges
+- Requires systemd
+
+### What it does
+
+1. Creates a config file at `/etc/infisical/kmip.conf` with the provided credentials and settings
+2. Creates a systemd service file at `/etc/systemd/system/infisical-kmip.service`
+3. Reloads the systemd daemon
+4. Enables the service to start on boot
+
+### Flags
+
+  <AccordionGroup>
+  <Accordion title="--identity-client-id (required)">
+    The client ID of the machine identity for Universal Auth authentication.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
+
+  </Accordion>
+
+  <Accordion title="--identity-client-secret (required)">
+    The client secret of the machine identity for Universal Auth authentication.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
+
+  </Accordion>
+
+  <Accordion title="--hostnames-or-ips (required)">
+    Comma-separated list of hostnames or IP addresses for the KMIP server certificate.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips="kmip.example.com,10.0.1.50"
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_HOSTNAMES_OR_IPS`.
+
+  </Accordion>
+
+  <Accordion title="--domain">
+    Domain of your self-hosted Infisical instance. If not specified, defaults to Infisical Cloud.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --domain=https://app.your-domain.com --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_API_URL`.
+
+  </Accordion>
+
+  <Accordion title="--listen-address">
+    The address for the KMIP server to listen on. Default: `localhost:5696`.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --listen-address="0.0.0.0:5696" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_LISTEN_ADDRESS`.
+
+  </Accordion>
+
+  <Accordion title="--server-name">
+    The name of the KMIP server. Default: `kmip-server`.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --server-name="production-kmip" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_SERVER_NAME`.
+
+  </Accordion>
+
+  <Accordion title="--certificate-ttl">
+    The TTL duration for the server certificate. Default: `1y`.
+
+    ```bash
+    # Example
+    sudo infisical kmip systemd install --certificate-ttl="6m" --identity-client-id=<client-id> --identity-client-secret=<client-secret> --hostnames-or-ips=<hostnames-or-ips>
+    ```
+
+    You may also set this via the environment variable `INFISICAL_KMIP_CERTIFICATE_TTL`.
+
+  </Accordion>
+  </AccordionGroup>
+
+### Service Details
+
+The systemd service is installed with secure defaults:
+
+- Service file: `/etc/systemd/system/infisical-kmip.service`
+- Config file: `/etc/infisical/kmip.conf`
+- Automatically restarts on failure
+- Enabled to start on boot
+
+After installation, manage the service with standard systemd commands:
+
+```bash
+sudo systemctl start infisical-kmip    # Start the service
+sudo systemctl stop infisical-kmip     # Stop the service
+sudo systemctl status infisical-kmip   # Check service status
+sudo systemctl disable infisical-kmip  # Disable auto-start on boot
+sudo journalctl -u infisical-kmip      # View logs
+```
+
+</Accordion>
+
+<Accordion title="infisical kmip systemd uninstall">
+  Uninstall and remove the KMIP server systemd service. This command must be run with sudo on Linux.
+
+```bash
+sudo infisical kmip systemd uninstall
+```
+
+### Requirements
+
+- Must be run on Linux
+- Must be run with root/sudo privileges
+
+### What it does
+
+1. Stops the service if running
+2. Disables the service
+3. Removes the service file from `/etc/systemd/system/infisical-kmip.service`
+4. Removes the config file from `/etc/infisical/kmip.conf`
+5. Reloads the systemd daemon
+
+</Accordion>
+</AccordionGroup>

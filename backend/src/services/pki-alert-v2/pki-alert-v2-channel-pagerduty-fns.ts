@@ -7,7 +7,9 @@ import { logger } from "@app/lib/logger";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
+  getRevocationReasonLabel,
   pagerDutyIntegrationKeyRegex,
+  PkiAlertEventType,
   TAlertInfo,
   TBuildPagerDutyPayloadParams,
   TCertificatePreview,
@@ -60,15 +62,47 @@ const getSeverity = (certificates: TCertificatePreview[]): "critical" | "error" 
  * - Caps certificates at 10 to stay under the 512KB payload limit
  * - Severity is auto-mapped from the most urgent certificate
  */
+const getPagerDutyEventConfig = (eventType: PkiAlertEventType): { classLabel: string; summaryVerb: string } => {
+  switch (eventType) {
+    case PkiAlertEventType.ISSUANCE:
+      return { classLabel: "certificate-issuance", summaryVerb: "newly issued" };
+    case PkiAlertEventType.RENEWAL:
+      return { classLabel: "certificate-renewal", summaryVerb: "recently renewed" };
+    case PkiAlertEventType.REVOCATION:
+      return { classLabel: "certificate-revocation", summaryVerb: "revoked" };
+    case PkiAlertEventType.EXPIRATION:
+    default:
+      return { classLabel: "certificate-expiration", summaryVerb: "expiring" };
+  }
+};
+
+const getEventSeverity = (
+  eventType: PkiAlertEventType,
+  certificates: TCertificatePreview[]
+): "critical" | "error" | "warning" | "info" => {
+  switch (eventType) {
+    case PkiAlertEventType.REVOCATION:
+      return "warning";
+    case PkiAlertEventType.ISSUANCE:
+    case PkiAlertEventType.RENEWAL:
+      return "info";
+    case PkiAlertEventType.EXPIRATION:
+    default:
+      return getSeverity(certificates);
+  }
+};
+
 export const buildPagerDutyPayload = ({
   alert,
   certificates,
   integrationKey,
+  eventType,
   appUrl = "https://app.infisical.com"
 }: TBuildPagerDutyPayloadParams): TPagerDutyPayload => {
   const now = new Date();
   const totalCertificates = certificates.length;
-  const severity = getSeverity(certificates);
+  const { classLabel, summaryVerb } = getPagerDutyEventConfig(eventType);
+  const severity = getEventSeverity(eventType, certificates);
 
   const sortedCertificates = [...certificates].sort((a, b) => {
     const aExpiry = new Date(a.notAfter).getTime();
@@ -80,21 +114,26 @@ export const buildPagerDutyPayload = ({
 
   const viewUrl = `${appUrl}/projects/cert-manager/${alert.projectId}/policies`;
 
+  const summary =
+    eventType === PkiAlertEventType.EXPIRATION
+      ? `Infisical: ${totalCertificates} certificate(s) expiring within ${alert.alertBefore} - Alert: ${alert.name}`
+      : `Infisical: ${totalCertificates} certificate(s) ${summaryVerb} - Alert: ${alert.name}`;
+
   return {
     routing_key: integrationKey,
     event_action: "trigger",
     dedup_key: alert.id,
     payload: {
-      summary: `Infisical: ${totalCertificates} certificate(s) expiring within ${alert.alertBefore} - Alert: ${alert.name}`,
+      summary,
       severity,
       source: "infisical-pki-alerts",
       timestamp: now.toISOString(),
       component: "certificate-manager",
       group: alert.projectId,
-      class: "certificate-expiration",
+      class: classLabel,
       custom_details: {
         alert_name: alert.name,
-        alert_before: alert.alertBefore,
+        ...(alert.alertBefore ? { alert_before: alert.alertBefore } : {}),
         total_certificates: totalCertificates,
         certificates: displayCertificates.map((cert) => {
           const notAfter = new Date(cert.notAfter);
@@ -103,7 +142,10 @@ export const buildPagerDutyPayload = ({
             common_name: cert.commonName || "N/A",
             serial_number: cert.serialNumber,
             expires_at: notAfter.toISOString(),
-            days_until_expiry: daysUntilExpiry
+            days_until_expiry: daysUntilExpiry,
+            ...(eventType === PkiAlertEventType.REVOCATION && cert.revocationReason != null
+              ? { revocation_reason: getRevocationReasonLabel(cert.revocationReason) }
+              : {})
           };
         }),
         view_url: viewUrl
@@ -193,7 +235,8 @@ export const sendPagerDutyNotificationWithRetry = async (
   config: TPagerDutyChannelConfig,
   alertData: TAlertInfo,
   matchingCertificates: TCertificatePreview[],
-  channelId: string
+  channelId: string,
+  eventType: PkiAlertEventType = PkiAlertEventType.EXPIRATION
 ): Promise<TChannelResult> => {
   if (!config.integrationKey || !validatePagerDutyIntegrationKey(config.integrationKey)) {
     return { success: false, error: "Invalid PagerDuty integration key" };
@@ -204,6 +247,7 @@ export const sendPagerDutyNotificationWithRetry = async (
     alert: alertData,
     certificates: matchingCertificates,
     integrationKey: config.integrationKey,
+    eventType,
     appUrl: appCfg.SITE_URL
   });
 

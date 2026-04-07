@@ -14,6 +14,11 @@ import {
   UpdateKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  CreateMsSQLResourceSchema,
+  MsSQLResourceSchema,
+  UpdateMsSQLResourceSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
+import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
@@ -64,6 +69,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: MySQLResourceSchema,
       createResourceSchema: CreateMySQLResourceSchema,
       updateResourceSchema: UpdateMySQLResourceSchema
+    });
+  },
+  [PamResource.MsSQL]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MsSQL,
+      resourceResponseSchema: MsSQLResourceSchema,
+      createResourceSchema: CreateMsSQLResourceSchema,
+      updateResourceSchema: UpdateMsSQLResourceSchema
     });
   },
   [PamResource.SSH]: async (server: FastifyZodProvider) => {

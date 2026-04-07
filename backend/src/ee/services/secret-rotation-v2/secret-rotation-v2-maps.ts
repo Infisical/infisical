@@ -17,7 +17,8 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.UnixLinuxLocalAccount]: "Unix/Linux Local Account",
   [SecretRotation.DbtServiceToken]: "DBT Service Token",
   [SecretRotation.WindowsLocalAccount]: "Windows Local Account",
-  [SecretRotation.OpenRouterApiKey]: "OpenRouter API Key"
+  [SecretRotation.OpenRouterApiKey]: "OpenRouter API Key",
+  [SecretRotation.HpIloLocalAccount]: "HP iLO Local Account"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -36,5 +37,6 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH,
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
   [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
-  [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter
+  [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
+  [SecretRotation.HpIloLocalAccount]: AppConnection.SSH
 };
