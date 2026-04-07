@@ -32,7 +32,9 @@ const Page = () => {
   const { data: session } = useGetPamSessionById(sessionId, {
     refetchInterval: (query) => {
       const s = query.state.data;
-      return s?.status === PamSessionStatus.Active || s?.status === PamSessionStatus.Starting ? 5000 : false;
+      return s?.status === PamSessionStatus.Active || s?.status === PamSessionStatus.Starting
+        ? 5000
+        : false;
     },
     refetchIntervalInBackground: false
   });
