@@ -131,9 +131,8 @@ export const buildReferralUrl = (originalUrl: string, targetDomain: string): str
   const targetRoot = getRootDomain(targetDomain);
 
   if (!originalRoot) {
-    logger.warn(
-      { originalHost: host, targetDomain },
-      "Cannot validate referral domain boundary — original LDAP URL is not a FQDN"
+    throw new Error(
+      `Cannot validate referral domain boundary — original LDAP URL '${host}' is not a FQDN. Refusing to forward credentials to '${targetDomain}'`
     );
   } else if (!targetRoot || originalRoot !== targetRoot) {
     throw new Error(

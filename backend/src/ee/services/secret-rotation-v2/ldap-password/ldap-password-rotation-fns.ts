@@ -68,7 +68,7 @@ const getDN = async (dn: string, client: Client): Promise<string> => {
             referralDn: ldapErr.dn,
             referralUrls: (ldapErr as { referrals?: string[] }).referrals ?? []
           },
-          "LDAP DN resolution received referral — propagating for upstream chase"
+          `LDAP DN resolution received referral — propagating for upstream chase [searchBase=${base}] [upn=${dn}] [referralDn=${ldapErr.dn}]`
         );
         reject(error);
         return;
@@ -227,7 +227,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
                     targetDn: dn,
                     url: modifyUrl
                   },
-                  "LDAP search referral — captured before gateway proxy"
+                  `LDAP search referral — captured before gateway proxy [targetDn=${dn}] [url=${modifyUrl}] [errorDn=${getDnErr.dn}]`
                 );
                 capturedReferralError = getDnErr;
               }
@@ -258,13 +258,13 @@ export const ldapPasswordRotationFactory: TRotationFactory<
                         targetDn: userDn,
                         url: modifyUrl
                       },
-                      "LDAP modify referral — captured before gateway proxy"
+                      `LDAP modify referral — captured before gateway proxy [targetDn=${userDn}] [url=${modifyUrl}] [errorDn=${ldapErr.dn}]`
                     );
                     capturedReferralError = ldapErr as LdapReferralError;
                   } else {
                     logger.debug(
                       { errorMessage: err.message, errorName: err.name, targetDn: userDn, url: modifyUrl },
-                      "LDAP modify error (non-referral)"
+                      `LDAP modify error (non-referral) [targetDn=${userDn}] [url=${modifyUrl}] [errorName=${err.name}]`
                     );
                   }
                   reject(err);
@@ -288,8 +288,10 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     const MAX_REFERRAL_HOPS = 10;
     let referredUrl: string | undefined;
     let currentCredentials = connectionCredentials;
+    const visitedUrls = new Set<string>();
 
     for (let hop = 0; hop <= MAX_REFERRAL_HOPS; hop += 1) {
+      visitedUrls.add(normalizeLdapUrl(currentCredentials.url));
       try {
         // eslint-disable-next-line no-await-in-loop
         await performModify(currentCredentials);
@@ -373,7 +375,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
             targetSource,
             currentUrl: currentCredentials.url
           },
-          `LDAP referral received during ${referralSource} — resolving chase target`
+          `LDAP referral received during ${referralSource} — resolving chase target [referralDn=${referralDn}] [referralTarget=${referralTarget}] [targetSource=${targetSource}] [currentUrl=${currentCredentials.url}]`
         );
 
         if (!referralTarget) {
@@ -384,13 +386,13 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
         referredUrl = buildReferralUrl(credentials.url, referralTarget);
 
-        if (referredUrl === normalizeLdapUrl(currentCredentials.url)) {
+        if (visitedUrls.has(referredUrl)) {
           logger.error(
-            { ...rotationContext, referredUrl, targetSource, referralSource },
-            "LDAP password rotation — referral chase would loop to the same URL, aborting"
+            { ...rotationContext, referredUrl, visitedUrls: [...visitedUrls], targetSource, referralSource },
+            `LDAP password rotation — referral chase would loop to an already-visited URL, aborting [referredUrl=${referredUrl}] [referralSource=${referralSource}]`
           );
           throw new Error(
-            `Provider Modify Error: Referral chase loop detected — referred URL ${referredUrl} is the same as the current URL`
+            `Provider Modify Error: Referral chase loop detected — referred URL ${referredUrl} was already visited`
           );
         }
 
