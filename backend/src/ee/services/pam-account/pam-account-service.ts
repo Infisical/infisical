@@ -7,6 +7,7 @@ import {
   generateConsoleFederationUrl,
   TAwsIamAccountCredentials
 } from "@app/ee/services/pam-resource/aws-iam";
+import { parseMongoConnectionString } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-factory";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import {
   decryptResource,
@@ -810,22 +811,25 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
-    const { host, port } =
-      resourceType !== PamResource.Kubernetes
-        ? (connectionDetails as { host: string; port?: number })
-        : (() => {
-            const url = new URL(connectionDetails.url);
-            let portNumber: number | undefined;
-            if (url.port) {
-              portNumber = Number(url.port);
-            } else {
-              portNumber = url.protocol === "https:" ? 443 : 80;
-            }
-            return {
-              host: url.hostname,
-              port: portNumber
-            };
-          })();
+    const { host, port } = (() => {
+      if (resourceType === PamResource.Kubernetes) {
+        const url = new URL(connectionDetails.url);
+        let portNumber: number | undefined;
+        if (url.port) {
+          portNumber = Number(url.port);
+        } else {
+          portNumber = url.protocol === "https:" ? 443 : 80;
+        }
+        return { host: url.hostname, port: portNumber };
+      }
+
+      if (resourceType === PamResource.MongoDB) {
+        const parsed = parseMongoConnectionString(connectionDetails.connectionString);
+        return { host: parsed.hostname, port: parsed.port };
+      }
+
+      return connectionDetails as { host: string; port: number };
+    })();
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,

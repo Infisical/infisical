@@ -3,7 +3,7 @@ import { TBasePamAccount } from "./base-account";
 import { TBasePamResource } from "./base-resource";
 
 export type TMongoDBConnectionDetails = {
-  host: string;
+  connectionString: string;
   database: string;
   sslEnabled: boolean;
   sslRejectUnauthorized: boolean;

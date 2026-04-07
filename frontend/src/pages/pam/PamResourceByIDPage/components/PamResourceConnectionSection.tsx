@@ -51,6 +51,29 @@ const SqlConnectionDetails = ({
   </>
 );
 
+const MongoDBConnectionDetails = ({
+  connectionDetails
+}: {
+  connectionDetails: { connectionString: string; database: string; sslEnabled: boolean };
+}) => (
+  <>
+    <Detail>
+      <DetailLabel>Connection String</DetailLabel>
+      <DetailValue>{connectionDetails.connectionString}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Database</DetailLabel>
+      <DetailValue>{connectionDetails.database}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>SSL</DetailLabel>
+      <DetailValue>
+        <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
+      </DetailValue>
+    </Detail>
+  </>
+);
+
 const SSHConnectionDetails = ({
   connectionDetails
 }: {
@@ -191,8 +214,9 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
-    case PamResourceType.MongoDB:
       return <SqlConnectionDetails connectionDetails={resource.connectionDetails} />;
+    case PamResourceType.MongoDB:
+      return <MongoDBConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.SSH:
       return <SSHConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.Redis:

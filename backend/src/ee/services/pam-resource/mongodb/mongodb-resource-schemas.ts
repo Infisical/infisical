@@ -1,3 +1,4 @@
+import ConnectionString from "mongodb-connection-string-url";
 import { z } from "zod";
 
 import { PamResource } from "../pam-resource-enums";
@@ -12,12 +13,51 @@ import {
 } from "../pam-resource-schemas";
 
 // Resources
-// MongoDB uses its own connection schema. The host field accepts a MongoDB URI
-// (mongodb+srv://... or mongodb://...), a bare SRV hostname, host:port, or
-// comma-separated replica set hosts. Port is embedded in the host field.
+// MongoDB uses a connection string (mongodb:// or mongodb+srv:// URI) instead of
+// separate host + port fields. The URI is validated and sanitized on input.
 export const MongoDBResourceConnectionDetailsSchema = z.object({
-  host: z.string().trim().min(1).max(1024),
-  database: z.string().trim().min(1).max(255),
+  connectionString: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1024)
+    .transform((val, ctx) => {
+      let cs: ConnectionString;
+      try {
+        cs = new ConnectionString(val);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+        });
+        return z.NEVER;
+      }
+
+      if (cs.username || cs.password) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Credentials should not be included in the connection string — they are managed separately per account"
+        });
+        return z.NEVER;
+      }
+
+      if (cs.pathname && cs.pathname !== "/") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Database should not be included in the connection string — use the Database field instead"
+        });
+        return z.NEVER;
+      }
+
+      return cs.toString();
+    }),
+  database: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_\-]+$/, "Database name can only contain letters, numbers, underscores, and hyphens"),
   sslEnabled: z.boolean(),
   sslRejectUnauthorized: z.boolean(),
   sslCertificate: z

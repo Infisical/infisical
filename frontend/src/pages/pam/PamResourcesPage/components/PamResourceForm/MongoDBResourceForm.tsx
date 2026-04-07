@@ -7,7 +7,6 @@ import {
   Button,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
   Label,
@@ -33,7 +32,7 @@ type Props = {
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.MongoDB),
   connectionDetails: z.object({
-    host: z.string().trim().min(1, "Host required"),
+    connectionString: z.string().trim().min(1, "Connection string required"),
     database: z.string().trim().min(1, "Database required").default("admin"),
     sslEnabled: z.boolean().default(true),
     sslRejectUnauthorized: z.boolean().default(true),
@@ -62,7 +61,7 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
           resourceType: PamResourceType.MongoDB,
           gateway: undefined,
           connectionDetails: {
-            host: "",
+            connectionString: "",
             database: "admin",
             sslEnabled: true,
             sslRejectUnauthorized: true,
@@ -94,22 +93,28 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
             <Label>Connection</Label>
 
             <Controller
-              name="connectionDetails.host"
+              name="connectionDetails.connectionString"
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Host</FieldLabel>
+                  <FieldLabel>
+                    Connection String
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Supports mongodb+srv:// and mongodb:// URIs, including comma-separated
+                        replica sets. Credentials and database are managed separately.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <FieldContent>
                     <UnstableInput
                       {...field}
-                      placeholder="mongodb+srv://cluster0.abc.net/mydb or host:27017"
+                      placeholder="mongodb+srv://cluster0.abc.mongodb.net"
                       isError={Boolean(error)}
                     />
-                    <FieldDescription>
-                      A MongoDB URI (e.g. mongodb+srv://cluster0.abc.net/mydb?authSource=admin), a
-                      bare hostname for SRV, host:port for standalone, or h1:p1,h2:p2 for replica
-                      sets. Credentials are injected automatically.
-                    </FieldDescription>
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
