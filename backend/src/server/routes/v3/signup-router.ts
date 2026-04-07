@@ -210,7 +210,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         password: z.string(),
         firstName: z.string().trim(),
         lastName: z.string().trim().optional(),
-        tokenMetadata: z.string().optional()
+        tokenMetadata: z.string().optional(),
+        hubspotUtk: z.string().trim().max(512).optional()
       }),
       response: {
         200: z.object({
@@ -238,7 +239,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           user.email,
           "invite",
           user.firstName || "",
-          user.lastName || ""
+          user.lastName || "",
+          req.body.hubspotUtk
         );
       }
 

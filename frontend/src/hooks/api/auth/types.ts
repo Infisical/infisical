@@ -100,6 +100,7 @@ export type CompleteAccountDTO = {
   lastName: string;
   password: string;
   tokenMetadata?: string;
+  hubspotUtk?: string;
 };
 
 export type CompleteAccountSignupDTO = CompleteAccountDTO & {

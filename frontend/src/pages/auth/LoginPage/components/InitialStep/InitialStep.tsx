@@ -26,6 +26,7 @@ import {
 } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
+import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -110,6 +111,7 @@ export const InitialStep = ({
   };
 
   const handleSocialLogin = (method: LoginMethod) => {
+    preserveHubSpotUtk();
     const searchParams = new URLSearchParams();
     if (callbackPort) {
       searchParams.append("callback_port", callbackPort);

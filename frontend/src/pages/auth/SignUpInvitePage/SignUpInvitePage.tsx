@@ -10,6 +10,7 @@ import InputField from "@app/components/basic/InputField";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
+import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useToggle } from "@app/hooks";
 import {
   completeAccountSignupInvite,
@@ -88,7 +89,8 @@ export const SignupInvitePage = () => {
           password,
           firstName,
           lastName,
-          tokenMetadata: metadata
+          tokenMetadata: metadata,
+          hubspotUtk: getHubSpotUtk()
         });
 
         // unset temporary signup JWT token and set JWT token
