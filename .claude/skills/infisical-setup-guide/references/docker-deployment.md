@@ -109,14 +109,22 @@ The standalone image (`infisical/infisical`) contains only the application code.
 docker pull infisical/infisical:latest
 ```
 
-For FIPS 140-2 compliance, use the FIPS image built from `Dockerfile.fips.standalone-infisical`.
+For FIPS 140-2 compliance, pull the FIPS image instead:
+
+```bash
+docker pull infisical/infisical-fips:latest
+```
 
 #### 2. Set required environment variables
+
+**Standard (non-FIPS) deployment:**
 
 | Variable | Purpose |
 |----------|---------|
 | `ENCRYPTION_KEY` | 32-char hex string — user runs `openssl rand -hex 16` in their terminal |
 | `AUTH_SECRET` | JWT signing secret — user runs `openssl rand -base64 32` in their terminal |
+
+**FIPS deployment:** `ENCRYPTION_KEY` must be a base64-encoded 256-bit key instead of hex. The user should run `openssl rand -base64 32` to generate it.
 | `DB_CONNECTION_URI` | PostgreSQL connection string to your external database |
 | `REDIS_URL` | Redis connection string to your external Redis |
 | `SITE_URL` | Public URL where Infisical will be accessed |

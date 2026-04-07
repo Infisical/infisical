@@ -19,17 +19,17 @@ cd infisical
 
 ### 2. Set up environment variables
 
-Copy the example env file:
+Copy the dev example env file:
 
 ```bash
-cp .env.example .env
+cp .env.dev.example .env
 ```
 
-The `.env.example` file includes sensible defaults for local dev. These defaults are fine for local development only — never use them in production or any internet-accessible deployment. The critical variables are:
+The `.env.dev.example` file includes sensible defaults for local dev (including a FIPS-compatible base64 encryption key). These defaults are fine for local development only — never use them in production or any internet-accessible deployment. The critical variables are:
 
 | Variable | Purpose | Default value |
 |----------|---------|---------------|
-| `ENCRYPTION_KEY` | 32-char hex string for encrypting/decrypting secrets | `f13dbc92aaaf86fa7cb0ed8ac3265f47` |
+| `ENCRYPTION_KEY` | Base64-encoded 256-bit key for encrypting/decrypting secrets | `VVHnGZ0w98WLgISK4XSJcagezuG6EWRFTk48KE4Y5Mw=` |
 | `AUTH_SECRET` | Base64-encoded JWT signing secret | `5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=` |
 | `DB_CONNECTION_URI` | PostgreSQL connection string | `postgres://infisical:infisical@db:5432/infisical` |
 | `REDIS_URL` | Redis connection string | `redis://redis:6379` |

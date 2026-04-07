@@ -6,7 +6,7 @@ Guide the user through configuring authentication for human users in their Infis
 
 | Method | Type | Best for |
 |--------|------|----------|
-| **Email & Password** | Built-in | Getting started, small teams |
+| **Email Auth** | Built-in | Getting started, small teams |
 | **Google OAuth** | Social login | Teams using Google Workspace |
 | **GitHub OAuth** | Social login | Developer teams on GitHub |
 | **GitLab OAuth** | Social login | Teams using GitLab |
@@ -14,7 +14,7 @@ Guide the user through configuring authentication for human users in their Infis
 | **OIDC** | Enterprise SSO | Any OpenID Connect provider |
 | **LDAP** | Directory auth | Active Directory, OpenLDAP |
 
-## Email & Password (default)
+## Email Auth (default)
 
 This is enabled by default and requires no additional configuration. When a user signs up:
 
