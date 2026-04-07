@@ -28,8 +28,15 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const resolvedIps = await dns.resolve4(validUrl.hostname);
-    inputHostIps.push(...resolvedIps);
+    try {
+      const resolvedIps = await dns.resolve4(validUrl.hostname);
+      inputHostIps.push(...resolvedIps);
+    } catch (err) {
+      if ((err as { code: string })?.code !== "ENOTFOUND") throw err;
+
+      const resolvedIps = (await dns.lookup(validUrl.hostname, { all: true, family: 4 })).map(({ address }) => address);
+      inputHostIps.push(...resolvedIps);
+    }
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
