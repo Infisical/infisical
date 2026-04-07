@@ -242,17 +242,25 @@ export const ldapPasswordRotationFactory: TRotationFactory<
             await new Promise<void>((resolve, reject) => {
               client.modify(userDn, changes, (err) => {
                 if (err) {
-                  if (isLdapReferralError(err)) {
+                  if (isLdapReferral(err)) {
+                    const ldapErr = err as Partial<LdapReferralError> & Error;
+                    if (!Array.isArray((ldapErr as { referrals?: unknown }).referrals)) {
+                      (ldapErr as { referrals: string[] }).referrals = [];
+                    }
+                    if (typeof ldapErr.dn !== "string") {
+                      (ldapErr as { dn: string }).dn = "";
+                    }
+                    (ldapErr as { referralSource: string }).referralSource = "modify";
                     logger.info(
                       {
-                        errorDn: err.dn,
-                        referralUrls: err.referrals,
+                        errorDn: ldapErr.dn,
+                        referralUrls: (ldapErr as { referrals: string[] }).referrals,
                         targetDn: userDn,
                         url: modifyUrl
                       },
                       "LDAP modify referral — captured before gateway proxy"
                     );
-                    capturedReferralError = err;
+                    capturedReferralError = ldapErr as LdapReferralError;
                   } else {
                     logger.debug(
                       { errorMessage: err.message, errorName: err.name, targetDn: userDn, url: modifyUrl },
