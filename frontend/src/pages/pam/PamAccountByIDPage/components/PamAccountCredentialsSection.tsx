@@ -298,7 +298,16 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
           accountName={account.name}
           resourceName={account.resource.name}
           metadata={account.metadata}
-          onReveal={startReveal}
+          onReveal={() => {
+            if (!account.credentialsConfigured) {
+              createNotification({
+                type: "error",
+                text: "No password exists for this account."
+              });
+              return;
+            }
+            startReveal();
+          }}
           onReset={reset}
         >
           {state.status === "revealed" && (
