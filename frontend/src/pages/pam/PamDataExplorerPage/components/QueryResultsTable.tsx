@@ -5,6 +5,7 @@ import { Spinner } from "@app/components/v2";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 
 import type { FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
+import { getColumnIndicator } from "../data-explorer-types";
 
 const MAX_ROWS = 500;
 
@@ -24,20 +25,6 @@ type Props = {
 };
 
 type RowData = Record<string, unknown>;
-
-function getColumnIndicator(
-  name: string,
-  primaryKeys: string[],
-  fkMap: Map<string, ForeignKeyInfo>
-): { type: "pk" | "fk"; tooltip?: string } | undefined {
-  if (primaryKeys.includes(name)) return { type: "pk" };
-  const fk = fkMap.get(name);
-  if (fk) {
-    const targetCol = fk.targetColumns[fk.columns.indexOf(name)] ?? fk.targetColumns[0];
-    return { type: "fk", tooltip: `\u2192 ${fk.targetSchema}.${fk.targetTable}(${targetCol})` };
-  }
-  return undefined;
-}
 
 function buildColumns(fields: FieldInfo[], tableDetail: TableDetail | null): ColumnDef<RowData>[] {
   const colTypeMap = new Map<string, string>();
@@ -86,7 +73,10 @@ function ResultsGrid({
   const displayRows = useMemo(() => result.rows.slice(0, MAX_ROWS), [result.rows]);
   const isTruncated = result.rows.length >= MAX_ROWS;
 
-  const columns = useMemo(() => buildColumns(result.fields, tableDetail), [result.fields, tableDetail]);
+  const columns = useMemo(
+    () => buildColumns(result.fields, tableDetail),
+    [result.fields, tableDetail]
+  );
 
   const getRowId = useCallback((_row: RowData, index: number) => String(index), []);
 
@@ -143,7 +133,11 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
   if (result.rows.length === 0) {
     const cmdUpper = result.command.toUpperCase();
     const count = result.rowCount ?? 0;
-    const verb: Record<string, string> = { INSERT: "inserted", UPDATE: "updated", DELETE: "deleted" };
+    const verb: Record<string, string> = {
+      INSERT: "inserted",
+      UPDATE: "updated",
+      DELETE: "deleted"
+    };
 
     const message = verb[cmdUpper]
       ? `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`
