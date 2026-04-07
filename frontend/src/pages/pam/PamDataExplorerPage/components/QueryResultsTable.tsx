@@ -141,7 +141,7 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
 
     const message = verb[cmdUpper]
       ? `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`
-      : result.command;
+      : "No rows returned";
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">

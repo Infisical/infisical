@@ -445,7 +445,7 @@ export const PamDataExplorerPage = () => {
                     e.stopPropagation();
                     closeTab(tab.id);
                   }}
-                  className="ml-1 rounded p-0.5 text-mineshaft-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-mineshaft-200"
+                  className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
                   aria-label={`Close ${tab.title}`}
                 >
                   <XIcon className="size-3" />
