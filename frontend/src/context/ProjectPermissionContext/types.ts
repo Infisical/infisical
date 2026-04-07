@@ -257,7 +257,8 @@ export enum ProjectPermissionPamAccountActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  TriggerRotation = "trigger-rotation"
+  TriggerRotation = "trigger-rotation",
+  ReadCredentials = "read-credentials"
 }
 
 export enum ProjectPermissionPamSessionActions {
@@ -517,6 +518,7 @@ export type CertificatePolicySubjectFields = {
 
 export type PamAccountSubjectFields = {
   resourceName: string;
+  resourceType: string;
   accountName: string;
   metadata?: { key: string; value: string }[];
 };

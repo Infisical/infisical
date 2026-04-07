@@ -6,10 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, PasswordGenerator, Tooltip } from "@app/components/v2";
+import { Button, FormControl, Input, Tooltip } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import { PasswordGenerator } from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -63,6 +69,7 @@ export const CreateSecretForm = ({
   const createWsTag = useCreateWsTag();
   const { addPendingChange } = useBatchModeActions();
 
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
@@ -222,7 +229,13 @@ export const CreateSecretForm = ({
                 secretPath={secretPath}
                 containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
               />
-              <PasswordGenerator onUsePassword={field.onChange} />
+              <PasswordGenerator
+                onUsePassword={field.onChange}
+                projectId={projectId}
+                selectedEnvironments={[{ slug: environment }]}
+                secretPath={secretPath}
+                environments={currentProject?.environments}
+              />
             </div>
           </FormControl>
         )}

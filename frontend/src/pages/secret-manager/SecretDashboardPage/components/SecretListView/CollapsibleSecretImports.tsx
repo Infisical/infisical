@@ -51,24 +51,24 @@ const getResourceLabel = (item: FlatItem) => {
   switch (item.type) {
     case ItemType.Secret:
       return (
-        <span className="inline-flex items-center gap-2">
-          <KeyIcon className="size-4 shrink-0 text-secret" />
+        <>
+          <KeyIcon className="mr-2 mb-0.5 inline-block size-4 shrink-0 text-secret" />
           Secret Reference
-        </span>
+        </>
       );
     case ItemType.Folder:
       return (
-        <span className="inline-flex items-center gap-2">
-          <ImportIcon className="size-4 shrink-0 text-import" />
+        <>
+          <ImportIcon className="mr-2 mb-0.5 inline-block size-4 shrink-0 text-import" />
           Secret Import
-        </span>
+        </>
       );
     case ItemType.SecretSync:
       return (
-        <span className="inline-flex items-center gap-2">
-          <RefreshCwIcon className="size-4 shrink-0 text-secret-rotation" />
+        <>
+          <RefreshCwIcon className="mr-2 mb-0.5 inline-block size-4 shrink-0 text-secret-rotation" />
           Secret Sync{item.syncName && `: ${item.syncName}`}
-        </span>
+        </>
       );
     default:
       return null;
@@ -86,7 +86,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
   const projectBase = `/organizations/${currentOrg.id}/projects/secret-management/${currentProject.id}`;
 
-  const truncatePath = (path: string, maxLength = 24): string => {
+  const truncatePath = (path: string, maxLength = 54): string => {
     if (path.length <= maxLength) return path;
 
     const endPortion = path.slice(-(maxLength - 3));
@@ -238,13 +238,13 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       <UnstableTable containerClassName="max-h-64 overflow-y-auto">
         <UnstableTableHeader className="sticky -top-px z-10 bg-container [&_tr]:border-b-0">
           <UnstableTableRow>
-            <UnstableTableHead className="border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+            <UnstableTableHead className="w-1/4 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Resource
             </UnstableTableHead>
-            <UnstableTableHead className="border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+            <UnstableTableHead className="w-1/3 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Environment
             </UnstableTableHead>
-            <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+            <UnstableTableHead className="w-1/3 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Path
             </UnstableTableHead>
           </UnstableTableRow>
@@ -260,8 +260,12 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                   : `Navigate to ${item.path}`
               }
             >
-              <UnstableTableCell className="border-r">{getResourceLabel(item)}</UnstableTableCell>
-              <UnstableTableCell className="border-r">{item.environment.name}</UnstableTableCell>
+              <UnstableTableCell className="border-r" isTruncatable>
+                {getResourceLabel(item)}
+              </UnstableTableCell>
+              <UnstableTableCell isTruncatable className="border-r">
+                {item.environment.name}
+              </UnstableTableCell>
               <UnstableTableCell isTruncatable>{truncatePath(item.path)}</UnstableTableCell>
             </UnstableTableRow>
           ))}

@@ -231,6 +231,7 @@ export const pamWebAccessServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: account.name,
+          resourceType: resource.resourceType,
           metadata: accountMeta[account.id] || []
         })
       );

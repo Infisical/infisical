@@ -8,7 +8,7 @@ import {
   faTerminal
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useRouter } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { GavelIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -28,7 +28,8 @@ import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   ProjectPermissionActions,
   ProjectPermissionPamSessionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  useOrganization
 } from "@app/context";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -49,7 +50,8 @@ type Props = {
 };
 
 export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false);
 
@@ -95,7 +97,12 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
     <>
       <Tr
         className={twMerge("group h-10 cursor-pointer hover:bg-bunker-400/20")}
-        onClick={() => router.history.push(`/projects/pam/${projectId}/sessions/${id}`)}
+        onClick={() =>
+          navigate({
+            to: "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
+            params: { orgId: currentOrg.id, projectId, sessionId: id }
+          })
+        }
       >
         <Td>
           <div className="flex items-center gap-4">
@@ -176,7 +183,10 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
                         isDisabled={!isAllowed}
                         icon={<FontAwesomeIcon icon={faEdit} />}
                         onClick={() =>
-                          router.history.push(`/projects/pam/${projectId}/sessions/${id}`)
+                          navigate({
+                            to: "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
+                            params: { orgId: currentOrg.id, projectId, sessionId: id }
+                          })
                         }
                       >
                         View Session

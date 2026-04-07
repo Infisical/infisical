@@ -4,15 +4,70 @@ import picomatch from "picomatch";
 import { FormControl } from "../v2/FormControl";
 import { Input } from "../v2/Input";
 
+export const GlobPatternTooltip = () => (
+  <div className="space-y-1.5 text-left text-xs">
+    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
+    <div className="text-mineshaft-300">
+      <code className="text-yellow-500/80">*</code> matches a single path segment
+      <br />
+      <span className="text-mineshaft-400">
+        user/* matches user/admin but not user/admin/service
+      </span>
+    </div>
+    <div className="text-mineshaft-300">
+      <code className="text-yellow-500/80">**</code> matches zero or more segments at any depth
+      <br />
+      <span className="text-mineshaft-400">
+        user/** matches user/admin, user/admin/service, etc.
+      </span>
+    </div>
+  </div>
+);
+
+export const BashGlobPatternTooltip = () => (
+  <div className="space-y-1.5 text-left text-xs">
+    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
+    <p className="text-mineshaft-300">
+      <code className="text-yellow-500/80">*</code> matches any characters
+    </p>
+    <p>
+      <span className="text-mineshaft-400">
+        user/* matches user/admin, user/admin/service, etc.
+      </span>
+    </p>
+  </div>
+);
+
 export const GlobPermissionInfo = () => {
   const [pattern, setPattern] = useState("");
   const [text, setText] = useState("");
 
   return (
     <div>
-      <div className="mt-2">A glob pattern uses wildcards to match resources or paths.</div>
+      <div className="mt-2 space-y-1">
+        <p>A glob pattern uses special wildcard characters to match resources or paths:</p>
+        <ul className="list-disc pl-4 text-xs text-mineshaft-300">
+          <li>
+            <code>*</code> — matches any characters except <code>/</code> (e.g., <code>dev-*</code>{" "}
+            matches <code>dev-api</code>)
+          </li>
+          <li>
+            <code>**</code> — matches across multiple levels, including <code>/</code> (e.g.,{" "}
+            <code>/services/**</code>)
+          </li>
+          <li>
+            <code>?</code> — matches exactly one character (e.g., <code>db-?</code>)
+          </li>
+          <li>
+            <code>{"{a,b}"}</code> — matches either alternative
+          </li>
+        </ul>
+      </div>
       <div>
-        <FormControl label="Glob pattern" helperText="Examples: /{a,b}, DB_**">
+        <FormControl
+          label="Glob pattern"
+          helperText="Examples: dev-*, /services/**, config-?, {dev,staging}-*"
+        >
           <Input value={pattern} onChange={(e) => setPattern(e.target.value)} />
         </FormControl>
       </div>

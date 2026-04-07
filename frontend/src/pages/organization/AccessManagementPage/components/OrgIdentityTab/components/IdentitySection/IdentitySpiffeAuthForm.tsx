@@ -321,7 +321,7 @@ export const IdentitySpiffeAuthForm = ({
               >
                 <TextArea
                   {...field}
-                  placeholder="Comma-separated picomatch patterns (e.g. spiffe://example.org/ns/*/sa/*)"
+                  placeholder="Comma-separated list of SPIFFE IDs allowed to authenticate. Glob patterns supported: * matches a single path segment, ** matches across multiple segments (e.g. spiffe://example.org/ns/*/sa/admin, spiffe://example.org/workloads/**)"
                 />
               </FormControl>
             )}

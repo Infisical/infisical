@@ -1,6 +1,7 @@
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials, TPamResourceInternalMetadata } from "../pam-resource/pam-resource-types";
 import { SSHAuthMethod } from "../pam-resource/ssh/ssh-resource-enums";
 
@@ -65,6 +66,19 @@ export const decryptAccountMessage = async ({
   });
 
   return decryptedPlainTextBlob.toString();
+};
+
+// Returns false for account types where all credential fields are already visible in the sanitized view
+export const hasSensitiveCredentials = (resourceType: string, credentials: TPamAccountCredentials): boolean => {
+  if (resourceType === PamResource.AwsIam) return false;
+  if (resourceType === PamResource.Kubernetes) return false;
+  if (
+    resourceType === PamResource.SSH &&
+    "authMethod" in credentials &&
+    credentials.authMethod === SSHAuthMethod.Certificate
+  )
+    return false;
+  return true;
 };
 
 const hasConfiguredCredentials = (credentials: TPamAccountCredentials): boolean => {

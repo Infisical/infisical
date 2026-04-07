@@ -13,6 +13,7 @@ import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -20,6 +21,7 @@ import {
   createSerialNumber,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -27,9 +29,14 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
+import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
+import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
+import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
@@ -47,6 +54,13 @@ type TGatewayV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findByGatewayId" | "countByGatewayId">;
+  identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
+  aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -59,7 +73,14 @@ export const gatewayV2ServiceFactory = ({
   relayDAL,
   permissionService,
   orgDAL,
-  notificationService
+  notificationService,
+  appConnectionDAL,
+  dynamicSecretDAL,
+  pamResourceDAL,
+  pamDiscoverySourceDAL,
+  identityKubernetesAuthDAL,
+  aiMcpServerDAL,
+  pkiDiscoveryConfigDAL
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -266,7 +287,60 @@ export const gatewayV2ServiceFactory = ({
       orgId: orgPermission.orgId
     });
 
-    return gateways;
+    if (gateways.length === 0) {
+      return [];
+    }
+
+    const gatewayIds = gateways.map((g) => g.id);
+
+    const [
+      appConnectionsCounts,
+      dynamicSecretsCounts,
+      pamResourcesCounts,
+      pamDiscoverySourcesCounts,
+      kubernetesAuthsCounts,
+      mcpServersCounts,
+      pkiDiscoveryConfigsCounts
+    ] = await Promise.all([
+      Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pamResourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pamDiscoverySourceDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(
+        gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
+      ),
+      Promise.all(gatewayIds.map((id) => aiMcpServerDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
+    ]);
+
+    const countMap = new Map<string, number>();
+
+    for (const { id, count } of appConnectionsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of dynamicSecretsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamResourcesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamDiscoverySourcesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of kubernetesAuthsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of mcpServersCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pkiDiscoveryConfigsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+
+    return gateways.map((gateway) => ({
+      ...gateway,
+      connectedResourcesCount: countMap.get(gateway.id) ?? 0
+    }));
   };
 
   const getPlatformConnectionDetailsByGatewayId = async ({
@@ -969,6 +1043,61 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
+  const getConnectedResources = async ({
+    orgPermission,
+    gatewayId
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+  }) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const [
+      appConnections,
+      dynamicSecrets,
+      pamResources,
+      pamDiscoverySources,
+      kubernetesAuths,
+      mcpServers,
+      pkiDiscoveryConfigs
+    ] = await Promise.all([
+      appConnectionDAL.findByGatewayId(gatewayId),
+      dynamicSecretDAL.findByGatewayId(gatewayId),
+      pamResourceDAL.findByGatewayId(gatewayId),
+      pamDiscoverySourceDAL.findByGatewayId(gatewayId),
+      identityKubernetesAuthDAL.findByGatewayId(gatewayId),
+      aiMcpServerDAL.findByGatewayId(gatewayId),
+      pkiDiscoveryConfigDAL.findByGatewayId(gatewayId)
+    ]);
+
+    return {
+      appConnections,
+      dynamicSecrets,
+      pamResources,
+      pamDiscoverySources,
+      kubernetesAuths,
+      mcpServers,
+      pkiDiscoveryConfigs
+    };
+  };
+
   return {
     listGateways,
     registerGateway,
@@ -978,6 +1107,7 @@ export const gatewayV2ServiceFactory = ({
     heartbeat,
     triggerHeartbeat,
     getPamSessionKey,
-    healthcheckNotify
+    healthcheckNotify,
+    getConnectedResources
   };
 };
