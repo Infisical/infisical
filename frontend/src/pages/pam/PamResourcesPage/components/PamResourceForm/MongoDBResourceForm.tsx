@@ -104,8 +104,8 @@ export const MongoDBResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                         <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        Supports mongodb+srv:// and mongodb:// URIs, including comma-separated
-                        replica sets. Credentials and database are managed separately.
+                        Supports mongodb:// and mongodb+srv:// URIs. Do not include credentials or
+                        database in the URI.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
