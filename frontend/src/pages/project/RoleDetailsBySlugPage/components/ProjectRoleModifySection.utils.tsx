@@ -1785,6 +1785,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionPamAccountActions.Read]: action.includes(
           ProjectPermissionPamAccountActions.Read
         ),
+        [ProjectPermissionPamAccountActions.ReadCredentials]: action.includes(
+          ProjectPermissionPamAccountActions.ReadCredentials
+        ),
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
