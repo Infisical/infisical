@@ -61,12 +61,23 @@ Once all services are running, open **http://localhost:8080** in your browser. Y
 
 ### Optional services
 
-The dev compose file includes optional services you can uncomment:
+The dev compose file includes optional services gated behind Docker Compose profiles. To start them, pass `--profile` flags:
 
-- **OpenLDAP + phpLdapAdmin** (ports 389, 636, 6433) — for testing LDAP authentication
-- **Keycloak** (port 8088) — for testing OIDC/SAML SSO flows
-- **Prometheus + Grafana** (ports 9090, 3005) — metrics and monitoring
-- **OpenTelemetry Collector** — distributed tracing
+```bash
+# LDAP testing (OpenLDAP + phpLdapAdmin on ports 389, 636, 6433)
+docker compose -f docker-compose.dev.yml --profile ldap up --build
+
+# SSO testing (Keycloak on port 8088)
+docker compose -f docker-compose.dev.yml --profile sso up --build
+
+# Metrics (Prometheus + Grafana on ports 9090, 3005)
+docker compose -f docker-compose.dev.yml --profile metrics up --build
+
+# OpenTelemetry Collector
+docker compose -f docker-compose.dev.yml --profile metrics-otel up --build
+```
+
+You can combine multiple profiles: `--profile ldap --profile sso`.
 
 ### Optional: OAuth login for dev
 

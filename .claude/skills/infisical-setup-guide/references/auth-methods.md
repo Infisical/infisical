@@ -48,7 +48,10 @@ CLIENT_ID_GITLAB_LOGIN=<your-gitlab-application-id>
 CLIENT_SECRET_GITLAB_LOGIN=<your-gitlab-application-secret>
 ```
 
-Each requires creating an OAuth application in the respective provider and setting the callback URL to `<SITE_URL>/api/v1/sso/<provider>/callback`.
+Each requires creating an OAuth application in the respective provider and setting the callback URL to the provider-specific route:
+- Google: `<SITE_URL>/api/v1/sso/google`
+- GitHub: `<SITE_URL>/api/v1/sso/github`
+- GitLab: `<SITE_URL>/api/v1/sso/gitlab`
 
 ## SAML 2.0 (Enterprise SSO)
 

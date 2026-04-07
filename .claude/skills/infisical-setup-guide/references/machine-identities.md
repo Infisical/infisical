@@ -202,7 +202,7 @@ Platform-agnostic authentication using any OpenID Connect identity provider. Par
 
 **Common OIDC providers:**
 - **GitHub Actions**: Uses GitHub's built-in OIDC token (`ACTIONS_ID_TOKEN_REQUEST_TOKEN`)
-- **GitLab CI**: Uses GitLab's `CI_JOB_JWT` or `id_tokens`
+- **GitLab CI**: Uses GitLab's `id_tokens` (configured per-job in `.gitlab-ci.yml`)
 - **Any OIDC-compliant provider**
 
 **API endpoint**: `POST /api/v1/auth/oidc-auth/login`
