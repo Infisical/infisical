@@ -270,7 +270,6 @@
     "snowflake-sdk": "^2.0.4",
     "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
-    "tldts": "^7.0.27",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.0",
