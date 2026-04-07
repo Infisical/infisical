@@ -18,9 +18,9 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
+import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
 import { decryptBatches, decryptSession } from "./pam-session-fns";
 import { TUpdateSessionLogsDTO, TUploadEventBatchDTO } from "./pam-session-types";
 
@@ -97,7 +97,11 @@ export const pamSessionServiceFactory = ({
     const batches = await pamSessionEventBatchDAL.findBySessionId(sessionId);
     if (batches.length > 0) {
       const logs = await decryptBatches(batches, session.projectId, kmsService);
-      return { session: { ...session, logs, encryptedLogsBlob: undefined } as unknown as Awaited<ReturnType<typeof decryptSession>> };
+      return {
+        session: { ...session, logs, encryptedLogsBlob: undefined } as unknown as Awaited<
+          ReturnType<typeof decryptSession>
+        >
+      };
     }
 
     return {
@@ -305,6 +309,23 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
+    const project = await projectDAL.findById(session.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
     if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });
     }
@@ -318,7 +339,7 @@ export const pamSessionServiceFactory = ({
 
     await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
 
-    return { projectId: session.projectId };
+    return { projectId: project.id };
   };
 
   return { getById, list, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };
