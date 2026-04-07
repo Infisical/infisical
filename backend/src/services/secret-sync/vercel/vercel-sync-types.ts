@@ -38,3 +38,16 @@ export interface VercelApiSecret {
 }
 
 export type DefaultVercelEnvType = (typeof VercelEnvironmentType)[keyof typeof VercelEnvironmentType];
+
+export interface VercelSharedEnvVar {
+  id: string;
+  key: string;
+  value: string;
+  type: string;
+  target: string[];
+  projectId?: string[];
+  decrypted?: boolean;
+  comment?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
