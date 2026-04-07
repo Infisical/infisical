@@ -214,6 +214,7 @@ import {
   SecretImportTableRow,
   SecretNoAccessTableRow,
   SecretRotationTableRow,
+  SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
 
@@ -2443,6 +2444,7 @@ const OverviewPageContent = () => {
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
                   />
                 )}
+                {!isSingleEnvView && <SecretSyncStatusBadgeOverview />}
               </div>
             </div>
           </UnstableCardHeader>
@@ -2562,6 +2564,7 @@ const OverviewPageContent = () => {
                           : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                       </TooltipContent>
                     </Tooltip>
+                    <SecretSyncStatusBadgeOverview />
                   </div>
                 )}
                 <SecretDropzone
@@ -2799,6 +2802,7 @@ const OverviewPageContent = () => {
                                       : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                                   </TooltipContent>
                                 </Tooltip>
+                                <SecretSyncStatusBadgeOverview />
                               </div>
                             </div>
                           </UnstableTableHead>
