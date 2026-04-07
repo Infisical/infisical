@@ -16,7 +16,10 @@ import {
   KubernetesAccountCredentialsSchema,
   SanitizedKubernetesAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
-import { SanitizedMongoDBAccountWithResourceSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
+  MongoDBAccountCredentialsSchema,
+  SanitizedMongoDBAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import {
   MsSQLAccountCredentialsSchema,
   SanitizedMsSQLAccountWithResourceSchema
@@ -98,6 +101,10 @@ const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.MsSQL),
     credentials: MsSQLAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MongoDB),
+    credentials: MongoDBAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.SSH),

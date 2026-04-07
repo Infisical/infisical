@@ -218,6 +218,7 @@ const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
     case PamResourceType.Postgres:
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
+    case PamResourceType.MongoDB:
     case PamResourceType.Redis:
     case PamResourceType.Windows:
     case PamResourceType.ActiveDirectory:
