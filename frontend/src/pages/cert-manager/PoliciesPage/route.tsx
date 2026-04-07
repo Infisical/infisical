@@ -5,7 +5,13 @@ import { z } from "zod";
 import { PoliciesPage } from "./PoliciesPage";
 
 const policiesPageSearchSchema = z.object({
-  selectedTab: z.string().optional().default("certificates")
+  selectedTab: z.string().optional().default("certificates"),
+  filterStatus: z.string().optional(),
+  filterEnrollmentType: z.string().optional(),
+  filterKeyAlgorithm: z.string().optional(),
+  filterCaId: z.string().optional(),
+  filterExpiresDays: z.string().optional(),
+  filterExpiresAfterDays: z.string().optional()
 });
 
 export const Route = createFileRoute(

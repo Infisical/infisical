@@ -8,12 +8,25 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import {
+  CertKeyAlgorithm,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
   TGetCertificateCredentialsDTO,
   TParsedCertificateBody
 } from "./certificate-types";
+
+export const keySizeToAlgorithms = (keySize: number): string[] => {
+  const map: Record<number, string[]> = {
+    2048: [CertKeyAlgorithm.RSA_2048],
+    3072: [CertKeyAlgorithm.RSA_3072],
+    4096: [CertKeyAlgorithm.RSA_4096],
+    256: [CertKeyAlgorithm.ECDSA_P256],
+    384: [CertKeyAlgorithm.ECDSA_P384],
+    521: [CertKeyAlgorithm.ECDSA_P521]
+  };
+  return map[keySize] ?? [];
+};
 
 export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
   switch (crlReason) {

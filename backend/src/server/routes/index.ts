@@ -251,6 +251,8 @@ import { certificateCleanupConfigDALFactory } from "@app/services/certificate-cl
 import { certificateCleanupQueueFactory } from "@app/services/certificate-cleanup/certificate-cleanup-queue";
 import { certificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { certificateInventoryViewDALFactory } from "@app/services/certificate-inventory-view/certificate-inventory-view-dal";
+import { certificateInventoryViewServiceFactory } from "@app/services/certificate-inventory-view/certificate-inventory-view-service";
 import { certificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { certificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -1241,6 +1243,7 @@ export const registerRoutes = async (
   const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
   const acmeChallengeDAL = pkiAcmeChallengeDALFactory(db);
   const certificateCleanupConfigDAL = certificateCleanupConfigDALFactory(db);
+  const certificateInventoryViewDAL = certificateInventoryViewDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -2069,6 +2072,11 @@ export const registerRoutes = async (
 
   const certificateCleanupService = certificateCleanupServiceFactory({
     certificateCleanupConfigDAL,
+    permissionService
+  });
+
+  const certificateInventoryViewService = certificateInventoryViewServiceFactory({
+    certificateInventoryViewDAL,
     permissionService
   });
 
@@ -3074,6 +3082,7 @@ export const registerRoutes = async (
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
     certificateCleanup: certificateCleanupService,
+    certificateInventoryView: certificateInventoryViewService,
     certificateV3: certificateV3Service,
     certificateRequest: certificateRequestService,
     certificateEstV3: certificateEstV3Service,

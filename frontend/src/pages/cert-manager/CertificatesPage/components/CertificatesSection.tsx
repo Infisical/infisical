@@ -1,10 +1,9 @@
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ArrowRightIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import { Button, DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -24,12 +23,15 @@ import { CertificatesTable } from "./CertificatesTable";
 
 type CertificatesSectionProps = {
   externalFilter?: {
-    certificateId?: string;
     search?: string;
   };
+  dashboardFilters?: import("./inventory-types").FilterRule[];
 };
 
-export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps) => {
+export const CertificatesSection = ({
+  externalFilter,
+  dashboardFilters
+}: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
@@ -98,9 +100,9 @@ export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps
           text: "PKCS12 certificate downloaded successfully",
           type: "success"
         });
-      } catch (error: any) {
+      } catch (error) {
         createNotification({
-          text: error?.message || "Failed to download PKCS12 certificate",
+          text: error instanceof Error ? error.message : "Failed to download PKCS12 certificate",
           type: "error"
         });
       }
@@ -110,9 +112,14 @@ export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+        <div>
+          <div className="flex items-center gap-x-2">
+            <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            View, filter, and manage all certificates across your project.
+          </p>
         </div>
         <div className="flex gap-2">
           <ProjectPermissionCan
@@ -121,18 +128,22 @@ export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps
           >
             {(isAllowed) => (
               <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
+                variant="outline"
                 onClick={() => handlePopUpOpen("certificateImport")}
-                isDisabled={!isAllowed}
+                disabled={!isAllowed}
               >
+                <ArrowRightIcon className="mr-1.5 size-4" />
                 Import
               </Button>
             )}
           </ProjectPermissionCan>
         </div>
       </div>
-      <CertificatesTable handlePopUpOpen={handlePopUpOpen} externalFilter={externalFilter} />
+      <CertificatesTable
+        handlePopUpOpen={handlePopUpOpen}
+        externalFilter={externalFilter}
+        dashboardFilters={dashboardFilters}
+      />
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateExportModal

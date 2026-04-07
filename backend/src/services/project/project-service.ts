@@ -91,6 +91,8 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TGetActivityTrendDTO,
+  TGetDashboardStatsDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
   TGetProjectSshConfig,
@@ -119,6 +121,8 @@ import {
   TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
 } from "./project-types";
+
+const DASHBOARD_CACHE_TTL = 300;
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -162,6 +166,8 @@ type TProjectServiceFactoryDep = {
     | "findWithPrivateKeyInfo"
     | "findActiveCertificatesForSync"
     | "countActiveCertificatesForSync"
+    | "getDashboardStats"
+    | "getActivityTrend"
   >;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
@@ -176,7 +182,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -1212,6 +1218,19 @@ export const projectServiceFactory = ({
     toDate,
     metadataFilter,
     extendedKeyUsage,
+    keyAlgorithm,
+    signatureAlgorithm,
+    keySize,
+    keySizes,
+    caIds,
+    enrollmentTypes,
+    source,
+    notAfterFrom,
+    notAfterTo,
+    notBeforeFrom,
+    notBeforeTo,
+    sortBy,
+    sortOrder,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1240,18 +1259,43 @@ export const projectServiceFactory = ({
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName }),
       ...(search && { search }),
-      ...(status && { status: Array.isArray(status) ? status[0] : status }),
+      ...(status && {
+        status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
+      }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
       ...(metadataFilter && { metadataFilter }),
-      ...(extendedKeyUsage && { extendedKeyUsage })
+      ...(extendedKeyUsage && { extendedKeyUsage }),
+      ...(keyAlgorithm && { keyAlgorithm }),
+      ...(signatureAlgorithm && { signatureAlgorithm }),
+      ...(keySize && { keySize }),
+      ...(keySizes && keySizes.length > 0 && { keySizes }),
+      ...(caIds && { caIds }),
+      ...(enrollmentTypes && { enrollmentTypes }),
+      ...(source && { source }),
+      ...(notAfterFrom && { notAfterFrom }),
+      ...(notAfterTo && { notAfterTo }),
+      ...(notBeforeFrom && { notBeforeFrom }),
+      ...(notBeforeTo && { notBeforeTo })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
+
+    const ALLOWED_SORT_COLUMNS = new Set([
+      "notAfter",
+      "notBefore",
+      "createdAt",
+      "commonName",
+      "serialNumber",
+      "keyAlgorithm",
+      "status"
+    ]);
+    const validatedSortBy = sortBy && ALLOWED_SORT_COLUMNS.has(sortBy) ? sortBy : "notAfter";
+    const validatedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
     const certificates = forPkiSync
       ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
@@ -1260,7 +1304,7 @@ export const projectServiceFactory = ({
           {
             offset,
             limit,
-            sort: [["notAfter", "desc"]]
+            sort: [[validatedSortBy, validatedSortOrder]]
           },
           permissionFilters
         );
@@ -1270,22 +1314,101 @@ export const projectServiceFactory = ({
       ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
       ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
       ...(regularFilters.search && { search: String(regularFilters.search) }),
-      ...(regularFilters.status && { status: String(regularFilters.status) }),
+      ...(regularFilters.status && { status: regularFilters.status }),
       ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
       ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
       ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
       ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
-      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) })
+      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
+      ...(regularFilters.keyAlgorithm && { keyAlgorithm: String(regularFilters.keyAlgorithm) }),
+      ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
+      ...(regularFilters.keySize && { keySize: regularFilters.keySize }),
+      ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
+      ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
+      ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
+      ...(regularFilters.source && { source: String(regularFilters.source) }),
+      ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
+      ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
+      ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
+      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo })
     };
 
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(countFilter)
-      : await certificateDAL.countCertificatesInProject(countFilter);
+      : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
 
     return {
       certificates,
       totalCount: count
     };
+  };
+
+  const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const cacheKey = KeyStorePrefixes.CertDashboardStats(projectId);
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getDashboardStats>>;
+    }
+
+    const stats = await certificateDAL.getDashboardStats(projectId);
+    await keyStore.setItemWithExpiry(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(stats));
+    return stats;
+  };
+
+  const getActivityTrend = async ({
+    filter,
+    range = "30d",
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor
+  }: TGetActivityTrendDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
+    const daysBack = rangeDaysMap[range];
+
+    const cacheKey = KeyStorePrefixes.CertActivityTrend(projectId, range);
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getActivityTrend>>;
+    }
+
+    const trend = await certificateDAL.getActivityTrend(projectId, daysBack);
+    await keyStore.setItemWithExpiry(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(trend));
+    return trend;
   };
 
   /**
@@ -2316,6 +2439,8 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    getDashboardStats,
+    getActivityTrend,
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,

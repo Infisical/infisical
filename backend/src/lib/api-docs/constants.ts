@@ -1025,7 +1025,20 @@ export const PROJECTS = {
     metadata:
       "Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against.",
     extendedKeyUsage:
-      "Filter by extended key usage. Only certificates containing this EKU will be returned (e.g. 'codeSigning', 'serverAuth')."
+      "Filter by extended key usage. Only certificates containing this EKU will be returned (e.g. 'codeSigning', 'serverAuth').",
+    keyAlgorithm: "Filter by key algorithm (e.g. 'RSA_2048', 'EC_prime256v1').",
+    signatureAlgorithm: "Filter by signature algorithm (e.g. 'RSA-SHA256', 'ECDSA-SHA256').",
+    keySize: "Filter by key size in bits (e.g. 2048, 4096, 256).",
+    keySizes: "Filter by multiple key sizes in bits (e.g. [2048, 4096]).",
+    caIds: "Filter by certificate authority IDs.",
+    enrollmentTypes: "Filter by enrollment types (e.g. 'api', 'est', 'acme', 'scep').",
+    source: "Filter by certificate source ('issued', 'discovered', 'imported').",
+    notAfterFrom: "Filter certificates expiring on or after this date.",
+    notAfterTo: "Filter certificates expiring on or before this date.",
+    notBeforeFrom: "Filter certificates issued on or after this date.",
+    notBeforeTo: "Filter certificates issued on or before this date.",
+    sortBy: "Column to sort by (e.g. 'notAfter', 'notBefore', 'commonName').",
+    sortOrder: "Sort direction: 'asc' or 'desc'."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
