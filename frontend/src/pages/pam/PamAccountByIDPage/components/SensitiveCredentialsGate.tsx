@@ -1,0 +1,104 @@
+import React from "react";
+import { subject } from "@casl/ability";
+import { EyeIcon, LoaderCircleIcon } from "lucide-react";
+
+import { ProjectPermissionCan } from "@app/components/permissions";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
+
+import { type RevealState } from "./useCredentialsReveal";
+
+type Props = {
+  state: RevealState;
+  accountName: string;
+  resourceName: string;
+  resourceType: string;
+  metadata?: { key: string; value: string }[];
+  onReveal: () => void;
+  onReset: () => void;
+  children: React.ReactNode;
+};
+
+const ButtonContent = ({ state }: { state: RevealState }) => {
+  if (state.status === "loading") {
+    return <LoaderCircleIcon className="animate-spin" />;
+  }
+
+  if (state.status === "mfa-verifying") {
+    return (
+      <>
+        <LoaderCircleIcon className="animate-spin" />
+        Waiting for MFA...
+      </>
+    );
+  }
+
+  return (
+    <>
+      <EyeIcon />
+      View Credentials
+    </>
+  );
+};
+
+export const SensitiveCredentialsGate = ({
+  state,
+  accountName,
+  resourceName,
+  resourceType,
+  metadata,
+  onReveal,
+  onReset,
+  children
+}: Props) => {
+  if (state.status === "revealed") {
+    return <div>{children}</div>;
+  }
+
+  const isMfaVerifying = state.status === "mfa-verifying";
+  const isLoading = state.status === "loading";
+
+  return (
+    <div className="flex flex-col gap-2">
+      <ProjectPermissionCan
+        I={ProjectPermissionPamAccountActions.ReadCredentials}
+        a={subject(ProjectPermissionSub.PamAccounts, {
+          resourceName,
+          resourceType,
+          accountName,
+          metadata: metadata ?? []
+        })}
+      >
+        {(isAllowed) => (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="w-full">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="relative"
+                  isFullWidth
+                  isDisabled={!isAllowed || isLoading || isMfaVerifying}
+                  onClick={onReveal}
+                >
+                  <ButtonContent state={state} />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!isAllowed && (
+              <TooltipContent side="right">
+                You do not have permission to view credentials
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
+      </ProjectPermissionCan>
+      {isMfaVerifying && (
+        <Button variant="ghost" size="xs" isFullWidth onClick={onReset}>
+          Cancel
+        </Button>
+      )}
+    </div>
+  );
+};

@@ -64,13 +64,19 @@ import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
-import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
+import {
+  decryptAccount,
+  decryptAccountCredentials,
+  encryptAccountCredentials,
+  hasSensitiveCredentials
+} from "./pam-account-fns";
 import {
   TAccessAccountDTO,
   TCreateAccountDTO,
   TGetAccountByIdDTO,
   TListAccountsDTO,
-  TUpdateAccountDTO
+  TUpdateAccountDTO,
+  TViewAccountCredentialsDTO
 } from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
@@ -1379,6 +1385,113 @@ export const pamAccountServiceFactory = ({
     };
   };
 
+  const viewCredentials = async ({
+    accountId,
+    mfaSessionId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TViewAccountCredentialsDTO) => {
+    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accountWithResource.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
+    const accountMetadata = metadataByAccountId[accountWithResource.id] || [];
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.ReadCredentials,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: accountWithResource.resource.name,
+        resourceType: accountWithResource.resource.resourceType,
+        accountName: accountWithResource.name,
+        metadata: accountMetadata
+      })
+    );
+
+    // Decrypt early so we can check if there are sensitive fields before triggering MFA
+    const credentials = await decryptAccountCredentials({
+      encryptedCredentials: accountWithResource.encryptedCredentials,
+      kmsService,
+      projectId: accountWithResource.projectId
+    });
+
+    if (!hasSensitiveCredentials(accountWithResource.resource.resourceType, credentials)) {
+      throw new BadRequestError({ message: "This account has no sensitive credentials to view" });
+    }
+
+    if (!mfaSessionId && accountWithResource.requireMfa) {
+      const project = await projectDAL.findById(accountWithResource.projectId);
+      if (!project)
+        throw new NotFoundError({ message: `Project with ID '${accountWithResource.projectId}' not found` });
+
+      const actorUser = await userDAL.findById(actorId);
+      if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+
+      const org = await orgDAL.findOrgById(project.orgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
+      const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actorUser.id, accountWithResource.id, mfaMethod);
+
+      if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
+        await mfaSessionService.sendMfaCode(actorUser.id, actorUser.email);
+      }
+
+      throw new BadRequestError({
+        message: "MFA verification required to view PAM account credentials",
+        name: "SESSION_MFA_REQUIRED",
+        details: {
+          mfaSessionId: newMfaSessionId,
+          mfaMethod
+        }
+      });
+    }
+
+    if (mfaSessionId && accountWithResource.requireMfa) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
+        throw new BadRequestError({ message: "MFA session not found or expired" });
+      }
+
+      if (mfaSession.userId !== actorId) {
+        throw new BadRequestError({ message: "MFA session does not belong to current user" });
+      }
+
+      if (mfaSession.resourceId !== accountWithResource.id) {
+        throw new BadRequestError({ message: "MFA session is for a different account" });
+      }
+
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({ message: "MFA session is not active. Please complete MFA verification first." });
+      }
+
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    }
+
+    return {
+      credentials,
+      resourceType: accountWithResource.resource.resourceType,
+      accountId: accountWithResource.id,
+      accountName: accountWithResource.name,
+      resourceId: accountWithResource.resource.id,
+      resourceName: accountWithResource.resource.name,
+      projectId: accountWithResource.projectId
+    };
+  };
+
   return {
     create,
     updateById,
@@ -1386,6 +1499,7 @@ export const pamAccountServiceFactory = ({
     list,
     getById,
     access,
+    viewCredentials,
     getSessionCredentials,
     rotateAllDueAccounts,
     triggerManualRotation
