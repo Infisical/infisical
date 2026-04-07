@@ -652,6 +652,7 @@ export const pamDiscoverySourceServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
         accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType,
         metadata: accountMetadata
       })
     );
@@ -735,7 +736,7 @@ export const pamDiscoverySourceServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name })
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType })
     );
 
     const deps = await pamAccountDependenciesDAL.findByResourceId(resourceId);

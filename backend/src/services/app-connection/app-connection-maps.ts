@@ -54,7 +54,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.CircleCI]: "CircleCI",
   [AppConnection.AzureEntraId]: "Azure Entra ID",
   [AppConnection.Venafi]: "Venafi TLS Protect Cloud",
-  [AppConnection.ExternalInfisical]: "Infisical"
+  [AppConnection.ExternalInfisical]: "Infisical",
+  [AppConnection.NetScaler]: "NetScaler"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -111,5 +112,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
   [AppConnection.AzureEntraId]: AppConnectionPlanType.Regular,
   [AppConnection.Venafi]: AppConnectionPlanType.Regular,
-  [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular
+  [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
+  [AppConnection.NetScaler]: AppConnectionPlanType.Regular
 };

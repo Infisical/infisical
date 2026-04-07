@@ -1,0 +1,107 @@
+---
+title: "NetScaler Connection"
+description: "Learn how to configure a NetScaler Connection for Infisical."
+---
+
+Infisical supports connecting to Citrix NetScaler (ADC) appliances using basic authentication credentials for managing SSL certificates via the NITRO REST API.
+
+## Setup
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Gather NetScaler Credentials">
+        You will need the following from your NetScaler appliance:
+
+        - **Hostname**: The management IP address or FQDN of your NetScaler appliance (e.g., `192.168.1.100` or `netscaler.example.com`).
+        - **Port**: The HTTPS management port (default: `443`).
+        - **Username**: A user with administrative access to manage SSL certificates (e.g., `nsroot`).
+        - **Password**: The password for the user account.
+
+        <Note>
+          The user account must have permissions to:
+          - Upload files to `/nsconfig/ssl/`
+          - Create and manage `sslcertkey` objects
+          - Bind certificates to SSL virtual servers (if vServer binding is used)
+          - Save the running configuration
+        </Note>
+      </Step>
+      <Step title="Navigate to App Connections">
+        In the Infisical dashboard, navigate to **Organization Settings** > **App Connections** and click **Add Connection**.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select NetScaler">
+        Select the **NetScaler** option from the list of available connections.
+
+        ![Select NetScaler Connection](/images/app-connections/netscaler/select-netscaler-connection.png)
+      </Step>
+      <Step title="Fill in Connection Details">
+        Fill in the **Configuration** tab:
+
+        - **Hostname**: The management IP or FQDN of the NetScaler appliance.
+        - **Username**: The NetScaler management username.
+        - **Password**: The password for the management user.
+        - **Port** (Optional): HTTPS port for the management interface (default: `443`).
+
+        Configure the **SSL** tab:
+
+        - **SSL Certificate** (Optional): A CA certificate in PEM format to verify the NetScaler management interface's TLS certificate.
+        - **Reject Unauthorized**: When enabled, Infisical will only connect if the NetScaler has a valid, trusted TLS certificate. Disable for self-signed certificates or provide a CA certificate.
+
+        Optionally select a **Gateway** to route the connection through an Infisical Gateway for private network access.
+
+        ![NetScaler Connection Form](/images/app-connections/netscaler/netscaler-connection-form.png)
+
+        Click **Connect to NetScaler** to validate and save your connection.
+      </Step>
+      <Step title="Connection Created">
+        Your NetScaler Connection is now available for use with certificate syncs.
+
+        ![NetScaler Connection Created](/images/app-connections/netscaler/netscaler-connection-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a NetScaler Connection, make an API request to the [Create App Connection](/api-reference/endpoints/app-connections/netscaler/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/netscaler \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-netscaler-connection",
+        "method": "basic-auth",
+        "credentials": {
+          "hostname": "netscaler.example.com",
+          "port": 443,
+          "username": "nsroot",
+          "password": "your-password",
+          "sslRejectUnauthorized": false
+        }
+      }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+      "appConnection": {
+        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "name": "my-netscaler-connection",
+        "app": "netscaler",
+        "method": "basic-auth",
+        "credentials": {
+          "hostname": "netscaler.example.com",
+          "port": 443,
+          "username": "nsroot",
+          "sslRejectUnauthorized": false
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

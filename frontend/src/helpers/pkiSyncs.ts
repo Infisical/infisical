@@ -31,6 +31,10 @@ export const PKI_SYNC_MAP: Record<
   [PkiSync.CloudflareCustomCertificate]: {
     name: "Cloudflare Custom SSL",
     image: "Cloudflare.png"
+  },
+  [PkiSync.NetScaler]: {
+    name: "NetScaler",
+    image: "NetScaler.png"
   }
 };
 
@@ -40,5 +44,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef,
-  [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare
+  [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
+  [PkiSync.NetScaler]: AppConnection.NetScaler
 };
