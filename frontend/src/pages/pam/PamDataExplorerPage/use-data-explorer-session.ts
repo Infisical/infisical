@@ -406,6 +406,7 @@ export const useDataExplorerSession = ({
       rows: Record<string, unknown>[];
       fields: FieldInfo[];
       rowCount: number | null;
+      isTruncated: boolean;
       command: string;
       executionTimeMs: number;
     }> => {
@@ -417,6 +418,7 @@ export const useDataExplorerSession = ({
         rows: resp.rows,
         fields: resp.fields,
         rowCount: resp.rowCount,
+        isTruncated: resp.isTruncated,
         command: resp.command,
         executionTimeMs: resp.executionTimeMs
       };

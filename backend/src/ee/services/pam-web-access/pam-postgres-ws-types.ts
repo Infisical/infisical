@@ -139,6 +139,7 @@ const QueryResultResponseSchema = CorrelatedBaseSchema.extend({
     })
   ),
   rowCount: z.number().nullable(),
+  isTruncated: z.boolean(),
   command: z.string(),
   executionTimeMs: z.number()
 });

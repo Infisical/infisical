@@ -6,6 +6,7 @@ const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("
 
 type QueryResult = {
   rowCount: number | null;
+  isTruncated: boolean;
   command: string;
   executionTimeMs: number;
 };
@@ -83,7 +84,9 @@ export function QueryToolbar({
       {!isRunning && result && !error && (
         <span className="ml-auto text-xs text-mineshaft-400">
           {result.rowCount != null
-            ? `${result.rowCount} row${result.rowCount !== 1 ? "s" : ""}`
+            ? result.isTruncated
+              ? `Showing 1,000 of ${result.rowCount.toLocaleString()} rows`
+              : `${result.rowCount} row${result.rowCount !== 1 ? "s" : ""}`
             : result.command}
           {" · "}
           {result.executionTimeMs}ms

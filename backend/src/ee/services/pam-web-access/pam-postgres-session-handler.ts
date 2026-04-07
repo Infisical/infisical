@@ -238,12 +238,15 @@ export const handlePostgresSession = async (
               const executionTimeMs = Math.round(performance.now() - startTime);
               const MAX_ROWS = 1000;
               const result = Array.isArray(rawResult) ? rawResult[rawResult.length - 1] : rawResult;
+              const allRows = result.rows ?? [];
+              const isTruncated = allRows.length > MAX_ROWS;
               sendResponse({
                 type: PostgresServerMessageType.QueryResult,
                 id: message.id,
-                rows: (result.rows ?? []).slice(0, MAX_ROWS),
+                rows: allRows.slice(0, MAX_ROWS),
                 fields: (result.fields ?? []).map((f) => ({ name: f.name })),
                 rowCount: result.rowCount,
+                isTruncated,
                 command: result.command ?? "",
                 executionTimeMs
               });
