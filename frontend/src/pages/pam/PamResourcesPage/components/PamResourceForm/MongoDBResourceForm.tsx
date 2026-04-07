@@ -32,7 +32,49 @@ type Props = {
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.MongoDB),
   connectionDetails: z.object({
-    connectionString: z.string().trim().min(1, "Connection string required"),
+    connectionString: z
+      .string()
+      .trim()
+      .min(1, "Connection string required")
+      .superRefine((val, ctx) => {
+        let url: URL;
+        try {
+          url = new URL(val);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+          });
+          return;
+        }
+
+        if (url.protocol !== "mongodb:" && url.protocol !== "mongodb+srv:") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
+          });
+          return;
+        }
+
+        if (url.username || url.password) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Credentials should not be included in the connection string — they are managed separately per account"
+          });
+          return;
+        }
+
+        if (url.pathname && url.pathname !== "/") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "Database should not be included in the connection string — use the Database field instead"
+          });
+        }
+      }),
     database: z.string().trim().min(1, "Database required").default("admin"),
     sslEnabled: z.boolean().default(true),
     sslRejectUnauthorized: z.boolean().default(true),
