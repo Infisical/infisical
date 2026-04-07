@@ -138,8 +138,12 @@ const SensitiveField = ({ label, value }: { label: string; value: string }) => {
   });
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied("copied");
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied("copied");
+    } catch {
+      createNotification({ type: "error", text: "Failed to copy to clipboard." });
+    }
   };
 
   return (
@@ -170,8 +174,12 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
   });
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied("copied");
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied("copied");
+    } catch {
+      createNotification({ type: "error", text: "Failed to copy to clipboard." });
+    }
   };
 
   return (
