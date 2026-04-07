@@ -108,7 +108,13 @@ In the following steps, we explore how to create and use identities to access th
 
     **Common fields for both configurations:**
     - **Trust Domain (required):** The SPIFFE trust domain that authenticating workloads must belong to (e.g. `example.org` or `prod.example.com`).
-    - **Allowed SPIFFE IDs (required):** A comma-separated list of SPIFFE ID patterns that are permitted to authenticate. Supports [picomatch](https://github.com/micromatch/picomatch) glob patterns (e.g. `spiffe://example.org/ns/production/**`, `spiffe://example.org/ns/*/sa/my-service`).
+    - **Allowed SPIFFE IDs (required):** A comma-separated list of SPIFFE ID patterns that are permitted to authenticate. Supports [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/). Note that `*` matches within a single path segment (does not cross `/`), while `**` matches across multiple segments.
+
+      | Pattern | Matches | Does not match |
+      |---------|---------|----------------|
+      | `spiffe://example.org/ns/*/sa/my-service` | `spiffe://example.org/ns/production/sa/my-service` | `spiffe://example.org/ns/a/b/sa/my-service` |
+      | `spiffe://example.org/ns/production/**` | `spiffe://example.org/ns/production/sa/web`, `spiffe://example.org/ns/production/sa/api` | `spiffe://example.org/ns/staging/sa/web` |
+      | `spiffe://example.org/ns/{dev,staging}/**` | `spiffe://example.org/ns/dev/sa/web`, `spiffe://example.org/ns/staging/sa/api` | `spiffe://example.org/ns/production/sa/web` |
     - **Allowed Audiences (required):** A comma-separated list of allowed audience values. The JWT-SVID's `aud` claim must contain at least one of these values.
     - **Access Token TTL (default is `2592000` equivalent to 30 days):** The lifetime for an access token in seconds. This value will be referenced at renewal time.
     - **Access Token Max TTL (default is `2592000` equivalent to 30 days):** The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
