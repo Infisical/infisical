@@ -78,7 +78,8 @@ export const PamDataExplorerPage = () => {
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
-    executeQuery
+    executeQuery,
+    cancelQuery
   } = useDataExplorerSession({
     accountId,
     projectId,
@@ -501,6 +502,7 @@ export const PamDataExplorerPage = () => {
               <QueryPanel
                 tab={tab}
                 executeQuery={executeQuery}
+                cancelQuery={cancelQuery}
                 tableDetail={tableDetail}
                 onSqlChange={(sql) => updateTabSql(tab.id, sql)}
               />

@@ -19,15 +19,22 @@ type QueryResult = {
 type Props = {
   tab: QueryTab;
   executeQuery: (sql: string) => Promise<QueryResult>;
+  cancelQuery: () => void;
   tableDetail: TableDetail | null;
   onSqlChange: (sql: string) => void;
 };
 
-export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Props) {
+const TRANSACTION_START_COMMANDS = new Set(["BEGIN", "START"]);
+const TRANSACTION_END_COMMANDS = new Set(["COMMIT", "ROLLBACK"]);
+
+export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, onSqlChange }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isInTransaction, setIsInTransaction] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  const sqlToRunRef = useRef<string>(tab.sql);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const editorPaneRef = useRef<HTMLDivElement>(null);
@@ -39,12 +46,14 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
     }
   }, []);
 
-  const handleRun = async () => {
-    if (!tab.sql.trim() || isRunning) return;
+  const runSql = async (sqlToRun: string) => {
     setIsRunning(true);
     setError(null);
     try {
-      const res = await executeQuery(tab.sql);
+      const res = await executeQuery(sqlToRun);
+      const cmd = res.command.toUpperCase();
+      if (TRANSACTION_START_COMMANDS.has(cmd)) setIsInTransaction(true);
+      if (TRANSACTION_END_COMMANDS.has(cmd)) setIsInTransaction(false);
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -52,6 +61,20 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
     } finally {
       setIsRunning(false);
     }
+  };
+
+  const handleRun = async (sqlToRun?: string) => {
+    const query = sqlToRun ?? sqlToRunRef.current;
+    if (!query.trim() || isRunning) return;
+    await runSql(query);
+  };
+
+  const handleCommit = async () => {
+    await runSql("COMMIT");
+  };
+
+  const handleRollback = async () => {
+    await runSql("ROLLBACK");
   };
 
   useEffect(() => {
@@ -79,13 +102,31 @@ export function QueryPanel({ tab, executeQuery, tableDetail, onSqlChange }: Prop
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <QueryToolbar isRunning={isRunning} result={result} error={error} onRun={handleRun} />
+      <QueryToolbar
+        isRunning={isRunning}
+        result={result}
+        error={error}
+        isInTransaction={isInTransaction}
+        hasSelection={hasSelection}
+        onRun={handleRun}
+        onCommit={handleCommit}
+        onRollback={handleRollback}
+        onCancel={cancelQuery}
+      />
       <div
         ref={containerRef}
         className={cn("flex flex-1 flex-col overflow-hidden", isDragging && "select-none")}
       >
         <div ref={editorPaneRef} className="min-h-0 overflow-hidden">
-          <SqlEditor value={tab.sql} onChange={onSqlChange} onExecute={handleRun} />
+          <SqlEditor
+            value={tab.sql}
+            onChange={onSqlChange}
+            onExecute={(s) => handleRun(s)}
+            onSelectionChange={setHasSelection}
+            onSqlToRunChange={(s) => {
+              sqlToRunRef.current = s;
+            }}
+          />
         </div>
 
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}

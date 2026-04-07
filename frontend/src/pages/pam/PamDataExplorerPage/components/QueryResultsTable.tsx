@@ -138,10 +138,20 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
       UPDATE: "updated",
       DELETE: "deleted"
     };
+    const staticMessage: Record<string, string> = {
+      BEGIN: "Transaction started",
+      COMMIT: "Transaction committed",
+      ROLLBACK: "Transaction rolled back"
+    };
 
-    const message = verb[cmdUpper]
-      ? `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`
-      : "No rows returned";
+    let message: string;
+    if (staticMessage[cmdUpper]) {
+      message = staticMessage[cmdUpper];
+    } else if (verb[cmdUpper]) {
+      message = `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`;
+    } else {
+      message = "No rows returned";
+    }
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">

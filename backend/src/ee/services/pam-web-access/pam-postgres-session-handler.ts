@@ -60,6 +60,9 @@ export const handlePostgresSession = async (
 
   await pgClient.connect();
 
+  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
+  const backendPid = pidRows[0]?.pid;
+
   const repl = createPamSqlRepl(pgClient);
 
   sendMessage({
@@ -101,13 +104,45 @@ export const handlePostgresSession = async (
     });
   };
 
+  // Cancel the currently running query via pg_cancel_backend.
+  // Runs on a separate connection so it is not blocked by the sequential queue.
+  const cancelRunningQuery = async () => {
+    if (!backendPid) return;
+    const pid = backendPid;
+    const cancelClient = new pg.Client({
+      host: "localhost",
+      port: relayPort,
+      user: credentials.username,
+      database: connectionDetails.database,
+      password: "",
+      ssl: false,
+      connectionTimeoutMillis: 5_000
+    });
+    try {
+      await cancelClient.connect();
+      await cancelClient.query("SELECT pg_cancel_backend($1)", [pid]);
+    } catch (err) {
+      logger.debug(err, "Failed to cancel backend query");
+    } finally {
+      await cancelClient.end().catch(() => {});
+    }
+  };
+
   // Sequential message processing to prevent concurrent query issues
   let processingPromise = Promise.resolve();
 
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
+    const message = parseClientMessage(rawData, PostgresClientMessageSchema);
+
+    // Cancel is handled immediately outside the sequential queue so it can
+    // interrupt a running query rather than waiting behind it.
+    if (message?.type === PostgresClientMessageType.Cancel) {
+      void cancelRunningQuery();
+      return;
+    }
+
     processingPromise = processingPromise
       .then(async () => {
-        const message = parseClientMessage(rawData, PostgresClientMessageSchema);
         if (!message) {
           sendMessage({
             type: TerminalServerMessageType.Output,

@@ -392,6 +392,13 @@ export const useDataExplorerSession = ({
     [sendRequest]
   );
 
+  const cancelQuery = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "cancel" }));
+    }
+  }, []);
+
   const executeQuery = useCallback(
     async (
       sql: string
@@ -435,6 +442,7 @@ export const useDataExplorerSession = ({
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
-    executeQuery
+    executeQuery,
+    cancelQuery
   };
 };
