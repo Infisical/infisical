@@ -15,7 +15,7 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -269,7 +269,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
-      const subOrgs = (await conn(TableName.Organization)
+      const subOrgs = await conn(TableName.Organization)
         .join(TableName.Membership, (qb) => {
           void qb
             .on(`${TableName.Membership}.scopeOrgId`, "=", db.ref("id").withSchema(TableName.Organization))
@@ -287,9 +287,10 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Organization),
           db.ref("rootOrgId").withSchema(TableName.Organization),
           db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
-        )) as { id: string; name: string; slug: string; rootOrgId: string; userJoinedAt: Date | null }[];
+        );
 
-      const subOrgsByRootId = groupBy(subOrgs, (s) => s.rootOrgId);
+      const uniqueSubOrgs = unique(subOrgs, (s) => s.id);
+      const subOrgsByRootId = groupBy(uniqueSubOrgs, (s) => s.rootOrgId as string);
 
       return rootOrgs.map((org) => ({
         ...org,

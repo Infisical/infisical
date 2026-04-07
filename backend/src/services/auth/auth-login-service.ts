@@ -507,7 +507,7 @@ export const authLoginServiceFactory = ({
   };
 
   const login = async ({
-    email,
+    email: unsanitizedEmail,
     password,
     ip,
     userAgent,
@@ -520,6 +520,7 @@ export const authLoginServiceFactory = ({
     captchaToken?: string;
   }) => {
     const appCfg = getConfig();
+    const email = sanitizeEmail(unsanitizedEmail);
 
     try {
       const user = await userDAL.findOne({ username: email });

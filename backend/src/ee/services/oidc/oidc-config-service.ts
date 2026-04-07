@@ -437,7 +437,7 @@ export const oidcConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort: Number(callbackPort)
+      callbackPort: callbackPort ? Number(callbackPort) : undefined
     });
 
     return { ...callbackResult, userId: user.id };
