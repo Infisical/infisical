@@ -90,6 +90,15 @@ const constructLdapUrl = (protocol: string, host: string, port: number): string 
 };
 
 /**
+ * Normalizes an LDAP URL to always include an explicit port.
+ * e.g. "ldaps://dc1.test.com" → "ldaps://dc1.test.com:636"
+ */
+export const normalizeLdapUrl = (url: string): string => {
+  const { protocol, host, port } = parseLdapUrl(url);
+  return constructLdapUrl(protocol, host, port);
+};
+
+/**
  * Extracts the root domain (last two labels) from a hostname.
  * e.g. "dc1.test.com" → "test.com", "americas.infisical.local" → "infisical.local"
  * Returns null for IPs or single-label hostnames where a suffix check isn't meaningful.

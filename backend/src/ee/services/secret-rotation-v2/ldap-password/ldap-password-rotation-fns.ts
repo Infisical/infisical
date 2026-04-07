@@ -19,6 +19,7 @@ import {
   isLdapReferralError,
   LdapProvider,
   LdapReferralError,
+  normalizeLdapUrl,
   TLdapConnection
 } from "@app/services/app-connection/ldap";
 
@@ -55,6 +56,9 @@ const getDN = async (dn: string, client: Client): Promise<string> => {
         // Set dn to the search base so extractDomainFromDN has a fallback.
         if (!ldapErr.dn) {
           (ldapErr as { dn: string }).dn = base;
+        }
+        if (!Array.isArray((ldapErr as { referrals?: unknown }).referrals)) {
+          (ldapErr as { referrals: string[] }).referrals = [];
         }
         (ldapErr as { referralSource: string }).referralSource = "search";
         logger.info(
@@ -372,7 +376,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
         referredUrl = buildReferralUrl(credentials.url, referralTarget);
 
-        if (referredUrl === currentCredentials.url) {
+        if (referredUrl === normalizeLdapUrl(currentCredentials.url)) {
           logger.error(
             { ...rotationContext, referredUrl, targetSource, referralSource },
             "LDAP password rotation — referral chase would loop to the same URL, aborting"
