@@ -18,13 +18,15 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
-import { decryptSession } from "./pam-session-fns";
-import { TUpdateSessionLogsDTO } from "./pam-session-types";
+import { decryptBatches, decryptSession } from "./pam-session-fns";
+import { TUpdateSessionLogsDTO, TUploadEventBatchDTO } from "./pam-session-types";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
+  pamSessionEventBatchDAL: TPamSessionEventBatchDALFactory;
   projectDAL: TProjectDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
@@ -36,6 +38,7 @@ export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFacto
 
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
+  pamSessionEventBatchDAL,
   projectDAL,
   userDAL,
   permissionService,
@@ -90,6 +93,12 @@ export const pamSessionServiceFactory = ({
       ProjectPermissionPamSessionActions.Read,
       ProjectPermissionSub.PamSessions
     );
+
+    const batches = await pamSessionEventBatchDAL.findBySessionId(sessionId);
+    if (batches.length > 0) {
+      const logs = await decryptBatches(batches, session.projectId, kmsService);
+      return { session: { ...session, logs, encryptedLogsBlob: undefined } as unknown as Awaited<ReturnType<typeof decryptSession>> };
+    }
 
     return {
       session: await decryptSession(session, session.projectId, kmsService)
@@ -288,5 +297,29 @@ export const pamSessionServiceFactory = ({
     return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
-  return { getById, list, updateLogsById, endSessionById, terminateSessionById };
+  const uploadEventBatch = async ({ sessionId, startOffset, events }: TUploadEventBatchDTO, actor: OrgServiceActor) => {
+    if (actor.type !== ActorType.IDENTITY) {
+      throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
+    }
+
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: session.projectId
+    });
+
+    const { cipherTextBlob } = encryptor({ plainText: events });
+
+    await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
+
+    return { projectId: session.projectId };
+  };
+
+  return { getById, list, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };
 };

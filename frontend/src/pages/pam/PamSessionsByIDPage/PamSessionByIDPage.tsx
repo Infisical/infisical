@@ -29,7 +29,13 @@ const Page = () => {
     from: ROUTE_PATHS.Pam.PamSessionByIDPage.id,
     select: (el) => el.sessionId
   });
-  const { data: session } = useGetPamSessionById(sessionId);
+  const { data: session } = useGetPamSessionById(sessionId, {
+    refetchInterval: (query) => {
+      const s = query.state.data;
+      return s?.status === PamSessionStatus.Active || s?.status === PamSessionStatus.Starting ? 5000 : false;
+    },
+    refetchIntervalInBackground: false
+  });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
@@ -37,7 +43,6 @@ const Page = () => {
   const isActive =
     session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
   const isGatewaySession = !!session?.gatewayIdentityId;
-
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (

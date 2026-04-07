@@ -28,6 +28,10 @@ const SessionCredentialsSchema = z.union([
 ]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
+  server.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, (_req, body, done) => {
+    done(null, body);
+  });
+
   // Meant to be hit solely by gateway identities
   server.route({
     method: "GET",
@@ -318,6 +322,54 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       });
 
       return response;
+    }
+  });
+
+  // Meant to be hit solely by gateway identities
+  server.route({
+    method: "POST",
+    url: "/:sessionId/event-batches",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Upload a PAM session event batch",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        startOffset: z.coerce.number().int().nonnegative()
+      }),
+      body: z.instanceof(Buffer),
+      response: {
+        200: z.object({ ok: z.literal(true) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { projectId } = await server.services.pamSession.uploadEventBatch(
+        {
+          sessionId: req.params.sessionId,
+          startOffset: req.query.startOffset,
+          events: req.body
+        },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD,
+          metadata: {
+            sessionId: req.params.sessionId,
+            startOffset: req.query.startOffset
+          }
+        }
+      });
+
+      return { ok: true as const };
     }
   });
 };
