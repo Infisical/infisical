@@ -4,6 +4,11 @@ import { Button } from "@app/components/v3/generic/Button";
 
 const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
 
+function getRowLabel(rowCount: number, isTruncated: boolean): string {
+  if (isTruncated) return `Showing 1,000 of ${rowCount.toLocaleString()} rows`;
+  return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
+}
+
 type QueryResult = {
   rowCount: number | null;
   isTruncated: boolean;
@@ -84,9 +89,7 @@ export function QueryToolbar({
       {!isRunning && result && !error && (
         <span className="ml-auto text-xs text-mineshaft-400">
           {result.rowCount != null
-            ? result.isTruncated
-              ? `Showing 1,000 of ${result.rowCount.toLocaleString()} rows`
-              : `${result.rowCount} row${result.rowCount !== 1 ? "s" : ""}`
+            ? getRowLabel(result.rowCount, result.isTruncated)
             : result.command}
           {" · "}
           {result.executionTimeMs}ms
