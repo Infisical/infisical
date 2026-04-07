@@ -69,7 +69,7 @@ export const MongoDBResourceConnectionDetailsSchema = z.object({
 
 export const MongoDBAccountCredentialsSchema = z.object({
   username: z.string().trim().min(1).max(256, "Username must be 256 characters or less"),
-  password: z.string().max(256, "Password must be 256 characters or less")
+  password: z.string().trim().min(1).max(256, "Password must be 256 characters or less")
 });
 
 const BaseMongoDBResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MongoDB) });

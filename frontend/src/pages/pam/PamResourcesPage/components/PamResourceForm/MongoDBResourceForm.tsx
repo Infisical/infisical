@@ -37,10 +37,9 @@ const formSchema = genericResourceFieldsSchema.extend({
       .trim()
       .min(1, "Connection string required")
       .superRefine((val, ctx) => {
-        let url: URL;
-        try {
-          url = new URL(val);
-        } catch {
+        // 1. Protocol check (regex instead of new URL() to support comma-separated replica set hosts)
+        const protocolMatch = val.match(/^mongodb(?:\+srv)?:\/\//i);
+        if (!protocolMatch) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message:
@@ -49,16 +48,11 @@ const formSchema = genericResourceFieldsSchema.extend({
           return;
         }
 
-        if (url.protocol !== "mongodb:" && url.protocol !== "mongodb+srv:") {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message:
-              "Invalid MongoDB connection string. Must start with mongodb:// or mongodb+srv://"
-          });
-          return;
-        }
+        const rest = val.slice(protocolMatch[0].length);
+        const hostAndPath = rest.split("?")[0];
 
-        if (url.username || url.password) {
+        // 2. Credentials check — userinfo appears before @ in the authority
+        if (hostAndPath.includes("@")) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message:
@@ -67,7 +61,9 @@ const formSchema = genericResourceFieldsSchema.extend({
           return;
         }
 
-        if (url.pathname && url.pathname !== "/") {
+        // 3. Database in path — anything after the first / beyond the hosts
+        const slashIndex = hostAndPath.indexOf("/");
+        if (slashIndex !== -1 && hostAndPath.length > slashIndex + 1) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message:
