@@ -36,7 +36,7 @@ const handleMfaVerification = async (
 
   void res.setCookie("jid", token.refresh, {
     httpOnly: true,
-    path: "/",
+    path: "/api",
     sameSite: "strict",
     secure: appCfg.HTTPS_ENABLED
   });

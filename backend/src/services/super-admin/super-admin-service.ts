@@ -23,7 +23,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { isDisposableEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -764,7 +764,7 @@ export const superAdminServiceFactory = ({
   ) => {
     const appCfg = getConfig();
 
-    const inviteAdminEmails = [...new Set(emails)];
+    const inviteAdminEmails = [...new Set(emails)].map((el) => sanitizeEmail(el));
 
     if (!appCfg.isDevelopmentMode && appCfg.isCloud)
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });

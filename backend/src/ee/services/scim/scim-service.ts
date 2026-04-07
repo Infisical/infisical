@@ -22,7 +22,7 @@ import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } f
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { validateEmail } from "@app/lib/validator/validate-email";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -374,7 +374,7 @@ export const scimServiceFactory = ({
   }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     const org = await orgDAL.findOrgById(orgId);

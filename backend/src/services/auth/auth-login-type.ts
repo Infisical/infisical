@@ -32,7 +32,7 @@ export type TOauthLoginDTO = {
   firstName: string;
   lastName?: string;
   authMethod: AuthMethod;
-  callbackPort?: string;
+  callbackPort?: number;
   orgSlug?: string;
   providerUserId: string;
   ip: string;
@@ -46,11 +46,7 @@ export type TProcessProviderCallbackDTO = {
     email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
-    isEmailVerified?: boolean | null;
-    isMfaEnabled?: boolean | null;
-    selectedMfaMethod?: string | null;
     isLocked?: boolean | null;
-    temporaryLockDateEnd?: Date | null;
   };
   authMethod: AuthMethod;
   isEmailVerified: boolean;
@@ -58,10 +54,10 @@ export type TProcessProviderCallbackDTO = {
   ip: string;
   userAgent: string;
   organizationId?: string;
-  callbackPort?: string;
+  callbackPort?: number;
 };
 
 export type TProviderAuthResult =
-  | { result: ProviderAuthResult.SESSION; tokens: { access: string; refresh: string }; callbackPort?: string }
-  | { result: ProviderAuthResult.MFA_REQUIRED; mfaToken: string; mfaMethod: MfaMethod; callbackPort?: string }
-  | { result: ProviderAuthResult.SIGNUP_REQUIRED; signupToken: string; callbackPort?: string };
+  | { result: ProviderAuthResult.SESSION; tokens: { access: string; refresh: string }; callbackPort?: number }
+  | { result: ProviderAuthResult.MFA_REQUIRED; mfaToken: string; mfaMethod: MfaMethod; callbackPort?: number }
+  | { result: ProviderAuthResult.SIGNUP_REQUIRED; signupToken: string; callbackPort?: number };

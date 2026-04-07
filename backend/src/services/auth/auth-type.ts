@@ -114,3 +114,18 @@ export enum MfaMethod {
   TOTP = "totp",
   WEBAUTHN = "webauthn"
 }
+
+export type TProviderAuthCallback =
+  | {
+      result: ProviderAuthResult.SIGNUP_REQUIRED;
+      signupToken: string;
+      callbackPort?: number;
+    }
+  | {
+      result: ProviderAuthResult.SESSION;
+      tokens: {
+        access: string;
+        refresh: string;
+      };
+      callbackPort?: number;
+    };

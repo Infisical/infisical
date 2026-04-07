@@ -26,7 +26,7 @@ import {
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
-import { validateEmail } from "@app/lib/validator";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -55,11 +55,11 @@ import {
 import {
   ActorType,
   AuthMethod,
-  AuthModeJwtTokenPayload,
   AuthModeMfaJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
-  ProviderAuthResult
+  ProviderAuthResult,
+  TProviderAuthCallback
 } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
@@ -307,7 +307,7 @@ export const authLoginServiceFactory = ({
     userAgent,
     organizationId,
     callbackPort
-  }: TProcessProviderCallbackDTO) => {
+  }: TProcessProviderCallbackDTO): Promise<TProviderAuthCallback> => {
     const appCfg = getConfig();
 
     if (!user.isAccepted || !isEmailVerified) {
@@ -548,6 +548,9 @@ export const authLoginServiceFactory = ({
         throw new BadRequestError({ message: "Invalid credentials" });
       }
 
+      await userDAL.updateById(user.id, {
+        consecutiveFailedPasswordAttempts: 0
+      });
       const token = await generateUserTokens({
         userId: user.id,
         ip,
@@ -804,8 +807,8 @@ export const authLoginServiceFactory = ({
     userAgent
   }: TOauthLoginDTO) => {
     const aliasType = authMethodToAliasType(authMethod);
-    const normalizedEmail = email.trim().toLowerCase();
-    validateEmail(normalizedEmail);
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
@@ -817,7 +820,7 @@ export const authLoginServiceFactory = ({
 
     // Step 2: Fall back to email lookup for existing users without an alias yet
     if (!user) {
-      user = await userDAL.findOne({ username: normalizedEmail });
+      user = await userDAL.findOne({ username: sanitizedEmail });
       if (user) {
         isNewAlias = true;
       }
@@ -892,8 +895,8 @@ export const authLoginServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
-            username: normalizedEmail,
-            email: normalizedEmail,
+            username: sanitizedEmail,
+            email: sanitizedEmail,
             isEmailVerified: false,
             isAccepted: false,
             firstName,
@@ -924,7 +927,7 @@ export const authLoginServiceFactory = ({
             const membership = await membershipUserDAL.create(
               {
                 actorUserId: newUser.id,
-                inviteEmail: normalizedEmail,
+                inviteEmail: sanitizedEmail,
                 scopeOrgId: orgId,
                 scope: AccessScope.Organization,
                 status: OrgMembershipStatus.Accepted,
@@ -948,7 +951,7 @@ export const authLoginServiceFactory = ({
             userId: newUser.id,
             aliasType,
             externalId: providerUserId,
-            emails: [normalizedEmail],
+            emails: [sanitizedEmail],
             orgId: orgId || null,
             isEmailVerified: false
           },
@@ -969,8 +972,8 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      if (existingAlias && user.email !== normalizedEmail) {
-        const conflictingUser = await userDAL.findOne({ username: normalizedEmail });
+      if (existingAlias && user.email !== sanitizedEmail) {
+        const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
             message:
@@ -983,8 +986,8 @@ export const authLoginServiceFactory = ({
           const updatedUser = await userDAL.updateById(
             user!.id,
             {
-              username: normalizedEmail,
-              email: normalizedEmail,
+              username: sanitizedEmail,
+              email: sanitizedEmail,
               isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
               isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
               isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
@@ -995,7 +998,7 @@ export const authLoginServiceFactory = ({
           await userAliasDAL.updateById(
             existingAlias.id,
             {
-              emails: [normalizedEmail]
+              emails: [sanitizedEmail]
             },
             tx
           );
@@ -1097,28 +1100,27 @@ export const authLoginServiceFactory = ({
 
   const selectOrganization = async ({
     userAgent,
-    authJwtToken,
     ipAddress,
-    organizationId
+    organizationId,
+    userId,
+    userAuthMethod,
+    actorOrgId,
+    isMfaVerified,
+    mfaMethod
   }: {
     userAgent: string | undefined;
-    authJwtToken: string | undefined;
     ipAddress: string;
     organizationId: string;
+    userId: string;
+    userAuthMethod: AuthMethod;
+    actorOrgId?: string;
+    isMfaVerified?: boolean;
+    mfaMethod?: MfaMethod;
   }) => {
     const cfg = getConfig();
-
-    if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
-    // eslint-disable-next-line no-param-reassign
-    authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
-
-    // The decoded JWT token, which contains the auth method.
-    const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
-    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
-
-    const user = await userDAL.findById(decodedToken.userId);
+    const user = await userDAL.findById(userId);
     if (!user || !user.isAccepted)
       throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
@@ -1177,7 +1179,7 @@ export const authLoginServiceFactory = ({
       actor: ActorType.USER,
       actorId: user.id,
       orgId: rootOrg.id,
-      actorAuthMethod: decodedToken.authMethod,
+      actorAuthMethod: userAuthMethod,
       actorOrgId: rootOrg.id,
       scope: OrganizationActionScope.Any
     });
@@ -1187,8 +1189,8 @@ export const authLoginServiceFactory = ({
 
     if (
       rootOrg.authEnforced &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !isAuthMethodSaml(userAuthMethod) &&
+      userAuthMethod !== AuthMethod.OIDC &&
       !canBypassSso
     ) {
       throw new BadRequestError({
@@ -1196,7 +1198,7 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+    if (rootOrg.googleSsoAuthEnforced && userAuthMethod !== AuthMethod.GOOGLE) {
       if (!canBypassSso) {
         throw new ForbiddenRequestError({
           message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
@@ -1205,7 +1207,7 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+    if (userAuthMethod === AuthMethod.GOOGLE) {
       await orgDAL.updateById(rootOrg.id, {
         googleSsoAuthLastUsed: new Date()
       });
@@ -1213,12 +1215,11 @@ export const authLoginServiceFactory = ({
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
     // Check if organization has changed
-    const hasOrganizationChanged = decodedToken?.organizationId ? decodedToken.organizationId !== rootOrg.id : false;
+    const hasOrganizationChanged = actorOrgId ? actorOrgId !== rootOrg.id : false;
     // Check if MFA method has changed
-    const hasMfaMethodChanged = decodedToken.mfaMethod !== requiredMfaMethod;
+    const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
     // Trigger MFA if required and either not verified or something changed
-    const shouldTriggerMfa =
-      isMfaRequired && (!decodedToken.isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
+    const shouldTriggerMfa = isMfaRequired && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
 
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
@@ -1226,7 +1227,7 @@ export const authLoginServiceFactory = ({
       const mfaToken = await issueMfaChallenge({
         userId: user.id,
         email: user.email,
-        authMethod: decodedToken.authMethod,
+        authMethod: userAuthMethod,
         requiredMfaMethod,
         organizationId: rootOrg.id
       });
@@ -1237,14 +1238,14 @@ export const authLoginServiceFactory = ({
     await updateUserDeviceSession(user, ipAddress, userAgent);
 
     const tokens = await generateUserTokens({
-      authMethod: decodedToken.authMethod,
+      authMethod: userAuthMethod,
       userId: user.id,
       userAgent,
       ip: ipAddress,
       organizationId: isSubOrganization ? rootOrg.id : organizationId,
       subOrganizationId: isSubOrganization ? organizationId : undefined,
-      isMfaVerified: decodedToken.isMfaVerified,
-      mfaMethod: decodedToken.mfaMethod
+      isMfaVerified,
+      mfaMethod
     });
 
     // Promote any Invited memberships to Accepted now that the user has authenticated into this org
@@ -1262,11 +1263,11 @@ export const authLoginServiceFactory = ({
     const isAuthEnforcedBypass =
       rootOrg.authEnforced &&
       rootOrg.bypassOrgAuthEnabled &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE;
+      !isAuthMethodSaml(userAuthMethod) &&
+      userAuthMethod !== AuthMethod.OIDC &&
+      userAuthMethod !== AuthMethod.GOOGLE;
     const isGoogleSsoEnforcedBypass =
-      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && decodedToken.authMethod !== AuthMethod.GOOGLE;
+      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && userAuthMethod !== AuthMethod.GOOGLE;
     if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
@@ -1335,7 +1336,7 @@ export const authLoginServiceFactory = ({
           email: user.email,
           userId: user.id,
           username: user.username,
-          authMethod: decodedToken.authMethod
+          authMethod: userAuthMethod as string
         }
       },
       event: isSubOrganization

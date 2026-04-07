@@ -67,7 +67,7 @@ export type TLdapLoginDTO = {
     dn: string;
     cn: string;
   }[];
-  relayState?: string;
+  callbackPort?: number;
 };
 
 export type TGetLdapGroupMapsDTO = {

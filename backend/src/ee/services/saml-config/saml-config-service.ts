@@ -16,7 +16,7 @@ import {
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { validateEmail } from "@app/lib/validator/validate-email";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -515,7 +515,7 @@ export const samlConfigServiceFactory = ({
     orgId,
     ip,
     userAgent,
-    relayState,
+    callbackPort,
     metadata
   }) => {
     const serverCfg = await getServerCfg();
@@ -534,7 +534,7 @@ export const samlConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     const organization = await orgDAL.findOrgById(orgId);
@@ -737,13 +737,6 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    let callbackPort;
-    try {
-      callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
-    } catch {
-      // relayState is invalid JSON, ignore and proceed without a callback port
-    }
-
     const callbackResult = await loginService.processProviderCallback({
       user,
       authMethod: authProvider as AuthMethod,
@@ -755,7 +748,7 @@ export const samlConfigServiceFactory = ({
       callbackPort
     });
 
-    return { ...callbackResult, user, organization };
+    return { ...callbackResult, userId: user.id, orgId: organization.id, orgName: organization.name };
   };
 
   return {

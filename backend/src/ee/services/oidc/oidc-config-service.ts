@@ -17,7 +17,12 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain, validateEmail } from "@app/lib/validator";
+import {
+  blockLocalAndPrivateIpAddresses,
+  matchesAllowedEmailDomain,
+  sanitizeEmail,
+  validateEmail
+} from "@app/lib/validator";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -193,7 +198,7 @@ export const oidcConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     let userAlias = await userAliasDAL.findOne({
@@ -434,10 +439,10 @@ export const oidcConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort
+      callbackPort: Number(callbackPort)
     });
 
-    return { ...callbackResult, user };
+    return { ...callbackResult, userId: user.id };
   };
 
   const updateOidcCfg = async ({
@@ -763,7 +768,7 @@ export const oidcConfigServiceFactory = ({
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
-                "infisical.user.id": loginResult.user?.id,
+                "infisical.user.id": loginResult.userId,
                 "infisical.organization.id": org.id,
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,

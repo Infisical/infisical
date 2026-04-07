@@ -34,7 +34,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.string("domain", 255).notNullable();
-      t.string("parentDomain", 255);
 
       // Verification details
       t.string("verificationMethod", 50).notNullable().defaultTo("dns-txt");
@@ -51,7 +50,6 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
 
       // Indexes
-      t.index("parentDomain");
       t.index("orgId");
       t.index("domain");
 

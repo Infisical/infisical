@@ -119,9 +119,12 @@ export async function up(knex: Knex): Promise<void> {
           await knex(ref.table_name)
             .whereIn(ref.column_name, loserIds)
             .update({ [ref.column_name]: winner.id });
-        } catch {
-          // Unique constraint violation — some rows couldn't be reassigned.
+        } catch (err: unknown) {
+          // Unique constraint violation (23505) — some rows couldn't be reassigned.
           // That's fine — they'll be cleaned up by CASCADE when the loser user is deleted.
+          if ((err as { code?: string })?.code !== "23505") {
+            throw err;
+          }
         }
       }
 

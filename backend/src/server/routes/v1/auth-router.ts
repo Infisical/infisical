@@ -36,7 +36,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       void res.cookie("jid", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
@@ -44,7 +44,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
@@ -52,7 +52,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       void res.cookie("aod", "", {
         httpOnly: false,
-        path: "/",
+        path: "/api",
         sameSite: "lax",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
@@ -112,7 +112,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         // when the browser keeps sending the stale cookie on subsequent requests.
         void res.cookie("jid", "", {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
           maxAge: 0
@@ -165,7 +165,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       if (newRefreshToken) {
         void res.setCookie("jid", newRefreshToken, {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });

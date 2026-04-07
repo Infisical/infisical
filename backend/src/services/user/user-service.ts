@@ -7,7 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { validateEmail } from "@app/lib/validator";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -159,7 +159,7 @@ export const userServiceFactory = ({
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
     const startTime = new Date();
-    const normalizedNewEmail = newEmail.toLowerCase();
+    const normalizedNewEmail = sanitizeEmail(newEmail);
     validateEmail(normalizedNewEmail);
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
@@ -217,7 +217,7 @@ export const userServiceFactory = ({
     newEmail: unsanitizedEmail,
     otpCode
   }: TUpdateUserEmailDTO & { otpCode: string }) => {
-    const newEmail = unsanitizedEmail.toLowerCase();
+    const newEmail = sanitizeEmail(unsanitizedEmail);
     validateEmail(newEmail);
     const changedUser = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);

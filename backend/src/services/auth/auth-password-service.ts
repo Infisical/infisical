@@ -12,6 +12,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import {
+  ResetPasswordV2Type,
   TResetPasswordV2DTO,
   TResetPasswordViaBackupKeyDTO,
   TSetupPasswordViaBackupKeyDTO
@@ -34,10 +35,10 @@ export const authPaswordServiceFactory = ({
   smtpService,
   totpConfigDAL
 }: TAuthPasswordServiceFactoryDep) => {
-  const resetPasswordV2 = async ({ userId, newPassword, oldPassword }: TResetPasswordV2DTO) => {
+  const resetPasswordV2 = async ({ userId, newPassword, oldPassword, type }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
 
-    const user = await userDAL.findUserEncKeyByUserId(userId);
+    const user = await userDAL.findById(userId);
     if (!user) {
       throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
     }
@@ -50,22 +51,24 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
-    if (!user.hashedPassword) {
-      throw new BadRequestError({ message: "Unable to change password, no password is set" });
-    }
+    if (type === ResetPasswordV2Type.LoggedInReset) {
+      if (!user.hashedPassword) {
+        throw new BadRequestError({ message: "Unable to change password, no password is set" });
+      }
 
-    if (!oldPassword) {
-      throw new BadRequestError({ message: "Current password is required." });
-    }
+      if (!oldPassword) {
+        throw new BadRequestError({ message: "Current password is required." });
+      }
 
-    const isValid = await crypto.hashing().compareHash(oldPassword, user.hashedPassword);
-    if (!isValid) {
-      throw new BadRequestError({ message: "Incorrect current password." });
+      const isValid = await crypto.hashing().compareHash(oldPassword, user.hashedPassword);
+      if (!isValid) {
+        throw new BadRequestError({ message: "Incorrect current password." });
+      }
     }
 
     const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
 
-    await userDAL.updateUserEncryptionByUserId(userId, {
+    await userDAL.updateById(userId, {
       hashedPassword: newHashedPassword
     });
 

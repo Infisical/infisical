@@ -119,7 +119,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       const appCfg = getConfig();
       void res.cookie("jid", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });

@@ -6,8 +6,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 // All the any rules are disabled because passport typesense with fastify is really poor
 
-import { IncomingMessage } from "node:http";
-
 import { Authenticator } from "@fastify/passport";
 import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
@@ -56,9 +54,10 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     new LdapStrategy(
       getLdapPassportOpts as any,
       // eslint-disable-next-line
-      async (req: IncomingMessage, user, cb) => {
+      async (req, user, cb) => {
         try {
           if (!user.mail) throw new BadRequestError({ message: "Invalid request. Missing mail attribute on user." });
+          const fastifyReq = req as unknown as FastifyRequest;
           const ldapConfig = (req as unknown as FastifyRequest).ldapConfig as TLDAPConfig;
 
           let groups: { dn: string; cn: string }[] | undefined;
@@ -78,6 +77,20 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           const externalId = ldapConfig.uniqueUserAttribute ? user[ldapConfig.uniqueUserAttribute] : user.uidNumber;
           const username = ldapConfig.uniqueUserAttribute ? externalId : user.uid;
 
+          // had to put any due to passport ts issue with signature
+          let callbackPort: number | undefined;
+          try {
+            const relayStatePayload =
+              typeof fastifyReq?.body === "object"
+                ? (fastifyReq.body as { RelayState?: string })?.RelayState
+                : undefined;
+            if (relayStatePayload && Buffer.byteLength(relayStatePayload) <= 1024) {
+              callbackPort = Number(JSON.parse(relayStatePayload)?.callbackPort);
+            }
+          } catch (err) {
+            logger.error(err, "Relay state parsing failed");
+          }
+
           const loginResult = await server.services.ldap.ldapLogin({
             externalId,
             username,
@@ -88,7 +101,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
             groups,
             ip: requestContext.get("ip") || "",
             userAgent: requestContext.get("userAgent") || "",
-            relayState: ((req as unknown as FastifyRequest).body as { RelayState?: string }).RelayState,
+            callbackPort: callbackPort || undefined,
             orgId: (req as unknown as FastifyRequest).ldapConfig.organization
           });
 
@@ -126,7 +139,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       if (passportResult.result === ProviderAuthResult.SESSION) {
         void res.setCookie("jid", passportResult.tokens.refresh, {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });

@@ -51,20 +51,6 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           emailDomain: EmailDomainsSchema
-          // existingSubdomains: z.array(
-          //   EmailDomainsSchema.pick({
-          //     id: true,
-          //     domain: true,
-          //     orgId: true
-          //   })
-          // ),
-          // existingParentDomains: z.array(
-          //   EmailDomainsSchema.pick({
-          //     id: true,
-          //     domain: true,
-          //     orgId: true
-          //   })
-          // )
         })
       }
     },

@@ -2,7 +2,6 @@ export type TEmailDomain = {
   id: string;
   orgId: string;
   domain: string;
-  parentDomain: string | null;
   verificationMethod: string;
   verificationCode: string;
   verificationRecordName: string;

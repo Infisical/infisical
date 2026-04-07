@@ -147,7 +147,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       if (passportResult.result === ProviderAuthResult.SESSION) {
         void res.setCookie("jid", passportResult.tokens.refresh, {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });

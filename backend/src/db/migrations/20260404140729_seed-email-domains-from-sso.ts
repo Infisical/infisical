@@ -2,7 +2,8 @@
 import crypto from "node:crypto";
 
 import { Knex } from "knex";
-import { getDomain } from "tldts";
+
+import { isValidEmailDomain } from "@app/lib/validator/validate-email";
 
 import { TableName } from "../schemas";
 
@@ -112,7 +113,7 @@ export async function up(knex: Knex): Promise<void> {
     const { org_id: orgId, domain, alias_count: aliasCount } = row;
     // eslint-disable-next-line no-continue
     if (!domain || domain.length < 3) continue;
-    const isDomain = getDomain(domain);
+    const isDomain = isValidEmailDomain(domain);
 
     // eslint-disable-next-line no-continue
     if (!isDomain) continue;

@@ -117,11 +117,6 @@ export const OrgEmailDomainsTable = () => {
                 <Tr key={emailDomain.id}>
                   <Td className="max-w-xs">
                     <span className="font-medium">{emailDomain.domain}</span>
-                    {emailDomain.parentDomain && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        (subdomain of {emailDomain.parentDomain})
-                      </span>
-                    )}
                   </Td>
                   <Td>
                     <span className={twMerge("flex items-center gap-1.5", statusConfig.className)}>

@@ -11,7 +11,6 @@ export const EmailDomainsSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   domain: z.string(),
-  parentDomain: z.string().nullable().optional(),
   verificationMethod: z.string().default("dns-txt"),
   verificationCode: z.string(),
   verificationRecordName: z.string(),

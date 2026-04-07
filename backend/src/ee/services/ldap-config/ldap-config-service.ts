@@ -14,7 +14,7 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { validateEmail } from "@app/lib/validator/validate-email";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -398,7 +398,7 @@ export const ldapConfigServiceFactory = ({
     orgId,
     ip,
     userAgent,
-    relayState
+    callbackPort
   }: TLdapLoginDTO) => {
     const serverCfg = await getServerCfg();
 
@@ -410,7 +410,7 @@ export const ldapConfigServiceFactory = ({
 
     // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
-    const sanitizedEmail = email.toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     let userAlias = await userAliasDAL.findOne({
@@ -633,8 +633,6 @@ export const ldapConfigServiceFactory = ({
         }
       });
     }
-
-    const callbackPort = relayState ? (JSON.parse(relayState) as { callbackPort: string }).callbackPort : undefined;
 
     const callbackResult = await loginService.processProviderCallback({
       user,

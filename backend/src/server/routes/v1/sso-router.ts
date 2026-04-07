@@ -388,7 +388,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     if (passportResult.result === ProviderAuthResult.SESSION) {
       void res.setCookie("jid", passportResult.tokens.refresh, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
@@ -519,7 +519,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       if (req.passportUser.externalProviderAccessToken) {
         void res.cookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, req.passportUser.externalProviderAccessToken, {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
           expires: new Date(Date.now() + ms("15m"))

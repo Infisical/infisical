@@ -2,8 +2,11 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
+import { UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -57,14 +60,23 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req, res) => {
       const cfg = getConfig();
 
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "Invalid auth mode" });
+      }
+
       const tokens = await server.services.login.selectOrganization({
         userAgent: req.body.userAgent ?? req.headers["user-agent"],
-        authJwtToken: req.headers.authorization,
         organizationId: req.body.organizationId,
-        ipAddress: req.realIp
+        ipAddress: req.realIp,
+        userId: req.auth.userId,
+        userAuthMethod: req.auth.authMethod,
+        actorOrgId: req.auth.orgId,
+        isMfaVerified: req.auth.isMfaVerified,
+        mfaMethod: req.auth.mfaMethod
       });
 
       if (tokens.isMfaEnabled) {
@@ -82,7 +94,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           .finally(() => {
             void res.setCookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, "", {
               httpOnly: true,
-              path: "/",
+              path: "/api",
               sameSite: "strict",
               secure: cfg.HTTPS_ENABLED,
               maxAge: 0
@@ -101,7 +113,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED,
         maxAge: 0
@@ -169,7 +181,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       addAuthOriginDomainCookie(res);
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
@@ -236,7 +248,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0

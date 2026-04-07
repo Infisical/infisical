@@ -2,7 +2,7 @@ import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { isDisposableEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -41,7 +41,7 @@ export const authSignupServiceFactory = ({
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
-    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(email);
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
@@ -93,7 +93,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
     validateEmail(email);
     const user = await userDAL.findOne({ username: sanitizedEmail });
 

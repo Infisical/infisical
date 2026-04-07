@@ -13,7 +13,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { isDisposableEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
@@ -214,7 +214,8 @@ export const membershipUserServiceFactory = ({
       });
     }
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
-    const users = await $getUsers(dto.data.usernames);
+    const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
+    const users = await $getUsers(sanitizedEmails);
     const existingMemberships = await membershipUserDAL.find({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
