@@ -10,6 +10,7 @@ import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
+import { VercelSyncScope } from "@app/hooks/api/secretSyncs/types/vercel-sync";
 
 // This functional ensures parity across what is displayed in the destination column
 // and the values used when search filtering
@@ -93,8 +94,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = "Cluster";
       break;
     case SecretSync.Vercel:
-      primaryText = destinationConfig.appName || destinationConfig.app;
-      secondaryText = destinationConfig.env;
+      if (destinationConfig.scope === VercelSyncScope.Team) {
+        primaryText = destinationConfig.teamId;
+        secondaryText = destinationConfig.targetEnvironments.join(", ");
+      } else {
+        primaryText = destinationConfig.appName || destinationConfig.app;
+        secondaryText = destinationConfig.env;
+      }
       break;
     case SecretSync.Windmill:
       primaryText = destinationConfig.workspace;
