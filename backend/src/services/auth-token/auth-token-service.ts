@@ -234,14 +234,14 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const appCfg = getConfig();
     const oldRefreshVersion = tokenVersion.refreshVersion;
 
+    // Store grace entry in Redis so the old token is still accepted briefly
+    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
+    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(oldRefreshVersion));
+
     // Increment refreshVersion in DB
     const updatedSession = await tokenDAL.incrementRefreshVersion(tokenVersion.id, decodedToken.userId);
     if (!updatedSession)
       throw new UnauthorizedError({ message: "Failed to rotate refresh token", name: "RotationFailed" });
-
-    // Store grace entry in Redis so the old token is still accepted briefly
-    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
-    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(oldRefreshVersion));
 
     // Determine refresh token expiry
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;

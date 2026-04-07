@@ -28,8 +28,6 @@ export enum AuthTokenType {
 export enum ProviderAuthResult {
   // User is fully authenticated — set refresh cookie and redirect to app
   SESSION = "session",
-  // User needs MFA verification (org-scoped IdP flows: SAML/OIDC/LDAP)
-  MFA_REQUIRED = "mfa_required",
   // User account is incomplete (new user or unverified alias) — issue signup token
   SIGNUP_REQUIRED = "signup_required"
 }
