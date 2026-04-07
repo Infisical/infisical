@@ -2938,6 +2938,8 @@ export const SecretSyncs = {
       env: "The ID of the Vercel environment to sync secrets to.",
       branch: "The branch to sync preview secrets to.",
       teamId: "The ID of the Vercel team to sync secrets to.",
+      teamName:
+        "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
       targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
       targetProjects: "An optional array of Vercel projects to add shared environment variables to."
     },

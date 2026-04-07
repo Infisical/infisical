@@ -22,6 +22,7 @@ export const VercelSyncDestinationSchema = BaseSecretSyncSchema().merge(
       z.object({
         scope: z.literal(VercelSyncScope.Team),
         teamId: z.string().trim().min(1, "Team required"),
+        teamName: z.string().trim().optional(),
         targetEnvironments: z
           .array(z.nativeEnum(VercelEnvironmentType), {
             message: "At least one environment is required"

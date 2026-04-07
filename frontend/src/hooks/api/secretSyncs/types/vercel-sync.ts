@@ -29,6 +29,7 @@ export type TVercelSync = TRootSecretSync & {
     | {
         scope: VercelSyncScope.Team;
         teamId: string;
+        teamName?: string;
         targetEnvironments: string[];
         targetProjects?: string[];
       };

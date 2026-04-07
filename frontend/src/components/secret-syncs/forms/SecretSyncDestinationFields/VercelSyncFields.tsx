@@ -92,6 +92,7 @@ export const VercelSyncFields = () => {
           setValue("destinationConfig.env", "production");
           setValue("destinationConfig.branch", "");
           setValue("destinationConfig.teamId", "");
+          setValue("destinationConfig.teamName", "");
           setValue("destinationConfig.scope", VercelSyncScope.Project);
         }}
       />
@@ -114,6 +115,7 @@ export const VercelSyncFields = () => {
                   setValue("destinationConfig.teamId", "");
                   setValue("destinationConfig.targetEnvironments", []);
                   setValue("destinationConfig.targetProjects", undefined);
+                  setValue("destinationConfig.teamName", "");
                 } else {
                   setValue("destinationConfig.app", "");
                   setValue("destinationConfig.appName", "");
@@ -140,9 +142,12 @@ export const VercelSyncFields = () => {
               <FormControl isError={Boolean(error)} errorText={error?.message} label="Team">
                 <FilterableSelect
                   value={teams?.find((team) => team.id === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<TVercelConnectionOrganization>)?.id ?? null)
-                  }
+                  onChange={(option) => {
+                    const selectedOption = option as SingleValue<TVercelConnectionOrganization>;
+
+                    onChange(selectedOption?.id ?? null);
+                    setValue("destinationConfig.teamName", selectedOption?.name || "");
+                  }}
                   options={teams}
                   placeholder="Select a team..."
                   getOptionLabel={(option) => option.name}

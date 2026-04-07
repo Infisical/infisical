@@ -25,6 +25,7 @@ const VercelSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z.object({
     scope: z.literal(VercelSyncScope.Team),
     teamId: z.string().min(1, "Team ID is required").describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.teamId),
+    teamName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.VERCEL.teamName),
     targetEnvironments: z
       .array(z.nativeEnum(VercelEnvironmentType))
       .min(1, "At least one environment is required")

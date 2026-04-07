@@ -95,7 +95,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Vercel:
       if (destinationConfig.scope === VercelSyncScope.Team) {
-        primaryText = destinationConfig.teamId;
+        primaryText = destinationConfig.teamName || destinationConfig.teamId;
         secondaryText = destinationConfig.targetEnvironments.join(", ");
       } else {
         primaryText = destinationConfig.appName || destinationConfig.app;

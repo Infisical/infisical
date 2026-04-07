@@ -340,7 +340,7 @@ const listTeamSharedEnvVarsWithRetries = async (
   const allEnvVars: VercelSharedEnvVar[] = [];
   let hasMore = true;
   let params: Record<string, string | number> = {};
-  let attempt = 0;
+  let totalRetries = 0;
 
   while (hasMore) {
     try {
@@ -357,7 +357,6 @@ const listTeamSharedEnvVarsWithRetries = async (
       });
 
       allEnvVars.push(...listResponse.data);
-      attempt = 0;
 
       if (listResponse.pagination?.next) {
         params = { ...params, since: listResponse.pagination.next };
@@ -365,8 +364,8 @@ const listTeamSharedEnvVarsWithRetries = async (
         hasMore = false;
       }
     } catch (error) {
-      if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-        attempt += 1;
+      if ((error as { response: { status: number } }).response.status === 429 && totalRetries < MAX_RETRIES) {
+        totalRetries += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
       } else {
