@@ -1,4 +1,4 @@
-import ldap, { Client, SearchOptions } from "ldapjs";
+import ldap, { Client, SearchOptions } from "@infisical/ldapjs";
 
 import {
   TRotationFactory,

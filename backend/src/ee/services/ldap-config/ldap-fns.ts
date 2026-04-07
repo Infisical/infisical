@@ -1,4 +1,4 @@
-import ldapjs from "ldapjs";
+import ldapjs from "@infisical/ldapjs";
 
 import { logger } from "@app/lib/logger";
 

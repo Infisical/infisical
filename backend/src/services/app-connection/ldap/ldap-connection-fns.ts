@@ -1,6 +1,6 @@
 import { isIP } from "node:net";
 
-import ldap from "ldapjs";
+import ldap from "@infisical/ldapjs";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
