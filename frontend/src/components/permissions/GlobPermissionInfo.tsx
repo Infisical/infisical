@@ -41,11 +41,6 @@ export const BashGlobPatternTooltip = () => (
           user/* matches user/admin, user/admin/service, etc.
         </span>
       </li>
-      <li>
-        <code className="text-yellow-500/80">?</code> matches exactly one character
-        <br />
-        <span className="text-mineshaft-400">admin-? matches admin-1 but not admin-12</span>
-      </li>
     </ul>
     <p className="text-mineshaft-400">
       We highly recommend using hardcoded values whenever possible.
