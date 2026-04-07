@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
       t.string("name", 255).notNullable();
-      t.jsonb("filters").notNullable().defaultTo("{}");
+      t.jsonb("filters").notNullable();
       t.jsonb("columns").nullable();
 
       t.uuid("createdByUserId").nullable();

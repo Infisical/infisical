@@ -1364,7 +1364,11 @@ export const projectServiceFactory = ({
     const cacheKey = KeyStorePrefixes.CertDashboardStats(projectId);
     const cached = await keyStore.getItem(cacheKey);
     if (cached) {
-      return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getDashboardStats>>;
+      try {
+        return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getDashboardStats>>;
+      } catch {
+        // stale entry — recompute
+      }
     }
 
     const stats = await certificateDAL.getDashboardStats(projectId);
@@ -1403,7 +1407,11 @@ export const projectServiceFactory = ({
     const cacheKey = KeyStorePrefixes.CertActivityTrend(projectId, range);
     const cached = await keyStore.getItem(cacheKey);
     if (cached) {
-      return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getActivityTrend>>;
+      try {
+        return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getActivityTrend>>;
+      } catch {
+        // stale entry — recompute
+      }
     }
 
     const trend = await certificateDAL.getActivityTrend(projectId, daysBack);

@@ -1,4 +1,6 @@
-import { TCertificate } from "@app/hooks/api/certificates/types";
+import { TCertificate, TCertificateSource } from "@app/hooks/api/certificates/types";
+
+import { getCertSourceLabel } from "./CertificatesTable.utils";
 
 const CSV_COLUMNS = [
   { key: "commonName", header: "Common Name" },
@@ -17,7 +19,16 @@ const CSV_COLUMNS = [
 const escapeCSV = (value: string | null | undefined): string => {
   if (value === null || value === undefined) return "";
   const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  const needsQuoting =
+    str.includes(",") ||
+    str.includes('"') ||
+    str.includes("\n") ||
+    str.includes("\r") ||
+    str.startsWith("=") ||
+    str.startsWith("+") ||
+    str.startsWith("-") ||
+    str.startsWith("@");
+  if (needsQuoting) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
@@ -27,6 +38,9 @@ export const certificatesToCSV = (certificates: TCertificate[]): string => {
   const header = CSV_COLUMNS.map((col) => col.header).join(",");
   const rows = certificates.map((cert) =>
     CSV_COLUMNS.map((col) => {
+      if (col.key === "source") {
+        return escapeCSV(getCertSourceLabel((cert.source ?? null) as TCertificateSource));
+      }
       const value = cert[col.key as keyof TCertificate];
       if (value === null || value === undefined) return "";
       if (typeof value === "object") return escapeCSV(JSON.stringify(value));
