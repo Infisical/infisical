@@ -12,7 +12,7 @@ export const forwardToGoSidecar = fp(async (server, opt: { sidecarUrl: string })
   const routeSet = new Set(FORWARDED_ROUTES.map((r) => `${r.method}:${r.url}`));
 
   server.addHook("onRequest", async (request, reply) => {
-    const key = `${request.method}:${request.url.split("?")[0]}`;
+    const key = `${request.method}:${request.routeOptions.url}`;
     if (routeSet.has(key)) {
       return reply.from(request.url, {
         rewriteRequestHeaders: (_req, headers) => ({
