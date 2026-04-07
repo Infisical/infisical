@@ -5,7 +5,7 @@ import { Spinner } from "@app/components/v2";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 
 import type { FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
-import { getColumnIndicator } from "../data-explorer-types";
+import { getColumnIndicator } from "../data-explorer-utils";
 
 const MAX_ROWS = 500;
 
