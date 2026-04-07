@@ -9,7 +9,6 @@ import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { useDebounce } from "@app/hooks";
 import {
-  TVercelConnectionApp,
   TVercelConnectionOrganization,
   useVercelConnectionListOrganizations
 } from "@app/hooks/api/appConnections/vercel";
@@ -250,17 +249,11 @@ export const VercelSyncFields = () => {
                   isDisabled={!connectionId}
                   value={allApps.find((app) => app.id === value) ?? null}
                   onChange={(option) => {
-                    const appId = (option as SingleValue<TVercelConnectionApp>)?.id ?? null;
-                    onChange(appId);
+                    const selected = option as SingleValue<(typeof allApps)[number]>;
+                    onChange(selected?.id ?? null);
                     setValue("destinationConfig.branch", "");
-                    setValue(
-                      "destinationConfig.teamId",
-                      (option as SingleValue<TVercelConnectionApp>)?.projectId || ""
-                    );
-                    setValue(
-                      "destinationConfig.appName",
-                      (option as SingleValue<TVercelConnectionApp>)?.name || ""
-                    );
+                    setValue("destinationConfig.teamId", selected?.teamId || "");
+                    setValue("destinationConfig.appName", selected?.name || "");
                   }}
                   onInputChange={(newValue) => setProjectSearch(newValue)}
                   filterOption={null}
@@ -268,7 +261,7 @@ export const VercelSyncFields = () => {
                   placeholder="Search for a project..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
-                  groupBy="project"
+                  groupBy="teamName"
                 />
               </FormControl>
             )}
