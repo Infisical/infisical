@@ -83,6 +83,10 @@ export const handlePostgresSession = async (
     }
   };
 
+  // Server-side transaction state — updated after every query so the client
+  // always receives the authoritative value, including for multi-statement SQL.
+  let isInTransaction = false;
+
   // Shared error handler for correlated query messages
   const sendQueryError = async (id: string, err: unknown) => {
     const pgErr = err as { message?: string; detail?: string; hint?: string };
@@ -94,6 +98,8 @@ export const handlePostgresSession = async (
     } catch {
       // ROLLBACK fails if there was no active transaction — safe to ignore.
     }
+
+    isInTransaction = false;
 
     sendResponse({
       type: PostgresServerMessageType.Error,
@@ -237,7 +243,16 @@ export const handlePostgresSession = async (
                 | pg.QueryResult<Record<string, unknown>>[];
               const executionTimeMs = Math.round(performance.now() - startTime);
               const MAX_ROWS = 1000;
-              const result = Array.isArray(rawResult) ? rawResult[rawResult.length - 1] : rawResult;
+              // Scan all results to track transaction state accurately for multi-statement SQL.
+              // e.g. "BEGIN; INSERT INTO foo VALUES (1);" — last command is INSERT, not BEGIN,
+              // so checking only the last result would leave isInTransaction false incorrectly.
+              const allResults = Array.isArray(rawResult) ? rawResult : [rawResult];
+              for (const r of allResults) {
+                const cmd = (r.command ?? "").toUpperCase();
+                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
+                if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
+              }
+              const result = allResults[allResults.length - 1];
               const allRows = result.rows ?? [];
               const isTruncated = allRows.length > MAX_ROWS;
               sendResponse({
@@ -247,6 +262,7 @@ export const handlePostgresSession = async (
                 fields: (result.fields ?? []).map((f) => ({ name: f.name })),
                 rowCount: result.rowCount,
                 isTruncated,
+                transactionOpen: isInTransaction,
                 command: result.command ?? "",
                 executionTimeMs
               });

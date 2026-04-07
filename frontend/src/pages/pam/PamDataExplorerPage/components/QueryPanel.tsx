@@ -13,6 +13,7 @@ type QueryResult = {
   fields: FieldInfo[];
   rowCount: number | null;
   isTruncated: boolean;
+  transactionOpen: boolean;
   command: string;
   executionTimeMs: number;
 };
@@ -24,9 +25,6 @@ type Props = {
   tableDetail: TableDetail | null;
   onSqlChange: (sql: string) => void;
 };
-
-const TRANSACTION_START_COMMANDS = new Set(["BEGIN", "START"]);
-const TRANSACTION_END_COMMANDS = new Set(["COMMIT", "ROLLBACK"]);
 
 export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, onSqlChange }: Props) {
   const [isRunning, setIsRunning] = useState(false);
@@ -52,11 +50,10 @@ export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, onSqlC
     setError(null);
     try {
       const res = await executeQuery(sqlToRun);
-      const cmd = res.command.toUpperCase();
-      if (TRANSACTION_START_COMMANDS.has(cmd)) setIsInTransaction(true);
-      if (TRANSACTION_END_COMMANDS.has(cmd)) setIsInTransaction(false);
+      setIsInTransaction(res.transactionOpen);
       setResult(res);
     } catch (err) {
+      setIsInTransaction(false);
       setError(err instanceof Error ? err.message : String(err));
       setResult(null);
     } finally {
