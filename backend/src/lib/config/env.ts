@@ -133,9 +133,10 @@ const envSchema = z
     CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
     AUDIT_LOG_STREAMS_ENABLED: zodStrBool.default("true").describe("Enable sending audit logs to external log streams"),
     DISABLE_AUDIT_LOG_STORAGE: zodStrBool.optional(), // deprecated: use DISABLE_POSTGRES_AUDIT_LOG_STORAGE instead
-    DISABLE_POSTGRES_AUDIT_LOG_STORAGE: zodStrBool
-      .default("false")
+    DISABLE_POSTGRES_AUDIT_LOG_STORAGE: z
+      .string()
       .optional()
+      .transform((val) => (val === undefined ? undefined : val === "true"))
       .describe("Disable PostgreSQL audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
@@ -465,9 +466,7 @@ const envSchema = z
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
     DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
-      process.env.DISABLE_POSTGRES_AUDIT_LOG_STORAGE !== undefined
-        ? data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE
-        : (data.DISABLE_AUDIT_LOG_STORAGE ?? false),
+      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,

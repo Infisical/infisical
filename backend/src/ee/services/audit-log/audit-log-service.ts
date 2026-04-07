@@ -179,7 +179,13 @@ export const auditLogServiceFactory = ({
   const checkPostgresAuditLogVolumeMigrationAlert = async () => {
     const appCfg = getConfig();
     const isClickHouseConfigured = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
-    if (isClickHouseConfigured || appCfg.isCloud) return;
+    if (
+      isClickHouseConfigured ||
+      appCfg.isCloud ||
+      appCfg.DISABLE_AUDIT_LOG_GENERATION ||
+      appCfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE
+    )
+      return;
 
     const rowCount: number = await auditLogDAL.getApproximateRowCount();
 
@@ -201,7 +207,14 @@ export const auditLogServiceFactory = ({
       adminsOnly: true
     });
 
-    if (superAdminsResult.users.length === 0) return;
+    if (superAdminsResult.users.length === 0) {
+      await keyStore.setItemWithExpiry(
+        "audit-log-migration-alert-last-row-count",
+        AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS,
+        String(rowCount)
+      );
+      return;
+    }
 
     const adminsWithEmail = superAdminsResult.users.filter((admin): admin is TUsers & { email: string } =>
       Boolean(admin.email)

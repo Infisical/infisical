@@ -23,12 +23,12 @@ export const AuditLogMigrationAlertTemplate = ({ siteUrl }: AuditLogMigrationAle
           to an external destination like Splunk or using the built-in ClickHouse integration.
         </Text>
         <Section className="text-center mt-[16px]">
-          <BaseButton href={`${siteUrl}/docs/documentation/platform/audit-log-streams/audit-log-streams`}>
+          <BaseButton href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams">
             Set Up Audit Log Streams
           </BaseButton>
         </Section>
         <Section className="text-center mt-[8px]">
-          <BaseButton href={`${siteUrl}/docs/documentation/platform/audit-logs-clickhouse-setup`}>
+          <BaseButton href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup">
             View ClickHouse Setup Guide
           </BaseButton>
         </Section>
