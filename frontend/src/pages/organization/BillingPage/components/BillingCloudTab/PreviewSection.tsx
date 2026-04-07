@@ -18,6 +18,7 @@ import {
   useGetOrgTrialUrl
 } from "@app/hooks/api";
 import { subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ManagePlansModal } from "./ManagePlansModal";
@@ -60,7 +61,7 @@ export const PreviewSection = () => {
     return formattedDate;
   };
 
-  function formatPlanSlug(slug: string) {
+  function formatPlanSlug(slug: SubscriptionPlanTypes) {
     if (!slug) {
       return "-";
     }
@@ -109,9 +110,9 @@ export const PreviewSection = () => {
   return (
     <div>
       {subscription &&
-        subscription?.slug !== "enterprise" &&
-        subscription?.slug !== "pro" &&
-        subscription?.slug !== "pro-annual" && (
+        subscription?.slug !== SubscriptionPlanTypes.Enterprise &&
+        subscription?.slug !== SubscriptionPlanTypes.Pro &&
+        subscription?.slug !== SubscriptionPlanTypes.ProAnnual && (
           <div className="flex flex-row space-x-6">
             <div className="mb-6 flex flex-1 items-center rounded-lg border border-primary/40 bg-primary/10 p-4">
               <div className="flex-1">
@@ -193,7 +194,7 @@ export const PreviewSection = () => {
               </OrgPermissionCan>
             )}
           </div>
-          {subscription.slug !== "enterprise" ? (
+          {subscription.slug !== SubscriptionPlanTypes.Enterprise ? (
             <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
               <p className="mb-2 text-gray-400">Price</p>
               <p className="mb-8 text-2xl font-medium text-mineshaft-50">
@@ -202,7 +203,8 @@ export const PreviewSection = () => {
                 ) : (
                   <>
                     {formatAmount(totalAmount)} / {data.interval}
-                    {(subscription.slug === "pro" || subscription.slug === "pro-annual") && (
+                    {(subscription.slug === SubscriptionPlanTypes.Pro ||
+                      subscription.slug === SubscriptionPlanTypes.ProAnnual) && (
                       <Tooltip
                         content={`Total price is based on the number of users and machine identities at ${formatAmount(data.amount)} each. You have ${data.users} ${data.users > 1 ? "users" : "user"} and ${data.identities} ${data.identities > 1 ? "machine identities" : "machine identity"}.`}
                         className="max-w-lg"

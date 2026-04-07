@@ -9,6 +9,7 @@ import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
+  DocumentationLinkBadge,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -115,7 +116,10 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     <>
       <UnstableCard>
         <UnstableCardHeader>
-          <UnstableCardTitle>Project Additional Privileges</UnstableCardTitle>
+          <UnstableCardTitle>
+            Project Additional Privileges
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
+          </UnstableCardTitle>
           <UnstableCardDescription>Assign one-off policies to this user</UnstableCardDescription>
           {!isOwnProjectMembershipDetails && hasAdditionalPrivileges && (
             <UnstableCardAction>

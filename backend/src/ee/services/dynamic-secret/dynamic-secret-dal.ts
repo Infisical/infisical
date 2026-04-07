@@ -33,6 +33,20 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
     filter: TFindFilter<TDynamicSecrets>,
     arg?: TFindOpt<TDynamicSecrets>
   ) => Promise<TDynamicSecretWithMetadata[]>;
+  findByGatewayId: (
+    gatewayId: string,
+    tx?: Knex
+  ) => Promise<
+    Array<{
+      id: string;
+      name: string;
+      folderId: string;
+      projectId: string;
+      projectName: string;
+      environmentSlug: string;
+    }>
+  >;
+  countByGatewayId: (gatewayId: string, tx?: Knex) => Promise<number>;
 }
 
 export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory => {
@@ -182,5 +196,32 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     }
   };
 
-  return { ...orm, listDynamicSecretsByFolderIds, findOne, findWithMetadata };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.DynamicSecret)
+      .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.DynamicSecret),
+        db.ref("name").withSchema(TableName.DynamicSecret),
+        db.ref("folderId").withSchema(TableName.DynamicSecret),
+        db.ref("projectId").withSchema(TableName.Environment),
+        db.ref("name").withSchema(TableName.Project).as("projectName"),
+        db.ref("slug").withSchema(TableName.Environment).as("environmentSlug")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.DynamicSecret)
+      .where(`${TableName.DynamicSecret}.gatewayV2Id`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...orm, listDynamicSecretsByFolderIds, findOne, findWithMetadata, findByGatewayId, countByGatewayId };
 };

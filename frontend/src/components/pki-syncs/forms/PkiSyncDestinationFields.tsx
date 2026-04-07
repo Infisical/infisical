@@ -9,6 +9,7 @@ import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields
 import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
 import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
+import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 
 export const PkiSyncDestinationFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
@@ -28,6 +29,8 @@ export const PkiSyncDestinationFields = () => {
       return <ChefPkiSyncFields />;
     case PkiSync.CloudflareCustomCertificate:
       return <CloudflareCustomCertificatePkiSyncFields />;
+    case PkiSync.NetScaler:
+      return <NetScalerPkiSyncFields />;
     default:
       return (
         <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">

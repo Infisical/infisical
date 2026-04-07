@@ -1,5 +1,5 @@
+import ldapjs from "@infisical/ldapjs";
 import handlebars from "handlebars";
-import ldapjs from "ldapjs";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
 import RE2 from "re2";

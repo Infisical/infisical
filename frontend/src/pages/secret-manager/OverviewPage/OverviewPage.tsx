@@ -53,6 +53,11 @@ import {
   Badge,
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -3069,19 +3074,27 @@ const OverviewPageContent = () => {
           />
         </SheetContent>
       </Sheet>
-      <Modal
-        isOpen={popUp.addFolder.isOpen}
+      <Dialog
+        open={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}
       >
-        <ModalContent title="Create Folder">
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Folder</DialogTitle>
+            <DialogDescription>Add a new folder to organize your secrets.</DialogDescription>
+          </DialogHeader>
           <FolderForm onCreateFolder={handleFolderCreate} />
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={popUp.updateFolder.isOpen}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={popUp.updateFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
       >
-        <ModalContent title="Edit Folder Name">
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Folder</DialogTitle>
+            <DialogDescription>Update the folder name and description.</DialogDescription>
+          </DialogHeader>
           <FolderForm
             isEdit
             defaultFolderName={(popUp.updateFolder?.data as Pick<TSecretFolder, "name">)?.name}
@@ -3089,10 +3102,10 @@ const OverviewPageContent = () => {
               (popUp.updateFolder?.data as Pick<TSecretFolder, "description">)?.description
             }
             onUpdateFolder={handleFolderUpdate}
-            showDescriptionOverwriteWarning
+            showDescriptionOverwriteWarning={visibleEnvs.length > 1}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <CreateDynamicSecretForm
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
