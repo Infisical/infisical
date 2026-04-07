@@ -593,6 +593,7 @@ export enum EventType {
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
   PAM_FOLDER_CREATE = "pam-folder-create",
@@ -4724,6 +4725,14 @@ interface PamSessionEndEvent {
   };
 }
 
+interface PamSessionTerminateEvent {
+  type: EventType.PAM_SESSION_TERMINATE;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionGetEvent {
   type: EventType.PAM_SESSION_GET;
   metadata: {
@@ -6151,6 +6160,7 @@ export type Event =
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
+  | PamSessionTerminateEvent
   | PamSessionGetEvent
   | PamSessionListEvent
   | PamFolderCreateEvent

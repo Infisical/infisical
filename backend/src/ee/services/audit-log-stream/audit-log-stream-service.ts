@@ -99,7 +99,7 @@ export const auditLogStreamServiceFactory = ({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
       actorId: actor.id,
-      orgId: actor.orgId,
+      orgId: logStream.orgId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
@@ -147,7 +147,7 @@ export const auditLogStreamServiceFactory = ({
 
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
-      orgId: actor.orgId,
+      orgId: logStream.orgId,
       kmsService
     });
 
@@ -166,7 +166,7 @@ export const auditLogStreamServiceFactory = ({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
       actorId: actor.id,
-      orgId: actor.orgId,
+      orgId: logStream.orgId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
@@ -192,7 +192,7 @@ export const auditLogStreamServiceFactory = ({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
       actorId: actor.id,
-      orgId: actor.orgId,
+      orgId: logStream.orgId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });

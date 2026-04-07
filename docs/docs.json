@@ -321,7 +321,6 @@
                 "group": "Installation methods",
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
-                  "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
                   "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
@@ -539,7 +538,6 @@
                     "group": "Agent",
                     "pages": [
                       "integrations/platforms/infisical-agent",
-                      "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
@@ -949,6 +947,7 @@
                   "cli/commands/secrets",
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
+                  "cli/commands/pam",
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -3468,6 +3467,10 @@
     ]
   },
   "integrations": {
+    "posthog": {
+      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE",
+      "apiHost": "https://p.infisical.com"
+    },
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
     },

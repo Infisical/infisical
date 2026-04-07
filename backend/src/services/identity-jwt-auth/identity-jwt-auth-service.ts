@@ -31,6 +31,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -116,6 +117,8 @@ export const identityJwtAuthServiceFactory = ({
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
+        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+
         let client: JwksClient;
         if (identityJwtAuth.jwksUrl.includes("https:")) {
           const decryptedJwksCaCert = orgDataKeyDecryptor({
@@ -274,7 +277,7 @@ export const identityJwtAuthServiceFactory = ({
         });
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -478,6 +481,10 @@ export const identityJwtAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (configurationType === JwtConfigurationType.JWKS && jwksUrl) {
+      await blockLocalAndPrivateIpAddresses(jwksUrl);
+    }
+
     const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
@@ -605,6 +612,10 @@ export const identityJwtAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
+
+    if (jwksUrl) {
+      await blockLocalAndPrivateIpAddresses(jwksUrl);
+    }
 
     const updateQuery: TIdentityJwtAuthsUpdate = {
       boundIssuer,

@@ -3,8 +3,10 @@ import { Knex } from "knex";
 
 import { QueueJobs, QueueName } from "@app/queue";
 
-import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+
+// Inlined because QueueJobsTable was removed when the queue_jobs table was dropped.
+const QueueJobsTable = "queue_jobs";
 
 interface MigrationConfig<TData> {
   pgBossQueueName: string;
@@ -29,7 +31,7 @@ const migratePgBossJobsToQueueJobs = async <TData>(knex: Knex, config: Migration
     [config.pgBossQueueName]
   );
   if (jobs.rows.length > 0) {
-    await knex(TableName.QueueJobs).insert(
+    await knex(QueueJobsTable).insert(
       jobs.rows.map((job) => {
         const { jobId, queueOptions } = config.transformJob(job);
         return {
@@ -85,9 +87,9 @@ const migrateDynamicSecretRevocationToQueueJobs = async (knex: Knex) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.QueueJobs);
+  const hasTable = await knex.schema.hasTable(QueueJobsTable);
   if (!hasTable) {
-    await knex.schema.createTable(TableName.QueueJobs, (t) => {
+    await knex.schema.createTable(QueueJobsTable, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("queueName").notNullable();
       // helps in golang migration
@@ -112,7 +114,7 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["status"]);
     });
 
-    await createOnUpdateTrigger(knex, TableName.QueueJobs);
+    await createOnUpdateTrigger(knex, QueueJobsTable);
     const schemaCheck = await knex.raw(
       `SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss') AS exists`
     );
@@ -125,7 +127,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTable = await knex.schema.hasTable(TableName.QueueJobs);
-  if (hasTable) await knex.schema.dropTable(TableName.QueueJobs);
-  await dropOnUpdateTrigger(knex, TableName.QueueJobs);
+  const hasTable = await knex.schema.hasTable(QueueJobsTable);
+  if (hasTable) await knex.schema.dropTable(QueueJobsTable);
+  await dropOnUpdateTrigger(knex, QueueJobsTable);
 }

@@ -32,6 +32,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -182,7 +183,7 @@ export const identityLdapAuthServiceFactory = ({
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
       });
     }
-    if (organizationSlug) {
+    if (organizationSlug && org.slug !== organizationSlug) {
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -341,6 +342,10 @@ export const identityLdapAuthServiceFactory = ({
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -541,6 +546,10 @@ export const identityLdapAuthServiceFactory = ({
       (accessTokenTTL || identityLdapAuth.accessTokenTTL) > (accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const { permission: orgPermission } = await permissionService.getOrgPermission({

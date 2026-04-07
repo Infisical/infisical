@@ -196,7 +196,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
-import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -531,7 +530,6 @@ export const registerRoutes = async (
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
-  const queueJobsDAL = queueJobsDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -707,7 +705,8 @@ export const registerRoutes = async (
     projectEventsService,
     permissionService,
     licenseService,
-    keyStore
+    keyStore,
+    projectEnvDAL
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -736,7 +735,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -749,7 +749,8 @@ export const registerRoutes = async (
     roleDAL,
     permissionService,
     orgDAL,
-    groupDAL
+    groupDAL,
+    licenseService
   });
 
   const roleService = roleServiceFactory({
@@ -759,7 +760,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1469,7 +1471,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     webhookDAL,
     auditLogService,
+    identityDAL,
     userDAL,
+    serviceTokenDAL,
     projectMembershipDAL,
     smtpService,
     projectDAL,
@@ -1700,7 +1704,9 @@ export const registerRoutes = async (
     licenseService,
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -1985,7 +1991,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     projectDAL,
     secretV2BridgeService,
-    folderCommitDAL
+    folderCommitDAL,
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -2145,8 +2152,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL,
-    queueJobsDAL
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2848,8 +2854,10 @@ export const registerRoutes = async (
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
     projectDAL,
+    userDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({

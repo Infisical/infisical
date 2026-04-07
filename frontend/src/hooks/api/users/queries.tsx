@@ -194,6 +194,7 @@ export const useAddUsersToOrg = () => {
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
       });
+      queryClient.invalidateQueries({ queryKey: ["available-users"] });
     }
   });
 };

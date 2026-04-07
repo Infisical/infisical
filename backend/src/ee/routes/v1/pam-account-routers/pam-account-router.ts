@@ -47,9 +47,11 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedAccountSchema = z
   .discriminatedUnion("resourceType", [
@@ -249,6 +251,18 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: account.resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
 
       return { account: account as z.infer<typeof SanitizedAccountSchema> };
     }
@@ -563,6 +577,19 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountAccessed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: response.resourceType,
+            projectId: req.body.projectId,
+            duration: req.body.duration
+          }
+        })
+        .catch(() => {});
+
       return response;
     }
   });
@@ -604,6 +631,17 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         auditLogInfo: req.auditLogInfo,
         mfaSessionId: req.body.mfaSessionId
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamWebAccessStarted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId
+          }
+        })
+        .catch(() => {});
 
       return { ticket };
     }

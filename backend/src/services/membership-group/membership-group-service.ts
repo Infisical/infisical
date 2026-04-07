@@ -8,6 +8,7 @@ import {
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
@@ -41,6 +42,7 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -55,7 +57,8 @@ export const membershipGroupServiceFactory = ({
   membershipRoleDAL,
   orgDAL,
   permissionService,
-  groupDAL
+  groupDAL,
+  licenseService
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -101,6 +104,14 @@ export const membershipGroupServiceFactory = ({
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
+    if (hasCustomRole) {
+      const plan = await licenseService.getPlan(scopeData.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
 
     const scopeField = factory.getScopeField(dto.scopeData);
     const customRoles = hasCustomRole
@@ -182,6 +193,14 @@ export const membershipGroupServiceFactory = ({
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
+    if (hasCustomRole) {
+      const plan = await licenseService.getPlan(scopeData.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {

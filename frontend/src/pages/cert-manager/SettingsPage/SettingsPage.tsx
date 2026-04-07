@@ -1,31 +1,23 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { CertificateCleanupTab } from "./components/CertificateCleanupTab";
 
-const tabs = [
-  {
-    name: "General",
-    key: "tab-project-general",
-    Component: ProjectGeneralTab
-  },
-  {
-    name: "Certificate Cleanup",
-    key: "tab-certificate-cleanup",
-    Component: CertificateCleanupTab
-  }
-];
-
 export const SettingsPage = () => {
   const { t } = useTranslation();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/settings"
+  });
+
+  const activeTab = selectedTab || "general";
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -45,20 +37,10 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
-          <TabList>
-            {tabs.map((tab) => (
-              <Tab value={tab.key} variant="project" key={tab.key}>
-                {tab.name}
-              </Tab>
-            ))}
-          </TabList>
-          {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
-        </Tabs>
+        <div>
+          {activeTab === "general" && <ProjectGeneralTab />}
+          {activeTab === "certificate-cleanup" && <CertificateCleanupTab />}
+        </div>
       </div>
     </div>
   );

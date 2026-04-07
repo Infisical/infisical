@@ -122,7 +122,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
 
     if (hasCustomRoleSelected && subscription && !subscription?.rbac) {
       onOpenUpgradeModal(
-        "You can assign custom roles to members if you upgrade your Infisical plan."
+        "You can assign custom roles to members if you upgrade to Infisical Enterprise plan."
       );
       return;
     }

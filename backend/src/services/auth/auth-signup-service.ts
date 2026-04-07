@@ -466,7 +466,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken };
+    return { user: updateduser.info, accessToken, refreshToken, organizationId: orgMembership.scopeOrgId };
   };
 
   return {
