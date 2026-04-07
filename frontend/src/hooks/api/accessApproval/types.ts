@@ -35,6 +35,7 @@ export enum BypasserType {
 export type Approver = {
   id: string;
   type: ApproverType;
+  name?: string;
   sequence?: number;
   approvalsRequired?: number;
   isOrgMembershipActive: boolean;

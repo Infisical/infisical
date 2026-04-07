@@ -82,7 +82,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             requestId: request.id,
             policyId: request.policyId,
             isTemporary: req.body.isTemporary,
-            ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {})
+            ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {}),
+            permissions: req.body.permissions,
+            ...(req.body.note ? { note: req.body.note } : {})
           }
         }
       });

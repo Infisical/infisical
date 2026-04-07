@@ -5278,6 +5278,8 @@ interface AccessApprovalRequestCreateEvent {
     policyId: string;
     isTemporary: boolean;
     temporaryRange?: string;
+    permissions: unknown;
+    note?: string;
   };
 }
 

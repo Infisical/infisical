@@ -1191,7 +1191,10 @@ export const registerRoutes = async (
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    accessApprovalRequestDAL,
+    accessApprovalPolicyApproverDAL,
+    accessApprovalPolicyDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
+    secretApprovalPolicyDAL,
     membershipRoleDAL
   });
 

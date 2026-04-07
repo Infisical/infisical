@@ -315,18 +315,21 @@ export const AccessApprovalRequest = ({
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
       const details = generateRequestDetails(request);
-      if (membersGroupById?.[request.requestedByUserId].user || details.isRequestedByCurrentUser) {
-        setSelectedRequest({
-          ...request,
-          user:
-            details.isRequestedByCurrentUser || !membersGroupById?.[request.requestedByUserId].user
-              ? user
-              : membersGroupById?.[request.requestedByUserId].user,
-          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-          isSelfApproveAllowed: details.isSelfApproveAllowed,
-          isApprover: details.isApprover
-        });
-      }
+      const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+
+      setSelectedRequest({
+        ...request,
+        user: details.isRequestedByCurrentUser
+          ? user
+          : memberUser || {
+              firstName: request.requestedByUser?.firstName,
+              lastName: request.requestedByUser?.lastName,
+              email: request.requestedByUser?.email
+            },
+        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+        isSelfApproveAllowed: details.isSelfApproveAllowed,
+        isApprover: details.isApprover
+      });
 
       handlePopUpOpen("reviewRequest");
     },
@@ -539,15 +542,18 @@ export const AccessApprovalRequest = ({
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="text-xs leading-3 text-gray-500">
-                          {membersGroupById?.[request.requestedByUserId]?.user && (
-                            <>
-                              Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
-                              ago by{" "}
-                              {membersGroupById?.[request.requestedByUserId]?.user?.firstName}{" "}
-                              {membersGroupById?.[request.requestedByUserId]?.user?.lastName} (
-                              {membersGroupById?.[request.requestedByUserId]?.user?.email}){" "}
-                            </>
-                          )}
+                          {(() => {
+                            const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+                            const requester = memberUser || request.requestedByUser;
+                            if (!requester) return null;
+                            return (
+                              <>
+                                Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
+                                ago by {requester.firstName} {requester.lastName} ({requester.email}
+                                ){" "}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
