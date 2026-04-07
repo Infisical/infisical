@@ -57,7 +57,7 @@ Enabling ClickHouse is a hard cutover. All reads immediately route to ClickHouse
    - Before switching, bulk-load existing audit logs from PostgreSQL into ClickHouse to avoid a visibility gap
 
 2. **Phase 2** — Enable ClickHouse:
-   - Set `CLICKHOUSE_URL` and `CLICKHOUSE_AUDIT_LOG_ENABLED=true`
+   - Set `CLICKHOUSE_URL`
    - New audit logs write to ClickHouse and all queries read exclusively from ClickHouse
    - PostgreSQL audit log writes stop automatically
 
