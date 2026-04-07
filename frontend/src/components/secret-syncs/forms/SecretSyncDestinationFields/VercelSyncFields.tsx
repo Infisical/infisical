@@ -35,6 +35,7 @@ export const VercelSyncFields = () => {
   const currentApp = watch("destinationConfig.app");
   const currentEnv = watch("destinationConfig.env");
   const scope = watch("destinationConfig.scope");
+  const teamId = watch("destinationConfig.teamId");
 
   const { data: teams, isLoading: isTeamsLoading } = useVercelConnectionListOrganizations(
     connectionId,
@@ -52,6 +53,12 @@ export const VercelSyncFields = () => {
     teams?.flatMap((team) =>
       team.apps.map((project) => ({ ...project, teamName: team.name, teamId: team.id }))
     ) || [];
+
+  const availableApps = useMemo(() => {
+    if (scope !== VercelSyncScope.Team) return allApps;
+
+    return allApps.filter((app) => app.teamId === teamId);
+  }, [allApps, teamId]);
 
   const environmentOptions = useMemo(() => {
     return vercelEnvironments
@@ -195,11 +202,13 @@ export const VercelSyncFields = () => {
               >
                 <FilterableSelect
                   isMulti
-                  value={allApps.filter((app) => (value || []).includes(app.id))}
+                  value={availableApps.filter((app) => (value || []).includes(app.id))}
                   onChange={(option) =>
-                    onChange((option as MultiValue<(typeof allApps)[number]>).map((o) => o.id))
+                    onChange(
+                      (option as MultiValue<(typeof availableApps)[number]>).map((o) => o.id)
+                    )
                   }
-                  options={allApps}
+                  options={availableApps}
                   placeholder="Select target projects..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id}
@@ -252,9 +261,9 @@ export const VercelSyncFields = () => {
                   }}
                   isLoading={isTeamsLoading && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={allApps.find((app) => app.id === value) ?? null}
+                  value={availableApps.find((app) => app.id === value) ?? null}
                   onChange={(option) => {
-                    const selected = option as SingleValue<(typeof allApps)[number]>;
+                    const selected = option as SingleValue<(typeof availableApps)[number]>;
                     onChange(selected?.id ?? null);
                     setValue("destinationConfig.branch", "");
                     setValue("destinationConfig.teamId", selected?.teamId || "");
@@ -262,7 +271,7 @@ export const VercelSyncFields = () => {
                   }}
                   onInputChange={(newValue) => setProjectSearch(newValue)}
                   filterOption={null}
-                  options={allApps}
+                  options={availableApps}
                   placeholder="Search for a project..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
