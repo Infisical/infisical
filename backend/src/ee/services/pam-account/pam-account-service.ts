@@ -1412,6 +1412,7 @@ export const pamAccountServiceFactory = ({
       ProjectPermissionPamAccountActions.ReadCredentials,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
+        resourceType: accountWithResource.resource.resourceType,
         accountName: accountWithResource.name,
         metadata: accountMetadata
       })
