@@ -1044,7 +1044,7 @@ export const authLoginServiceFactory = ({
           userId: user.id,
           aliasType,
           externalId: providerUserId,
-          emails: [email],
+          emails: [sanitizedEmail],
           isEmailVerified: isAliasVerified
         });
         aliasId = newAlias.id;

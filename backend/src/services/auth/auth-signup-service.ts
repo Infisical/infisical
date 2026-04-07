@@ -44,7 +44,7 @@ export const authSignupServiceFactory = ({
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
     const sanitizedEmail = sanitizeEmail(email);
-    validateEmail(email);
+    validateEmail(sanitizedEmail);
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new Error("Provided a disposable email");
@@ -96,7 +96,7 @@ export const authSignupServiceFactory = ({
 
   const verifyEmailSignup = async (email: string, code: string) => {
     const sanitizedEmail = sanitizeEmail(email);
-    validateEmail(email);
+    validateEmail(sanitizedEmail);
     const user = await userDAL.findOne({ username: sanitizedEmail });
 
     // Always call validateTokenForUser so the response time includes

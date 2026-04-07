@@ -147,7 +147,7 @@ export const emailDomainServiceFactory = ({
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
-        message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
+        message: "Failed to verify email domain due to plan restriction. Upgrade plan to use email domain verification."
       });
     }
 
@@ -213,14 +213,6 @@ export const emailDomainServiceFactory = ({
       OrgPermissionEmailDomainActions.Read,
       OrgPermissionSubjects.EmailDomains
     );
-
-    const plan = await licenseService.getPlan(orgId);
-    const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
-    if (!canEmailDomainVerification) {
-      throw new BadRequestError({
-        message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
-      });
-    }
 
     const emailDomains = await emailDomainDAL.find({ orgId });
     return emailDomains;

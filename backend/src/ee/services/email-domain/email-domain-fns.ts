@@ -1,6 +1,5 @@
 // import { AccessScope, TableName } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
 import { EmailDomainStatus } from "./email-domain-types";
@@ -13,14 +12,10 @@ export const verifyEmailDomainOwnership = async ({
   email,
   orgId,
   emailDomainDAL
-  // orgDAL,
-  // userId
 }: {
   email: string;
   orgId: string;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
-  userId?: string;
 }) => {
   const emailDomain = email.split("@")?.[1];
   if (!emailDomain) throw new BadRequestError({ message: "Invalid email address" });

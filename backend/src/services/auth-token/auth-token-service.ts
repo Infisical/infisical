@@ -12,7 +12,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
-import { logger } from "@app/lib/logger";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;

@@ -409,7 +409,7 @@ export const ldapConfigServiceFactory = ({
     }
 
     // Verify that the email domain (if verified on the platform) belongs to this org
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -429,9 +429,7 @@ export const ldapConfigServiceFactory = ({
         await verifyEmailDomainOwnership({
           email: existingUser.username,
           orgId,
-          emailDomainDAL,
-          orgDAL,
-          userId: existingUser.id
+          emailDomainDAL
         });
       }
       await userDAL.transaction(async (tx) => {

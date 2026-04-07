@@ -47,7 +47,7 @@ export const validateEmail = (email: string) => {
   const domain = email.slice(email.indexOf("@") + 1);
 
   if (!domain) throw new BadRequestError({ message: "Missing email domain" });
-  if (!isValidEmailDomain) throw new BadRequestError({ message: "Invalid email domain" });
+  if (!isValidEmailDomain(domain)) throw new BadRequestError({ message: "Invalid email domain" });
 
   if (!userIdentifier) throw new BadRequestError({ message: "Missing user identifier in email" });
 

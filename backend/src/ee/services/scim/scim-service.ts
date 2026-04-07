@@ -406,11 +406,9 @@ export const scimServiceFactory = ({
       aliasType
     });
 
-    // Resolve the user ID: either from the existing alias, or by looking up the email
-    const existingUserId = userAlias?.userId ?? (await userDAL.findOne({ username: sanitizedEmail }))?.id;
-
     // Verify that the email domain (if verified on the platform) belongs to this org
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL, userId: existingUserId });
+
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
 
     const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
       let user: TUsers | undefined;
@@ -635,9 +633,7 @@ export const scimServiceFactory = ({
     await verifyEmailDomainOwnership({
       email: user.username,
       orgId,
-      emailDomainDAL,
-      orgDAL,
-      userId: membership.actorUserId
+      emailDomainDAL
     });
     await userDAL.transaction(async (tx) => {
       await membershipUserDAL.updateById(
@@ -692,10 +688,6 @@ export const scimServiceFactory = ({
     }
 
     const email = unsanitizedEmail?.toLowerCase();
-    if (email) {
-      validateEmail(email.toLowerCase());
-    }
-
     const [membership] = await orgDAL
       .findMembership({
         [`${TableName.Membership}.id` as "id"]: orgMembershipId,
@@ -748,9 +740,7 @@ export const scimServiceFactory = ({
     await verifyEmailDomainOwnership({
       email: user.username,
       orgId,
-      emailDomainDAL,
-      orgDAL,
-      userId: membership.actorUserId
+      emailDomainDAL
     });
 
     await userDAL.transaction(async (tx) => {

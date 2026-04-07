@@ -197,7 +197,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     // Verify that the email domain (if verified on the platform) belongs to this org
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL, orgDAL });
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -218,9 +218,7 @@ export const oidcConfigServiceFactory = ({
         await verifyEmailDomainOwnership({
           email: foundUser.username,
           orgId,
-          emailDomainDAL,
-          orgDAL,
-          userId: foundUser.id
+          emailDomainDAL
         });
         const [orgMembership] = await orgDAL.findMembership(
           {
