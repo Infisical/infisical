@@ -71,7 +71,7 @@ function ResultsGrid({
   tableDetail: TableDetail | null;
 }) {
   const displayRows = useMemo(() => result.rows.slice(0, MAX_ROWS), [result.rows]);
-  const isTruncated = result.rows.length >= MAX_ROWS;
+  const isTruncated = result.rows.length > MAX_ROWS;
 
   const columns = useMemo(
     () => buildColumns(result.fields, tableDetail),
