@@ -1,6 +1,6 @@
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
-import { RE2 } from "re2";
+import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
