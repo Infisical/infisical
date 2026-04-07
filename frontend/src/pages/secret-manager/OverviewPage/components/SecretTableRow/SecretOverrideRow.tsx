@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { CopyIcon, EditIcon, GitBranchIcon, SaveIcon, TrashIcon, Undo2Icon } from "lucide-react";
+import {
+  CopyIcon,
+  EditIcon,
+  EllipsisIcon,
+  GitBranchIcon,
+  SaveIcon,
+  TrashIcon,
+  Undo2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -268,10 +276,15 @@ export const SecretOverrideRow = ({
       )}
       {isOverrideFieldFocused && !isDirty && (
         <div
-          className="absolute top-0 right-0 bottom-0 z-10 w-10"
+          className={twMerge(
+            "absolute top-0 bottom-0 z-10 flex w-8 cursor-pointer items-start justify-center",
+            isSingleEnvView ? "-right-4 pt-[8px] pr-[2px]" : "-right-[18px] pt-[8px] pr-[12px]"
+          )}
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}
-        />
+        >
+          <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
+        </div>
       )}
       {!isDirty && (
         <div

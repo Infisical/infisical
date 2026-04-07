@@ -935,7 +935,7 @@ export const SecretEditTableRow = ({
             )}
           />
         </div>
-        {!isDirtyState && (
+        {!isDirtyState && !isFieldFocused && (
           <div className="flex w-fit items-start justify-end self-start pl-2">
             <div className="flex items-center gap-1">
               {comment && !isImportedSecret && (
@@ -1053,10 +1053,15 @@ export const SecretEditTableRow = ({
           !isBatchMode
         ) && (
           <div
-            className="absolute top-0 right-0 bottom-0 z-10 w-10"
+            className={twMerge(
+              "absolute top-0 bottom-0 z-10 flex w-8 cursor-pointer items-start justify-center",
+              isSingleEnvView ? "right-0 pt-[11px] pr-[6px]" : "-right-3 pt-[8px] pr-[12px]"
+            )}
             onMouseEnter={() => setIsHoveringActionZone(true)}
             onMouseLeave={() => setIsHoveringActionZone(false)}
-          />
+          >
+            <EllipsisIcon className="animate-fade-in text-muted-foreground/40 size-4" />
+          </div>
         )}
       {!(
         isDirty &&
