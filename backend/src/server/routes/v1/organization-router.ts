@@ -268,6 +268,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationAuditLogPostgresStorageStatus",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get the PostgreSQL audit log storage status for an organization",
       response: {
         200: z.object({
           clickHouseConfigured: z.boolean(),
