@@ -65,8 +65,7 @@ export const isLdapReferral = (err: unknown): boolean => {
 
 /**
  * Type guard for a fully-formed LDAP Referral: code 10 with `dn` (string) and `referrals` (array).
- * With the Infisical ldapjs fork (v3.0.8), `referrals` carries the actual target URLs from the
- * LDAPResult, which is the primary source for determining the chase target.
+ * `referrals` carries the actual target URLs from the LDAPResult, which is the primary source for determining the chase target.
  */
 export const isLdapReferralError = (err: unknown): err is LdapReferralError => {
   if (!isLdapReferral(err)) return false;
