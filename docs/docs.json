@@ -426,7 +426,8 @@
                       "documentation/platform/secrets-mgmt/concepts/access-control",
                       "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
                       "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
-                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
+                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
+                      "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
                   {
