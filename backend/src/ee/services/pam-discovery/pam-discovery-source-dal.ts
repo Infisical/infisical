@@ -113,9 +113,35 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamDiscoverySource)
+      .leftJoin(TableName.Project, `${TableName.PamDiscoverySource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamDiscoverySource}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.PamDiscoverySource),
+        db.ref("projectId").withSchema(TableName.PamDiscoverySource),
+        db.ref("discoveryType").withSchema(TableName.PamDiscoverySource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamDiscoverySource)
+      .where(`${TableName.PamDiscoverySource}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...orm,
     findByProjectId,
-    findDueForScan
+    findDueForScan,
+    findByGatewayId,
+    countByGatewayId
   };
 };

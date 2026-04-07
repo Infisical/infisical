@@ -154,5 +154,29 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     });
   };
 
-  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.AppConnection)
+      .leftJoin(TableName.Project, `${TableName.AppConnection}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.AppConnection}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.AppConnection),
+        db.ref("app").withSchema(TableName.AppConnection),
+        db.ref("projectId").withSchema(TableName.AppConnection),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.AppConnection)
+      .where(`${TableName.AppConnection}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return { ...appConnectionOrm, findAppConnectionUsageById, findWithProjectDetails, findByGatewayId, countByGatewayId };
 };

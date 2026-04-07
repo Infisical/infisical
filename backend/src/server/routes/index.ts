@@ -1271,6 +1271,10 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
+  const pamResourceDAL = pamResourceDALFactory(db);
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
     sshCertificateAuthorityDAL,
     sshCertificateAuthoritySecretDAL,
@@ -1424,7 +1428,14 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     notificationService,
-    smtpService
+    smtpService,
+    appConnectionDAL,
+    dynamicSecretDAL,
+    pamResourceDAL,
+    pamDiscoverySourceDAL,
+    identityKubernetesAuthDAL,
+    aiMcpServerDAL,
+    pkiDiscoveryConfigDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2773,18 +2784,16 @@ export const registerRoutes = async (
   });
 
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamResourceDAL = pamResourceDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
   const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
   const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
