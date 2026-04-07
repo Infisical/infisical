@@ -6,44 +6,34 @@ import { Input } from "../v2/Input";
 
 export const GlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="text-sm font-medium text-mineshaft-200">This field supports glob patterns:</p>
-    <ul className="list-disc pl-3.5 text-mineshaft-300">
-      <li>
-        <code className="text-yellow-500/80">*</code> matches a single path segment
-        <br />
-        <span className="text-mineshaft-400">
-          user/* matches user/admin but not user/admin/service
-        </span>
-      </li>
-      <li>
-        <code className="text-yellow-500/80">**</code> matches zero or more segments at any depth
-        <br />
-        <span className="text-mineshaft-400">
-          user/** matches user/admin, user/admin/service, etc.
-        </span>
-      </li>
-    </ul>
-    <p className="text-mineshaft-400">
-      We highly recommend using hardcoded values whenever possible.
-    </p>
+    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
+    <div className="text-mineshaft-300">
+      <code className="text-yellow-500/80">*</code> matches a single path segment
+      <br />
+      <span className="text-mineshaft-400">
+        user/* matches user/admin but not user/admin/service
+      </span>
+    </div>
+    <div className="text-mineshaft-300">
+      <code className="text-yellow-500/80">**</code> matches zero or more segments at any depth
+      <br />
+      <span className="text-mineshaft-400">
+        user/** matches user/admin, user/admin/service, etc.
+      </span>
+    </div>
   </div>
 );
 
 export const BashGlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="text-sm font-medium text-mineshaft-200">This field supports glob patterns:</p>
-    <ul className="list-disc pl-3.5 text-mineshaft-300">
-      <li>
-        <code className="text-yellow-500/80">*</code> matches any characters (including{" "}
-        <code className="text-yellow-500/80">/</code>)
-        <br />
-        <span className="text-mineshaft-400">
-          user/* matches user/admin, user/admin/service, etc.
-        </span>
-      </li>
-    </ul>
-    <p className="text-mineshaft-400">
-      We highly recommend using hardcoded values whenever possible.
+    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
+    <p className="text-mineshaft-300">
+      <code className="text-yellow-500/80">*</code> matches any characters
+    </p>
+    <p>
+      <span className="text-mineshaft-400">
+        user/* matches user/admin, user/admin/service, etc.
+      </span>
     </p>
   </div>
 );

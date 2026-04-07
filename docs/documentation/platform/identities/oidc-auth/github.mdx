@@ -94,8 +94,7 @@ In the following steps, we explore how to create and use identities to access th
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
     <Tip>If you are unsure about what to configure for the subject, audience, and claims fields you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to get the appropriate values. Alternatively, you can fetch the JWT from the workflow and inspect the fields manually.</Tip>
     <Info>
-    The `subject`, `audiences`, and `claims` fields support [glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching; however, we highly recommend using hardcoded values whenever possible.
-    
+    The `subject`, `audiences`, and `claims` fields support glob pattern matching; however, we highly recommend using hardcoded values whenever possible. See [General OIDC Auth](/documentation/platform/identities/oidc-auth/general#guide) for glob pattern behavior and examples.
     </Info>
     </Step>
     <Step title="Adding an identity to a project">
