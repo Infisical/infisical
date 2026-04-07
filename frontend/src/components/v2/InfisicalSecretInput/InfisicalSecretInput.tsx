@@ -441,8 +441,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               if (props.onFocus) props.onFocus(evt);
               const el = evt.currentTarget;
               requestAnimationFrame(() => {
-                const len = el.value.length;
-                el.setSelectionRange(len, len);
+                if (el.selectionStart === el.selectionEnd) {
+                  const len = el.value.length;
+                  el.setSelectionRange(len, len);
+                }
               });
               setIsFocused.on();
             }}
