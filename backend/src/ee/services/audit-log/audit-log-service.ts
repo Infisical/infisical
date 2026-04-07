@@ -20,7 +20,7 @@ import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
-const AUDIT_LOG_ROW_WARNING_THRESHOLD = 300_000_000;
+const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
 const AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
