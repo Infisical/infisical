@@ -51,7 +51,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
           </span>
         </div>
         {notification.body && (
-          <div className="w-full overflow-hidden break-words text-xs text-mineshaft-300">
+          <div className="w-full overflow-hidden text-xs break-words text-mineshaft-300">
             <Markdown>{notification.body}</Markdown>
           </div>
         )}
