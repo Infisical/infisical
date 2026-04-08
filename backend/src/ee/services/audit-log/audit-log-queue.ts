@@ -154,7 +154,9 @@ export const auditLogQueueServiceFactory = async ({
           await auditLogDAL.create(auditLog);
         }
 
-        await auditLogStreamService.streamLog(orgId, auditLog);
+        if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
+          await auditLogStreamService.streamLog(orgId, auditLog);
+        }
       }
     } catch (error) {
       logger.error(

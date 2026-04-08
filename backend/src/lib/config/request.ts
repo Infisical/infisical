@@ -14,7 +14,10 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
       megabyteSize = `Large payload: ${(responseSize / 1024 / 1024).toFixed(2)} MB`;
     }
 
-    customLogger.info({ url: response.config.url, responseSize }, `Intercepted axios response ${megabyteSize}`);
+    customLogger.info(
+      { url: `${response.config.method || "NO_METHOD"} ${response.config.url}`, responseSize },
+      `Intercepted axios response ${megabyteSize}`
+    );
   } catch (error) {
     customLogger.error(error, "Error intercepting axios response");
   }
