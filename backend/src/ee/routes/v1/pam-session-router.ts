@@ -12,6 +12,7 @@ import {
   HttpEventSchema,
   PamSessionCommandLogSchema,
   SanitizedSessionSchema,
+  SessionLogsPageSchema,
   TerminalEventSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -250,6 +251,36 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         .catch(() => {});
 
       return { session };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId/logs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get paginated PAM session logs",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().nonnegative().default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(20)
+      }),
+      response: {
+        200: SessionLogsPageSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.pamSession.getSessionLogs(
+        req.params.sessionId,
+        req.query.offset,
+        req.query.limit,
+        req.permission
+      );
     }
   });
 

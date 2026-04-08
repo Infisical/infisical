@@ -1,12 +1,15 @@
 import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { Button } from "@app/components/v2";
 import {
   PamResourceType,
+  PamSessionStatus,
   THttpEvent,
   TPamCommandLog,
   TPamSession,
-  TTerminalEvent
+  TTerminalEvent,
+  useInfiniteGetPamSessionLogs
 } from "@app/hooks/api/pam";
 
 import { CommandLogView } from "./CommandLogView";
@@ -18,7 +21,16 @@ type Props = {
 };
 
 export const PamSessionLogsSection = ({ session }: Props) => {
-  // Determine log type based on resource type
+  const isActive =
+    session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
+    useInfiniteGetPamSessionLogs(session.id, {
+      refetchInterval: isActive ? 5000 : false
+    });
+
+  const allLogs = data?.pages.flatMap((page) => page.logs) ?? [];
+
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
     session.resourceType === PamResourceType.Postgres ||
@@ -28,7 +40,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
     session.resourceType === PamResourceType.Redis;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
-  const hasLogs = session.logs.length > 0;
+  const hasLogs = allLogs.length > 0;
 
   return (
     <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -36,9 +48,9 @@ export const PamSessionLogsSection = ({ session }: Props) => {
         <h3 className="text-lg font-medium text-mineshaft-100">Session Logs</h3>
       </div>
 
-      {isDatabaseSession && hasLogs && <CommandLogView logs={session.logs as TPamCommandLog[]} />}
-      {isSSHSession && hasLogs && <TerminalEventView events={session.logs as TTerminalEvent[]} />}
-      {isHttpSession && hasLogs && <HttpEventView events={session.logs as THttpEvent[]} />}
+      {isDatabaseSession && hasLogs && <CommandLogView logs={allLogs as TPamCommandLog[]} />}
+      {isSSHSession && hasLogs && <TerminalEventView events={allLogs as TTerminalEvent[]} />}
+      {isHttpSession && hasLogs && <HttpEventView events={allLogs as THttpEvent[]} />}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">
@@ -59,7 +71,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
           </div>
         </div>
       )}
-      {!hasLogs && !isAwsIamSession && (
+      {!hasLogs && !isAwsIamSession && !isFetching && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">
             <div className="mb-2">Session logs are not yet available</div>
@@ -69,6 +81,19 @@ export const PamSessionLogsSection = ({ session }: Props) => {
               If logs do not appear after some time, please contact your Gateway administrators.
             </div>
           </div>
+        </div>
+      )}
+
+      {hasNextPage && !isAwsIamSession && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline_bg"
+            size="xs"
+            isLoading={isFetchingNextPage}
+            onClick={() => fetchNextPage()}
+          >
+            Load more
+          </Button>
         </div>
       )}
     </div>

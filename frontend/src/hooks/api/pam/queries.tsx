@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -12,7 +12,8 @@ import {
   TPamResource,
   TPamResourceDependency,
   TPamRotationRule,
-  TPamSession
+  TPamSession,
+  TPamSessionLogsPage
 } from "./types";
 
 export const pamKeys = {
@@ -51,6 +52,7 @@ export const pamKeys = {
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
+  getSessionLogs: (sessionId: string) => [...pamKeys.session(), "logs", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
 
@@ -296,6 +298,29 @@ export const useGetPamSessionById = (
 
       return data.session;
     },
+    enabled: !!sessionId,
+    ...options
+  });
+};
+
+const LOGS_PAGE_LIMIT = 20;
+
+export const useInfiniteGetPamSessionLogs = (
+  sessionId: string,
+  options: { refetchInterval?: number | false } = {}
+) => {
+  return useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: pamKeys.getSessionLogs(sessionId),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<TPamSessionLogsPage>(
+        `/api/v1/pam/sessions/${sessionId}/logs`,
+        { params: { offset: pageParam, limit: LOGS_PAGE_LIMIT } }
+      );
+      return data;
+    },
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.length * LOGS_PAGE_LIMIT : undefined,
     enabled: !!sessionId,
     ...options
   });

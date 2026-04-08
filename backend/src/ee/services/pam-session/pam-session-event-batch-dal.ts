@@ -9,10 +9,16 @@ export type TPamSessionEventBatchDALFactory = ReturnType<typeof pamSessionEventB
 export const pamSessionEventBatchDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSessionEventBatch);
 
-  const findBySessionId = async (sessionId: string, tx?: Knex) => {
+  const findBySessionIdPaginated = async (
+    sessionId: string,
+    { offset, limit }: { offset: number; limit: number },
+    tx?: Knex
+  ) => {
     return (tx || db.replicaNode())(TableName.PamSessionEventBatch)
       .where("sessionId", sessionId)
       .orderBy("startOffset", "asc")
+      .limit(limit)
+      .offset(offset)
       .select("*");
   };
 
@@ -23,5 +29,5 @@ export const pamSessionEventBatchDALFactory = (db: TDbClient) => {
       .merge(["encryptedEventsBlob"]); // on re-upload of the same offset, overwrite the blob instead of erroring or skipping
   };
 
-  return { ...orm, findBySessionId, upsertBatch };
+  return { ...orm, findBySessionIdPaginated, upsertBatch };
 };

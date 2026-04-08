@@ -52,3 +52,8 @@ export const SanitizedSessionSchema = PamSessionsSchema.omit({
   logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
   gatewayIdentityId: z.string().nullable().optional()
 });
+
+export const SessionLogsPageSchema = z.object({
+  logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema])),
+  hasMore: z.boolean()
+});

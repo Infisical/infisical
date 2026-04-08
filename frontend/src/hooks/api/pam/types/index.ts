@@ -269,3 +269,8 @@ export type TReorderPamRotationRulesDTO = {
 export type TPamResourceDependency = TPamAccountDependency & {
   accountName: string | null;
 };
+
+export type TPamSessionLogsPage = {
+  logs: TPamSessionLog[];
+  hasMore: boolean;
+};
