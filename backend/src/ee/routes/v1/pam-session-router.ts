@@ -383,7 +383,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
       EventBatchSchema.parse(JSON.parse(req.body.toString()));
 
-      const { projectId } = await server.services.pamSession.uploadEventBatch(
+      const { projectId, wasInserted } = await server.services.pamSession.uploadEventBatch(
         {
           sessionId: req.params.sessionId,
           startOffset: req.query.startOffset,
@@ -392,18 +392,20 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD,
-          metadata: {
-            sessionId: req.params.sessionId,
-            startOffset: req.query.startOffset
+      if (wasInserted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD,
+            metadata: {
+              sessionId: req.params.sessionId,
+              startOffset: req.query.startOffset
+            }
           }
-        }
-      });
+        });
+      }
 
       return { ok: true as const };
     }

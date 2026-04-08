@@ -23,10 +23,12 @@ export const pamSessionEventBatchDALFactory = (db: TDbClient) => {
   };
 
   const upsertBatch = async (sessionId: string, startOffset: number, encryptedEventsBlob: Buffer, tx?: Knex) => {
-    return (tx || db)(TableName.PamSessionEventBatch)
+    const result = await (tx || db)(TableName.PamSessionEventBatch)
       .insert({ sessionId, startOffset, encryptedEventsBlob })
       .onConflict(["sessionId", "startOffset"])
-      .merge(["encryptedEventsBlob"]); // on re-upload of the same offset, overwrite the blob instead of erroring or skipping
+      .merge(["encryptedEventsBlob"]) // on re-upload of the same offset, overwrite the blob instead of erroring or skipping
+      .returning(db.raw("(xmax = 0) as inserted"));
+    return { wasInserted: result[0]?.inserted === true };
   };
 
   return { ...orm, findBySessionIdPaginated, upsertBatch };

@@ -372,9 +372,9 @@ export const pamSessionServiceFactory = ({
 
     const { cipherTextBlob } = encryptor({ plainText: events });
 
-    await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
+    const { wasInserted } = await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
 
-    return { projectId: project.id };
+    return { projectId: project.id, wasInserted };
   };
 
   return { getById, list, getSessionLogs, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };
