@@ -146,8 +146,8 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
         <UnstableTable containerClassName="rounded-none border-x-0 border-t border-b-0">
           <UnstableTableHeader>
             <UnstableTableRow>
-              <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Type</UnstableTableHead>
+              <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Status</UnstableTableHead>
               <UnstableTableHead className="text-right">Last Synced</UnstableTableHead>
             </UnstableTableRow>
@@ -159,15 +159,17 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
 
               return (
                 <UnstableTableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
+                  <UnstableTableCell>
+                    <img
+                      alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
+                      src={`/images/integrations/${SECRET_SYNC_MAP[sync.destination].image}`}
+                      className="min-w-7"
+                    />
+                  </UnstableTableCell>
                   <UnstableTableCell className="max-w-0 min-w-32!">
                     <div className="flex items-center gap-2">
                       <span className="truncate">{sync.name}</span>
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <span className="text-xs capitalize">
-                      {SECRET_SYNC_MAP[sync.destination].name}
-                    </span>
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <span className={`text-xs ${statusConfig?.className ?? "text-accent"}`}>
