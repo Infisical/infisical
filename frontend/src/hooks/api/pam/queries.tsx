@@ -265,6 +265,15 @@ export const useGetPamAccountDependencies = (accountId?: string) => {
   });
 };
 
+export type TPamAccountCredentialsResponse = {
+  credentials: Record<string, unknown>;
+  resourceType: string;
+  accountId: string;
+  accountName: string;
+  resourceName: string;
+  projectId: string;
+};
+
 // Rotation Rules
 export const useGetPamRotationRules = (resourceId?: string) => {
   return useQuery({

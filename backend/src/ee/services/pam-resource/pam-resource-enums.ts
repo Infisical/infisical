@@ -6,6 +6,7 @@ export enum PamResource {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   Redis = "redis",
+  MongoDB = "mongodb",
   Windows = "windows",
   ActiveDirectory = "active-directory"
 }

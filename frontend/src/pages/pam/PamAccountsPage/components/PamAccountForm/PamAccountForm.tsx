@@ -10,6 +10,7 @@ import { DiscriminativePick } from "@app/types";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MongoDBAccountForm } from "./MongoDBAccountForm";
 import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
@@ -90,6 +91,15 @@ const CreateForm = ({
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm
           onSubmit={onSubmit}
           closeSheet={closeSheet}
           resourceId={resourceId}
@@ -195,6 +205,10 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
     case PamResourceType.Redis:
       return (

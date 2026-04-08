@@ -263,6 +263,37 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/audit-logs/postgres-storage-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getOrganizationAuditLogPostgresStorageStatus",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get the PostgreSQL audit log storage status for an organization",
+      response: {
+        200: z.object({
+          clickHouseConfigured: z.boolean(),
+          auditLogGenerationDisabled: z.boolean(),
+          auditLogStorageDisabled: z.boolean(),
+          auditLogRowCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.auditLog.getAuditLogPostgresStorageStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:organizationId/users",
     config: {
       rateLimit: readLimit

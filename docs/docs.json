@@ -84,9 +84,7 @@
                   "documentation/platform/access-controls/additional-privileges",
                   "documentation/platform/access-controls/temporary-access",
                   "documentation/platform/access-controls/assume-privilege",
-                  "documentation/platform/access-controls/access-requests",
                   "documentation/platform/access-controls/project-access-requests",
-                  "documentation/platform/pr-workflows",
                   "documentation/platform/groups"
                 ]
               },
@@ -94,6 +92,7 @@
                 "group": "Audit Logs",
                 "pages": [
                   "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
                   "documentation/platform/audit-log-streams/audit-log-streams",
                   "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
                 ]
@@ -429,7 +428,8 @@
                       "documentation/platform/secrets-mgmt/concepts/access-control",
                       "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
                       "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
-                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
+                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
+                      "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
                   {
@@ -454,6 +454,8 @@
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
+                  "documentation/platform/pr-workflows",
+                  "documentation/platform/access-controls/access-requests",
                   {
                     "group": "Secret Rotation",
                     "pages": [
@@ -864,6 +866,7 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mongodb",
                           "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
                           "documentation/platform/pam/getting-started/resources/postgresql",

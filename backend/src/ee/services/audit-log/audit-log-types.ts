@@ -28,7 +28,7 @@ import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -117,6 +117,13 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
+  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
+    clickHouseConfigured: boolean;
+    auditLogGenerationDisabled: boolean;
+    auditLogStorageDisabled: boolean;
+    auditLogRowCount: number;
+  }>;
+  checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
@@ -612,6 +619,7 @@ export enum EventType {
   PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
   PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
   PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
+  PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
@@ -4909,6 +4917,16 @@ interface PamAccountPolicyGetEvent {
   };
 }
 
+interface PamAccountReadCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountName: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
 interface PamResourceListEvent {
   type: EventType.PAM_RESOURCE_LIST;
   metadata: {
@@ -6217,6 +6235,7 @@ export type Event =
   | PamAccountPolicyDeleteEvent
   | PamAccountPolicyListEvent
   | PamAccountPolicyGetEvent
+  | PamAccountReadCredentialsEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

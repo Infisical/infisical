@@ -279,6 +279,7 @@ export enum EventType {
   PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
   PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
   PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
+  PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",

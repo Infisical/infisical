@@ -46,3 +46,8 @@ export type TListAccountsDTO = {
 export type TGetAccountByIdDTO = {
   accountId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TViewAccountCredentialsDTO = {
+  accountId: string;
+  mfaSessionId?: string;
+} & Omit<TProjectPermission, "projectId">;

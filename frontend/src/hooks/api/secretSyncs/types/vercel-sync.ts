@@ -2,6 +2,11 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
+export enum VercelSyncScope {
+  Project = "project",
+  Team = "team"
+}
+
 export const VercelEnvironmentType = {
   Development: "development",
   Preview: "preview",
@@ -12,13 +17,22 @@ export type VercelEnvironment = (typeof VercelEnvironmentType)[keyof typeof Verc
 
 export type TVercelSync = TRootSecretSync & {
   destination: SecretSync.Vercel;
-  destinationConfig: {
-    app: string;
-    env: VercelEnvironment | string;
-    branch?: string;
-    appName?: string;
-    teamId: string;
-  };
+  destinationConfig:
+    | {
+        scope: VercelSyncScope.Project;
+        app: string;
+        env: VercelEnvironment | string;
+        branch?: string;
+        appName?: string;
+        teamId: string;
+      }
+    | {
+        scope: VercelSyncScope.Team;
+        teamId: string;
+        teamName?: string;
+        targetEnvironments: string[];
+        targetProjects?: string[];
+      };
   connection: {
     app: AppConnection.Vercel;
     name: string;

@@ -1,4 +1,5 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -21,6 +22,7 @@ import { TServiceTokenServiceFactory } from "../service-token/service-token-serv
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "checkPostgresAuditLogVolumeMigrationAlert">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens">;
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
@@ -44,6 +46,7 @@ export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyRe
 
 export const dailyResourceCleanUpQueueServiceFactory = ({
   auditLogDAL,
+  auditLogService,
   queueService,
   snapshotDAL,
   secretVersionDAL,
@@ -86,7 +89,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await serviceTokenService.notifyExpiringTokens();
         await scimService.notifyExpiringTokens();
         await orgService.notifyInvitedUsers();
-        await auditLogDAL.pruneAuditLog();
+        await auditLogService.checkPostgresAuditLogVolumeMigrationAlert();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
@@ -95,6 +98,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
         }
         await approvalRequestGrantsDAL.markExpiredGrants();
+        await auditLogDAL.pruneAuditLog();
         logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
       } catch (error) {
         logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);

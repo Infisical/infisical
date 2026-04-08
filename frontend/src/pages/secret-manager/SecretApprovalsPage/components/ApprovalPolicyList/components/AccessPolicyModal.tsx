@@ -555,7 +555,7 @@ const Form = ({
             defaultValue="/"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
+                tooltipText="Secret paths support glob patterns. Use * to match a single level and ** to match all nested levels. Example: /** matches all paths, /services/* matches immediate children."
                 label="Secret Path"
                 isRequired
                 isError={Boolean(error)}

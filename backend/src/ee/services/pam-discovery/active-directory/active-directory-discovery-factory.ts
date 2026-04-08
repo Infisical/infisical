@@ -1,7 +1,7 @@
 import net from "node:net";
 
+import ldapjs from "@infisical/ldapjs";
 import { Knex } from "knex";
-import ldapjs from "ldapjs";
 import RE2 from "re2";
 import { runPowershell } from "winrm-client";
 
