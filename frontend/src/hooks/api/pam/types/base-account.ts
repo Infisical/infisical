@@ -20,6 +20,7 @@ export interface TBasePamAccount {
   rotationStatus?: string | null;
   dependencyCount?: number;
   policyId?: string | null;
+  policyName?: string | null;
   metadata?: { key: string; value: string }[];
   createdAt: string;
   updatedAt: string;

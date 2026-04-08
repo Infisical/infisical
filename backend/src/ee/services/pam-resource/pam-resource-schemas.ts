@@ -63,6 +63,7 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
   }).extend({
     rotationCredentialsConfigured: z.boolean()
   }),
+  policyName: z.string().nullable().optional(),
   lastRotationMessage: z.string().nullable().optional(),
   rotationStatus: z.string().nullable().optional()
 });

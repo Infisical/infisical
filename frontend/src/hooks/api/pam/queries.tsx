@@ -357,28 +357,3 @@ export const useListPamAccountPolicies = (
     ...options
   });
 };
-
-export const useGetPamAccountPolicy = (
-  policyId: string,
-  options?: Omit<
-    UseQueryOptions<
-      TPamAccountPolicy,
-      unknown,
-      TPamAccountPolicy,
-      ReturnType<typeof pamKeys.getAccountPolicy>
-    >,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery({
-    queryKey: pamKeys.getAccountPolicy(policyId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ policy: TPamAccountPolicy }>(
-        `/api/v1/pam/account-policies/${policyId}`
-      );
-
-      return data.policy;
-    },
-    ...options
-  });
-};
