@@ -274,7 +274,8 @@ export const ReviewAccessRequestModal = ({
       return { ...approverChain, reviewers, hasApproved, hasRejected };
     });
     const currentSequenceApprover = approvers?.find((el) => !el.hasApproved);
-    const currentSequence = currentSequenceApprover?.sequence || 1;
+    const currentSequence =
+      currentSequenceApprover?.sequence ?? (approvers?.[approvers.length - 1]?.sequence ?? 1) + 1;
     const isMyReviewInThisSequence = currentSequenceApprover?.reviewers.find(
       (i) => i.userId === user.id
     );

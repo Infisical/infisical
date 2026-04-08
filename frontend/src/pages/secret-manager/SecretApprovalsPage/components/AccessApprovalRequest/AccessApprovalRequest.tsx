@@ -585,11 +585,11 @@ export const AccessApprovalRequest = ({
                             </Badge>
                           </Tooltip>
                         )}
-                      <div className="flex w-32 justify-end">
+                      <div className="flex shrink-0 justify-end">
                         <Tooltip content={details.displayData.tooltipContent}>
                           <Badge variant={details.displayData.type}>
                             {StatusIcon && <StatusIcon />}
-                            {details.displayData.label}
+                            <span className="whitespace-nowrap">{details.displayData.label}</span>
                           </Badge>
                         </Tooltip>
                       </div>
