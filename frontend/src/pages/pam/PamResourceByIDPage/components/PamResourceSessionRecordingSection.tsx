@@ -10,11 +10,14 @@ import {
   UnstableIconButton
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 
+// SessionRecordingConfig mirrors the backend sessionSummaryConfig shape.
+// connectionName is optional and derived client-side from the app connections list.
 export type SessionRecordingConfig = {
   aiInsightsEnabled: boolean;
   connectionId: string;
-  connectionName: string;
+  connectionName?: string;
   model: string;
 } | null;
 
@@ -24,6 +27,16 @@ type Props = {
 };
 
 export const PamResourceSessionRecordingSection = ({ config, onEdit }: Props) => {
+  const { data: allConnections = [] } = useListAppConnections(undefined, {
+    enabled: Boolean(config?.aiInsightsEnabled && config?.connectionId)
+  });
+
+  const connectionName =
+    config?.connectionName ||
+    allConnections.find((c) => c.id === config?.connectionId)?.name ||
+    config?.connectionId ||
+    "";
+
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
       <div className="flex items-center justify-between border-b border-border pb-2">
@@ -60,7 +73,7 @@ export const PamResourceSessionRecordingSection = ({ config, onEdit }: Props) =>
           <>
             <Detail>
               <DetailLabel>App Connection</DetailLabel>
-              <DetailValue>{config.connectionName}</DetailValue>
+              <DetailValue>{connectionName}</DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Model</DetailLabel>

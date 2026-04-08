@@ -24,7 +24,8 @@ import {
   PAM_RESOURCE_TYPE_MAP,
   PamResourceType,
   useDeletePamResource,
-  useGetPamResourceById
+  useGetPamResourceById,
+  useUpdatePamResource
 } from "@app/hooks/api/pam";
 
 import { PamUpdateResourceModal } from "../PamResourcesPage/components/PamUpdateResourceModal";
@@ -38,8 +39,7 @@ import {
   PamResourceRotationPolicySection,
   PamResourceSessionRecordingSection,
   PamRotationPolicyModal,
-  PamSessionRecordingModal,
-  SessionRecordingConfig
+  PamSessionRecordingModal
 } from "./components";
 
 const PageContent = () => {
@@ -73,7 +73,6 @@ const PageContent = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
   const [isSessionRecordingModalOpen, setIsSessionRecordingModalOpen] = useState(false);
-  const [sessionRecordingConfig, setSessionRecordingConfig] = useState<SessionRecordingConfig>(null);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -84,6 +83,7 @@ const PageContent = () => {
   );
 
   const deleteResource = useDeletePamResource();
+  const updateResource = useUpdatePamResource();
 
   if (isPending) {
     return <UnstablePageLoader />;
@@ -214,7 +214,7 @@ const PageContent = () => {
           />
           {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
             <PamResourceSessionRecordingSection
-              config={sessionRecordingConfig}
+              config={resource.sessionSummaryConfig ?? null}
               onEdit={() => setIsSessionRecordingModalOpen(true)}
             />
           )}
@@ -274,8 +274,14 @@ const PageContent = () => {
         <PamSessionRecordingModal
           isOpen={isSessionRecordingModalOpen}
           onOpenChange={setIsSessionRecordingModalOpen}
-          config={sessionRecordingConfig}
-          onSave={setSessionRecordingConfig}
+          config={resource.sessionSummaryConfig ?? null}
+          onSave={async (config) => {
+            await updateResource.mutateAsync({
+              resourceId: resource.id,
+              resourceType: resource.resourceType,
+              sessionSummaryConfig: config
+            });
+          }}
         />
       )}
     </div>

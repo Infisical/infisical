@@ -56,7 +56,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   config: SessionRecordingConfig;
-  onSave: (config: SessionRecordingConfig) => void;
+  onSave: (config: SessionRecordingConfig) => void | Promise<void>;
 };
 
 export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave }: Props) => {
@@ -99,16 +99,16 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
     }
   }, [selectedProvider, setValue]);
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     if (!data.aiInsightsEnabled) {
-      onSave({
+      await onSave({
         aiInsightsEnabled: false,
         connectionId: "",
         connectionName: "",
         model: ""
       });
     } else {
-      onSave({
+      await onSave({
         aiInsightsEnabled: true,
         connectionId: data.connectionId ?? "",
         connectionName: selectedConnection?.name ?? data.connectionId ?? "",
@@ -245,8 +245,8 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
           {config && (
             <Button
               variant="danger"
-              onClick={() => {
-                onSave(null);
+              onClick={async () => {
+                await onSave(null);
                 onOpenChange(false);
               }}
             >

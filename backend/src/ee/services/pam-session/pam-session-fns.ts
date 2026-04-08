@@ -49,6 +49,20 @@ export const decryptSession = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
+  const encryptedAiInsights = (session as TPamSessions & { encryptedAiInsights?: Buffer | null }).encryptedAiInsights;
+
+  let aiInsights: { summary: string; warnings: string[] } | null = null;
+  if (encryptedAiInsights) {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    aiInsights = JSON.parse(decryptor({ cipherTextBlob: encryptedAiInsights }).toString()) as {
+      summary: string;
+      warnings: string[];
+    };
+  }
+
   return {
     ...session,
     logs: session.encryptedLogsBlob
@@ -57,6 +71,7 @@ export const decryptSession = async (
           encryptedLogs: session.encryptedLogsBlob,
           kmsService
         })
-      : []
+      : [],
+    aiInsights
   } as TPamSanitizedSession;
 };

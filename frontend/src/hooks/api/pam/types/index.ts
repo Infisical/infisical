@@ -101,10 +101,16 @@ export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
 export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
 
+export type TPamSessionAiInsights = {
+  summary: string;
+  warnings: string[];
+};
+
 export type TPamSession = {
   id: string;
   projectId: string;
   accountId?: string | null;
+  resourceId?: string | null;
   resourceType: PamResourceType;
   resourceName: string;
   accountName: string;
@@ -121,6 +127,9 @@ export type TPamSession = {
   updatedAt: string;
   logs: TPamSessionLog[];
   gatewayIdentityId?: string | null;
+  aiInsightsStatus?: string | null;
+  aiInsightsError?: string | null;
+  aiInsights?: TPamSessionAiInsights | null;
 };
 
 // Resource DTOs
@@ -143,6 +152,12 @@ export type TCreatePamResourceDTO = Pick<
   metadata?: { key: string; value: string }[];
 };
 
+export type TSessionSummaryConfig = {
+  aiInsightsEnabled: boolean;
+  connectionId: string;
+  model: string;
+} | null;
+
 export type TUpdatePamResourceDTO = Partial<
   Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
 > & {
@@ -151,6 +166,7 @@ export type TUpdatePamResourceDTO = Partial<
   adServerResourceId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;
+  sessionSummaryConfig?: TSessionSummaryConfig;
 };
 
 export type TDeletePamResourceDTO = {

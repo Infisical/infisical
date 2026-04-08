@@ -46,11 +46,21 @@ export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);
 
+export const AiInsightsSchema = z
+  .object({
+    summary: z.string(),
+    warnings: z.string().array()
+  })
+  .nullable()
+  .optional();
+
 export const SanitizedSessionSchema = PamSessionsSchema.omit({
-  encryptedLogsBlob: true
+  encryptedLogsBlob: true,
+  encryptedAiInsights: true
 }).extend({
   logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
-  gatewayIdentityId: z.string().nullable().optional()
+  gatewayIdentityId: z.string().nullable().optional(),
+  aiInsights: AiInsightsSchema
 });
 
 export const SessionLogsPageSchema = z.object({

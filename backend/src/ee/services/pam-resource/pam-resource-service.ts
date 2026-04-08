@@ -14,6 +14,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -32,7 +33,7 @@ import {
   encryptResourceInternalMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
-import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TCreateResourceDTO, TListResourcesDTO, TSessionSummaryConfigDTO, TUpdateResourceDTO } from "./pam-resource-types";
 import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
@@ -251,7 +252,8 @@ export const pamResourceServiceFactory = ({
       rotationAccountCredentials,
       gatewayId,
       adServerResourceId,
-      metadata
+      metadata,
+      sessionSummaryConfig
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -388,8 +390,23 @@ export const pamResourceServiceFactory = ({
       }
     }
 
+    if (sessionSummaryConfig !== undefined) {
+      if (sessionSummaryConfig === null) {
+        (updateDoc as Record<string, unknown>).encryptedSessionSummaryConfig = null;
+      } else {
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: resource.projectId
+        });
+        const { cipherTextBlob } = encryptor({
+          plainText: Buffer.from(JSON.stringify(sessionSummaryConfig))
+        });
+        (updateDoc as Record<string, unknown>).encryptedSessionSummaryConfig = cipherTextBlob;
+      }
+    }
+
     // If nothing was updated, return the fetched resource
-    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined && sessionSummaryConfig === undefined) {
       const existingMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
       return {
         ...(await decryptResource(resource, resource.projectId, kmsService)),
