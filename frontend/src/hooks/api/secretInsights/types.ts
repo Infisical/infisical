@@ -51,6 +51,8 @@ export type TGetSecretAccessVolumeDTO = {
 
 export type TGetInsightsSummaryDTO = {
   projectId: string;
+  staleSecretsOffset?: number;
+  staleSecretsLimit?: number;
 };
 
 export type TInsightRotationItem = {
@@ -81,6 +83,7 @@ export type TGetInsightsSummaryResponse = {
   upcomingReminders: TInsightReminderItem[];
   overdueReminders: TInsightReminderItem[];
   staleSecrets: TInsightStaleSecretItem[];
+  totalStaleCount: number;
 };
 
 export type TGetSecretAccessVolumeResponse = {

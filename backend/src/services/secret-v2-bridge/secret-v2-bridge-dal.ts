@@ -1128,7 +1128,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const findStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
+  const findStaleByProject = async (
+    projectId: string,
+    staleBeforeDate: Date,
+    pagination?: { offset: number; limit: number },
+    tx?: Knex
+  ) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
@@ -1143,11 +1148,29 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.Environment}.slug as environment`
         )
         .orderBy(`${TableName.SecretV2}.updatedAt`, "asc")
-        .limit(50);
+        .offset(pagination?.offset ?? 0)
+        .limit(pagination?.limit ?? 50);
 
       return result as { key: string; updatedAt: Date; folderId: string; environment: string }[];
     } catch (error) {
       throw new DatabaseError({ error, name: "findStaleByProject" });
+    }
+  };
+
+  const countStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countStaleByProject" });
     }
   };
 
@@ -1168,6 +1191,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findAllProjectSecretValues,
     countByFolderIds,
     findStaleByProject,
+    countStaleByProject,
     findOne,
     find,
     invalidateSecretCacheByProjectId,

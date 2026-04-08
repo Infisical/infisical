@@ -1,30 +1,35 @@
 import { useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
   AlertTriangleIcon,
   BellIcon,
   CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClockIcon,
   ExternalLinkIcon,
   RefreshCwIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
   Button,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
   Skeleton,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
   UnstableCardHeader,
   UnstableCardTitle,
-  UnstableSeparator
+  UnstableIconButton,
+  UnstableSeparator,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
 } from "@app/components/v3";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 import { cn } from "@app/components/v3/utils";
@@ -93,7 +98,7 @@ const StatCard = ({
                   {viewLabel}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
+              <PopoverContent className="w-[480px] p-0" align="end">
                 {popoverContent}
               </PopoverContent>
             </Popover>
@@ -107,204 +112,280 @@ const StatCard = ({
 const overviewRoute =
   "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
 
-const RotationCommandList = ({
+type RotationItem = {
+  name: string;
+  environment: string;
+  secretPath: string;
+  nextRotationAt: string | null;
+};
+
+const RotationTable = ({
   failed,
   upcoming,
   orgId,
   projectId
 }: {
-  failed: {
-    name: string;
-    environment: string;
-    secretPath: string;
-    nextRotationAt: string | null;
-  }[];
-  upcoming: {
-    name: string;
-    environment: string;
-    secretPath: string;
-    nextRotationAt: string | null;
-  }[];
+  failed: RotationItem[];
+  upcoming: RotationItem[];
   orgId: string;
   projectId: string;
-}) => (
-  <Command>
-    <CommandList className="max-h-64">
-      <CommandEmpty>No rotations found</CommandEmpty>
-      {failed.length > 0 && (
-        <CommandGroup heading="Failed">
-          {failed.map((item) => (
-            <CommandItem key={`failed-${item.name}-${item.environment}`} asChild>
-              <Link
-                to={overviewRoute}
-                params={{ orgId, projectId }}
-                search={{
-                  search: item.name,
-                  environments: [item.environment],
-                  filterBy: "rotation"
-                }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{item.name}</div>
-                  <div className="truncate text-xs text-label">
-                    {item.nextRotationAt
-                      ? `retries ${formatDistanceToNow(parseISO(item.nextRotationAt), { addSuffix: true })} — `
-                      : ""}
-                    {item.environment} · {item.secretPath}
-                  </div>
-                </div>
-                <ExternalLinkIcon className="size-3.5 shrink-0 text-muted" />
-              </Link>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      )}
-      {upcoming.length > 0 && (
-        <CommandGroup heading="Upcoming">
-          {upcoming.map((item) => (
-            <CommandItem key={`upcoming-${item.name}-${item.environment}`} asChild>
-              <Link
-                to={overviewRoute}
-                params={{ orgId, projectId }}
-                search={{
-                  search: item.name,
-                  environments: [item.environment],
-                  filterBy: "rotation"
-                }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{item.name}</div>
-                  <div className="truncate text-xs text-label">
-                    {item.nextRotationAt &&
-                      `${formatDistanceToNow(parseISO(item.nextRotationAt), { addSuffix: true })} — `}
-                    {item.environment} · {item.secretPath}
-                  </div>
-                </div>
-                <ExternalLinkIcon className="size-3.5 shrink-0 text-muted" />
-              </Link>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      )}
-    </CommandList>
-  </Command>
-);
+}) => {
+  const navigate = useNavigate();
+  const allItems = [
+    ...failed.map((item) => ({ ...item, status: "failed" as const })),
+    ...upcoming.map((item) => ({ ...item, status: "upcoming" as const }))
+  ];
 
-const ReminderCommandList = ({
+  if (!allItems.length) return <p className="p-4 text-center text-xs text-muted">No rotations</p>;
+
+  return (
+    <UnstableTable containerClassName="max-h-72">
+      <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+        <UnstableTableRow>
+          <UnstableTableHead>Name</UnstableTableHead>
+          <UnstableTableHead>Env</UnstableTableHead>
+          <UnstableTableHead>Path</UnstableTableHead>
+          <UnstableTableHead>Status</UnstableTableHead>
+          <UnstableTableHead className="w-8" />
+        </UnstableTableRow>
+      </UnstableTableHeader>
+      <UnstableTableBody>
+        {allItems.map((item) => (
+          <UnstableTableRow
+            key={`${item.status}-${item.name}-${item.environment}`}
+            onClick={() =>
+              navigate({
+                to: overviewRoute,
+                params: { orgId, projectId },
+                search: {
+                  search: item.name,
+                  environments: [item.environment],
+                  filterBy: "rotation"
+                }
+              })
+            }
+          >
+            <UnstableTableCell className="max-w-[120px] truncate font-medium" title={item.name}>
+              {item.name}
+            </UnstableTableCell>
+            <UnstableTableCell className="text-muted" title={item.environment}>
+              {item.environment}
+            </UnstableTableCell>
+            <UnstableTableCell
+              className="max-w-[100px] truncate text-muted"
+              title={item.secretPath}
+            >
+              {item.secretPath}
+            </UnstableTableCell>
+            <UnstableTableCell>
+              {item.status === "failed" ? (
+                <Badge variant="danger">
+                  {item.nextRotationAt
+                    ? `retries ${formatDistanceToNow(parseISO(item.nextRotationAt), { addSuffix: true })}`
+                    : "failed"}
+                </Badge>
+              ) : (
+                <Badge variant="info">
+                  {item.nextRotationAt
+                    ? formatDistanceToNow(parseISO(item.nextRotationAt), { addSuffix: true })
+                    : "scheduled"}
+                </Badge>
+              )}
+            </UnstableTableCell>
+            <UnstableTableCell className="w-8 px-2">
+              <ExternalLinkIcon className="size-3.5 text-muted" />
+            </UnstableTableCell>
+          </UnstableTableRow>
+        ))}
+      </UnstableTableBody>
+    </UnstableTable>
+  );
+};
+
+type ReminderItem = {
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  nextReminderDate: string;
+};
+
+const ReminderTable = ({
   overdue,
   upcoming,
   orgId,
   projectId
 }: {
-  overdue: {
-    secretKey: string;
-    environment: string;
-    secretPath: string;
-    nextReminderDate: string;
-  }[];
-  upcoming: {
-    secretKey: string;
-    environment: string;
-    secretPath: string;
-    nextReminderDate: string;
-  }[];
+  overdue: ReminderItem[];
+  upcoming: ReminderItem[];
   orgId: string;
   projectId: string;
-}) => (
-  <Command>
-    <CommandList className="max-h-64">
-      <CommandEmpty>No reminders found</CommandEmpty>
-      {overdue.length > 0 && (
-        <CommandGroup heading="Overdue">
-          {overdue.map((item) => (
-            <CommandItem key={`overdue-${item.secretKey}-${item.environment}`} asChild>
-              <Link
-                to={overviewRoute}
-                params={{ orgId, projectId }}
-                search={{
-                  search: item.secretKey,
-                  environments: [item.environment],
-                  filterBy: "secret"
-                }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{item.secretKey}</div>
-                  <div className="truncate text-xs text-label">
-                    {formatDistanceToNow(parseISO(item.nextReminderDate), { addSuffix: true })} —{" "}
-                    {item.environment} · {item.secretPath}
-                  </div>
-                </div>
-                <ExternalLinkIcon className="size-3.5 shrink-0 text-muted" />
-              </Link>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      )}
-      {upcoming.length > 0 && (
-        <CommandGroup heading="Upcoming">
-          {upcoming.map((item) => (
-            <CommandItem key={`upcoming-${item.secretKey}-${item.environment}`} asChild>
-              <Link
-                to={overviewRoute}
-                params={{ orgId, projectId }}
-                search={{
-                  search: item.secretKey,
-                  environments: [item.environment],
-                  filterBy: "secret"
-                }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{item.secretKey}</div>
-                  <div className="truncate text-xs text-label">
-                    {formatDistanceToNow(parseISO(item.nextReminderDate), { addSuffix: true })} —{" "}
-                    {item.environment} · {item.secretPath}
-                  </div>
-                </div>
-                <ExternalLinkIcon className="size-3.5 shrink-0 text-muted" />
-              </Link>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      )}
-    </CommandList>
-  </Command>
-);
+}) => {
+  const navigate = useNavigate();
+  const allItems = [
+    ...overdue.map((item) => ({ ...item, status: "overdue" as const })),
+    ...upcoming.map((item) => ({ ...item, status: "upcoming" as const }))
+  ];
 
-const StaleSecretCommandList = ({
+  if (!allItems.length) return <p className="p-4 text-center text-xs text-muted">No reminders</p>;
+
+  return (
+    <UnstableTable containerClassName="max-h-72">
+      <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+        <UnstableTableRow>
+          <UnstableTableHead>Secret</UnstableTableHead>
+          <UnstableTableHead>Env</UnstableTableHead>
+          <UnstableTableHead>Path</UnstableTableHead>
+          <UnstableTableHead>Due</UnstableTableHead>
+          <UnstableTableHead className="w-8" />
+        </UnstableTableRow>
+      </UnstableTableHeader>
+      <UnstableTableBody>
+        {allItems.map((item) => (
+          <UnstableTableRow
+            key={`${item.status}-${item.secretKey}-${item.environment}`}
+            onClick={() =>
+              navigate({
+                to: overviewRoute,
+                params: { orgId, projectId },
+                search: {
+                  search: item.secretKey,
+                  environments: [item.environment],
+                  filterBy: "secret"
+                }
+              })
+            }
+          >
+            <UnstableTableCell
+              className="max-w-[120px] truncate font-medium"
+              title={item.secretKey}
+            >
+              {item.secretKey}
+            </UnstableTableCell>
+            <UnstableTableCell className="text-muted" title={item.environment}>
+              {item.environment}
+            </UnstableTableCell>
+            <UnstableTableCell
+              className="max-w-[100px] truncate text-muted"
+              title={item.secretPath}
+            >
+              {item.secretPath}
+            </UnstableTableCell>
+            <UnstableTableCell>
+              <Badge variant={item.status === "overdue" ? "danger" : "warning"}>
+                {formatDistanceToNow(parseISO(item.nextReminderDate), { addSuffix: true })}
+              </Badge>
+            </UnstableTableCell>
+            <UnstableTableCell className="w-8 px-2">
+              <ExternalLinkIcon className="size-3.5 text-muted" />
+            </UnstableTableCell>
+          </UnstableTableRow>
+        ))}
+      </UnstableTableBody>
+    </UnstableTable>
+  );
+};
+
+const PAGE_SIZE = 10;
+
+const StaleSecretsTable = ({
   items,
+  totalCount,
+  page,
+  onPageChange,
   orgId,
   projectId
 }: {
   items: { key: string; environment: string; secretPath: string; updatedAt: string }[];
+  totalCount: number;
+  page: number;
+  onPageChange: (p: number) => void;
   orgId: string;
   projectId: string;
-}) => (
-  <Command>
-    <CommandList className="max-h-64">
-      <CommandEmpty>No stale secrets found</CommandEmpty>
-      <CommandGroup heading="Needs Review">
-        {items.map((item) => (
-          <CommandItem key={`stale-${item.key}-${item.environment}`} asChild>
-            <Link
-              to={overviewRoute}
-              params={{ orgId, projectId }}
-              search={{ search: item.key, environments: [item.environment], filterBy: "secret" }}
+}) => {
+  const navigate = useNavigate();
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  if (!totalCount) return <p className="p-4 text-center text-xs text-muted">No stale secrets</p>;
+
+  return (
+    <div>
+      <UnstableTable containerClassName={twMerge("max-h-72", totalPages && "rounded-b-none")}>
+        <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+          <UnstableTableRow>
+            <UnstableTableHead>Secret</UnstableTableHead>
+            <UnstableTableHead>Env</UnstableTableHead>
+            <UnstableTableHead>Path</UnstableTableHead>
+            <UnstableTableHead>Last Modified</UnstableTableHead>
+            <UnstableTableHead className="w-8" />
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {items.map((item) => (
+            <UnstableTableRow
+              key={`${item.key}-${item.environment}-${item.secretPath}`}
+              onClick={() =>
+                navigate({
+                  to: overviewRoute,
+                  params: { orgId, projectId },
+                  search: {
+                    search: item.key,
+                    environments: [item.environment],
+                    filterBy: "secret"
+                  }
+                })
+              }
             >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm">{item.key}</div>
-                <div className="truncate text-xs text-label">
-                  {formatDistanceToNow(parseISO(item.updatedAt), { addSuffix: true })} —{" "}
-                  {item.environment} · {item.secretPath}
-                </div>
-              </div>
-              <ExternalLinkIcon className="size-3.5 shrink-0 text-muted" />
-            </Link>
-          </CommandItem>
-        ))}
-      </CommandGroup>
-    </CommandList>
-  </Command>
-);
+              <UnstableTableCell className="max-w-[120px] truncate font-medium" title={item.key}>
+                {item.key}
+              </UnstableTableCell>
+              <UnstableTableCell className="text-muted" title={item.environment}>
+                {item.environment}
+              </UnstableTableCell>
+              <UnstableTableCell
+                className="max-w-[100px] truncate text-muted"
+                title={item.secretPath}
+              >
+                {item.secretPath}
+              </UnstableTableCell>
+              <UnstableTableCell className="text-muted">
+                {formatDistanceToNow(parseISO(item.updatedAt), { addSuffix: true })}
+              </UnstableTableCell>
+              <UnstableTableCell className="w-8 px-2">
+                <ExternalLinkIcon className="size-3.5 text-muted" />
+              </UnstableTableCell>
+            </UnstableTableRow>
+          ))}
+        </UnstableTableBody>
+      </UnstableTable>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border bg-container px-3 py-2">
+          <span className="text-xs text-muted">
+            {page * PAGE_SIZE + 1}&ndash;{Math.min((page + 1) * PAGE_SIZE, totalCount)} of{" "}
+            {totalCount}
+          </span>
+          <div className="flex items-center gap-1">
+            <UnstableIconButton
+              variant="ghost"
+              size="xs"
+              disabled={page === 0}
+              onClick={() => onPageChange(page - 1)}
+            >
+              <ChevronLeftIcon className="size-3.5" />
+            </UnstableIconButton>
+            <UnstableIconButton
+              variant="ghost"
+              size="xs"
+              disabled={page >= totalPages - 1}
+              onClick={() => onPageChange(page + 1)}
+            >
+              <ChevronRightIcon className="size-3.5" />
+            </UnstableIconButton>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const InsightsSummaryCards = () => {
   const { projectId } = useProject();
@@ -313,7 +394,16 @@ export const InsightsSummaryCards = () => {
     select: (p) => ({ orgId: (p as Record<string, string>).orgId })
   });
 
-  const { data, isPending } = useGetInsightsSummary({ projectId }, { enabled: !!projectId });
+  const [stalePage, setStalePage] = useState(0);
+
+  const { data, isPending } = useGetInsightsSummary(
+    {
+      projectId,
+      staleSecretsOffset: stalePage * PAGE_SIZE,
+      staleSecretsLimit: PAGE_SIZE
+    },
+    { enabled: !!projectId, placeholderData: (prev) => prev }
+  );
 
   if (isPending) {
     return (
@@ -330,6 +420,7 @@ export const InsightsSummaryCards = () => {
   const upcomingReminders = data?.upcomingReminders ?? [];
   const overdueReminders = data?.overdueReminders ?? [];
   const staleSecrets = data?.staleSecrets ?? [];
+  const totalStaleCount = data?.totalStaleCount ?? staleSecrets.length;
 
   return (
     <div className="flex flex-col gap-6 xl:flex-row">
@@ -346,7 +437,7 @@ export const InsightsSummaryCards = () => {
         footnoteVariant={failedRotations.length ? "danger" : "success"}
         viewLabel={failedRotations.length ? "View Failed Rotations" : "View Rotations"}
         popoverContent={
-          <RotationCommandList
+          <RotationTable
             failed={failedRotations}
             upcoming={upcomingRotations}
             orgId={orgId}
@@ -367,7 +458,7 @@ export const InsightsSummaryCards = () => {
         footnoteVariant={overdueReminders.length ? "danger" : "success"}
         viewLabel={overdueReminders.length ? "View Overdue Reminders" : "View Upcoming Reminders"}
         popoverContent={
-          <ReminderCommandList
+          <ReminderTable
             overdue={overdueReminders}
             upcoming={upcomingReminders}
             orgId={orgId}
@@ -379,18 +470,25 @@ export const InsightsSummaryCards = () => {
         title="Stale Secrets"
         icon={<ClockIcon />}
         iconVariant="danger"
-        count={staleSecrets.length}
-        totalItems={staleSecrets.length}
+        count={totalStaleCount}
+        totalItems={totalStaleCount}
         subtitle="Unmodified > 90 days"
         footnote={
-          staleSecrets.length
-            ? `${staleSecrets.length} need${staleSecrets.length === 1 ? "s" : ""} review`
+          totalStaleCount
+            ? `${totalStaleCount} need${totalStaleCount === 1 ? "s" : ""} review`
             : "All secrets up to date"
         }
-        footnoteVariant={staleSecrets.length ? "warning" : "success"}
+        footnoteVariant={totalStaleCount ? "warning" : "success"}
         viewLabel="View Stale Secrets"
         popoverContent={
-          <StaleSecretCommandList items={staleSecrets} orgId={orgId} projectId={projectId} />
+          <StaleSecretsTable
+            items={staleSecrets}
+            totalCount={totalStaleCount}
+            page={stalePage}
+            onPageChange={setStalePage}
+            orgId={orgId}
+            projectId={projectId}
+          />
         }
       />
     </div>

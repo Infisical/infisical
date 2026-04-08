@@ -20,4 +20,6 @@ export type TGetAuthMethodDistributionDTO = {
 
 export type TGetInsightsSummaryDTO = {
   projectId: string;
+  staleSecretsOffset?: number;
+  staleSecretsLimit?: number;
 };

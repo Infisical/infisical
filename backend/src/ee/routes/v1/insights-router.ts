@@ -173,7 +173,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         "Get summary stats for the insights dashboard: upcoming rotations, upcoming reminders, and stale secrets",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim(),
+        staleSecretsOffset: z.coerce.number().min(0).default(0),
+        staleSecretsLimit: z.coerce.number().min(1).max(100).default(50)
       }),
       response: {
         200: z.object({
@@ -213,14 +215,18 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
           ),
           staleSecrets: z.array(
             z.object({ key: z.string(), environment: z.string(), secretPath: z.string(), updatedAt: z.date() })
-          )
+          ),
+          totalStaleCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId } = req.query;
-      const result = await server.services.insights.getSummary({ projectId }, req.permission);
+      const { projectId, staleSecretsOffset, staleSecretsLimit } = req.query;
+      const result = await server.services.insights.getSummary(
+        { projectId, staleSecretsOffset, staleSecretsLimit },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY, metadata: { projectId } },

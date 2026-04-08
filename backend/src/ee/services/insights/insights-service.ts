@@ -28,7 +28,7 @@ type TInsightsServiceFactoryDep = {
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
 };
 
@@ -363,18 +363,19 @@ export const insightsServiceFactory = ({
       nextReminderDate: r.nextReminderDate
     });
 
-    // Failed rotations with nextRotationAt set also count as upcoming (will be re-attempted)
-    const upcomingIds = new Set(upcomingRotationsRaw.map((r) => r.id));
-    const failedWithRetry = allProjectRotations.filter(
-      (r) => r.rotationStatus === "failed" && r.nextRotationAt && !upcomingIds.has(r.id)
-    );
-    const upcomingRotations = [...upcomingRotationsRaw, ...failedWithRetry].map(mapRotation);
+    const upcomingRotations = upcomingRotationsRaw.map(mapRotation);
 
     const failedRotations = allProjectRotations.filter((r) => r.rotationStatus === "failed").map(mapRotation);
     const upcomingReminders = reminders.filter((r) => new Date(r.nextReminderDate) >= now).map(mapReminder);
     const overdueReminders = reminders.filter((r) => new Date(r.nextReminderDate) < now).map(mapReminder);
 
-    const rawStaleSecrets = await secretV2BridgeDAL.findStaleByProject(dto.projectId, staleThreshold);
+    const [rawStaleSecrets, totalStaleCount] = await Promise.all([
+      secretV2BridgeDAL.findStaleByProject(dto.projectId, staleThreshold, {
+        offset: dto.staleSecretsOffset ?? 0,
+        limit: dto.staleSecretsLimit ?? 50
+      }),
+      secretV2BridgeDAL.countStaleByProject(dto.projectId, staleThreshold)
+    ]);
 
     // Resolve folder paths for stale secrets
     const staleFolderIds = [...new Set(rawStaleSecrets.map((s) => s.folderId))];
@@ -398,7 +399,8 @@ export const insightsServiceFactory = ({
       failedRotations,
       upcomingReminders,
       overdueReminders,
-      staleSecrets
+      staleSecrets,
+      totalStaleCount
     };
   };
 
