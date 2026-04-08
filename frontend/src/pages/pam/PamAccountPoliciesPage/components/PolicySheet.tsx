@@ -16,6 +16,7 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -185,7 +186,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting, isDirty, errors },
     watch
   } = useForm<TFormData>({
     resolver: zodResolver(FormSchema),
@@ -296,9 +297,9 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
               )}
             />
 
-            <Field>
+            <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <FieldLabel>Rules</FieldLabel>
+                <Label>Rules</Label>
                 <Popover open={addRuleOpen} onOpenChange={setAddRuleOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="xs">
@@ -344,54 +345,53 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                   </PopoverContent>
                 </Popover>
               </div>
-              <FieldContent>
-                {errors.rules && !Array.isArray(errors.rules) && (
-                  <FieldError errors={[errors.rules]} />
-                )}
 
-                {ruleFields.map((ruleField, ruleIndex) => {
-                  const ruleType = currentRules[ruleIndex]?.ruleType;
-                  const meta = ruleType ? PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType] : undefined;
+              {errors.rules && !Array.isArray(errors.rules) && (
+                <FieldError errors={[errors.rules]} />
+              )}
 
-                  return (
-                    <div key={ruleField.id} className="rounded-md border border-mineshaft-600 p-3">
-                      <div className="mb-1 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{meta?.name ?? ruleType}</span>
-                          {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
-                        </div>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          aria-label="Remove rule"
-                          onClick={() => removeRule(ruleIndex)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </UnstableIconButton>
+              {ruleFields.map((ruleField, ruleIndex) => {
+                const ruleType = currentRules[ruleIndex]?.ruleType;
+                const meta = ruleType ? PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType] : undefined;
+
+                return (
+                  <div key={ruleField.id} className="rounded-md border border-mineshaft-600 p-3">
+                    <div className="mb-1 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{meta?.name ?? ruleType}</span>
+                        {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
                       </div>
-                      {meta?.description && (
-                        <p className="mb-2 text-xs text-mineshaft-400">{meta.description}</p>
-                      )}
-
-                      <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Remove rule"
+                        onClick={() => removeRule(ruleIndex)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </UnstableIconButton>
                     </div>
-                  );
-                })}
+                    {meta?.description && (
+                      <p className="mb-2 text-xs text-mineshaft-400">{meta.description}</p>
+                    )}
 
-                {ruleFields.length === 0 && (
-                  <p className="text-center text-xs text-mineshaft-400">
-                    No rules added yet. Click &quot;Add Rule&quot; to get started.
-                  </p>
-                )}
-              </FieldContent>
-            </Field>
+                    <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                  </div>
+                );
+              })}
+
+              {ruleFields.length === 0 && (
+                <p className="text-center text-xs text-muted">
+                  No rules added yet. Click &quot;Add Rule&quot; to get started.
+                </p>
+              )}
+            </div>
           </div>
 
           <SheetFooter className="shrink-0 border-t">
             <Button
               isPending={isSubmitting}
-              isDisabled={isSubmitting}
-              variant="neutral"
+              isDisabled={isSubmitting || !isDirty}
+              variant="project"
               type="submit"
             >
               {isEditing ? "Save Changes" : "Create Policy"}
