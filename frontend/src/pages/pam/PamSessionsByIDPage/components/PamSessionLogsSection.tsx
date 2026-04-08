@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button } from "@app/components/v2";
 import {
   PamResourceType,
-  PamSessionStatus,
   THttpEvent,
   TPamCommandLog,
   TPamSession,
@@ -21,13 +20,8 @@ type Props = {
 };
 
 export const PamSessionLogsSection = ({ session }: Props) => {
-  const isActive =
-    session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
-
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
-    useInfiniteGetPamSessionLogs(session.id, {
-      refetchInterval: isActive ? 5000 : false
-    });
+    useInfiniteGetPamSessionLogs(session.id);
 
   const allLogs = data?.pages.flatMap((page) => page.logs) ?? [];
 

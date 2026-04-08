@@ -304,6 +304,19 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const response = await server.services.pamSession.getById(req.params.sessionId, req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: response.session.projectId,
+        event: {
+          type: EventType.PAM_SESSION_GET,
+          metadata: {
+            sessionId: req.params.sessionId
+          }
+        }
+      });
+
       return response;
     }
   });

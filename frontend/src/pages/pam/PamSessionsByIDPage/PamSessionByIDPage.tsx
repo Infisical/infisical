@@ -29,15 +29,7 @@ const Page = () => {
     from: ROUTE_PATHS.Pam.PamSessionByIDPage.id,
     select: (el) => el.sessionId
   });
-  const { data: session } = useGetPamSessionById(sessionId, {
-    refetchInterval: (query) => {
-      const s = query.state.data;
-      return s?.status === PamSessionStatus.Active || s?.status === PamSessionStatus.Starting
-        ? 5000
-        : false;
-    },
-    refetchIntervalInBackground: false
-  });
+  const { data: session } = useGetPamSessionById(sessionId);
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
