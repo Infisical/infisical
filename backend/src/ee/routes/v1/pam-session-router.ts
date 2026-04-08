@@ -380,6 +380,9 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
+      EventBatchSchema.parse(JSON.parse(req.body.toString()));
+
       const { projectId } = await server.services.pamSession.uploadEventBatch(
         {
           sessionId: req.params.sessionId,
