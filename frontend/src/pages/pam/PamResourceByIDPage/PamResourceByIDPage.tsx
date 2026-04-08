@@ -36,7 +36,10 @@ import {
   PamResourceMetadataSection,
   PamResourceRelatedResourcesSection,
   PamResourceRotationPolicySection,
-  PamRotationPolicyModal
+  PamResourceSessionRecordingSection,
+  PamRotationPolicyModal,
+  PamSessionRecordingModal,
+  SessionRecordingConfig
 } from "./components";
 
 const PageContent = () => {
@@ -69,6 +72,8 @@ const PageContent = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
+  const [isSessionRecordingModalOpen, setIsSessionRecordingModalOpen] = useState(false);
+  const [sessionRecordingConfig, setSessionRecordingConfig] = useState<SessionRecordingConfig>(null);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -207,6 +212,10 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsRotationPolicyModalOpen(true)}
           />
+          <PamResourceSessionRecordingSection
+            config={sessionRecordingConfig}
+            onEdit={() => setIsSessionRecordingModalOpen(true)}
+          />
           <PamResourceMetadataSection resource={resource} />
         </div>
 
@@ -257,6 +266,13 @@ const PageContent = () => {
         isOpen={isRotationPolicyModalOpen}
         onOpenChange={setIsRotationPolicyModalOpen}
         resource={resource}
+      />
+
+      <PamSessionRecordingModal
+        isOpen={isSessionRecordingModalOpen}
+        onOpenChange={setIsSessionRecordingModalOpen}
+        config={sessionRecordingConfig}
+        onSave={setSessionRecordingConfig}
       />
     </div>
   );

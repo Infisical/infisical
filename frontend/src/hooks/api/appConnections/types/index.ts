@@ -40,6 +40,7 @@ import { TNorthflankConnection } from "./northflank-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
+import { TAnthropicConnection } from "./anthropic-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
@@ -162,6 +163,7 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TAnthropicConnection
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection
