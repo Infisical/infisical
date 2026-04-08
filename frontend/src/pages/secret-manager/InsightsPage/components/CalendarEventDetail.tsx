@@ -124,7 +124,9 @@ export const CalendarEventDetail = ({ event }: { event: CalendarEvent }) => {
             </Detail>
             <Detail>
               <DetailLabel>Secret Keys</DetailLabel>
-              <DetailValue>{event.data.secretKeys.map((key) => <p key={key}>{key}</p>) || "—"}</DetailValue>
+              <DetailValue>
+                {event.data.secretKeys.map((key) => <p key={key}>{key}</p>) || "—"}
+              </DetailValue>
             </Detail>
           </>
         )}
