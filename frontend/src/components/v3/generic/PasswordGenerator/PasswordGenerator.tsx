@@ -321,7 +321,7 @@ export const PasswordGenerator = ({
             <div>
               <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-accent">
                 <ShieldCheckIcon className="size-3" />
-                Validation Rule
+                Conform to validation rule
               </Label>
               <FilterableSelect<RuleOption>
                 options={ruleOptions}
