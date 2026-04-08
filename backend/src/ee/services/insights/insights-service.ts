@@ -2,7 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import geoip from "geoip-lite";
 
 import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -23,7 +24,7 @@ import {
 
 type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  auditLogService: Pick<TAuditLogServiceFactory, "listAuditLogs">;
+  auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
@@ -61,7 +62,7 @@ const checkInsightsPermission = async (
 
 export const insightsServiceFactory = ({
   permissionService,
-  auditLogService,
+  auditLogDAL,
   secretRotationV2DAL,
   reminderDAL,
   folderDAL,
@@ -131,43 +132,36 @@ export const insightsServiceFactory = ({
     const startDate = new Date(`${todayStr}T00:00:00.000Z`);
     startDate.setUTCDate(startDate.getUTCDate() - 6);
 
-    const auditLogs = await auditLogService.listAuditLogs({
-      filter: {
-        projectId: dto.projectId,
-        eventType: VALUE_EVENT_TYPES,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        limit: 9999
-      },
-      actorId: actorDto.id,
-      actorOrgId: actorDto.orgId,
-      actorAuthMethod: actorDto.authMethod,
-      actor: actorDto.type
+    const rows = await auditLogDAL.countByDateAndActor({
+      orgId: actorDto.orgId,
+      projectId: dto.projectId,
+      eventTypes: VALUE_EVENT_TYPES,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
     });
 
+    // Pre-populate the last 7 days
     const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
-
     for (let i = 6; i >= 0; i -= 1) {
       const d = new Date(`${todayStr}T00:00:00.000Z`);
       d.setUTCDate(d.getUTCDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      dayMap.set(key, new Map());
+      dayMap.set(d.toISOString().slice(0, 10), new Map());
     }
 
-    auditLogs.forEach((log) => {
-      const dateKey = log.createdAt.toISOString().slice(0, 10);
+    rows.forEach((row) => {
+      const dateKey = typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10);
       const actorMap = dayMap.get(dateKey);
       if (!actorMap) return;
 
-      const actorMeta = log.actor.metadata as Record<string, string> | null;
+      const actorMeta = row.actorMetadata as Record<string, string> | null;
       const actorName = actorMeta?.email || actorMeta?.name || actorMeta?.identityId || actorMeta?.userId || "Unknown";
-      const actorKey = `${log.actor.type}:${actorName}`;
+      const actorKey = `${row.actor}:${actorName}`;
 
       const existing = actorMap.get(actorKey);
       if (existing) {
-        existing.count += 1;
+        existing.count += row.count;
       } else {
-        actorMap.set(actorKey, { name: actorName, type: log.actor.type, count: 1 });
+        actorMap.set(actorKey, { name: actorName, type: row.actor, count: row.count });
       }
     });
 
@@ -187,26 +181,12 @@ export const insightsServiceFactory = ({
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-    const auditLogs = await auditLogService.listAuditLogs({
-      filter: {
-        projectId: dto.projectId,
-        eventType: VALUE_EVENT_TYPES,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        limit: 9999
-      },
-      actorId: actorDto.id,
-      actorOrgId: actorDto.orgId,
-      actorAuthMethod: actorDto.authMethod,
-      actor: actorDto.type
-    });
-
-    const ipCounts = new Map<string, number>();
-    auditLogs.forEach((log) => {
-      const ip = (log as { ipAddress?: string | null }).ipAddress;
-      if (ip) {
-        ipCounts.set(ip, (ipCounts.get(ip) || 0) + 1);
-      }
+    const ipRows = await auditLogDAL.countByIpAddress({
+      orgId: actorDto.orgId,
+      projectId: dto.projectId,
+      eventTypes: VALUE_EVENT_TYPES,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
     });
 
     const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
@@ -220,12 +200,21 @@ export const insightsServiceFactory = ({
       ip.startsWith("172.17.") ||
       ip.startsWith("172.18.") ||
       ip.startsWith("172.19.") ||
-      ip.startsWith("172.2") ||
+      ip.startsWith("172.20.") ||
+      ip.startsWith("172.21.") ||
+      ip.startsWith("172.22.") ||
+      ip.startsWith("172.23.") ||
+      ip.startsWith("172.24.") ||
+      ip.startsWith("172.25.") ||
+      ip.startsWith("172.26.") ||
+      ip.startsWith("172.27.") ||
+      ip.startsWith("172.28.") ||
+      ip.startsWith("172.29.") ||
       ip.startsWith("172.30.") ||
       ip.startsWith("172.31.") ||
       ip.startsWith("192.168.");
 
-    ipCounts.forEach((count, ip) => {
+    ipRows.forEach(({ ipAddress: ip, count }) => {
       if (isPrivateIp(ip)) {
         const key = "Local Network:LOCAL";
         const existing = locationMap.get(key);
@@ -268,18 +257,12 @@ export const insightsServiceFactory = ({
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-    const auditLogs = await auditLogService.listAuditLogs({
-      filter: {
-        projectId: dto.projectId,
-        eventType: VALUE_EVENT_TYPES,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        limit: 10000
-      },
-      actorId: actorDto.id,
-      actorOrgId: actorDto.orgId,
-      actorAuthMethod: actorDto.authMethod,
-      actor: actorDto.type
+    const authRows = await auditLogDAL.countByAuthMethod({
+      orgId: actorDto.orgId,
+      projectId: dto.projectId,
+      eventTypes: VALUE_EVENT_TYPES,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
     });
 
     const methodCounts = new Map<string, number>();
@@ -314,23 +297,23 @@ export const insightsServiceFactory = ({
       [IdentityAuthMethod.SPIFFE_AUTH]: "SPIFFE Auth"
     };
 
-    auditLogs.forEach((log) => {
-      const actorMeta = log.actor.metadata as Record<string, unknown> | null;
+    authRows.forEach((row) => {
+      const actorMeta = row.actorMetadata as Record<string, unknown> | null;
       let method = "Unknown";
 
-      if (log.actor.type === "user") {
+      if (row.actor === "user") {
         const raw = (actorMeta?.authMethod as string) || "Unknown";
         method = authMethodLabels[raw] || raw;
-      } else if (log.actor.type === "identity") {
+      } else if (row.actor === "identity") {
         const identityAuth = actorMeta?.authMethod as IdentityAuthMethod | undefined;
         method = identityAuth ? identityAuthMethodLabels[identityAuth] || identityAuth : "Unknown";
-      } else if (log.actor.type === "service") {
+      } else if (row.actor === "service") {
         method = "Service Token";
       } else {
-        method = log.actor.type;
+        method = row.actor;
       }
 
-      methodCounts.set(method, (methodCounts.get(method) || 0) + 1);
+      methodCounts.set(method, (methodCounts.get(method) || 0) + (row.count || 0));
     });
 
     const methods = Array.from(methodCounts.entries())
@@ -349,18 +332,20 @@ export const insightsServiceFactory = ({
     const now = new Date();
     const in7Days = new Date(now);
     in7Days.setDate(now.getDate() + 7);
-    const staleThreshold = new Date(now);
-    staleThreshold.setDate(now.getDate() - 90);
+    const lookback90Days = new Date(now);
+    lookback90Days.setDate(now.getDate() - 90);
+    const staleThreshold = lookback90Days;
 
     // Fetch upcoming rotations (by date range) and all failed rotations (no date filter) in parallel
+    // Use 90-day lookback to capture overdue items without unbounded historical queries
     const [upcomingRotationsRaw, allProjectRotations, reminders] = await Promise.all([
       secretRotationV2DAL.findByProjectAndDateRange({
         projectId: dto.projectId,
-        startDate: new Date(0),
+        startDate: lookback90Days,
         endDate: in7Days
       }),
       secretRotationV2DAL.findByProject(dto.projectId),
-      fetchReminders(dto.projectId, new Date(0), in7Days)
+      fetchReminders(dto.projectId, lookback90Days, in7Days)
     ]);
 
     const mapRotation = (r: (typeof allProjectRotations)[number]) => ({

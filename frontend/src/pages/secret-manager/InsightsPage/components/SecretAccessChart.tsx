@@ -62,13 +62,13 @@ export const SecretAccessChart = () => {
             <LineChart data={chartData} />
             {topActors.length > 0 && (
               <div className="flex flex-col gap-2">
-                <span className="text-xs text-label">
+                <span className="text-xs text-accent">
                   Top actors — {totalRequests.toLocaleString()} total requests
                 </span>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {topActors.map((actor) => (
                     <span key={`${actor.type}:${actor.name}`} className="text-xs text-foreground">
-                      <span className="text-label">{actor.type}:</span> {actor.name}{" "}
+                      <span className="text-muted">{actor.type}:</span> {actor.name}{" "}
                       <span className="text-label">({actor.count.toLocaleString()})</span>
                     </span>
                   ))}
