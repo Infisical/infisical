@@ -153,6 +153,9 @@ export const CreateSecretForm = ({
   const [createMore, setCreateMore] = useState(false);
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const secretKey = watch("key");
+  const selectedEnvironments = defaultSelectedEnvs?.length
+    ? defaultSelectedEnvs
+    : watch("environments");
 
   const handleFormSubmit = async ({
     key,
@@ -436,7 +439,13 @@ export const CreateSecretForm = ({
                     onChange={field.onChange}
                     placeholder="Enter secret value..."
                   />
-                  <PasswordGenerator onUsePassword={field.onChange} />
+                  <PasswordGenerator
+                    selectedEnvironments={selectedEnvironments}
+                    onUsePassword={field.onChange}
+                    projectId={projectId}
+                    secretPath={secretPath}
+                    environments={environments}
+                  />
                 </div>
                 <FieldError errors={[errors.value]} />
               </FieldContent>

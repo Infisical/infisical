@@ -593,6 +593,7 @@ export enum EventType {
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
   PAM_FOLDER_CREATE = "pam-folder-create",
@@ -606,6 +607,7 @@ export enum EventType {
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
@@ -4723,6 +4725,14 @@ interface PamSessionEndEvent {
   };
 }
 
+interface PamSessionTerminateEvent {
+  type: EventType.PAM_SESSION_TERMINATE;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionGetEvent {
   type: EventType.PAM_SESSION_GET;
   metadata: {
@@ -4849,6 +4859,16 @@ interface PamAccountCredentialRotationFailedEvent {
     resourceId: string;
     resourceType: string;
     errorMessage: string;
+  };
+}
+
+interface PamAccountReadCredentialsEvent {
+  type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
+  metadata: {
+    accountId: string;
+    accountName: string;
+    resourceId: string;
+    resourceType: string;
   };
 }
 
@@ -6140,6 +6160,7 @@ export type Event =
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
+  | PamSessionTerminateEvent
   | PamSessionGetEvent
   | PamSessionListEvent
   | PamFolderCreateEvent
@@ -6154,6 +6175,7 @@ export type Event =
   | PamAccountDeleteEvent
   | PamAccountCredentialRotationEvent
   | PamAccountCredentialRotationFailedEvent
+  | PamAccountReadCredentialsEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

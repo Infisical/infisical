@@ -27,6 +27,12 @@ import {
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
 import {
+  TMongoDBAccount,
+  TMongoDBAccountCredentials,
+  TMongoDBResource,
+  TMongoDBResourceConnectionDetails
+} from "./mongodb/mongodb-resource-types";
+import {
   TMsSQLAccount,
   TMsSQLAccountCredentials,
   TMsSQLResource,
@@ -76,6 +82,7 @@ export type TPamResource =
   | TAwsIamResource
   | TKubernetesResource
   | TRedisResource
+  | TMongoDBResource
   | TWindowsResource
   | TActiveDirectoryResource;
 export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
@@ -87,6 +94,7 @@ export type TPamResourceConnectionDetails =
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
+  | TMongoDBResourceConnectionDetails
   | TWindowsResourceConnectionDetails
   | TActiveDirectoryResourceConnectionDetails;
 export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
@@ -100,6 +108,7 @@ export type TPamAccount =
   | TAwsIamAccount
   | TKubernetesAccount
   | TRedisAccount
+  | TMongoDBAccount
   | TWindowsAccount
   | TActiveDirectoryAccount;
 
@@ -111,6 +120,7 @@ export type TPamAccountCredentials =
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
+  | TMongoDBAccountCredentials
   | TWindowsAccountCredentials
   | TActiveDirectoryAccountCredentials;
 

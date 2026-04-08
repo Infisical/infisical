@@ -40,7 +40,8 @@ export enum DynamicSecretProviders {
   GcpIam = "gcp-iam",
   Github = "github",
   Couchbase = "couchbase",
-  Clickhouse = "clickhouse"
+  Clickhouse = "clickhouse",
+  Ssh = "ssh"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -448,6 +449,14 @@ export type TDynamicSecretProvider =
           };
           allowedSymbols?: string;
         };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Ssh;
+      inputs: {
+        caPublicKey?: string;
+        principals: string[];
+        keyAlgorithm: string;
       };
     };
 

@@ -1,0 +1,189 @@
+---
+title: "NetScaler"
+description: "Learn how to configure a NetScaler Certificate Sync for Infisical PKI."
+---
+
+**Prerequisites:**
+
+- Create a [NetScaler Connection](/integrations/app-connections/netscaler) with access to the NITRO API on your NetScaler appliance.
+
+<Note>
+  **NetScaler Requirements:**
+  - The NetScaler appliance must be accessible over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview)).
+  - The user account must have permissions to manage SSL certificates and optionally bind them to vservers.
+  - Certificates are uploaded to `/nsconfig/ssl/` on the appliance.
+  - Configuration is saved automatically after each sync to persist changes across reboots.
+</Note>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** > **Certificate Syncs** and press **Add Sync**.
+
+            ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
+
+        2. Select the **NetScaler** option.
+
+            ![Select NetScaler](/images/platform/pki/certificate-syncs/netscaler/select-netscaler-option.png)
+
+        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
+
+            - **NetScaler Connection**: The NetScaler Connection to authenticate with.
+            - **SSL vServer Name** (Optional): The name of the SSL virtual server to bind the certificate to. Leave empty to only upload the certificate without binding to a vserver.
+
+            ![Configure Destination](/images/platform/pki/certificate-syncs/netscaler/netscaler-destination.png)
+
+        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+
+            - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the NetScaler if they are no longer active in Infisical.
+            - **Preserve Certificate on Renewal**: When enabled, a renewed certificate will update the existing certkey object in place, preserving the same name and vServer bindings. When disabled, a new certkey is created alongside the original.
+            - **Certificate Name Schema** (Optional): Customize how certificate names are generated. Must include `{{certificateId}}` as a placeholder. If not specified, defaults to `Infisical-{{certificateId}}`.
+            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur.
+
+            ![Configure Options](/images/platform/pki/certificate-syncs/netscaler/netscaler-options.png)
+
+        5. Configure the **Details** of your NetScaler Certificate Sync, then click **Next**.
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+            ![Configure Details](/images/platform/pki/certificate-syncs/netscaler/netscaler-details.png)
+
+        6. Select which certificates should be synced to NetScaler.
+
+            ![Select Certificates](/images/platform/pki/certificate-syncs/netscaler/netscaler-certificates.png)
+
+        7. Review your NetScaler Certificate Sync configuration, then click **Create Sync**.
+
+            ![Confirm Configuration](/images/platform/pki/certificate-syncs/netscaler/netscaler-review.png)
+
+        8. If enabled, your NetScaler Certificate Sync will begin syncing your certificates to the destination endpoint.
+
+            ![Sync Certificates](/images/platform/pki/certificate-syncs/netscaler/netscaler-synced.png)
+    </Tab>
+    <Tab title="API">
+        To create a **NetScaler Certificate Sync**, make an API request to the [Create NetScaler PKI Sync](/api-reference/endpoints/pki/syncs/netscaler/create) endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/netscaler \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-netscaler-cert-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "destination": "netscaler",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "myapp-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "vserverName": "vs-ssl-prod"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-netscaler-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "netscaler",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "vserverName": "vs-ssl-prod"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "preserveItemOnRenewal": true,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2026-03-31T00:00:00.000Z",
+                "updatedAt": "2026-03-31T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## Certificate Management
+
+The NetScaler Certificate Sync provides:
+
+- **Automatic Deployment**: Deploy certificates in Infisical to NetScaler `sslcertkey` objects with customizable naming.
+- **Certificate Updates**: Update certificates on NetScaler when renewals occur, with optional in-place replacement.
+- **vServer Binding**: Automatically bind certificates to SSL virtual servers for seamless load balancer integration.
+- **Expiration Handling**: Optionally remove expired or revoked certificates from NetScaler (if enabled).
+- **Configuration Persistence**: Automatically save the NetScaler running configuration after each sync to persist changes across reboots.
+
+<Note>
+  NetScaler Certificate Syncs support both automatic and manual
+  synchronization modes. When auto-sync is enabled, certificates are
+  automatically deployed as they are issued or renewed.
+</Note>
+
+## How It Works
+
+When syncing certificates, Infisical performs the following steps on the NetScaler appliance via the NITRO REST API:
+
+1. Logs in to the NetScaler NITRO API using the configured credentials.
+2. For each certificate:
+    - Uploads the certificate file (`.cer`) to `/nsconfig/ssl/`.
+    - Uploads the private key file (`.key`) to `/nsconfig/ssl/`.
+    - Creates or updates an `sslcertkey` object linking the cert and key.
+    - If a vServer is configured, binds the certkey to the SSL virtual server.
+3. Saves the running configuration to persist changes across reboots.
+4. Logs out of the session.
+
+## Certificate Renewal Behavior
+
+When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
+
+- **Preserve enabled (default)**: The existing certkey object is updated in place with the new certificate content. The certkey name and any vServer bindings are preserved. This is ideal for production environments where services reference the certkey by name.
+- **Preserve disabled**: A new certkey object is created with a unique name. The original certkey remains on the NetScaler. Both certificates coexist until the original is revoked or removed.
+
+## Removing Certificates
+
+When certificate removal is enabled and a certificate is no longer active in Infisical:
+
+1. Unbinds the certificate from any configured SSL virtual server.
+2. Deletes the `sslcertkey` object.
+3. Deletes the certificate and key files from `/nsconfig/ssl/`.
+4. Saves the configuration.
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to NetScaler using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/netscaler/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<Accordion title="Can I import certificates from NetScaler back into Infisical?">
+  NetScaler does not support importing certificates back into Infisical
+  due to the nature of NetScaler appliances where private keys cannot be
+  extracted from the system.
+</Accordion>

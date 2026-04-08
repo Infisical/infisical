@@ -52,7 +52,7 @@ export const PolicyDetailsStep = () => {
             label="Resource Names"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Match accounts on resources with these names (supports glob patterns)"
+            helperText="Comma-separated list of resource names this policy applies to. Glob patterns supported: * matches any characters except / (e.g., prod-* matches prod-db), ** matches across nested levels (e.g., prod/** matches prod/db/main)."
           >
             <Input
               value={resourceField.value?.join(",") ?? ""}
@@ -75,7 +75,7 @@ export const PolicyDetailsStep = () => {
             label="Account Names"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Match accounts with these names (supports glob patterns)"
+            helperText="Supports glob patterns. Use * to match within a single level (e.g., admin-* matches admin-ro but not admin/ro). Use ** to match across all depths (e.g., admin/** matches admin/ro/dev)."
           >
             <Input
               value={accountField.value?.join(",") ?? ""}

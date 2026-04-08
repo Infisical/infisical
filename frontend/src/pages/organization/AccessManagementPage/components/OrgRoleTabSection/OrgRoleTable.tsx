@@ -11,6 +11,7 @@ import {
   SearchIcon,
   ServerIcon,
   TrashIcon,
+  TriangleAlertIcon,
   WrenchIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -30,6 +31,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -69,6 +73,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
@@ -110,7 +115,8 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
+        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
       });
       return;
     }
@@ -120,7 +126,6 @@ export const OrgRoleTable = () => {
       defaultMembershipRoleSlug
     });
     createNotification({ type: "success", text: "Successfully updated default membership role" });
-    handlePopUpClose("deleteRole");
   };
 
   const {
@@ -195,8 +200,39 @@ export const OrgRoleTable = () => {
 
   const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
 
+  const isProPlan =
+    Boolean(subscription) &&
+    subscription.rbac &&
+    [SubscriptionPlanTypes.Pro, SubscriptionPlanTypes.ProAnnual].includes(subscription.slug);
+
+  const customRoles = filteredRoles.filter((role) => isCustomOrgRole(role.slug));
+
   return (
     <>
+      {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
+      {isProPlan && customRoles?.length > 0 && (
+        <UnstableAlert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <UnstableAlertTitle>Custom roles are moving to Enterprise plans</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            <div>
+              Custom roles are part of the Infisical Enterprise plan, but were temporarily available
+              to Pro users. Creation of new roles will be enforced starting June 1, 2026.
+              <br />
+              Please{" "}
+              <a
+                href="https://infisical.com/scheduledemo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                contact sales
+              </a>{" "}
+              to upgrade and retain access to custom roles.
+            </div>
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <UnstableCard>
         <UnstableCardHeader>
           <UnstableCardTitle>
@@ -527,6 +563,7 @@ export const OrgRoleTable = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

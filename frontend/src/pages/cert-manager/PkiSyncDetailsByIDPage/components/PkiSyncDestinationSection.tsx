@@ -16,7 +16,8 @@ import {
   AwsElasticLoadBalancerPkiSyncDestinationSection,
   AwsSecretsManagerPkiSyncDestinationSection,
   AzureKeyVaultPkiSyncDestinationSection,
-  ChefPkiSyncDestinationSection
+  ChefPkiSyncDestinationSection,
+  NetScalerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -52,6 +53,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.Chef:
       DestinationComponents = <ChefPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.NetScaler:
+      DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)

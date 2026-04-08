@@ -25,16 +25,41 @@ const SSLStatusBadge = ({ enabled }: { enabled: boolean }) => (
 const SqlConnectionDetails = ({
   connectionDetails
 }: {
-  connectionDetails: { host: string; port: number; database: string; sslEnabled: boolean };
+  connectionDetails: { host: string; port?: number; database: string; sslEnabled: boolean };
 }) => (
   <>
     <Detail>
       <DetailLabel>Host</DetailLabel>
       <DetailValue>{connectionDetails.host}</DetailValue>
     </Detail>
+    {connectionDetails.port != null && (
+      <Detail>
+        <DetailLabel>Port</DetailLabel>
+        <DetailValue>{connectionDetails.port}</DetailValue>
+      </Detail>
+    )}
     <Detail>
-      <DetailLabel>Port</DetailLabel>
-      <DetailValue>{connectionDetails.port}</DetailValue>
+      <DetailLabel>Database</DetailLabel>
+      <DetailValue>{connectionDetails.database}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>SSL</DetailLabel>
+      <DetailValue>
+        <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
+      </DetailValue>
+    </Detail>
+  </>
+);
+
+const MongoDBConnectionDetails = ({
+  connectionDetails
+}: {
+  connectionDetails: { connectionString: string; database: string; sslEnabled: boolean };
+}) => (
+  <>
+    <Detail>
+      <DetailLabel>Connection String</DetailLabel>
+      <DetailValue>{connectionDetails.connectionString}</DetailValue>
     </Detail>
     <Detail>
       <DetailLabel>Database</DetailLabel>
@@ -190,6 +215,8 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
     case PamResourceType.MySQL:
     case PamResourceType.MsSQL:
       return <SqlConnectionDetails connectionDetails={resource.connectionDetails} />;
+    case PamResourceType.MongoDB:
+      return <MongoDBConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.SSH:
       return <SSHConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.Redis:

@@ -8,6 +8,7 @@ import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -439,10 +440,7 @@ export const IdentityJwtAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -460,10 +458,7 @@ export const IdentityJwtAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -484,10 +479,7 @@ export const IdentityJwtAuthForm = ({
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
-                          <Tooltip
-                            className="text-center"
-                            content={<span>This field supports glob patterns</span>}
-                          >
+                          <Tooltip content={<BashGlobPatternTooltip />}>
                             <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                           </Tooltip>
                         ) : undefined

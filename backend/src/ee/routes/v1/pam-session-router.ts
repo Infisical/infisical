@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
@@ -14,13 +15,16 @@ import {
   TerminalEventSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
+  MongoDBSessionCredentialsSchema,
   KubernetesSessionCredentialsSchema,
   RedisSessionCredentialsSchema
 ]);
@@ -75,6 +79,17 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
+
+        await server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamSessionStarted,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              projectId
+            }
+          })
+          .catch(() => {});
       }
 
       return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
@@ -153,23 +168,82 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { session, projectId } = await server.services.pamSession.endSessionById(
+      const { session, projectId, alreadyEnded } = await server.services.pamSession.endSessionById(
         req.params.sessionId,
         req.permission
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.PAM_SESSION_END,
-          metadata: {
-            sessionId: req.params.sessionId,
-            accountName: session.accountName
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_END,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: session.accountName
+            }
           }
-        }
-      });
+        });
+      }
+
+      return { session };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/terminate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Terminate an active PAM session",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          session: PamSessionsSchema.omit({
+            encryptedLogsBlob: true
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { session, projectId, alreadyEnded } = await server.services.pamSession.terminateSessionById(
+        req.params.sessionId,
+        req.permission
+      );
+
+      if (!alreadyEnded) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_TERMINATE,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: session.accountName
+            }
+          }
+        });
+      }
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamSessionEnded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: session.resourceType,
+            projectId
+          }
+        })
+        .catch(() => {});
 
       return { session };
     }

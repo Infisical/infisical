@@ -61,7 +61,7 @@ export const triggerWebhookRequest = async (
 
 export const getWebhookPayload = (event: TWebhookPayloads) => {
   if (event.type === WebhookEvents.SecretModified) {
-    const { projectName, projectId, environment, secretPath, type } = event.payload;
+    const { projectName, projectId, environment, secretPath, type, changedBy, changedByActorType } = event.payload;
 
     switch (type) {
       case WebhookType.SLACK:
@@ -85,6 +85,16 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                   title: "Secret Path",
                   value: secretPath,
                   short: false
+                },
+                {
+                  title: "Modified By",
+                  value: changedBy,
+                  short: false
+                },
+                {
+                  title: "Modified By Actor Type",
+                  value: changedByActorType?.toString() || "Unknown Actor Type",
+                  short: false
                 }
               ]
             }
@@ -99,7 +109,9 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             projectId,
             projectName,
             environment,
-            secretPath
+            secretPath,
+            changedBy,
+            changedByActorType
           }
         };
     }

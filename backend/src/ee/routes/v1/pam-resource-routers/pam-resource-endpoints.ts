@@ -5,9 +5,11 @@ import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
 import { SanitizedWindowsResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPamResourceEndpoints = <T extends TPamResource>({
   server,
@@ -121,6 +123,18 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamResourceCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: req.body.projectId
+          }
+        })
+        .catch(() => {});
+
       return { resource };
     }
   });
@@ -207,6 +221,18 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamResourceDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: resource.projectId
+          }
+        })
+        .catch(() => {});
 
       return { resource };
     }

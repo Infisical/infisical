@@ -149,6 +149,29 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PkiDiscoveryConfig)
+      .leftJoin(TableName.Project, `${TableName.PkiDiscoveryConfig}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PkiDiscoveryConfig}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.PkiDiscoveryConfig),
+        db.ref("name").withSchema(TableName.PkiDiscoveryConfig),
+        db.ref("projectId").withSchema(TableName.PkiDiscoveryConfig),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PkiDiscoveryConfig)
+      .where(`${TableName.PkiDiscoveryConfig}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
   return {
     ...pkiDiscoveryConfigOrm,
     findByProjectId,
@@ -156,6 +179,8 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     findDueForScan,
     findByIdWithInstallationCounts,
     findByName,
-    claimScanSlot
+    claimScanSlot,
+    findByGatewayId,
+    countByGatewayId
   };
 };
