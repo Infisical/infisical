@@ -86,17 +86,12 @@ The PAM Resource represents the connection between Infisical and your MongoDB in
     2. Click **Add Resource** and select **MongoDB**
     3. Enter a **Name** for the resource (e.g., `production-mongo`, `staging-db`)
     4. Select the **Gateway** that has access to this MongoDB instance
-    5. Enter the **Host** - the hostname or IP address of your MongoDB server (e.g., `mongo.example.com` or `192.168.1.100`). For MongoDB Atlas or SRV-based deployments, enter the SRV hostname (e.g., `cluster0.abc123.mongodb.net`) and leave the port empty.
-    6. Enter the **Database Name** - the database to connect to (default: `admin`)
-    7. Optionally enter the **Port** - the MongoDB port (default: `27017`). Leave this empty for SRV-based hosts — Infisical will automatically resolve the SRV record to determine the host and port.
-    8. Configure SSL/TLS options:
+    5. Enter the **Connection String** - a `mongodb://` or `mongodb+srv://` URI pointing to your MongoDB server (e.g., `mongodb://mongo.example.com:27017` or `mongodb+srv://cluster0.abc123.mongodb.net`). Do not include credentials or a database name in the URI — those are configured separately.
+    6. Enter the **Database Name** - the authentication database to connect to (default: `admin`)
+    7. Configure SSL/TLS options:
        - **Enable SSL**: Toggle to enable TLS/SSL connections (enabled by default)
        - **Reject Unauthorized**: Toggle to verify SSL certificates (enabled by default, recommended for production)
-       - **Trusted CA SSL Certificate**: Optional CA certificate for custom certificate authorities
-
-    <Note>
-      **SRV Hosts**: When connecting to MongoDB Atlas or other SRV-based deployments, leave the port field empty. Infisical will resolve the `_mongodb._tcp` SRV record to discover the actual host and port automatically.
-    </Note>
+       - **CA Certificate**: Optional CA certificate for custom certificate authorities
 
     <Note>
       **SSL Configuration**: SSL is enabled by default. For self-signed certificates, you may need to provide the CA certificate or disable certificate validation (not recommended for production).
