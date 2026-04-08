@@ -314,9 +314,6 @@ const OverviewPageContent = () => {
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
   const [tagFilter, setTagFilter] = useState<Record<string, boolean>>({});
-  const [filterHistory, setFilterHistory] = useState<
-    Map<string, { filter: Filter; searchFilter: string }>
-  >(new Map());
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -1990,33 +1987,14 @@ const OverviewPageContent = () => {
     handlePopUpClose("confirmDisableBatchMode");
   }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
 
-  const handleResetSearch = (path: string) => {
-    const restore = filterHistory.get(path);
-    setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
-    const el = restore?.searchFilter ?? "";
-    setSearchFilter(el);
-    setDebouncedSearchFilter(el);
-  };
-
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
-
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, { filter, searchFilter });
-      return curr;
-    });
 
     navigate({
       search: (prev) => ({
         ...prev,
         secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
       })
-    }).then(() => {
-      setFilter(DEFAULT_FILTER_STATE);
-      setSearchFilter("");
-      setDebouncedSearchFilter("");
     });
   };
 
@@ -2379,7 +2357,7 @@ const OverviewPageContent = () => {
                     (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
                   }
                 />
-                <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
+                <FolderBreadcrumb secretPath={secretPath} />
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (

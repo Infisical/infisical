@@ -18,7 +18,6 @@ import {
 
 type Props = {
   secretPath?: string;
-  onResetSearch: (secretPath: string) => void;
 };
 
 type Measurements = {
@@ -29,7 +28,7 @@ type Measurements = {
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
@@ -53,9 +52,9 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       if (secretPath === newSecPath) return;
       navigate({
         search: (prev) => ({ ...prev, secretPath: newSecPath })
-      }).then(() => onResetSearch(newSecPath));
+      });
     },
-    [secretPath, navigate, onResetSearch]
+    [secretPath, navigate]
   );
 
   // Measure all elements and track container width
