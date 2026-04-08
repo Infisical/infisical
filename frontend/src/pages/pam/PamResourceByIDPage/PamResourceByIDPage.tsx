@@ -212,10 +212,12 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsRotationPolicyModalOpen(true)}
           />
-          <PamResourceSessionRecordingSection
-            config={sessionRecordingConfig}
-            onEdit={() => setIsSessionRecordingModalOpen(true)}
-          />
+          {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+            <PamResourceSessionRecordingSection
+              config={sessionRecordingConfig}
+              onEdit={() => setIsSessionRecordingModalOpen(true)}
+            />
+          )}
           <PamResourceMetadataSection resource={resource} />
         </div>
 
@@ -268,12 +270,14 @@ const PageContent = () => {
         resource={resource}
       />
 
-      <PamSessionRecordingModal
-        isOpen={isSessionRecordingModalOpen}
-        onOpenChange={setIsSessionRecordingModalOpen}
-        config={sessionRecordingConfig}
-        onSave={setSessionRecordingConfig}
-      />
+      {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+        <PamSessionRecordingModal
+          isOpen={isSessionRecordingModalOpen}
+          onOpenChange={setIsSessionRecordingModalOpen}
+          config={sessionRecordingConfig}
+          onSave={setSessionRecordingConfig}
+        />
+      )}
     </div>
   );
 };
