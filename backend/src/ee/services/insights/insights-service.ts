@@ -98,8 +98,10 @@ export const insightsServiceFactory = ({
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
     if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
-    const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 1));
-    const endDate = new Date(Date.UTC(dto.year, dto.month, 0, 23, 59, 59, 999));
+    // Pad by 1 day on each side so events near month boundaries are captured
+    // regardless of the caller's timezone offset from UTC.
+    const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 0));
+    const endDate = new Date(Date.UTC(dto.year, dto.month, 1, 23, 59, 59, 999));
 
     const [rotations, reminders] = await Promise.all([
       secretRotationV2DAL.findByProjectAndDateRange({ projectId: dto.projectId, startDate, endDate }),
