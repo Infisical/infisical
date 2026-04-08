@@ -38,7 +38,7 @@ export const pamResourceRotationRulesServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name })
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType })
     );
 
     return resource;
@@ -59,7 +59,7 @@ export const pamResourceRotationRulesServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name })
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType })
     );
 
     const rules = await pamResourceRotationRulesDAL.findByResourceId(resourceId);

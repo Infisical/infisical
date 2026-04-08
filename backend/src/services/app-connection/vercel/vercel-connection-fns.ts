@@ -13,7 +13,9 @@ import {
   TVercelConnectionConfig,
   VercelApp,
   VercelEnvironment,
-  VercelOrgWithApps
+  VercelOrgWithApps,
+  VercelTeam,
+  VercelUserResponse
 } from "./vercel-connection-types";
 
 export const getVercelConnectionListItem = () => {
@@ -178,28 +180,11 @@ async function fetchPreviewBranches(projectId: string, apiToken: string): Promis
   }
 }
 
-type VercelTeam = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-type VercelUserResponse = {
-  user: {
-    id: string;
-    name: string;
-    username: string;
-  };
-};
-
-export const listProjects = async (
-  appConnection: TVercelConnection,
-  projectSearch?: string
-): Promise<VercelOrgWithApps[]> => {
+export const listTeams = async (appConnection: TVercelConnection): Promise<VercelTeam[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
 
-  const orgs = await fetchAllPages<VercelTeam>({
+  const teams = await fetchAllPages<VercelTeam>({
     apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v2/teams`,
     apiToken,
     initialParams: {},
@@ -215,12 +200,24 @@ export const listProjects = async (
 
   if (personalAccountResponse?.data?.user) {
     const { user } = personalAccountResponse.data;
-    orgs.push({
+    teams.push({
       id: user.id,
       name: user.name || "Personal Account",
       slug: user.username || "personal"
     });
   }
+
+  return teams;
+};
+
+export const listProjects = async (
+  appConnection: TVercelConnection,
+  projectSearch?: string
+): Promise<VercelOrgWithApps[]> => {
+  const { credentials } = appConnection;
+  const { apiToken } = credentials;
+
+  const orgs = await listTeams(appConnection);
 
   const orgsWithApps: VercelOrgWithApps[] = [];
 

@@ -148,5 +148,37 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, findByProjectId, findMetadataByResourceIds, findByAdServerResourceId };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamResource)
+      .leftJoin(TableName.Project, `${TableName.PamResource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamResource}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.PamResource),
+        db.ref("projectId").withSchema(TableName.PamResource),
+        db.ref("resourceType").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where(`${TableName.PamResource}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return {
+    ...orm,
+    findById,
+    findByProjectId,
+    findMetadataByResourceIds,
+    findByAdServerResourceId,
+    findByGatewayId,
+    countByGatewayId
+  };
 };

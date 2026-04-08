@@ -50,6 +50,7 @@ import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
 const GatewayHealthStatus = ({
@@ -76,15 +77,48 @@ const GatewayHealthStatus = ({
   );
 };
 
+type GatewayConnectedCellProps = {
+  isV1: boolean;
+  connectedResourcesCount: number;
+  onClick: () => void;
+};
+
+const GatewayConnectedCell = ({
+  isV1,
+  connectedResourcesCount,
+  onClick
+}: GatewayConnectedCellProps) => {
+  if (isV1 || connectedResourcesCount === 0) {
+    return <span className="text-mineshaft-400">—</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex cursor-pointer items-center gap-1.5 text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
+    >
+      <span>
+        {connectedResourcesCount} resource{connectedResourcesCount !== 1 ? "s" : ""}
+      </span>
+    </button>
+  );
+};
+
 export const GatewayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
+    const [selectedGateway, setSelectedGateway] = useState<{
+      id: string;
+      name: string;
+    } | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails"
+      "editDetails",
+      "connectedResources"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -158,7 +192,8 @@ export const GatewayTab = withPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Th className="w-1/2">Name</Th>
+                  <Th className="w-1/3">Name</Th>
+                  <Th>Connected</Th>
                   <Th>
                     Health Check
                     <Tooltip
@@ -174,7 +209,7 @@ export const GatewayTab = withPermission(
               </THead>
               <TBody>
                 {isGatewaysLoading && (
-                  <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
+                  <TableSkeleton innerKey="gateway-table" columns={5} key="gateway-table" />
                 )}
                 {filteredGateway?.map((el) => (
                   <Tr key={el.id}>
@@ -185,6 +220,18 @@ export const GatewayTab = withPermission(
                           Gateway v{el.isV1 ? "1" : "2"}
                         </span>
                       </div>
+                    </Td>
+                    <Td>
+                      <GatewayConnectedCell
+                        isV1={el.isV1}
+                        connectedResourcesCount={
+                          "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                        }
+                        onClick={() => {
+                          setSelectedGateway({ id: el.id, name: el.name });
+                          handlePopUpOpen("connectedResources");
+                        }}
+                      />
                     </Td>
                     <Td>
                       <GatewayHealthStatus
@@ -295,6 +342,17 @@ export const GatewayTab = withPermission(
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
+            {selectedGateway && (
+              <GatewayConnectedResourcesDrawer
+                isOpen={popUp.connectedResources.isOpen}
+                onOpenChange={(isOpen) => {
+                  handlePopUpToggle("connectedResources", isOpen);
+                  if (!isOpen) setSelectedGateway(null);
+                }}
+                gatewayId={selectedGateway.id}
+                gatewayName={selectedGateway.name}
+              />
+            )}
           </TableContainer>
         </div>
       </div>

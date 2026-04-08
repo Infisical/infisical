@@ -61,6 +61,7 @@ import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
+import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
@@ -158,7 +159,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
-  [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" }
+  [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
+  [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -200,6 +202,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case DopplerConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -261,8 +264,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Credentials", icon: faLock };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
-    case DopplerConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
+    case NetScalerConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

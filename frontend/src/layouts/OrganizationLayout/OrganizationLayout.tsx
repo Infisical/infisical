@@ -11,6 +11,7 @@ import { useFetchServerStatus } from "@app/hooks/api";
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { Navbar } from "./components/NavBar";
+import { NetworkHealthBanner } from "./components/NetworkHealthBanner";
 import { OrgSidebar } from "./components/OrgSidebar";
 import { RedisBanner } from "./components/RedisBanner";
 import { SmtpBanner } from "./components/SmtpBanner";
@@ -44,6 +45,7 @@ export const OrganizationLayout = () => {
             {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
             {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}
             {!window.isSecureContext && !isInsideProject && <InsecureConnectionBanner />}
+            {!isLoading && !isInsideProject && <NetworkHealthBanner />}
             <div
               className={twMerge(
                 "flex-1 overflow-x-hidden bg-bunker-800 dark:scheme-dark",

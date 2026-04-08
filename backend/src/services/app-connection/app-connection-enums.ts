@@ -53,7 +53,8 @@ export enum AppConnection {
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
   ExternalInfisical = "external-infisical",
-  Doppler = "doppler"
+  Doppler = "doppler",
+  NetScaler = "netscaler"
 }
 
 export enum AWSRegion {

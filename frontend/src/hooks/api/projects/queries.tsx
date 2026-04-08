@@ -272,13 +272,10 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
   const queryClient = useQueryClient();
 
   return useMutation<Project, object, UpdateAuditLogsRetentionDTO>({
-    mutationFn: async ({ projectSlug, auditLogsRetentionDays }) => {
-      const { data } = await apiRequest.put(
-        `/api/v1/projects/${projectSlug}/audit-logs-retention`,
-        {
-          auditLogsRetentionDays
-        }
-      );
+    mutationFn: async ({ projectId, auditLogsRetentionDays }) => {
+      const { data } = await apiRequest.put(`/api/v1/projects/${projectId}/audit-logs-retention`, {
+        auditLogsRetentionDays
+      });
       return data.project;
     },
     onSuccess: () => {

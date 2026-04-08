@@ -254,7 +254,8 @@ export enum ProjectPermissionPamAccountActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  TriggerRotation = "trigger-rotation"
+  TriggerRotation = "trigger-rotation",
+  ReadCredentials = "read-credentials"
 }
 
 export enum ProjectPermissionPamSessionActions {
@@ -515,11 +516,13 @@ export type McpEndpointSubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
+  resourceType: string;
   metadata?: { key: string; value: string }[];
 };
 
 export type PamResourceSubjectFields = {
   name: string;
+  resourceType: string;
   metadata?: { key: string; value: string }[];
 };
 
@@ -1233,6 +1236,17 @@ const PamAccountConditionSchema = z
         })
         .partial()
     ]),
+    resourceType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
     metadata: z.object({
       [PermissionConditionOperators.$ELEMENTMATCH]: z
         .object({
@@ -1259,6 +1273,17 @@ const PamAccountConditionSchema = z
 const PamResourceConditionSchema = z
   .object({
     name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    resourceType: z.union([
       z.string(),
       z
         .object({

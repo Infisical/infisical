@@ -220,7 +220,7 @@ export const PamResourceRotationRulesSection = ({ resource }: Props) => {
                     label="Account Name Pattern"
                     isError={!!error}
                     errorText={error?.message}
-                    helperText="Glob pattern (e.g., svc-*, admin, *)"
+                    helperText="Glob pattern. Use * to match within a single level (e.g., svc-* matches svc-api but not svc/api). Use ** to match across all depths."
                   >
                     <Input {...field} placeholder="*" className="font-mono" />
                   </FormControl>
