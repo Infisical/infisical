@@ -63,13 +63,17 @@ FIPS mode is enabled by default in the local development environment. However, S
 Unable to validate connection to ssh: Handshake failed: signature verification failed.
 ```
 
-To fix this, set the following environment variable before starting the backend:
+To fix this, add the following line to your `.env` file in the project root (the file loaded by `docker-compose` via `env_file`):
 
 ```bash
-FIPS_ENABLED=false
+echo 'FIPS_ENABLED=false' >> .env
 ```
 
+Then restart the backend service for the change to take effect.
+
 <Note>
+A host shell `export` will **not** work here — `FIPS_ENABLED` is set to `true` inside the Docker image and is not listed in the compose `environment:` block, so only the `.env` file can override it.
+
 This is only required for local development involving SSH PAM. Other PAM resource types (databases, etc.) are not affected.
 </Note>
 
@@ -149,7 +153,7 @@ docker compose -f docker-compose.dev.yml logs -f backend
 </Accordion>
 
 <Accordion title="SSH handshake fails with signature verification error">
-If you see `Unable to validate connection to ssh: Handshake failed: signature verification failed.`, FIPS mode is likely enabled. Set `FIPS_ENABLED=false` in your environment before starting the backend. See [Disable FIPS Mode for SSH](#disable-fips-mode-for-ssh) above.
+If you see `Unable to validate connection to ssh: Handshake failed: signature verification failed.`, FIPS mode is likely enabled. Add `FIPS_ENABLED=false` to your `.env` file and restart the backend. See [Disable FIPS Mode for SSH](#disable-fips-mode-for-ssh) above for details.
 </Accordion>
 </AccordionGroup>
 
