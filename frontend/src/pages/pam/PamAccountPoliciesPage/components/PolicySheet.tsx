@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Control, Controller, FieldErrors, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleMinus, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
@@ -47,13 +47,30 @@ import {
   PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES
 } from "./constants";
 
+const isValidRegex = (pattern: string) => {
+  try {
+    // eslint-disable-next-line no-new
+    new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const RulePatternSchema = z.object({
-  value: z.string().min(1, "Pattern is required")
+  value: z
+    .string()
+    .min(1, "Pattern is required")
+    .max(500, "Pattern must be at most 500 characters")
+    .refine(isValidRegex, { message: "Invalid regular expression" })
 });
 
 const RuleSchema = z.object({
   ruleType: z.nativeEnum(PamAccountPolicyRuleType),
-  patterns: z.array(RulePatternSchema).min(1, "At least one pattern is required")
+  patterns: z
+    .array(RulePatternSchema)
+    .min(1, "At least one pattern is required")
+    .max(20, "A rule can have at most 20 patterns")
 });
 
 const FormSchema = z.object({
@@ -130,15 +147,13 @@ const RulePatterns = ({
   ruleIndex,
   errors
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any;
+  control: Control<TFormData>;
   ruleIndex: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors: any;
+  errors: FieldErrors<TFormData>;
 }) => {
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `rules.${ruleIndex}.patterns`
+    name: `rules.${ruleIndex}.patterns` as const
   });
 
   return (
@@ -168,10 +183,22 @@ const RulePatterns = ({
           </UnstableIconButton>
         </div>
       ))}
-      <Button variant="outline" size="xs" onClick={() => append({ value: "" })}>
-        <Plus className="mr-1 h-3 w-3" />
-        Add Pattern
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => append({ value: "" })}
+              disabled={fields.length >= 20}
+            >
+              <Plus className="mr-1 h-3 w-3" />
+              Add Pattern
+            </Button>
+          </span>
+        </TooltipTrigger>
+        {fields.length >= 20 && <TooltipContent>Max of 20 allowed</TooltipContent>}
+      </Tooltip>
     </div>
   );
 };
