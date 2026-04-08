@@ -1392,7 +1392,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             byCA: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
             byStatus: z.array(z.object({ label: z.string(), count: z.number() }))
           }),
-          expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() }))
+          expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() })),
+          validityBuckets: z.array(z.object({ bucket: z.string(), count: z.number() }))
         })
       }
     },

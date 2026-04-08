@@ -19,7 +19,8 @@ import {
   CodeSigningSection,
   DistributionCharts,
   ExpirationTimeline,
-  KpiCards
+  KpiCards,
+  ValidityReadinessSection
 } from "./components";
 
 export const DashboardPage = () => {
@@ -81,6 +82,7 @@ export const DashboardPage = () => {
                     onNavigate={navigateToInventory}
                   />
                 </div>
+                <ValidityReadinessSection stats={stats} />
                 <CodeSigningSection projectId={currentProject.id} />
                 <ActivityTrend
                   data={trendData?.periods || []}

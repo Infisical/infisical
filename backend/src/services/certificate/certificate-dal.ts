@@ -739,6 +739,25 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.raw("count(*)::int as count"))
         .groupBy("bucket");
 
+      const validityBuckets = await db
+        .replicaNode()(TableName.Certificate)
+        .where(`${TableName.Certificate}.projectId`, projectId)
+        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .where(`${TableName.Certificate}.notAfter`, ">", now)
+        .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
+        .select(
+          db.raw(
+            `CASE
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 47 THEN '<=47d'
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 99 THEN '48-99d'
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 199 THEN '100-199d'
+              ELSE '>=200d'
+            END as bucket`
+          )
+        )
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("bucket");
+
       return {
         totals: {
           total: totals.total,
@@ -766,6 +785,10 @@ export const certificateDALFactory = (db: TDbClient) => {
           byStatus
         },
         expirationBuckets: (expirationBuckets as unknown as BucketCount[]).map((r) => ({
+          bucket: r.bucket,
+          count: Number(r.count)
+        })),
+        validityBuckets: (validityBuckets as unknown as BucketCount[]).map((r) => ({
           bucket: r.bucket,
           count: Number(r.count)
         }))

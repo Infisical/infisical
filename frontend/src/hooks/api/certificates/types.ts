@@ -269,6 +269,7 @@ export type TDashboardStats = {
     byStatus: TDashboardDistribution[];
   };
   expirationBuckets: TExpirationBucket[];
+  validityBuckets?: TExpirationBucket[];
 };
 
 export type TActivityTrendPoint = {
