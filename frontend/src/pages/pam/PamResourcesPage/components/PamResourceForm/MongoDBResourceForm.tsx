@@ -71,7 +71,15 @@ const formSchema = genericResourceFieldsSchema.extend({
           });
         }
       }),
-    database: z.string().trim().min(1, "Database required").default("admin"),
+    database: z
+      .string()
+      .trim()
+      .min(1, "Database required")
+      .regex(
+        /^[a-zA-Z0-9_-]+$/,
+        "Database name can only contain letters, numbers, underscores, and hyphens"
+      )
+      .default("admin"),
     sslEnabled: z.boolean().default(true),
     sslRejectUnauthorized: z.boolean().default(true),
     sslCertificate: z
