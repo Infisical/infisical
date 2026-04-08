@@ -828,7 +828,11 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     permissionService,
-    auditLogQueue
+    auditLogQueue,
+    keyStore,
+    smtpService,
+    userDAL,
+    notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -2148,6 +2152,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
+    auditLogService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
@@ -3266,7 +3271,7 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE)
       };
     }
   });
