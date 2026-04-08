@@ -643,7 +643,7 @@ export const samlConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
-            emails: email ? [sanitizedEmail] : [],
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
             isEmailVerified: false
           },

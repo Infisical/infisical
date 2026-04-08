@@ -471,7 +471,7 @@ export const scimServiceFactory = ({
             userId: user.id,
             aliasType,
             externalId,
-            emails: email ? [sanitizedEmail] : [],
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
             isEmailVerified: false
           },

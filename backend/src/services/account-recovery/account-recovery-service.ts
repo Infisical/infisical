@@ -3,6 +3,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { sanitizeEmail } from "@app/lib/validator";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -30,8 +31,9 @@ export const accountRecoveryServiceFactory = ({
   /*
    * Account recovery flow via email. Step 1: send recovery email
    */
-  const sendRecoveryEmail = async (email: string) => {
+  const sendRecoveryEmail = async (unsanitizedEmail: string) => {
     const sendEmail = async () => {
+      const email = sanitizeEmail(unsanitizedEmail);
       const user = await userDAL.findOne({ username: email });
       if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
@@ -82,8 +84,9 @@ export const accountRecoveryServiceFactory = ({
   /*
    * Account recovery flow via email. Step 2: verify the token and inject a temp token to reset password
    */
-  const verifyRecoveryEmail = async (email: string, code: string) => {
+  const verifyRecoveryEmail = async (unsanitizedEmail: string, code: string) => {
     const cfg = getConfig();
+    const email = sanitizeEmail(unsanitizedEmail);
     const user = await userDAL.findOne({ username: email });
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");

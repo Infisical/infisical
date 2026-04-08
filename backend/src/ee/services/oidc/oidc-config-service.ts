@@ -257,9 +257,12 @@ export const oidcConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
-        newUser = await userDAL.findOne({
-          username: sanitizedEmail
-        });
+        newUser = await userDAL.findOne(
+          {
+            username: sanitizedEmail
+          },
+          tx
+        );
 
         if (!newUser) {
           newUser = await userDAL.create(
@@ -280,7 +283,7 @@ export const oidcConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.OIDC,
             externalId,
-            emails: email ? [email] : [],
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId
           },
           tx
