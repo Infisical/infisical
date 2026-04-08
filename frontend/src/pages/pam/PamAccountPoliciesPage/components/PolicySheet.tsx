@@ -41,6 +41,7 @@ import {
   useUpdatePamAccountPolicy
 } from "@app/hooks/api/pam";
 import { PAM_RESOURCE_TYPE_MAP } from "@app/hooks/api/pam/maps";
+import { slugSchema } from "@app/lib/schemas";
 
 import {
   PAM_ACCOUNT_POLICY_RULE_METADATA,
@@ -74,7 +75,7 @@ const RuleSchema = z.object({
 });
 
 const FormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(255),
+  name: slugSchema({ field: "Name", max: 255 }),
   description: z.string().trim().max(1000).optional(),
   rules: z.array(RuleSchema).min(1, "At least one rule is required")
 });

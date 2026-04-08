@@ -442,8 +442,8 @@ export const useCreatePamAccountPolicy = () => {
 
       return data.policy;
     },
-    onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountPolicy() });
     }
   });
 };
@@ -459,9 +459,8 @@ export const useUpdatePamAccountPolicy = () => {
 
       return data.policy;
     },
-    onSuccess: ({ projectId, id }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
-      queryClient.invalidateQueries({ queryKey: pamKeys.getAccountPolicy(id) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountPolicy() });
     }
   });
 };
@@ -476,8 +475,8 @@ export const useDeletePamAccountPolicy = () => {
 
       return data.policy;
     },
-    onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccountPolicies(projectId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountPolicy() });
     }
   });
 };

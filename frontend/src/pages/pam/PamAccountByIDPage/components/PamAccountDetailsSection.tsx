@@ -12,7 +12,12 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
-import { PAM_RESOURCE_TYPE_MAP, PamAccountRotationStatus, TPamAccount } from "@app/hooks/api/pam";
+import {
+  PAM_RESOURCE_TYPE_MAP,
+  PamAccountRotationStatus,
+  TPamAccount,
+  useListPamAccountPolicies
+} from "@app/hooks/api/pam";
 import { useGetPamAccountById } from "@app/hooks/api/pam/queries";
 
 type Props = {
@@ -53,6 +58,10 @@ const rotationStatusLabel = (status?: string | null) => {
 export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
   const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
   const isRotating = account.rotationStatus === PamAccountRotationStatus.Rotating;
+  const { data: policies } = useListPamAccountPolicies(account.projectId);
+  const policyName = account.policyId
+    ? policies?.find((p) => p.id === account.policyId)?.name
+    : undefined;
 
   // Poll for status updates while rotation is in progress
   useGetPamAccountById(account.id, {
@@ -99,6 +108,10 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
         <Detail>
           <DetailLabel>Parent Resource</DetailLabel>
           <DetailValue>{account.resource.name}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Account Policy</DetailLabel>
+          <DetailValue>{policyName ?? "None"}</DetailValue>
         </Detail>
         <Detail>
           <DetailLabel>Created</DetailLabel>
