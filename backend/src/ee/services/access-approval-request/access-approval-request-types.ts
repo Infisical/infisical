@@ -203,6 +203,7 @@ export interface TAccessApprovalRequestServiceFactory {
     createdAt: Date;
     updatedAt: Date;
     projectId: string;
+    policyId: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

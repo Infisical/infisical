@@ -80,40 +80,44 @@ export const projectMembershipServiceFactory = ({
   userDAL,
   membershipRoleDAL
 }: TProjectMembershipServiceFactoryDep) => {
-  const checkUserApproverPolicies = async (userIds: string[], projectId: string) => {
-    for (const userId of userIds) {
-      // Check access approval policies
-      const accessApprovers = await accessApprovalPolicyApproverDAL.find({ approverUserId: userId });
-      if (accessApprovers.length > 0) {
-        const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
-        const policies = await accessApprovalPolicyDAL.find({
-          $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
-          projectId,
-          deletedAt: null
+  const checkUserApproverPolicies = async (
+    userIds: string[],
+    projectId: string,
+    actionLabel = "Cannot remove user from project"
+  ) => {
+    const accessApprovers = await accessApprovalPolicyApproverDAL.find({
+      $in: { approverUserId: userIds }
+    });
+    if (accessApprovers.length > 0) {
+      const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
+      const policies = await accessApprovalPolicyDAL.find({
+        $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
+        projectId,
+        deletedAt: null
+      });
+      if (policies.length > 0) {
+        const policyNames = policies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
-        if (policies.length > 0) {
-          const policyNames = policies.map((p) => p.name).join(", ");
-          throw new BadRequestError({
-            message: `Cannot remove user from project: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-          });
-        }
       }
+    }
 
-      // Check secret approval policies
-      const secretApprovers = await secretApprovalPolicyApproverDAL.find({ approverUserId: userId });
-      if (secretApprovers.length > 0) {
-        const policyIds = [...new Set(secretApprovers.map((a) => a.policyId))];
-        const policies = await secretApprovalPolicyDAL.find({
-          $in: { [`${TableName.SecretApprovalPolicy}.id` as "id"]: policyIds },
-          projectId,
-          deletedAt: null
+    const secretApprovers = await secretApprovalPolicyApproverDAL.find({
+      $in: { approverUserId: userIds }
+    });
+    if (secretApprovers.length > 0) {
+      const policyIds = [...new Set(secretApprovers.map((a) => a.policyId))];
+      const policies = await secretApprovalPolicyDAL.find({
+        $in: { [`${TableName.SecretApprovalPolicy}.id` as "id"]: policyIds },
+        projectId,
+        deletedAt: null
+      });
+      if (policies.length > 0) {
+        const policyNames = policies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `${actionLabel}: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
-        if (policies.length > 0) {
-          const policyNames = policies.map((p) => p.name).join(", ");
-          throw new BadRequestError({
-            message: `Cannot remove user from project: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-          });
-        }
       }
     }
   };
@@ -434,7 +438,11 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    await checkUserApproverPolicies([actorId], project.id);
+    await checkUserApproverPolicies(
+      [actorId],
+      project.id,
+      "Cannot leave project. Please ask a project admin to remove you from the following policies first"
+    );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
       await additionalPrivilegeDAL.delete(

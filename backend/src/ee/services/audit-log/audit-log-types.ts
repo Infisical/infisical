@@ -5287,6 +5287,7 @@ interface AccessApprovalRequestReviewEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW;
   metadata: {
     requestId: string;
+    policyId: string;
     reviewStatus: string;
   };
 }

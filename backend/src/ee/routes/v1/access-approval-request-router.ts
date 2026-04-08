@@ -235,7 +235,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, ...review } = await server.services.accessApprovalRequest.reviewAccessRequest({
+      const { projectId, policyId, ...review } = await server.services.accessApprovalRequest.reviewAccessRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -253,6 +253,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW,
           metadata: {
             requestId: review.requestId,
+            policyId,
             reviewStatus: req.body.status
           }
         }
