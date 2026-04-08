@@ -380,13 +380,14 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
 
               {ruleFields.map((ruleField, ruleIndex) => {
                 const ruleType = currentRules[ruleIndex]?.ruleType;
-                const meta = ruleType ? PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType] : undefined;
+                if (!ruleType) return null;
+                const meta = PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType];
 
                 return (
                   <div key={ruleField.id} className="rounded-md border border-mineshaft-600 p-3">
                     <div className="mb-1 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{meta?.name ?? ruleType}</span>
+                        <span className="text-sm font-medium">{meta.name}</span>
                         {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
                       </div>
                       <UnstableIconButton
@@ -398,7 +399,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </UnstableIconButton>
                     </div>
-                    {meta?.description && (
+                    {meta.description && (
                       <p className="mb-2 text-xs text-mineshaft-400">{meta.description}</p>
                     )}
 
