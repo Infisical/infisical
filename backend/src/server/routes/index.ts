@@ -69,6 +69,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
@@ -2335,6 +2336,16 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const insightsService = insightsServiceFactory({
+    permissionService,
+    auditLogService,
+    secretRotationV2DAL,
+    reminderDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    projectBotService
+  });
+
   const pkiSyncQueue = pkiSyncQueueFactory({
     queueService,
     kmsService,
@@ -3139,6 +3150,7 @@ export const registerRoutes = async (
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
+    insights: insightsService,
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,

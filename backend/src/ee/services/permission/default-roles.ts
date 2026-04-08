@@ -16,6 +16,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
@@ -436,6 +437,8 @@ const buildAdminPermissionRules = () => {
   );
 
   can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
+
+  can([ProjectPermissionInsightsActions.Read], ProjectPermissionSub.Insights);
 
   return rules;
 };

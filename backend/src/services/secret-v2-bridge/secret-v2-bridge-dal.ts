@@ -1128,6 +1128,29 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findStaleByProject = async (projectId: string, staleBeforeDate: Date, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .where(`${TableName.SecretV2}.updatedAt`, "<", staleBeforeDate)
+        .select(
+          `${TableName.SecretV2}.key`,
+          `${TableName.SecretV2}.updatedAt`,
+          `${TableName.SecretV2}.folderId`,
+          `${TableName.Environment}.slug as environment`
+        )
+        .orderBy(`${TableName.SecretV2}.updatedAt`, "asc")
+        .limit(50);
+
+      return result as { key: string; updatedAt: Date; folderId: string; environment: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findStaleByProject" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -1144,6 +1167,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findReferencedSecretReferences,
     findAllProjectSecretValues,
     countByFolderIds,
+    findStaleByProject,
     findOne,
     find,
     invalidateSecretCacheByProjectId,

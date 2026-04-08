@@ -54,6 +54,7 @@ export * from "./secretApproval";
 export * from "./secretApprovalRequest";
 export * from "./secretFolders";
 export * from "./secretImports";
+export * from "./secretInsights";
 export * from "./secretRotation";
 export * from "./secrets";
 export * from "./secretSharing";
