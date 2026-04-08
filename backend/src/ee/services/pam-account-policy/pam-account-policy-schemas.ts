@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { PamAccountPoliciesSchema } from "@app/db/schemas";
+
 import { PamAccountPolicyRuleType } from "./pam-account-policy-enums";
 
 const re2PatternSchema = z
@@ -35,3 +37,7 @@ export const PolicyRulesInputSchema = PolicyRulesBaseSchema.refine(
 );
 
 export const PolicyRulesResponseSchema = PolicyRulesBaseSchema;
+
+export const SanitizedPamAccountPolicySchema = PamAccountPoliciesSchema.extend({
+  rules: PolicyRulesBaseSchema
+});

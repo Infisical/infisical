@@ -1,21 +1,13 @@
 import { z } from "zod";
 
-import { PamAccountPoliciesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PolicyRulesBaseSchema, PolicyRulesInputSchema } from "@app/ee/services/pam-account-policy";
+import { PolicyRulesInputSchema, SanitizedPamAccountPolicySchema } from "@app/ee/services/pam-account-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SanitizedPamAccountPolicySchema = PamAccountPoliciesSchema.extend({
-  rules: PolicyRulesBaseSchema
-});
-
 type TSanitizedPolicy = z.infer<typeof SanitizedPamAccountPolicySchema>;
-
-// The DB schema has rules as unknown, but we know it matches PolicyRulesBaseSchema
-const sanitizePolicy = (policy: { rules?: unknown; [key: string]: unknown }) => policy as unknown as TSanitizedPolicy;
 
 export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -52,7 +44,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { policies: policies.map(sanitizePolicy) };
+      return { policies: policies as TSanitizedPolicy[] };
     }
   });
 
@@ -90,7 +82,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { policy: sanitizePolicy(policy) };
+      return { policy: policy as TSanitizedPolicy };
     }
   });
 
@@ -132,7 +124,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { policy: sanitizePolicy(policy) };
+      return { policy: policy as TSanitizedPolicy };
     }
   });
 
@@ -181,7 +173,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { policy: sanitizePolicy(policy) };
+      return { policy: policy as TSanitizedPolicy };
     }
   });
 
@@ -220,7 +212,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { policy: sanitizePolicy(policy) };
+      return { policy: policy as TSanitizedPolicy };
     }
   });
 };
