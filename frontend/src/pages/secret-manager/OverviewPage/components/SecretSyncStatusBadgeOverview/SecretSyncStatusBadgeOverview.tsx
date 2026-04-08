@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { formatDistanceToNow } from "date-fns";
 import { AlertTriangleIcon, CheckIcon, RefreshCwIcon } from "lucide-react";
 
+import { SecretSyncStatusBadge } from "@app/components/secret-syncs";
 import {
   Badge,
   Popover,
@@ -19,15 +19,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSyncStatus, TSecretSync, useListSecretSyncs } from "@app/hooks/api/secretSyncs";
-
-const PAGE_SIZE = 5;
-
-const SYNC_STATUS_CONFIG: Record<SecretSyncStatus, { label: string; className: string }> = {
-  [SecretSyncStatus.Running]: { label: "Syncing", className: "text-blue-400" },
-  [SecretSyncStatus.Pending]: { label: "Pending", className: "text-blue-400" },
-  [SecretSyncStatus.Failed]: { label: "Failed", className: "text-red-400" },
-  [SecretSyncStatus.Succeeded]: { label: "Synced", className: "text-green-400" }
-};
 
 type BadgeState = {
   variant: "info" | "danger" | "success";
@@ -50,7 +41,6 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
   });
 
   const [isOpen, setIsOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: secretSyncs = [] } = useListSecretSyncs(projectId, {
     refetchInterval: 20_000
@@ -114,7 +104,6 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open) setVisibleCount(PAGE_SIZE);
   };
 
   const handleNavigateToSync = (sync: TSecretSync) => {
@@ -129,8 +118,6 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
     });
   };
 
-  const remaining = filteredSyncs.length - visibleCount;
-
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -141,60 +128,44 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
           </button>
         </Badge>
       </PopoverTrigger>
-      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-80 p-0">
-        <div className="px-3 py-2 text-xs font-medium">{popoverTitle}</div>
-        <UnstableTable containerClassName="rounded-none border-x-0 border-t border-b-0">
-          <UnstableTableHeader>
+      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-[480px] p-0">
+        <div className="px-4 py-3 text-xs font-medium">{popoverTitle}</div>
+        <UnstableTable containerClassName="max-h-[300px] overflow-y-auto rounded-none border-x-0 border-t border-b-0">
+          <UnstableTableHeader className="sticky top-0 z-10 bg-container">
             <UnstableTableRow>
               <UnstableTableHead>Type</UnstableTableHead>
               <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Status</UnstableTableHead>
-              <UnstableTableHead className="text-right">Last Synced</UnstableTableHead>
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
-            {filteredSyncs.slice(0, visibleCount).map((sync) => {
-              const statusConfig = sync.syncStatus ? SYNC_STATUS_CONFIG[sync.syncStatus] : null;
-              // const destinationDetails = SECRET_SYNC_MAP[sync.destination];
-
-              return (
-                <UnstableTableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
-                  <UnstableTableCell>
-                    <img
-                      alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
-                      src={`/images/integrations/${SECRET_SYNC_MAP[sync.destination].image}`}
-                      className="min-w-7"
+            {filteredSyncs.map((sync) => (
+              <UnstableTableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
+                <UnstableTableCell>
+                  <img
+                    alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
+                    src={`/images/integrations/${SECRET_SYNC_MAP[sync.destination].image}`}
+                    className="h-5 w-5"
+                  />
+                </UnstableTableCell>
+                <UnstableTableCell className="max-w-0 min-w-32!">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">{sync.name}</span>
+                  </div>
+                </UnstableTableCell>
+                <UnstableTableCell>
+                  {sync.syncStatus && (
+                    <SecretSyncStatusBadge
+                      status={sync.syncStatus}
+                      lastSyncedAt={sync.lastSyncedAt}
+                      lastSyncMessage={sync.lastSyncMessage}
                     />
-                  </UnstableTableCell>
-                  <UnstableTableCell className="max-w-0 min-w-32!">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{sync.name}</span>
-                    </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <span className={`text-xs ${statusConfig?.className ?? "text-accent"}`}>
-                      {statusConfig?.label ?? "—"}
-                    </span>
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-right text-xs text-accent">
-                    {sync.lastSyncedAt
-                      ? formatDistanceToNow(new Date(sync.lastSyncedAt), { addSuffix: true })
-                      : "Never"}
-                  </UnstableTableCell>
-                </UnstableTableRow>
-              );
-            })}
+                  )}
+                </UnstableTableCell>
+              </UnstableTableRow>
+            ))}
           </UnstableTableBody>
         </UnstableTable>
-        {remaining > 0 && (
-          <button
-            type="button"
-            onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-            className="w-full border-t border-border px-3 py-2 text-center text-xs text-accent hover:text-mineshaft-200"
-          >
-            Show more ({remaining} remaining)
-          </button>
-        )}
       </PopoverContent>
     </Popover>
   );
