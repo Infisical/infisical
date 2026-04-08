@@ -76,7 +76,10 @@ export enum DeploymentType {
  * - Dedicated: INFISICAL_CLOUD is true but instanceType is not Cloud (uses self-hosted license keys)
  * - Self-Hosted: everything else
  */
-const getDeploymentType = (instanceType: InstanceType, appConfig: { INFISICAL_CLOUD: boolean; INTERNAL_REGION?: string }) => {
+const getDeploymentType = (
+  instanceType: InstanceType,
+  appConfig: { INFISICAL_CLOUD: boolean; INTERNAL_REGION?: string }
+) => {
   if (instanceType === InstanceType.Cloud) {
     return appConfig.INTERNAL_REGION === "eu" ? DeploymentType.EUCloud : DeploymentType.USCloud;
   }
