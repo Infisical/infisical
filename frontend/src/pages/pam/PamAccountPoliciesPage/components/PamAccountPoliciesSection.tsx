@@ -136,6 +136,7 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
                   >
                     {(isAllowed) => (
                       <Switch
+                        variant="project"
                         checked={policy.isActive}
                         onCheckedChange={() => handleToggleActive(policy)}
                         disabled={!isAllowed}
