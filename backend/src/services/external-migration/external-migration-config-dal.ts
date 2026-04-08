@@ -58,10 +58,7 @@ const mapResultToConnection = (raw: Record<string, unknown>) => {
 export const externalMigrationConfigDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ExternalMigrationConfig);
 
-  const findOne = async (
-    filter: { orgId: string; namespace?: string; provider?: string; connectionId?: string | null },
-    tx?: Knex
-  ) => {
+  const findOne = async (filter: { orgId: string; provider?: string; connectionId?: string | null }, tx?: Knex) => {
     try {
       const qb = buildConnectionJoin((tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig), db);
       /* eslint-disable @typescript-eslint/no-misused-promises */

@@ -12,7 +12,9 @@ type Props = {
 };
 
 export const LoadFromVaultBanner = ({ onClick }: Props) => {
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const { hasOrgRole } = useOrgPermission();

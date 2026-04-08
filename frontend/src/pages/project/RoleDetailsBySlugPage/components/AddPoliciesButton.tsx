@@ -45,7 +45,9 @@ export const AddPoliciesButton = ({
   ] as const);
 
   const { hasOrgRole } = useOrgPermission();
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const isVaultImportDisabled = isDisabled || !isOrgAdmin;

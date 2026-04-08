@@ -40,7 +40,10 @@ import {
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
 import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
-import { ExternalMigrationProviders, VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationProviders,
+  VaultKubernetesAuthRole
+} from "@app/hooks/api/migration/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -134,7 +137,9 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);

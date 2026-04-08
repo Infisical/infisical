@@ -59,10 +59,8 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
     [appConnections]
   );
 
-  const { mutateAsync: createConfig, isPending: isCreating } =
-    useCreateExternalMigrationConfig();
-  const { mutateAsync: updateConfig, isPending: isUpdating } =
-    useUpdateExternalMigrationConfig();
+  const { mutateAsync: createConfig, isPending: isCreating } = useCreateExternalMigrationConfig();
+  const { mutateAsync: updateConfig, isPending: isUpdating } = useUpdateExternalMigrationConfig();
 
   const {
     control,

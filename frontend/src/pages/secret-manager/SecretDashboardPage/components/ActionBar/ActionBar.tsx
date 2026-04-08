@@ -86,10 +86,7 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import {
-  useGetExternalMigrationConfigs,
-  useImportVaultSecrets
-} from "@app/hooks/api/migration";
+import { useGetExternalMigrationConfigs, useImportVaultSecrets } from "@app/hooks/api/migration";
 import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -210,7 +207,9 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);

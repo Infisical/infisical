@@ -288,9 +288,13 @@ const OverviewPageContent = () => {
   const { subscription } = useSubscription();
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Vault);
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(ExternalMigrationProviders.Doppler);
+  const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Doppler
+  );
   const dopplerImportConfigs = useMemo(
     () => dopplerConfigs.filter((c) => c.connectionId),
     [dopplerConfigs]

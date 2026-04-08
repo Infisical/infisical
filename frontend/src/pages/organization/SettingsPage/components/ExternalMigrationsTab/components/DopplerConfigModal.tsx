@@ -55,10 +55,8 @@ export const DopplerConfigModal = ({ isOpen, onOpenChange, editConfig }: Props) 
     [appConnections]
   );
 
-  const { mutateAsync: createConfig, isPending: isCreating } =
-    useCreateExternalMigrationConfig();
-  const { mutateAsync: updateConfig, isPending: isUpdating } =
-    useUpdateExternalMigrationConfig();
+  const { mutateAsync: createConfig, isPending: isCreating } = useCreateExternalMigrationConfig();
+  const { mutateAsync: updateConfig, isPending: isUpdating } = useUpdateExternalMigrationConfig();
 
   const {
     control,

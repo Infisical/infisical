@@ -739,7 +739,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const result = await server.services.migration.importDopplerSecrets({
         ...req.body,
-        actor: req.permission
+        actor: req.permission,
+        auditLogInfo: req.auditLogInfo
       });
       return result;
     }

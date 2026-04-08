@@ -158,29 +158,44 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: `Only admins can ${action}` });
     }
 
-    const existingConfig = await externalMigrationConfigDAL.findOne({
+    const existingConfig = await externalMigrationConfigDAL.findWithConnection({
       orgId: actor.orgId,
-      namespace,
       provider: ExternalMigrationProviders.Vault
     });
 
-    if (!existingConfig) {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actor.orgId
+    });
+
+    const migrationConfig = existingConfig
+      .map((config) => {
+        const decryptedConfig = decryptor({ cipherTextBlob: config.encryptedConfig });
+
+        return {
+          ...config,
+          config: ExternalMigrationConfigVaultConfigSchema.parse(JSON.parse(decryptedConfig.toString()))
+        };
+      })
+      .find((config) => config.config.namespace === namespace);
+
+    if (!migrationConfig) {
       throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
-    if (!existingConfig.connection) {
+    if (!migrationConfig.connection) {
       throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
-      orgId: existingConfig.orgId,
-      encryptedCredentials: existingConfig.connection.encryptedCredentials,
+      orgId: migrationConfig.orgId,
+      encryptedCredentials: migrationConfig.connection?.encryptedCredentials,
       kmsService,
       projectId: null
     });
 
     return {
-      ...existingConfig.connection,
+      ...migrationConfig.connection,
       credentials
     } as THCVaultConnection;
   };
@@ -412,6 +427,8 @@ export const externalMigrationServiceFactory = ({
         namespace: migrationConfig.config.namespace
       });
     } else if (migrationConfig.provider === ExternalMigrationProviders.Doppler) {
+      await appConnectionService.connectAppConnectionById(AppConnection.Doppler, connectionId, actor);
+
       if (existingConfigs?.length) {
         if (existingConfigs.some((cfg) => cfg.connectionId === connectionId)) {
           throw new BadRequestError({
@@ -810,7 +827,8 @@ export const externalMigrationServiceFactory = ({
     targetProjectId,
     targetEnvironment,
     targetSecretPath,
-    actor
+    actor,
+    auditLogInfo
   }: TImportDopplerSecretsDTO) => {
     const appConnection = await getDopplerConnectionForConfig(configId, actor);
 
@@ -832,6 +850,25 @@ export const externalMigrationServiceFactory = ({
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await auditLogService.createAuditLog({
+          projectId: targetProjectId,
+          ...auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath: targetSecretPath,
+              environment: targetEnvironment,
+              secrets: Object.entries(dopplerSecrets).map(([secretKey]) => ({
+                secretKey
+              })),
+              eventType: SecretApprovalEvent.CreateMany
+            }
+          }
+        });
+
         return { status: VaultImportStatus.ApprovalRequired, imported: 0 };
       }
     } catch (error) {

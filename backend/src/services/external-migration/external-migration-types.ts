@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -153,6 +154,7 @@ export type TImportDopplerSecretsDTO = {
   targetEnvironment: string;
   targetSecretPath: string;
   actor: OrgServiceActor;
+  auditLogInfo: AuditLogInfo;
 };
 
 export type TCreateVaultExternalMigrationDTO = {
