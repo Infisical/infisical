@@ -128,14 +128,18 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
           </button>
         </Badge>
       </PopoverTrigger>
-      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-[480px] p-0">
-        <div className="px-4 py-3 text-xs font-medium">{popoverTitle}</div>
-        <UnstableTable containerClassName="max-h-[300px] overflow-y-auto rounded-none border-x-0 border-t border-b-0">
-          <UnstableTableHeader className="sticky top-0 z-10 bg-container">
+      <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg">
+        <div className="mb-3 text-xs font-medium">{popoverTitle}</div>
+        <UnstableTable containerClassName="max-h-[300px] overflow-y-auto">
+          <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
             <UnstableTableRow>
-              <UnstableTableHead>Type</UnstableTableHead>
-              <UnstableTableHead>Name</UnstableTableHead>
-              <UnstableTableHead>Status</UnstableTableHead>
+              <UnstableTableHead className="w-[15%] shadow-[inset_0_-1px_0_var(--color-border)]" />
+              <UnstableTableHead className="w-[85%] shadow-[inset_0_-1px_0_var(--color-border)]">
+                Name
+              </UnstableTableHead>
+              <UnstableTableHead className="shadow-[inset_0_-1px_0_var(--color-border)]">
+                Status
+              </UnstableTableHead>
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
