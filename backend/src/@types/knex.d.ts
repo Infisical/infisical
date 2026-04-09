@@ -717,6 +717,11 @@ import {
   TPamResourceRotationRulesUpdate
 } from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
+import {
+  TPamSessionEventBatches,
+  TPamSessionEventBatchesInsert,
+  TPamSessionEventBatchesUpdate
+} from "@app/db/schemas/pam-session-event-batches";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
@@ -1602,6 +1607,11 @@ declare module "knex/types/tables" {
       TPamAccountPoliciesUpdate
     >;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+    [TableName.PamSessionEventBatch]: KnexOriginal.CompositeTableType<
+      TPamSessionEventBatches,
+      TPamSessionEventBatchesInsert,
+      TPamSessionEventBatchesUpdate
+    >;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySources,
       TPamDiscoverySourcesInsert,

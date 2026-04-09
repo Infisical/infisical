@@ -358,8 +358,8 @@ const listTeamSharedEnvVarsWithRetries = async (
 
       allEnvVars.push(...listResponse.data);
 
-      if (listResponse.pagination?.next) {
-        params = { ...params, since: listResponse.pagination.next };
+      if (listResponse.pagination?.next && listResponse.data.length > 0) {
+        params = { ...params, until: listResponse.pagination.next };
       } else {
         hasMore = false;
       }
