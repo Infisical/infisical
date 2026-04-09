@@ -292,7 +292,10 @@ export const EditDynamicSecretSshForm = ({
 
             <button
               type="button"
-              onClick={() => setCmdOpen(!cmdOpen)}
+              onClick={() => {
+                if (cmdOpen) setIsPublicKeyVisible(false);
+                setCmdOpen(!cmdOpen);
+              }}
               className="flex w-full cursor-pointer flex-col rounded-md border border-border bg-container p-3 text-sm hover:bg-container-hover"
             >
               <div className="flex gap-2.5">
