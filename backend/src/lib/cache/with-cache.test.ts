@@ -195,6 +195,7 @@ describe("withCache", () => {
   });
 
   it("should fall back to fetcher when cached value is invalid JSON", async () => {
+    const { logger } = await import("@app/lib/logger");
     const data = { valid: true };
     mockKeyStore.getItem.mockResolvedValue("not-valid-json{{{");
     const fetcher = vi.fn().mockResolvedValue(data);
@@ -208,6 +209,10 @@ describe("withCache", () => {
 
     expect(result).toEqual(data);
     expect(fetcher).toHaveBeenCalledOnce();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "bad-json-key" }),
+      expect.stringContaining("cache parse failed")
+    );
   });
 
   it("should log warnings on cache read and write failures", async () => {

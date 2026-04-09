@@ -9,18 +9,24 @@ type TWithCacheOpts<T> = {
 };
 
 /**
- * Cache-aside helper: attempts to read from Redis, falls back to the fetcher on miss or Redis failure,
- * and writes the result back to Redis. Redis errors are caught and logged — the fetcher is always the
- * source of truth.
+ * Cache-aside helper: attempts to read from Redis, falls back to the fetcher on miss, Redis I/O failure,
+ * or invalid cached JSON, and writes the result back to Redis. Redis write errors are caught and logged
+ * — the fetcher is always the source of truth.
  */
 export const withCache = async <T>({ keyStore, key, ttlSeconds, fetcher }: TWithCacheOpts<T>): Promise<T> => {
+  let cached: string | null = null;
   try {
-    const cached = await keyStore.getItem(key);
-    if (cached !== null) {
-      return JSON.parse(cached) as T;
-    }
+    cached = await keyStore.getItem(key);
   } catch (err) {
     logger.warn({ key, err }, `withCache: cache read failed, falling back to fetcher [key=${key}]`);
+  }
+
+  if (cached !== null) {
+    try {
+      return JSON.parse(cached) as T;
+    } catch (err) {
+      logger.warn({ key, err }, `withCache: cache parse failed, falling back to fetcher [key=${key}]`);
+    }
   }
 
   const result = await fetcher();

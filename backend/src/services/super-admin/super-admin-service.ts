@@ -455,7 +455,11 @@ export const superAdminServiceFactory = ({
 
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
-    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    try {
+      await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    } catch (err) {
+      logger.warn({ key: ADMIN_CONFIG_KEY, err }, `updateServerCfg: cache write failed [key=${ADMIN_CONFIG_KEY}]`);
+    }
 
     if (gitHubAppConnectionSettingsUpdated) {
       await $syncAdminIntegrationConfig();
