@@ -41,8 +41,26 @@ export const useUpdateWebhook = () => {
 
   return useMutation<object, object, TUpdateWebhookDto>({
     mutationFn: async (dto) => {
+      const payload: {
+        isDisabled?: boolean;
+        isSecretModifiedEventEnabled?: boolean;
+        isSecretRotationFailedEventEnabled?: boolean;
+      } = {};
+
+      if (dto.isDisabled !== undefined) {
+        payload.isDisabled = dto.isDisabled;
+      }
+
+      if (dto.isSecretModifiedEventEnabled !== undefined) {
+        payload.isSecretModifiedEventEnabled = dto.isSecretModifiedEventEnabled;
+      }
+
+      if (dto.isSecretRotationFailedEventEnabled !== undefined) {
+        payload.isSecretRotationFailedEventEnabled = dto.isSecretRotationFailedEventEnabled;
+      }
+
       const { data } = await apiRequest.patch(`/api/v1/webhooks/${dto.webhookId}`, {
-        isDisabled: dto.isDisabled
+        ...payload
       });
       return data;
     },

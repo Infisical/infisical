@@ -28,8 +28,10 @@ import {
   useTestWebhook,
   useUpdateWebhook
 } from "@app/hooks/api";
+import { TWebhook } from "@app/hooks/api/webhooks/types";
 
 import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
+import { EditWebhookEventsModal } from "./EditWebhookEventsModal";
 
 export const WebhooksTab = withProjectPermission(
   () => {
@@ -39,7 +41,8 @@ export const WebhooksTab = withProjectPermission(
     const projectId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
-      "deleteWebhook"
+      "deleteWebhook",
+      "editWebhook"
     ] as const);
 
     const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(projectId);
@@ -79,6 +82,25 @@ export const WebhooksTab = withProjectPermission(
       createNotification({
         type: "success",
         text: "Successfully updated webhook"
+      });
+    };
+
+    const handleWebhookEventsUpdate = async (
+      webhookId: string,
+      settings: {
+        isSecretModifiedEventEnabled: boolean;
+        isSecretRotationFailedEventEnabled: boolean;
+      }
+    ) => {
+      await updateWebhook({
+        webhookId,
+        projectId,
+        ...settings
+      });
+      handlePopUpClose("editWebhook");
+      createNotification({
+        type: "success",
+        text: "Successfully updated webhook events"
       });
     };
 
@@ -148,8 +170,8 @@ export const WebhooksTab = withProjectPermission(
                   </Tr>
                 )}
                 {!isWebhooksLoading &&
-                  webhooks?.map(
-                    ({
+                  webhooks?.map((webhook) => {
+                    const {
                       id,
                       url,
                       environment,
@@ -158,7 +180,9 @@ export const WebhooksTab = withProjectPermission(
                       isDisabled,
                       updatedAt,
                       lastRunErrorMessage
-                    }) => (
+                    } = webhook;
+
+                    return (
                       <Tr key={id}>
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                           {url}
@@ -199,6 +223,21 @@ export const WebhooksTab = withProjectPermission(
                         </Td>
                         <Td>
                           <div className="flex items-center justify-end space-x-2">
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Edit}
+                              a={ProjectPermissionSub.Webhooks}
+                            >
+                              {(isAllowed) => (
+                                <Button
+                                  variant="outline_bg"
+                                  size="xs"
+                                  isDisabled={!isAllowed}
+                                  onClick={() => handlePopUpOpen("editWebhook", webhook)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                            </ProjectPermissionCan>
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Edit}
                               a={ProjectPermissionSub.Webhooks}
@@ -263,8 +302,8 @@ export const WebhooksTab = withProjectPermission(
                           </div>
                         </Td>
                       </Tr>
-                    )
-                  )}
+                    );
+                  })}
               </TBody>
             </Table>
           </TableContainer>
@@ -282,6 +321,20 @@ export const WebhooksTab = withProjectPermission(
           onChange={(isOpen) => handlePopUpToggle("deleteWebhook", isOpen)}
           onClose={() => handlePopUpClose("deleteWebhook")}
           onDeleteApproved={handleWebhookDelete}
+        />
+        <EditWebhookEventsModal
+          isOpen={popUp.editWebhook.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("editWebhook", isOpen)}
+          webhook={popUp.editWebhook.data as TWebhook | undefined}
+          isSubmitting={
+            isUpdateWebhookSubmitting &&
+            updateWebhookVars?.webhookId === (popUp.editWebhook.data as TWebhook | undefined)?.id
+          }
+          onSave={async (settings) => {
+            const webhookId = (popUp.editWebhook.data as TWebhook | undefined)?.id;
+            if (!webhookId) return;
+            await handleWebhookEventsUpdate(webhookId, settings);
+          }}
         />
       </div>
     );
