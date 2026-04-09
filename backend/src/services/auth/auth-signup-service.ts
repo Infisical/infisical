@@ -237,9 +237,6 @@ export const authSignupServiceFactory = ({
         throw new BadRequestError({ message: "Invalid token" });
       }
 
-      // Mark alias as verified
-      await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true });
-
       // Update user-level verification flags based on auth method
       const userUpdates: Record<string, boolean> = { isEmailVerified: true };
       if (decodedToken.authMethod === AuthMethod.GOOGLE) {
@@ -254,6 +251,9 @@ export const authSignupServiceFactory = ({
       }
 
       user = await userDAL.transaction(async (tx) => {
+        // Mark alias as verified
+        await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true }, tx);
+
         if (userAlias?.orgId) {
           await orgDAL.updateMembership(
             {

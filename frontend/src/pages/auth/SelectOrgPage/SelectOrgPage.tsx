@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
@@ -246,7 +246,7 @@ export const SelectOrgPage = () => {
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => {
+  useEffect(() => {
     const defaultOrg = orgs?.find((o) => o.id === orgId);
     if (mfaPending && defaultOrg) {
       const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
@@ -257,7 +257,7 @@ export const SelectOrgPage = () => {
         setMfaSuccessCallback(() => () => handleSelectOrganization(defaultOrg));
       }
     }
-  }, [mfaPending, orgs, orgId]);
+  }, [mfaPending, orgs?.length, orgId]);
 
   const renderListContent = () => {
     if (orgsLoading) {

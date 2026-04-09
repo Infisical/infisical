@@ -627,7 +627,7 @@ export const samlConfigServiceFactory = ({
           newUser = await userDAL.create(
             {
               username: sanitizedEmail,
-              email,
+              email: sanitizedEmail,
               isEmailVerified: false,
               firstName,
               lastName,
