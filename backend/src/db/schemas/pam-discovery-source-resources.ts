@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const PamDiscoverySourceResourcesSchema = z.object({
   id: z.string().uuid(),
   discoverySourceId: z.string().uuid(),
-  resourceId: z.string().uuid().nullable().optional(),
+  resourceId: z.string().uuid(),
   lastDiscoveredAt: z.date(),
   lastDiscoveredRunId: z.string().uuid().nullable().optional(),
   isStale: z.boolean().default(false).nullable().optional(),
