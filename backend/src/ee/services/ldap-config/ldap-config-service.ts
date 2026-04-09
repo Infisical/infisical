@@ -261,7 +261,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -346,7 +346,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -658,7 +658,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -694,7 +694,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -755,7 +755,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -801,7 +801,7 @@ export const ldapConfigServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });

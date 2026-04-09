@@ -193,7 +193,7 @@ export const OrgSsoTab = withPermission(
               isLdapActive={Boolean(ldapConfig?.isActive)}
             />
           )}
-
+          <OrgEmailDomainsSection />
           {shouldShowCreateIdentityProviderView ? (
             createIdentityProviderView
           ) : (
@@ -206,7 +206,6 @@ export const OrgSsoTab = withPermission(
             </div>
           )}
         </div>
-        <OrgEmailDomainsSection />
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

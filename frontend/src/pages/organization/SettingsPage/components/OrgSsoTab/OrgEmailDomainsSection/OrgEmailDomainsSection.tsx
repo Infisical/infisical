@@ -25,12 +25,11 @@ export const OrgEmailDomainsSection = () => {
 
   return (
     <>
-      <hr className="border-mineshaft-600" />
-      <div className="pt-4">
+      <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-xl font-medium text-gray-200">Email Domains</p>
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="mt-1 mb-2 text-gray-400">
               Verify ownership of your email domains to use with SSO and identity providers.
             </p>
           </div>

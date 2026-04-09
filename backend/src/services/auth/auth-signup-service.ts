@@ -253,20 +253,25 @@ export const authSignupServiceFactory = ({
         userUpdates.isAccepted = true;
       }
 
-      if (userAlias?.orgId) {
-        await orgDAL.updateMembership(
-          {
-            actorUserId: user.id,
-            scope: AccessScope.Organization,
-            scopeOrgId: userAlias.orgId
-          },
-          {
-            status: OrgMembershipStatus.Accepted
-          }
-        );
-      }
+      user = await userDAL.transaction(async (tx) => {
+        if (userAlias?.orgId) {
+          await orgDAL.updateMembership(
+            {
+              actorUserId: user.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: userAlias.orgId
+            },
+            {
+              status: OrgMembershipStatus.Accepted
+            },
+            tx
+          );
+        }
 
-      user = await userDAL.updateById(user.id, userUpdates);
+        const el = await userDAL.updateById(user.id, userUpdates, tx);
+        return el;
+      });
+
       authMethod = decodedToken.authMethod;
     }
 

@@ -23,7 +23,7 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, isLoggedIn, setAuthToken } from "@app/hooks/api/reactQuery";
+import { getAuthToken, setAuthToken } from "@app/hooks/api/reactQuery";
 import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
@@ -243,23 +243,6 @@ export const SelectOrgPage = () => {
     },
     [selectOrg, callbackPort, isBreakglassRoute, user, router, toggleShowMfa, navigate]
   );
-
-  // CLI redirect on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => {
-    if (callbackPort) {
-      const authToken = getAuthToken();
-      if (authToken && !callbackPort) {
-        const decodedJwt = jwtDecode(authToken) as any;
-        if (decodedJwt?.organizationId) {
-          navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
-        }
-      }
-      if (!isLoggedIn()) {
-        navigate({ to: "/login" });
-      }
-    }
-  }, []);
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps

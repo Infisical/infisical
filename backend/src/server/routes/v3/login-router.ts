@@ -178,6 +178,13 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         );
       }
 
+      void res.setCookie("jid", tokens.refreshToken, {
+        httpOnly: true,
+        path: "/api",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
       addAuthOriginDomainCookie(res);
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,

@@ -149,7 +149,8 @@ describe("Auth IdP Service-Level Tests", () => {
         userAgent: "test-agent"
       });
 
-      expect(result).toBeDefined();
+      expect(result.result).toBe(ProviderAuthResult.SIGNUP_REQUIRED);
+      expect(result).toHaveProperty("signupToken");
 
       const db = getDb();
       const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
