@@ -305,7 +305,7 @@ export const useGetPamSessionById = (
 };
 
 const LOGS_BATCH_FETCH_SIZE = 100;
-const LOGS_EVENT_PAGE_SIZE = 5000;
+const LOGS_EVENT_PAGE_SIZE = 1000;
 const LOGS_POLL_INTERVAL_MS = 5000;
 
 // Fetch batches until we have at least targetEventCount new events or no more batches remain.
@@ -398,7 +398,11 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
   const loadMore = async () => {
     setIsLoadingMore(true);
     try {
-      const result = await fetchUntilEventTarget(sessionId, batchCursorRef.current, LOGS_EVENT_PAGE_SIZE);
+      const result = await fetchUntilEventTarget(
+        sessionId,
+        batchCursorRef.current,
+        LOGS_EVENT_PAGE_SIZE
+      );
       batchCursorRef.current = result.cursor;
       setLogs((prev) => [...prev, ...result.logs]);
       setHasMore(result.hasMore);

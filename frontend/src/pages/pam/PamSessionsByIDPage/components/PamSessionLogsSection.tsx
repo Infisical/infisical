@@ -42,8 +42,14 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
   return (
     <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center border-b border-mineshaft-400 pb-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-medium text-mineshaft-100">Session Logs</h3>
+        {isActive && (
+          <span className="flex items-center gap-1.5 rounded-full bg-green-900/40 px-2.5 py-1 text-xs font-medium text-green-400">
+            <span className="size-1.5 animate-pulse rounded-full bg-green-400" />
+            LIVE
+          </span>
+        )}
       </div>
 
       {isDatabaseSession && hasLogs && <CommandLogView logs={logs as TPamCommandLog[]} />}
