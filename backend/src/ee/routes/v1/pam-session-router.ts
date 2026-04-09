@@ -15,6 +15,7 @@ import {
   SessionLogsPageSchema,
   TerminalEventSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -381,7 +382,12 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
-      EventBatchSchema.parse(JSON.parse(req.body.toString()));
+      try {
+        EventBatchSchema.parse(JSON.parse(req.body.toString()));
+      } catch (e) {
+        if (e instanceof SyntaxError) throw new BadRequestError({ message: "Invalid JSON in request body" });
+        throw e;
+      }
 
       const { projectId, wasInserted } = await server.services.pamSession.uploadEventBatch(
         {
