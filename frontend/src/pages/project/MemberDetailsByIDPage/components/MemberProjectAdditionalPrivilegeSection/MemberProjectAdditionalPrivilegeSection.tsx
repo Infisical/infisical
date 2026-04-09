@@ -272,7 +272,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                               <UnstableDropdownMenuContent align="end">
                                 {isLinkedToAccessApproval ? (
                                   <ProjectPermissionCan
-                                    I={ProjectPermissionActions.Edit}
+                                    I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
                                     a={ProjectPermissionSub.Member}
                                   >
                                     {(isAllowed) => (

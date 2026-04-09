@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
@@ -26,6 +27,7 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
@@ -835,7 +837,7 @@ export const accessApprovalRequestServiceFactory = ({
     if (!accessApprovalRequest)
       throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -844,11 +846,24 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { policy } = accessApprovalRequest;
-    if (!policy) throw new NotFoundError({ message: `Policy for request '${requestId}' not found` });
+    const targetUser = await userDAL.findById(accessApprovalRequest.requestedByUserId);
+    if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
 
-    const isApprover = policy.approvers.some((approver) => approver.userId === actorId);
-    if (!isApprover) throw new ForbiddenRequestError({ message: "Only policy approvers can revoke access" });
+    const memberSubject = subject(ProjectPermissionSub.Member, {
+      userEmail: targetUser.email ?? undefined
+    });
+
+    const canAssignAdditionalPrivileges = permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      memberSubject
+    );
+    const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
+
+    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy) {
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to revoke additional privileges for this user"
+      });
+    }
 
     if (accessApprovalRequest.status !== ApprovalStatus.APPROVED) {
       throw new BadRequestError({ message: "Only approved requests can be revoked" });
