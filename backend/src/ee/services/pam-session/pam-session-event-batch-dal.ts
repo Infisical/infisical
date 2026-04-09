@@ -28,7 +28,7 @@ export const pamSessionEventBatchDALFactory = (db: TDbClient) => {
       .onConflict(["sessionId", "startOffset"])
       .merge(["encryptedEventsBlob"]) // on re-upload of the same offset, overwrite the blob instead of erroring or skipping
       .returning(db.raw("(xmax = 0) as inserted"));
-    return { wasInserted: result[0]?.inserted === true };
+    return { wasInserted: (result[0] as unknown as { inserted: boolean })?.inserted === true };
   };
 
   return { ...orm, findBySessionIdPaginated, upsertBatch };
