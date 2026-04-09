@@ -1,6 +1,16 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { Button, Checkbox, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import {
   TWebhook,
   TWebhookEventToggleKey,
@@ -60,43 +70,45 @@ export const EditWebhookEventsModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Edit Webhook Events"
-        subTitle="Select which events should trigger this webhook."
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Webhook Events</DialogTitle>
+          <DialogDescription>Select which events should trigger this webhook.</DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSave}>
           <div className="space-y-4">
             {WEBHOOK_EVENTS.map((event) => {
               const { key, label, description } = WEBHOOK_EVENT_METADATA[event];
+              const checkboxId = `webhook-event-${event}`;
 
               return (
-                <Checkbox
-                  key={event}
-                  id={`webhook-event-${event}`}
-                  isChecked={eventSettings[key]}
-                  onCheckedChange={(checked) => handleToggle(key, checked === true)}
-                  allowMultilineLabel
-                >
-                  <p className="font-medium text-mineshaft-50">{label}</p>
-                  <p className="text-mineshaft-400">{description}</p>
-                </Checkbox>
+                <label key={event} htmlFor={checkboxId} className="flex items-start gap-3">
+                  <Checkbox
+                    id={checkboxId}
+                    isChecked={eventSettings[key]}
+                    onCheckedChange={(checked) => handleToggle(key, checked === true)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="font-medium text-foreground">{label}</p>
+                    <p className="text-accent">{description}</p>
+                  </div>
+                </label>
               );
             })}
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <ModalClose asChild>
-              <Button variant="plain" colorSchema="secondary">
-                Cancel
-              </Button>
-            </ModalClose>
-            <Button type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
+          <DialogFooter className="mt-6">
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" isDisabled={isSubmitting} isPending={isSubmitting}>
               Save Changes
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

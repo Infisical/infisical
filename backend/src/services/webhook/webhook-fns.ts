@@ -366,9 +366,9 @@ export const fnTriggerWebhook = async ({
       const isEventSubscribed = (() => {
         switch (event.type) {
           case WebhookEvents.SecretModified:
-            return isSecretModifiedEventEnabled;
+            return isSecretModifiedEventEnabled ?? true;
           case WebhookEvents.SecretRotationFailed:
-            return isSecretRotationFailedEventEnabled;
+            return isSecretRotationFailedEventEnabled ?? true;
           default:
             // all other events are subscribed by default
             return true;

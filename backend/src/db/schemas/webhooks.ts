@@ -28,10 +28,10 @@ export const WebhooksSchema = z.object({
   urlIV: z.string().nullable().optional(),
   urlTag: z.string().nullable().optional(),
   type: z.string().default("general").nullable().optional(),
-  isSecretModifiedEventEnabled: z.boolean().default(true),
-  isSecretRotationFailedEventEnabled: z.boolean().default(true),
   encryptedPassKey: zodBuffer.nullable().optional(),
-  encryptedUrl: zodBuffer
+  encryptedUrl: zodBuffer,
+  isSecretModifiedEventEnabled: z.boolean().default(true),
+  isSecretRotationFailedEventEnabled: z.boolean().default(true)
 });
 
 export type TWebhooks = z.infer<typeof WebhooksSchema>;
