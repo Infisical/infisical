@@ -370,6 +370,12 @@ export const SshInputForm = ({
                 <FontAwesomeIcon icon={faCopy} className="text-label" />
               </IconButton>
             </div>
+            <div className="mt-4 flex flex-col gap-1 text-sm text-muted">
+              <span>This command will:</span>
+              <span>- Install the CA certificate on the target host</span>
+              <span>- Configure SSH to trust certificate-based authentication</span>
+              <span>- Restart the SSH service</span>
+            </div>
             <span className="mt-4 text-sm text-muted">
               Or, copy the CA public key to install it manually:
             </span>
@@ -411,12 +417,6 @@ export const SshInputForm = ({
               >
                 <FontAwesomeIcon icon={faCopy} className="text-label" />
               </IconButton>
-            </div>
-            <div className="mt-4 flex flex-col gap-1 text-sm text-muted">
-              <span>The automated setup command will:</span>
-              <span>- Install the CA certificate on the target host</span>
-              <span>- Configure SSH to trust certificate-based authentication</span>
-              <span>- Restart the SSH service</span>
             </div>
           </div>
           <div className="mt-6 flex justify-end">
