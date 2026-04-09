@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
@@ -20,7 +21,7 @@ import {
   SelectItem,
   Tag
 } from "@app/components/v2";
-import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useCreateDynamicSecret, useGetSshCaPublicKey } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
@@ -102,6 +103,12 @@ export const SshInputForm = ({
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [createdDynamicSecretId, setCreatedDynamicSecretId] = useState<string | null>(null);
   const [principalInput, setPrincipalInput] = useState("");
+  const [isPublicKeyVisible, setIsPublicKeyVisible] = useState(false);
+
+  const { data: caPublicKey } = useGetSshCaPublicKey({
+    dynamicSecretId: createdDynamicSecretId || "",
+    enabled: showSetupModal && !!createdDynamicSecretId
+  });
 
   const createDynamicSecret = useCreateDynamicSecret();
 
@@ -363,8 +370,50 @@ export const SshInputForm = ({
                 <FontAwesomeIcon icon={faCopy} className="text-label" />
               </IconButton>
             </div>
+            <span className="mt-4 text-sm text-muted">
+              Or, copy the CA public key to install it manually:
+            </span>
+            <div className="mt-2 flex items-center gap-1">
+              <Input
+                type={isPublicKeyVisible ? "text" : "password"}
+                value={caPublicKey || ""}
+                isDisabled
+              />
+              <IconButton
+                ariaLabel="toggle visibility"
+                variant="plain"
+                colorSchema="secondary"
+                size="sm"
+                onClick={() => setIsPublicKeyVisible((v) => !v)}
+                className="size-8 shrink-0"
+              >
+                {isPublicKeyVisible ? (
+                  <EyeOffIcon className="size-4 text-label" />
+                ) : (
+                  <EyeIcon className="size-4 text-label" />
+                )}
+              </IconButton>
+              <IconButton
+                ariaLabel="copy"
+                variant="plain"
+                colorSchema="secondary"
+                size="sm"
+                onClick={() => {
+                  if (caPublicKey) {
+                    navigator.clipboard.writeText(caPublicKey);
+                    createNotification({
+                      text: "CA public key copied to clipboard",
+                      type: "info"
+                    });
+                  }
+                }}
+                className="size-8 shrink-0"
+              >
+                <FontAwesomeIcon icon={faCopy} className="text-label" />
+              </IconButton>
+            </div>
             <div className="mt-4 flex flex-col gap-1 text-sm text-muted">
-              <span>This command will:</span>
+              <span>The automated setup command will:</span>
               <span>- Install the CA certificate on the target host</span>
               <span>- Configure SSH to trust certificate-based authentication</span>
               <span>- Restart the SSH service</span>
