@@ -571,7 +571,7 @@ export const pamDiscoverySourceServiceFactory = ({
     );
 
     // Add dependency counts per resource
-    const resourceIds = decryptedResources.map((r) => r.resourceId).filter(Boolean) as string[];
+    const resourceIds = decryptedResources.map((r) => r.resourceId).filter(Boolean);
     const depCountsByResource = resourceIds.length
       ? await pamAccountDependenciesDAL.countByResourceIds(resourceIds)
       : {};
