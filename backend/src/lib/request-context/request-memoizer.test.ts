@@ -84,8 +84,13 @@ describe("RequestMemoizer", () => {
       expect(b).toBe("B");
       expect(fetcherA).toHaveBeenCalledOnce();
       expect(fetcherB).toHaveBeenCalledOnce();
-      expect(memoizer.get("key-a")).toBe("A");
-      expect(memoizer.get("key-b")).toBe("B");
+
+      const spyA = vi.fn().mockResolvedValue("should-not-run");
+      const spyB = vi.fn().mockResolvedValue("should-not-run");
+      expect(await memoizer.getOrSet("key-a", spyA)).toBe("A");
+      expect(await memoizer.getOrSet("key-b", spyB)).toBe("B");
+      expect(spyA).not.toHaveBeenCalled();
+      expect(spyB).not.toHaveBeenCalled();
     });
 
     it("should not cache the result when the fetcher throws", async () => {
@@ -96,26 +101,6 @@ describe("RequestMemoizer", () => {
 
       expect(result).toBe("recovered");
       expect(fetcher).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe("get / set", () => {
-    it("should return undefined for missing keys", () => {
-      expect(memoizer.get("missing")).toBeUndefined();
-    });
-
-    it("should store and retrieve values via set/get", () => {
-      memoizer.set("k", 42);
-      expect(memoizer.get("k")).toBe(42);
-    });
-
-    it("should keep distinct keys via getOrSet and set", async () => {
-      expect(memoizer.get("a")).toBeUndefined();
-      await memoizer.getOrSet("a", async () => 1);
-      expect(memoizer.get("a")).toBe(1);
-      memoizer.set("b", 2);
-      expect(memoizer.get("b")).toBe(2);
-      expect(memoizer.get("a")).toBe(1);
     });
   });
 });
@@ -197,7 +182,8 @@ describe("request-scoped DAL deduplication", () => {
       actor: ActorType.IDENTITY,
       actorId: "id-1",
       actorAuthMethod: null,
-      actionProjectType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.SecretManager,
+      actorOrgId: "org-1"
     });
     const results = await Promise.all(Array.from({ length: 50 }, () => memoizer.getOrSet(cacheKey, permissionFetcher)));
 

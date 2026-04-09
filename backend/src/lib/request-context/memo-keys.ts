@@ -25,14 +25,17 @@ export const requestMemoKeys = {
     actor,
     actorId,
     actorAuthMethod,
-    actionProjectType
+    actionProjectType,
+    actorOrgId
   }: {
     projectId: string;
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actionProjectType: ActionProjectType;
-  }) => `permission:project:${projectId}:${actor}:${actorId}:${actorAuthMethod}:${actionProjectType}`,
+    actorOrgId?: string;
+  }) =>
+    `permission:project:${projectId}:${actor}:${actorId}:${actorAuthMethod}:${actionProjectType}:${actorOrgId ?? ""}`,
 
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 

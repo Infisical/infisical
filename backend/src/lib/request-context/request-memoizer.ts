@@ -48,15 +48,6 @@ export class RequestMemoizer {
     this.inflight.set(key, promise);
     return promise;
   }
-
-  get<T>(key: string): T | undefined {
-    if (!this.cache.has(key)) return undefined;
-    return this.cache.get(key) as T;
-  }
-
-  set(key: string, value: unknown): void {
-    this.cache.set(key, value);
-  }
 }
 
 /**

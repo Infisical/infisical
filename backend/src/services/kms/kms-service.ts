@@ -648,7 +648,8 @@ export const kmsServiceFactory = ({
     return key.id;
   };
 
-  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
+  /** Single project row read; reuses snapshot for data-key path to avoid duplicate findById. */
+  const $getProjectSecretManagerKmsKeyIdAndProject = async (projectId: string, trx?: Knex) => {
     const project = await projectDAL.findById(projectId, trx);
     if (!project) {
       throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -658,7 +659,8 @@ export const kmsServiceFactory = ({
       if (trx) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectKeyCreation(projectId)]);
-        return $createProjectKmsKey(projectId, trx);
+        const kmsKeyId = await $createProjectKmsKey(projectId, trx);
+        return { kmsKeyId, project };
       }
 
       const kmsKeyId = await projectDAL.transaction(async (tx) => {
@@ -667,10 +669,15 @@ export const kmsServiceFactory = ({
         return $createProjectKmsKey(projectId, tx);
       });
 
-      return kmsKeyId;
+      return { kmsKeyId, project };
     }
 
-    return project.kmsSecretManagerKeyId;
+    return { kmsKeyId: project.kmsSecretManagerKeyId, project };
+  };
+
+  const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
+    const { kmsKeyId } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+    return kmsKeyId;
   };
 
   // Helper function to create project data key within a transaction
@@ -690,8 +697,8 @@ export const kmsServiceFactory = ({
   };
 
   const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
-    const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId, trx);
-    let project = await projectDAL.findById(projectId, trx);
+    const { kmsKeyId, project: projectSnapshot } = await $getProjectSecretManagerKmsKeyIdAndProject(projectId, trx);
+    let project = projectSnapshot;
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
       let projectDataKey: Buffer | undefined;
