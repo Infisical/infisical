@@ -156,7 +156,6 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
         <span className="rounded bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
           {message}
         </span>
-        <p className="text-xs text-mineshaft-500">{result.executionTimeMs}ms</p>
       </div>
     );
   }
