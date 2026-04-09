@@ -111,21 +111,40 @@ const RuleSupportedResourceIndicator = ({ ruleType }: { ruleType: PamAccountPoli
   const supported = PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES[ruleType];
 
   if (supported === "all") {
-    return <Badge variant="neutral">All</Badge>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="neutral">All</Badge>
+        </TooltipTrigger>
+        <TooltipContent>Supported by all resource types</TooltipContent>
+      </Tooltip>
+    );
   }
 
   return (
-    <div className="flex items-center gap-1">
-      {supported.map((rt) => {
-        const mapEntry = PAM_RESOURCE_TYPE_MAP[rt];
-        if (!mapEntry) return null;
-        return (
-          <Badge key={rt} variant="neutral">
-            {mapEntry.name}
-          </Badge>
-        );
-      })}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1">
+          {supported.map((rt) => {
+            const mapEntry = PAM_RESOURCE_TYPE_MAP[rt];
+            if (!mapEntry) return null;
+            return (
+              <Badge key={rt} variant="neutral">
+                {mapEntry.name}
+              </Badge>
+            );
+          })}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        Supported by{" "}
+        {(() => {
+          const names = supported.map((rt) => PAM_RESOURCE_TYPE_MAP[rt]?.name).filter(Boolean);
+          if (names.length <= 1) return names[0];
+          return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+        })()}
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
