@@ -13,7 +13,6 @@ export const PamSessionsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   accountId: z.string().uuid().nullable().optional(),
-  resourceId: z.string().uuid().nullable().optional(),
   resourceType: z.string(),
   resourceName: z.string(),
   accountName: z.string(),
@@ -24,15 +23,16 @@ export const PamSessionsSchema = z.object({
   actorUserAgent: z.string(),
   status: z.string(),
   encryptedLogsBlob: zodBuffer.nullable().optional(),
-  encryptedAiInsights: zodBuffer.nullable().optional(),
-  aiInsightsStatus: z.string().nullable().optional(),
-  aiInsightsError: z.string().nullable().optional(),
   expiresAt: z.date(),
   startedAt: z.date().nullable().optional(),
   endedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  accessMethod: z.string().nullable().optional()
+  accessMethod: z.string().nullable().optional(),
+  resourceId: z.string().uuid().nullable().optional(),
+  encryptedAiInsights: zodBuffer.nullable().optional(),
+  aiInsightsStatus: z.string().nullable().optional(),
+  aiInsightsError: z.string().nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;
