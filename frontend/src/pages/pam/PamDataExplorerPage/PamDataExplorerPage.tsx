@@ -62,6 +62,7 @@ export const PamDataExplorerPage = () => {
   const [approvalJustification, setApprovalJustification] = useState("");
 
   const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } = useQueryTabs();
+  const [isInTransaction, setIsInTransaction] = useState(false);
 
   const {
     isConnected,
@@ -505,7 +506,9 @@ export const PamDataExplorerPage = () => {
                 executeQuery={executeQuery}
                 cancelQuery={cancelQuery}
                 tableDetail={tableDetail}
+                isInTransaction={isInTransaction}
                 onSqlChange={(sql) => updateTabSql(tab.id, sql)}
+                onTransactionStateChange={setIsInTransaction}
               />
             </div>
           ))}

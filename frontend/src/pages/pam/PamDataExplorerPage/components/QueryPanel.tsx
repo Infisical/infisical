@@ -23,15 +23,16 @@ type Props = {
   executeQuery: (sql: string) => Promise<QueryResult>;
   cancelQuery: () => void;
   tableDetail: TableDetail | null;
+  isInTransaction: boolean;
   onSqlChange: (sql: string) => void;
+  onTransactionStateChange: (open: boolean) => void;
 };
 
-export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, onSqlChange }: Props) {
+export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, isInTransaction, onSqlChange, onTransactionStateChange }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isInTransaction, setIsInTransaction] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const sqlToRunRef = useRef<string>(tab.sql);
 
@@ -50,10 +51,10 @@ export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, onSqlC
     setError(null);
     try {
       const res = await executeQuery(sqlToRun);
-      setIsInTransaction(res.transactionOpen);
+      onTransactionStateChange(res.transactionOpen);
       setResult(res);
     } catch (err) {
-      setIsInTransaction(false);
+      onTransactionStateChange(false);
       setError(err instanceof Error ? err.message : String(err));
       setResult(null);
     } finally {
