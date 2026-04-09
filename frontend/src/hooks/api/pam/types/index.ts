@@ -273,4 +273,5 @@ export type TPamResourceDependency = TPamAccountDependency & {
 export type TPamSessionLogsPage = {
   logs: TPamSessionLog[];
   hasMore: boolean;
+  batchCount: number;
 };

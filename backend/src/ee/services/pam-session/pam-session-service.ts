@@ -320,7 +320,7 @@ export const pamSessionServiceFactory = ({
       const hasMore = batches.length > limit;
       const pageBatches = hasMore ? batches.slice(0, limit) : batches;
       const logs = pageBatches.length > 0 ? await decryptBatches(pageBatches, sessionFromDb.projectId, kmsService) : [];
-      return { logs, hasMore };
+      return { logs, hasMore, batchCount: pageBatches.length };
     }
 
     // Legacy blob-based session — bounded by Fastify body limit on upload
@@ -330,10 +330,10 @@ export const pamSessionServiceFactory = ({
         encryptedLogs: sessionFromDb.encryptedLogsBlob,
         kmsService
       });
-      return { logs, hasMore: false };
+      return { logs, hasMore: false, batchCount: 0 };
     }
 
-    return { logs: [], hasMore: false };
+    return { logs: [], hasMore: false, batchCount: 0 };
   };
 
   const uploadEventBatch = async ({ sessionId, startOffset, events }: TUploadEventBatchDTO, actor: OrgServiceActor) => {
