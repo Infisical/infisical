@@ -2,6 +2,8 @@ import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
 import fp from "fastify-plugin";
 
+import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+
 const apiMeter = opentelemetry.metrics.getMeter("API");
 
 const latencyHistogram = apiMeter.createHistogram("API_latency", {
@@ -32,13 +34,13 @@ export const apiMetrics = fp(async (fastify) => {
       statusCode
     });
 
-    const orgId = requestContext.get("orgId");
-    const orgName = requestContext.get("orgName");
-    const userAuthInfo = requestContext.get("userAuthInfo");
-    const identityAuthInfo = requestContext.get("identityAuthInfo");
-    const projectDetails = requestContext.get("projectDetails");
-    const userAgent = requestContext.get("userAgent");
-    const ip = requestContext.get("ip");
+    const orgId = requestContext.get(requestContextKeys.orgId);
+    const orgName = requestContext.get(requestContextKeys.orgName);
+    const userAuthInfo = requestContext.get(requestContextKeys.userAuthInfo);
+    const identityAuthInfo = requestContext.get(requestContextKeys.identityAuthInfo);
+    const projectDetails = requestContext.get(requestContextKeys.projectDetails);
+    const userAgent = requestContext.get(requestContextKeys.userAgent);
+    const ip = requestContext.get(requestContextKeys.ip);
 
     const attributes: Record<string, string | number> = {
       "http.request.method": method,

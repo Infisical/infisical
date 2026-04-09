@@ -1,6 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
@@ -13,7 +14,7 @@ export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
           req.auth.tokenVersionId
         );
         if (decodedToken) {
-          requestContext.set("assumedPrivilegeDetails", decodedToken);
+          requestContext.set(requestContextKeys.assumedPrivilegeDetails, decodedToken);
         }
       }
     } catch (error) {
