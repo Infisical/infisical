@@ -220,7 +220,7 @@ export const IdentityTokenAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
                 <Input {...field} placeholder="Never expires" type="number" min="0" step="1" />
               </FormControl>
