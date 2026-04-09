@@ -304,8 +304,36 @@ export const useGetPamSessionById = (
   });
 };
 
-const LOGS_FETCH_LIMIT = 100;
+const LOGS_BATCH_FETCH_SIZE = 100;
+const LOGS_EVENT_PAGE_SIZE = 5000;
 const LOGS_POLL_INTERVAL_MS = 5000;
+
+// Fetch batches until we have at least targetEventCount new events or no more batches remain.
+// Returns the accumulated logs and updated cursor.
+const fetchUntilEventTarget = async (
+  sessionId: string,
+  startCursor: number,
+  targetEventCount: number
+) => {
+  let cursor = startCursor;
+  let totalEvents = 0;
+  let hasMore = false;
+  const accumulatedLogs: TPamSessionLogsPage["logs"] = [];
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await apiRequest.get<TPamSessionLogsPage>(
+      `/api/v1/pam/sessions/${sessionId}/logs`,
+      { params: { offset: cursor, limit: LOGS_BATCH_FETCH_SIZE } }
+    );
+    accumulatedLogs.push(...data.logs);
+    cursor += data.batchCount;
+    totalEvents += data.logs.length;
+    hasMore = data.hasMore;
+  } while (hasMore && totalEvents < targetEventCount);
+
+  return { logs: accumulatedLogs, cursor, hasMore };
+};
 
 export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
   const [logs, setLogs] = useState<TPamSessionLogsPage["logs"]>([]);
@@ -314,7 +342,8 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const batchCursorRef = useRef(0);
 
-  // Initial fetch: first 100 batches for both live and completed sessions
+  // Initial fetch: load up to LOGS_EVENT_PAGE_SIZE events for completed sessions,
+  // or a single batch page for live sessions (polling handles the rest).
   useEffect(() => {
     if (!sessionId) return undefined;
     let cancelled = false;
@@ -323,14 +352,12 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
       setIsLoading(true);
       batchCursorRef.current = 0;
       try {
-        const { data } = await apiRequest.get<TPamSessionLogsPage>(
-          `/api/v1/pam/sessions/${sessionId}/logs`,
-          { params: { offset: 0, limit: LOGS_FETCH_LIMIT } }
-        );
+        const targetEvents = isActive ? 0 : LOGS_EVENT_PAGE_SIZE;
+        const result = await fetchUntilEventTarget(sessionId, 0, targetEvents);
         if (!cancelled) {
-          setLogs(data.logs);
-          batchCursorRef.current = data.batchCount;
-          setHasMore(data.hasMore);
+          setLogs(result.logs);
+          batchCursorRef.current = result.cursor;
+          setHasMore(result.hasMore);
         }
       } catch {
         // ignore
@@ -342,7 +369,7 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, isActive]);
 
   // Live polling: advance cursor every 5s, catches up then tracks new batches
   useEffect(() => {
@@ -352,7 +379,7 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
       try {
         const { data } = await apiRequest.get<TPamSessionLogsPage>(
           `/api/v1/pam/sessions/${sessionId}/logs`,
-          { params: { offset: batchCursorRef.current, limit: LOGS_FETCH_LIMIT } }
+          { params: { offset: batchCursorRef.current, limit: LOGS_BATCH_FETCH_SIZE } }
         );
         if (data.batchCount > 0) {
           batchCursorRef.current += data.batchCount;
@@ -367,17 +394,14 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
     return () => clearInterval(interval);
   }, [sessionId, isActive]);
 
-  // Manual load more: completed sessions only
+  // Load more: fetch the next LOGS_EVENT_PAGE_SIZE events (completed sessions only)
   const loadMore = async () => {
     setIsLoadingMore(true);
     try {
-      const { data } = await apiRequest.get<TPamSessionLogsPage>(
-        `/api/v1/pam/sessions/${sessionId}/logs`,
-        { params: { offset: batchCursorRef.current, limit: LOGS_FETCH_LIMIT } }
-      );
-      batchCursorRef.current += data.batchCount;
-      setLogs((prev) => [...prev, ...data.logs]);
-      setHasMore(data.hasMore);
+      const result = await fetchUntilEventTarget(sessionId, batchCursorRef.current, LOGS_EVENT_PAGE_SIZE);
+      batchCursorRef.current = result.cursor;
+      setLogs((prev) => [...prev, ...result.logs]);
+      setHasMore(result.hasMore);
     } catch {
       // ignore
     }
