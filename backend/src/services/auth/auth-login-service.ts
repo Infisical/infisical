@@ -916,7 +916,7 @@ export const authLoginServiceFactory = ({
             });
           }
           orgId = defaultOrg.id;
-          const existingMembership = await orgDAL.findMembership({
+          const existingMembership = await membershipUserDAL.findOne({
             actorUserId: newUser.id,
             scopeOrgId: orgId,
             scope: AccessScope.Organization
