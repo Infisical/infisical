@@ -60,6 +60,7 @@ export function useQueryTabs() {
   return {
     tabs: state.tabs,
     activeTabId: state.activeTabId,
+    atTabLimit: state.tabs.length >= MAX_QUERY_TABS,
     addTab,
     closeTab,
     setActiveTab,

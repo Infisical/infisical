@@ -61,7 +61,7 @@ export const PamDataExplorerPage = () => {
 
   const [approvalJustification, setApprovalJustification] = useState("");
 
-  const { tabs, activeTabId, addTab, closeTab, setActiveTab, updateTabSql } = useQueryTabs();
+  const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } = useQueryTabs();
 
   const {
     isConnected,
@@ -457,7 +457,8 @@ export const PamDataExplorerPage = () => {
             <button
               type="button"
               onClick={addTab}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors hover:border-mineshaft-500 hover:text-mineshaft-100"
+              disabled={atTabLimit}
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
               aria-label="New query tab"
             >
               <PlusIcon className="size-3" />
