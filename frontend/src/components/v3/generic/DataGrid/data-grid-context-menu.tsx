@@ -33,7 +33,7 @@ export function DataGridContextMenu<TData>({
   const onCellsCopy = tableMeta?.onCellsCopy;
   const onCellsCut = tableMeta?.onCellsCut;
 
-  if (!contextMenu.open) return null;
+  if (!contextMenu.open || tableMeta?.readOnly) return null;
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -197,11 +197,11 @@ function ContextMenuImpl<TData>({
         className="min-w-[140px] p-0.5 [&_[role=menuitem]]:gap-1.5 [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-xs [&_svg]:size-3"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
+        <DropdownMenuItem onSelect={onClear}>
           <EraserIcon />
           Clear
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSetNull} isDisabled={tableMeta?.readOnly}>
+        <DropdownMenuItem onSelect={onSetNull}>
           <CircleOffIcon />
           Set NULL
         </DropdownMenuItem>
