@@ -415,7 +415,7 @@ const pamAccessRoute = route(
 );
 
 const pamDataExplorerRoute = route(
-  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer",
+  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/web-access",
   "pam/PamDataExplorerPage/route.tsx"
 );
 

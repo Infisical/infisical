@@ -395,8 +395,8 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access"
     ),
     PamDataExplorerPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer",
-      "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer"
+      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/web-access",
+      "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/web-access"
     ),
     DiscoveryPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/discovery",

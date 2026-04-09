@@ -1,18 +1,14 @@
 ---
 title: "PostgreSQL Web Access"
 sidebarTitle: "PostgreSQL"
-description: "Browse, query, and edit PostgreSQL databases directly from your browser using the Data Explorer."
+description: "Browse, query, and edit PostgreSQL databases directly from your browser."
 ---
 
 ![PostgreSQL Web Access](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
 
-PostgreSQL web access provides a unified **Data Explorer** for interacting with your database directly from the browser. It combines visual table browsing and editing with an integrated SQL query runner, all in one interface.
+PostgreSQL web access provides a unified interface for interacting with your database directly from the browser. It combines visual table browsing and editing with an integrated SQL query runner, all in one interface.
 
-## Data Explorer
-
-The Data Explorer is a visual interface for browsing and editing PostgreSQL tables. It provides schema and table navigation, filtering, sorting, inline editing, and full CRUD operations, all without writing SQL.
-
-### Connecting
+## Connecting
 
 <Steps>
   <Step title="Navigate to Account">
@@ -25,10 +21,10 @@ The Data Explorer is a visual interface for browsing and editing PostgreSQL tabl
     ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
   </Step>
 
-  <Step title="Open Data Explorer">
-    In the connect modal, click **Open Data Explorer** to launch the Data Explorer in a new tab.
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to launch the web access interface in a new tab.
 
-    ![Open Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
+    ![Connect in Browser](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
   </Step>
 </Steps>
 
@@ -38,11 +34,11 @@ Once connected, you get a spreadsheet-like interface for your database where you
 - Filter and sort to quickly find what you need
 - Edit data directly — add, update, or delete rows
 
-![Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+![PostgreSQL Web Access Interface](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
 
-## SQL Query Runner
+## SQL Queries
 
-The SQL query runner is built into the Data Explorer and lets you run arbitrary SQL against your database without leaving the browser.
+The SQL query runner lets you run arbitrary SQL against your database without leaving the browser.
 
 ### Usage
 
@@ -71,7 +67,7 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Can I edit data in the Data Explorer for all tables?">
+    <Accordion title="Can I edit data for all tables?">
         Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
     </Accordion>
     <Accordion title="Is the SQL query runner an actual psql session?">

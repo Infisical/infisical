@@ -174,7 +174,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
                   >
                     <FontAwesomeIcon icon={faTable} />
-                    Open Data Explorer
+                    Connect in Browser
                   </Link>
                 )}
                 {showConsole && (
