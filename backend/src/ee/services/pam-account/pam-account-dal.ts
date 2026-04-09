@@ -105,11 +105,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
           .as("resourceEncryptedRotationAccountCredentials"),
         // domain (may be null for resource accounts)
         db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-        db.ref("domainType").withSchema(TableName.PamDomain),
-        db
-          .ref("encryptedRotationAccountCredentials")
-          .withSchema(TableName.PamDomain)
-          .as("domainEncryptedRotationAccountCredentials")
+        db.ref("domainType").withSchema(TableName.PamDomain)
       );
 
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
@@ -144,8 +140,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
             ? {
                 id: dId,
                 name: r.domainName as string,
-                domainType: r.domainType as string,
-                encryptedRotationAccountCredentials: r.domainEncryptedRotationAccountCredentials as Buffer | null
+                domainType: r.domainType as string
               }
             : null
         };
@@ -175,11 +170,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
             .as("resourceEncryptedRotationAccountCredentials"),
           // domain (may be null for resource accounts)
           db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-          db.ref("domainType").withSchema(TableName.PamDomain),
-          db
-            .ref("encryptedRotationAccountCredentials")
-            .withSchema(TableName.PamDomain)
-            .as("domainEncryptedRotationAccountCredentials")
+          db.ref("domainType").withSchema(TableName.PamDomain)
         )
         .first();
 
@@ -193,7 +184,6 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         resourceEncryptedRotationAccountCredentials,
         domainName,
         domainType,
-        domainEncryptedRotationAccountCredentials,
         ...account
       } = result;
 
@@ -213,8 +203,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
           ? {
               id: domainId,
               name: domainName,
-              domainType,
-              encryptedRotationAccountCredentials: domainEncryptedRotationAccountCredentials
+              domainType
             }
           : null
       };

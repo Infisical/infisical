@@ -572,7 +572,8 @@ const upsertWindowsServerResource = async (
       gatewayId,
       encryptedConnectionDetails,
       encryptedResourceMetadata,
-      domainId
+      domainId,
+      discoveryFingerprint: fingerprint
     },
     tx
   );

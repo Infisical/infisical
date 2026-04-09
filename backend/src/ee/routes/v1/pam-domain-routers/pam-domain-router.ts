@@ -72,7 +72,8 @@ export const registerPamDomainRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, search, limit, offset, orderBy, orderDirection, filterDomainTypes } = req.query;
+      const { projectId, search, limit, offset, orderBy, orderDirection, filterDomainTypes, discoveryFingerprint } =
+        req.query;
 
       const { domains, totalCount } = await server.services.pamDomain.list({
         projectId,
@@ -85,7 +86,8 @@ export const registerPamDomainRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        discoveryFingerprint
       });
 
       await server.services.auditLog.createAuditLog({
