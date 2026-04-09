@@ -1,6 +1,7 @@
 import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { Button } from "@app/components/v2";
 import {
   PamResourceType,
   PamSessionStatus,
@@ -23,7 +24,10 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   const isActive =
     session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
 
-  const { logs, isLoading } = useGetPamSessionLogs(session.id, isActive);
+  const { logs, isLoading, hasMore, loadMore, isLoadingMore } = useGetPamSessionLogs(
+    session.id,
+    isActive
+  );
 
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
@@ -75,6 +79,14 @@ export const PamSessionLogsSection = ({ session }: Props) => {
               If logs do not appear after some time, please contact your Gateway administrators.
             </div>
           </div>
+        </div>
+      )}
+
+      {!isActive && hasMore && !isAwsIamSession && (
+        <div className="flex justify-center pt-2">
+          <Button variant="outline_bg" size="xs" isLoading={isLoadingMore} onClick={loadMore}>
+            Load more
+          </Button>
         </div>
       )}
     </div>

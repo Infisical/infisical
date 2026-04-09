@@ -310,49 +310,41 @@ const LOGS_POLL_INTERVAL_MS = 5000;
 export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
   const [logs, setLogs] = useState<TPamSessionLogsPage["logs"]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const batchCursorRef = useRef(0);
 
-  // Initial load: auto-paginate until all existing batches are fetched
+  // Initial fetch: first 100 batches for both live and completed sessions
   useEffect(() => {
     if (!sessionId) return undefined;
     let cancelled = false;
 
-    const fetchAll = async () => {
+    const fetchInitial = async () => {
       setIsLoading(true);
-      let offset = 0;
-      const allLogs: TPamSessionLogsPage["logs"] = [];
-
+      batchCursorRef.current = 0;
       try {
-        let hasMore = true;
-        while (hasMore) {
-          if (cancelled) return;
-          // eslint-disable-next-line no-await-in-loop
-          const { data } = await apiRequest.get<TPamSessionLogsPage>(
-            `/api/v1/pam/sessions/${sessionId}/logs`,
-            { params: { offset, limit: LOGS_FETCH_LIMIT } }
-          );
-          allLogs.push(...data.logs);
-          offset += data.batchCount;
-          hasMore = data.hasMore;
+        const { data } = await apiRequest.get<TPamSessionLogsPage>(
+          `/api/v1/pam/sessions/${sessionId}/logs`,
+          { params: { offset: 0, limit: LOGS_FETCH_LIMIT } }
+        );
+        if (!cancelled) {
+          setLogs(data.logs);
+          batchCursorRef.current = data.batchCount;
+          setHasMore(data.hasMore);
         }
       } catch {
-        // ignore — leave logs as whatever was fetched so far
+        // ignore
       }
-
-      if (!cancelled) {
-        batchCursorRef.current = offset;
-        setLogs(allLogs);
-        setIsLoading(false);
-      }
+      if (!cancelled) setIsLoading(false);
     };
 
-    fetchAll().catch(() => {});
+    fetchInitial().catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [sessionId]);
 
-  // Polling: only fetch new batches (offset = cursor)
+  // Live polling: advance cursor every 5s, catches up then tracks new batches
   useEffect(() => {
     if (!isActive || !sessionId) return undefined;
 
@@ -362,10 +354,10 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
           `/api/v1/pam/sessions/${sessionId}/logs`,
           { params: { offset: batchCursorRef.current, limit: LOGS_FETCH_LIMIT } }
         );
-
         if (data.batchCount > 0) {
           batchCursorRef.current += data.batchCount;
           setLogs((prev) => [...prev, ...data.logs]);
+          setHasMore(data.hasMore);
         }
       } catch {
         // ignore transient errors — next tick will retry
@@ -375,7 +367,24 @@ export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
     return () => clearInterval(interval);
   }, [sessionId, isActive]);
 
-  return { logs, isLoading };
+  // Manual load more: completed sessions only
+  const loadMore = async () => {
+    setIsLoadingMore(true);
+    try {
+      const { data } = await apiRequest.get<TPamSessionLogsPage>(
+        `/api/v1/pam/sessions/${sessionId}/logs`,
+        { params: { offset: batchCursorRef.current, limit: LOGS_FETCH_LIMIT } }
+      );
+      batchCursorRef.current += data.batchCount;
+      setLogs((prev) => [...prev, ...data.logs]);
+      setHasMore(data.hasMore);
+    } catch {
+      // ignore
+    }
+    setIsLoadingMore(false);
+  };
+
+  return { logs, isLoading, hasMore, loadMore, isLoadingMore };
 };
 
 export const useListPamSessions = (
