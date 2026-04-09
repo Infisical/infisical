@@ -20,11 +20,13 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
-import { decryptSession } from "./pam-session-fns";
-import { TUpdateSessionLogsDTO } from "./pam-session-types";
+import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
+import { decryptBatches, decryptSession, decryptSessionCommandLogs } from "./pam-session-fns";
+import { TUpdateSessionLogsDTO, TUploadEventBatchDTO } from "./pam-session-types";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
+  pamSessionEventBatchDAL: TPamSessionEventBatchDALFactory;
   projectDAL: TProjectDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
@@ -36,6 +38,7 @@ export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFacto
 
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
+  pamSessionEventBatchDAL,
   projectDAL,
   userDAL,
   permissionService,
@@ -288,5 +291,91 @@ export const pamSessionServiceFactory = ({
     return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
-  return { getById, list, updateLogsById, endSessionById, terminateSessionById };
+  const getSessionLogs = async (sessionId: string, offset: number, limit: number, actor: OrgServiceActor) => {
+    const sessionFromDb = await pamSessionDAL.findById(sessionId);
+    if (!sessionFromDb) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: sessionFromDb.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamSessionActions.Read,
+      ProjectPermissionSub.PamSessions
+    );
+
+    // Fetch one extra to determine whether another page exists
+    const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, {
+      offset,
+      limit: limit + 1
+    });
+
+    if (batches.length > 0 || offset > 0) {
+      // Batch-based session
+      const hasMore = batches.length > limit;
+      const pageBatches = hasMore ? batches.slice(0, limit) : batches;
+      const logs = pageBatches.length > 0 ? await decryptBatches(pageBatches, sessionFromDb.projectId, kmsService) : [];
+      return { logs, hasMore, batchCount: pageBatches.length };
+    }
+
+    // Legacy blob-based session — bounded by Fastify body limit on upload
+    if (sessionFromDb.encryptedLogsBlob) {
+      const logs = await decryptSessionCommandLogs({
+        projectId: sessionFromDb.projectId,
+        encryptedLogs: sessionFromDb.encryptedLogsBlob,
+        kmsService
+      });
+      return { logs, hasMore: false, batchCount: 0 };
+    }
+
+    return { logs: [], hasMore: false, batchCount: 0 };
+  };
+
+  const uploadEventBatch = async ({ sessionId, startOffset, events }: TUploadEventBatchDTO, actor: OrgServiceActor) => {
+    if (actor.type !== ActorType.IDENTITY) {
+      throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
+    }
+
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const project = await projectDAL.findById(session.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: session.projectId
+    });
+
+    const { cipherTextBlob } = encryptor({ plainText: events });
+
+    const { wasInserted } = await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
+
+    return { projectId: project.id, wasInserted };
+  };
+
+  return { getById, list, getSessionLogs, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };
 };

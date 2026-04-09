@@ -603,6 +603,7 @@ export enum EventType {
   PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
+  PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -4754,6 +4755,14 @@ interface PamSessionListEvent {
   };
 }
 
+interface PamSessionEventBatchUploadEvent {
+  type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD;
+  metadata: {
+    sessionId: string;
+    startOffset: number;
+  };
+}
+
 interface PamFolderCreateEvent {
   type: EventType.PAM_FOLDER_CREATE;
   metadata: {
@@ -6170,6 +6179,7 @@ export type Event =
   | PamSessionTerminateEvent
   | PamSessionGetEvent
   | PamSessionListEvent
+  | PamSessionEventBatchUploadEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent

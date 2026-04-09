@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -12,7 +13,8 @@ import {
   TPamResource,
   TPamResourceDependency,
   TPamRotationRule,
-  TPamSession
+  TPamSession,
+  TPamSessionLogsPage
 } from "./types";
 
 export const pamKeys = {
@@ -51,6 +53,7 @@ export const pamKeys = {
   accountDependencies: (accountId: string) => [...pamKeys.account(), "dependencies", accountId],
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
+  getSessionLogs: (sessionId: string) => [...pamKeys.session(), "logs", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
 
@@ -299,6 +302,117 @@ export const useGetPamSessionById = (
     enabled: !!sessionId,
     ...options
   });
+};
+
+const LOGS_BATCH_FETCH_SIZE = 100;
+const LOGS_EVENT_PAGE_SIZE = 1000;
+const LOGS_POLL_INTERVAL_MS = 5000;
+
+// Fetch batches until we have at least targetEventCount new events or no more batches remain.
+// Returns the accumulated logs and updated cursor.
+const fetchUntilEventTarget = async (
+  sessionId: string,
+  startCursor: number,
+  targetEventCount: number
+) => {
+  let cursor = startCursor;
+  let totalEvents = 0;
+  let hasMore = false;
+  const accumulatedLogs: TPamSessionLogsPage["logs"] = [];
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await apiRequest.get<TPamSessionLogsPage>(
+      `/api/v1/pam/sessions/${sessionId}/logs`,
+      { params: { offset: cursor, limit: LOGS_BATCH_FETCH_SIZE } }
+    );
+    accumulatedLogs.push(...data.logs);
+    cursor += data.batchCount;
+    totalEvents += data.logs.length;
+    hasMore = data.hasMore;
+  } while (hasMore && totalEvents < targetEventCount);
+
+  return { logs: accumulatedLogs, cursor, hasMore };
+};
+
+export const useGetPamSessionLogs = (sessionId: string, isActive: boolean) => {
+  const [logs, setLogs] = useState<TPamSessionLogsPage["logs"]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const batchCursorRef = useRef(0);
+
+  // Initial fetch: load up to LOGS_EVENT_PAGE_SIZE events for completed sessions,
+  // or a single batch page for live sessions (polling handles the rest).
+  useEffect(() => {
+    if (!sessionId) return undefined;
+    let cancelled = false;
+
+    const fetchInitial = async () => {
+      setIsLoading(true);
+      batchCursorRef.current = 0;
+      try {
+        const targetEvents = isActive ? 0 : LOGS_EVENT_PAGE_SIZE;
+        const result = await fetchUntilEventTarget(sessionId, 0, targetEvents);
+        if (!cancelled) {
+          setLogs(result.logs);
+          batchCursorRef.current = result.cursor;
+          setHasMore(result.hasMore);
+        }
+      } catch {
+        // ignore
+      }
+      if (!cancelled) setIsLoading(false);
+    };
+
+    fetchInitial().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, isActive]);
+
+  // Live polling: advance cursor every 5s, catches up then tracks new batches
+  useEffect(() => {
+    if (!isActive || !sessionId) return undefined;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await apiRequest.get<TPamSessionLogsPage>(
+          `/api/v1/pam/sessions/${sessionId}/logs`,
+          { params: { offset: batchCursorRef.current, limit: LOGS_BATCH_FETCH_SIZE } }
+        );
+        if (data.batchCount > 0) {
+          batchCursorRef.current += data.batchCount;
+          setLogs((prev) => [...prev, ...data.logs]);
+          setHasMore(data.hasMore);
+        }
+      } catch {
+        // ignore transient errors — next tick will retry
+      }
+    }, LOGS_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [sessionId, isActive]);
+
+  // Load more: fetch the next LOGS_EVENT_PAGE_SIZE events (completed sessions only)
+  const loadMore = async () => {
+    setIsLoadingMore(true);
+    try {
+      const result = await fetchUntilEventTarget(
+        sessionId,
+        batchCursorRef.current,
+        LOGS_EVENT_PAGE_SIZE
+      );
+      batchCursorRef.current = result.cursor;
+      setLogs((prev) => [...prev, ...result.logs]);
+      setHasMore(result.hasMore);
+    } catch {
+      // ignore
+    }
+    setIsLoadingMore(false);
+  };
+
+  return { logs, isLoading, hasMore, loadMore, isLoadingMore };
 };
 
 export const useListPamSessions = (

@@ -1,4 +1,4 @@
-import { TPamSessions } from "@app/db/schemas";
+import { TPamSessionEventBatches, TPamSessions } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -23,6 +23,25 @@ export const decryptSessionCommandLogs = async ({
   });
 
   return JSON.parse(decryptedPlainTextBlob.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+};
+
+export const decryptBatches = async (
+  batches: TPamSessionEventBatches[],
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const events: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+  for (const batch of batches) {
+    const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
+    const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+    events.push(...batchEvents);
+  }
+  return events;
 };
 
 export const decryptSession = async (
