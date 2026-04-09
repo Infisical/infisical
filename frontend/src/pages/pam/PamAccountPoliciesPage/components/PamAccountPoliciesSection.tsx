@@ -14,6 +14,7 @@ import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
+  DocumentationLinkBadge,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -92,7 +93,10 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
     <div>
       <UnstableCard>
         <UnstableCardHeader>
-          <UnstableCardTitle>Account Policies</UnstableCardTitle>
+          <UnstableCardTitle>
+            Account Policies
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pam/product-reference/account-policies" />
+          </UnstableCardTitle>
           <UnstableCardDescription>
             Define behavioral rules for PAM accounts
           </UnstableCardDescription>
