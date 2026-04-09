@@ -16,8 +16,8 @@ export const fetchOrgSubscription = async (orgID: string, refreshCache: boolean 
     `/api/v1/organizations/${orgID}/plan${refreshCache ? "?refreshCache=true" : ""}`
   );
 
-  const canEmailDomainVerification = data.plan.samlSSO || data.plan.ldap || data.plan.oidcSSO;
-  return { ...data.plan, canEmailDomainVerification };
+  const emailDomainVerification = data.plan.samlSSO || data.plan.ldap || data.plan.oidcSSO;
+  return { ...data.plan, emailDomainVerification };
 };
 
 type UseGetOrgSubscriptionProps = {
