@@ -167,6 +167,7 @@ export const generatePkcs12FromCertificate = async ({
 
     return Buffer.from(p12Der, "binary");
   } catch (error) {
+    if (error instanceof BadRequestError) throw error;
     throw new BadRequestError({
       message: `Failed to generate PKCS12 keystore: ${error instanceof Error ? error.message : "Unknown error"}`
     });

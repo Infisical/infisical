@@ -77,7 +77,11 @@ const extractRawKeyFromPkcs8 = (der: Buffer): Buffer => {
   const raw = Buffer.from(parsed.privateKey.buffer);
   // Handle keys stored with double OCTET STRING wrapping (legacy encoding)
   if (raw[0] === 0x04) {
-    return Buffer.from(AsnConvert.parse(raw, OctetString).buffer);
+    try {
+      return Buffer.from(AsnConvert.parse(raw, OctetString).buffer);
+    } catch {
+      // Not actually double-wrapped — use raw bytes directly
+    }
   }
   return raw;
 };

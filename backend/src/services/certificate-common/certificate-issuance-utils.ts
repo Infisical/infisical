@@ -133,12 +133,9 @@ export const validateAlgorithmCompatibility = (
 
   const compatibleAlgorithms =
     template.algorithms?.signature?.filter((sigAlg: string) => {
-      if (sigAlg.startsWith("ML-DSA")) {
-        return caKeyAlgorithm.startsWith("ML-DSA");
-      }
-
-      if (sigAlg.startsWith("SLH-DSA")) {
-        return caKeyAlgorithm.startsWith("SLH-DSA");
+      // PQC: key algorithm = signature algorithm, so require exact match
+      if (sigAlg.startsWith("ML-DSA") || sigAlg.startsWith("SLH-DSA")) {
+        return sigAlg === caKeyAlgorithm;
       }
 
       const parts = sigAlg.split("-");
