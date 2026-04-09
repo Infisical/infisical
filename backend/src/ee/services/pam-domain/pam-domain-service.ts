@@ -8,11 +8,10 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
-import { TPamResourceConnectionDetails } from "../pam-resource/pam-resource-types";
-import { decryptDomainConnectionDetails, encryptDomainConnectionDetails } from "./pam-domain-fns";
 import { TWindowsResource } from "../pam-resource/windows-server/windows-server-resource-types";
 import { PamDomainType } from "./pam-domain-enums";
 import { PAM_DOMAIN_FACTORY_MAP } from "./pam-domain-factory";
+import { decryptDomainConnectionDetails, encryptDomainConnectionDetails } from "./pam-domain-fns";
 import {
   TCreateDomainDTO,
   TListDomainsDTO,

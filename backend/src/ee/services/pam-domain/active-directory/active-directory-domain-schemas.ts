@@ -48,13 +48,11 @@ export const ActiveDirectoryAccountSchema = BasePamAccountSchema.extend({
   internalMetadata: ActiveDirectoryAccountMetadataSchema
 });
 
-export const CreateActiveDirectoryAccountSchema = BaseCreatePamAccountSchema
-  .omit({ resourceId: true })
-  .extend({
-    domainId: z.string().uuid(),
-    credentials: ActiveDirectoryAccountCredentialsSchema,
-    internalMetadata: ActiveDirectoryAccountMetadataSchema
-  });
+export const CreateActiveDirectoryAccountSchema = BaseCreatePamAccountSchema.omit({ resourceId: true }).extend({
+  domainId: z.string().uuid(),
+  credentials: ActiveDirectoryAccountCredentialsSchema,
+  internalMetadata: ActiveDirectoryAccountMetadataSchema
+});
 
 export const UpdateActiveDirectoryAccountSchema = BaseUpdatePamAccountSchema.extend({
   credentials: ActiveDirectoryAccountCredentialsSchema.optional(),
