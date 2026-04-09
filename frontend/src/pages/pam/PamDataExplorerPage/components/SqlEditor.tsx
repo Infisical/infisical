@@ -1,9 +1,55 @@
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
+
+const infisicalTheme = EditorView.theme({
+  "&": { height: "100%", fontSize: "13px", backgroundColor: "#16181a" },
+  "&.cm-editor": { backgroundColor: "#16181a" },
+  ".cm-scroller": {
+    overflow: "auto",
+    fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace",
+    backgroundColor: "#16181a"
+  },
+  ".cm-content": { padding: "8px 0", caretColor: "#e0ed34", backgroundColor: "#16181a" },
+  ".cm-line": { backgroundColor: "transparent" },
+  ".cm-gutters": {
+    backgroundColor: "#16181a",
+    borderRight: "1px solid #2b2c30",
+    color: "#707174"
+  },
+  ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 8px" },
+  ".cm-activeLine": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
+  ".cm-activeLineGutter": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
+  ".cm-cursor": { borderLeftColor: "#e0ed34" },
+  ".cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
+  "&.cm-focused .cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
+  ".cm-matchingBracket": { backgroundColor: "#323439", color: "#e0ed34 !important" }
+});
+
+const infisicalHighlight = HighlightStyle.define(
+  [
+    { tag: tags.keyword, color: "#63b0bd", fontWeight: "600" },
+    { tag: tags.string, color: "#29b866" },
+    { tag: tags.number, color: "#f39c12" },
+    { tag: tags.comment, color: "#707174", fontStyle: "italic" },
+    { tag: tags.operator, color: "#adaeb0" },
+    { tag: tags.punctuation, color: "#adaeb0" },
+    { tag: tags.separator, color: "#adaeb0" },
+    { tag: tags.bracket, color: "#adaeb0" },
+    { tag: tags.name, color: "#ebebeb" },
+    { tag: tags.function(tags.name), color: "#63b0bd" },
+    { tag: tags.typeName, color: "#f39c12" },
+    { tag: tags.bool, color: "#63b0bd" },
+    { tag: tags.null, color: "#707174" },
+    { tag: tags.special(tags.string), color: "#29b866" },
+    { tag: tags.invalid, color: "#e74c3c" }
+  ],
+  { all: { color: "#ebebeb" } }
+);
 
 type Props = {
   value: string;
@@ -55,15 +101,8 @@ export function SqlEditor({
             ...defaultKeymap
           ]),
           sql({ dialect: PostgreSQL }),
-          oneDark,
-          EditorView.theme({
-            "&": { height: "100%", fontSize: "13px" },
-            ".cm-scroller": {
-              overflow: "auto",
-              fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace"
-            },
-            ".cm-content": { padding: "8px 0" }
-          }),
+          infisicalTheme,
+          syntaxHighlighting(infisicalHighlight),
           EditorView.updateListener.of((update: ViewUpdate) => {
             if (update.docChanged) {
               const doc = update.state.doc.toString();

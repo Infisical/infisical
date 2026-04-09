@@ -416,7 +416,7 @@ export const PamDataExplorerPage = () => {
               className={cn(
                 "flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2 text-xs font-medium transition-colors",
                 activeTabId === BROWSE_TAB_ID
-                  ? "border-primary text-mineshaft-100"
+                  ? "border-info text-mineshaft-100"
                   : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
               )}
             >
@@ -434,7 +434,7 @@ export const PamDataExplorerPage = () => {
                 className={cn(
                   "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                   activeTabId === tab.id
-                    ? "border-primary text-mineshaft-100"
+                    ? "border-info text-mineshaft-100"
                     : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
                 )}
               >

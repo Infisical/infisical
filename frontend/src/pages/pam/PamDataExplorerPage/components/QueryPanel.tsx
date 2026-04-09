@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GripHorizontalIcon } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
@@ -7,6 +8,11 @@ import type { QueryTab } from "../use-query-tabs";
 import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
+
+function getRowLabel(rowCount: number, isTruncated: boolean): string {
+  if (isTruncated) return `Showing 1,000 of ${rowCount.toLocaleString()} rows`;
+  return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
+}
 
 type QueryResult = {
   rows: Record<string, unknown>[];
@@ -111,8 +117,6 @@ export function QueryPanel({
     <div className="flex h-full w-full flex-col overflow-hidden">
       <QueryToolbar
         isRunning={isRunning}
-        result={result}
-        error={error}
         isInTransaction={isInTransaction}
         hasSelection={hasSelection}
         onRun={handleRun}
@@ -124,7 +128,11 @@ export function QueryPanel({
         ref={containerRef}
         className={cn("flex flex-1 flex-col overflow-hidden", isDragging && "select-none")}
       >
-        <div ref={editorPaneRef} className="min-h-0 overflow-hidden">
+        <div
+          ref={editorPaneRef}
+          className="min-h-0 overflow-hidden"
+          style={{ backgroundColor: "#16181a" }}
+        >
           <SqlEditor
             value={tab.sql}
             onChange={onSqlChange}
@@ -138,23 +146,48 @@ export function QueryPanel({
 
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div
-          className={cn(
-            "h-1 shrink-0 cursor-row-resize bg-mineshaft-600 transition-colors hover:bg-primary/50",
-            isDragging && "bg-primary/50"
-          )}
+          className="group relative z-10 h-0 shrink-0 cursor-row-resize"
           onMouseDown={(e) => {
             e.preventDefault();
             setIsDragging(true);
           }}
-        />
-
-        <div className="min-h-0 flex-1 overflow-hidden bg-bunker-800">
-          <QueryResultsTable
-            result={result}
-            error={error}
-            isRunning={isRunning}
-            tableDetail={tableDetail}
+        >
+          <div
+            className={cn(
+              "absolute inset-x-0 top-0 h-px bg-mineshaft-600 transition-colors group-hover:bg-mineshaft-400",
+              isDragging && "bg-mineshaft-400"
+            )}
           />
+          <div
+            className={cn(
+              "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-mineshaft-600 px-2 text-mineshaft-300 transition-colors group-hover:bg-mineshaft-500 group-hover:text-mineshaft-100",
+              isDragging && "bg-mineshaft-500 text-mineshaft-100"
+            )}
+          >
+            <GripHorizontalIcon className="size-3" />
+          </div>
+        </div>
+
+        <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden bg-bunker-800">
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <QueryResultsTable
+              result={result}
+              error={error}
+              isRunning={isRunning}
+              tableDetail={tableDetail}
+            />
+          </div>
+          {!isRunning && result && !error && (
+            <div className="flex shrink-0 items-center border-t border-mineshaft-600 px-3 py-1">
+              <span className="text-xs text-mineshaft-400">
+                {result.rowCount != null
+                  ? getRowLabel(result.rowCount, result.isTruncated)
+                  : result.command}
+                {" · "}
+                {result.executionTimeMs}ms
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

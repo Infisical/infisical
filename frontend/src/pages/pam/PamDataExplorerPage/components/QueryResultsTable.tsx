@@ -123,7 +123,7 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
   if (!result) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-mineshaft-500">Run a query to see results</p>
+        <p className="text-sm text-mineshaft-300">Run a query to see results</p>
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
-        <span className="rounded bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
+        <span className="rounded border-2 border-mineshaft-500 bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
           {message}
           {isMutation && <span className="ml-2 text-mineshaft-400">· No rows returned</span>}
         </span>

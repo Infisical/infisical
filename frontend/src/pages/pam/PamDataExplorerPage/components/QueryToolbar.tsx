@@ -4,22 +4,8 @@ import { Button } from "@app/components/v3/generic/Button";
 
 const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
 
-function getRowLabel(rowCount: number, isTruncated: boolean): string {
-  if (isTruncated) return `Showing 1,000 of ${rowCount.toLocaleString()} rows`;
-  return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
-}
-
-type QueryResult = {
-  rowCount: number | null;
-  isTruncated: boolean;
-  command: string;
-  executionTimeMs: number;
-};
-
 type Props = {
   isRunning: boolean;
-  result: QueryResult | null;
-  error: string | null;
   isInTransaction: boolean;
   hasSelection: boolean;
   onRun: () => void;
@@ -30,8 +16,6 @@ type Props = {
 
 export function QueryToolbar({
   isRunning,
-  result,
-  error,
   isInTransaction,
   hasSelection,
   onRun,
@@ -40,7 +24,7 @@ export function QueryToolbar({
   onCancel
 }: Props) {
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5">
+    <div className="flex shrink-0 items-center gap-3 border-b border-mineshaft-600 bg-bunker-800 px-3 py-1.5">
       <Button
         size="xs"
         onClick={() => onRun()}
@@ -65,7 +49,7 @@ export function QueryToolbar({
           </span>
           <Button
             size="xs"
-            variant="outline"
+            variant="success"
             onClick={onCommit}
             isDisabled={isRunning}
             className="gap-1.5"
@@ -84,15 +68,6 @@ export function QueryToolbar({
             Rollback
           </Button>
         </>
-      )}
-      {!isRunning && result && !error && (
-        <span className="ml-auto text-xs text-mineshaft-400">
-          {result.rowCount != null
-            ? getRowLabel(result.rowCount, result.isTruncated)
-            : result.command}
-          {" · "}
-          {result.executionTimeMs}ms
-        </span>
       )}
     </div>
   );
