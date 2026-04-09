@@ -157,9 +157,7 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
       <div className="flex h-full flex-col items-center justify-center gap-2">
         <span className="rounded bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
           {message}
-          {isMutation && (
-            <span className="ml-2 text-mineshaft-400">· No rows returned</span>
-          )}
+          {isMutation && <span className="ml-2 text-mineshaft-400">· No rows returned</span>}
         </span>
       </div>
     );

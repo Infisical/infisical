@@ -38,7 +38,6 @@ export function DataGridContextMenu<TData>({
   return (
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     <ContextMenu
-      tableMeta={tableMeta}
       columns={columns}
       dataGridRef={dataGridRef}
       contextMenu={contextMenu}
@@ -65,7 +64,6 @@ interface ContextMenuProps<TData>
       | "readOnly"
     >,
     Required<Pick<TableMeta<TData>, "contextMenu">> {
-  tableMeta: TableMeta<TData>;
   columns: Array<ColumnDef<TData>>;
 }
 
@@ -84,7 +82,6 @@ const ContextMenu = React.memo(ContextMenuImpl, (prev, next) => {
 }) as typeof ContextMenuImpl;
 
 function ContextMenuImpl<TData>({
-  tableMeta,
   columns,
   dataGridRef,
   contextMenu,

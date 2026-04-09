@@ -61,7 +61,8 @@ export const PamDataExplorerPage = () => {
 
   const [approvalJustification, setApprovalJustification] = useState("");
 
-  const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } = useQueryTabs();
+  const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } =
+    useQueryTabs();
   const [isInTransaction, setIsInTransaction] = useState(false);
 
   const {
@@ -408,7 +409,7 @@ export const PamDataExplorerPage = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="thin-scrollbar flex shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800">
+          <div className="flex thin-scrollbar shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 [&::-webkit-scrollbar]:h-1">
             <button
               type="button"
               onClick={() => setActiveTab(BROWSE_TAB_ID)}

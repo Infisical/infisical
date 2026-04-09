@@ -50,9 +50,7 @@ export function QueryToolbar({
       >
         <PlayIcon className="size-3" />
         {hasSelection ? "Run Selection" : "Run"}
-        {!isRunning && (
-          <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
-        )}
+        {!isRunning && <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>}
       </Button>
       {isRunning && (
         <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">

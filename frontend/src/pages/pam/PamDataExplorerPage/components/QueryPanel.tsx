@@ -28,7 +28,15 @@ type Props = {
   onTransactionStateChange: (open: boolean) => void;
 };
 
-export function QueryPanel({ tab, executeQuery, cancelQuery, tableDetail, isInTransaction, onSqlChange, onTransactionStateChange }: Props) {
+export function QueryPanel({
+  tab,
+  executeQuery,
+  cancelQuery,
+  tableDetail,
+  isInTransaction,
+  onSqlChange,
+  onTransactionStateChange
+}: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
