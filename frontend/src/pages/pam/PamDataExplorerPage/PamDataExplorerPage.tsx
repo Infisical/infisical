@@ -407,7 +407,7 @@ export const PamDataExplorerPage = () => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800">
+          <div className="thin-scrollbar flex shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800">
             <button
               type="button"
               onClick={() => setActiveTab(BROWSE_TAB_ID)}

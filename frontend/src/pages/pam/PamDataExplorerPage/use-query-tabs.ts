@@ -13,6 +13,7 @@ type TabState = {
 };
 
 export const BROWSE_TAB_ID = "browse";
+const MAX_QUERY_TABS = 20;
 
 const DEFAULT_STATE: TabState = { tabs: [], activeTabId: BROWSE_TAB_ID, nextTabNumber: 1 };
 
@@ -21,6 +22,7 @@ export function useQueryTabs() {
 
   const addTab = () => {
     setState((prev) => {
+      if (prev.tabs.length >= MAX_QUERY_TABS) return prev;
       const newTab: QueryTab = {
         id: crypto.randomUUID(),
         title: `Query ${prev.nextTabNumber}`,
