@@ -241,6 +241,12 @@ import {
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
 import {
+  TAnthropicConnection,
+  TAnthropicConnectionConfig,
+  TAnthropicConnectionInput,
+  TValidateAnthropicConnectionCredentialsSchema
+} from "./anthropic";
+import {
   TOpenRouterConnection,
   TOpenRouterConnectionConfig,
   TOpenRouterConnectionInput,
@@ -380,6 +386,7 @@ export type TAppConnection = { id: string } & (
   | TVenafiConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TAnthropicConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -446,6 +453,7 @@ export type TAppConnectionInput = { id: string } & (
   | TVenafiConnectionInput
   | TExternalInfisicalConnectionInput
   | TNetScalerConnectionInput
+  | TAnthropicConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -540,7 +548,8 @@ export type TAppConnectionConfig =
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
   | TExternalInfisicalConnectionConfig
-  | TNetScalerConnectionConfig;
+  | TNetScalerConnectionConfig
+  | TAnthropicConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -597,7 +606,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
-  | TValidateNetScalerConnectionCredentialsSchema;
+  | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateAnthropicConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
