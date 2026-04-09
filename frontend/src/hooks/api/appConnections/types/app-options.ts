@@ -349,4 +349,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.Anthropic]: Record<string, never>;
 };

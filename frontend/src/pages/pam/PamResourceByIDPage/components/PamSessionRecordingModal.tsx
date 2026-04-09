@@ -242,7 +242,6 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
               isSubmitting ||
               (aiInsightsEnabled && (llmConnections.length === 0 || !selectedProvider))
             }
-            isLoading={isSubmitting}
           >
             Update Details
           </Button>
