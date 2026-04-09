@@ -8,7 +8,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { decryptSessionCommandLogs } from "./pam-session-fns";
+import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
+import { decryptBatches, decryptSessionCommandLogs } from "./pam-session-fns";
 import { buildSummaryPrompt, formatLogsForSummary, generateSessionSummary } from "./pam-session-summary-fns";
 
 type TSessionSummaryConfig = {
@@ -20,6 +21,7 @@ type TSessionSummaryConfig = {
 type TPamSessionAiSummaryServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findById" | "updateById">;
+  pamSessionEventBatchDAL: Pick<TPamSessionEventBatchDALFactory, "findBySessionIdPaginated">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -30,6 +32,7 @@ export type TPamSessionAiSummaryServiceFactory = ReturnType<typeof pamSessionAiS
 export const pamSessionAiSummaryServiceFactory = ({
   queueService,
   pamSessionDAL,
+  pamSessionEventBatchDAL,
   pamResourceDAL,
   appConnectionDAL,
   kmsService
@@ -169,18 +172,18 @@ export const pamSessionAiSummaryServiceFactory = ({
         return;
       }
 
-      // 5. Decrypt session logs
-      if (!session.encryptedLogsBlob) {
+      // 5. Decrypt session logs — batch table first (new), fall back to legacy blob
+      let logs;
+      const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset: 0, limit: 10_000 });
+      if (batches.length > 0) {
+        logs = await decryptBatches(batches, projectId, kmsService);
+      } else if (session.encryptedLogsBlob) {
+        logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
+      } else {
         logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: no session logs, skipping`);
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
-
-      const logs = await decryptSessionCommandLogs({
-        projectId,
-        encryptedLogs: session.encryptedLogsBlob,
-        kmsService
-      });
 
       if (logs.length === 0) {
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });

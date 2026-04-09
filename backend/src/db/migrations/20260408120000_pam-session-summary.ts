@@ -4,15 +4,19 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.PamSession)) {
+    const hasResourceId = await knex.schema.hasColumn(TableName.PamSession, "resourceId");
+    const hasEncryptedAiInsights = await knex.schema.hasColumn(TableName.PamSession, "encryptedAiInsights");
+    const hasAiInsightsStatus = await knex.schema.hasColumn(TableName.PamSession, "aiInsightsStatus");
+    const hasAiInsightsError = await knex.schema.hasColumn(TableName.PamSession, "aiInsightsError");
+
     await knex.schema.alterTable(TableName.PamSession, (t) => {
-      if (!t.specificType) {
-        // knex types do not expose hasColumn on builder — guard via schema inspection
+      if (!hasResourceId) {
+        t.uuid("resourceId").nullable();
+        t.foreign("resourceId").references("id").inTable(TableName.PamResource).onDelete("SET NULL");
       }
-      t.uuid("resourceId").nullable();
-      t.foreign("resourceId").references("id").inTable(TableName.PamResource).onDelete("SET NULL");
-      t.binary("encryptedAiInsights").nullable();
-      t.string("aiInsightsStatus").nullable();
-      t.text("aiInsightsError").nullable();
+      if (!hasEncryptedAiInsights) t.binary("encryptedAiInsights").nullable();
+      if (!hasAiInsightsStatus) t.string("aiInsightsStatus").nullable();
+      if (!hasAiInsightsError) t.text("aiInsightsError").nullable();
     });
 
     // Back-fill resourceId from the account → resource relation for existing sessions
@@ -26,9 +30,15 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   if (await knex.schema.hasTable(TableName.PamResource)) {
-    await knex.schema.alterTable(TableName.PamResource, (t) => {
-      t.binary("encryptedSessionSummaryConfig").nullable();
-    });
+    const hasEncryptedSessionSummaryConfig = await knex.schema.hasColumn(
+      TableName.PamResource,
+      "encryptedSessionSummaryConfig"
+    );
+    if (!hasEncryptedSessionSummaryConfig) {
+      await knex.schema.alterTable(TableName.PamResource, (t) => {
+        t.binary("encryptedSessionSummaryConfig").nullable();
+      });
+    }
   }
 }
 

@@ -30,7 +30,9 @@ const Page = () => {
     from: ROUTE_PATHS.Pam.PamSessionByIDPage.id,
     select: (el) => el.sessionId
   });
-  const { data: session } = useGetPamSessionById(sessionId);
+  const { data: session } = useGetPamSessionById(sessionId, {
+    refetchInterval: (query) => (query.state.data?.aiInsightsStatus === "pending" ? 3000 : false)
+  });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);

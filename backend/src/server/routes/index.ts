@@ -2872,6 +2872,7 @@ export const registerRoutes = async (
   const pamSessionAiSummaryService = pamSessionAiSummaryServiceFactory({
     queueService,
     pamSessionDAL,
+    pamSessionEventBatchDAL,
     pamResourceDAL,
     appConnectionDAL,
     kmsService
