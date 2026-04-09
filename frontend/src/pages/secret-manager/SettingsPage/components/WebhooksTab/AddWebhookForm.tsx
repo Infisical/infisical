@@ -4,17 +4,26 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
+  Checkbox,
   FormControl,
   Input,
   Modal,
-  ModalClose,
   ModalContent,
   Select,
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { WebhookType } from "@app/hooks/api/webhooks/types";
+import {
+  TWebhookEventToggleKey,
+  WEBHOOK_EVENT_METADATA,
+  WEBHOOK_EVENTS,
+  WebhookType
+} from "@app/hooks/api/webhooks/types";
 
 const formSchema = z
   .object({
@@ -22,7 +31,9 @@ const formSchema = z
     webhookUrl: z.string().url().trim().describe("Webhook URL"),
     webhookSecretKey: z.string().trim().optional().describe("Secret Key"),
     secretPath: z.string().trim().describe("Secret Path"),
-    type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL)
+    type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
+    isSecretModifiedEventEnabled: z.boolean().default(true),
+    isSecretRotationFailedEventEnabled: z.boolean().default(true)
   })
   .superRefine((data, ctx) => {
     if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
@@ -59,7 +70,9 @@ export const AddWebhookForm = ({
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: WebhookType.GENERAL
+      type: WebhookType.GENERAL,
+      isSecretModifiedEventEnabled: true,
+      isSecretRotationFailedEventEnabled: true
     }
   });
 
@@ -207,22 +220,48 @@ export const AddWebhookForm = ({
                 </FormControl>
               )}
             />
-            {renderFormFields()}
+            {selectedWebhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="advanced-settings" className="data-[state=open]:border-none">
+                <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                  <div className="order-1 ml-3">Advanced Settings</div>
+                </AccordionTrigger>
+                <AccordionContent childrenClassName="p-0 pt-2">
+                  <p className="mb-4 text-sm text-mineshaft-400">
+                    Select which events will trigger this webhook
+                  </p>
+                  <div className="space-y-4">
+                    {WEBHOOK_EVENTS.map((event) => {
+                      const { key, label, description } = WEBHOOK_EVENT_METADATA[event];
+
+                      return (
+                        <Controller
+                          key={event}
+                          control={control}
+                          name={key as TWebhookEventToggleKey}
+                          render={({ field: { value, onChange } }) => (
+                            <Checkbox
+                              id={`webhook-event-${event}`}
+                              isChecked={value}
+                              onCheckedChange={(checked) => onChange(checked === true)}
+                              allowMultilineLabel
+                            >
+                              <p className="font-medium text-mineshaft-50">{label}</p>
+                              <p className="text-mineshaft-400">{description}</p>
+                            </Checkbox>
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
-          <div className="mt-8 flex items-center">
-            <Button
-              className="mr-4"
-              type="submit"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-            >
-              Create
+          <div className="mt-8 flex items-center justify-end">
+            <Button type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
+              Create webhook
             </Button>
-            <ModalClose asChild>
-              <Button variant="plain" colorSchema="secondary">
-                Cancel
-              </Button>
-            </ModalClose>
           </div>
         </form>
       </ModalContent>

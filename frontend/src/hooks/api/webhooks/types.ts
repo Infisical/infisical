@@ -63,6 +63,8 @@ export type TCreateWebhookDto = {
   webhookSecretKey?: string;
   secretPath: string;
   type: WebhookType;
+  isSecretModifiedEventEnabled?: boolean;
+  isSecretRotationFailedEventEnabled?: boolean;
 };
 
 export type TUpdateWebhookDto = {

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { Button, Modal, ModalClose, ModalContent, Switch } from "@app/components/v2";
+import { Button, Checkbox, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   TWebhook,
   TWebhookEventToggleKey,
@@ -66,26 +66,21 @@ export const EditWebhookEventsModal = ({
         subTitle="Select which events should trigger this webhook."
       >
         <form onSubmit={handleSave}>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {WEBHOOK_EVENTS.map((event) => {
               const { key, label, description } = WEBHOOK_EVENT_METADATA[event];
 
               return (
-                <div
+                <Checkbox
                   key={event}
-                  className="flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 px-4 py-3"
+                  id={`webhook-event-${event}`}
+                  isChecked={eventSettings[key]}
+                  onCheckedChange={(checked) => handleToggle(key, checked === true)}
+                  allowMultilineLabel
                 >
-                  <div className="pr-6">
-                    <p className="text-sm font-medium text-mineshaft-50">{label}</p>
-                    <p className="text-sm text-mineshaft-400">{description}</p>
-                  </div>
-                  <Switch
-                    id={`webhook-event-${event}`}
-                    isChecked={eventSettings[key]}
-                    onCheckedChange={(checked) => handleToggle(key, checked === true)}
-                    thumbClassName="bg-mineshaft-800"
-                  />
-                </div>
+                  <p className="font-medium text-mineshaft-50">{label}</p>
+                  <p className="text-mineshaft-400">{description}</p>
+                </Checkbox>
               );
             })}
           </div>
