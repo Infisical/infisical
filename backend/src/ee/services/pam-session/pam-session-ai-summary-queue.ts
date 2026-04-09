@@ -42,14 +42,13 @@ export const pamSessionAiSummaryServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) return;
 
-    const resourceId = (session as unknown as { resourceId?: string | null }).resourceId;
+    const { resourceId } = session;
     if (!resourceId) return;
 
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) return;
 
-    const encryptedConfig = (resource as unknown as { encryptedSessionSummaryConfig?: Buffer | null })
-      .encryptedSessionSummaryConfig;
+    const { encryptedSessionSummaryConfig: encryptedConfig } = resource;
     if (!encryptedConfig) return;
 
     let summaryConfig: TSessionSummaryConfig;
@@ -93,7 +92,7 @@ export const pamSessionAiSummaryServiceFactory = ({
       }
 
       // 2. Skip if no resourceId (resource was deleted)
-      const resourceId = (session as unknown as { resourceId?: string | null }).resourceId;
+      const { resourceId } = session;
       if (!resourceId) {
         logger.info(
           { sessionId },
@@ -111,8 +110,7 @@ export const pamSessionAiSummaryServiceFactory = ({
         return;
       }
 
-      const encryptedConfig = (resource as unknown as { encryptedSessionSummaryConfig?: Buffer | null })
-        .encryptedSessionSummaryConfig;
+      const { encryptedSessionSummaryConfig: encryptedConfig } = resource;
 
       if (!encryptedConfig) {
         logger.info(

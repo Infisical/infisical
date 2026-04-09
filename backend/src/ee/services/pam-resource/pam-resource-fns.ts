@@ -123,9 +123,7 @@ export const decryptResource = async (
 ) => {
   let sessionSummaryConfig: { aiInsightsEnabled: boolean; connectionId: string; model: string } | null = null;
 
-  const encryptedSessionSummaryConfig = (
-    resource as TPamResources & { encryptedSessionSummaryConfig?: Buffer | null }
-  ).encryptedSessionSummaryConfig;
+  const { encryptedSessionSummaryConfig } = resource;
 
   if (encryptedSessionSummaryConfig) {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({

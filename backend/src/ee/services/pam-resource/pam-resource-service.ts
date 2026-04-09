@@ -392,7 +392,7 @@ export const pamResourceServiceFactory = ({
 
     if (sessionSummaryConfig !== undefined) {
       if (sessionSummaryConfig === null) {
-        (updateDoc as Record<string, unknown>).encryptedSessionSummaryConfig = null;
+        updateDoc.encryptedSessionSummaryConfig = null;
       } else {
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -401,7 +401,7 @@ export const pamResourceServiceFactory = ({
         const { cipherTextBlob } = encryptor({
           plainText: Buffer.from(JSON.stringify(sessionSummaryConfig))
         });
-        (updateDoc as Record<string, unknown>).encryptedSessionSummaryConfig = cipherTextBlob;
+        updateDoc.encryptedSessionSummaryConfig = cipherTextBlob;
       }
     }
 

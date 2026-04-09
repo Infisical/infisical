@@ -17,6 +17,7 @@ import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
 import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
+import { TSessionSummaryConfig } from "./base-resource";
 
 export * from "./active-directory-resource";
 export * from "./aws-iam-resource";
@@ -152,11 +153,7 @@ export type TCreatePamResourceDTO = Pick<
   metadata?: { key: string; value: string }[];
 };
 
-export type TSessionSummaryConfig = {
-  aiInsightsEnabled: boolean;
-  connectionId: string;
-  model: string;
-} | null;
+export type { TSessionSummaryConfig };
 
 export type TUpdatePamResourceDTO = Partial<
   Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">

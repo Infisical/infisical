@@ -68,7 +68,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
     (LLM_APP_CONNECTIONS as readonly string[]).includes(c.app)
   );
 
-  const { control, handleSubmit, reset, setValue } = useForm<FormData>({
+  const { control, handleSubmit, reset, setValue, formState: { isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       aiInsightsEnabled: config?.aiInsightsEnabled ?? false,
@@ -231,7 +231,8 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
           <Button
             variant="neutral"
             onClick={handleSubmit(onSubmit)}
-            isDisabled={aiInsightsEnabled && (llmConnections.length === 0 || !selectedProvider)}
+            isDisabled={isSubmitting || (aiInsightsEnabled && (llmConnections.length === 0 || !selectedProvider))}
+            isLoading={isSubmitting}
           >
             Update Details
           </Button>

@@ -49,7 +49,7 @@ export const decryptSession = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const encryptedAiInsights = (session as TPamSessions & { encryptedAiInsights?: Buffer | null }).encryptedAiInsights;
+  const { encryptedAiInsights } = session;
 
   let aiInsights: { summary: string; warnings: string[] } | null = null;
   if (encryptedAiInsights) {
