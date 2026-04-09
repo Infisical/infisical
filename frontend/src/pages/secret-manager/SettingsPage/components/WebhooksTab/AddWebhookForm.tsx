@@ -215,6 +215,7 @@ export const AddWebhookForm = ({
                   isRequired
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  helperText="Enter `/` to match all secret paths in the selected environment."
                 >
                   <SecretPathInput {...field} environment={selectedEnvironment} placeholder="/" />
                 </FormControl>
