@@ -17,6 +17,23 @@ const (
 	AuthModeServiceToken        AuthMode = "service_token"
 )
 
+// AuthTokenType represents the token type claim embedded in JWTs.
+// Values match the Node.js AuthTokenType enum in auth-type.ts.
+type AuthTokenType string
+
+const (
+	AuthTokenTypeAccessToken         AuthTokenType = "accessToken"
+	AuthTokenTypeRefreshToken        AuthTokenType = "refreshToken"
+	AuthTokenTypeSignupToken         AuthTokenType = "signupToken"
+	AuthTokenTypeMfaToken            AuthTokenType = "mfaToken"
+	AuthTokenTypeProviderToken       AuthTokenType = "providerToken"
+	AuthTokenTypeAPIKey              AuthTokenType = "apiKey"
+	AuthTokenTypeServiceAccessToken  AuthTokenType = "serviceAccessToken"
+	AuthTokenTypeServiceRefreshToken AuthTokenType = "serviceRefreshToken"
+	AuthTokenTypeIdentityAccessToken AuthTokenType = "identityAccessToken"
+	AuthTokenTypeSCIMToken           AuthTokenType = "scimToken"
+)
+
 // UserAuthInfo holds the minimal user info stored in request context for audit logging.
 // Port of Node.js requestContext.userAuthInfo.
 type UserAuthInfo struct {

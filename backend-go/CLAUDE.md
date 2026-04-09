@@ -25,6 +25,7 @@ Never edit generated code in `gen/` directories — always regenerate.
 - **Interfaces for dependencies**: Consumer defines the interface (narrow, only needed methods). Accept interfaces, not concrete types.
 - **DAL boundary**: Services must not import `table`, `postgres`, or `qrm`. All queries go through a DAL. Always use type-safe go-jet — no raw SQL (exception: `pg_advisory_xact_lock`).
 - **Database error wrapping**: All `err` values returned from DAL/database calls must be wrapped with `errutil.DatabaseErr("<user-facing message>").WithErr(err)` at the service/caller level, NOT inside DAL methods. This logs the real DB error internally but only shows the safe message to clients.
+- **Error cause context**: When returning `errutil` service errors, always attach origin context via `.WithErr()` using `fmt.Errorf` with the function name and relevant args: `errutil.DatabaseErr("Failed to load resource").WithErr(fmt.Errorf("secretfolder.LoadProjectFolders(project=%s): %w", projectID, err))`. Keep client-facing messages generic — the cause is never exposed to clients, it only appears in server logs alongside the Goa service/method from context.
 - **Lean code**: Inline helpers with one caller. Only extract when shared. Split DAL files by functionality.
 
 ## Architecture

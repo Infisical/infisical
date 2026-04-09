@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -26,17 +28,28 @@ func NewAuthHandler(dal *DAL, authSecret string) AuthHandler {
 	return AuthHandler{dal: dal, authSecret: []byte(authSecret)}
 }
 
+// authFailKey is a context key used to propagate the authoritative auth error
+// across Goa's fallback chain. When the token type matches a scheme but validation
+// fails, we stash the real error so subsequent scheme attempts return it instead
+// of a misleading "not supported" message.
+type authFailKey struct{}
+
 // JWTAuth implements the Goa security handler. Goa calls this for each scheme in order
 // (jwt → identity_access_token → service_token) with the scheme name in sc.Name.
 // We classify the token cheaply and only accept when the token type matches the scheme being tried.
 func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWTScheme) (context.Context, error) {
+	// If a previous scheme already matched the token and failed, return that error.
+	if prevErr, ok := ctx.Value(authFailKey{}).(error); ok {
+		return ctx, prevErr
+	}
+
 	if token == "" {
 		return ctx, errutil.Unauthorized("Token missing")
 	}
 
 	tokenMode := ClassifyToken(token)
 	if tokenMode == "" {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource")
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("Token classification failed"))
 	}
 
 	// Map scheme name to expected auth mode.
@@ -49,12 +62,12 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 	case "service_token":
 		expectedMode = AuthModeServiceToken
 	default:
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource")
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("Invalid token"))
 	}
 
 	// Fast reject: token type doesn't match the scheme being tried.
 	if tokenMode != expectedMode {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource")
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(fmt.Errorf("Provider token %v not support", tokenMode))
 	}
 
 	var (
@@ -72,7 +85,11 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 	case AuthModeServiceToken:
 		identity, err = h.validateServiceToken(ctx, token)
 	}
+
 	if err != nil {
+		// Token matched this scheme but validation failed — this is the authoritative error.
+		// Stash it in context so subsequent scheme attempts return it directly.
+		ctx = context.WithValue(ctx, authFailKey{}, err)
 		return ctx, err
 	}
 
@@ -87,12 +104,13 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	_, err := jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (any, error) {
 		return h.authSecret, nil
 	})
+
 	if err != nil {
-		return nil, errutil.Unauthorized("Invalid JWT token")
+		return nil, errutil.Unauthorized("Invalid JWT token").WithErr(err)
 	}
 
 	// 2. Validate authTokenType.
-	if claims.AuthTokenType != "AccessToken" {
+	if claims.AuthTokenType != AuthTokenTypeAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource")
 	}
 
@@ -221,7 +239,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	}
 
 	// 2. Validate authTokenType.
-	if claims.AuthTokenType != "IdentityAccessToken" {
+	if claims.AuthTokenType != AuthTokenTypeIdentityAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource")
 	}
 

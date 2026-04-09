@@ -38,11 +38,15 @@ func (b *ErrorBody) StatusCode() int {
 func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goahttp.Statuser {
 	return func(ctx context.Context, err error) goahttp.Statuser {
 		reqID := requestid.FromContext(ctx)
+		service, _ := ctx.Value(goa.ServiceKey).(string)
+		method, _ := ctx.Value(goa.MethodKey).(string)
 
 		var apiErr *Error
 		if errors.As(err, &apiErr) {
 			if apiErr.Status >= http.StatusInternalServerError {
 				logger.ErrorContext(ctx, "server error",
+					slog.String("service", service),
+					slog.String("method", method),
 					slog.String("name", apiErr.Name),
 					slog.Int("status", apiErr.Status),
 					slog.String("message", apiErr.Message),
@@ -58,6 +62,8 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 			}
 
 			logger.WarnContext(ctx, "api error",
+				slog.String("service", service),
+				slog.String("method", method),
 				slog.String("name", apiErr.Name),
 				slog.Int("status", apiErr.Status),
 				slog.String("message", apiErr.Message),
@@ -77,6 +83,8 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 		if errors.As(err, &goaErr) {
 			status := mapGoaErrorStatus(goaErr)
 			logger.WarnContext(ctx, "goa validation error",
+				slog.String("service", service),
+				slog.String("method", method),
 				slog.String("name", goaErr.Name),
 				slog.Int("status", status),
 				slog.String("message", goaErr.Message),
@@ -90,7 +98,11 @@ func NewFormatter(logger *slog.Logger) func(ctx context.Context, err error) goah
 			}
 		}
 
-		logger.ErrorContext(ctx, "unhandled server error", slog.Any("error", err))
+		logger.ErrorContext(ctx, "unhandled server error",
+			slog.String("service", service),
+			slog.String("method", method),
+			slog.Any("error", err),
+		)
 
 		return &ErrorBody{
 			Code:    http.StatusInternalServerError,

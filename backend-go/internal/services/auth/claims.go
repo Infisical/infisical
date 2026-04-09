@@ -6,7 +6,7 @@ import "github.com/golang-jwt/jwt/v5"
 // Exact match of the Node.js AuthModeJwtTokenPayload.
 type UserJWTClaims struct {
 	jwt.RegisteredClaims
-	AuthTokenType     string `json:"authTokenType"`
+	AuthTokenType     AuthTokenType `json:"authTokenType"`
 	AuthMethod        string `json:"authMethod,omitempty"`
 	UserID            string `json:"userId"`
 	TokenVersionID    string `json:"tokenVersionId"`
@@ -20,7 +20,7 @@ type UserJWTClaims struct {
 // Exact match of the Node.js TIdentityAccessTokenJwtPayload.
 type IdentityJWTClaims struct {
 	jwt.RegisteredClaims
-	AuthTokenType         string        `json:"authTokenType"`
+	AuthTokenType         AuthTokenType `json:"authTokenType"`
 	IdentityID            string        `json:"identityId"`
 	ClientSecretID        string        `json:"clientSecretId"`
 	IdentityAccessTokenID string        `json:"identityAccessTokenId"`

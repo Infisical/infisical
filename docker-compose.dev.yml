@@ -66,7 +66,7 @@ services:
       - "8085:8081"
 
   db-test:
-    profiles: [ "test" ]
+    profiles: ["test"]
     image: postgres:14-alpine
     ports:
       - "5430:5432"
@@ -111,7 +111,7 @@ services:
       - "9090:9090"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
-    profiles: [ metrics ]
+    profiles: [metrics]
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib
@@ -125,7 +125,7 @@ services:
       - 4317:4317 # OTLP gRPC receiver
       - 4318:4318 # OTLP http receiver
       - 55679:55679 # zpages extension
-    profiles: [ metrics-otel ]
+    profiles: [metrics-otel]
 
   grafana:
     image: grafana/grafana
@@ -137,7 +137,7 @@ services:
       - "3005:3000"
     volumes:
       - "grafana_storage:/var/lib/grafana"
-    profiles: [ metrics ]
+    profiles: [metrics]
 
   frontend:
     container_name: infisical-dev-frontend
@@ -169,9 +169,9 @@ services:
     environment:
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - REDIS_URL=redis://redis:6379
-      - ENCRYPTION_KEY=a984ecdf82ec779e55dbcc21303a900f
-      - AUTH_SECRET=test-auth-secret-long-enough-for-jwt
-    profiles: [ go ]
+    env_file:
+      - .env
+    profiles: [go]
 
   pgadmin:
     image: dpage/pgadmin4
@@ -210,7 +210,7 @@ services:
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
-    profiles: [ ldap ]
+    profiles: [ldap]
 
   phpldapadmin:
     # username: cn=admin,dc=acme,dc=com, pass is admin
@@ -223,7 +223,7 @@ services:
       - 6433:80
     depends_on:
       - openldap
-    profiles: [ ldap ]
+    profiles: [ldap]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.0
@@ -234,7 +234,7 @@ services:
     command: start-dev
     ports:
       - 8088:8080
-    profiles: [ sso ]
+    profiles: [sso]
 
 volumes:
   postgres-data:
