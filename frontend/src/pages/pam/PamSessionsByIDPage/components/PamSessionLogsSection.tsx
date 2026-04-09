@@ -53,7 +53,9 @@ export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
         )}
       </div>
 
-      {isDatabaseSession && hasLogs && <CommandLogView logs={logs as TPamCommandLog[]} scrollToLogIndex={scrollToLogIndex} />}
+      {isDatabaseSession && hasLogs && (
+        <CommandLogView logs={logs as TPamCommandLog[]} scrollToLogIndex={scrollToLogIndex} />
+      )}
       {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
       {isAwsIamSession && (

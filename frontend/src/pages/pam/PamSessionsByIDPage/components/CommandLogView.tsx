@@ -25,7 +25,9 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
     setSearch("");
     setExpandedLogTimestamps(new Set([target.timestamp]));
     setTimeout(() => {
-      document.getElementById(`log-${scrollToLogIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`log-${scrollToLogIndex}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 50);
   }, [scrollToLogIndex, logs]);
 

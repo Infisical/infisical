@@ -33,7 +33,7 @@ import {
   encryptResourceInternalMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
-import { TCreateResourceDTO, TListResourcesDTO, TSessionSummaryConfigDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
 import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 

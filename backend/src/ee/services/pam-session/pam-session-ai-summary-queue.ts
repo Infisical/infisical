@@ -1,11 +1,11 @@
 import { TPamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { logger } from "@app/lib/logger";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
@@ -129,10 +129,7 @@ export const pamSessionAiSummaryServiceFactory = ({
         });
         summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
       } catch (err) {
-        logger.error(
-          { sessionId, err },
-          `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig`
-        );
+        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig`);
         return;
       }
 
@@ -174,7 +171,10 @@ export const pamSessionAiSummaryServiceFactory = ({
       // Cap at 500 batches (~500 MB max) to prevent OOM if a session has an abnormal number of batches
       const MAX_BATCHES = 500;
       let logs;
-      const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset: 0, limit: MAX_BATCHES });
+      const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, {
+        offset: 0,
+        limit: MAX_BATCHES
+      });
       if (batches.length > 0) {
         logs = await decryptBatches(batches, projectId, kmsService);
       } else if (session.encryptedLogsBlob) {

@@ -18,14 +18,13 @@ export const formatLogsForSummary = (
       return `[${i + 1}] [${ts}]\nQuery: ${log.input.trim()}\nResult: ${log.output.trim()}`;
     });
     const joined = lines.join("\n\n");
-    return joined.length > MAX_LOG_CHARS ? joined.slice(0, MAX_LOG_CHARS) + "\n...(truncated)" : joined;
+    return joined.length > MAX_LOG_CHARS ? `${joined.slice(0, MAX_LOG_CHARS)}\n...(truncated)` : joined;
   }
 
   // SSH: extract input events and decode Base64 → printable text
   const terminalLogs = logs as TTerminalEvent[];
   const inputLines: string[] = [];
-  for (const event of terminalLogs) {
-    if (event.eventType !== "input") continue;
+  for (const event of terminalLogs.filter((e) => e.eventType === "input")) {
     try {
       const decoded = Buffer.from(event.data, "base64").toString("utf8");
       // Keep only printable ASCII and common whitespace, strip ANSI escape codes
@@ -37,7 +36,7 @@ export const formatLogsForSummary = (
     }
   }
   const combined = inputLines.join("");
-  return combined.length > MAX_LOG_CHARS ? combined.slice(0, MAX_LOG_CHARS) + "\n...(truncated)" : combined;
+  return combined.length > MAX_LOG_CHARS ? `${combined.slice(0, MAX_LOG_CHARS)}\n...(truncated)` : combined;
 };
 
 const SYSTEM_PROMPTS: Partial<Record<PamResource, string>> = {
@@ -100,7 +99,7 @@ export const generateSessionSummary = async (
   model: string,
   system: string,
   user: string
-): Promise<{ summary: string; warnings: string[] }> => {
+): Promise<{ summary: string; warnings: { text: string; logIndex?: number }[] }> => {
   const anthropic = createAnthropic({ apiKey });
 
   const { object } = await generateObject({
@@ -108,7 +107,7 @@ export const generateSessionSummary = async (
     schema: SessionSummarySchema,
     system,
     messages: [{ role: "user", content: user }],
-    maxTokens: 1024
+    maxOutputTokens: 1024
   });
 
   return object;

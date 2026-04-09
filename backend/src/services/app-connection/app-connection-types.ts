@@ -27,6 +27,12 @@ import {
   TOnePassConnectionInput,
   TValidateOnePassConnectionCredentialsSchema
 } from "./1password";
+import {
+  TAnthropicConnection,
+  TAnthropicConnectionConfig,
+  TAnthropicConnectionInput,
+  TValidateAnthropicConnectionCredentialsSchema
+} from "./anthropic";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -240,12 +246,6 @@ import {
   TOktaConnectionInput,
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
-import {
-  TAnthropicConnection,
-  TAnthropicConnectionConfig,
-  TAnthropicConnectionInput,
-  TValidateAnthropicConnectionCredentialsSchema
-} from "./anthropic";
 import {
   TOpenRouterConnection,
   TOpenRouterConnectionConfig,

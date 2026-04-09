@@ -27,15 +27,15 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
 import {
-  AnthropicConnectionMethod,
-  getAnthropicConnectionListItem,
-  validateAnthropicConnectionCredentials
-} from "./anthropic";
-import {
   getOnePassConnectionListItem,
   OnePassConnectionMethod,
   validateOnePassConnectionCredentials
 } from "./1password";
+import {
+  AnthropicConnectionMethod,
+  getAnthropicConnectionListItem,
+  validateAnthropicConnectionCredentials
+} from "./anthropic";
 import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {

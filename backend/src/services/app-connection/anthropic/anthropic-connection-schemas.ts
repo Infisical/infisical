@@ -31,9 +31,7 @@ export const SanitizedAnthropicConnectionSchema = z.discriminatedUnion("method",
 
 export const ValidateAnthropicConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z
-      .literal(AnthropicConnectionMethod.ApiKey)
-      .describe(AppConnections.CREATE(AppConnection.Anthropic).method),
+    method: z.literal(AnthropicConnectionMethod.ApiKey).describe(AppConnections.CREATE(AppConnection.Anthropic).method),
     credentials: AnthropicConnectionApiKeyCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Anthropic).credentials
     )

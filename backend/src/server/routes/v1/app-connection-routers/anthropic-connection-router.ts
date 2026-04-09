@@ -1,9 +1,9 @@
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   CreateAnthropicConnectionSchema,
   SanitizedAnthropicConnectionSchema,
   UpdateAnthropicConnectionSchema
 } from "@app/services/app-connection/anthropic";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 

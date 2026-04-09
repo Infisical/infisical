@@ -3,8 +3,8 @@ import { registerOCIConnectionRouter } from "@app/ee/routes/v1/app-connection-ro
 import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oracledb-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
