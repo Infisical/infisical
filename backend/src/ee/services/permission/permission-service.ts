@@ -398,6 +398,9 @@ export const permissionServiceFactory = ({
       });
     }
 
+    const projectPermissionActor: ActorType.USER | ActorType.IDENTITY =
+      actor === ActorType.USER ? ActorType.USER : ActorType.IDENTITY;
+
     // Request-scoped full-function memoization: identical permission checks within the same request
     const memoKey = requestMemoKeys.projectPermission({
       projectId,
@@ -448,11 +451,11 @@ export const permissionServiceFactory = ({
           projectId
         },
         actorId,
-        actorType: actor
+        actorType: projectPermissionActor
       });
       if (!permissionData?.length)
         throw new ForbiddenRequestError({
-          message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
+          message: `You are not a member of this project with ID ${projectId}. Please assign this ${projectPermissionActor} to the project with the appropriate permissions, then try again.`
         });
 
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
