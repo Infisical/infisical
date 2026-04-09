@@ -362,8 +362,23 @@ export const fnTriggerWebhook = async ({
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
-    ({ secretPath: hookSecretPath, isDisabled }) =>
-      !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
+    ({ secretPath: hookSecretPath, isDisabled, isSecretModifiedEventEnabled, isSecretRotationFailedEventEnabled }) => {
+      const isEventSubscribed = (() => {
+        switch (event.type) {
+          case WebhookEvents.SecretModified:
+            return isSecretModifiedEventEnabled;
+          case WebhookEvents.SecretRotationFailed:
+            return isSecretRotationFailedEventEnabled;
+          default:
+            // all other events are subscribed by default
+            return true;
+        }
+      })();
+
+      return (
+        !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed
+      );
+    }
   );
   if (!toBeTriggeredHooks.length) return;
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");

@@ -19,7 +19,9 @@ export const sanitizedWebhookSchema = WebhooksSchema.pick({
   createdAt: true,
   updatedAt: true,
   envId: true,
-  type: true
+  type: true,
+  isSecretModifiedEventEnabled: true,
+  isSecretRotationFailedEventEnabled: true
 }).extend({
   projectId: z.string(),
   environment: z.object({
@@ -46,7 +48,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           environment: z.string().trim(),
           webhookUrl: z.string().url().trim(),
           webhookSecretKey: z.string().trim().optional(),
-          secretPath: z.string().trim().default("/").transform(removeTrailingSlash)
+          secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+          isSecretModifiedEventEnabled: z.boolean().default(true),
+          isSecretRotationFailedEventEnabled: z.boolean().default(true)
         })
         .superRefine((data, ctx) => {
           if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
@@ -115,9 +119,19 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         webhookId: z.string().trim()
       }),
-      body: z.object({
-        isDisabled: z.boolean().default(false)
-      }),
+      body: z
+        .object({
+          isDisabled: z.boolean().optional(),
+          isSecretModifiedEventEnabled: z.boolean().optional(),
+          isSecretRotationFailedEventEnabled: z.boolean().optional()
+        })
+        .refine(({ isDisabled, isSecretModifiedEventEnabled, isSecretRotationFailedEventEnabled }) => {
+          return (
+            isDisabled !== undefined ||
+            isSecretModifiedEventEnabled !== undefined ||
+            isSecretRotationFailedEventEnabled !== undefined
+          );
+        }, "At least one field is required"),
       response: {
         200: z.object({
           message: z.string(),
@@ -132,7 +146,9 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.webhookId,
-        isDisabled: req.body.isDisabled
+        isDisabled: req.body.isDisabled,
+        isSecretModifiedEventEnabled: req.body.isSecretModifiedEventEnabled,
+        isSecretRotationFailedEventEnabled: req.body.isSecretRotationFailedEventEnabled
       });
 
       await server.services.auditLog.createAuditLog({

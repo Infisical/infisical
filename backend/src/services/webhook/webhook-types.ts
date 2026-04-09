@@ -8,11 +8,15 @@ export type TCreateWebhookDTO = {
   webhookUrl: string;
   webhookSecretKey?: string;
   type: string;
+  isSecretModifiedEventEnabled?: boolean;
+  isSecretRotationFailedEventEnabled?: boolean;
 } & TProjectPermission;
 
 export type TUpdateWebhookDTO = {
   id: string;
   isDisabled?: boolean;
+  isSecretModifiedEventEnabled?: boolean;
+  isSecretRotationFailedEventEnabled?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TTestWebhookDTO = {

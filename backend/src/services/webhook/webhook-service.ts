@@ -48,7 +48,9 @@ export const webhookServiceFactory = ({
     environment,
     secretPath,
     webhookSecretKey,
-    type
+    type,
+    isSecretModifiedEventEnabled,
+    isSecretRotationFailedEventEnabled
   }: TCreateWebhookDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -75,7 +77,9 @@ export const webhookServiceFactory = ({
       isDisabled: false,
       secretPath: secretPath || "/",
       type,
-      encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob
+      encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob,
+      ...(isSecretModifiedEventEnabled !== undefined ? { isSecretModifiedEventEnabled } : {}),
+      ...(isSecretRotationFailedEventEnabled !== undefined ? { isSecretRotationFailedEventEnabled } : {})
     };
 
     if (webhookSecretKey) {
@@ -86,7 +90,16 @@ export const webhookServiceFactory = ({
     return { ...webhook, projectId, environment: env };
   };
 
-  const updateWebhook = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, isDisabled }: TUpdateWebhookDTO) => {
+  const updateWebhook = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    isDisabled,
+    isSecretModifiedEventEnabled,
+    isSecretRotationFailedEventEnabled
+  }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
@@ -100,7 +113,17 @@ export const webhookServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
-    const updatedWebhook = await webhookDAL.updateById(id, { isDisabled });
+    const updateData: {
+      isDisabled?: boolean;
+      isSecretModifiedEventEnabled?: boolean;
+      isSecretRotationFailedEventEnabled?: boolean;
+    } = {
+      ...(isDisabled !== undefined ? { isDisabled } : {}),
+      ...(isSecretModifiedEventEnabled !== undefined ? { isSecretModifiedEventEnabled } : {}),
+      ...(isSecretRotationFailedEventEnabled !== undefined ? { isSecretRotationFailedEventEnabled } : {})
+    };
+
+    const updatedWebhook = await webhookDAL.updateById(id, updateData);
     return { ...webhook, ...updatedWebhook };
   };
 
