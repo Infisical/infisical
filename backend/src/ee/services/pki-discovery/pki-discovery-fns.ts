@@ -310,6 +310,8 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
     const fingerprintSha1 = computeCertFingerprintSha1(derBuffer);
 
     const subject = cert.subject || {};
+    // In Node 22, cert subject/issuer fields can be string | string[] for multi-valued attributes
+    const certField = (val: string | string[] | undefined): string | undefined => (Array.isArray(val) ? val[0] : val);
 
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -341,16 +343,16 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       pemChain: [pem],
       fingerprint,
       fingerprintSha1,
-      commonName: subject.CN || "",
+      commonName: certField(subject.CN) || "",
       altNames,
       notBefore: new Date(cert.valid_from),
       notAfter: new Date(cert.valid_to),
       serialNumber: cert.serialNumber,
-      subjectOrganization: subject.O,
-      subjectOrganizationalUnit: subject.OU,
-      subjectCountry: subject.C,
-      subjectState: subject.ST,
-      subjectLocality: subject.L,
+      subjectOrganization: certField(subject.O),
+      subjectOrganizationalUnit: certField(subject.OU),
+      subjectCountry: certField(subject.C),
+      subjectState: certField(subject.ST),
+      subjectLocality: certField(subject.L),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       keyAlgorithm: extractKeyAlgorithm(x509Cert),
       signatureAlgorithm,
@@ -358,8 +360,8 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       extendedKeyUsages,
       isCA,
       pathLength,
-      issuerCommonName: issuer.CN,
-      issuerOrganization: issuer.O
+      issuerCommonName: certField(issuer.CN),
+      issuerOrganization: certField(issuer.O)
     };
   } catch (error) {
     logger.error(error, "Failed to parse peer certificate");
