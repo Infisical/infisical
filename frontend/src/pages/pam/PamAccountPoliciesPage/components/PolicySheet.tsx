@@ -431,7 +431,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 );
               })}
 
-              {ruleFields.length === 0 && (
+              {currentRules.length === 0 && (
                 <div className="rounded-md border border-dashed border-border py-8 text-center">
                   <p className="text-sm text-muted">No rules added yet</p>
                   {(errors.rules?.root?.message || errors.rules?.message) && (
@@ -442,7 +442,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 </div>
               )}
 
-              {ruleFields.length > 0 && (errors.rules?.root?.message || errors.rules?.message) && (
+              {currentRules.length > 0 && (errors.rules?.root?.message || errors.rules?.message) && (
                 <p className="mt-1 text-xs text-danger">
                   {errors.rules?.root?.message || errors.rules?.message}
                 </p>
