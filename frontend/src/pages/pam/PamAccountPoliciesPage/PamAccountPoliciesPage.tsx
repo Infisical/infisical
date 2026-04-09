@@ -22,7 +22,7 @@ export const PamAccountPoliciesPage = () => {
             <PageHeader
               scope={ProjectType.PAM}
               title="Account Policies"
-              description="Manage behavioral rules for PAM accounts."
+              description="Manage behavioral rules for accounts."
             />
             <PamAccountPoliciesSection projectId={currentProject.id} />
           </div>

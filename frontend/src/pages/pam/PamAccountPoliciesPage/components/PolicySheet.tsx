@@ -296,7 +296,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
           <SheetDescription>
             {isEditing
               ? "Update the policy name, description, and rules."
-              : "Configure behavioral rules for PAM accounts."}
+              : "Configure behavioral rules for accounts."}
           </SheetDescription>
         </SheetHeader>
 
