@@ -121,6 +121,22 @@ export const decryptResource = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
+  let sessionSummaryConfig: { aiInsightsEnabled: boolean; connectionId: string; model: string } | null = null;
+
+  const { encryptedSessionSummaryConfig } = resource;
+
+  if (encryptedSessionSummaryConfig) {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    sessionSummaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedSessionSummaryConfig }).toString()) as {
+      aiInsightsEnabled: boolean;
+      connectionId: string;
+      model: string;
+    };
+  }
+
   return {
     ...resource,
     connectionDetails: await decryptResourceConnectionDetails({
@@ -134,6 +150,7 @@ export const decryptResource = async (
           projectId,
           kmsService
         })
-      : null
+      : null,
+    sessionSummaryConfig
   } as TPamResource;
 };

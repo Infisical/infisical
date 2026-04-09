@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,6 +22,7 @@ import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
+import { PamSessionAiInsightsSection } from "./components/PamSessionAiInsightsSection";
 import { PamSessionDetailsSection } from "./components/PamSessionDetailsSection";
 import { PamSessionLogsSection } from "./components/PamSessionLogsSection";
 
@@ -29,10 +31,13 @@ const Page = () => {
     from: ROUTE_PATHS.Pam.PamSessionByIDPage.id,
     select: (el) => el.sessionId
   });
-  const { data: session } = useGetPamSessionById(sessionId);
+  const { data: session } = useGetPamSessionById(sessionId, {
+    refetchInterval: (query) => (query.state.data?.aiInsightsStatus === "pending" ? 3000 : false)
+  });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
+  const [scrollToLogIndex, setScrollToLogIndex] = useState<number | undefined>();
 
   const isActive =
     session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
@@ -90,11 +95,12 @@ const Page = () => {
             )}
           </PageHeader>
           <div className="flex">
-            <div className="mr-4 flex h-fit w-96">
+            <div className="mr-4 flex h-fit w-96 shrink-0">
               <PamSessionDetailsSection session={session} />
             </div>
-            <div className="flex w-full min-w-0">
-              <PamSessionLogsSection session={session} />
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <PamSessionAiInsightsSection session={session} onWarningClick={setScrollToLogIndex} />
+              <PamSessionLogsSection session={session} scrollToLogIndex={scrollToLogIndex} />
             </div>
           </div>
 

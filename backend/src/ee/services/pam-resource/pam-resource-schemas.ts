@@ -17,12 +17,23 @@ export const GatewayAccessResponseSchema = z.object({
 });
 
 // Resources
+export const SessionSummaryConfigSchema = z
+  .object({
+    aiInsightsEnabled: z.boolean(),
+    connectionId: z.string(),
+    model: z.string()
+  })
+  .nullable()
+  .optional();
+
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   encryptedRotationAccountCredentials: true,
+  encryptedSessionSummaryConfig: true,
   resourceType: true
 }).extend({
-  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional(),
+  sessionSummaryConfig: SessionSummaryConfigSchema
 });
 
 const CoreCreatePamResourceSchema = z.object({
@@ -39,7 +50,8 @@ export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
 
 const CoreUpdatePamResourceSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  sessionSummaryConfig: SessionSummaryConfigSchema
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
