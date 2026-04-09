@@ -4,7 +4,6 @@ import { Button, DocumentationLinkBadge, Label } from "@app/components/v3";
 import { PAM_RESOURCE_TYPE_MAP, PamResourceType } from "@app/hooks/api/pam";
 
 const PAM_RESOURCE_DOCS_MAP: Partial<Record<PamResourceType, string>> = {
-  [PamResourceType.ActiveDirectory]: "active-directory#create-the-pam-resource",
   [PamResourceType.AwsIam]: "aws-iam#create-the-pam-resource",
   [PamResourceType.Kubernetes]: "kubernetes#create-the-pam-resource",
   [PamResourceType.MySQL]: "mysql#create-the-pam-resource",

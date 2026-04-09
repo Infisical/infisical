@@ -20,9 +20,11 @@ import { TPamAccountDALFactory } from "../../pam-account/pam-account-dal";
 import { encryptAccountCredentials } from "../../pam-account/pam-account-fns";
 import {
   TActiveDirectoryAccountCredentials,
-  TActiveDirectoryAccountInternalMetadata,
-  TActiveDirectoryResourceConnectionDetails
-} from "../../pam-resource/active-directory/active-directory-resource-types";
+  TActiveDirectoryAccountInternalMetadata
+} from "../../pam-domain/active-directory/active-directory-domain-types";
+import { TPamDomainDALFactory } from "../../pam-domain/pam-domain-dal";
+import { PamDomainType } from "../../pam-domain/pam-domain-enums";
+import { encryptDomainConnectionDetails } from "../../pam-domain/pam-domain-fns";
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
 import { encryptResourceConnectionDetails, encryptResourceInternalMetadata } from "../../pam-resource/pam-resource-fns";
@@ -453,32 +455,32 @@ const executeLdapEnumeration = async (
   );
 };
 
-const upsertAdServerResource = async (
+const upsertDomain = async (
   projectId: string,
   configuration: TAdDiscoveryConfiguration,
   gatewayId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
+  pamDomainDAL: Pick<TPamDomainDALFactory, "create" | "find">,
   tx: Knex
 ) => {
   const fingerprint = configuration.domainFQDN.toLowerCase();
 
-  const existing = await pamResourceDAL.find(
+  const existing = await pamDomainDAL.find(
     {
       projectId,
-      resourceType: PamResource.ActiveDirectory,
+      domainType: PamDomainType.ActiveDirectory,
       discoveryFingerprint: fingerprint
     },
     { tx }
   );
 
   if (existing.length > 0) {
-    return { resource: existing[0], isNew: false };
+    return { domain: existing[0], isNew: false };
   }
 
   const domainResourceName = toSlugName(configuration.domainFQDN);
 
-  const encryptedConnectionDetails = await encryptResourceConnectionDetails({
+  const encryptedConnectionDetails = await encryptDomainConnectionDetails({
     projectId,
     connectionDetails: {
       domain: configuration.domainFQDN,
@@ -488,15 +490,15 @@ const upsertAdServerResource = async (
       ldapRejectUnauthorized: configuration.ldapRejectUnauthorized,
       ldapCaCert: configuration.ldapCaCert,
       ldapTlsServerName: configuration.ldapTlsServerName
-    } as TActiveDirectoryResourceConnectionDetails,
+    },
     kmsService
   });
 
-  const resource = await pamResourceDAL.create(
+  const domain = await pamDomainDAL.create(
     {
       projectId,
       name: domainResourceName,
-      resourceType: PamResource.ActiveDirectory,
+      domainType: PamDomainType.ActiveDirectory,
       gatewayId,
       encryptedConnectionDetails,
       discoveryFingerprint: fingerprint
@@ -504,13 +506,13 @@ const upsertAdServerResource = async (
     tx
   );
 
-  return { resource, isNew: true };
+  return { domain, isNew: true };
 };
 
 const upsertWindowsServerResource = async (
   projectId: string,
   computer: TLdapComputer,
-  adServerResourceId: string,
+  domainId: string,
   gatewayId: string,
   winrmConfig: {
     winrmPort: number;
@@ -529,7 +531,7 @@ const upsertWindowsServerResource = async (
       projectId,
       resourceType: PamResource.Windows,
       discoveryFingerprint: fingerprint,
-      adServerResourceId
+      domainId
     },
     { tx }
   );
@@ -570,8 +572,7 @@ const upsertWindowsServerResource = async (
       gatewayId,
       encryptedConnectionDetails,
       encryptedResourceMetadata,
-      adServerResourceId,
-      discoveryFingerprint: fingerprint
+      domainId
     },
     tx
   );
@@ -582,7 +583,7 @@ const upsertWindowsServerResource = async (
 const upsertDomainAccount = async (
   projectId: string,
   user: TLdapUser,
-  adServerResourceId: string,
+  domainId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find">,
   tx: Knex
@@ -591,7 +592,7 @@ const upsertDomainAccount = async (
 
   const existing = await pamAccountDAL.find(
     {
-      resourceId: adServerResourceId,
+      domainId,
       discoveryFingerprint: fingerprint
     },
     { tx }
@@ -634,7 +635,7 @@ const upsertDomainAccount = async (
   const account = await pamAccountDAL.create(
     {
       projectId,
-      resourceId: adServerResourceId,
+      domainId,
       name: accountName,
       encryptedCredentials,
       internalMetadata,
@@ -932,6 +933,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       pamDiscoverySourceAccountsDAL,
       pamDiscoverySourceDependenciesDAL,
       pamAccountDependenciesDAL,
+      pamDomainDAL,
       pamResourceDAL,
       pamAccountDAL,
       kmsService
@@ -985,30 +987,11 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
         } as TActiveDirectoryDiscoverySourceRunProgress
       });
 
-      // Auto-import AD Server resource
-      const { resource: adServerResource, isNew: isAdServerNew } = await pamResourceDAL.transaction(async (tx) => {
-        const result = await upsertAdServerResource(
-          projectId,
-          configuration,
-          gatewayId,
-          kmsService,
-          pamResourceDAL,
-          tx
-        );
-
-        await pamDiscoverySourceResourcesDAL.upsertJunction(
-          {
-            discoverySourceId,
-            resourceId: result.resource.id,
-            lastDiscoveredRunId: run.id
-          },
-          tx
-        );
-
+      // Auto-import AD domain
+      const { domain } = await pamDomainDAL.transaction(async (tx) => {
+        const result = await upsertDomain(projectId, configuration, gatewayId, kmsService, pamDomainDAL, tx);
         return result;
       });
-      resourcesDiscoveredCount += 1;
-      if (isAdServerNew) newResourcesCount += 1;
 
       // Auto-import Windows Server resources and build mapping for local account discovery
       const computerResourceMap = new Map<string, string>(); // objectGUID -> resourceId
@@ -1019,7 +1002,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
             const result = await upsertWindowsServerResource(
               projectId,
               computer,
-              adServerResource.id,
+              domain.id,
               gatewayId,
               {
                 winrmPort: configuration.winrmPort,
@@ -1063,14 +1046,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       for await (const user of users) {
         try {
           const { account, isNew } = await pamAccountDAL.transaction(async (tx) => {
-            const result = await upsertDomainAccount(
-              projectId,
-              user,
-              adServerResource.id,
-              kmsService,
-              pamAccountDAL,
-              tx
-            );
+            const result = await upsertDomainAccount(projectId, user, domain.id, kmsService, pamAccountDAL, tx);
 
             await pamDiscoverySourceAccountsDAL.upsertJunction(
               {

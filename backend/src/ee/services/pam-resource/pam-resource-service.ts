@@ -34,12 +34,11 @@ import {
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
 import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
-import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails" | "findMetadataByAccountIds">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithParentDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
@@ -88,7 +87,7 @@ export const pamResourceServiceFactory = ({
 
     if (!canReadResources) {
       // Check if user can read at least one account in this resource
-      const { accounts } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+      const { accounts } = await pamAccountDAL.findByProjectIdWithParentDetails({
         projectId: resource.projectId,
         accountView: PamAccountView.Flat,
         filterResourceIds: [id]
@@ -141,7 +140,7 @@ export const pamResourceServiceFactory = ({
       name,
       projectId,
       rotationAccountCredentials,
-      adServerResourceId,
+      domainId,
       metadata
     }: TCreateResourceDTO,
     actor: OrgServiceActor
@@ -179,15 +178,6 @@ export const pamResourceServiceFactory = ({
       kmsService
     });
 
-    if (adServerResourceId) {
-      const adResource = await pamResourceDAL.findById(adServerResourceId);
-      if (!adResource)
-        throw new NotFoundError({ message: `AD Server resource with ID '${adServerResourceId}' not found` });
-      if (adResource.projectId !== projectId) {
-        throw new BadRequestError({ message: "AD Server resource must belong to the same project" });
-      }
-    }
-
     let encryptedRotationAccountCredentials: Buffer | null = null;
 
     if (rotationAccountCredentials) {
@@ -210,7 +200,7 @@ export const pamResourceServiceFactory = ({
             name,
             projectId,
             encryptedRotationAccountCredentials,
-            adServerResourceId: adServerResourceId ?? null
+            domainId: domainId ?? null
           },
           tx
         );
@@ -250,7 +240,7 @@ export const pamResourceServiceFactory = ({
       name,
       rotationAccountCredentials,
       gatewayId,
-      adServerResourceId,
+      domainId,
       metadata
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
@@ -305,16 +295,8 @@ export const pamResourceServiceFactory = ({
       updateDoc.name = name;
     }
 
-    if (adServerResourceId !== undefined) {
-      if (adServerResourceId) {
-        const adResource = await pamResourceDAL.findById(adServerResourceId);
-        if (!adResource)
-          throw new NotFoundError({ message: `AD Server resource with ID '${adServerResourceId}' not found` });
-        if (adResource.projectId !== resource.projectId) {
-          throw new BadRequestError({ message: "AD Server resource must belong to the same project" });
-        }
-      }
-      updateDoc.adServerResourceId = adServerResourceId;
+    if (domainId !== undefined) {
+      updateDoc.domainId = domainId;
     }
 
     if (connectionDetails !== undefined) {
@@ -566,7 +548,7 @@ export const pamResourceServiceFactory = ({
     }
 
     // Fetch all accounts for the project (flat view, no pagination) for permission checking
-    const { accounts: allAccounts } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+    const { accounts: allAccounts } = await pamAccountDAL.findByProjectIdWithParentDetails({
       projectId,
       accountView: PamAccountView.Flat
     });
@@ -585,9 +567,12 @@ export const pamResourceServiceFactory = ({
       Array<{ accountName: string; metadata: Array<{ id: string; key: string; value: string }> }>
     >();
     for (const account of allAccounts) {
-      const existing = accountsByResourceId.get(account.resourceId) || [];
-      existing.push({ accountName: account.name, metadata: accountMetadata[account.id] || [] });
-      accountsByResourceId.set(account.resourceId, existing);
+      if (account.resourceId) {
+        // Skip domain accounts for resource-level permission check
+        const existing = accountsByResourceId.get(account.resourceId) || [];
+        existing.push({ accountName: account.name, metadata: accountMetadata[account.id] || [] });
+        accountsByResourceId.set(account.resourceId, existing);
+      }
     }
 
     // Filter to only resources where the user can read at least one account
@@ -703,41 +688,6 @@ export const pamResourceServiceFactory = ({
     return { caPublicKey };
   };
 
-  const listRelatedResources = async (adServerResourceId: string, actor: OrgServiceActor) => {
-    const resource = await pamResourceDAL.findById(adServerResourceId);
-    if (!resource) throw new NotFoundError({ message: `Resource with ID '${adServerResourceId}' not found` });
-
-    if (resource.resourceType !== PamResource.ActiveDirectory) {
-      throw new BadRequestError({ message: "Related resources can only be listed for Active Directory resources" });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: resource.projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
-
-    const metadataByResourceId = await pamResourceDAL.findMetadataByResourceIds([adServerResourceId]);
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, {
-        name: resource.name,
-        resourceType: resource.resourceType,
-        metadata: metadataByResourceId[adServerResourceId] || []
-      })
-    );
-
-    const relatedResources = await pamResourceDAL.findByAdServerResourceId(adServerResourceId);
-
-    return Promise.all(
-      relatedResources.map((r) => decryptResource(r, resource.projectId, kmsService) as Promise<TWindowsResource>)
-    );
-  };
-
   const setUserResourceFavorite = async ({
     projectId,
     resourceId,
@@ -794,7 +744,6 @@ export const pamResourceServiceFactory = ({
     list,
     listResourceOptions,
     getOrCreateSshCa,
-    listRelatedResources,
     setUserResourceFavorite
   };
 };

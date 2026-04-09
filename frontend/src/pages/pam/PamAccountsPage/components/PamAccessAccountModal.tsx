@@ -70,6 +70,8 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
   const command = useMemo(() => {
     if (!account) return "";
 
+    if (!account.resource) return "";
+
     switch (account.resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
@@ -90,11 +92,11 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
   if (!account) return null;
 
   const showWebAccess =
-    account.resource.resourceType === PamResourceType.Postgres ||
-    account.resource.resourceType === PamResourceType.SSH ||
-    account.resource.resourceType === PamResourceType.Redis;
+    account.resource?.resourceType === PamResourceType.Postgres ||
+    account.resource?.resourceType === PamResourceType.SSH ||
+    account.resource?.resourceType === PamResourceType.Redis;
 
-  const showDataExplorer = account.resource.resourceType === PamResourceType.Postgres;
+  const showDataExplorer = account.resource?.resourceType === PamResourceType.Postgres;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -168,8 +170,8 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     params={{
                       orgId: currentOrg.id,
                       projectId,
-                      resourceType: account.resource.resourceType,
-                      resourceId: account.resource.id,
+                      resourceType: account.resource?.resourceType ?? "",
+                      resourceId: account.resource?.id ?? "",
                       accountId: account.id
                     }}
                     target="_blank"
@@ -184,8 +186,8 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                   params={{
                     orgId: currentOrg.id,
                     projectId,
-                    resourceType: account.resource.resourceType,
-                    resourceId: account.resource.id,
+                    resourceType: account.resource?.resourceType ?? "",
+                    resourceId: account.resource?.id ?? "",
                     accountId: account.id
                   }}
                   target="_blank"

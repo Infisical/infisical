@@ -13,7 +13,7 @@ export const PamAccountsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   folderId: z.string().uuid().nullable().optional(),
-  resourceId: z.string().uuid(),
+  resourceId: z.string().uuid().nullable().optional(),
   name: z.string(),
   description: z.string().nullable().optional(),
   encryptedCredentials: zodBuffer,
@@ -24,7 +24,8 @@ export const PamAccountsSchema = z.object({
   encryptedLastRotationMessage: zodBuffer.nullable().optional(),
   requireMfa: z.boolean().default(false).nullable().optional(),
   internalMetadata: z.unknown().nullable().optional(),
-  discoveryFingerprint: z.string().nullable().optional()
+  discoveryFingerprint: z.string().nullable().optional(),
+  domainId: z.string().uuid().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

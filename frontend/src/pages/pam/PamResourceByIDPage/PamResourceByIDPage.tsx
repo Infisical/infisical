@@ -34,7 +34,6 @@ import {
   PamResourceDependenciesSection,
   PamResourceDetailsSection,
   PamResourceMetadataSection,
-  PamResourceRelatedResourcesSection,
   PamResourceRotationPolicySection,
   PamRotationPolicyModal
 } from "./components";
@@ -218,9 +217,6 @@ const PageContent = () => {
               {resource.resourceType === PamResourceType.Windows && (
                 <Tab value="dependencies">Dependencies</Tab>
               )}
-              {resource.resourceType === PamResourceType.ActiveDirectory && (
-                <Tab value="related-resources">Related Resources</Tab>
-              )}
             </TabList>
             <TabPanel value="accounts">
               <PamResourceAccountsSection resource={resource} />
@@ -228,11 +224,6 @@ const PageContent = () => {
             {resource.resourceType === PamResourceType.Windows && (
               <TabPanel value="dependencies">
                 <PamResourceDependenciesSection resource={resource} />
-              </TabPanel>
-            )}
-            {resource.resourceType === PamResourceType.ActiveDirectory && (
-              <TabPanel value="related-resources">
-                <PamResourceRelatedResourcesSection resource={resource} />
               </TabPanel>
             )}
           </Tabs>

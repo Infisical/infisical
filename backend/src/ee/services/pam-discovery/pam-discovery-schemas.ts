@@ -8,7 +8,8 @@ import {
 } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
 
-import { ActiveDirectoryAccountMetadataSchema } from "../pam-resource/active-directory/active-directory-resource-schemas";
+import { ActiveDirectoryAccountMetadataSchema } from "../pam-domain/active-directory/active-directory-domain-schemas";
+import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { SSHResourceInternalMetadataSchema } from "../pam-resource/ssh/ssh-resource-schemas";
 import {
@@ -63,9 +64,12 @@ export const DiscoveredResourceSchema = PamDiscoverySourceResourcesSchema.extend
 });
 
 export const DiscoveredAccountSchema = PamDiscoverySourceAccountsSchema.extend({
-  resourceType: z.nativeEnum(PamResource),
-  resourceName: z.string(),
-  resourceId: z.string().uuid(),
+  resourceType: z.nativeEnum(PamResource).nullable().optional(),
+  resourceName: z.string().nullable().optional(),
+  resourceId: z.string().uuid().nullable().optional(),
+  domainType: z.nativeEnum(PamDomainType).nullable().optional(),
+  domainName: z.string().nullable().optional(),
+  domainId: z.string().uuid().nullable().optional(),
   accountName: z.string(),
   internalMetadata: z.union([ActiveDirectoryAccountMetadataSchema, WindowsAccountMetadataSchema]),
   dependencyCount: z.number().default(0)

@@ -55,7 +55,6 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
-import { PamResourceType } from "@app/hooks/api/pam";
 import type {
   TPamDiscoverySource,
   TPamDiscoverySourceRunProgress
@@ -70,6 +69,7 @@ import {
   useListPamDiscoverySourceRuns,
   useTriggerPamDiscoveryScan
 } from "@app/hooks/api/pamDiscovery";
+import { PAM_DOMAIN_TYPE_MAP, PamDomainType, useListPamDomains } from "@app/hooks/api/pamDomain";
 
 import { PamUpdateDiscoverySourceModal } from "../PamDiscoveryPage/components/PamUpdateDiscoverySourceModal";
 
@@ -262,6 +262,72 @@ const DiscoveryCredentialsSection = ({
           <DetailValue>••••••••</DetailValue>
         </Detail>
       </div>
+    </div>
+  );
+};
+
+const DiscoveryDomainSection = ({
+  source,
+  projectId,
+  orgId
+}: {
+  source: TPamDiscoverySource;
+  projectId: string;
+  orgId: string;
+}) => {
+  const navigate = useNavigate();
+  const domainFQDN = source.discoveryConfiguration?.domainFQDN as string | undefined;
+  const fingerprint = domainFQDN?.toLowerCase();
+
+  const { data: domainsData } = useListPamDomains({
+    projectId,
+    discoveryFingerprint: fingerprint
+  });
+
+  const domain = domainsData?.domains[0];
+
+  const domainTypeInfo = domain
+    ? PAM_DOMAIN_TYPE_MAP[domain.domainType as keyof typeof PAM_DOMAIN_TYPE_MAP]
+    : null;
+
+  return (
+    <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
+      <div className="border-b border-border pb-2">
+        <h3 className="text-lg font-medium">Domain</h3>
+      </div>
+      {domain ? (
+        <button
+          type="button"
+          className="flex items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-mineshaft-700"
+          onClick={() =>
+            navigate({
+              to: "/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId",
+              params: {
+                orgId,
+                projectId,
+                domainType: domain.domainType,
+                domainId: domain.id
+              }
+            })
+          }
+        >
+          {domainTypeInfo?.image && (
+            <img
+              alt={domainTypeInfo.name}
+              src={`/images/integrations/${domainTypeInfo.image}`}
+              className="size-6"
+            />
+          )}
+          <div>
+            <p className="text-sm font-medium text-mineshaft-100">{domain.name}</p>
+            <p className="text-xs text-muted">{domainTypeInfo?.name}</p>
+          </div>
+        </button>
+      ) : (
+        <p className="text-sm text-muted">
+          No domain has been created yet. Run a scan to automatically create the domain.
+        </p>
+      )}
     </div>
   );
 };
@@ -861,7 +927,7 @@ const AccountsTab = ({
                 </UnstableTableCell>
                 <UnstableTableCell>
                   <div className="flex items-center gap-2">
-                    {account.resourceType === PamResourceType.ActiveDirectory && (
+                    {account.resourceType === PamDomainType.ActiveDirectory && (
                       <Badge variant="info">AD</Badge>
                     )}
                     <span className="text-muted capitalize">
@@ -1074,6 +1140,7 @@ const PageContent = () => {
         {/* Left Column */}
         <div className="flex w-80 shrink-0 flex-col gap-4">
           <DiscoveryDetailsSection source={source} onEdit={() => setIsEditModalOpen(true)} />
+          <DiscoveryDomainSection source={source} projectId={projectId!} orgId={currentOrg.id} />
           <DiscoveryConfigurationSection source={source} onEdit={() => setIsEditModalOpen(true)} />
           <DiscoveryCredentialsSection source={source} onEdit={() => setIsEditModalOpen(true)} />
         </div>

@@ -345,6 +345,7 @@ export enum ProjectPermissionSub {
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
+  PamDomains = "pam-domains",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
   PamDiscovery = "pam-discovery",
@@ -514,15 +515,23 @@ export type McpEndpointSubjectFields = {
 };
 
 export type PamAccountSubjectFields = {
-  resourceName: string;
+  resourceName?: string;
+  resourceType?: string;
+  domainName?: string;
+  domainType?: string;
   accountName: string;
-  resourceType: string;
   metadata?: { key: string; value: string }[];
 };
 
 export type PamResourceSubjectFields = {
   name: string;
   resourceType: string;
+  metadata?: { key: string; value: string }[];
+};
+
+export type PamDomainSubjectFields = {
+  name: string;
+  domainType: string;
   metadata?: { key: string; value: string }[];
 };
 
@@ -656,6 +665,10 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
       ProjectPermissionSub.PamResources | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.PamDomains | (ForcedSubject<ProjectPermissionSub.PamDomains> & PamDomainSubjectFields)
     ]
   | [
       ProjectPermissionPamAccountActions,
@@ -1247,6 +1260,28 @@ const PamAccountConditionSchema = z
         })
         .partial()
     ]),
+    domainName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    domainType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
     metadata: z.object({
       [PermissionConditionOperators.$ELEMENTMATCH]: z
         .object({
@@ -1284,6 +1319,53 @@ const PamResourceConditionSchema = z
         .partial()
     ]),
     resourceType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    metadata: z.object({
+      [PermissionConditionOperators.$ELEMENTMATCH]: z
+        .object({
+          key: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial(),
+          value: z
+            .object({
+              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+            })
+            .partial()
+        })
+        .partial()
+    })
+  })
+  .partial();
+
+const PamDomainConditionSchema = z
+  .object({
+    name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    domainType: z.union([
       z.string(),
       z
         .object({
@@ -1648,6 +1730,16 @@ const GeneralPermissionSchema = [
     ),
     conditions: PamResourceConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PamDomains).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: PamDomainConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given domain."
     ).optional()
   }),
   z.object({

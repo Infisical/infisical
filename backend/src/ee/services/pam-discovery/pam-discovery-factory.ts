@@ -14,6 +14,7 @@ import {
   TPamDiscoveryCredentials,
   TPamDiscoveryFactory
 } from "@app/ee/services/pam-discovery/pam-discovery-types";
+import { TPamDomainDALFactory } from "@app/ee/services/pam-domain/pam-domain-dal";
 import { TPamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -27,6 +28,7 @@ export type TPamDiscoveryScanDeps = {
     "upsertJunction" | "markStaleForRun"
   >;
   pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "upsertDependency">;
+  pamDomainDAL: Pick<TPamDomainDALFactory, "create" | "find" | "transaction">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

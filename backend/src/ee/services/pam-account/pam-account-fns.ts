@@ -69,11 +69,11 @@ export const decryptAccountMessage = async ({
 };
 
 // Returns false for account types where all credential fields are already visible in the sanitized view
-export const hasSensitiveCredentials = (resourceType: string, credentials: TPamAccountCredentials): boolean => {
-  if (resourceType === PamResource.AwsIam) return false;
-  if (resourceType === PamResource.Kubernetes) return false;
+export const hasSensitiveCredentials = (parentType: string, credentials: TPamAccountCredentials): boolean => {
+  if (parentType === PamResource.AwsIam) return false;
+  if (parentType === PamResource.Kubernetes) return false;
   if (
-    resourceType === PamResource.SSH &&
+    parentType === PamResource.SSH &&
     "authMethod" in credentials &&
     credentials.authMethod === SSHAuthMethod.Certificate
   )

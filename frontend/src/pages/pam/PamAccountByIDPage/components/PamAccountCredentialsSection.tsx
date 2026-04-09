@@ -13,16 +13,12 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import {
-  PamResourceType,
-  TActiveDirectoryAccount,
-  TPamAccount,
-  TWindowsAccount
-} from "@app/hooks/api/pam";
+import { PamResourceType, TPamAccount, TWindowsAccount } from "@app/hooks/api/pam";
 import { TPamAccountCredentialsResponse } from "@app/hooks/api/pam/queries";
 import { TAwsIamCredentials } from "@app/hooks/api/pam/types/aws-iam-resource";
 import { TBaseSqlCredentials } from "@app/hooks/api/pam/types/shared/sql-resource";
 import { SSHAuthMethod, TSSHCredentials } from "@app/hooks/api/pam/types/ssh-resource";
+import { TActiveDirectoryAccount } from "@app/hooks/api/pamDomain/active-directory-types";
 
 import { SensitiveCredentialsGate } from "./SensitiveCredentialsGate";
 import { useCredentialsReveal } from "./useCredentialsReveal";
@@ -100,7 +96,7 @@ const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirect
     <>
       <Detail>
         <DetailLabel>Account Type</DetailLabel>
-        <DetailValue className="capitalize">{account.internalMetadata.accountType}</DetailValue>
+        <DetailValue className="capitalize">{account.internalMetadata?.accountType}</DetailValue>
       </Detail>
       <CopyableField label="Username" value={account.credentials.username} />
     </>
@@ -108,6 +104,20 @@ const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirect
 };
 
 const CredentialsContent = ({ account }: { account: TPamAccount }) => {
+  if (account.domain) {
+    switch (account.domain.domainType) {
+      case "active-directory":
+        return (
+          <ActiveDirectoryCredentialsContent
+            account={account as unknown as TActiveDirectoryAccount}
+          />
+        );
+      default:
+        return null;
+    }
+  }
+
+  if (!account.resource) return null;
   const { resourceType } = account.resource;
 
   switch (resourceType) {
@@ -123,8 +133,6 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
       return <AwsIamCredentialsContent credentials={account.credentials as TAwsIamCredentials} />;
     case PamResourceType.Windows:
       return <WindowsCredentialsContent account={account as TWindowsAccount} />;
-    case PamResourceType.ActiveDirectory:
-      return <ActiveDirectoryCredentialsContent account={account as TActiveDirectoryAccount} />;
     default:
       return null;
   }
@@ -212,6 +220,16 @@ type SensitiveFieldDef = {
 // Non-sensitive fields (username, auth method, etc.) are already shown by CredentialsContent above.
 // When adding a new resource type, add a case here if it has credentials hidden from the sanitized view.
 const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
+  if (account.domain) {
+    switch (account.domain.domainType) {
+      case "active-directory":
+        return [{ key: "password", label: "Password" }];
+      default:
+        return [];
+    }
+  }
+
+  if (!account.resource) return [];
   const { resourceType } = account.resource;
 
   switch (resourceType) {
@@ -221,7 +239,6 @@ const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
     case PamResourceType.MongoDB:
     case PamResourceType.Redis:
     case PamResourceType.Windows:
-    case PamResourceType.ActiveDirectory:
       return [{ key: "password", label: "Password" }];
 
     case PamResourceType.SSH: {
@@ -279,7 +296,7 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
 
   if (
     Object.keys(account.credentials).length <= 0 ||
-    [PamResourceType.Kubernetes].includes(account.resource.resourceType)
+    [PamResourceType.Kubernetes].includes(account.resource?.resourceType as PamResourceType)
   )
     return null;
 
@@ -306,8 +323,8 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
         <SensitiveCredentialsGate
           state={state}
           accountName={account.name}
-          resourceName={account.resource.name}
-          resourceType={account.resource.resourceType}
+          resourceName={account.resource?.name ?? ""}
+          resourceType={account.resource?.resourceType ?? ("" as PamResourceType)}
           metadata={account.metadata}
           onReveal={() => {
             if (!account.credentialsConfigured) {

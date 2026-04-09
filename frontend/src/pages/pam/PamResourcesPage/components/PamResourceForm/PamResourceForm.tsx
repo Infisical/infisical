@@ -9,7 +9,6 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
-import { ActiveDirectoryResourceForm } from "./ActiveDirectoryResourceForm";
 import { AwsIamResourceForm } from "./AwsIamResourceForm";
 import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MongoDBResourceForm } from "./MongoDBResourceForm";
@@ -40,7 +39,7 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
   const onSubmit = async (
     formData: DiscriminativePick<
       TPamResource,
-      "name" | "resourceType" | "connectionDetails" | "adServerResourceId"
+      "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
       gateway?: { id: string; name: string } | null;
       gatewayId?: string;
@@ -79,8 +78,6 @@ const CreateForm = ({ resourceType, closeSheet, projectId }: CreateFormProps) =>
       return <AwsIamResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     case PamResourceType.Windows:
       return <WindowsResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
-    case PamResourceType.ActiveDirectory:
-      return <ActiveDirectoryResourceForm onSubmit={onSubmit} closeSheet={closeSheet} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -93,7 +90,7 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<
       TPamResource,
-      "name" | "resourceType" | "connectionDetails" | "adServerResourceId"
+      "name" | "resourceType" | "connectionDetails" | "domainId"
     > & {
       gateway?: { id: string; name: string } | null;
       gatewayId?: string;
@@ -139,14 +136,6 @@ const UpdateForm = ({ resource, closeSheet }: UpdateFormProps) => {
     case PamResourceType.Windows:
       return (
         <WindowsResourceForm resource={resource} onSubmit={onSubmit} closeSheet={closeSheet} />
-      );
-    case PamResourceType.ActiveDirectory:
-      return (
-        <ActiveDirectoryResourceForm
-          resource={resource}
-          onSubmit={onSubmit}
-          closeSheet={closeSheet}
-        />
       );
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);

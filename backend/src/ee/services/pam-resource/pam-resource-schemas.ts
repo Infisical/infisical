@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { PamAccountsSchema, PamResourcesSchema, ResourceMetadataSchema } from "@app/db/schemas";
+import { PamAccountsSchema, PamDomainsSchema, PamResourcesSchema, ResourceMetadataSchema } from "@app/db/schemas";
+import { PamDomainType } from "@app/ee/services/pam-domain/pam-domain-enums";
+import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { slugSchema } from "@app/server/lib/schemas";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
@@ -56,13 +58,18 @@ export const BasePamAccountSchema = PamAccountsSchema.omit({
 });
 
 export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
+  parentType: z.union([z.nativeEnum(PamResource), z.nativeEnum(PamDomainType)]),
   resource: PamResourcesSchema.pick({
     id: true,
     name: true,
     resourceType: true
-  }).extend({
-    rotationCredentialsConfigured: z.boolean()
-  }),
+  })
+    .extend({
+      rotationCredentialsConfigured: z.boolean()
+    })
+    .nullable()
+    .optional(),
+  domain: PamDomainsSchema.pick({ id: true, name: true, domainType: true }).nullable().optional(),
   lastRotationMessage: z.string().nullable().optional(),
   rotationStatus: z.string().nullable().optional()
 });

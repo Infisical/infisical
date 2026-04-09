@@ -3,7 +3,6 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
-import { SanitizedWindowsResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -357,34 +356,6 @@ echo ""
 
       void reply.header("Content-Type", "text/plain; charset=utf-8");
       return setupScript;
-    }
-  });
-};
-
-export const registerActiveDirectoryRelatedResourcesEndpoint = (server: FastifyZodProvider) => {
-  server.route({
-    method: "GET",
-    url: "/:resourceId/related-resources",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "getActiveDirectoryRelatedResources",
-      description: "List resources that belong to this Active Directory domain",
-      params: z.object({
-        resourceId: z.string().uuid()
-      }),
-      response: {
-        200: z.object({
-          resources: SanitizedWindowsResourceSchema.array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const resources = await server.services.pamResource.listRelatedResources(req.params.resourceId, req.permission);
-
-      return { resources };
     }
   });
 };

@@ -6,7 +6,6 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
 > = {
   [PamResourceType.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [PamResourceType.MySQL]: { name: "MySQL", image: "MySql.png" },
-  [PamResourceType.RDP]: { name: "RDP", image: "RDP.png" },
   [PamResourceType.SSH]: { name: "SSH", image: "SSH.png" },
   [PamResourceType.Kubernetes]: { name: "Kubernetes", image: "Kubernetes.png" },
   [PamResourceType.OracleDB]: { name: "OracleDB", image: "Oracle.png", size: 55 },
@@ -22,6 +21,5 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
   [PamResourceType.DynamoDB]: { name: "DynamoDB", image: "DynamoDB.png", size: 55 },
   [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
-  [PamResourceType.Windows]: { name: "Windows Server", image: "Windows.png" },
-  [PamResourceType.ActiveDirectory]: { name: "Active Directory", image: "ActiveDirectory.png" }
+  [PamResourceType.Windows]: { name: "Windows Server", image: "Windows.png" }
 };

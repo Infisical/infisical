@@ -82,13 +82,13 @@ export const SanitizedWindowsResourceSchema = BaseWindowsResourceSchema.extend({
 export const CreateWindowsResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema,
   rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional(),
-  adServerResourceId: z.string().uuid().nullable().optional()
+  domainId: z.string().uuid().nullable().optional()
 });
 
 export const UpdateWindowsResourceSchema = BaseUpdateGatewayPamResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema.optional(),
   rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional(),
-  adServerResourceId: z.string().uuid().nullable().optional()
+  domainId: z.string().uuid().nullable().optional()
 });
 
 // Accounts
@@ -108,7 +108,7 @@ export const UpdateWindowsAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.Windows),
+  parentType: z.literal(PamResource.Windows),
   credentials: z.object({
     username: z.string()
   }),

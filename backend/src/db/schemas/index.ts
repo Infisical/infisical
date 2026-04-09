@@ -116,6 +116,7 @@ export * from "./pam-discovery-source-dependencies";
 export * from "./pam-discovery-source-resources";
 export * from "./pam-discovery-source-runs";
 export * from "./pam-discovery-sources";
+export * from "./pam-domains";
 export * from "./pam-folders";
 export * from "./pam-resource-favorites";
 export * from "./pam-resource-rotation-rules";

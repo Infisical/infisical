@@ -3,14 +3,21 @@ import { PamResourceType } from "../enums";
 export interface TBasePamAccount {
   id: string;
   projectId: string;
+  parentType: string;
   folderId?: string | null;
-  resourceId: string;
-  resource: {
+  resourceId?: string | null;
+  domainId?: string | null;
+  resource?: {
     id: string;
     name: string;
     resourceType: PamResourceType;
     rotationCredentialsConfigured: boolean;
-  };
+  } | null;
+  domain?: {
+    id: string;
+    name: string;
+    domainType: string;
+  } | null;
   name: string;
   description?: string | null;
   credentialsConfigured: boolean;

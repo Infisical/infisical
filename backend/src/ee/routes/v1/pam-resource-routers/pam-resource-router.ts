@@ -3,10 +3,6 @@ import { z } from "zod";
 import { PamAccountDependenciesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  ActiveDirectoryResourceListItemSchema,
-  SanitizedActiveDirectoryResourceSchema
-} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
-import {
   AwsIamResourceListItemSchema,
   SanitizedAwsIamResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
@@ -57,8 +53,7 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedAwsIamResourceSchema,
   SanitizedMongoDBResourceSchema,
   SanitizedRedisResourceSchema,
-  SanitizedWindowsResourceSchema,
-  SanitizedActiveDirectoryResourceSchema
+  SanitizedWindowsResourceSchema
 ]);
 
 const SanitizedResourceWithFavoriteSchema = z.intersection(
@@ -75,8 +70,7 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   AwsIamResourceListItemSchema,
   MongoDBResourceListItemSchema,
   RedisResourceListItemSchema,
-  WindowsResourceListItemSchema,
-  ActiveDirectoryResourceListItemSchema
+  WindowsResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {

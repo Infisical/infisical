@@ -101,7 +101,10 @@ export const renderConditionalComponents = (
       return <PamAccountPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.PamResources) {
+    if (
+      subject === ProjectPermissionSub.PamResources ||
+      subject === ProjectPermissionSub.PamDomains
+    ) {
       return <PamResourcePermissionConditions isDisabled={isDisabled} />;
     }
 

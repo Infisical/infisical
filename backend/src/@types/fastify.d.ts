@@ -30,6 +30,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
+import { TPamDomainServiceFactory } from "@app/ee/services/pam-domain/pam-domain-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
@@ -380,6 +381,7 @@ declare module "fastify" {
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
+      pamDomain: TPamDomainServiceFactory;
       pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;

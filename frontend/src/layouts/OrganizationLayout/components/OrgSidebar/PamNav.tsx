@@ -1,4 +1,13 @@
-import { BookCheck, Database, FileText, Search, Settings, Shield, Video } from "lucide-react";
+import {
+  BookCheck,
+  Database,
+  FileText,
+  Globe,
+  Search,
+  Settings,
+  Shield,
+  Video
+} from "lucide-react";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import { PAM_APPROVALS_SUBMENU, PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
@@ -7,8 +16,9 @@ import type { NavItem, Submenu } from "./types";
 export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const items: NavItem[] = [
     { label: "Resources", icon: Database, pathSuffix: "resources" },
-    { label: "Sessions", icon: Video, pathSuffix: "sessions" },
     { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery\// },
+    { label: "Sessions", icon: Video, pathSuffix: "sessions" },
+    { label: "Domains", icon: Globe, pathSuffix: "domains" },
     {
       label: "Approvals",
       icon: BookCheck,

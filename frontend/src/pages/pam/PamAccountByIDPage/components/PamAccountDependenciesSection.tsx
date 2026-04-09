@@ -7,11 +7,14 @@ export const PamAccountDependenciesSection = ({ account }: { account: TPamAccoun
   const { data: dependencies, isPending } = useGetPamAccountDependencies(account.id);
 
   return (
-    <PamDependenciesTable
-      dependencies={dependencies}
-      isPending={isPending}
-      contextColumnLabel="Resource"
-      getContextValue={(dep) => dep.resourceName}
-    />
+    <div>
+      <h2 className="mb-4 text-xl font-semibold">Services & Tasks</h2>
+      <PamDependenciesTable
+        dependencies={dependencies}
+        isPending={isPending}
+        contextColumnLabel="Resource"
+        getContextValue={(dep) => dep.resourceName}
+      />
+    </div>
   );
 };
