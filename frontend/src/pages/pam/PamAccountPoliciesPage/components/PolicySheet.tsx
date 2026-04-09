@@ -442,11 +442,12 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 </div>
               )}
 
-              {currentRules.length > 0 && (errors.rules?.root?.message || errors.rules?.message) && (
-                <p className="mt-1 text-xs text-danger">
-                  {errors.rules?.root?.message || errors.rules?.message}
-                </p>
-              )}
+              {currentRules.length > 0 &&
+                (errors.rules?.root?.message || errors.rules?.message) && (
+                  <p className="mt-1 text-xs text-danger">
+                    {errors.rules?.root?.message || errors.rules?.message}
+                  </p>
+                )}
             </div>
           </div>
 

@@ -97,9 +97,7 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
             Account Policies
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pam/product-reference/account-policies" />
           </UnstableCardTitle>
-          <UnstableCardDescription>
-            Define behavioral rules for accounts
-          </UnstableCardDescription>
+          <UnstableCardDescription>Define behavioral rules for accounts</UnstableCardDescription>
           <UnstableCardAction>
             <ProjectPermissionCan
               I={ProjectPermissionPamAccountPolicyActions.Create}
