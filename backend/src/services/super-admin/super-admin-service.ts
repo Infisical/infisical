@@ -11,6 +11,7 @@ import {
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import {
   getConfig,
   getOriginalConfig,
@@ -150,26 +151,25 @@ export const superAdminServiceFactory = ({
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
-      const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
-
-      // missing in keystore means fetch from db
-      if (!config) {
-        const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-        if (!serverCfg) {
-          throw new NotFoundError({ message: "Admin config not found" });
+      const serverCfg = await withCache({
+        keyStore,
+        key: ADMIN_CONFIG_KEY,
+        ttlSeconds: ADMIN_CONFIG_KEY_EXP,
+        fetcher: async () => {
+          const cfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+          if (!cfg) {
+            throw new NotFoundError({ message: "Admin config not found" });
+          }
+          return cfg;
         }
+      });
 
-        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
-        return serverCfg;
-      }
-
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
+      // Normalize dates — on cache hit they arrive as ISO strings from JSON.parse,
+      // on miss they are already Date objects. new Date() handles both.
       return {
-        ...keyStoreServerCfg,
-        // this is to allow admin router to work
-        createdAt: new Date(keyStoreServerCfg.createdAt),
-        updatedAt: new Date(keyStoreServerCfg.updatedAt)
+        ...serverCfg,
+        createdAt: new Date(serverCfg.createdAt),
+        updatedAt: new Date(serverCfg.updatedAt)
       };
     };
 
