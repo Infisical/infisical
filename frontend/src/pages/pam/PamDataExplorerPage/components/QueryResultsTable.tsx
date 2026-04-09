@@ -94,7 +94,7 @@ function ResultsGrid({
       </div>
       {isTruncated && (
         <div className="shrink-0 border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs text-yellow-500/80">
-          Showing first {result.rows.length.toLocaleString()} rows (results truncated by server)
+          Showing first {result.rows.length.toLocaleString()} rows (results truncated)
         </div>
       )}
     </div>
