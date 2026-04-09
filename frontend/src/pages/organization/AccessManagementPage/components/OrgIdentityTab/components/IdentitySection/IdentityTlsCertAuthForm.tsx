@@ -112,7 +112,9 @@ export const IdentityTlsCertAuthForm = ({
         allowedCommonNames: data.allowedCommonNames || undefined,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit ? String(data.accessTokenNumUsesLimit) : "",
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {

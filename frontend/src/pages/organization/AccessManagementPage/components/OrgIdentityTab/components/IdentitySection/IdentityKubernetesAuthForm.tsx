@@ -184,7 +184,9 @@ export const IdentityKubernetesAuthForm = ({
         gatewayId: data.gatewayId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit ? String(data.accessTokenNumUsesLimit) : "",
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {

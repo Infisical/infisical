@@ -172,7 +172,9 @@ export const IdentityUniversalAuthForm = ({
       reset({
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit ? String(data.accessTokenNumUsesLimit) : "",
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenPeriod: String(data.accessTokenPeriod),
         clientSecretTrustedIps: data.clientSecretTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
@@ -353,6 +355,7 @@ export const IdentityUniversalAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
               >
                 <Input {...field} placeholder="Never expires" type="number" min="0" step="1" />
               </FormControl>

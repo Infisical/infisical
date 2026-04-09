@@ -122,7 +122,9 @@ export const IdentityAwsAuthForm = ({
         allowedAccountIds: data.allowedAccountIds,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit ? String(data.accessTokenNumUsesLimit) : "",
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -283,6 +285,7 @@ export const IdentityAwsAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
               >
                 <Input {...field} placeholder="Never expires" type="number" min="0" step="1" />
               </FormControl>
