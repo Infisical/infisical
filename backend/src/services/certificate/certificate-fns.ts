@@ -96,21 +96,22 @@ export const getCertificateCredentials = async ({
     cipherTextBlob: certificateSecret.encryptedPrivateKey
   });
 
+  const certPrivateKey = decryptedPrivateKey.toString("utf-8");
+
+  let certPublicKey = "";
   try {
     const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
-    const certPrivateKey = skObj.export({ format: "pem", type: "pkcs8" }).toString();
-
     const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
-    const certPublicKey = pkObj.export({ format: "pem", type: "spki" }).toString();
-
-    return {
-      certificateSecret,
-      certPrivateKey,
-      certPublicKey
-    };
-  } catch (error) {
-    throw new BadRequestError({ message: `Failed to process private key for certificate with ID '${certId}'` });
+    certPublicKey = pkObj.export({ format: "pem", type: "spki" }).toString();
+  } catch {
+    // Key type not supported by the current OpenSSL version
   }
+
+  return {
+    certificateSecret,
+    certPrivateKey,
+    certPublicKey
+  };
 };
 
 export const generatePkcs12FromCertificate = async ({
@@ -129,6 +130,15 @@ export const generatePkcs12FromCertificate = async ({
   try {
     if (!password || password.trim() === "") {
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
+    }
+
+    // node-forge doesn't support PQC keys
+    try {
+      crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "pem", type: "pkcs8" });
+    } catch {
+      throw new BadRequestError({
+        message: "PKCS#12 export is not supported for this key type. Use PEM format instead."
+      });
     }
 
     const cert = forge.pki.certificateFromPem(certificate);

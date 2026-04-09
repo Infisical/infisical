@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CertKeyAlgorithm, CertKeyType, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
@@ -132,6 +133,14 @@ export const validateAlgorithmCompatibility = (
 
   const compatibleAlgorithms =
     template.algorithms?.signature?.filter((sigAlg: string) => {
+      if (sigAlg.startsWith("ML-DSA")) {
+        return caKeyAlgorithm.startsWith("ML-DSA");
+      }
+
+      if (sigAlg.startsWith("SLH-DSA")) {
+        return caKeyAlgorithm.startsWith("SLH-DSA");
+      }
+
       const parts = sigAlg.split("-");
       if (parts.length === 0) {
         return false;
@@ -290,7 +299,8 @@ export const generateSelfSignedCertificate = async ({
   );
 
   const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
-  const keyPair = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
+  const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : globalThis.crypto;
+  const keyPair = await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
@@ -371,8 +381,13 @@ export const generateSelfSignedCertificate = async ({
   });
 
   const certificatePem = cert.toString("pem");
-  const privateKeyObj = crypto.nativeCrypto.KeyObject.from(keyPair.privateKey);
-  const privateKeyPem = privateKeyObj.export({ format: "pem", type: "pkcs8" }) as string;
+  let privateKeyPem: string;
+  if (isPqcCryptoKey(keyPair.privateKey)) {
+    privateKeyPem = await exportPqcKeyToPem(keyPair.privateKey);
+  } else {
+    const privateKeyObj = crypto.nativeCrypto.KeyObject.from(keyPair.privateKey);
+    privateKeyPem = privateKeyObj.export({ format: "pem", type: "pkcs8" }) as string;
+  }
 
   return {
     certificate: Buffer.from(certificatePem),
