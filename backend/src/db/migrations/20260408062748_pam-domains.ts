@@ -184,10 +184,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  await knex.raw(`
-    ALTER TABLE ${TableName.PamAccount}
-    DROP CONSTRAINT IF EXISTS chk_pam_account_parent
-  `);
+  await knex.raw(`ALTER TABLE ${TableName.PamAccount} DROP CONSTRAINT IF EXISTS chk_pam_account_parent`);
 
   if (await knex.schema.hasTable(TableName.PamAccount)) {
     const hasDomainId = await knex.schema.hasColumn(TableName.PamAccount, "domainId");

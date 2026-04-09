@@ -14,8 +14,7 @@ export const PamDiscoverySourceResourcesSchema = z.object({
   lastDiscoveredAt: z.date(),
   lastDiscoveredRunId: z.string().uuid().nullable().optional(),
   isStale: z.boolean().default(false).nullable().optional(),
-  createdAt: z.date().nullable().optional(),
-  domainId: z.string().uuid().nullable().optional()
+  createdAt: z.date().nullable().optional()
 });
 
 export type TPamDiscoverySourceResources = z.infer<typeof PamDiscoverySourceResourcesSchema>;

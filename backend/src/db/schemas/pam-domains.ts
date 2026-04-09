@@ -16,7 +16,6 @@ export const PamDomainsSchema = z.object({
   domainType: z.string(),
   gatewayId: z.string().uuid().nullable().optional(),
   encryptedConnectionDetails: zodBuffer,
-  encryptedRotationAccountCredentials: zodBuffer.nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
