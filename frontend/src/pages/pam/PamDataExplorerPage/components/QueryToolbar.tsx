@@ -50,14 +50,15 @@ export function QueryToolbar({
       >
         <PlayIcon className="size-3" />
         {hasSelection ? "Run Selection" : "Run"}
+        {!isRunning && (
+          <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
+        )}
       </Button>
-      {isRunning ? (
+      {isRunning && (
         <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">
           <SquareIcon className="size-3 text-red-400" />
           Cancel
         </Button>
-      ) : (
-        <span className="text-xs text-mineshaft-500">{isMac ? "⌘" : "Ctrl"}+Enter</span>
       )}
       {isInTransaction && (
         <>
