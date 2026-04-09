@@ -23,7 +23,7 @@ func TestClassifyToken(t *testing.T) {
 	})
 
 	t.Run("JWT access token", func(t *testing.T) {
-		token := makeJWT(map[string]any{"authTokenType": "AccessToken", "userId": "u1"})
+		token := makeJWT(map[string]any{"authTokenType": string(AuthTokenTypeAccessToken), "userId": "u1"})
 		mode := ClassifyToken(token)
 		if mode != AuthModeJWT {
 			t.Errorf("expected %q, got %q", AuthModeJWT, mode)
@@ -31,7 +31,7 @@ func TestClassifyToken(t *testing.T) {
 	})
 
 	t.Run("identity access token", func(t *testing.T) {
-		token := makeJWT(map[string]any{"authTokenType": "IdentityAccessToken", "identityId": "id1"})
+		token := makeJWT(map[string]any{"authTokenType": string(AuthTokenTypeIdentityAccessToken), "identityId": "id1"})
 		mode := ClassifyToken(token)
 		if mode != AuthModeIdentityAccessToken {
 			t.Errorf("expected %q, got %q", AuthModeIdentityAccessToken, mode)

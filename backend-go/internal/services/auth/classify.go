@@ -9,7 +9,7 @@ import (
 // peekClaims is a minimal struct for peeking at the token type
 // without performing signature verification.
 type peekClaims struct {
-	AuthTokenType string `json:"authTokenType"`
+	AuthTokenType AuthTokenType `json:"authTokenType"`
 }
 
 // ClassifyToken determines the AuthMode from a raw token string
@@ -21,9 +21,9 @@ func ClassifyToken(token string) AuthMode {
 
 	claims := peekJWTClaims(token)
 	switch claims.AuthTokenType {
-	case "AccessToken":
+	case AuthTokenTypeAccessToken:
 		return AuthModeJWT
-	case "IdentityAccessToken":
+	case AuthTokenTypeIdentityAccessToken:
 		return AuthModeIdentityAccessToken
 	}
 
