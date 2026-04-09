@@ -571,7 +571,7 @@ export const samlConfigServiceFactory = ({
           const membership = await orgDAL.createMembership(
             {
               actorUserId: userAlias.userId,
-              inviteEmail: email,
+              inviteEmail: sanitizedEmail,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
               status: OrgMembershipStatus.Invited,

@@ -21,6 +21,7 @@ type TAccountRecoveryServiceFactoryDep = {
 };
 
 export type TAccountRecoveryServiceFactory = ReturnType<typeof accountRecoveryServiceFactory>;
+const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 export const accountRecoveryServiceFactory = ({
   userDAL,
@@ -88,18 +89,26 @@ export const accountRecoveryServiceFactory = ({
     const cfg = getConfig();
     const email = sanitizeEmail(unsanitizedEmail);
     const user = await userDAL.findOne({ username: email });
-    if (!user || (user && !user.isAccepted)) {
-      throw new Error("Failed email verification for pass reset");
+
+    // Use a dummy userId when there's no valid user.
+    const shouldReject = !user || (user && !user.isAccepted);
+
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+        userId: shouldReject ? DUMMY_USER_ID : user.id,
+        code
+      });
+    } catch {
+      // If we were going to reject anyway, throw the generic message.
+      // If the user was valid but the token failed, same generic message.
+      throw new Error("Invalid or expired verification request");
     }
 
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
-    if (!userEnc) throw new BadRequestError({ message: "Failed to find user encryption data" });
-
-    await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
-      userId: user.id,
-      code
-    });
+    // Reject *after* the constant-time token validation work.
+    if (shouldReject) {
+      throw new Error("Invalid or expired verification request");
+    }
 
     const token = crypto.jwt().sign(
       {
