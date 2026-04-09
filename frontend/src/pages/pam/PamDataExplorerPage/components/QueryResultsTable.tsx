@@ -142,10 +142,12 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
       ROLLBACK: "Transaction rolled back"
     };
 
+    const isMutation = verb[cmdUpper] !== undefined && result.fields.length === 0;
+
     let message: string;
     if (staticMessage[cmdUpper]) {
       message = staticMessage[cmdUpper];
-    } else if (verb[cmdUpper]) {
+    } else if (isMutation) {
       message = `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`;
     } else {
       message = "No rows returned";
@@ -155,6 +157,9 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
       <div className="flex h-full flex-col items-center justify-center gap-2">
         <span className="rounded bg-mineshaft-700 px-3 py-1.5 font-mono text-sm text-mineshaft-200">
           {message}
+          {isMutation && (
+            <span className="ml-2 text-mineshaft-400">· No rows returned</span>
+          )}
         </span>
       </div>
     );
