@@ -164,31 +164,37 @@ const RulePatterns = ({
 
   return (
     <div className="space-y-1.5">
-      {fields.map((patternField, patternIndex) => (
-        <div key={patternField.id} className="flex items-center gap-1.5">
-          <Controller
-            control={control}
-            name={`rules.${ruleIndex}.patterns.${patternIndex}.value`}
-            render={({ field }) => (
-              <UnstableInput
-                {...field}
-                placeholder="Regex pattern, e.g. rm\\s+-rf"
-                className="flex-1 font-mono text-xs"
-                isError={!!errors?.rules?.[ruleIndex]?.patterns?.[patternIndex]?.value}
+      {fields.map((patternField, patternIndex) => {
+        const patternError = errors?.rules?.[ruleIndex]?.patterns?.[patternIndex]?.value;
+        return (
+          <div key={patternField.id}>
+            <div className="flex items-center gap-1.5">
+              <Controller
+                control={control}
+                name={`rules.${ruleIndex}.patterns.${patternIndex}.value`}
+                render={({ field }) => (
+                  <UnstableInput
+                    {...field}
+                    placeholder="Regex pattern, e.g. rm\\s+-rf"
+                    className="flex-1 font-mono text-xs"
+                    isError={!!patternError}
+                  />
+                )}
               />
-            )}
-          />
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Remove pattern"
-            onClick={() => remove(patternIndex)}
-            disabled={fields.length <= 1}
-          >
-            <CircleMinus className="h-3.5 w-3.5 text-mineshaft-400" />
-          </UnstableIconButton>
-        </div>
-      ))}
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Remove pattern"
+                onClick={() => remove(patternIndex)}
+                disabled={fields.length <= 1}
+              >
+                <CircleMinus className="h-3.5 w-3.5 text-mineshaft-400" />
+              </UnstableIconButton>
+            </div>
+            {patternError && <p className="mt-1 text-xs text-danger">{patternError.message}</p>}
+          </div>
+        );
+      })}
       <Tooltip>
         <TooltipTrigger asChild>
           <span>
