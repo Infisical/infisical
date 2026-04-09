@@ -26,6 +26,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Switch,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -41,7 +42,6 @@ import {
   useUpdatePamAccountPolicy
 } from "@app/hooks/api/pam";
 import { PAM_RESOURCE_TYPE_MAP } from "@app/hooks/api/pam/maps";
-import { slugSchema } from "@app/lib/schemas";
 
 import {
   PAM_ACCOUNT_POLICY_RULE_METADATA,
@@ -75,7 +75,7 @@ const RuleSchema = z.object({
 });
 
 const FormSchema = z.object({
-  name: slugSchema({ field: "Name", max: 255 }),
+  name: z.string().trim().min(1, "Name is required").max(255),
   description: z.string().trim().max(1000).optional(),
   rules: z.array(RuleSchema).min(1, "At least one rule is required")
 });
@@ -111,14 +111,7 @@ const RuleSupportedResourceIndicator = ({ ruleType }: { ruleType: PamAccountPoli
   const supported = PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES[ruleType];
 
   if (supported === "all") {
-    return (
-      <Tooltip>
-        <TooltipTrigger>
-          <Badge variant="info">All</Badge>
-        </TooltipTrigger>
-        <TooltipContent>Supported by all resource types</TooltipContent>
-      </Tooltip>
-    );
+    return <Badge variant="neutral">All</Badge>;
   }
 
   return (
@@ -127,16 +120,9 @@ const RuleSupportedResourceIndicator = ({ ruleType }: { ruleType: PamAccountPoli
         const mapEntry = PAM_RESOURCE_TYPE_MAP[rt];
         if (!mapEntry) return null;
         return (
-          <Tooltip key={rt}>
-            <TooltipTrigger>
-              <img
-                src={`/images/integrations/${mapEntry.image}`}
-                alt={mapEntry.name}
-                className="h-4 w-4"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{mapEntry.name}</TooltipContent>
-          </Tooltip>
+          <Badge key={rt} variant="neutral">
+            {mapEntry.name}
+          </Badge>
         );
       })}
     </div>
@@ -209,6 +195,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
   const createPolicy = useCreatePamAccountPolicy();
   const updatePolicy = useUpdatePamAccountPolicy();
   const [addRuleOpen, setAddRuleOpen] = useState(false);
+  const [isActive, setIsActive] = useState(true);
 
   const {
     control,
@@ -241,8 +228,10 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
           description: policy.description ?? "",
           rules: rulesToFormData(policy.rules)
         });
+        setIsActive(policy.isActive);
       } else {
         reset({ name: "", description: "", rules: [] });
+        setIsActive(true);
       }
     }
   }, [isOpen, policy, reset]);
@@ -256,7 +245,8 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
           policyId: policy.id,
           name: data.name,
           description: data.description || null,
-          rules
+          rules,
+          isActive
         });
         createNotification({ text: "Policy updated successfully", type: "success" });
       } else {
@@ -291,8 +281,17 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
           </SheetDescription>
         </SheetHeader>
 
+        {isEditing && (
+          <div className="flex items-center justify-between border-b border-border px-6 py-3">
+            <span className="text-xs text-muted">{isActive ? "Enabled" : "Disabled"}</span>
+            <Switch checked={isActive} onCheckedChange={setIsActive} variant="project" />
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <div
+            className={`flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
+          >
             <Controller
               control={control}
               name="name"
@@ -302,7 +301,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                   <FieldContent>
                     <UnstableInput
                       {...field}
-                      placeholder="my-policy-name"
+                      placeholder="e.g. Production SSH Policy"
                       isError={Boolean(error)}
                     />
                     <FieldError errors={[error]} />
@@ -316,9 +315,13 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
               name="description"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Description</FieldLabel>
+                  <FieldLabel>Description (optional)</FieldLabel>
                   <FieldContent>
-                    <TextArea {...field} className="max-h-32" placeholder="Optional description" />
+                    <TextArea
+                      {...field}
+                      className="max-h-32"
+                      placeholder="Brief description of this policy"
+                    />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -354,16 +357,13 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                                 }}
                                 className="flex items-center justify-between gap-2"
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">
-                                    {isAdded ? (
-                                      <span className="text-mineshaft-400">{meta.name}</span>
-                                    ) : (
-                                      meta.name
-                                    )}
-                                  </span>
-                                  <RuleSupportedResourceIndicator ruleType={ruleType} />
-                                </div>
+                                <span className="text-sm font-medium">
+                                  {isAdded ? (
+                                    <span className="text-mineshaft-400">{meta.name}</span>
+                                  ) : (
+                                    meta.name
+                                  )}
+                                </span>
                               </CommandItem>
                             );
                           })}
@@ -374,43 +374,52 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 </Popover>
               </div>
 
-              {errors.rules && !Array.isArray(errors.rules) && (
-                <FieldError errors={[errors.rules]} />
-              )}
-
               {ruleFields.map((ruleField, ruleIndex) => {
                 const ruleType = currentRules[ruleIndex]?.ruleType;
                 if (!ruleType) return null;
                 const meta = PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType];
 
                 return (
-                  <div key={ruleField.id} className="rounded-md border border-mineshaft-600 p-3">
-                    <div className="mb-1 flex items-center justify-between">
+                  <div key={ruleField.id} className="rounded-md border border-border bg-card p-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{meta.name}</span>
+                        <span className="text-sm font-medium text-foreground">{meta.name}</span>
                         {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
                       </div>
                       <UnstableIconButton
-                        variant="ghost"
+                        variant="danger"
                         size="xs"
                         aria-label="Remove rule"
                         onClick={() => removeRule(ruleIndex)}
                       >
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="size-3.5" />
                       </UnstableIconButton>
                     </div>
                     {meta.description && (
-                      <p className="mb-2 text-xs text-mineshaft-400">{meta.description}</p>
+                      <p className="mt-2 text-xs text-muted">{meta.description}</p>
                     )}
 
-                    <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                    <div className="mt-3">
+                      <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                    </div>
                   </div>
                 );
               })}
 
               {ruleFields.length === 0 && (
-                <p className="text-center text-xs text-muted">
-                  No rules added yet. Click &quot;Add Rule&quot; to get started.
+                <div className="rounded-md border border-dashed border-border py-8 text-center">
+                  <p className="text-sm text-muted">No rules added yet</p>
+                  {(errors.rules?.root?.message || errors.rules?.message) && (
+                    <p className="mt-1 text-xs text-danger">
+                      {errors.rules?.root?.message || errors.rules?.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {ruleFields.length > 0 && (errors.rules?.root?.message || errors.rules?.message) && (
+                <p className="mt-1 text-xs text-danger">
+                  {errors.rules?.root?.message || errors.rules?.message}
                 </p>
               )}
             </div>
@@ -419,7 +428,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
           <SheetFooter className="shrink-0 border-t">
             <Button
               isPending={isSubmitting}
-              isDisabled={isSubmitting || !isDirty}
+              isDisabled={isSubmitting || (!isDirty && isActive === policy?.isActive)}
               variant="project"
               type="submit"
             >

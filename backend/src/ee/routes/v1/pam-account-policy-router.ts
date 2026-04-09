@@ -3,7 +3,6 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PolicyRulesInputSchema, SanitizedPamAccountPolicySchema } from "@app/ee/services/pam-account-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -96,7 +95,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
       description: "Create a PAM account policy",
       body: z.object({
         projectId: z.string().uuid(),
-        name: slugSchema({ field: "name", max: 255 }),
+        name: z.string().trim().min(1).max(255),
         description: z.string().trim().max(1000).optional(),
         rules: PolicyRulesInputSchema
       }),
@@ -140,7 +139,7 @@ export const registerPamAccountPolicyRouter = async (server: FastifyZodProvider)
         policyId: z.string().uuid()
       }),
       body: z.object({
-        name: slugSchema({ field: "name", max: 255 }).optional(),
+        name: z.string().trim().min(1).max(255).optional(),
         description: z.string().trim().max(1000).nullable().optional(),
         rules: PolicyRulesInputSchema.optional(),
         isActive: z.boolean().optional()

@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -8,6 +9,9 @@ import {
   FieldLabel,
   FilterableSelect,
   TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableInput
 } from "@app/components/v3";
 import { useProject } from "@app/context";
@@ -87,7 +91,20 @@ export const GenericAccountFields = () => {
 
           return (
             <Field>
-              <FieldLabel>Account Policy</FieldLabel>
+              <FieldLabel>
+                <div className="flex items-center gap-1">
+                  Account Policy
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-wrap">
+                      Account policies define behavioral rules that are enforced when this account
+                      is accessed.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </FieldLabel>
               <FieldContent>
                 <FilterableSelect
                   value={selectedOption}
