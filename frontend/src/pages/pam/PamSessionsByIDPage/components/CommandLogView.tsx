@@ -21,10 +21,14 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
   const handledScrollIndexRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (scrollToLogIndex == null) return;
+    if (scrollToLogIndex == null) {
+      handledScrollIndexRef.current = undefined;
+      return;
+    }
     if (scrollToLogIndex === handledScrollIndexRef.current) return;
     const target = logs[scrollToLogIndex - 1];
     if (!target) {
+      handledScrollIndexRef.current = scrollToLogIndex;
       createNotification({
         type: "info",
         text: "Log entry not yet loaded. Load more logs to jump to this entry."
