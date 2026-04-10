@@ -169,7 +169,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     accountId: account.id
                   }}
                   target="_blank"
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-2 text-sm font-medium text-mineshaft-200 transition-colors hover:bg-mineshaft-600"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
                 >
                   <FontAwesomeIcon icon={faTerminal} />
                   Connect in Browser

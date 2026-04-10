@@ -4,8 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Spinner } from "@app/components/v2";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 
-import type { FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
-import { getColumnIndicator } from "../data-explorer-utils";
+import type { FieldInfo } from "../data-explorer-types";
 
 type QueryResult = {
   rows: Record<string, unknown>[];
@@ -20,61 +19,29 @@ type Props = {
   result: QueryResult | null;
   error: string | null;
   isRunning: boolean;
-  tableDetail: TableDetail | null;
 };
 
 type RowData = Record<string, unknown>;
 
-function buildColumns(fields: FieldInfo[], tableDetail: TableDetail | null): ColumnDef<RowData>[] {
-  const colTypeMap = new Map<string, string>();
-  const primaryKeys: string[] = [];
-  const fkMap = new Map<string, ForeignKeyInfo>();
-
-  if (tableDetail) {
-    tableDetail.columns.forEach((c) => colTypeMap.set(c.name, c.type));
-    tableDetail.primaryKeys.forEach((pk) => primaryKeys.push(pk));
-    tableDetail.foreignKeys.forEach((fk) => {
-      fk.columns.forEach((c) => {
-        if (!fkMap.has(c)) fkMap.set(c, fk);
-      });
-    });
-  }
-
-  return fields.map((f) => {
-    const typeLabel = colTypeMap.get(f.name);
-    const columnIndicator = tableDetail
-      ? getColumnIndicator(f.name, primaryKeys, fkMap)
-      : undefined;
-    return {
-      id: f.name,
-      accessorKey: f.name,
-      header: f.name,
-      meta: {
-        label: f.name,
-        ...(typeLabel ? { typeLabel } : {}),
-        ...(columnIndicator ? { columnIndicator } : {}),
-        cell: { variant: "short-text" as const }
-      },
-      enableSorting: true,
-      enablePinning: true,
-      enableHiding: true
-    };
-  });
+function buildColumns(fields: FieldInfo[]): ColumnDef<RowData>[] {
+  return fields.map((f) => ({
+    id: f.name,
+    accessorKey: f.name,
+    header: f.name,
+    meta: {
+      label: f.name,
+      cell: { variant: "short-text" as const }
+    },
+    enableSorting: true,
+    enablePinning: true,
+    enableHiding: true
+  }));
 }
 
-function ResultsGrid({
-  result,
-  tableDetail
-}: {
-  result: QueryResult;
-  tableDetail: TableDetail | null;
-}) {
+function ResultsGrid({ result }: { result: QueryResult }) {
   const { isTruncated } = result;
 
-  const columns = useMemo(
-    () => buildColumns(result.fields, tableDetail),
-    [result.fields, tableDetail]
-  );
+  const columns = useMemo(() => buildColumns(result.fields), [result.fields]);
 
   const getRowId = useCallback((_row: RowData, index: number) => String(index), []);
 
@@ -101,7 +68,7 @@ function ResultsGrid({
   );
 }
 
-export function QueryResultsTable({ result, error, isRunning, tableDetail }: Props) {
+export function QueryResultsTable({ result, error, isRunning }: Props) {
   if (isRunning) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -163,5 +130,5 @@ export function QueryResultsTable({ result, error, isRunning, tableDetail }: Pro
     );
   }
 
-  return <ResultsGrid result={result} tableDetail={tableDetail} />;
+  return <ResultsGrid result={result} />;
 }

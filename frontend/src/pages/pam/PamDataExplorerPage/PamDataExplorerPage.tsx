@@ -506,7 +506,6 @@ export const PamDataExplorerPage = () => {
                 tab={tab}
                 executeQuery={executeQuery}
                 cancelQuery={cancelQuery}
-                tableDetail={tableDetail}
                 isInTransaction={isInTransaction}
                 onSqlChange={(sql) => updateTabSql(tab.id, sql)}
                 onTransactionStateChange={setIsInTransaction}

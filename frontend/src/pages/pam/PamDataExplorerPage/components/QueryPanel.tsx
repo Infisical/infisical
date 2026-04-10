@@ -3,7 +3,7 @@ import { GripHorizontalIcon } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
-import type { FieldInfo, TableDetail } from "../data-explorer-types";
+import type { FieldInfo } from "../data-explorer-types";
 import type { QueryTab } from "../use-query-tabs";
 import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
@@ -28,7 +28,6 @@ type Props = {
   tab: QueryTab;
   executeQuery: (sql: string) => Promise<QueryResult>;
   cancelQuery: () => void;
-  tableDetail: TableDetail | null;
   isInTransaction: boolean;
   onSqlChange: (sql: string) => void;
   onTransactionStateChange: (open: boolean) => void;
@@ -38,7 +37,6 @@ export function QueryPanel({
   tab,
   executeQuery,
   cancelQuery,
-  tableDetail,
   isInTransaction,
   onSqlChange,
   onTransactionStateChange
@@ -174,7 +172,6 @@ export function QueryPanel({
               result={result}
               error={error}
               isRunning={isRunning}
-              tableDetail={tableDetail}
             />
           </div>
           {!isRunning && result && !error && (
