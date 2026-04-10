@@ -12,7 +12,7 @@ export const route53InsertTxtRecord = async (
   domain: string,
   value: string
 ) => {
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
+  const config = await getAwsConnectionConfig(connection, AWSRegion.US_EAST_1); // Route53 is global; us-east-1 STS endpoint is always active
   const route53Client = new Route53Client({
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
@@ -47,7 +47,7 @@ export const route53DeleteTxtRecord = async (
   domain: string,
   value: string
 ) => {
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
+  const config = await getAwsConnectionConfig(connection, AWSRegion.US_EAST_1); // Route53 is global; us-east-1 STS endpoint is always active
   const route53Client = new Route53Client({
     credentials: config.credentials,
     region: config.region
