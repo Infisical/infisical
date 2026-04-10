@@ -2821,7 +2821,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2Service,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    appConnectionDAL
   });
 
   const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({

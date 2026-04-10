@@ -15,6 +15,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -48,6 +49,7 @@ type TPamResourceServiceFactoryDep = {
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -59,7 +61,8 @@ export const pamResourceServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
   const getById = async (id: string, resourceType: PamResource, actor: OrgServiceActor) => {
     const resource = await pamResourceDAL.findById(id);
@@ -394,6 +397,14 @@ export const pamResourceServiceFactory = ({
       if (sessionSummaryConfig === null) {
         updateDoc.encryptedSessionSummaryConfig = null;
       } else {
+        const appConnection = await appConnectionDAL.findById(sessionSummaryConfig.connectionId);
+        if (!appConnection) {
+          throw new NotFoundError({ message: `App connection with ID '${sessionSummaryConfig.connectionId}' not found` });
+        }
+        if (appConnection.orgId !== actor.orgId) {
+          throw new BadRequestError({ message: "App connection does not belong to the same organization as the resource" });
+        }
+
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: resource.projectId
