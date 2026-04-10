@@ -71,25 +71,23 @@ export const pamSessionServiceFactory = ({
     const isExpired = session.expiresAt && new Date(session.expiresAt) <= new Date();
 
     if (isActive && isExpired) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const updatedSession = await pamSessionDAL.updateById(session.id, {
-        status: PamSessionStatus.Ended,
-        endedAt: new Date()
-      });
-      if (session.projectId) {
-        void (async () => {
-          try {
-            await pamSessionAiSummaryService.queueAiSummary(session.id, session.projectId);
-          } catch (err) {
-            logger.error(
-              { sessionId: session.id, err },
-              `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
-            );
-          }
-        })();
+      const updated = await pamSessionDAL.expireSessionById(session.id);
+      if (updated > 0) {
+        if (session.projectId) {
+          void (async () => {
+            try {
+              await pamSessionAiSummaryService.queueAiSummary(session.id, session.projectId);
+            } catch (err) {
+              logger.error(
+                { sessionId: session.id, err },
+                `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
+              );
+            }
+          })();
+        }
+        return { ...session, status: PamSessionStatus.Ended, endedAt: new Date() } as T;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      return { ...session, ...updatedSession };
+      return session;
     }
 
     return session;
