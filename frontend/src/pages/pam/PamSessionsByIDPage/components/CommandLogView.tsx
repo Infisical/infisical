@@ -3,6 +3,7 @@ import { faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-i
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { TPamCommandLog } from "@app/hooks/api/pam";
@@ -23,7 +24,13 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
     if (scrollToLogIndex == null) return;
     if (scrollToLogIndex === handledScrollIndexRef.current) return;
     const target = logs[scrollToLogIndex - 1];
-    if (!target) return;
+    if (!target) {
+      createNotification({
+        type: "info",
+        text: "Log entry not yet loaded. Load more logs to jump to this entry."
+      });
+      return;
+    }
     handledScrollIndexRef.current = scrollToLogIndex;
     setSearch("");
     setExpandedLogTimestamps(new Set([target.timestamp]));

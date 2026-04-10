@@ -39,6 +39,12 @@ const Page = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
   const [scrollToLogIndex, setScrollToLogIndex] = useState<number | undefined>();
 
+  const handleWarningClick = (logIndex: number) => {
+    // Reset to undefined first so clicking the same warning twice triggers a new scroll
+    setScrollToLogIndex(undefined);
+    requestAnimationFrame(() => setScrollToLogIndex(logIndex));
+  };
+
   const isActive =
     session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
   const isGatewaySession = !!session?.gatewayIdentityId;
@@ -99,7 +105,7 @@ const Page = () => {
               <PamSessionDetailsSection session={session} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-4">
-              <PamSessionAiInsightsSection session={session} onWarningClick={setScrollToLogIndex} />
+              <PamSessionAiInsightsSection session={session} onWarningClick={handleWarningClick} />
               <PamSessionLogsSection session={session} scrollToLogIndex={scrollToLogIndex} />
             </div>
           </div>

@@ -20,11 +20,8 @@ export const PamSessionAiInsightsSection = ({ session, onWarningClick }: Props) 
   const isEnded =
     session.status === PamSessionStatus.Ended || session.status === PamSessionStatus.Terminated;
 
-  // Only show if:
-  // 1. Session is ended AND has an aiInsightsStatus, OR
-  // 2. Session has completed insights
-  if (!isEnded && !aiInsightsStatus) return null;
-  if (isEnded && !aiInsightsStatus) return null;
+  // Only show for ended sessions that have an aiInsightsStatus
+  if (!isEnded || !aiInsightsStatus) return null;
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
