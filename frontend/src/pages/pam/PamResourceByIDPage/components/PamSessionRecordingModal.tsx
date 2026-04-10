@@ -3,6 +3,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Field,
@@ -108,17 +109,21 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
   }, [selectedProvider, dirtyFields.connectionId, setValue]);
 
   const onSubmit = async (data: FormData) => {
-    if (!data.aiInsightsEnabled) {
-      await onSave(null);
-    } else {
-      await onSave({
-        aiInsightsEnabled: true,
-        connectionId: data.connectionId ?? "",
-        connectionName: selectedConnection?.name ?? data.connectionId ?? "",
-        model: data.model ?? DEFAULT_MODEL[AppConnection.Anthropic]
-      });
+    try {
+      if (!data.aiInsightsEnabled) {
+        await onSave(null);
+      } else {
+        await onSave({
+          aiInsightsEnabled: true,
+          connectionId: data.connectionId ?? "",
+          connectionName: selectedConnection?.name ?? data.connectionId ?? "",
+          model: data.model ?? DEFAULT_MODEL[AppConnection.Anthropic]
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      createNotification({ type: "error", text: "Failed to update session recording settings" });
     }
-    onOpenChange(false);
   };
 
   return (
@@ -249,8 +254,12 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
             <Button
               variant="danger"
               onClick={async () => {
-                await onSave(null);
-                onOpenChange(false);
+                try {
+                  await onSave(null);
+                  onOpenChange(false);
+                } catch {
+                  createNotification({ type: "error", text: "Failed to disable session recording" });
+                }
               }}
             >
               Disable
