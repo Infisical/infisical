@@ -1,0 +1,161 @@
+---
+title: "SSH Certificates"
+description: "Learn how to dynamically generate short-lived SSH certificates."
+---
+
+The Infisical SSH dynamic secret allows you to generate ephemeral SSH certificates on demand, signed by an auto-generated Certificate Authority (CA). Instead of distributing static SSH keys, each lease produces a short-lived private key and a signed certificate that expires automatically.
+
+## How It Works
+
+When you create an SSH dynamic secret, Infisical generates an internal CA key pair. Target hosts are configured to trust this CA. When a lease is requested, Infisical generates an ephemeral key pair, signs the public key with the CA, and returns the private key and signed certificate. The certificate expires when the lease TTL ends — no manual key rotation or revocation needed.
+
+## Set up Dynamic Secrets with SSH
+
+<Steps>
+  <Step title="Open Secret Overview Dashboard">
+	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+
+	![Add Dynamic Secret Overview](/images/platform/dynamic-secrets/ssh/secret-overview-dashboard.png)
+  </Step>
+  <Step title="Click on the 'Add Dynamic Secret' button">
+	![Add Dynamic Secret Button](/images/platform/dynamic-secrets/ssh/add-dynamic-secret-button.png)
+  </Step>
+  <Step title="Select 'SSH'">
+	Select **SSH** from the dynamic secret type list.
+
+	![Select SSH](/images/platform/dynamic-secrets/ssh/select-ssh-provider.png)
+  </Step>
+  <Step title="Provide the inputs for dynamic secret parameters">
+	<ParamField path="Secret Name" type="string" required>
+		Name by which you want the secret to be referenced
+	</ParamField>
+
+	<ParamField path="Default TTL" type="string" required>
+		Default time-to-live for a generated certificate (e.g. `1h`, `8h`)
+	</ParamField>
+
+	<ParamField path="Max TTL" type="string" required>
+		Maximum time-to-live for a generated certificate
+	</ParamField>
+
+	<ParamField path="Allowed Principals" type="list" required>
+		The usernames this dynamic secret can issue certificates for (e.g. `ubuntu`, `deploy`, `root`). When creating a lease, the requester selects a subset of these principals.
+	</ParamField>
+
+	<ParamField path="Key Algorithm" type="string" required>
+		Algorithm for the ephemeral key pairs generated per lease. Supported options: **ED25519** (default, recommended), **RSA 2048**, **RSA 4096**, **ECDSA P-256**, **ECDSA P-384**.
+	</ParamField>
+
+	![SSH Form](/images/platform/dynamic-secrets/ssh/ssh-configuration-form.png)
+  </Step>
+  <Step title="Click 'Submit'">
+	After submitting the form, a **Certificate Authentication Setup** modal will appear with two options for configuring target hosts to trust the CA:
+
+	- **Automated setup**: A `curl | sudo bash` command that installs the CA certificate, configures `TrustedUserCAKeys` in `sshd_config`, and restarts the SSH service.
+	- **Manual setup**: The raw CA public key, which you can reveal and copy to install manually on target hosts.
+
+	![CA Setup Modal](/images/platform/dynamic-secrets/ssh/ca-setup-modal.png)
+
+	<Note>
+		You must configure your target SSH servers to trust the CA before certificate-based authentication will work. This only needs to be done once per host.
+	</Note>
+  </Step>
+  <Step title="Configure target hosts">
+	**Option A — Automated setup**
+
+	Run the provided command on each target host:
+	```bash
+	curl -H "Authorization: Bearer <your-token>" "https://<your-infisical-url>/api/v1/dynamic-secrets/ssh-ca-setup/<dynamic-secret-id>" | sudo bash
+	```
+
+	This script will:
+	- Write the CA public key to `/etc/ssh/infisical_ca.pub`
+	- Add `TrustedUserCAKeys /etc/ssh/infisical_ca.pub` to `/etc/ssh/sshd_config`
+	- Validate the SSH configuration and restart the SSH service
+
+	**Option B — Manual setup**
+
+	1. Copy the CA public key (available via the eye icon in the setup modal or the edit form)
+	2. Save it to `/etc/ssh/infisical_ca.pub` on the target host
+	3. Add the following line to `/etc/ssh/sshd_config`:
+	   ```
+	   TrustedUserCAKeys /etc/ssh/infisical_ca.pub
+	   ```
+	4. Restart the SSH service
+
+	You can also retrieve the CA public key programmatically:
+	```bash
+	curl -H "Authorization: Bearer <your-token>" "https://<your-infisical-url>/api/v1/dynamic-secrets/ssh-ca-public-key/<dynamic-secret-id>"
+	```
+	This returns a JSON response: `{ "caPublicKey": "ssh-ed25519 AAAA..." }`
+  </Step>
+  <Step title="Generate dynamic secrets">
+	Once you've configured the dynamic secret and set up target hosts, you're ready to generate on-demand credentials.
+	To do this, simply click on the **Generate** button which appears when hovering over the dynamic secret item.
+
+	![Hover Generate Lease](/images/platform/dynamic-secrets/ssh/hover-generate-lease.png)
+
+	When generating a lease, you will need to provide:
+
+	<ParamField path="TTL" type="string" required>
+		How long the certificate should be valid for. Must be within the Max TTL configured on the dynamic secret.
+	</ParamField>
+
+	<ParamField path="Principals" type="list" required>
+		One or more usernames (from the allowed principals) that the certificate should be valid for.
+	</ParamField>
+
+	![Generate Lease Form](/images/platform/dynamic-secrets/ssh/generate-lease-form.png)
+
+	Once you click **Submit**, a new lease will be generated containing:
+	- **Private Key** — the ephemeral SSH private key (downloadable as `key.pem`)
+	- **Signed Certificate** — the SSH certificate signed by the CA (downloadable as `cert.pub`)
+
+	Both can be downloaded or copied directly from the UI.
+
+	![Lease Output](/images/platform/dynamic-secrets/ssh/lease-credentials.png)
+
+	<Warning>
+		Copy or download these credentials immediately. You will not be able to see them again after closing the modal.
+	</Warning>
+  </Step>
+  <Step title="Use the certificate to connect">
+	After downloading `key.pem` (private key) and `cert.pub` (signed certificate), set the correct permissions and connect:
+
+	```bash
+	# Set private key permissions
+	chmod 600 key.pem
+
+	# Connect to the target host
+	ssh -i key.pem -o CertificateFile=cert.pub <principal>@<hostname>
+	```
+
+	Replace `<principal>` with one of the principals included in the certificate and `<hostname>` with the target host address.
+  </Step>
+</Steps>
+
+## Audit or Revoke Leases
+
+Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+
+![Hover View Leases](/images/platform/dynamic-secrets/ssh/hover-view-leases.png)
+
+This will allow you to see the expiration time of the lease or delete the lease before its set time to live.
+
+![View Leases Expiry](/images/platform/dynamic-secrets/ssh/lease-expiry.png)
+
+<Note>
+	SSH certificates are time-bound and expire automatically. Revoking a lease in Infisical removes the record, but the certificate remains valid until its TTL expires.
+</Note>
+
+## Edit Dynamic Secret
+
+To update the configuration of an existing SSH dynamic secret (principals, key algorithm, TTL, or to access the CA setup options), click on the dynamic secret item and select **Edit**.
+
+![Edit Dynamic Secret](/images/platform/dynamic-secrets/ssh/edit-dynamic-secret.png)
+
+## Renew Leases
+
+<Note>
+	SSH certificate leases cannot be renewed because the certificate validity is baked in at signing time. To get a new certificate, create a new lease.
+</Note>
