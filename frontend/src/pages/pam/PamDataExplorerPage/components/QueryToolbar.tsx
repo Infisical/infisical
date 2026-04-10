@@ -38,33 +38,35 @@ export function QueryToolbar({
             <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
           </Button>
         )}
+        {isInTransaction && (
+          <>
+            <Button
+              size="xs"
+              variant="success"
+              onClick={onCommit}
+              isDisabled={isRunning}
+              className="gap-1.5"
+            >
+              <CheckIcon className="size-3" />
+              Commit
+            </Button>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={onRollback}
+              isDisabled={isRunning}
+              className="gap-1.5"
+            >
+              <RotateCcwIcon className="size-3" />
+              Rollback
+            </Button>
+          </>
+        )}
       </div>
       {isInTransaction && (
-        <div className="flex items-center gap-3">
-          <span className="rounded bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-400">
-            Transaction open
-          </span>
-          <Button
-            size="xs"
-            variant="success"
-            onClick={onCommit}
-            isDisabled={isRunning}
-            className="gap-1.5"
-          >
-            <CheckIcon className="size-3" />
-            Commit
-          </Button>
-          <Button
-            size="xs"
-            variant="danger"
-            onClick={onRollback}
-            isDisabled={isRunning}
-            className="gap-1.5"
-          >
-            <RotateCcwIcon className="size-3" />
-            Rollback
-          </Button>
-        </div>
+        <span className="rounded bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-400">
+          Transaction open
+        </span>
       )}
     </div>
   );

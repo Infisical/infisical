@@ -133,13 +133,7 @@ const PageContent = () => {
     return <PamDataExplorerPage />;
   }
 
-  return (
-    <TerminalContent
-      accountId={accountId!}
-      projectId={projectId!}
-      orgId={orgId!}
-    />
-  );
+  return <TerminalContent accountId={accountId!} projectId={projectId!} orgId={orgId!} />;
 };
 
 export const PamAccountAccessPage = () => {

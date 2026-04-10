@@ -168,11 +168,7 @@ export function QueryPanel({
 
         <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden bg-bunker-800">
           <div className="min-h-0 flex-1 overflow-hidden">
-            <QueryResultsTable
-              result={result}
-              error={error}
-              isRunning={isRunning}
-            />
+            <QueryResultsTable result={result} error={error} isRunning={isRunning} />
           </div>
           {!isRunning && result && !error && (
             <div className="flex shrink-0 items-center border-t border-mineshaft-600 px-3 py-1">
