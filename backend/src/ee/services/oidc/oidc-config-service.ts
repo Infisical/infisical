@@ -16,7 +16,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
@@ -824,8 +824,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get(requestContextKeys.ip),
-                "user_agent.original": requestContext.get(requestContextKeys.userAgent)
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -839,8 +839,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get(requestContextKeys.ip),
-                "user_agent.original": requestContext.get(requestContextKeys.userAgent)
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 

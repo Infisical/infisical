@@ -2,7 +2,7 @@ import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
 import fp from "fastify-plugin";
 
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
 const apiMeter = opentelemetry.metrics.getMeter("API");
 
@@ -34,13 +34,13 @@ export const apiMetrics = fp(async (fastify) => {
       statusCode
     });
 
-    const orgId = requestContext.get(requestContextKeys.orgId);
-    const orgName = requestContext.get(requestContextKeys.orgName);
-    const userAuthInfo = requestContext.get(requestContextKeys.userAuthInfo);
-    const identityAuthInfo = requestContext.get(requestContextKeys.identityAuthInfo);
-    const projectDetails = requestContext.get(requestContextKeys.projectDetails);
-    const userAgent = requestContext.get(requestContextKeys.userAgent);
-    const ip = requestContext.get(requestContextKeys.ip);
+    const orgId = requestContext.get(RequestContextKey.OrgId);
+    const orgName = requestContext.get(RequestContextKey.OrgName);
+    const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+    const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+    const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
+    const userAgent = requestContext.get(RequestContextKey.UserAgent);
+    const ip = requestContext.get(RequestContextKey.Ip);
 
     const attributes: Record<string, string | number> = {
       "http.request.method": method,

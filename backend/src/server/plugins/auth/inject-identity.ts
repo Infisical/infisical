@@ -8,7 +8,7 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -182,9 +182,9 @@ export const injectIdentity = fp(
         case AuthMode.JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set(requestContextKeys.orgId, orgId);
-          requestContext.set(requestContextKeys.orgName, orgName);
-          requestContext.set(requestContextKeys.userAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -204,9 +204,9 @@ export const injectIdentity = fp(
         case AuthMode.MCP_JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set(requestContextKeys.orgId, orgId);
-          requestContext.set(requestContextKeys.orgName, orgName);
-          requestContext.set(requestContextKeys.userAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.MCP_JWT,
             user,
@@ -226,8 +226,8 @@ export const injectIdentity = fp(
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
           const serverCfg = await getServerCfg();
-          requestContext.set(requestContextKeys.orgId, identity.orgId);
-          requestContext.set(requestContextKeys.orgName, identity.orgName);
+          requestContext.set(RequestContextKey.OrgId, identity.orgId);
+          requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
             actor,
@@ -256,7 +256,7 @@ export const injectIdentity = fp(
             identityAuthInfo.aws = token?.identityAuth?.aws;
           }
 
-          requestContext.set(requestContextKeys.identityAuthInfo, identityAuthInfo);
+          requestContext.set(RequestContextKey.IdentityAuthInfo, identityAuthInfo);
 
           // Fire-and-forget: enrich PostHog person record for this machine identity
           void server.services.telemetry
@@ -272,7 +272,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.SERVICE_TOKEN: {
           const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
-          requestContext.set(requestContextKeys.orgId, serviceToken.orgId);
+          requestContext.set(RequestContextKey.OrgId, serviceToken.orgId);
 
           req.auth = {
             orgId: serviceToken.orgId,
@@ -294,7 +294,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.SCIM_TOKEN: {
           const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
-          requestContext.set(requestContextKeys.orgId, orgId);
+          requestContext.set(RequestContextKey.OrgId, orgId);
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,

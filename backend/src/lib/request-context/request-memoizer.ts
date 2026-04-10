@@ -1,6 +1,6 @@
 import { requestContext } from "@fastify/request-context";
 
-import { requestContextKeys } from "./request-context-keys";
+import { RequestContextKey } from "./request-context-keys";
 
 /**
  * Request-scoped memoization cache.
@@ -62,7 +62,7 @@ export class RequestMemoizer {
  * - Data that is mutated within the same request and re-read afterwards.
  */
 export const requestMemoize = async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
-  const memoizer = requestContext.get(requestContextKeys.memoizer);
+  const memoizer = requestContext.get(RequestContextKey.Memoizer);
   if (!memoizer) return fetcher();
   return memoizer.getOrSet(key, fetcher);
 };

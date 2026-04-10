@@ -4,7 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { requestMemoKeys } from "./memo-keys";
-import { requestContextKeys } from "./request-context-keys";
+import { RequestContextKey } from "./request-context-keys";
 import { requestMemoize, RequestMemoizer } from "./request-memoizer";
 
 // Mock @fastify/request-context — the module is resolved at import time,
@@ -121,7 +121,7 @@ describe("requestMemoize", () => {
     expect(r1).toBe("cached-value");
     expect(r2).toBe("cached-value");
     expect(fetcher).toHaveBeenCalledOnce();
-    expect(mockGet).toHaveBeenCalledWith(requestContextKeys.memoizer);
+    expect(mockGet).toHaveBeenCalledWith(RequestContextKey.Memoizer);
   });
 
   it("should fall back to direct execution when no memoizer in context", async () => {

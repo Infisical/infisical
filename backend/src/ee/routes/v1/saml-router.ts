@@ -18,7 +18,7 @@ import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -172,8 +172,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               "infisical.organization.name": organization.name,
               "infisical.auth.method": AuthAttemptAuthMethod.SAML,
               "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-              "client.address": requestContext.get(requestContextKeys.ip),
-              "user_agent.original": requestContext.get(requestContextKeys.userAgent)
+              "client.address": requestContext.get(RequestContextKey.Ip),
+              "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
             });
           }
 
@@ -184,8 +184,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               "infisical.user.email": email.toLowerCase(),
               "infisical.auth.method": AuthAttemptAuthMethod.SAML,
               "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-              "client.address": requestContext.get(requestContextKeys.ip),
-              "user_agent.original": requestContext.get(requestContextKeys.userAgent)
+              "client.address": requestContext.get(RequestContextKey.Ip),
+              "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
             });
           }
 

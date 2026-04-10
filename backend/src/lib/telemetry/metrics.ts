@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
 
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
 import { getConfig } from "../config/env";
 
@@ -54,17 +54,17 @@ export const recordSecretReadMetric = (params: { environment: string; secretPath
       ...(params.name ? { "infisical.secret.name": params.name } : {})
     };
 
-    const orgId = requestContext.get(requestContextKeys.orgId);
+    const orgId = requestContext.get(RequestContextKey.OrgId);
     if (orgId) {
       attributes["infisical.organization.id"] = orgId;
     }
 
-    const orgName = requestContext.get(requestContextKeys.orgName);
+    const orgName = requestContext.get(RequestContextKey.OrgName);
     if (orgName) {
       attributes["infisical.organization.name"] = orgName;
     }
 
-    const projectDetails = requestContext.get(requestContextKeys.projectDetails);
+    const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
     if (projectDetails?.id) {
       attributes["infisical.project.id"] = projectDetails.id;
     }
@@ -72,7 +72,7 @@ export const recordSecretReadMetric = (params: { environment: string; secretPath
       attributes["infisical.project.name"] = projectDetails.name;
     }
 
-    const userAuthInfo = requestContext.get(requestContextKeys.userAuthInfo);
+    const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
     if (userAuthInfo?.userId) {
       attributes["infisical.user.id"] = userAuthInfo.userId;
     }
@@ -80,7 +80,7 @@ export const recordSecretReadMetric = (params: { environment: string; secretPath
       attributes["infisical.user.email"] = userAuthInfo.email;
     }
 
-    const identityAuthInfo = requestContext.get(requestContextKeys.identityAuthInfo);
+    const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
     if (identityAuthInfo?.identityId) {
       attributes["infisical.identity.id"] = identityAuthInfo.identityId;
     }
@@ -88,12 +88,12 @@ export const recordSecretReadMetric = (params: { environment: string; secretPath
       attributes["infisical.identity.name"] = identityAuthInfo.identityName;
     }
 
-    const userAgent = requestContext.get(requestContextKeys.userAgent);
+    const userAgent = requestContext.get(RequestContextKey.UserAgent);
     if (userAgent) {
       attributes["user_agent.original"] = userAgent;
     }
 
-    const ip = requestContext.get(requestContextKeys.ip);
+    const ip = requestContext.get(RequestContextKey.Ip);
     if (ip) {
       attributes["client.address"] = ip;
     }
@@ -144,7 +144,7 @@ export const recordKmipOperationMetric = (params: {
       attributes["infisical.kmip.object.name"] = params.objectName;
     }
 
-    const identityAuthInfo = requestContext.get(requestContextKeys.identityAuthInfo);
+    const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
     if (identityAuthInfo?.identityId) {
       attributes["infisical.identity.id"] = identityAuthInfo.identityId;
     }
@@ -152,12 +152,12 @@ export const recordKmipOperationMetric = (params: {
       attributes["infisical.identity.name"] = identityAuthInfo.identityName;
     }
 
-    const userAgent = requestContext.get(requestContextKeys.userAgent);
+    const userAgent = requestContext.get(RequestContextKey.UserAgent);
     if (userAgent) {
       attributes["user_agent.original"] = userAgent;
     }
 
-    const ip = requestContext.get(requestContextKeys.ip);
+    const ip = requestContext.get(RequestContextKey.Ip);
     if (ip) {
       attributes["client.address"] = ip;
     }

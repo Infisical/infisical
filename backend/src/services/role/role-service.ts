@@ -5,7 +5,7 @@ import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } fr
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -270,7 +270,7 @@ export const roleServiceFactory = ({
         actorOrgId: dto.permission.orgId
       });
 
-      const assumedPrivilegeDetailsCtx = requestContext.get(requestContextKeys.assumedPrivilegeDetails);
+      const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
       const isAssumingPrivilege = assumedPrivilegeDetailsCtx?.projectId === dto.scopeData.projectId;
       const assumedPrivilegeDetails = isAssumingPrivilege
         ? {

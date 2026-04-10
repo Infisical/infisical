@@ -5,7 +5,7 @@ import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -123,7 +123,7 @@ export const auditLogServiceFactory = ({
     }
     const el = { ...data };
     if (el.actor.type === ActorType.USER || el.actor.type === ActorType.IDENTITY) {
-      const permissionMetadata = requestContext.get(requestContextKeys.identityPermissionMetadata);
+      const permissionMetadata = requestContext.get(RequestContextKey.IdentityPermissionMetadata);
       el.actor.metadata.permission = permissionMetadata;
     }
     return auditLogQueue.pushToLog(el);

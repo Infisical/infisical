@@ -6,7 +6,7 @@ import { requestContext } from "@fastify/request-context";
 import pino, { Logger } from "pino";
 import { z } from "zod";
 
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
 const logLevelToSeverityLookup: Record<string, string> = {
   "10": "TRACE",
@@ -97,7 +97,7 @@ const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
 
 const extractReqId = () => {
   try {
-    return requestContext.get(requestContextKeys.reqId) || UNKNOWN_REQUEST_ID;
+    return requestContext.get(RequestContextKey.ReqId) || UNKNOWN_REQUEST_ID;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.log("failed to get request context", err);
@@ -107,7 +107,7 @@ const extractReqId = () => {
 
 const extractOrgId = () => {
   try {
-    return requestContext.get(requestContextKeys.orgId);
+    return requestContext.get(RequestContextKey.OrgId);
   } catch {
     return "";
   }

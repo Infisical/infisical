@@ -26,7 +26,7 @@ import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -380,7 +380,7 @@ export const permissionServiceFactory = ({
       });
     }
 
-    const assumedPrivilegeDetailsCtx = requestContext.get(requestContextKeys.assumedPrivilegeDetails);
+    const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
     if (
       assumedPrivilegeDetailsCtx &&
       actor === ActorType.USER &&
@@ -410,7 +410,7 @@ export const permissionServiceFactory = ({
       actionProjectType,
       actorOrgId
     });
-    const memoizer = requestContext.get(requestContextKeys.memoizer);
+    const memoizer = requestContext.get(RequestContextKey.Memoizer);
 
     type TProjectPermissionMemoPayload = {
       result: Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;
@@ -524,7 +524,7 @@ export const permissionServiceFactory = ({
         username = identityDetails?.name;
       }
 
-      const unescapedIdentityAuthInfo = requestContext.get(requestContextKeys.identityAuthInfo);
+      const unescapedIdentityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
       const identityAuthInfo =
         unescapedIdentityAuthInfo?.identityId === actorId && unescapedIdentityAuthInfo
           ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
@@ -565,8 +565,8 @@ export const permissionServiceFactory = ({
 
     const payload = memoizer ? await memoizer.getOrSet(memoKey, loadProjectPermission) : await loadProjectPermission();
 
-    requestContext.set(requestContextKeys.projectDetails, payload.projectDetailsCtx);
-    requestContext.set(requestContextKeys.identityPermissionMetadata, payload.identityPermissionMetadataCtx);
+    requestContext.set(RequestContextKey.ProjectDetails, payload.projectDetailsCtx);
+    requestContext.set(RequestContextKey.IdentityPermissionMetadata, payload.identityPermissionMetadataCtx);
     return payload.result;
   };
 

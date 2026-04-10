@@ -22,7 +22,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { requestContextKeys } from "@app/lib/request-context/request-context-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
@@ -171,7 +171,7 @@ export const main = async ({
         log: req.log.child({ reqId: req.id }),
         ip: req.realIp,
         userAgent: req.headers["user-agent"],
-        [requestContextKeys.memoizer]: new RequestMemoizer()
+        [RequestContextKey.Memoizer]: new RequestMemoizer()
       })
     });
 
