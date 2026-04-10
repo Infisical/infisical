@@ -103,6 +103,7 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({
         queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
       });
