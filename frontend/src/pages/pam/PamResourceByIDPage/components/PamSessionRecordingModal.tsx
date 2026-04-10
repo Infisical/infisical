@@ -107,12 +107,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
 
   const onSubmit = async (data: FormData) => {
     if (!data.aiInsightsEnabled) {
-      await onSave({
-        aiInsightsEnabled: false,
-        connectionId: "",
-        connectionName: "",
-        model: ""
-      });
+      await onSave(null);
     } else {
       await onSave({
         aiInsightsEnabled: true,
