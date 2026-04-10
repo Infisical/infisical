@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Transaction } from "@codemirror/state";
 import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
@@ -56,6 +56,13 @@ const infisicalHighlight = HighlightStyle.define(
   { all: { color: "#ebebeb" } }
 );
 
+const MAX_SQL_BYTES = 50 * 1024; // 50KB — matches backend Zod limit
+
+const maxSqlLength = EditorState.transactionFilter.of((tr: Transaction) => {
+  if (tr.docChanged && tr.newDoc.length > MAX_SQL_BYTES) return [];
+  return tr;
+});
+
 type Props = {
   value: string;
   onChange: (value: string) => void;
@@ -105,6 +112,7 @@ export function SqlEditor({
             ...historyKeymap,
             ...defaultKeymap
           ]),
+          maxSqlLength,
           sql({ dialect: PostgreSQL }),
           infisicalTheme,
           syntaxHighlighting(infisicalHighlight),
