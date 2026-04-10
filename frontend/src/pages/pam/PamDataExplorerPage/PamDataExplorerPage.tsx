@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { AlertTriangleIcon, DatabaseIcon, ShieldCheckIcon, UnplugIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  DatabaseIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+  TableIcon,
+  TerminalSquareIcon,
+  UnplugIcon,
+  XIcon
+} from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
 import {
@@ -14,12 +23,15 @@ import {
   AlertDialogTitle
 } from "@app/components/v3/generic/AlertDialog";
 import { Button } from "@app/components/v3/generic/Button";
+import { cn } from "@app/components/v3/utils";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
 
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
+import { QueryPanel } from "./components/QueryPanel";
 import type { SchemaInfo, TableDetail, TableInfo } from "./data-explorer-types";
 import { useDataExplorerSession } from "./use-data-explorer-session";
+import { BROWSE_TAB_ID, useQueryTabs } from "./use-query-tabs";
 
 export const PamDataExplorerPage = () => {
   const { accountId, projectId, orgId } = useParams({
@@ -49,6 +61,10 @@ export const PamDataExplorerPage = () => {
 
   const [approvalJustification, setApprovalJustification] = useState("");
 
+  const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } =
+    useQueryTabs();
+  const [isInTransaction, setIsInTransaction] = useState(false);
+
   const {
     isConnected,
     isConnecting,
@@ -64,7 +80,8 @@ export const PamDataExplorerPage = () => {
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
-    executeQuery
+    executeQuery,
+    cancelQuery
   } = useDataExplorerSession({
     accountId,
     projectId,
@@ -201,15 +218,19 @@ export const PamDataExplorerPage = () => {
 
   const handleTableSelect = useCallback(
     (tableName: string) => {
-      if (tableName === selectedTable) return;
+      if (tableName === selectedTable) {
+        setActiveTab(BROWSE_TAB_ID);
+        return;
+      }
       if (unsavedChangeCountRef.current > 0) {
         setPendingTableSwitch(tableName);
         return;
       }
       setSelectedTable(tableName);
       loadTableDetail(selectedSchema, tableName);
+      setActiveTab(BROWSE_TAB_ID);
     },
-    [selectedTable, selectedSchema, loadTableDetail]
+    [selectedTable, selectedSchema, loadTableDetail, setActiveTab]
   );
 
   const handleDiscardAndSwitch = useCallback(() => {
@@ -218,11 +239,8 @@ export const PamDataExplorerPage = () => {
     setSelectedTable(pendingTableSwitch);
     loadTableDetail(selectedSchema, pendingTableSwitch);
     setPendingTableSwitch(null);
-  }, [pendingTableSwitch, selectedSchema, loadTableDetail]);
-
-  const handleChangeCountUpdate = useCallback((count: number) => {
-    unsavedChangeCountRef.current = count;
-  }, []);
+    setActiveTab(BROWSE_TAB_ID);
+  }, [pendingTableSwitch, selectedSchema, loadTableDetail, setActiveTab]);
 
   const handleFullRefresh = useCallback(async () => {
     // 1. Re-fetch tables for current schema (picks up new/dropped tables)
@@ -390,28 +408,111 @@ export const PamDataExplorerPage = () => {
           isLoadingTables={isLoadingTables}
         />
 
-        {selectedTable ? (
-          <DataExplorerGrid
-            key={`${selectedSchema}.${selectedTable}`}
-            tableDetail={tableDetail}
-            tableType={tables.find((t) => t.name === selectedTable)?.tableType}
-            schema={selectedSchema}
-            table={selectedTable}
-            executeQuery={executeQuery}
-            isLoading={isLoadingDetail}
-            onChangeCountUpdate={handleChangeCountUpdate}
-            onFullRefresh={handleFullRefresh}
-          />
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="text-center">
-              <DatabaseIcon className="mx-auto mb-3 size-12 text-mineshaft-600" />
-              <p className="text-sm text-mineshaft-400">
-                Select a table from the sidebar to browse data
-              </p>
-            </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex thin-scrollbar shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 [&::-webkit-scrollbar]:h-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab(BROWSE_TAB_ID)}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2 text-xs font-medium transition-colors",
+                activeTabId === BROWSE_TAB_ID
+                  ? "border-info text-mineshaft-100"
+                  : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
+              )}
+            >
+              <TableIcon className="size-3.5" />
+              Browse
+            </button>
+
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveTab(tab.id)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setActiveTab(tab.id)}
+                className={cn(
+                  "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
+                  activeTabId === tab.id
+                    ? "border-info text-mineshaft-100"
+                    : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
+                )}
+              >
+                <span className="flex items-center gap-1.5">
+                  <TerminalSquareIcon className="size-3.5" />
+                  {tab.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(tab.id);
+                  }}
+                  className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
+                  aria-label={`Close ${tab.title}`}
+                >
+                  <XIcon className="size-3" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addTab}
+              disabled={atTabLimit}
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
+              aria-label="New query tab"
+            >
+              <PlusIcon className="size-3" />
+              New query
+            </button>
           </div>
-        )}
+
+          <div
+            className={cn("flex flex-1 overflow-hidden", activeTabId !== BROWSE_TAB_ID && "hidden")}
+          >
+            {selectedTable ? (
+              <DataExplorerGrid
+                key={`${selectedSchema}.${selectedTable}`}
+                tableDetail={tableDetail}
+                tableType={tables.find((t) => t.name === selectedTable)?.tableType}
+                schema={selectedSchema}
+                table={selectedTable}
+                executeQuery={executeQuery}
+                isLoading={isLoadingDetail}
+                onChangeCountUpdate={(count) => {
+                  unsavedChangeCountRef.current = count;
+                }}
+                onFullRefresh={handleFullRefresh}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center">
+                <div className="text-center">
+                  <DatabaseIcon className="mx-auto mb-3 size-12 text-mineshaft-600" />
+                  <p className="text-sm text-mineshaft-400">
+                    Select a table from the sidebar to browse data
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={cn("flex flex-1 overflow-hidden", activeTabId !== tab.id && "hidden")}
+            >
+              <QueryPanel
+                tab={tab}
+                executeQuery={executeQuery}
+                cancelQuery={cancelQuery}
+                isInTransaction={isInTransaction}
+                onSqlChange={(sql) => updateTabSql(tab.id, sql)}
+                onTransactionStateChange={setIsInTransaction}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Status bar */}
