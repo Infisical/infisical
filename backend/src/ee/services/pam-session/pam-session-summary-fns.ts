@@ -5,7 +5,7 @@ import { z } from "zod";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
 
-const MAX_LOG_CHARS = 200_000; // rough guard before sending to LLM
+export const MAX_LOG_CHARS = 200_000; // rough guard before sending to LLM
 
 export const formatLogsForSummary = (
   logs: (TPamSessionCommandLog | TTerminalEvent)[],

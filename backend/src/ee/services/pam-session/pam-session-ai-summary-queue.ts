@@ -9,8 +9,9 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
-import { decryptBatches, decryptSessionCommandLogs } from "./pam-session-fns";
-import { buildSummaryPrompt, formatLogsForSummary, generateSessionSummary } from "./pam-session-summary-fns";
+import { decryptSessionCommandLogs } from "./pam-session-fns";
+import { MAX_LOG_CHARS, buildSummaryPrompt, formatLogsForSummary, generateSessionSummary } from "./pam-session-summary-fns";
+import { TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
 
 type TSessionSummaryConfig = {
   aiInsightsEnabled: boolean;
@@ -168,16 +169,39 @@ export const pamSessionAiSummaryServiceFactory = ({
         return;
       }
 
-      // 5. Decrypt session logs — batch table first (new), fall back to legacy blob
-      // Cap at 500 batches (~500 MB max) to prevent OOM if a session has an abnormal number of batches
-      const MAX_BATCHES = 500;
+      // 5. Decrypt session logs — batch table first (new), fall back to legacy blob.
+      // Stop decrypting once accumulated content exceeds MAX_LOG_CHARS — there is no point
+      // loading more data than formatLogsForSummary will use, and this bounds memory usage
+      // to the content budget rather than an arbitrary batch count.
       let logs;
-      const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, {
-        offset: 0,
-        limit: MAX_BATCHES
+      const PAGE_SIZE = 20;
+      let offset = 0;
+      let contentChars = 0;
+      const accumulatedLogs: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+      let hasMoreBatches = true;
+
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
       });
-      if (batches.length > 0) {
-        logs = await decryptBatches(batches, projectId, kmsService);
+
+      while (hasMoreBatches && contentChars < MAX_LOG_CHARS) {
+        // eslint-disable-next-line no-await-in-loop
+        const page = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset, limit: PAGE_SIZE });
+        if (page.length === 0) break;
+        for (const batch of page) {
+          const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
+          contentChars += plain.length;
+          const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+          accumulatedLogs.push(...batchEvents);
+          if (contentChars >= MAX_LOG_CHARS) break;
+        }
+        if (page.length < PAGE_SIZE) hasMoreBatches = false;
+        offset += PAGE_SIZE;
+      }
+
+      if (accumulatedLogs.length > 0) {
+        logs = accumulatedLogs;
       } else if (session.encryptedLogsBlob) {
         logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
       } else {
