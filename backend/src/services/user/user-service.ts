@@ -14,7 +14,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
@@ -61,20 +61,17 @@ export const userServiceFactory = ({
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
 
-    const { authType, aliasId, username, authTokenType } = crypto.jwt().verify(token, config.AUTH_SECRET) as {
-      authType: string;
-      aliasId?: string;
-      username: string;
-      authTokenType: AuthTokenType;
-    };
+    const { aliasId, userId, authTokenType } = crypto
+      .jwt()
+      .verify(token, config.AUTH_SECRET) as AuthModeSignUpTokenPayload;
     if (authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
 
-    const user = await userDAL.findOne({ username });
+    const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ message: "Invalid token" });
 
     let { isEmailVerified } = user;
     if (aliasId) {
-      const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: aliasId });
       if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${aliasId}' not found` });
       isEmailVerified = userAlias.isEmailVerified;
     }

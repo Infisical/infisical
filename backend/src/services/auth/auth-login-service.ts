@@ -989,6 +989,7 @@ export const authLoginServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
+              // reverify email verification status on login
               isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
               isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
               isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified

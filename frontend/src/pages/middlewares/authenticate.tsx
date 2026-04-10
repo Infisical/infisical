@@ -15,7 +15,6 @@ export const Route = createFileRoute("/_authenticate")({
       throw redirect({ to: "/admin/signup" });
     }
 
-    console.log("trigger authenticate");
     const data = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,

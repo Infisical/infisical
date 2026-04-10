@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EmailDomainsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -33,6 +34,18 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_EMAIL_DOMAIN,
+          metadata: {
+            emailDomainId: emailDomain.id,
+            domain: emailDomain.domain
+          }
+        }
+      });
+
       return { emailDomain };
     }
   });
@@ -62,6 +75,18 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VERIFY_EMAIL_DOMAIN,
+          metadata: {
+            emailDomainId: result.emailDomain.id,
+            domain: result.emailDomain.domain
+          }
+        }
       });
 
       return result;
@@ -120,6 +145,18 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_EMAIL_DOMAIN,
+          metadata: {
+            emailDomainId: emailDomain.id,
+            domain: emailDomain.domain
+          }
+        }
       });
 
       return { emailDomain };
