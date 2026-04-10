@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 
-import { useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamResourceType, useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { useWebAccessSession } from "./useWebAccessSession";
 
@@ -20,6 +21,10 @@ const PageContent = () => {
   const { accountId, projectId, orgId } = params;
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
+
+  if (account?.resource.resourceType === PamResourceType.Postgres) {
+    return <PamDataExplorerPage />;
+  }
 
   const [sessionEnded, setSessionEnded] = useState(false);
 
