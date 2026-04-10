@@ -39,6 +39,9 @@ import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam
 import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
+// Extend this set as more LLM providers are added (e.g. AppConnection.OpenAI)
+const LLM_APP_CONNECTIONS = new Set<AppConnection>([AppConnection.Anthropic]);
+
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
@@ -405,8 +408,8 @@ export const pamResourceServiceFactory = ({
         if (appConnection.orgId !== actor.orgId) {
           throw new BadRequestError({ message: "App connection does not belong to the same organization as the resource" });
         }
-        if (appConnection.app !== AppConnection.Anthropic) {
-          throw new BadRequestError({ message: `App connection must be an Anthropic connection, got '${appConnection.app}'` });
+        if (!LLM_APP_CONNECTIONS.has(appConnection.app as AppConnection)) {
+          throw new BadRequestError({ message: `App connection must be an AI provider connection, got '${appConnection.app}'` });
         }
 
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
