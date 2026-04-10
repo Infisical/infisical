@@ -414,10 +414,6 @@ const pamAccessRoute = route(
   "pam/PamAccountAccessPage/route.tsx"
 );
 
-const pamDataExplorerRoute = route(
-  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/web-access",
-  "pam/PamDataExplorerPage/route.tsx"
-);
 
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
@@ -482,7 +478,6 @@ export const routes = rootRoute("root.tsx", [
     middleware("inject-org-details.tsx", [
       adminRoute,
       pamAccessRoute,
-      pamDataExplorerRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [
