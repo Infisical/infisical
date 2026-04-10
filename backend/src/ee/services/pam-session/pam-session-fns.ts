@@ -53,14 +53,18 @@ export const decryptSession = async (
 
   let aiInsights: { summary: string; warnings: { text: string; logIndex?: number }[] } | null = null;
   if (encryptedAiInsights) {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    aiInsights = JSON.parse(decryptor({ cipherTextBlob: encryptedAiInsights }).toString()) as {
-      summary: string;
-      warnings: { text: string; logIndex?: number }[];
-    };
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      aiInsights = JSON.parse(decryptor({ cipherTextBlob: encryptedAiInsights }).toString()) as {
+        summary: string;
+        warnings: { text: string; logIndex?: number }[];
+      };
+    } catch {
+      // AI insights are non-essential — fall back to null on KMS failure or corrupted blob
+    }
   }
 
   return {

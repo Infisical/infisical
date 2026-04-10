@@ -2838,9 +2838,19 @@ export const registerRoutes = async (
     totpService
   });
 
+  const pamSessionAiSummaryService = pamSessionAiSummaryServiceFactory({
+    queueService,
+    pamSessionDAL,
+    pamSessionEventBatchDAL,
+    pamResourceDAL,
+    appConnectionDAL,
+    kmsService
+  });
+
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
-    pamSessionDAL
+    pamSessionDAL,
+    pamSessionAiSummaryService
   });
 
   const pamAccountService = pamAccountServiceFactory({
@@ -2868,15 +2878,6 @@ export const registerRoutes = async (
   const pamAccountRotation = pamAccountRotationServiceFactory({
     queueService,
     pamAccountService
-  });
-
-  const pamSessionAiSummaryService = pamSessionAiSummaryServiceFactory({
-    queueService,
-    pamSessionDAL,
-    pamSessionEventBatchDAL,
-    pamResourceDAL,
-    appConnectionDAL,
-    kmsService
   });
 
   const pamSessionService = pamSessionServiceFactory({

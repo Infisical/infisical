@@ -20,7 +20,7 @@ export const GatewayAccessResponseSchema = z.object({
 export const SessionSummaryConfigSchema = z
   .object({
     aiInsightsEnabled: z.boolean(),
-    connectionId: z.string(),
+    connectionId: z.string().uuid(),
     model: z.string()
   })
   .nullable()

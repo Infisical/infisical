@@ -83,12 +83,12 @@ export const pamSessionAiSummaryServiceFactory = ({
     queueService.start(QueueName.PamSessionAiSummary, async (job) => {
       const { sessionId, projectId } = job.data;
 
-      logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: starting AI summary`);
+      logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: starting AI summary [sessionId=${sessionId}]`);
 
       // 1. Fetch session
       const session = await pamSessionDAL.findById(sessionId);
       if (!session) {
-        logger.warn({ sessionId }, `${QueueName.PamSessionAiSummary}: session not found, skipping`);
+        logger.warn({ sessionId }, `${QueueName.PamSessionAiSummary}: session not found, skipping [sessionId=${sessionId}]`);
         return;
       }
 
@@ -97,7 +97,7 @@ export const pamSessionAiSummaryServiceFactory = ({
       if (!resourceId) {
         logger.info(
           { sessionId },
-          `${QueueName.PamSessionAiSummary}: no resourceId on session (resource deleted?), skipping`
+          `${QueueName.PamSessionAiSummary}: no resourceId on session (resource deleted?), skipping [sessionId=${sessionId}]`
         );
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
@@ -106,7 +106,7 @@ export const pamSessionAiSummaryServiceFactory = ({
       // 3. Fetch resource and decrypt sessionSummaryConfig
       const resource = await pamResourceDAL.findById(resourceId);
       if (!resource) {
-        logger.info({ sessionId, resourceId }, `${QueueName.PamSessionAiSummary}: resource not found, skipping`);
+        logger.info({ sessionId, resourceId }, `${QueueName.PamSessionAiSummary}: resource not found, skipping [sessionId=${sessionId}] [resourceId=${resourceId}]`);
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
@@ -116,7 +116,7 @@ export const pamSessionAiSummaryServiceFactory = ({
       if (!encryptedConfig) {
         logger.info(
           { sessionId, resourceId },
-          `${QueueName.PamSessionAiSummary}: no sessionSummaryConfig on resource, skipping`
+          `${QueueName.PamSessionAiSummary}: no sessionSummaryConfig on resource, skipping [sessionId=${sessionId}] [resourceId=${resourceId}]`
         );
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
@@ -130,13 +130,13 @@ export const pamSessionAiSummaryServiceFactory = ({
         });
         summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
       } catch (err) {
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig`);
+        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig [sessionId=${sessionId}]`);
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
 
       if (!summaryConfig.aiInsightsEnabled) {
-        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI insights disabled for resource, skipping`);
+        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI insights disabled for resource, skipping [sessionId=${sessionId}]`);
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
@@ -161,7 +161,7 @@ export const pamSessionAiSummaryServiceFactory = ({
         });
         apiKey = (credentials as { apiKey: string }).apiKey;
       } catch (err) {
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt connection credentials`);
+        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt connection credentials [sessionId=${sessionId}]`);
         await pamSessionDAL.updateById(sessionId, {
           aiInsightsStatus: "failed",
           aiInsightsError: "Failed to decrypt AI connection credentials"
@@ -174,44 +174,53 @@ export const pamSessionAiSummaryServiceFactory = ({
       // loading more data than formatLogsForSummary will use, and this bounds memory usage
       // to the content budget rather than an arbitrary batch count.
       let logs;
-      const PAGE_SIZE = 20;
-      let offset = 0;
-      let contentChars = 0;
-      const accumulatedLogs: (TPamSessionCommandLog | TTerminalEvent)[] = [];
-      let hasMoreBatches = true;
+      try {
+        const PAGE_SIZE = 20;
+        let offset = 0;
+        let contentChars = 0;
+        const accumulatedLogs: (TPamSessionCommandLog | TTerminalEvent)[] = [];
+        let hasMoreBatches = true;
 
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
-      while (hasMoreBatches && contentChars < MAX_LOG_CHARS) {
-        // eslint-disable-next-line no-await-in-loop
-        const page = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset, limit: PAGE_SIZE });
-        if (page.length === 0) break;
-        for (const batch of page) {
-          const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
-          contentChars += plain.length;
-          const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
-          accumulatedLogs.push(...batchEvents);
-          if (contentChars >= MAX_LOG_CHARS) break;
+        while (hasMoreBatches && contentChars < MAX_LOG_CHARS) {
+          // eslint-disable-next-line no-await-in-loop
+          const page = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset, limit: PAGE_SIZE });
+          if (page.length === 0) break;
+          for (const batch of page) {
+            const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
+            contentChars += plain.length;
+            const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+            accumulatedLogs.push(...batchEvents);
+            if (contentChars >= MAX_LOG_CHARS) break;
+          }
+          if (page.length < PAGE_SIZE) hasMoreBatches = false;
+          offset += PAGE_SIZE;
         }
-        if (page.length < PAGE_SIZE) hasMoreBatches = false;
-        offset += PAGE_SIZE;
-      }
 
-      if (accumulatedLogs.length > 0) {
-        logs = accumulatedLogs;
-      } else if (session.encryptedLogsBlob) {
-        logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
-      } else {
-        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: no session logs, skipping`);
-        await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
-        return;
-      }
+        if (accumulatedLogs.length > 0) {
+          logs = accumulatedLogs;
+        } else if (session.encryptedLogsBlob) {
+          logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
+        } else {
+          logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: no session logs, skipping [sessionId=${sessionId}]`);
+          await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+          return;
+        }
 
-      if (logs.length === 0) {
-        await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+        if (logs.length === 0) {
+          await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+          return;
+        }
+      } catch (err) {
+        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt session logs [sessionId=${sessionId}]`);
+        await pamSessionDAL.updateById(sessionId, {
+          aiInsightsStatus: "failed",
+          aiInsightsError: "Failed to decrypt session logs"
+        });
         return;
       }
 
@@ -249,14 +258,14 @@ export const pamSessionAiSummaryServiceFactory = ({
           aiInsightsError: null
         });
 
-        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI summary completed successfully`);
+        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI summary completed successfully [sessionId=${sessionId}]`);
       } catch (err) {
         const message =
           err instanceof Error && err.message.length < 500
             ? err.message
             : "AI summarization failed. The session logs may be too large for the selected model.";
 
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: AI summarization failed`);
+        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: AI summarization failed [sessionId=${sessionId}]`);
 
         await pamSessionDAL.updateById(sessionId, {
           aiInsightsStatus: "failed",

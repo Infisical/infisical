@@ -47,6 +47,9 @@ import { TWindowsResource } from "./windows-server/windows-server-resource-types
 // Extend this set as more LLM providers are added (e.g. AppConnection.OpenAI)
 const LLM_APP_CONNECTIONS = new Set<AppConnection>([AppConnection.Anthropic]);
 
+// Resource types that have AI session summary prompts defined in pam-session-summary-fns.ts
+const AI_SUMMARY_SUPPORTED_RESOURCE_TYPES = new Set<PamResource>([PamResource.Postgres, PamResource.SSH]);
+
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
@@ -406,6 +409,12 @@ export const pamResourceServiceFactory = ({
       if (sessionSummaryConfig === null) {
         updateDoc.encryptedSessionSummaryConfig = null;
       } else {
+        if (!AI_SUMMARY_SUPPORTED_RESOURCE_TYPES.has(resource.resourceType as PamResource)) {
+          throw new BadRequestError({
+            message: `AI session summaries are not supported for resource type '${resource.resourceType}'`
+          });
+        }
+
         const appConnection = await appConnectionDAL.findById(sessionSummaryConfig.connectionId);
         if (!appConnection) {
           throw new NotFoundError({ message: `App connection with ID '${sessionSummaryConfig.connectionId}' not found` });

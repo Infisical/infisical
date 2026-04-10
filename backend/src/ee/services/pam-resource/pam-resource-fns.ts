@@ -126,15 +126,19 @@ export const decryptResource = async (
   const { encryptedSessionSummaryConfig } = resource;
 
   if (encryptedSessionSummaryConfig) {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    sessionSummaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedSessionSummaryConfig }).toString()) as {
-      aiInsightsEnabled: boolean;
-      connectionId: string;
-      model: string;
-    };
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      sessionSummaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedSessionSummaryConfig }).toString()) as {
+        aiInsightsEnabled: boolean;
+        connectionId: string;
+        model: string;
+      };
+    } catch {
+      // Session summary config is non-essential — fall back to null on KMS failure or corrupted blob
+    }
   }
 
   return {
