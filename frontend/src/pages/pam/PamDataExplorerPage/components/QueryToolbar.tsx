@@ -24,21 +24,23 @@ export function QueryToolbar({
   onCancel
 }: Props) {
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-mineshaft-600 bg-bunker-800 px-3 py-1.5">
-      {isRunning ? (
-        <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">
-          <SquareIcon className="size-3 text-red-400" />
-          Cancel
-        </Button>
-      ) : (
-        <Button size="xs" onClick={() => onRun()} className="gap-1.5">
-          <PlayIcon className="size-3" />
-          {hasSelection ? "Run Selection" : "Run"}
-          <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
-        </Button>
-      )}
+    <div className="flex shrink-0 items-center justify-between border-b border-mineshaft-600 bg-bunker-800 px-3 py-1.5">
+      <div className="flex items-center gap-3">
+        {isRunning ? (
+          <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">
+            <SquareIcon className="size-3 text-red-400" />
+            Cancel
+          </Button>
+        ) : (
+          <Button size="xs" onClick={() => onRun()} className="gap-1.5">
+            <PlayIcon className="size-3" />
+            {hasSelection ? "Run Selection" : "Run"}
+            <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
+          </Button>
+        )}
+      </div>
       {isInTransaction && (
-        <>
+        <div className="flex items-center gap-3">
           <span className="rounded bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-400">
             Transaction open
           </span>
@@ -62,7 +64,7 @@ export function QueryToolbar({
             <RotateCcwIcon className="size-3" />
             Rollback
           </Button>
-        </>
+        </div>
       )}
     </div>
   );
