@@ -36,14 +36,16 @@ export const pamSessionExpirationServiceFactory = ({
             `${QueueName.PamSessionExpiration}: session expired successfully [sessionId=${sessionId}]`
           );
           if (session?.projectId) {
-            void pamSessionAiSummaryService
-              .queueAiSummary(sessionId, session.projectId)
-              .catch((err: unknown) =>
+            void (async () => {
+              try {
+                await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
+              } catch (err) {
                 logger.error(
                   { sessionId, err },
                   `${QueueName.PamSessionExpiration}: failed to queue AI summary [sessionId=${sessionId}]`
-                )
-              );
+                );
+              }
+            })();
           }
         } else {
           logger.info(

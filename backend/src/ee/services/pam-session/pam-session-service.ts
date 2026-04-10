@@ -77,14 +77,16 @@ export const pamSessionServiceFactory = ({
         endedAt: new Date()
       });
       if (session.projectId) {
-        void pamSessionAiSummaryService
-          .queueAiSummary(session.id, session.projectId)
-          .catch((err: unknown) =>
+        void (async () => {
+          try {
+            await pamSessionAiSummaryService.queueAiSummary(session.id, session.projectId);
+          } catch (err) {
             logger.error(
               { sessionId: session.id, err },
               `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
-            )
-          );
+            );
+          }
+        })();
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return { ...session, ...updatedSession };
