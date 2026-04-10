@@ -104,9 +104,8 @@ export const useSelectOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
-      queryClient.invalidateQueries({
-        queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
-      });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }
   });
 };
