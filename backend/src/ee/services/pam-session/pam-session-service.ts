@@ -80,7 +80,10 @@ export const pamSessionServiceFactory = ({
         void pamSessionAiSummaryService
           .queueAiSummary(session.id, session.projectId)
           .catch((err: unknown) =>
-            logger.error({ sessionId: session.id, err }, "Failed to queue AI summary for inline-expired session")
+            logger.error(
+              { sessionId: session.id, err },
+              `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
+            )
           );
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -233,7 +236,7 @@ export const pamSessionServiceFactory = ({
       try {
         await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
       } catch (err) {
-        logger.error({ sessionId, err }, "Failed to queue AI summary for ended session");
+        logger.error({ sessionId, err }, `Failed to queue AI summary for ended session [sessionId=${sessionId}]`);
       }
     })();
 
@@ -272,7 +275,7 @@ export const pamSessionServiceFactory = ({
       try {
         await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
       } catch (err) {
-        logger.error({ sessionId, err }, "Failed to queue AI summary for terminated session");
+        logger.error({ sessionId, err }, `Failed to queue AI summary for terminated session [sessionId=${sessionId}]`);
       }
     })();
 
