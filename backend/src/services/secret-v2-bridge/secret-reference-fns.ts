@@ -7,8 +7,48 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+// Allow backslash-escaped dots (\.) in secret references so that secret names
+// containing literal dots can be referenced, e.g. ${Secret\.Name} or
+// ${dev.folder.Secret\.Name}
+// Only \. is recognized as an escape sequence; bare backslashes are not matched.
+const INTERPOLATION_PATTERN_STRING = String.raw`\${((?:[a-zA-Z0-9_-]|\\\.)+(?:\.(?:[a-zA-Z0-9_-]|\\\.)+)*)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
+
+/**
+ * Split a reference key on unescaped dots and unescape \\. sequences.
+ * e.g. "dev.folder.Secret\\.Name" => ["dev", "folder", "Secret.Name"]
+ *      "Secret\\.Reference"       => ["Secret.Reference"]
+ */
+export const splitOnUnescapedDots = (str: string): string[] => {
+  const parts: string[] = [];
+  let current = "";
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && i + 1 < str.length && str[i + 1] === ".") {
+      current += ".";
+      i += 1;
+    } else if (str[i] === ".") {
+      parts.push(current);
+      current = "";
+    } else {
+      current += str[i];
+    }
+  }
+  parts.push(current);
+  return parts;
+};
+
+/** Returns true when the string contains at least one dot NOT preceded by a backslash. */
+const hasUnescapedDot = (str: string): boolean => {
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && i + 1 < str.length && str[i + 1] === ".") {
+      i += 1;
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    if (str[i] === ".") return true;
+  }
+  return false;
+};
 
 /**
  * Grabs and processes nested secret references from a string
@@ -17,6 +57,11 @@ const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
  * It filters out references that include nested paths, splits them into environment and
  * secret path parts, and then returns an array of objects with the environment and the
  * joined secret path.
+ *
+ * Escaped dots (\\.) are treated as literal dots in secret names, not as path separators.
+ * e.g. ${Secret\\.Reference} is a local reference to a secret named "Secret.Reference"
+ *      ${dev.folder.Secret\\.Name} is a nested reference with key "Secret.Name"
+ *
  * @example
  * const value = "Hello ${dev.someFolder.OtherFolder.SECRET_NAME} and ${prod.anotherFolder.SECRET_NAME}";
  * const result = getAllNestedSecretReferences(value);
@@ -37,16 +82,19 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
   }
 
   const nestedReferences = references
-    .filter((el) => el.includes("."))
+    .filter((el) => hasUnescapedDot(el))
     .map((el) => {
-      const [environment, ...secretPathList] = el.split(".");
+      const entities = splitOnUnescapedDots(el);
+      const [environment, ...secretPathList] = entities;
       return {
         environment,
         secretPath: path.join("/", ...secretPathList.slice(0, -1)),
         secretKey: secretPathList[secretPathList.length - 1]
       };
     });
-  const localReferences = references.filter((el) => !el.includes("."));
+  const localReferences = references
+    .filter((el) => !hasUnescapedDot(el))
+    .map((el) => splitOnUnescapedDots(el).join(""));
   return { nestedReferences, localReferences };
 };
 
@@ -163,7 +211,7 @@ export const expandSecretReferencesFactory = ({
       if (refs.length > 0) {
         for (const interpolationSyntax of refs) {
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
-          const entities = interpolationKey.trim().split(".");
+          const entities = splitOnUnescapedDots(interpolationKey.trim());
 
           // eslint-disable-next-line no-continue
           if (!entities.length) continue;

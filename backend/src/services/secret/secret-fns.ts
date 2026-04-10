@@ -21,7 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
+import { getAllSecretReferences, splitOnUnescapedDots } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
@@ -215,7 +215,7 @@ type TInterpolateSecretArg = {
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 5;
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
+const INTERPOLATION_PATTERN_STRING = String.raw`\${((?:[a-zA-Z0-9_-]|\\\.)+(?:\.(?:[a-zA-Z0-9_-]|\\\.)+)*)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderDAL }: TInterpolateSecretArg) => {
@@ -287,7 +287,7 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     if (refs.length > 0) {
       for (const interpolationSyntax of refs) {
         const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
-        const entities = interpolationKey.trim().split(".");
+        const entities = splitOnUnescapedDots(interpolationKey.trim());
 
         if (entities.length === 1) {
           const [secretKey] = entities;
@@ -477,9 +477,21 @@ export const getAllNestedSecretReferences = (maybeSecretReference: string) => {
   const references = matches.map((m) => m[1]);
 
   return references
-    .filter((el) => el.includes("."))
+    .filter((el) => {
+      // Check for unescaped dots (dots not preceded by backslash)
+      for (let i = 0; i < el.length; i += 1) {
+        if (el[i] === "\\" && i + 1 < el.length && el[i + 1] === ".") {
+          i += 1;
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        if (el[i] === ".") return true;
+      }
+      return false;
+    })
     .map((el) => {
-      const [environment, ...secretPathList] = el.split(".");
+      const entities = splitOnUnescapedDots(el);
+      const [environment, ...secretPathList] = entities;
       return { environment, secretPath: path.join("/", ...secretPathList.slice(0, -1)) };
     });
 };
