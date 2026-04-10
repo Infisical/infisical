@@ -16,6 +16,7 @@ import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -403,6 +404,9 @@ export const pamResourceServiceFactory = ({
         }
         if (appConnection.orgId !== actor.orgId) {
           throw new BadRequestError({ message: "App connection does not belong to the same organization as the resource" });
+        }
+        if (appConnection.app !== AppConnection.Anthropic) {
+          throw new BadRequestError({ message: `App connection must be an Anthropic connection, got '${appConnection.app}'` });
         }
 
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
