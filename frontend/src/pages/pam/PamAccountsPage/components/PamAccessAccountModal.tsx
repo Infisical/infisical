@@ -88,11 +88,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
 
   if (!account) return null;
 
-  const showDataExplorer = account.resource.resourceType === PamResourceType.Postgres;
-  const showConsole =
+  const showWebAccess =
+    account.resource.resourceType === PamResourceType.Postgres ||
     account.resource.resourceType === PamResourceType.SSH ||
     account.resource.resourceType === PamResourceType.Redis;
-  const showWebAccess = showDataExplorer || showConsole;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -160,7 +159,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
               <p className="text-sm font-medium text-mineshaft-400">Browser</p>
               <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
               <div className="flex gap-2">
-                {showDataExplorer && (
+                {account.resource.resourceType === PamResourceType.Postgres && (
                   <Link
                     to={ROUTE_PATHS.Pam.PamDataExplorerPage.path}
                     params={{
@@ -177,7 +176,8 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     Connect in Browser
                   </Link>
                 )}
-                {showConsole && (
+                {(account.resource.resourceType === PamResourceType.SSH ||
+                  account.resource.resourceType === PamResourceType.Redis) && (
                   <Link
                     to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
                     params={{
