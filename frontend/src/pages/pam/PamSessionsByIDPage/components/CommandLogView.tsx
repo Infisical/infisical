@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -17,11 +17,14 @@ type Props = {
 export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
   const [expandedLogTimestamps, setExpandedLogTimestamps] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const handledScrollIndexRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (scrollToLogIndex == null) return;
+    if (scrollToLogIndex === handledScrollIndexRef.current) return;
     const target = logs[scrollToLogIndex - 1];
     if (!target) return;
+    handledScrollIndexRef.current = scrollToLogIndex;
     setSearch("");
     setExpandedLogTimestamps(new Set([target.timestamp]));
     setTimeout(() => {
