@@ -29,7 +29,7 @@ export const pamSessionExpirationServiceFactory = ({
       try {
         logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session [sessionId=${sessionId}]`);
         const updated = await pamSessionDAL.expireSessionById(sessionId);
-        const session = updated > 0 ? await pamSessionDAL.findById(sessionId) : null;
+        const session = updated > 0 ? await pamSessionDAL.findById(sessionId).catch(() => null) : null;
         if (updated > 0) {
           logger.info(
             { sessionId },

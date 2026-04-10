@@ -1,5 +1,6 @@
 import { TPamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -88,7 +89,13 @@ export const pamSessionAiSummaryServiceFactory = ({
     await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: "pending" });
   };
 
+  const appCfg = getConfig();
+
   const init = () => {
+    if (appCfg.isSecondaryInstance) {
+      return;
+    }
+
     queueService.start(QueueName.PamSessionAiSummary, async (job) => {
       const { sessionId, projectId } = job.data;
 
@@ -225,7 +232,8 @@ export const pamSessionAiSummaryServiceFactory = ({
               for (const event of batchEvents) {
                 if (isSsh) {
                   const termEvent = event as TTerminalEvent;
-                  if (termEvent.eventType === "input") contentChars += termEvent.data?.length ?? 0;
+                  if (termEvent.eventType === "input")
+                  contentChars += termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0;
                 } else {
                   const cmdLog = event as TPamSessionCommandLog;
                   contentChars += (cmdLog.input?.length ?? 0) + (cmdLog.output?.length ?? 0);

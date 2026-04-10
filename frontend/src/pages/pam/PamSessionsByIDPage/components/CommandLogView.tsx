@@ -19,20 +19,24 @@ export const CommandLogView = ({ logs, scrollToLogIndex }: Props) => {
   const [expandedLogTimestamps, setExpandedLogTimestamps] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const handledScrollIndexRef = useRef<number | undefined>(undefined);
+  const toastShownRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (scrollToLogIndex == null) {
       handledScrollIndexRef.current = undefined;
+      toastShownRef.current = undefined;
       return;
     }
     if (scrollToLogIndex === handledScrollIndexRef.current) return;
     const target = logs[scrollToLogIndex - 1];
     if (!target) {
-      handledScrollIndexRef.current = scrollToLogIndex;
-      createNotification({
-        type: "info",
-        text: "Log entry not yet loaded. Load more logs to jump to this entry."
-      });
+      if (toastShownRef.current !== scrollToLogIndex) {
+        toastShownRef.current = scrollToLogIndex;
+        createNotification({
+          type: "info",
+          text: "Log entry not yet loaded. Load more logs to jump to this entry."
+        });
+      }
       return;
     }
     handledScrollIndexRef.current = scrollToLogIndex;
