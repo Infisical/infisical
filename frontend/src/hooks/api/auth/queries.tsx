@@ -300,6 +300,8 @@ export const useGetAuthToken = () =>
   useQuery({
     queryKey: authKeys.getAuthToken,
     queryFn: fetchAuthToken,
+    staleTime: 0,
+    gcTime: 0,
     retry: 0
   });
 
