@@ -40,7 +40,6 @@ export enum WebhookType {
 
 export enum WebhookEvents {
   SecretModified = "secrets.modified",
-  SecretReminderExpired = "secrets.reminder-expired",
   SecretRotationFailed = "secrets.rotation-failed",
   TestEvent = "test"
 }
@@ -55,20 +54,6 @@ type TWebhookSecretModifiedEventPayload = {
     type?: string | null;
     changedBy?: string;
     changedByActorType?: ActorType;
-  };
-};
-
-type TWebhookSecretReminderEventPayload = {
-  type: WebhookEvents.SecretReminderExpired;
-  payload: {
-    projectName?: string;
-    projectId: string;
-    environment: string;
-    secretPath?: string;
-    type?: string | null;
-    secretName: string;
-    secretId: string;
-    reminderNote?: string | null;
   };
 };
 
@@ -87,7 +72,4 @@ type TWebhookSecretRotationFailedEventPayload = {
   };
 };
 
-export type TWebhookPayloads =
-  | TWebhookSecretModifiedEventPayload
-  | TWebhookSecretReminderEventPayload
-  | TWebhookSecretRotationFailedEventPayload;
+export type TWebhookPayloads = TWebhookSecretModifiedEventPayload | TWebhookSecretRotationFailedEventPayload;
