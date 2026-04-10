@@ -46,6 +46,7 @@ export const additionalPrivilegeServiceFactory = ({
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
     [AccessScope.Organization]: newOrgAdditionalPrivilegesFactory({}),
     [AccessScope.Project]: newProjectAdditionalPrivilegesFactory({
+      additionalPrivilegeDAL,
       membershipDAL,
       orgDAL,
       permissionService,
