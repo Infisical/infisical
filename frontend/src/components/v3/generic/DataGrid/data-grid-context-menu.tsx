@@ -33,11 +33,12 @@ export function DataGridContextMenu<TData>({
   const onCellsCopy = tableMeta?.onCellsCopy;
   const onCellsCut = tableMeta?.onCellsCut;
 
-  if (!contextMenu.open || tableMeta?.readOnly) return null;
+  if (!contextMenu.open) return null;
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     <ContextMenu
+      tableMeta={tableMeta}
       columns={columns}
       dataGridRef={dataGridRef}
       contextMenu={contextMenu}
@@ -64,6 +65,7 @@ interface ContextMenuProps<TData>
       | "readOnly"
     >,
     Required<Pick<TableMeta<TData>, "contextMenu">> {
+  tableMeta: TableMeta<TData>;
   columns: Array<ColumnDef<TData>>;
 }
 
@@ -82,6 +84,7 @@ const ContextMenu = React.memo(ContextMenuImpl, (prev, next) => {
 }) as typeof ContextMenuImpl;
 
 function ContextMenuImpl<TData>({
+  tableMeta,
   columns,
   dataGridRef,
   contextMenu,
@@ -194,11 +197,11 @@ function ContextMenuImpl<TData>({
         className="min-w-[140px] p-0.5 [&_[role=menuitem]]:gap-1.5 [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-xs [&_svg]:size-3"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DropdownMenuItem onSelect={onClear}>
+        <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
           <EraserIcon />
           Clear
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSetNull}>
+        <DropdownMenuItem onSelect={onSetNull} isDisabled={tableMeta?.readOnly}>
           <CircleOffIcon />
           Set NULL
         </DropdownMenuItem>
