@@ -151,7 +151,9 @@ export const pamSessionAiSummaryServiceFactory = ({
             type: KmsDataKey.SecretManager,
             projectId
           });
-          summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
+          summaryConfig = JSON.parse(
+            decryptor({ cipherTextBlob: encryptedConfig }).toString()
+          ) as TSessionSummaryConfig;
         } catch (err) {
           logger.error(
             { sessionId, err },
@@ -220,7 +222,10 @@ export const pamSessionAiSummaryServiceFactory = ({
 
           while (hasMoreBatches && contentChars < MAX_LOG_CHARS) {
             // eslint-disable-next-line no-await-in-loop
-            const page = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, { offset, limit: PAGE_SIZE });
+            const page = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, {
+              offset,
+              limit: PAGE_SIZE
+            });
             if (page.length === 0) break;
             for (const batch of page) {
               const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
@@ -233,7 +238,7 @@ export const pamSessionAiSummaryServiceFactory = ({
                 if (isSsh) {
                   const termEvent = event as TTerminalEvent;
                   if (termEvent.eventType === "input")
-                  contentChars += termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0;
+                    contentChars += termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0;
                 } else {
                   const cmdLog = event as TPamSessionCommandLog;
                   contentChars += (cmdLog.input?.length ?? 0) + (cmdLog.output?.length ?? 0);

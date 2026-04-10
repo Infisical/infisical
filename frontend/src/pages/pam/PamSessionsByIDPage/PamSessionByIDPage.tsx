@@ -33,7 +33,7 @@ const Page = () => {
   });
   const { data: session } = useGetPamSessionById(sessionId, {
     refetchInterval: (query) => {
-      const data = query.state.data;
+      const { data } = query.state;
       if (!data) return false;
       if (data.aiInsightsStatus === "pending") return 3000;
       // Also poll briefly after a session ends to catch the null → pending transition,

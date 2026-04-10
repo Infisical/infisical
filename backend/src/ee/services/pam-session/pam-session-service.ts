@@ -73,10 +73,11 @@ export const pamSessionServiceFactory = ({
     if (isActive && isExpired) {
       const updated = await pamSessionDAL.expireSessionById(session.id);
       if (updated > 0) {
-        if (session.projectId) {
+        const { projectId } = session;
+        if (projectId) {
           void (async () => {
             try {
-              await pamSessionAiSummaryService.queueAiSummary(session.id, session.projectId);
+              await pamSessionAiSummaryService.queueAiSummary(session.id, projectId);
             } catch (err) {
               logger.error(
                 { sessionId: session.id, err },

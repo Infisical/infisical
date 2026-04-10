@@ -258,7 +258,10 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
                   await onSave(null);
                   onOpenChange(false);
                 } catch {
-                  createNotification({ type: "error", text: "Failed to disable session recording" });
+                  createNotification({
+                    type: "error",
+                    text: "Failed to disable session recording"
+                  });
                 }
               }}
             >
