@@ -1,0 +1,392 @@
+{
+  "metadata": {
+    "skill_name": "infisical-setup-guide",
+    "skill_path": "/sessions/laughing-kind-euler/mnt/infisical/.claude/skills/infisical-setup-guide",
+    "executor_model": "claude-sonnet-4-20250514",
+    "timestamp": "2026-04-07T18:49:28.879035Z",
+    "evals_run": [
+      "local-dev-setup",
+      "k8s-machine-identity",
+      "docker-self-host"
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "local-dev-setup",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 27.1,
+        "tokens": 36391,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "References .env.dev.example (not .env.example)",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Mentions docker-compose.dev.yml",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "States correct port 8080 for access",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Mentions MailHog or email testing",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Warns about not using dev defaults in production",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Mentions make reviewable commands",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Does NOT reference deprecated .env.example for setup",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        },
+        {
+          "text": "Mentions Docker Compose profiles for optional services (not 'uncomment')",
+          "passed": true,
+          "evidence": "Found in with_skill response (5585 chars)"
+        }
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "local-dev-setup",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 74.6,
+        "tokens": 60336,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "References .env.dev.example (not .env.example)",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Mentions docker-compose.dev.yml",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "States correct port 8080 for access",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Mentions MailHog or email testing",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Warns about not using dev defaults in production",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Mentions make reviewable commands",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Does NOT reference deprecated .env.example for setup",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        },
+        {
+          "text": "Mentions Docker Compose profiles for optional services (not 'uncomment')",
+          "passed": true,
+          "evidence": "Found in without_skill response (12056 chars)"
+        }
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "k8s-machine-identity",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 66.3,
+        "tokens": 41301,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends Kubernetes Auth as primary method",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Mentions zero-secret or no credentials needed",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Explains service account token verification",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Mentions token reviewer setup",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Provides YAML or configuration examples",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Does NOT recommend deprecated Service Tokens",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        },
+        {
+          "text": "Mentions blast radius or identity design best practices",
+          "passed": true,
+          "evidence": "Found in with_skill response (11318 chars)"
+        }
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "k8s-machine-identity",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 64.4,
+        "tokens": 64692,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends Kubernetes Auth as primary method",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Mentions zero-secret or no credentials needed",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Explains service account token verification",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Mentions token reviewer setup",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Provides YAML or configuration examples",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Does NOT recommend deprecated Service Tokens",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        },
+        {
+          "text": "Mentions blast radius or identity design best practices",
+          "passed": true,
+          "evidence": "Found in without_skill response (14279 chars)"
+        }
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "docker-self-host",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.86,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 63.8,
+        "tokens": 39116,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends Docker Compose for small team",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "References docker-compose.prod.yml",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "Instructs user to generate ENCRYPTION_KEY themselves",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "Mentions FIPS variant or FIPS compliance option",
+          "passed": false,
+          "evidence": "Not found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "Warns about pg_data volume or data persistence",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "Mentions HTTPS or reverse proxy for production",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        },
+        {
+          "text": "Does NOT generate actual secrets/keys in the response",
+          "passed": true,
+          "evidence": "Found in with_skill response (9053 chars)"
+        }
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "docker-self-host",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.86,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 64.6,
+        "tokens": 52592,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends Docker Compose for small team",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "References docker-compose.prod.yml",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "Instructs user to generate ENCRYPTION_KEY themselves",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "Mentions FIPS variant or FIPS compliance option",
+          "passed": false,
+          "evidence": "Not found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "Warns about pg_data volume or data persistence",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "Mentions HTTPS or reverse proxy for production",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        },
+        {
+          "text": "Does NOT generate actual secrets/keys in the response",
+          "passed": true,
+          "evidence": "Found in without_skill response (13047 chars)"
+        }
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.95,
+        "stddev": 0.08,
+        "min": 0.86,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 52.4,
+        "stddev": 21.95,
+        "min": 27.1,
+        "max": 66.3
+      },
+      "tokens": {
+        "mean": 38936,
+        "stddev": 2459.94,
+        "min": 36391,
+        "max": 41301
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.95,
+        "stddev": 0.08,
+        "min": 0.86,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 67.87,
+        "stddev": 5.83,
+        "min": 64.4,
+        "max": 74.6
+      },
+      "tokens": {
+        "mean": 59206.67,
+        "stddev": 6128.54,
+        "min": 52592,
+        "max": 64692
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.00",
+      "time_seconds": "-15.5",
+      "tokens": "-20271"
+    }
+  },
+  "notes": [
+    "Pass rates are nearly identical (95% vs 95%) \u2014 the skill does not meaningfully improve accuracy for these test cases",
+    "The skill saves ~35% on tokens (38,936 avg vs 59,207 avg) because it skips repo exploration",
+    "The skill was 2.6x faster on the local-dev-setup eval (27s vs 75s) \u2014 the biggest efficiency gain",
+    "K8s and Docker evals show similar timing regardless of skill \u2014 the baseline agent found docs quickly",
+    "Both configs failed the same Docker assertion (FIPS mention) \u2014 this may reflect a gap in both approaches"
+  ]
+}

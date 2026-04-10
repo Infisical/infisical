@@ -1,0 +1,6 @@
+{
+  "eval_id": 3,
+  "eval_name": "docker-self-host",
+  "prompt": "We want to self-host Infisical for our small team using Docker. What's the simplest way to get it deployed?",
+  "assertions": []
+}

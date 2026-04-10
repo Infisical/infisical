@@ -1,0 +1,23 @@
+{
+  "skill_name": "infisical-user-setup-guide",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm running a Python Flask app and I want to pull secrets from Infisical using the Python SDK with Universal Auth. Can you show me how to set it up end to end — install the package, authenticate, and fetch secrets from my project?",
+      "expected_output": "Correct SDK installation (infisicalsdk), correct imports (InfisicalSDKClient from infisical_sdk), proper Universal Auth setup with machine identity, working code example",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I need to inject secrets from Infisical into my Docker containers at runtime. I'm deploying to AWS ECS. What's the best way to do this without baking secrets into the image?",
+      "expected_output": "Machine identity auth (not deprecated service tokens), correct CLI install URL, infisical run pattern in entrypoint, AWS Auth recommendation for ECS",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We're running a Kubernetes cluster on GKE and want to sync secrets from Infisical to our pods using the operator. How do I set up the auth and get the operator working?",
+      "expected_output": "Kubernetes Auth recommendation for GKE, correct InfisicalSecret CRD spec, Operator installation via Helm, no deprecated auth methods",
+      "files": []
+    }
+  ]
+}
