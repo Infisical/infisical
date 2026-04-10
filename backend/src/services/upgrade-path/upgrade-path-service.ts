@@ -22,6 +22,10 @@ interface CalculateUpgradePathParams {
   toVersion: string;
 }
 
+const UPGRADE_PATH_CONFIG_KEY = "upgrade-path:config";
+const UPGRADE_PATH_CONFIG_TTL = 24 * 60 * 60; // 24 hours
+const UPGRADE_PATH_CACHE_TTL = 60 * 60; // 1 hour
+
 export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFactory) => {
   const sanitizeCacheKey = (key: string): string => {
     return key.replace(new RE2(/[^a-zA-Z0-9\-:._]/g), "_");
@@ -55,8 +59,8 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
   const getUpgradePathConfig = async (): Promise<Record<string, z.infer<typeof versionConfigSchema>>> => {
     return withCache({
       keyStore,
-      key: "upgrade-path:config",
-      ttlSeconds: 24 * 60 * 60,
+      key: UPGRADE_PATH_CONFIG_KEY,
+      ttlSeconds: UPGRADE_PATH_CONFIG_TTL,
       fetcher: async () => {
         try {
           const yamlPath = path.join(__dirname, "..", "..", "..", "upgrade-path.yaml");
@@ -121,7 +125,7 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     return withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: 60 * 60,
+      ttlSeconds: UPGRADE_PATH_CACHE_TTL,
       fetcher: async () => {
         const [releases, config] = await Promise.all([getGitHubReleases(), getUpgradePathConfig()]);
 
