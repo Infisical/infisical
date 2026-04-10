@@ -263,7 +263,24 @@ export const pamSessionAiSummaryServiceFactory = ({
           if (accumulatedLogs.length > 0) {
             logs = accumulatedLogs;
           } else if (session.encryptedLogsBlob) {
-            logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
+            const legacyLogs = await decryptSessionCommandLogs({
+              projectId,
+              encryptedLogs: session.encryptedLogsBlob,
+              kmsService
+            });
+            const legacyChars = legacyLogs.reduce((sum, l) => {
+              const cmd = l as TPamSessionCommandLog;
+              return sum + (cmd.input?.length ?? 0) + (cmd.output?.length ?? 0);
+            }, 0);
+            if (legacyChars >= MAX_LOG_CHARS) {
+              logger.info(
+                { sessionId },
+                `${QueueName.PamSessionAiSummary}: legacy session logs exceed size limit, skipping AI summary [sessionId=${sessionId}]`
+              );
+              await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+              return;
+            }
+            logs = legacyLogs;
           } else {
             logger.info(
               { sessionId },

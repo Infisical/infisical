@@ -29,7 +29,16 @@ export const pamSessionExpirationServiceFactory = ({
       try {
         logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session [sessionId=${sessionId}]`);
         const updated = await pamSessionDAL.expireSessionById(sessionId);
-        const session = updated > 0 ? await pamSessionDAL.findById(sessionId).catch(() => null) : null;
+        const session =
+          updated > 0
+            ? await pamSessionDAL.findById(sessionId).catch((err) => {
+                logger.warn(
+                  { sessionId, err },
+                  `${QueueName.PamSessionExpiration}: failed to fetch session for AI summary, skipping [sessionId=${sessionId}]`
+                );
+                return null;
+              })
+            : null;
         if (updated > 0) {
           logger.info(
             { sessionId },

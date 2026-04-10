@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
-import { PamSessionStatus, TPamSession } from "@app/hooks/api/pam";
+import { PamResourceType, PamSessionStatus, TPamSession } from "@app/hooks/api/pam";
 
 type Props = {
   session: TPamSession;
@@ -62,7 +62,7 @@ export const PamSessionAiInsightsSection = ({ session, onWarningClick }: Props) 
                   {aiInsights.warnings.map((warning, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <li key={i} className="text-xs text-amber-300">
-                      {warning.logIndex != null && onWarningClick ? (
+                      {warning.logIndex != null && onWarningClick && session.resourceType !== PamResourceType.SSH ? (
                         <button
                           type="button"
                           className="inline-flex items-center gap-1.5 text-left underline decoration-dotted underline-offset-2 hover:decoration-solid"
