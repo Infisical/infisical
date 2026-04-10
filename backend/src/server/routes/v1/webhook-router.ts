@@ -19,16 +19,16 @@ export const sanitizedWebhookSchema = WebhooksSchema.pick({
   createdAt: true,
   updatedAt: true,
   envId: true,
-  type: true,
-  isSecretModifiedEventEnabled: true,
-  isSecretRotationFailedEventEnabled: true
+  type: true
 }).extend({
   projectId: z.string(),
   environment: z.object({
     id: z.string(),
     name: z.string(),
     slug: z.string()
-  })
+  }),
+  isSecretModifiedEventEnabled: z.boolean(),
+  isSecretRotationFailedEventEnabled: z.boolean()
 });
 
 export const registerWebhookRouter = async (server: FastifyZodProvider) => {

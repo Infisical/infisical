@@ -248,8 +248,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
-  const exhaustiveCheck: never = event;
-  throw new Error(`Unhandled webhook event: ${JSON.stringify(exhaustiveCheck)}`);
+  logger.warn({ event }, "Unhandled webhook event");
 };
 
 export type TFnTriggerWebhookDTO = {
@@ -278,25 +277,11 @@ export const fnTriggerWebhook = async ({
   auditLogService
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
-  const toBeTriggeredHooks = webhooks.filter(
-    ({ secretPath: hookSecretPath, isDisabled, isSecretModifiedEventEnabled, isSecretRotationFailedEventEnabled }) => {
-      const isEventSubscribed = (() => {
-        switch (event.type) {
-          case WebhookEvents.SecretModified:
-            return isSecretModifiedEventEnabled ?? true;
-          case WebhookEvents.SecretRotationFailed:
-            return isSecretRotationFailedEventEnabled ?? true;
-          default:
-            // all other events are subscribed by default
-            return true;
-        }
-      })();
+  const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, blockedEvents }) => {
+    const isEventSubscribed = !blockedEvents || blockedEvents.length === 0 || !blockedEvents.includes(event.type);
 
-      return (
-        !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed
-      );
-    }
-  );
+    return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
+  });
   if (!toBeTriggeredHooks.length) return;
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");
   let { projectName } = event.payload;

@@ -86,7 +86,12 @@ export const EditWebhookEventsModal = ({
           </div>
 
           <div className="mt-6 flex items-center justify-end space-x-4">
-            <Button variant="plain" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="plain"
+              colorSchema="secondary"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
