@@ -12,8 +12,13 @@ const infisicalTheme = EditorView.theme({
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace",
-    backgroundColor: "#16181a"
+    backgroundColor: "#16181a",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#39393d transparent"
   },
+  ".cm-scroller::-webkit-scrollbar": { width: "4px", height: "4px" },
+  ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
+  ".cm-scroller::-webkit-scrollbar-thumb": { background: "#39393d", borderRadius: "2px" },
   ".cm-content": { padding: "8px 0", caretColor: "#e0ed34", backgroundColor: "#16181a" },
   ".cm-line": { backgroundColor: "transparent" },
   ".cm-gutters": {
