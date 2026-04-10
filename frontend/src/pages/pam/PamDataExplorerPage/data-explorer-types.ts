@@ -16,6 +16,8 @@ export type DataExplorerServerMessage =
       rows: Record<string, unknown>[];
       fields: FieldInfo[];
       rowCount: number | null;
+      isTruncated: boolean;
+      transactionOpen: boolean;
       command: string;
       executionTimeMs: number;
     }
