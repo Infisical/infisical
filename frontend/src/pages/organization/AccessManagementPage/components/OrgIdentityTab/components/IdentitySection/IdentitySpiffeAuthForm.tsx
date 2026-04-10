@@ -441,7 +441,7 @@ export const IdentitySpiffeAuthForm = ({
                 errorText={error?.message}
                 tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
-                <Input {...field} placeholder="Never expires" type="number" min="0" step="1" />
+                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
               </FormControl>
             )}
           />
