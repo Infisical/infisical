@@ -138,7 +138,13 @@ export const AddWebhookForm = ({
 
   useEffect(() => {
     if (!isOpen) {
-      reset();
+      reset({
+        type: WebhookType.GENERAL,
+        isSecretModifiedEventEnabled: true,
+        isSecretRotationFailedEventEnabled: true,
+        environment: environments?.[0]?.slug,
+        secretPath: ""
+      });
     }
   }, [isOpen]);
 
