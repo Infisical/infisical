@@ -12,7 +12,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -474,12 +474,16 @@ export const newProjectAdditionalPrivilegesFactory = ({
       // permissions so that grant boundary validation still runs against them.
       let permissionsToValidate = dto.data.permissions;
       if (!permissionsToValidate && shouldUseNewPrivilegeSystem) {
+        const dbActorField = actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
         const existingPrivilege = await additionalPrivilegeDAL.findOne({
           id: dto.selector.id,
+          [dbActorField]: actorId,
           [scope.key]: scope.value
         });
         if (!existingPrivilege) {
-          throw new BadRequestError({ message: "Additional privilege not found" });
+          throw new NotFoundError({
+            message: `Additional privilege with id ${dto.selector.id} doesn't exist`
+          });
         }
         if (existingPrivilege.permissions) {
           permissionsToValidate = unpackPermissions(existingPrivilege.permissions);
