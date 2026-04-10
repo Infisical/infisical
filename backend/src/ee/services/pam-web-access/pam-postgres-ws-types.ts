@@ -8,7 +8,8 @@ export enum PostgresClientMessageType {
   GetSchemas = "get-schemas",
   GetTables = "get-tables",
   GetTableDetail = "get-table-detail",
-  Query = "query"
+  Query = "query",
+  Cancel = "cancel"
 }
 
 export enum PostgresServerMessageType {
@@ -54,13 +55,16 @@ const QueryRequestSchema = CorrelatedBaseSchema.extend({
   sql: z.string().max(50 * 1024)
 });
 
+const CancelSchema = z.object({ type: z.literal(PostgresClientMessageType.Cancel) });
+
 export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
   InputSchema,
   ControlSchema,
   GetSchemasRequestSchema,
   GetTablesRequestSchema,
   GetTableDetailRequestSchema,
-  QueryRequestSchema
+  QueryRequestSchema,
+  CancelSchema
 ]);
 
 export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;
@@ -135,6 +139,8 @@ const QueryResultResponseSchema = CorrelatedBaseSchema.extend({
     })
   ),
   rowCount: z.number().nullable(),
+  isTruncated: z.boolean(),
+  transactionOpen: z.boolean(),
   command: z.string(),
   executionTimeMs: z.number()
 });
