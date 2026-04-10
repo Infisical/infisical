@@ -1,4 +1,6 @@
+import { parse as parseSql } from "libpg-query";
 import pg from "pg";
+import Cursor from "pg-cursor";
 
 import {
   TPostgresAccountCredentials,
@@ -35,6 +37,22 @@ export const handlePostgresSession = async (
     ctx;
   const { connectionDetails, credentials } = params;
 
+  // Type parser shared between the pg.Client and pg-cursor instances so all
+  // results — whether fetched via the simple query path or cursor — apply the
+  // same normalisation rules.
+  const pgTypes = {
+    getTypeParser: (oid: number) => {
+      // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
+      // so the Data Explorer UI displays human-readable literals.
+      if (oid === 16)
+        return (val: string | Buffer) => {
+          const raw = typeof val === "string" ? val : val.toString("utf8");
+          return raw === "t" ? "true" : "false";
+        };
+      return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
+    }
+  };
+
   const pgClient = new pg.Client({
     host: "localhost",
     port: relayPort,
@@ -44,18 +62,7 @@ export const handlePostgresSession = async (
     ssl: false,
     connectionTimeoutMillis: 30_000,
     statement_timeout: 30_000,
-    types: {
-      getTypeParser: (oid: number) => {
-        // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
-        // so the Data Explorer UI displays human-readable literals.
-        if (oid === 16)
-          return (val: string | Buffer) => {
-            const raw = typeof val === "string" ? val : val.toString("utf8");
-            return raw === "t" ? "true" : "false";
-          };
-        return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
-      }
-    }
+    types: pgTypes
   });
 
   await pgClient.connect();
@@ -234,36 +241,61 @@ export const handlePostgresSession = async (
 
           case PostgresClientMessageType.Query: {
             try {
-              // node-postgres returns an array of QueryResult objects when the SQL contains
-              // multiple statements (simple query protocol). We take the last result so the
-              // caller always sees a single consistent response — same behaviour as psql.
               const startTime = performance.now();
-              const rawResult = (await pgClient.query(message.sql)) as
-                | pg.QueryResult<Record<string, unknown>>
-                | pg.QueryResult<Record<string, unknown>>[];
-              const executionTimeMs = Math.round(performance.now() - startTime);
               const MAX_ROWS = 1000;
-              // Scan all results to track transaction state accurately for multi-statement SQL.
-              // e.g. "BEGIN; INSERT INTO foo VALUES (1);" — last command is INSERT, not BEGIN,
-              // so checking only the last result would leave isInTransaction false incorrectly.
-              const allResults = Array.isArray(rawResult) ? rawResult : [rawResult];
-              for (const r of allResults) {
-                const cmd = (r.command ?? "").toUpperCase();
+
+              // Split the SQL into individual statements using the real PostgreSQL C parser
+              // (via libpg-query WASM). Each statement is then run through a pg-cursor with
+              // an explicit row cap — the server sends at most MAX_ROWS+1 rows at the wire
+              // level regardless of result set size, so memory usage is bounded.
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              const parsed = await parseSql(message.sql);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
+                const location = s.stmt_location ?? 0;
+                return s.stmt_len !== undefined
+                  ? message.sql.slice(location, location + s.stmt_len)
+                  : message.sql.slice(location).trimEnd().replace(/;+$/, "").trim();
+              });
+
+              let lastRows: Record<string, unknown>[] = [];
+              let lastFields: { name: string }[] = [];
+              let lastRowCount: number | null = null;
+              let lastCommand = "";
+              let lastIsTruncated = false;
+
+              for (const stmtSql of stmtTexts) {
+                const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
+                // eslint-disable-next-line no-await-in-loop
+                const stmtRows = await cursor.read(MAX_ROWS + 1);
+                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
+                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
+                // eslint-disable-next-line no-await-in-loop
+                await cursor.close();
+
+                // eslint-disable-next-line no-underscore-dangle
+                const cursorResult = cursor._result;
+                const cmd = (cursorResult.command ?? "").toUpperCase();
                 if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
                 if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
+
+                lastRows = stmtRows;
+                lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
+                lastRowCount = cursorResult.rowCount;
+                lastCommand = cursorResult.command ?? "";
+                lastIsTruncated = stmtIsTruncated;
               }
-              const result = allResults[allResults.length - 1];
-              const allRows = result.rows ?? [];
-              const isTruncated = allRows.length > MAX_ROWS;
+
+              const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
                 type: PostgresServerMessageType.QueryResult,
                 id: message.id,
-                rows: allRows.slice(0, MAX_ROWS),
-                fields: (result.fields ?? []).map((f) => ({ name: f.name })),
-                rowCount: result.rowCount,
-                isTruncated,
+                rows: lastRows,
+                fields: lastFields,
+                rowCount: lastRowCount,
+                isTruncated: lastIsTruncated,
                 transactionOpen: isInTransaction,
-                command: result.command ?? "",
+                command: lastCommand,
                 executionTimeMs
               });
             } catch (err) {
