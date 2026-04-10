@@ -209,7 +209,7 @@ export const ClickhouseProvider = ({
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
 
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const client = await $getClient({
         ...providerInputs,
         host,
@@ -263,7 +263,7 @@ export const ClickhouseProvider = ({
 
     const password = generatePassword(providerInputs.passwordRequirements);
 
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const client = await $getClient({
         ...providerInputs,
         host,
@@ -310,7 +310,7 @@ export const ClickhouseProvider = ({
     const username = entityId;
     const { database } = providerInputs;
 
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const client = await $getClient({
         ...providerInputs,
         host,
@@ -352,7 +352,7 @@ export const ClickhouseProvider = ({
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
-    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
       const client = await $getClient({
         ...providerInputs,
         host,
