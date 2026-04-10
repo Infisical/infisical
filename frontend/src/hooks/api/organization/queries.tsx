@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
+import { getAuthToken } from "../reactQuery";
 import { TOrgRole } from "../roles/types";
 import { IntegrationAuth } from "../types";
 import {
@@ -71,10 +72,16 @@ export const useGetOrganizations = () => {
 };
 
 export const fetchOrganizationsWithSubOrgs = async () => {
+  // prioritize auth token
+  const authToken = getAuthToken();
+
   const {
     data: { organizations }
   } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
-    "/api/v1/organization/accessible-with-sub-orgs"
+    "/api/v1/organization/accessible-with-sub-orgs",
+    {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+    }
   );
   return organizations;
 };

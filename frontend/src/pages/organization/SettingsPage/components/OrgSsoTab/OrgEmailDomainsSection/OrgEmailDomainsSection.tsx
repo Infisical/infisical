@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSubjects,
@@ -28,9 +29,15 @@ export const OrgEmailDomainsSection = () => {
       <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xl font-medium text-gray-200">Email Domains</p>
+            <div className="text-xl font-medium text-gray-200">
+              Email Domains
+              <DocumentationLinkBadge
+                className="ml-2"
+                href="https://infisical.com/docs/documentation/platform/email-domain"
+              />
+            </div>
             <p className="mt-1 mb-2 text-gray-400">
-              Verify ownership of your email domains to use with SSO and identity providers.
+              Verify ownership of your email domains to use with SSO and identity providers. For mo
             </p>
           </div>
           {hasEmailDomainVerification && (

@@ -20,6 +20,9 @@ export const apiRequest = axios.create({
 });
 
 apiRequest.interceptors.request.use((config) => {
+  // Skip auto-injection if the caller already set an Authorization header
+  if (config.headers?.Authorization) return config;
+
   const signupTempToken = getSignupTempToken();
   const mfaTempToken = getMfaTempToken();
   const token = getAuthToken();

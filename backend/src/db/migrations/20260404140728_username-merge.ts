@@ -116,10 +116,13 @@ export async function up(knex: Knex): Promise<void> {
         // that would conflict (unique constraint), the update will fail for that row.
         // So we do it in two steps: update what we can, leave the rest for CASCADE delete.
         try {
+          await knex.raw("SAVEPOINT fk_reassign");
           await knex(ref.table_name)
             .whereIn(ref.column_name, loserIds)
             .update({ [ref.column_name]: winner.id });
+          await knex.raw("RELEASE SAVEPOINT fk_reassign");
         } catch (err: unknown) {
+          await knex.raw("ROLLBACK TO SAVEPOINT fk_reassign");
           // Unique constraint violation (23505) — some rows couldn't be reassigned.
           // That's fine — they'll be cleaned up by CASCADE when the loser user is deleted.
           if ((err as { code?: string })?.code !== "23505") {

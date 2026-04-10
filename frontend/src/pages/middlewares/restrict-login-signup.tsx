@@ -94,34 +94,30 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     if (location.pathname === "/signupinvite") return;
 
-    // Avoid redirect if on select-organization page with force=true
-    if (location.pathname.endsWith("select-organization") && search?.force === true) return;
+    const isOnSelectOrg = location.pathname.endsWith("select-organization");
+    const needsOrgSelection =
+      search?.callback_port || search?.force || search?.org_id || !data.organizationId;
 
-    // to do cli login
-    if (search?.callback_port) {
-      if (location.pathname.endsWith("select-organization") || location.pathname.endsWith("login"))
+    if (needsOrgSelection) {
+      if (isOnSelectOrg || (!data.organizationId && location.pathname.endsWith("verify-email")))
         return;
+
+      throw redirect({
+        to: "/login/select-organization",
+        search: {
+          org_id: search?.org_id || data.organizationId,
+          callback_port: search?.callback_port
+        }
+      });
     }
 
-    if (search.org_id) {
-      if (location.pathname.endsWith("select-organization")) return;
-
-      throw redirect({ to: "/login/select-organization", search: { org_id: search.org_id } });
-    }
-
-    if (!data.organizationId) {
-      if (
-        location.pathname.endsWith("select-organization") ||
-        location.pathname.endsWith("verify-email")
-      )
-        return;
-      throw redirect({ to: "/login/select-organization" });
-    }
     const orgId = data.subOrganizationId || data.organizationId;
-    throw redirect({
-      to: "/organizations/$orgId/projects",
-      params: { orgId }
-    });
+    if (orgId) {
+      throw redirect({
+        to: "/organizations/$orgId/projects",
+        params: { orgId }
+      });
+    }
   },
   component: AuthConsentWrapper
 });

@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
-import { queryClient as qc } from "@app/hooks/api/reactQuery";
+import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { authKeys } from "../auth/queries";
@@ -29,7 +29,12 @@ import {
 } from "./types";
 
 export const fetchUserDetails = async () => {
-  const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
+  // prioritize auth token
+  const authToken = getAuthToken();
+
+  const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user", {
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+  });
   return data.user;
 };
 

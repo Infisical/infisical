@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 import { ChevronRight, LogIn, Search } from "lucide-react";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
-import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
@@ -78,7 +76,7 @@ export const SelectOrgPage = () => {
     org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
-    mfa_pending: mfaPending
+    mfa_method: mfaMethodFromSearch
   } = search;
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
@@ -87,10 +85,12 @@ export const SelectOrgPage = () => {
   const logout = useLogoutUser();
 
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
-  const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
+  const [requiredMfaMethod, setRequiredMfaMethod] = useState(
+    mfaMethodFromSearch ?? MfaMethod.EMAIL
+  );
   const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
+  const mfaSuccessCallback = useRef<() => void>(() => {});
 
   const handleLogout = useCallback(async () => {
     try {
@@ -204,7 +204,7 @@ export const SelectOrgPage = () => {
           setRequiredMfaMethod(mfaMethod);
         }
         toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleSelectOrganization(org, subOrgId));
+        mfaSuccessCallback.current = () => handleSelectOrganization(org, subOrgId);
         return;
       }
 
@@ -223,18 +223,16 @@ export const SelectOrgPage = () => {
           JTWToken: token,
           email: user?.email,
           privateKey: ""
-        } as IsCliLoginSuccessful["loginResponse"];
+        };
 
-        const instance = axios.create();
-        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
-          sessionStorage.setItem(
-            SessionStorageKeys.CLI_TERMINAL_TOKEN,
-            JSON.stringify({
-              expiry: formatISO(addSeconds(new Date(), 30)),
-              data: window.btoa(JSON.stringify(payload))
-            })
-          );
-        });
+        sessionStorage.setItem(
+          SessionStorageKeys.CLI_TERMINAL_TOKEN,
+          JSON.stringify({
+            expiry: formatISO(addSeconds(new Date(), 30)),
+            data: window.btoa(JSON.stringify(payload)),
+            callbackPort
+          })
+        );
         navigate({ to: "/cli-redirect" });
       } else {
         setAuthToken(token);
@@ -248,16 +246,14 @@ export const SelectOrgPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const defaultOrg = orgs?.find((o) => o.id === orgId);
-    if (mfaPending && defaultOrg) {
-      const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
-      if (storedMfaToken) {
-        sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
-        SecurityClient.setMfaToken(storedMfaToken);
-        toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleSelectOrganization(defaultOrg));
-      }
+    const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+    if (mfaMethodFromSearch && storedMfaToken && defaultOrg) {
+      sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+      SecurityClient.setMfaToken(storedMfaToken);
+      toggleShowMfa.on();
+      mfaSuccessCallback.current = () => handleSelectOrganization(defaultOrg);
     }
-  }, [mfaPending, orgs?.length, orgId]);
+  }, [mfaMethodFromSearch, orgs?.length, orgId]);
 
   const renderListContent = () => {
     if (orgsLoading) {
@@ -390,8 +386,8 @@ export const SelectOrgPage = () => {
       {shouldShowMfa ? (
         <Mfa
           email={user.email as string}
-          successCallback={mfaSuccessCallback}
-          method={requiredMfaMethod}
+          successCallback={mfaSuccessCallback.current}
+          method={requiredMfaMethod as MfaMethod}
         />
       ) : (
         <div className="mx-auto mt-20 w-full max-w-md pb-28">

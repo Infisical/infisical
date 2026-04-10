@@ -1,13 +1,17 @@
 import { createFileRoute, redirect, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
+import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
+import { SessionStorageKeys } from "@app/const";
 import { selectOrganization } from "@app/hooks/api/auth/queries";
+import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
   fetchOrganizationsWithSubOrgs,
   organizationKeys
 } from "@app/hooks/api/organization/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 import { SelectOrgPage } from "./SelectOrgPage";
 
@@ -16,9 +20,7 @@ export const SelectOrganizationPageQueryParams = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
   is_admin_login: z.boolean().optional().catch(false),
   force: z.boolean().optional(),
-  mfa_pending: z.boolean().optional().catch(false),
-  mfaToken: z.string().optional().catch(undefined),
-  mfaMethod: z.string().optional().catch(undefined)
+  mfa_method: z.string().optional().catch(undefined)
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/select-organization")({
@@ -30,15 +32,13 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         org_id: "",
         callback_port: undefined,
         is_admin_login: false,
-        mfa_pending: false,
-        mfaToken: undefined,
-        mfaMethod: undefined
+        mfa_method: undefined
       })
     ]
   },
   beforeLoad: async ({ context, search }) => {
-    // Skip auto-select for CLI flows, MFA pending, or force flag
-    if (search.callback_port || search.mfa_pending || search.mfaToken || search.force) return;
+    // Skip auto-select for MFA pending or force flag
+    if (search.mfa_method || search.force) return;
 
     try {
       const orgsWithSubOrgs = await context.queryClient.ensureQueryData({
@@ -60,18 +60,41 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         // If org_id is specified and doesn't match the only org, let the page handle it
         if (search.org_id && search.org_id !== orgId) return;
 
-        const result = await selectOrganization({ organizationId: orgId });
+        const result = await selectOrganization({
+          organizationId: orgId,
+          userAgent: search.callback_port ? UserAgentType.CLI : undefined
+        });
 
         if (result.isMfaEnabled) {
           // MFA required — redirect back to this page with MFA params so the component renders MFA immediately
+          sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, result.token);
           throw redirect({
             to: "/login/select-organization",
             search: {
-              mfaToken: result.token,
-              mfaMethod: result.mfaMethod,
-              org_id: orgId
+              mfa_method: result.mfaMethod,
+              org_id: orgId,
+              callback_port: search.callback_port
             }
           });
+        }
+
+        if (search.callback_port) {
+          const user = await fetchUserDetails();
+          const payload = {
+            JTWToken: result.token,
+            email: user.email,
+            privateKey: ""
+          };
+
+          sessionStorage.setItem(
+            SessionStorageKeys.CLI_TERMINAL_TOKEN,
+            JSON.stringify({
+              expiry: formatISO(addSeconds(new Date(), 30)),
+              data: window.btoa(JSON.stringify(payload)),
+              callbackPort: search.callback_port
+            })
+          );
+          throw redirect({ to: "/cli-redirect" });
         }
 
         setAuthToken(result.token);

@@ -267,7 +267,7 @@ export const oidcConfigServiceFactory = ({
         if (!newUser) {
           newUser = await userDAL.create(
             {
-              email,
+              email: sanitizedEmail,
               firstName,
               username: sanitizedEmail,
               lastName,
