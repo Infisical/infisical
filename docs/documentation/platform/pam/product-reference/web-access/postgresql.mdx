@@ -72,7 +72,10 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
     <Accordion title="Can I edit data for all tables?">
         Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
     </Accordion>
-    <Accordion title="Is the SQL query runner an actual psql session?">
-        No. The SQL query runner connects directly to PostgreSQL but is not a `psql` client. Backslash commands like `\dt` or `\d` are not supported.
+    <Accordion title="Does the SQL query runner support transactions?">
+        Yes. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` to manage transactions. An active transaction is shared across all query tabs — changes made in one tab are visible in others until you commit or roll back. The toolbar will show a **Transaction open** indicator while a transaction is in progress.
+    </Accordion>
+    <Accordion title="Can I run only part of a query?">
+        Yes. Select any portion of the SQL in the editor and click **Run Selection** (or press <kbd>⌘ Enter</kbd> / <kbd>Ctrl Enter</kbd>) to execute only the selected text.
     </Accordion>
 </AccordionGroup>
