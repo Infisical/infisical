@@ -1,7 +1,6 @@
 import { parse as parseSql } from "libpg-query";
 import pg from "pg";
 import Cursor from "pg-cursor";
-import RE2 from "re2";
 
 import {
   TPostgresAccountCredentials,
@@ -256,7 +255,7 @@ export const handlePostgresSession = async (
                 const location = s.stmt_location ?? 0;
                 return s.stmt_len !== undefined
                   ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trimEnd().replace(new RE2(";+$"), "").trim();
+                  : message.sql.slice(location).trim();
               });
 
               let lastRows: Record<string, unknown>[] = [];
