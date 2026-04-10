@@ -238,6 +238,15 @@ export const pamSessionAiSummaryServiceFactory = ({
             offset += PAGE_SIZE;
           }
 
+          if (contentChars >= MAX_LOG_CHARS) {
+            logger.info(
+              { sessionId },
+              `${QueueName.PamSessionAiSummary}: session logs exceed size limit, skipping AI summary [sessionId=${sessionId}]`
+            );
+            await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+            return;
+          }
+
           if (accumulatedLogs.length > 0) {
             logs = accumulatedLogs;
           } else if (session.encryptedLogsBlob) {

@@ -17,8 +17,7 @@ export const formatLogsForSummary = (
       const ts = new Date(log.timestamp).toISOString();
       return `[${i + 1}] [${ts}]\nQuery: ${log.input.trim()}\nResult: ${log.output.trim()}`;
     });
-    const joined = lines.join("\n\n");
-    return joined.length > MAX_LOG_CHARS ? `${joined.slice(0, MAX_LOG_CHARS)}\n...(truncated)` : joined;
+    return lines.join("\n\n");
   }
 
   // SSH: extract input events and decode Base64 → printable text
@@ -35,8 +34,7 @@ export const formatLogsForSummary = (
       // skip malformed base64
     }
   }
-  const combined = inputLines.join("");
-  return combined.length > MAX_LOG_CHARS ? `${combined.slice(0, MAX_LOG_CHARS)}\n...(truncated)` : combined;
+  return inputLines.join("");
 };
 
 const SYSTEM_PROMPTS: Partial<Record<PamResource, string>> = {
