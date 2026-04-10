@@ -1,11 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  OrgPermissionAppConnectionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,
@@ -18,10 +15,10 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -417,18 +414,24 @@ export const pamResourceServiceFactory = ({
 
         const appConnection = await appConnectionDAL.findById(sessionSummaryConfig.connectionId);
         if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${sessionSummaryConfig.connectionId}' not found` });
+          throw new NotFoundError({
+            message: `App connection with ID '${sessionSummaryConfig.connectionId}' not found`
+          });
         }
         if (appConnection.orgId !== actor.orgId) {
-          throw new BadRequestError({ message: "App connection does not belong to the same organization as the resource" });
+          throw new BadRequestError({
+            message: "App connection does not belong to the same organization as the resource"
+          });
         }
         if (!LLM_APP_CONNECTIONS.has(appConnection.app as AppConnection)) {
-          throw new BadRequestError({ message: `App connection must be an AI provider connection, got '${appConnection.app}'` });
+          throw new BadRequestError({
+            message: `App connection must be an AI provider connection, got '${appConnection.app}'`
+          });
         }
 
         // Check actor has Connect permission on the app connection
         if (appConnection.projectId) {
-          const { permission } = await permissionService.getProjectPermission({
+          const { permission: appConnectionPermission } = await permissionService.getProjectPermission({
             actor: actor.type,
             actorId: actor.id,
             projectId: appConnection.projectId,
@@ -436,12 +439,12 @@ export const pamResourceServiceFactory = ({
             actorOrgId: actor.orgId,
             actionProjectType: ActionProjectType.Any
           });
-          ForbiddenError.from(permission).throwUnlessCan(
+          ForbiddenError.from(appConnectionPermission).throwUnlessCan(
             ProjectPermissionAppConnectionActions.Connect,
             subject(ProjectPermissionSub.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
           );
         } else {
-          const { permission } = await permissionService.getOrgPermission({
+          const { permission: appConnectionPermission } = await permissionService.getOrgPermission({
             actorId: actor.id,
             actor: actor.type,
             orgId: appConnection.orgId,
@@ -449,7 +452,7 @@ export const pamResourceServiceFactory = ({
             actorAuthMethod: actor.authMethod,
             scope: OrganizationActionScope.Any
           });
-          ForbiddenError.from(permission).throwUnlessCan(
+          ForbiddenError.from(appConnectionPermission).throwUnlessCan(
             OrgPermissionAppConnectionActions.Connect,
             subject(OrgPermissionSubjects.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
           );

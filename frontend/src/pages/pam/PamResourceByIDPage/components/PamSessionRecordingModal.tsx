@@ -73,7 +73,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
     handleSubmit,
     reset,
     setValue,
-    formState: { isSubmitting }
+    formState: { isSubmitting, dirtyFields }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -99,11 +99,13 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
   const selectedProvider = selectedConnection?.app as LlmAppConnection | undefined;
   const availableModels = selectedProvider ? LLM_MODELS[selectedProvider] : [];
 
+  // Only reset the model when the user explicitly changes the connection (field is dirty),
+  // not when connections load async and selectedProvider goes undefined → defined on open.
   useEffect(() => {
-    if (selectedProvider) {
+    if (selectedProvider && dirtyFields.connectionId) {
       setValue("model", DEFAULT_MODEL[selectedProvider], { shouldDirty: true });
     }
-  }, [selectedProvider, setValue]);
+  }, [selectedProvider, dirtyFields.connectionId, setValue]);
 
   const onSubmit = async (data: FormData) => {
     if (!data.aiInsightsEnabled) {

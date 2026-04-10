@@ -52,7 +52,13 @@ export const pamSessionServiceFactory = ({
   // Only applies to non-gateway sessions (e.g., AWS IAM) - gateway sessions are managed by the gateway
   // This is intentionally only called in getById (session details view), not in list
   const checkAndExpireSessionIfNeeded = async <
-    T extends { id: string; status: string; expiresAt: Date | null; gatewayIdentityId?: string | null }
+    T extends {
+      id: string;
+      status: string;
+      expiresAt: Date | null;
+      gatewayIdentityId?: string | null;
+      projectId?: string | null;
+    }
   >(
     session: T
   ): Promise<T> => {
@@ -70,6 +76,13 @@ export const pamSessionServiceFactory = ({
         status: PamSessionStatus.Ended,
         endedAt: new Date()
       });
+      if (session.projectId) {
+        void pamSessionAiSummaryService
+          .queueAiSummary(session.id, session.projectId)
+          .catch((err: unknown) =>
+            logger.error({ sessionId: session.id, err }, "Failed to queue AI summary for inline-expired session")
+          );
+      }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return { ...session, ...updatedSession };
     }

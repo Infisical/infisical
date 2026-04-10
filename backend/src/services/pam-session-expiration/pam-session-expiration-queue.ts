@@ -1,5 +1,5 @@
-import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TPamSessionAiSummaryServiceFactory } from "@app/ee/services/pam-session/pam-session-ai-summary-queue";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -31,7 +31,10 @@ export const pamSessionExpirationServiceFactory = ({
         const session = await pamSessionDAL.findById(sessionId);
         const updated = await pamSessionDAL.expireSessionById(sessionId);
         if (updated > 0) {
-          logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired successfully [sessionId=${sessionId}]`);
+          logger.info(
+            { sessionId },
+            `${QueueName.PamSessionExpiration}: session expired successfully [sessionId=${sessionId}]`
+          );
           if (session?.projectId) {
             await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
           }

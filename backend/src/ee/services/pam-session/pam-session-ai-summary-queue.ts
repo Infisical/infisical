@@ -10,7 +10,12 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
 import { decryptSessionCommandLogs } from "./pam-session-fns";
-import { MAX_LOG_CHARS, buildSummaryPrompt, formatLogsForSummary, generateSessionSummary } from "./pam-session-summary-fns";
+import {
+  buildSummaryPrompt,
+  formatLogsForSummary,
+  generateSessionSummary,
+  MAX_LOG_CHARS
+} from "./pam-session-summary-fns";
 import { TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
 
 type TSessionSummaryConfig = {
@@ -59,7 +64,11 @@ export const pamSessionAiSummaryServiceFactory = ({
         projectId
       });
       summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
-    } catch {
+    } catch (err) {
+      logger.warn(
+        { sessionId, err },
+        `queueAiSummary: failed to decrypt sessionSummaryConfig, skipping [sessionId=${sessionId}]`
+      );
       return;
     }
 
@@ -88,7 +97,10 @@ export const pamSessionAiSummaryServiceFactory = ({
       // 1. Fetch session
       const session = await pamSessionDAL.findById(sessionId);
       if (!session) {
-        logger.warn({ sessionId }, `${QueueName.PamSessionAiSummary}: session not found, skipping [sessionId=${sessionId}]`);
+        logger.warn(
+          { sessionId },
+          `${QueueName.PamSessionAiSummary}: session not found, skipping [sessionId=${sessionId}]`
+        );
         return;
       }
 
@@ -106,7 +118,10 @@ export const pamSessionAiSummaryServiceFactory = ({
       // 3. Fetch resource and decrypt sessionSummaryConfig
       const resource = await pamResourceDAL.findById(resourceId);
       if (!resource) {
-        logger.info({ sessionId, resourceId }, `${QueueName.PamSessionAiSummary}: resource not found, skipping [sessionId=${sessionId}] [resourceId=${resourceId}]`);
+        logger.info(
+          { sessionId, resourceId },
+          `${QueueName.PamSessionAiSummary}: resource not found, skipping [sessionId=${sessionId}] [resourceId=${resourceId}]`
+        );
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
@@ -130,13 +145,19 @@ export const pamSessionAiSummaryServiceFactory = ({
         });
         summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
       } catch (err) {
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig [sessionId=${sessionId}]`);
+        logger.error(
+          { sessionId, err },
+          `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig [sessionId=${sessionId}]`
+        );
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
 
       if (!summaryConfig.aiInsightsEnabled) {
-        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI insights disabled for resource, skipping [sessionId=${sessionId}]`);
+        logger.info(
+          { sessionId },
+          `${QueueName.PamSessionAiSummary}: AI insights disabled for resource, skipping [sessionId=${sessionId}]`
+        );
         await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
@@ -161,7 +182,10 @@ export const pamSessionAiSummaryServiceFactory = ({
         });
         apiKey = (credentials as { apiKey: string }).apiKey;
       } catch (err) {
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt connection credentials [sessionId=${sessionId}]`);
+        logger.error(
+          { sessionId, err },
+          `${QueueName.PamSessionAiSummary}: failed to decrypt connection credentials [sessionId=${sessionId}]`
+        );
         await pamSessionDAL.updateById(sessionId, {
           aiInsightsStatus: "failed",
           aiInsightsError: "Failed to decrypt AI connection credentials"
@@ -192,8 +216,20 @@ export const pamSessionAiSummaryServiceFactory = ({
           if (page.length === 0) break;
           for (const batch of page) {
             const plain = decryptor({ cipherTextBlob: batch.encryptedEventsBlob });
-            contentChars += plain.length;
             const batchEvents = JSON.parse(plain.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
+            // For SSH, only input events are used by formatLogsForSummary — count only those bytes
+            // to avoid premature truncation from output/resize/error events that are discarded.
+            // For Postgres, every event is a command log so count all of them.
+            const isSsh = resource.resourceType === PamResource.SSH;
+            for (const event of batchEvents) {
+              if (isSsh) {
+                const termEvent = event as TTerminalEvent;
+                if (termEvent.eventType === "input") contentChars += termEvent.data?.length ?? 0;
+              } else {
+                const cmdLog = event as TPamSessionCommandLog;
+                contentChars += (cmdLog.input?.length ?? 0) + (cmdLog.output?.length ?? 0);
+              }
+            }
             accumulatedLogs.push(...batchEvents);
             if (contentChars >= MAX_LOG_CHARS) break;
           }
@@ -206,7 +242,10 @@ export const pamSessionAiSummaryServiceFactory = ({
         } else if (session.encryptedLogsBlob) {
           logs = await decryptSessionCommandLogs({ projectId, encryptedLogs: session.encryptedLogsBlob, kmsService });
         } else {
-          logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: no session logs, skipping [sessionId=${sessionId}]`);
+          logger.info(
+            { sessionId },
+            `${QueueName.PamSessionAiSummary}: no session logs, skipping [sessionId=${sessionId}]`
+          );
           await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
           return;
         }
@@ -216,7 +255,10 @@ export const pamSessionAiSummaryServiceFactory = ({
           return;
         }
       } catch (err) {
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt session logs [sessionId=${sessionId}]`);
+        logger.error(
+          { sessionId, err },
+          `${QueueName.PamSessionAiSummary}: failed to decrypt session logs [sessionId=${sessionId}]`
+        );
         await pamSessionDAL.updateById(sessionId, {
           aiInsightsStatus: "failed",
           aiInsightsError: "Failed to decrypt session logs"
@@ -258,14 +300,20 @@ export const pamSessionAiSummaryServiceFactory = ({
           aiInsightsError: null
         });
 
-        logger.info({ sessionId }, `${QueueName.PamSessionAiSummary}: AI summary completed successfully [sessionId=${sessionId}]`);
+        logger.info(
+          { sessionId },
+          `${QueueName.PamSessionAiSummary}: AI summary completed successfully [sessionId=${sessionId}]`
+        );
       } catch (err) {
         const message =
           err instanceof Error && err.message.length < 500
             ? err.message
             : "AI summarization failed. The session logs may be too large for the selected model.";
 
-        logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: AI summarization failed [sessionId=${sessionId}]`);
+        logger.error(
+          { sessionId, err },
+          `${QueueName.PamSessionAiSummary}: AI summarization failed [sessionId=${sessionId}]`
+        );
 
         await pamSessionDAL.updateById(sessionId, {
           aiInsightsStatus: "failed",
