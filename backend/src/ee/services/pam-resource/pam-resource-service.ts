@@ -1,9 +1,14 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import {
   ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -410,6 +415,35 @@ export const pamResourceServiceFactory = ({
         }
         if (!LLM_APP_CONNECTIONS.has(appConnection.app as AppConnection)) {
           throw new BadRequestError({ message: `App connection must be an AI provider connection, got '${appConnection.app}'` });
+        }
+
+        // Check actor has Connect permission on the app connection
+        if (appConnection.projectId) {
+          const { permission } = await permissionService.getProjectPermission({
+            actor: actor.type,
+            actorId: actor.id,
+            projectId: appConnection.projectId,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId,
+            actionProjectType: ActionProjectType.Any
+          });
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionAppConnectionActions.Connect,
+            subject(ProjectPermissionSub.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
+          );
+        } else {
+          const { permission } = await permissionService.getOrgPermission({
+            actorId: actor.id,
+            actor: actor.type,
+            orgId: appConnection.orgId,
+            actorOrgId: actor.orgId,
+            actorAuthMethod: actor.authMethod,
+            scope: OrganizationActionScope.Any
+          });
+          ForbiddenError.from(permission).throwUnlessCan(
+            OrgPermissionAppConnectionActions.Connect,
+            subject(OrgPermissionSubjects.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
+          );
         }
 
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
