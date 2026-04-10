@@ -64,8 +64,7 @@ export const pamSessionAiSummaryServiceFactory = ({
 
     if (!summaryConfig.aiInsightsEnabled) return;
 
-    // AI is enabled — mark pending and enqueue
-    await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: "pending" });
+    // AI is enabled — enqueue first, then mark pending only on successful enqueue
     await queueService.queue(
       QueueName.PamSessionAiSummary,
       QueueJobs.PamSessionAiSummary,
@@ -76,6 +75,7 @@ export const pamSessionAiSummaryServiceFactory = ({
         removeOnFail: { count: 20 }
       }
     );
+    await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: "pending" });
   };
 
   const init = () => {
@@ -130,6 +130,7 @@ export const pamSessionAiSummaryServiceFactory = ({
         summaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedConfig }).toString()) as TSessionSummaryConfig;
       } catch (err) {
         logger.error({ sessionId, err }, `${QueueName.PamSessionAiSummary}: failed to decrypt sessionSummaryConfig`);
+        await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
         return;
       }
 
@@ -190,24 +191,23 @@ export const pamSessionAiSummaryServiceFactory = ({
         return;
       }
 
-      // 6. Format logs and build prompt
-      const resourceType = resource.resourceType as PamResource;
-      const durationSeconds = session.endedAt
-        ? (new Date(session.endedAt).getTime() - new Date(session.createdAt).getTime()) / 1000
-        : 0;
-
-      const formattedLogs = formatLogsForSummary(logs, resourceType);
-      const { system, user } = buildSummaryPrompt({
-        resourceType,
-        resourceName: resource.name,
-        actorName: session.actorName,
-        actorEmail: session.actorEmail,
-        durationSeconds,
-        formattedLogs
-      });
-
-      // 7. Generate summary
+      // 6. Format logs, build prompt, and generate summary
       try {
+        const resourceType = resource.resourceType as PamResource;
+        const durationSeconds = session.endedAt
+          ? (new Date(session.endedAt).getTime() - new Date(session.createdAt).getTime()) / 1000
+          : 0;
+
+        const formattedLogs = formatLogsForSummary(logs, resourceType);
+        const { system, user } = buildSummaryPrompt({
+          resourceType,
+          resourceName: resource.name,
+          actorName: session.actorName,
+          actorEmail: session.actorEmail,
+          durationSeconds,
+          formattedLogs
+        });
+
         const { summary, warnings } = await generateSessionSummary(apiKey, summaryConfig.model, system, user);
 
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
