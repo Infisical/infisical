@@ -478,7 +478,10 @@ export const newProjectAdditionalPrivilegesFactory = ({
           id: dto.selector.id,
           [scope.key]: scope.value
         });
-        if (existingPrivilege?.permissions) {
+        if (!existingPrivilege) {
+          throw new BadRequestError({ message: "Additional privilege not found" });
+        }
+        if (existingPrivilege.permissions) {
           permissionsToValidate = unpackPermissions(existingPrivilege.permissions);
         }
       }
