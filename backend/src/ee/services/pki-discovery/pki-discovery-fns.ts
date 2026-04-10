@@ -311,7 +311,8 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
 
     const subject = cert.subject || {};
     // In Node 22, cert subject/issuer fields can be string | string[] for multi-valued attributes
-    const certField = (val: string | string[] | undefined): string | undefined => (Array.isArray(val) ? val[0] : val);
+    const certField = (val: string | string[] | undefined): string | undefined =>
+      Array.isArray(val) ? val.join(", ") : val;
 
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
