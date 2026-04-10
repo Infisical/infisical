@@ -32,7 +32,19 @@ const Page = () => {
     select: (el) => el.sessionId
   });
   const { data: session } = useGetPamSessionById(sessionId, {
-    refetchInterval: (query) => (query.state.data?.aiInsightsStatus === "pending" ? 3000 : false)
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      if (data.aiInsightsStatus === "pending") return 3000;
+      // Also poll briefly after a session ends to catch the null → pending transition,
+      // since queueAiSummary runs asynchronously after the session status is written.
+      const isEnded =
+        data.status === PamSessionStatus.Ended || data.status === PamSessionStatus.Terminated;
+      const isRecentlyEnded =
+        data.endedAt && Date.now() - new Date(data.endedAt).getTime() < 30_000;
+      if (isEnded && data.aiInsightsStatus === null && isRecentlyEnded) return 3000;
+      return false;
+    }
   });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
