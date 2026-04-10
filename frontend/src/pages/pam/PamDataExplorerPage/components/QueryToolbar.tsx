@@ -25,21 +25,16 @@ export function QueryToolbar({
 }: Props) {
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-mineshaft-600 bg-bunker-800 px-3 py-1.5">
-      <Button
-        size="xs"
-        onClick={() => onRun()}
-        isPending={isRunning}
-        isDisabled={isRunning}
-        className="gap-1.5"
-      >
-        <PlayIcon className="size-3" />
-        {hasSelection ? "Run Selection" : "Run"}
-        {!isRunning && <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>}
-      </Button>
-      {isRunning && (
+      {isRunning ? (
         <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">
           <SquareIcon className="size-3 text-red-400" />
           Cancel
+        </Button>
+      ) : (
+        <Button size="xs" onClick={() => onRun()} className="gap-1.5">
+          <PlayIcon className="size-3" />
+          {hasSelection ? "Run Selection" : "Run"}
+          <span className="opacity-60">{isMac ? "⌘" : "Ctrl"} ↵</span>
         </Button>
       )}
       {isInTransaction && (
