@@ -155,7 +155,7 @@ export const useGetSecretApprovalRequestCount = ({
 }) =>
   useQuery({
     queryKey: secretApprovalRequestKeys.count({ projectId, policyId }),
-    refetchInterval: 15000,
+    refetchInterval: 30_000,
     queryFn: () => fetchSecretApprovalRequestCount({ projectId, policyId }),
     enabled: Boolean(projectId) && (options?.enabled ?? true)
   });

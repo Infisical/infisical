@@ -199,7 +199,7 @@ export const useGetWorkspaceIntegrations = (
     queryKey: projectKeys.getProjectIntegrations(projectId),
     queryFn: () => fetchWorkspaceIntegrations(projectId),
     enabled: Boolean(projectId) && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval ?? 4000
+    refetchInterval: options?.refetchInterval ?? 30_000
   });
 
 export const createWorkspace = (
