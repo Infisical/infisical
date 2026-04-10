@@ -435,7 +435,7 @@ export const permissionServiceFactory = ({
       };
 
       if (projectDetails.orgId !== actorOrgId) {
-        throw new ForbiddenRequestError({ name: "This project does not belong to your selected organization." });
+        throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
       }
 
       if (actionProjectType !== ActionProjectType.Any && actionProjectType !== projectDetails.type) {
