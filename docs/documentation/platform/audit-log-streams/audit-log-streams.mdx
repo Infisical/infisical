@@ -11,6 +11,20 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 
 Infisical Audit Log Streaming enables you to transmit your organization's audit logs to external logging providers for monitoring and analysis.
 
+### Disabling PostgreSQL Audit Log Storage
+
+If you're using audit log streams as your primary log destination and don't need audit logs stored in PostgreSQL, you can disable PostgreSQL audit log storage by setting the following environment variable:
+
+```bash
+DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true
+```
+
+This prevents audit logs from being written to PostgreSQL while still streaming them to all configured log stream destinations. If you're also using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), logs will continue to be inserted into ClickHouse as well.
+
+<Info>
+  See the [environment variables reference](/self-hosting/configuration/envars) for all available audit log configuration options.
+</Info>
+
 ## Overview
 
 <Steps>
@@ -259,7 +273,7 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
 
         				![splunk http collector](/images/platform/audit-log-streams/splunk-http-collector.png)
 
-                Click on **New Token** in the top left.
+                Click on **New Token** in the top right.
 
         				![splunk new token](/images/platform/audit-log-streams/splunk-new-token.png)
 

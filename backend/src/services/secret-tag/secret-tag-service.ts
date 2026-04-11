@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretTagDALFactory } from "./secret-tag-dal";
 import {
   TCreateTagDTO,
@@ -18,11 +19,16 @@ import {
 type TSecretTagServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
 export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory>;
 
-export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSecretTagServiceFactoryDep) => {
+export const secretTagServiceFactory = ({
+  secretTagDAL,
+  permissionService,
+  secretV2BridgeDAL
+}: TSecretTagServiceFactoryDep) => {
   const createTag = async ({ slug, actor, color, actorId, actorOrgId, actorAuthMethod, projectId }: TCreateTagDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -67,6 +73,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
 
     const updatedTag = await secretTagDAL.updateById(tag.id, { color, slug });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(tag.projectId);
     return updatedTag;
   };
 
@@ -85,6 +92,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
 
     const deletedTag = await secretTagDAL.deleteById(tag.id);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(tag.projectId);
     return deletedTag;
   };
 

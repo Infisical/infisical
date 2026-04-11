@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CodeSigningPage } from "./CodeSigningPage";
 
 const CodeSigningSearchSchema = z.object({
+  selectedTab: z.string().optional().default("signers"),
   tab: z.enum(["signers", "approvals"]).optional(),
   subtab: z.enum(["requests", "policies", "grants"]).optional()
 });

@@ -32,6 +32,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -164,7 +165,10 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityLdapAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -179,7 +183,7 @@ export const identityLdapAuthServiceFactory = ({
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
       });
     }
-    if (organizationSlug) {
+    if (organizationSlug && org.slug !== organizationSlug) {
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -195,7 +199,13 @@ export const identityLdapAuthServiceFactory = ({
 
         if (!subOrgMembership) {
           throw new UnauthorizedError({
-            message: `Identity not authorized to access sub organization ${organizationSlug}`
+            message: `Identity not authorized to access sub organization ${organizationSlug}`,
+            detail: {
+              reasonCode: "sub_org_unauthorized",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
 
@@ -332,6 +342,10 @@ export const identityLdapAuthServiceFactory = ({
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -532,6 +546,10 @@ export const identityLdapAuthServiceFactory = ({
       (accessTokenTTL || identityLdapAuth.accessTokenTTL) > (accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -848,6 +866,9 @@ export const identityLdapAuthServiceFactory = ({
   ): Promise<T> => {
     const usernameSlug = slugify(username.trim().toLowerCase());
 
+    const identity = await identityDAL.findById(identityId);
+    const orgId = identity?.orgId ?? null;
+
     const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
 
     const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
@@ -859,7 +880,8 @@ export const identityLdapAuthServiceFactory = ({
 
     if (lockout && lockout?.lockedOut) {
       throw new UnauthorizedError({
-        message: "This identity auth method is temporarily locked, please try again later"
+        message: "This identity auth method is temporarily locked, please try again later",
+        detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
       });
     }
 
@@ -877,7 +899,10 @@ export const identityLdapAuthServiceFactory = ({
       if ((error as any).status === 401 || error instanceof UnauthorizedError) {
         const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
         if (!identityLdapAuth) {
-          throw new UnauthorizedError({ message: "Invalid credentials" });
+          throw new UnauthorizedError({
+            message: "Invalid credentials",
+            detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
+          });
         }
 
         if (identityLdapAuth.lockoutEnabled) {
@@ -902,7 +927,8 @@ export const identityLdapAuthServiceFactory = ({
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
-                message: "This identity auth method is temporarily locked, please try again later"
+                message: "This identity auth method is temporarily locked, please try again later",
+                detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
               });
             }
 
@@ -931,7 +957,10 @@ export const identityLdapAuthServiceFactory = ({
           }
         }
 
-        throw new UnauthorizedError({ message: "Invalid credentials" });
+        throw new UnauthorizedError({
+          message: "Invalid credentials",
+          detail: { reasonCode: "invalid_credentials", identityId, orgId, identityName: identity?.name }
+        });
       }
       throw error;
     }

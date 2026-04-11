@@ -101,7 +101,9 @@ export const KeyStorePrefixes = {
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
 
-  TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const
+  TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
+  TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
+  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const
 };
 
 export const KeyStoreTtls = {
@@ -113,7 +115,7 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
-  TelemetryIdentifyIdentityInSeconds: 600 // 10 minutes
+  TelemetryIdentifyIdentityInSeconds: 86400 // 24 hours
 };
 
 type TDeleteItems = {
@@ -168,6 +170,9 @@ export type TKeyStoreFactory = {
     batchSize: number,
     maxEntries: number
   ) => Promise<{ entries: [string, string[]][]; lastId: string | null }>;
+  // hash operations
+  hashSet: (key: string, field: string, value: string) => Promise<number>;
+  hashGet: (key: string, field: string) => Promise<string | null>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -308,6 +313,10 @@ export const keyStoreFactory = (
   const pgGetIntItem = async (key: string, prefix?: string) =>
     keyValueStoreDAL.findOneInt(prefix ? `${prefix}:${key}` : key);
 
+  const hashSet = async (key: string, field: string, value: string) => primaryRedis.hset(key, field, value);
+
+  const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
+
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -405,6 +414,8 @@ export const keyStoreFactory = (
     getItems,
     pgGetIntItem,
     pgIncrementBy,
+    hashSet,
+    hashGet,
     listPush,
     listRange,
     listRemove,

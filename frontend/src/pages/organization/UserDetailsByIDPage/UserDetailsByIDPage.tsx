@@ -257,6 +257,7 @@ const Page = withPermission(
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan?.data?.text}
+          isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
         />
         <UserOrgMembershipModal
           popUp={popUp}

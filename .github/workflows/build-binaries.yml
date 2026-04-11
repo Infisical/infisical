@@ -19,9 +19,9 @@ jobs:
                 os: [linux, win]
                 include:
                     - os: linux
-                      target: node20-linux
+                      target: node22-linux
                     - os: win
-                      target: node20-win
+                      target: node22-win
         runs-on: ${{ (matrix.arch == 'arm64' && matrix.os == 'linux') && 'ubuntu24-arm64' || 'ubuntu-latest' }}
 
         steps:
@@ -31,7 +31,7 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: 20
+                  node-version: 22
 
             - name: Install pkg
               run: npm install -g @yao-pkg/pkg

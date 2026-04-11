@@ -34,6 +34,12 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
+export enum TerminalChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp"
+}
+
 // Accounts
 export enum PamAccountOrderBy {
   Name = "name"
@@ -42,4 +48,11 @@ export enum PamAccountOrderBy {
 export enum PamAccountView {
   Flat = "flat",
   Nested = "nested"
+}
+
+export enum PamAccountRotationStatus {
+  Rotating = "rotating",
+  Success = "success",
+  PartialSuccess = "partial-success",
+  Failed = "failed"
 }

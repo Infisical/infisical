@@ -8,7 +8,7 @@ import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center rounded-md active:scale-[0.95] justify-center border cursor-pointer whitespace-nowrap",
+    "inline-flex items-center rounded-md active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap",
     " text-sm transition-all disabled:pointer-events-none disabled:opacity-75 shrink-0",
     "[&>svg]:pointer-events-none  [&>svg]:shrink-0",
     "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none"

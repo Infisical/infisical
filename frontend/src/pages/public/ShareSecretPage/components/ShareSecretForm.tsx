@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faInfoCircle, faLock, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -18,7 +18,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch
+  Switch,
+  Tooltip
 } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
@@ -65,7 +66,8 @@ const schema = z.object({
       {
         message: "Must be a comma-separated list of valid emails (max 100) or empty."
       }
-    )
+    ),
+  allowExternalEmails: z.boolean().optional()
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -121,6 +123,11 @@ export const ShareSecretForm = ({
   });
 
   const isLimitingView = watch("shouldLimitView");
+  const isAllowingExternalEmails = watch("allowExternalEmails");
+  const accessType = watch("accessType");
+
+  const isOrgAccess =
+    accessType === SecretSharingAccessType.Organization || !allowSecretSharingOutsideOrganization;
 
   const onFormSubmit = async ({
     name,
@@ -128,9 +135,10 @@ export const ShareSecretForm = ({
     secret,
     expiresIn,
     viewLimit,
-    accessType,
+    accessType: formAccessType,
     emails,
-    shouldLimitView
+    shouldLimitView,
+    allowExternalEmails
   }: FormData) => {
     const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
 
@@ -140,14 +148,20 @@ export const ShareSecretForm = ({
       secretValue: secret,
       expiresIn,
       maxViews: shouldLimitView ? Number(viewLimit) : undefined,
-      accessType,
-      authorizedEmails: processedEmails
+      accessType: formAccessType,
+      authorizedEmails: processedEmails,
+      allowExternalEmails
     });
 
     if (processedEmails && processedEmails.length > 0) {
       setSecretLink("");
+
+      const showAccountRequiredMessage = !allowExternalEmails && !isOrgAccess;
+
       createNotification({
-        text: `Shared secret link emailed to ${processedEmails.length} user(s).`,
+        text: showAccountRequiredMessage
+          ? `If the provided ${processedEmails.length > 1 ? "emails are" : "email is"} associated with an Infisical account they will receive a link`
+          : `Secret link has been sent to the provided ${processedEmails.length > 1 ? "emails" : "email"}`,
         type: "success"
       });
     } else {
@@ -246,15 +260,7 @@ export const ShareSecretForm = ({
             name="accessType"
             defaultValue={SecretSharingAccessType.Organization}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                helperText={
-                  allowSecretSharingOutsideOrganization ? undefined : (
-                    <span className="text-red-500">Feature enforced by organization</span>
-                  )
-                }
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <FormControl errorText={error?.message} isError={Boolean(error)}>
                 <Switch
                   className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
                   thumbClassName="bg-mineshaft-800"
@@ -271,7 +277,17 @@ export const ShareSecretForm = ({
                   }
                   id="org-access-only"
                 >
-                  Limit access to people within organization
+                  <span className="flex items-center">
+                    Limit access to people within organization
+                    {!allowSecretSharingOutsideOrganization && (
+                      <Tooltip content="Enforced by your organization">
+                        <FontAwesomeIcon
+                          icon={faLock}
+                          className="ml-2 !align-[-0.2em] text-mineshaft-400"
+                        />
+                      </Tooltip>
+                    )}
+                  </span>
                 </Switch>
               </FormControl>
             )}
@@ -388,37 +404,91 @@ export const ShareSecretForm = ({
                 )}
               </div>
               {!isPublic && (
-                <Controller
-                  control={control}
-                  name="emails"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Authorized Emails"
-                      isOptional
-                      helperText="Recipients must have an Infisical account to verify identity"
-                      tooltipText={
-                        <>
-                          <p>
-                            Unique secret links will be emailed to each individual. The secret will
-                            only be accessible to those links.
-                          </p>
-                          <p className="mt-2">
-                            Recipients must have an Infisical account to verify their identity.
-                          </p>
-                        </>
-                      }
-                      tooltipClassName="max-w-sm"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        {...field}
-                        placeholder="user1@example.com, user2@example.com"
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                  )}
-                />
+                <>
+                  <Controller
+                    control={control}
+                    name="emails"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Emails"
+                        isOptional
+                        helperText={
+                          isAllowingExternalEmails
+                            ? "All recipients will receive a link and need the password to access the secret. They don't need an Infisical account, but a password is mandatory in this case."
+                            : "Recipients must have an Infisical account to verify identity"
+                        }
+                        tooltipText={
+                          <>
+                            <p>
+                              Unique secret links will be emailed to each individual. The secret
+                              will only be accessible to those links.
+                            </p>
+                            <p className="mt-2">
+                              {isAllowingExternalEmails
+                                ? "External recipients (user without an Infisical account) will need the password to view the secret. Authorized recipients will also need a password if the secret is password-protected."
+                                : "Recipients must have an Infisical account to verify their identity."}
+                            </p>
+                          </>
+                        }
+                        tooltipClassName="max-w-sm"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input
+                          {...field}
+                          placeholder="user1@example.com, user2@example.com"
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="allowExternalEmails"
+                    render={({
+                      field: { onChange, value: isChecked, ...field },
+                      fieldState: { error }
+                    }) => (
+                      <FormControl errorText={error?.message} isError={Boolean(error)}>
+                        <div className="flex items-center">
+                          <Switch
+                            className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${isOrgAccess ? "opacity-50" : ""}`}
+                            thumbClassName="bg-mineshaft-800"
+                            containerClassName={`flex-row-reverse w-fit ${isOrgAccess ? "pointer-events-none opacity-50" : ""}`}
+                            isChecked={isOrgAccess ? false : (isChecked ?? false)}
+                            onCheckedChange={onChange}
+                            isDisabled={isOrgAccess}
+                            id="allow-external-emails"
+                            {...field}
+                          >
+                            <span className="flex items-center">
+                              Allow external recipients
+                              <Tooltip content="When enabled, the defined emails will receive the secret link via email but will need the password to access the secret.">
+                                <FontAwesomeIcon
+                                  icon={faInfoCircle}
+                                  className="ml-2 !align-[-0.2em] text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </span>
+                          </Switch>
+                          {!allowSecretSharingOutsideOrganization && (
+                            <span className="inline-flex items-center">
+                              <Tooltip
+                                content="External sharing is disabled by your organization"
+                                className="items-center"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faLock}
+                                  className="ml-2 !align-[-0.2em] text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </span>
+                          )}
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+                </>
               )}
             </AccordionContent>
           </AccordionItem>

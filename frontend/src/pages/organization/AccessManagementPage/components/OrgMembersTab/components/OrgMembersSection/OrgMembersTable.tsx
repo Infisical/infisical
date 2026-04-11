@@ -59,6 +59,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -86,6 +87,7 @@ type Props = {
       username?: string;
       text?: string;
       selectedOrgMemberships?: OrgUser[];
+      isEnterpriseFeature?: boolean;
     }
   ) => void;
   setCompleteInviteLinks: (links: Array<{ email: string; link: string }> | null) => void;
@@ -129,12 +131,12 @@ export const OrgMembersTable = ({
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
 
-    // TODO: replace hardcoding default role
-    const isCustomRole = !["admin", "member", "no-access"].includes(role);
+    const isCustomRole = isCustomOrgRole(role);
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
+        text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        isEnterpriseFeature: true
       });
       return;
     }

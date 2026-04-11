@@ -1,12 +1,18 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 
 import { MachineIdentitiesTable, OrganizationsTable, UserIdentitiesTable } from "./components";
 
 export const ResourceOverviewPage = () => {
   const { t } = useTranslation();
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
+  });
+
+  const activeTab = selectedTab || "organizations";
 
   return (
     <div className="h-full bg-bunker-800">
@@ -20,28 +26,11 @@ export const ResourceOverviewPage = () => {
             title="Resource Overview"
             description="Manage resources within your Infisical instance."
           />
-          <Tabs orientation="vertical" defaultValue="tab-organizations">
-            <TabList>
-              <Tab variant="instance" value="tab-organizations">
-                Organizations
-              </Tab>
-              <Tab variant="instance" value="tab-users">
-                Users
-              </Tab>
-              <Tab variant="instance" value="tab-identities">
-                Machine Identities
-              </Tab>
-            </TabList>
-            <TabPanel value="tab-organizations">
-              <OrganizationsTable />
-            </TabPanel>
-            <TabPanel value="tab-users">
-              <UserIdentitiesTable />
-            </TabPanel>
-            <TabPanel value="tab-identities">
-              <MachineIdentitiesTable />
-            </TabPanel>
-          </Tabs>
+          <div>
+            {activeTab === "organizations" && <OrganizationsTable />}
+            {activeTab === "users" && <UserIdentitiesTable />}
+            {activeTab === "identities" && <MachineIdentitiesTable />}
+          </div>
         </div>
       </div>
     </div>

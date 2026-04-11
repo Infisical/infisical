@@ -229,12 +229,14 @@ export type TGetSecretsRawDTO = {
   includeTagsInSearch?: boolean;
   includeMetadataInSearch?: boolean;
   excludeRotatedSecrets?: boolean;
+  ifNoneMatch?: string;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
   environment: string;
   secretPath: string;
   secretName: string;
+  includeAllEntities?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretRawDTO = {

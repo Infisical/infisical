@@ -1,9 +1,10 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
@@ -17,32 +18,26 @@ import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection"
 export const SettingsPage = () => {
   const { t } = useTranslation();
   const { isSubOrganization } = useOrganization();
-
   const { currentProject } = useProject();
+
+  const { selectedTab } = useSearch({
+    from: ROUTE_PATHS.SecretManager.SettingsPage.id
+  });
+
   const tabs = [
-    { name: "General", key: "tab-project-general", Component: ProjectGeneralTab },
-    { name: "Secrets Management", key: "tab-secret-general", Component: SecretSettingsTab },
+    { key: "tab-project-general", Component: ProjectGeneralTab },
+    { key: "tab-secret-general", Component: SecretSettingsTab },
     {
-      name: "Secret Validation Rules",
       key: "tab-secret-validation-rules",
       Component: SecretValidationRulesTab
     },
     {
-      name: "Encryption",
       key: "tab-project-encryption",
       isHidden: currentProject?.version !== ProjectVersion.V3,
       Component: EncryptionTab
     },
-    {
-      name: "Workflow Integrations",
-      key: "tab-workflow-integrations",
-      Component: WorkflowIntegrationTab
-    },
-    {
-      name: "Webhooks",
-      key: "tab-project-webhooks",
-      Component: WebhooksTab
-    }
+    { key: "tab-workflow-integrations", Component: WorkflowIntegrationTab },
+    { key: "tab-project-webhooks", Component: WebhooksTab }
   ];
 
   return (
@@ -67,16 +62,7 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
-          <TabList>
-            {tabs
-              .filter((el) => !el.isHidden)
-              .map((tab) => (
-                <Tab variant="project" value={tab.key} key={tab.key}>
-                  {tab.name}
-                </Tab>
-              ))}
-          </TabList>
+        <Tabs orientation="vertical" value={selectedTab}>
           {tabs
             .filter((el) => !el.isHidden)
             .map(({ key, Component }) => (

@@ -80,21 +80,33 @@ export const auditLogQueueServiceFactory = async ({
 
   queueService.start(QueueName.AuditLog, async (job) => {
     try {
+      if (!job.data) {
+        logger.error({ jobId: job.id }, "audit-log-queue: Received job with empty data, skipping");
+        return;
+      }
+
       const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
       let { orgId } = job.data;
       let project: TProjects | undefined;
 
+      if (!orgId && !projectId) {
+        logger.error(
+          { jobId: job.id, data: job.data },
+          "audit-log-queue: Received job with neither orgId nor projectId, skipping"
+        );
+        return;
+      }
+
       if (!orgId) {
-        // it will never be undefined for both org and project id
         // TODO(akhilmhdh): use caching here in dal to avoid db calls
-        project = await projectDAL.findById(projectId as string);
+        project = await projectDAL.findById(projectId!);
         orgId = project.orgId;
       }
 
       const plan = await licenseService.getPlan(orgId);
 
       // skip inserting if audit log retention is 0 meaning its not supported
-      if (plan.auditLogsRetentionDays !== 0) {
+      if (plan.auditLogsRetentionDays) {
         // For project actions, set TTL to project-level audit log retention config
         // This condition ensures that the plan's audit log retention days cannot be bypassed
         const ttlInDays =
@@ -142,7 +154,9 @@ export const auditLogQueueServiceFactory = async ({
           await auditLogDAL.create(auditLog);
         }
 
-        await auditLogStreamService.streamLog(orgId, auditLog);
+        if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
+          await auditLogStreamService.streamLog(orgId, auditLog);
+        }
       }
     } catch (error) {
       logger.error(

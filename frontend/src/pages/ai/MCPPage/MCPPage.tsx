@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 
-import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ContentLoader, PageHeader } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -19,7 +19,11 @@ enum TabSections {
 export const MCPPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const [activeTab, setActiveTab] = useState(TabSections.MCPEndpoints);
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview"
+  });
+
+  const activeTab = (selectedTab as TabSections) || TabSections.MCPEndpoints;
 
   if (!currentProject) {
     return <ContentLoader />;
@@ -36,35 +40,11 @@ export const MCPPage = () => {
           title="MCP Management"
           description="Manage MCP endpoints, connect MCP servers, and configure tools with secure governance"
         />
-        <Tabs
-          orientation="vertical"
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as TabSections)}
-        >
-          <TabList>
-            <Tab variant="project" value={TabSections.MCPEndpoints}>
-              MCP Endpoints
-            </Tab>
-            <Tab variant="project" value={TabSections.MCPServers}>
-              MCP Servers
-            </Tab>
-            <Tab variant="project" value={TabSections.ActivityLogs}>
-              Activity Logs
-            </Tab>
-          </TabList>
-
-          <TabPanel value={TabSections.MCPEndpoints}>
-            <MCPEndpointsTab />
-          </TabPanel>
-
-          <TabPanel value={TabSections.MCPServers}>
-            <MCPServersTab />
-          </TabPanel>
-
-          <TabPanel value={TabSections.ActivityLogs}>
-            <MCPActivityLogsTab />
-          </TabPanel>
-        </Tabs>
+        <div>
+          {activeTab === TabSections.MCPEndpoints && <MCPEndpointsTab />}
+          {activeTab === TabSections.MCPServers && <MCPServersTab />}
+          {activeTab === TabSections.ActivityLogs && <MCPActivityLogsTab />}
+        </div>
       </div>
     </div>
   );

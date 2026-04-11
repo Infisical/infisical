@@ -96,8 +96,11 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam-resource-favorite-dal";
+import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
+import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionEventBatchDALFactory } from "@app/ee/services/pam-session/pam-session-event-batch-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -194,7 +197,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
-import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -529,7 +531,6 @@ export const registerRoutes = async (
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
-  const queueJobsDAL = queueJobsDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -705,7 +706,8 @@ export const registerRoutes = async (
     projectEventsService,
     permissionService,
     licenseService,
-    keyStore
+    keyStore,
+    projectEnvDAL
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -734,7 +736,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -747,7 +750,8 @@ export const registerRoutes = async (
     roleDAL,
     permissionService,
     orgDAL,
-    groupDAL
+    groupDAL,
+    licenseService
   });
 
   const roleService = roleServiceFactory({
@@ -757,7 +761,8 @@ export const registerRoutes = async (
     identityDAL,
     userDAL,
     externalGroupOrgRoleMappingDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -824,7 +829,11 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     permissionService,
-    auditLogQueue
+    auditLogQueue,
+    keyStore,
+    smtpService,
+    userDAL,
+    notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -1267,6 +1276,10 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
+  const pamResourceDAL = pamResourceDALFactory(db);
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
     sshCertificateAuthorityDAL,
     sshCertificateAuthoritySecretDAL,
@@ -1420,7 +1433,14 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     notificationService,
-    smtpService
+    smtpService,
+    appConnectionDAL,
+    dynamicSecretDAL,
+    pamResourceDAL,
+    pamDiscoverySourceDAL,
+    identityKubernetesAuthDAL,
+    aiMcpServerDAL,
+    pkiDiscoveryConfigDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -1467,7 +1487,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     webhookDAL,
     auditLogService,
+    identityDAL,
     userDAL,
+    serviceTokenDAL,
     projectMembershipDAL,
     smtpService,
     projectDAL,
@@ -1578,7 +1600,7 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,
@@ -1627,6 +1649,7 @@ export const registerRoutes = async (
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
+    permissionDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -1696,7 +1719,10 @@ export const registerRoutes = async (
     secretApprovalRequestService,
     licenseService,
     reminderService,
-    secretVersionV2DAL: secretVersionV2BridgeDAL
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    secretV2BridgeDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -1981,7 +2007,8 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     projectDAL,
     secretV2BridgeService,
-    folderCommitDAL
+    folderCommitDAL,
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -2126,6 +2153,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
+    auditLogService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
@@ -2141,8 +2169,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL,
-    queueJobsDAL
+    scepTransactionDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2328,7 +2355,8 @@ export const registerRoutes = async (
     certificateSecretDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
-    certificateSyncDAL
+    certificateSyncDAL,
+    gatewayV2Service
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2762,17 +2790,17 @@ export const registerRoutes = async (
   });
 
   const pamFolderDAL = pamFolderDALFactory(db);
-  const pamResourceDAL = pamResourceDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+  const pamSessionEventBatchDAL = pamSessionEventBatchDALFactory(db);
   const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
   const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
   const pamDiscoverySourceDependenciesDAL = pamDiscoverySourceDependenciesDALFactory(db);
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
+  const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
+
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
   const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
   const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
@@ -2795,6 +2823,12 @@ export const registerRoutes = async (
     resourceMetadataDAL
   });
 
+  const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
+    pamResourceRotationRulesDAL,
+    pamResourceDAL,
+    permissionService
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
@@ -2809,6 +2843,7 @@ export const registerRoutes = async (
 
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
+    pamResourceRotationRulesDAL,
     gatewayV2Service,
     kmsService,
     pamResourceDAL,
@@ -2835,9 +2870,12 @@ export const registerRoutes = async (
 
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
+    pamSessionEventBatchDAL,
     projectDAL,
+    userDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
@@ -3119,6 +3157,7 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
+    pamResourceRotationRules: pamResourceRotationRulesService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
@@ -3235,7 +3274,7 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE)
       };
     }
   });

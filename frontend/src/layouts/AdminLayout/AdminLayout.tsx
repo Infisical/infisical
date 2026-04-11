@@ -1,6 +1,7 @@
 import { Outlet } from "@tanstack/react-router";
 
 import { Banner } from "@app/components/page-frames/Banner";
+import { SidebarProvider } from "@app/components/v3/generic/Sidebar";
 import { useServerConfig, useSubscription } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { AuditLogBanner } from "@app/layouts/OrganizationLayout/components/AuditLogBanner";
@@ -9,7 +10,7 @@ import { RedisBanner } from "@app/layouts/OrganizationLayout/components/RedisBan
 import { SmtpBanner } from "@app/layouts/OrganizationLayout/components/SmtpBanner";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { AdminNavBar } from "./AdminNavBar";
+import { AdminSidebar } from "./AdminSidebar";
 
 export const AdminLayout = () => {
   const { config } = useServerConfig();
@@ -21,21 +22,21 @@ export const AdminLayout = () => {
   return (
     <>
       <Banner />
-      <div
-        className={`dark ${containerHeight} flex w-full flex-col overflow-x-hidden bg-bunker-800 transition-all`}
+      <SidebarProvider
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
       >
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
         {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
-        <div className="flex grow flex-col overflow-y-hidden">
-          <AdminNavBar />
-          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
+        <div className="flex min-h-0 flex-1">
+          <AdminSidebar />
+          <div className="min-h-0 flex-1 overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
             <Outlet />
           </div>
         </div>
-      </div>
+      </SidebarProvider>
       <Banner />
     </>
   );

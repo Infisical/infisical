@@ -1,16 +1,26 @@
 import { Helmet } from "react-helmet";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
+import { GavelIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  PageHeader
+} from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
-import { useGetPamSessionById } from "@app/hooks/api/pam";
+import { usePopUp } from "@app/hooks";
+import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
 import { PamSessionDetailsSection } from "./components/PamSessionDetailsSection";
 import { PamSessionLogsSection } from "./components/PamSessionLogsSection";
 
@@ -22,6 +32,11 @@ const Page = () => {
   const { data: session } = useGetPamSessionById(sessionId);
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
+
+  const isActive =
+    session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
+  const isGatewaySession = !!session?.gatewayIdentityId;
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (
@@ -41,7 +56,39 @@ const Page = () => {
             scope={ProjectType.PAM}
             title={`${session.accountName} Session`}
             description={`View details for this ${session.accountName} session.`}
-          />
+          >
+            {isGatewaySession && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    ariaLabel="Options"
+                    colorSchema="secondary"
+                    className="w-6"
+                    variant="plain"
+                  >
+                    <FontAwesomeIcon icon={faEllipsisV} />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent sideOffset={2} align="end">
+                  <ProjectPermissionCan
+                    I={ProjectPermissionPamSessionActions.Terminate}
+                    a={ProjectPermissionSub.PamSessions}
+                  >
+                    {(isAllowed: boolean) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed || !isActive}
+                        className="text-red-600"
+                        icon={<GavelIcon size={14} />}
+                        onClick={() => handlePopUpOpen("terminateSession")}
+                      >
+                        Terminate Session
+                      </DropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </PageHeader>
           <div className="flex">
             <div className="mr-4 flex h-fit w-96">
               <PamSessionDetailsSection session={session} />
@@ -50,6 +97,13 @@ const Page = () => {
               <PamSessionLogsSection session={session} />
             </div>
           </div>
+
+          <PamTerminateSessionModal
+            sessionId={session.id}
+            projectId={currentProject.id}
+            isOpen={popUp.terminateSession.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle("terminateSession", isOpen)}
+          />
         </div>
       )}
     </div>

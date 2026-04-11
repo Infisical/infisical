@@ -82,7 +82,10 @@ export const identityTlsCertAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityTlsCertAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -111,18 +114,36 @@ export const identityTlsCertAuthServiceFactory = ({
       const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
       if (!isValidCertificate)
         throw new UnauthorizedError({
-          message: "Access denied: Certificate not issued by the provided CA."
+          message: "Access denied: Certificate not issued by the provided CA.",
+          detail: {
+            reasonCode: "ca_verification_failed",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
 
       if (new Date(clientCertificateX509.validTo) < new Date()) {
         throw new UnauthorizedError({
-          message: "Access denied: Certificate has expired."
+          message: "Access denied: Certificate has expired.",
+          detail: {
+            reasonCode: "certificate_expired",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
       if (new Date(clientCertificateX509.validFrom) > new Date()) {
         throw new UnauthorizedError({
-          message: "Access denied: Certificate not yet valid."
+          message: "Access denied: Certificate not yet valid.",
+          detail: {
+            reasonCode: "certificate_not_yet_valid",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 
@@ -131,12 +152,18 @@ export const identityTlsCertAuthServiceFactory = ({
         const isValidCommonName = identityTlsCertAuth.allowedCommonNames.split(",").includes(subjectDetails.CN);
         if (!isValidCommonName) {
           throw new UnauthorizedError({
-            message: "Access denied: TLS Certificate Auth common name not allowed."
+            message: "Access denied: TLS Certificate Auth common name not allowed.",
+            detail: {
+              reasonCode: "common_name_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
         }
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -152,7 +179,13 @@ export const identityTlsCertAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 

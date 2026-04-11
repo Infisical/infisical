@@ -50,14 +50,14 @@ import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
   SessionEndReason,
+  TerminalServerMessageType,
   TIssueWebSocketTicketDTO,
   TSessionContext,
   TSessionHandlerResult,
   TWebSocketServerMessage,
   WebSocketServerMessageSchema,
   WS_IDLE_TIMEOUT_MS,
-  WS_PING_INTERVAL_MS,
-  WsMessageType
+  WS_PING_INTERVAL_MS
 } from "./pam-web-access-types";
 
 const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis];
@@ -128,7 +128,28 @@ export const pamWebAccessServiceFactory = ({
   };
 
   const sendSessionEnd = (socket: WebSocket, reason: SessionEndReason): void => {
-    sendMessage(socket, { type: WsMessageType.SessionEnd, reason });
+    sendMessage(socket, { type: TerminalServerMessageType.SessionEnd, reason });
+  };
+
+  /**
+   * Send a session_end message and close the socket only after the message has been flushed.
+   * This avoids the race where socket.close() sends a close frame before the session_end
+   * data frame reaches the client.
+   */
+  const sendSessionEndAndClose = (socket: WebSocket, reason: SessionEndReason): void => {
+    try {
+      if (socket.readyState === socket.OPEN) {
+        const parsed = WebSocketServerMessageSchema.parse({ type: TerminalServerMessageType.SessionEnd, reason });
+        socket.send(JSON.stringify(parsed), () => {
+          socket.close();
+        });
+        return;
+      }
+    } catch (err) {
+      logger.error(err, "Failed to send session end message");
+    }
+    // Fallback: close immediately if send failed or socket wasn't open
+    socket.close();
   };
 
   const issueWebSocketTicket = async ({
@@ -210,6 +231,7 @@ export const pamWebAccessServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: account.name,
+          resourceType: resource.resourceType,
           metadata: accountMeta[account.id] || []
         })
       );
@@ -415,10 +437,10 @@ export const pamWebAccessServiceFactory = ({
       const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
       if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
         sendMessage(socket, {
-          type: WsMessageType.Output,
-          data: `Maximum concurrent web sessions (${MAX_WEB_SESSIONS_PER_USER}) reached. Please close an existing session first.\n`
+          type: TerminalServerMessageType.Output,
+          data: `${SessionEndReason.SessionLimitReached}\n`
         });
-        socket.close();
+        sendSessionEndAndClose(socket, SessionEndReason.SessionLimitReached);
         return;
       }
 
@@ -566,9 +588,8 @@ export const pamWebAccessServiceFactory = ({
         if (idleTimer) clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
           if (!cleanedUp) {
-            sendSessionEnd(socket, SessionEndReason.IdleTimeout);
             void cleanup();
-            socket.close();
+            sendSessionEndAndClose(socket, SessionEndReason.IdleTimeout);
           }
         }, WS_IDLE_TIMEOUT_MS);
       };
@@ -602,9 +623,8 @@ export const pamWebAccessServiceFactory = ({
       // Session expiry timer
       expiryTimer = setTimeout(() => {
         if (!cleanedUp) {
-          sendSessionEnd(socket, SessionEndReason.SessionCompleted);
           void cleanup();
-          socket.close();
+          sendSessionEndAndClose(socket, SessionEndReason.SessionCompleted);
         }
       }, DEFAULT_WEB_SESSION_DURATION_MS);
 
@@ -620,9 +640,8 @@ export const pamWebAccessServiceFactory = ({
       });
     } catch (err) {
       logger.error(err, "Failed to establish web access session");
-      sendSessionEnd(socket, SessionEndReason.SetupFailed);
       await cleanup();
-      socket.close();
+      sendSessionEndAndClose(socket, SessionEndReason.SetupFailed);
     }
   };
 

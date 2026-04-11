@@ -20,6 +20,7 @@ import {
 } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -49,6 +50,7 @@ type TPitServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -64,7 +66,8 @@ export const pitServiceFactory = ({
   secretApprovalPolicyService,
   projectDAL,
   secretV2BridgeService,
-  folderCommitDAL
+  folderCommitDAL,
+  secretQueueService
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -397,7 +400,32 @@ export const pitServiceFactory = ({
     }
 
     if (deepRollback) {
-      await folderCommitService.deepRollbackFolder(commitId, env.id, actorId, actor, projectId, message);
+      const { affectedFolderIds } = await folderCommitService.deepRollbackFolder(
+        commitId,
+        env.id,
+        actorId,
+        actor,
+        projectId,
+        message
+      );
+
+      // Trigger secret syncs for all affected folders in the deep rollback
+      const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, affectedFolderIds);
+      await Promise.all(
+        folderPaths
+          .filter((fp): fp is NonNullable<typeof fp> => fp != null && fp.path != null && fp.environmentSlug != null)
+          .map((fp) =>
+            secretQueueService.syncSecrets({
+              secretPath: fp.path,
+              projectId,
+              orgId: actorOrgId,
+              environmentSlug: fp.environmentSlug,
+              actorId,
+              actor
+            })
+          )
+      );
+
       return { success: true };
     }
 
@@ -417,6 +445,22 @@ export const pitServiceFactory = ({
       projectId,
       reconstructNewFolders: deepRollback
     });
+
+    // Trigger secret sync for the rolled-back folder if changes were made
+    if (response.totalChanges > 0) {
+      const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+      const folderPath = folderPaths?.[0];
+      if (folderPath?.path != null && folderPath.environmentSlug != null) {
+        await secretQueueService.syncSecrets({
+          secretPath: folderPath.path,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: folderPath.environmentSlug,
+          actorId,
+          actor
+        });
+      }
+    }
 
     return {
       success: true,
@@ -449,6 +493,22 @@ export const pitServiceFactory = ({
       actorOrgId,
       projectId
     });
+
+    // Trigger secret sync for the reverted folder
+    if (response.folderId) {
+      const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [response.folderId]);
+      const folderPath = folderPaths?.[0];
+      if (folderPath?.path != null && folderPath.environmentSlug != null) {
+        await secretQueueService.syncSecrets({
+          secretPath: folderPath.path,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: folderPath.environmentSlug,
+          actorId,
+          actor
+        });
+      }
+    }
 
     return response;
   };

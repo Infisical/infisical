@@ -1321,7 +1321,9 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to get the access list for.",
     projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
-    secretPath: "The folder path where the secret is located."
+    secretPath: "The folder path where the secret is located.",
+    includeAllEntities:
+      "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
   }
 } as const;
 
@@ -1375,6 +1377,7 @@ export const DASHBOARD = {
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
     search: "The text string to filter secret keys and folder names by.",
+    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
@@ -2934,7 +2937,11 @@ export const SecretSyncs = {
       appName: "The name of the Vercel app to sync secrets to.",
       env: "The ID of the Vercel environment to sync secrets to.",
       branch: "The branch to sync preview secrets to.",
-      teamId: "The ID of the Vercel team to sync secrets to."
+      teamId: "The ID of the Vercel team to sync secrets to.",
+      teamName:
+        "The name of the team to sync the secrets to. This is an optional field only intended for display purposes.",
+      targetEnvironments: "An optional array of Vercel environments to add shared environment variables to.",
+      targetProjects: "An optional array of Vercel projects to add shared environment variables to."
     },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
@@ -3516,7 +3523,9 @@ export const SECRET_SHARING = {
     accessType:
       "Determines who can access the shared secret. 'organization' restricts access to users within your organization. 'anyone' allows access to anyone with the link. Defaults to 'organization'.",
     authorizedEmails:
-      "An optional array of email addresses that are authorized to view this secret. Only users with these email addresses will be able to access the secret. Maximum 100 emails."
+      "An optional array of email addresses to share the secret with. Maximum 100 emails. Organization members in the list get direct access. When allowExternalEmails is enabled, non-member emails are also accepted and recipients will receive the secret link via email, but must use the password to access it.",
+    allowExternalEmails:
+      "When true, allows sharing with email addresses that do not belong to Infisical. A password is required when this option is enabled. External recipients will receive the secret link via email and must enter the password to access it."
   },
   DELETE: {
     id: "The ID of the shared secret to delete."

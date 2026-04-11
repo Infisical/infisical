@@ -4,17 +4,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Button,
-  FormControl,
-  Input,
-  ModalClose
-} from "@app/components/v2";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  SheetFooter,
+  UnstableInput
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
 import { slugSchema } from "@app/lib/schemas";
@@ -24,6 +24,7 @@ import { MetadataFields } from "./MetadataFields";
 type Props = {
   resource?: TAwsIamResource;
   onSubmit: (formData: FormData) => Promise<void>;
+  closeSheet: () => void;
 };
 
 const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
@@ -57,7 +58,7 @@ type FormData = z.infer<typeof formSchema>;
 const INFISICAL_AWS_ACCOUNT_US = "381492033652";
 const INFISICAL_AWS_ACCOUNT_EU = "345594589636";
 
-export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
+export const AwsIamResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(resource);
   const { projectId } = useProject();
 
@@ -104,131 +105,138 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Controller
-          name="name"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              helperText="Name must be slug-friendly"
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Name"
-            >
-              <Input autoFocus placeholder="my-aws-console" {...field} />
-            </FormControl>
-          )}
-        />
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <Controller
+            name="name"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Name</FieldLabel>
+                <FieldContent>
+                  <UnstableInput
+                    autoFocus
+                    placeholder="my-aws-console"
+                    {...field}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                  <p className="mt-1 text-xs text-mineshaft-400">Name must be slug-friendly</p>
+                </FieldContent>
+              </Field>
+            )}
+          />
 
-        <Controller
-          name="connectionDetails.roleArn"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              helperText="The ARN of the Infisical Resource Role that can assume target roles"
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Resource Role ARN"
-            >
-              <Input
-                placeholder="arn:aws:iam::123456789012:role/InfisicalResourceRole"
-                {...field}
-              />
-            </FormControl>
-          )}
-        />
+          <Controller
+            name="connectionDetails.roleArn"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Resource Role ARN</FieldLabel>
+                <FieldContent>
+                  <UnstableInput
+                    placeholder="arn:aws:iam::123456789012:role/InfisicalResourceRole"
+                    {...field}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                  <p className="mt-1 text-xs text-mineshaft-400">
+                    The ARN of the Infisical Resource Role that can assume target roles
+                  </p>
+                </FieldContent>
+              </Field>
+            )}
+          />
 
-        <Accordion
-          type="single"
-          collapsible
-          className="mt-4 w-full rounded-r border-l-2 border-l-primary bg-mineshaft-300/5"
-        >
-          <AccordionItem value="aws-iam-role-setup" className="border-b-0">
-            <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
-              <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
-                <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
-                AWS IAM Role Setup
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-2.5">
-              <p className="mb-3 text-sm text-mineshaft-300">
-                Before creating this resource, you need to set up an IAM role in your AWS account
-                that Infisical can assume. Follow these steps:
-              </p>
-
-              <p className="mb-2 text-sm font-medium text-mineshaft-200">
-                Step 1: Create a permissions policy for assuming target roles
-              </p>
-              <p className="mb-3 text-sm text-mineshaft-300">
-                This policy allows the Resource Role to assume target roles. For simplicity, use a
-                wildcard to allow assuming any role in your account. For more granular control,
-                replace <code className="rounded bg-mineshaft-700 px-1 text-xs">*</code> with a
-                specific pattern like{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">/pam-*</code> or{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">/infisical-*</code>.
-              </p>
-              <div className="relative mb-4">
-                <div className="absolute top-1 right-1">
-                  <CopyButton value={permissionsPolicy} size="sm" variant="plain" />
+          <Accordion
+            type="single"
+            collapsible
+            className="mt-4 w-full rounded-r border-l-2 border-l-primary bg-mineshaft-300/5"
+          >
+            <AccordionItem value="aws-iam-role-setup" className="border-b-0">
+              <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
+                <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
+                  <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+                  AWS IAM Role Setup
                 </div>
-                <pre className="max-h-45 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
-                  {permissionsPolicy}
-                </pre>
-              </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-2.5">
+                <p className="mb-3 text-sm text-mineshaft-300">
+                  Before creating this resource, you need to set up an IAM role in your AWS account
+                  that Infisical can assume. Follow these steps:
+                </p>
 
-              <p className="mb-2 text-sm font-medium text-mineshaft-200">
-                Step 2: Create the Resource Role with a trust policy
-              </p>
-              <p className="mb-3 text-sm text-mineshaft-300">
-                Create an IAM role (e.g.,{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">InfisicalResourceRole</code>
-                ) with the permissions policy above and the following trust policy:
-              </p>
-              <div className="relative mb-4">
-                <div className="absolute top-1 right-3">
-                  <CopyButton value={trustPolicy} size="sm" variant="plain" />
+                <p className="mb-2 text-sm font-medium text-mineshaft-200">
+                  Step 1: Create a permissions policy for assuming target roles
+                </p>
+                <p className="mb-3 text-sm text-mineshaft-300">
+                  This policy allows the Resource Role to assume target roles. For simplicity, use a
+                  wildcard to allow assuming any role in your account. For more granular control,
+                  replace <code className="rounded bg-mineshaft-700 px-1 text-xs">*</code> with a
+                  specific pattern like{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 text-xs">/pam-*</code> or{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 text-xs">/infisical-*</code>.
+                </p>
+                <div className="relative mb-4">
+                  <div className="absolute top-1 right-1">
+                    <CopyButton value={permissionsPolicy} size="sm" variant="plain" />
+                  </div>
+                  <pre className="max-h-45 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
+                    {permissionsPolicy}
+                  </pre>
                 </div>
-                <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
-                  {trustPolicy}
-                </pre>
-              </div>
-              <p className="text-xs text-mineshaft-400">
-                <strong>Note:</strong> Use{" "}
-                <code className="rounded bg-mineshaft-700 px-1 font-bold">
-                  {INFISICAL_AWS_ACCOUNT_US}
-                </code>{" "}
-                for US region or{" "}
-                <code className="rounded bg-mineshaft-700 px-1 font-bold">
-                  {INFISICAL_AWS_ACCOUNT_EU}
-                </code>{" "}
-                for EU region. For dedicated instances, contact Infisical support. For self-hosted
-                instances, use your Infisical deployment&apos;s AWS account ID. The External ID{" "}
-                <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
-                current project ID.
-              </p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
 
-        <MetadataFields />
+                <p className="mb-2 text-sm font-medium text-mineshaft-200">
+                  Step 2: Create the Resource Role with a trust policy
+                </p>
+                <p className="mb-3 text-sm text-mineshaft-300">
+                  Create an IAM role (e.g.,{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 text-xs">
+                    InfisicalResourceRole
+                  </code>
+                  ) with the permissions policy above and the following trust policy:
+                </p>
+                <div className="relative mb-4">
+                  <div className="absolute top-1 right-3">
+                    <CopyButton value={trustPolicy} size="sm" variant="plain" />
+                  </div>
+                  <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
+                    {trustPolicy}
+                  </pre>
+                </div>
+                <p className="text-xs text-mineshaft-400">
+                  <strong>Note:</strong> Use{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 font-bold">
+                    {INFISICAL_AWS_ACCOUNT_US}
+                  </code>{" "}
+                  for US region or{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 font-bold">
+                    {INFISICAL_AWS_ACCOUNT_EU}
+                  </code>{" "}
+                  for EU region. For dedicated instances, contact Infisical support. For self-hosted
+                  instances, use your Infisical deployment&apos;s AWS account ID. The External ID{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is
+                  your current project ID.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
-        <div className="mt-6 flex items-center">
+          <MetadataFields />
+        </div>
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
             {isUpdate ? "Update Details" : "Create Resource"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={closeSheet} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

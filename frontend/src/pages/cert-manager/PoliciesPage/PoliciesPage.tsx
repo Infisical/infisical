@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ContentLoader, PageHeader } from "@app/components/v2";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -22,20 +23,27 @@ enum TabSections {
   CertificateProfiles = "profiles",
   CertificatePolicies = "policies",
   Certificates = "certificates",
-  CertificateRequests = "certificate-requests",
-  PkiCollections = "pki-collections"
+  CertificateRequests = "certificate-requests"
 }
 
 export const PoliciesPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const [activeTab, setActiveTab] = useState(TabSections.Certificates);
+  const navigate = useNavigate();
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies"
+  });
+
+  const activeTab = (selectedTab as TabSections) || TabSections.Certificates;
   const [certificateFilter, setCertificateFilter] = useState<{ search?: string }>({});
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
-    setActiveTab(TabSections.Certificates);
     setCertificateFilter({ search: certificateId });
+    navigate({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: { selectedTab: TabSections.Certificates } as any
+    });
   };
 
   const canReadCertificateProfiles = permission.can(
@@ -66,53 +74,26 @@ export const PoliciesPage = () => {
           title="Certificate Manager"
           description="Streamline certificate management by creating and maintaining templates, profiles, and certificates in one place"
         />
-
-        <Tabs
-          orientation="vertical"
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as TabSections)}
-        >
-          <TabList>
-            <Tab variant="project" value={TabSections.Certificates}>
-              Certificates
-            </Tab>
-            <Tab variant="project" value={TabSections.CertificateRequests}>
-              Certificate Requests
-            </Tab>
-            <Tab variant="project" value={TabSections.CertificateProfiles}>
-              Certificate Profiles
-            </Tab>
-            <Tab variant="project" value={TabSections.CertificatePolicies}>
-              Certificate Policies
-            </Tab>
-          </TabList>
-
-          <TabPanel value={TabSections.Certificates}>
-            {canReadCertificates ? (
+        <div>
+          {activeTab === TabSections.Certificates &&
+            (canReadCertificates ? (
               <CertificatesTab externalFilter={certificateFilter} />
             ) : (
               <PermissionDeniedBanner />
-            )}
-          </TabPanel>
-
-          <TabPanel value={TabSections.CertificateRequests}>
-            {canReadCertificates ? (
+            ))}
+          {activeTab === TabSections.CertificateRequests &&
+            (canReadCertificates ? (
               <CertificateRequestsTab
                 onViewCertificateFromRequest={handleViewCertificateFromRequest}
               />
             ) : (
               <PermissionDeniedBanner />
-            )}
-          </TabPanel>
-
-          <TabPanel value={TabSections.CertificateProfiles}>
-            {canReadCertificateProfiles ? <CertificateProfilesTab /> : <PermissionDeniedBanner />}
-          </TabPanel>
-
-          <TabPanel value={TabSections.CertificatePolicies}>
-            {canReadCertificatePolicies ? <CertificatePoliciesTab /> : <PermissionDeniedBanner />}
-          </TabPanel>
-        </Tabs>
+            ))}
+          {activeTab === TabSections.CertificateProfiles &&
+            (canReadCertificateProfiles ? <CertificateProfilesTab /> : <PermissionDeniedBanner />)}
+          {activeTab === TabSections.CertificatePolicies &&
+            (canReadCertificatePolicies ? <CertificatePoliciesTab /> : <PermissionDeniedBanner />)}
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,10 @@
+## 1.8.0 (April 6, 2026)
+Changes:
+* The bundled ingress-nginx controller now uses a dedicated IngressClass name (`infisical-nginx`) instead of the common `nginx` class. This prevents the bundled controller from unintentionally picking up other Ingress resources in your cluster, and avoids conflicts with existing ingress controllers.
+* If you use the bundled ingress-nginx (`ingress.nginx.enabled: true`), no action is needed — both the controller and Infisical's Ingress resource update together on upgrade.
+* If you bring your own ingress controller (`ingress.nginx.enabled: false`), no action is needed — the Ingress resource will continue to default to the `nginx` class.
+* If you had previously set `ingress.ingressClassName` to a custom value in your values file, your override will continue to take effect.
+
 ## 1.7.3 (March 7, 2026)
 Changes:
 * Added support for extra environment variables via `infisical.extraEnv`. This allows setting environment variables like `NODE_EXTRA_CA_CERTS` directly through Helm values without manually editing the deployment manifest.

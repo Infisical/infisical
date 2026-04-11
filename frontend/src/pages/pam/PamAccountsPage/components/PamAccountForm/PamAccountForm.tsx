@@ -7,10 +7,10 @@ import {
 } from "@app/hooks/api/pam";
 import { DiscriminativePick } from "@app/types";
 
-import { PamAccountHeader } from "../PamAccountHeader";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MongoDBAccountForm } from "./MongoDBAccountForm";
 import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
@@ -19,7 +19,7 @@ import { SshAccountForm } from "./SshAccountForm";
 import { WindowsAccountForm } from "./WindowsAccountForm";
 
 type FormProps = {
-  onComplete: (account: TPamAccount) => void;
+  closeSheet: (account?: TPamAccount) => void;
 };
 
 type CreateFormProps = FormProps & {
@@ -34,7 +34,7 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({
-  onComplete,
+  closeSheet,
   projectId,
   resourceId,
   resourceType,
@@ -64,7 +64,7 @@ const CreateForm = ({
       text: "Successfully created account",
       type: "success"
     });
-    onComplete(account);
+    closeSheet(account);
   };
 
   switch (resourceType) {
@@ -72,34 +72,61 @@ const CreateForm = ({
       return (
         <PostgresAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
       );
     case PamResourceType.MySQL:
       return (
-        <MySQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+        <MySQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
       );
     case PamResourceType.MsSQL:
       return (
-        <MsSQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+        <MsSQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
       );
     case PamResourceType.Redis:
       return (
         <RedisAccountForm
           onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
       );
     case PamResourceType.SSH:
       return (
-        <SshAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+        <SshAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
       );
     case PamResourceType.Kubernetes:
       return (
         <KubernetesAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -108,6 +135,7 @@ const CreateForm = ({
       return (
         <AwsIamAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -116,6 +144,7 @@ const CreateForm = ({
       return (
         <WindowsAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -124,6 +153,7 @@ const CreateForm = ({
       return (
         <ActiveDirectoryAccountForm
           onSubmit={onSubmit}
+          closeSheet={closeSheet}
           resourceId={resourceId}
           resourceType={resourceType}
         />
@@ -133,7 +163,7 @@ const CreateForm = ({
   }
 };
 
-const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
+const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
 
   const onSubmit = async (
@@ -156,69 +186,90 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       text: "Successfully updated account",
       type: "success"
     });
-    onComplete(updatedAccount);
+    closeSheet(updatedAccount);
   };
 
   switch (account.resource.resourceType) {
     case PamResourceType.Postgres:
-      return <PostgresAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <PostgresAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.MySQL:
-      return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <MySQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.MsSQL:
-      return <MsSQLAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Redis:
       return (
         <RedisAccountForm
           account={account as any}
           onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
+          closeSheet={closeSheet}
         />
       );
     case PamResourceType.SSH:
-      return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <SshAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Kubernetes:
-      return <KubernetesAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <KubernetesAccountForm
+          account={account as any}
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+        />
+      );
     case PamResourceType.AwsIam:
-      return <AwsIamAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <AwsIamAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.Windows:
-      return <WindowsAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <WindowsAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
     case PamResourceType.ActiveDirectory:
-      return <ActiveDirectoryAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <ActiveDirectoryAccountForm
+          account={account as any}
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }
 };
 
 type Props = {
-  onBack?: () => void;
   projectId: string;
 } & FormProps &
   (
     | {
         account: TPamAccount;
         resourceId?: undefined;
-        resourceName?: undefined;
         resourceType?: undefined;
         folderId?: undefined;
       }
     | {
         account?: undefined;
         resourceId: string;
-        resourceName: string;
         resourceType: PamResourceType;
         folderId?: string;
       }
   );
 
-export const PamAccountForm = ({ onBack, projectId, ...props }: Props) => {
-  const { account, resourceName, resourceType } = props;
+export const PamAccountForm = ({ projectId, ...props }: Props) => {
+  const { account } = props;
 
   return (
-    <div>
-      <PamAccountHeader
-        resourceName={account ? account.resource.name : resourceName}
-        resourceType={account ? account.resource.resourceType : resourceType}
-        onBack={onBack}
-      />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {account ? (
         <UpdateForm {...props} account={account} />
       ) : (

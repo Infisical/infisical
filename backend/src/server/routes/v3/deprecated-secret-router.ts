@@ -280,7 +280,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       // just for delivery hero usecase
       let { secretPath, environment, workspaceId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -306,7 +306,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
 
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const { secrets, imports } = await server.services.secret.getSecretsRaw({
+      const result = await server.services.secret.getSecretsRaw({
         secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
         personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
@@ -321,8 +321,20 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         metadataFilter: req.query.metadataFilter,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
-        tagSlugs: req.query.tagSlugs
+        tagSlugs: req.query.tagSlugs,
+        ifNoneMatch: req.headers["if-none-match"]
       });
+
+      const { secrets, imports, etag, notModified } = result;
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId: workspaceId,

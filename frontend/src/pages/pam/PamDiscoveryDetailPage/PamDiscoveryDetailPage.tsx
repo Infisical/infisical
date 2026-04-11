@@ -199,9 +199,17 @@ const DiscoveryConfigurationSection = ({
             )}
           </DetailValue>
         </Detail>
-        {(source.discoveryConfiguration?.caCert as string) && (
+        {(source.discoveryConfiguration?.ldapCaCert as string) && (
           <Detail>
-            <DetailLabel>CA Certificate</DetailLabel>
+            <DetailLabel>LDAP CA Certificate</DetailLabel>
+            <DetailValue>
+              <Badge variant="success">Provided</Badge>
+            </DetailValue>
+          </Detail>
+        )}
+        {(source.discoveryConfiguration?.winrmCaCert as string) && (
+          <Detail>
+            <DetailLabel>WinRM CA Certificate</DetailLabel>
             <DetailValue>
               <Badge variant="success">Provided</Badge>
             </DetailValue>
@@ -301,7 +309,7 @@ const RunExpandedContent = ({
   errorMessage?: string | null;
 }) => {
   const adEnum = progress?.adEnumeration;
-  const depScan = progress?.dependencyScan;
+  const depScan = progress?.machineEnumeration;
   const machineErrors = progress?.machineErrors;
   const hasMachineErrors = machineErrors && Object.keys(machineErrors).length > 0;
 
@@ -310,8 +318,8 @@ const RunExpandedContent = ({
       <div className="flex gap-10">
         {adEnum && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wider text-muted uppercase">
-              AD Enumeration
+            <span className="text-xs font-medium tracking-wider text-label uppercase">
+              Directory Scan
             </span>
             <Badge
               variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}
@@ -320,14 +328,14 @@ const RunExpandedContent = ({
               {adEnum.status}
             </Badge>
             {adEnum.error && adEnum.error !== errorMessage && (
-              <span className="text-xs text-red-400">{adEnum.error}</span>
+              <span className="text-xs whitespace-pre-wrap text-danger">{adEnum.error}</span>
             )}
           </div>
         )}
         {depScan && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wider text-muted uppercase">
-              Dependency Scan
+            <span className="text-xs font-medium tracking-wider text-label uppercase">
+              Host Scan
             </span>
             <Badge
               variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}
@@ -337,9 +345,9 @@ const RunExpandedContent = ({
             </Badge>
             {depScan.totalMachines !== undefined && (
               <span className="text-xs text-muted">
-                {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
+                {depScan.scannedMachines ?? 0}/{depScan.totalMachines} hosts
                 {(depScan.failedMachines ?? 0) > 0 && (
-                  <span className="ml-1 text-red-400">({depScan.failedMachines} failed)</span>
+                  <span className="ml-1 text-danger">({depScan.failedMachines} failed)</span>
                 )}
               </span>
             )}
@@ -352,21 +360,21 @@ const RunExpandedContent = ({
       {errorMessage && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium tracking-wider text-muted uppercase">Error</span>
-          <span className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
+          <span className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">
             {errorMessage}
           </span>
         </div>
       )}
       {hasMachineErrors && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium tracking-wider text-muted uppercase">
-            Machine Errors
+          <span className="text-xs font-medium tracking-wider text-label uppercase">
+            Host Errors
           </span>
           <div className="mb-0.5 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-400">
             <InfoIcon className="size-4 shrink-0" />
             <span className="whitespace-pre-wrap">
-              Machines without WinRM enabled will fail with &quot;socket hang up&quot;. This is
-              expected for domain controllers and machines not configured for remote management.
+              Hosts without WinRM enabled will fail with &quot;socket hang up&quot;. This is
+              expected for domain controllers and hosts not configured for remote management.
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -376,7 +384,7 @@ const RunExpandedContent = ({
                 className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs"
               >
                 <span className="font-semibold text-foreground">{host}</span>
-                <span className="ml-2 text-muted">{err}</span>
+                <span className="ml-2 whitespace-pre-wrap text-label">{err}</span>
               </div>
             ))}
           </div>
@@ -482,7 +490,7 @@ const RunsTab = ({
               const isExpanded = expandedRunId === run.id;
               const hasDetails =
                 run.progress?.adEnumeration ||
-                run.progress?.dependencyScan ||
+                run.progress?.machineEnumeration ||
                 run.errorMessage ||
                 (run.progress?.machineErrors && Object.keys(run.progress.machineErrors).length > 0);
 
@@ -1071,7 +1079,7 @@ const PageContent = () => {
         </div>
 
         {/* Right Column - Tabbed Content */}
-        <div className="flex w-full min-w-0">
+        <div className="min-w-0 flex-1">
           <Tabs value={selectedTab} onValueChange={handleTabChange} className="w-full">
             <UnstableCard className="py-3">
               <UnstableCardHeader>

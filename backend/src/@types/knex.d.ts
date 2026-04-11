@@ -422,9 +422,6 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
-  TQueueJobs,
-  TQueueJobsInsert,
-  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -709,7 +706,17 @@ import {
   TPamResourceFavoritesInsert,
   TPamResourceFavoritesUpdate
 } from "@app/db/schemas/pam-resource-favorites";
+import {
+  TPamResourceRotationRules,
+  TPamResourceRotationRulesInsert,
+  TPamResourceRotationRulesUpdate
+} from "@app/db/schemas/pam-resource-rotation-rules";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
+import {
+  TPamSessionEventBatches,
+  TPamSessionEventBatchesInsert,
+  TPamSessionEventBatchesUpdate
+} from "@app/db/schemas/pam-session-event-batches";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
@@ -1590,6 +1597,11 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+    [TableName.PamSessionEventBatch]: KnexOriginal.CompositeTableType<
+      TPamSessionEventBatches,
+      TPamSessionEventBatchesInsert,
+      TPamSessionEventBatchesUpdate
+    >;
     [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
       TPamDiscoverySources,
       TPamDiscoverySourcesInsert,
@@ -1619,6 +1631,11 @@ declare module "knex/types/tables" {
       TPamAccountDependencies,
       TPamAccountDependenciesInsert,
       TPamAccountDependenciesUpdate
+    >;
+    [TableName.PamResourceRotationRule]: KnexOriginal.CompositeTableType<
+      TPamResourceRotationRules,
+      TPamResourceRotationRulesInsert,
+      TPamResourceRotationRulesUpdate
     >;
 
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
@@ -1725,7 +1742,6 @@ declare module "knex/types/tables" {
       TOrganizationAssetsUpdate
     >;
 
-    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
     [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,

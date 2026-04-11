@@ -4,7 +4,7 @@ import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -56,6 +56,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+    await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId));
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {

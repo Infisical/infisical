@@ -3,13 +3,13 @@ import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { TPamResourceWithFavorite } from "@app/ee/services/pam-resource/pam-resource-types";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { PamResourceOrderBy } from "./pam-resource-enums";
-import { TPamResourceWithFavorite } from "./pam-resource-types";
 
 export type TPamResourceDALFactory = ReturnType<typeof pamResourceDALFactory>;
 export const pamResourceDALFactory = (db: TDbClient) => {
@@ -148,5 +148,37 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, findByProjectId, findMetadataByResourceIds, findByAdServerResourceId };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamResource)
+      .leftJoin(TableName.Project, `${TableName.PamResource}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.PamResource}.gatewayId`, gatewayId)
+      .select(
+        db.ref("id").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.PamResource),
+        db.ref("projectId").withSchema(TableName.PamResource),
+        db.ref("resourceType").withSchema(TableName.PamResource),
+        db.ref("name").withSchema(TableName.Project).as("projectName")
+      );
+
+    return docs;
+  };
+
+  const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where(`${TableName.PamResource}.gatewayId`, gatewayId)
+      .count("id")
+      .first();
+
+    return parseInt(String(result?.count || "0"), 10);
+  };
+
+  return {
+    ...orm,
+    findById,
+    findByProjectId,
+    findMetadataByResourceIds,
+    findByAdServerResourceId,
+    findByGatewayId,
+    countByGatewayId
+  };
 };

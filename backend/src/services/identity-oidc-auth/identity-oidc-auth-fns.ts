@@ -9,13 +9,13 @@ export const doesFieldValueMatchOidcPolicy = (fieldValue: string | number | bool
     return fieldValue === parseInt(policyValue, 10);
   }
 
-  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue);
+  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
 };
 
 export const doesAudValueMatchOidcPolicy = (fieldValue: string | string[], policyValue: string) => {
   if (Array.isArray(fieldValue)) {
-    return fieldValue.some((entry) => entry === policyValue || picomatch.isMatch(entry, policyValue));
+    return fieldValue.some((entry) => entry === policyValue || picomatch.isMatch(entry, policyValue, { bash: true }));
   }
 
-  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue);
+  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
 };

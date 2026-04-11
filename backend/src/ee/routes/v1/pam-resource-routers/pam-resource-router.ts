@@ -15,6 +15,10 @@ import {
   SanitizedKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  MongoDBResourceListItemSchema,
+  SanitizedMongoDBResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
   MsSQLResourceListItemSchema,
   SanitizedMsSQLResourceSchema
 } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
@@ -51,6 +55,7 @@ const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedSSHResourceSchema,
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
+  SanitizedMongoDBResourceSchema,
   SanitizedRedisResourceSchema,
   SanitizedWindowsResourceSchema,
   SanitizedActiveDirectoryResourceSchema
@@ -68,6 +73,7 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   SSHResourceListItemSchema,
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,
+  MongoDBResourceListItemSchema,
   RedisResourceListItemSchema,
   WindowsResourceListItemSchema,
   ActiveDirectoryResourceListItemSchema
@@ -245,7 +251,8 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           dependencies: PamAccountDependenciesSchema.extend({
-            accountName: z.string().nullable()
+            accountName: z.string().nullable(),
+            lastSyncMessage: z.string().nullable().optional()
           }).array()
         })
       }

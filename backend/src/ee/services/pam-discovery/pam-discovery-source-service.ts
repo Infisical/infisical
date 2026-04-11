@@ -15,6 +15,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -651,11 +652,36 @@ export const pamDiscoverySourceServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
         accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType,
         metadata: accountMetadata
       })
     );
 
     return accountWithResource;
+  };
+
+  const decryptDependencySyncMessages = async <T extends { encryptedLastSyncMessage?: Buffer | null }>(
+    deps: T[],
+    projectId: string
+  ): Promise<(T & { lastSyncMessage: string | null })[]> => {
+    if (!deps.length) return deps.map((d) => ({ ...d, lastSyncMessage: null as string | null }));
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    return deps.map((dep) => {
+      let lastSyncMessage: string | null = null;
+      if (dep.encryptedLastSyncMessage) {
+        try {
+          lastSyncMessage = decryptor({ cipherTextBlob: dep.encryptedLastSyncMessage }).toString();
+        } catch {
+          lastSyncMessage = "Failed to decrypt error message";
+        }
+      }
+      return { ...dep, lastSyncMessage };
+    });
   };
 
   const getAccountDependencies = async ({
@@ -671,7 +697,7 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    await verifyAccountPermission(
+    const accountWithResource = await verifyAccountPermission(
       accountId,
       ProjectPermissionPamAccountActions.Read,
       actor,
@@ -679,7 +705,8 @@ export const pamDiscoverySourceServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    return pamAccountDependenciesDAL.findByAccountId(accountId);
+    const deps = await pamAccountDependenciesDAL.findByAccountId(accountId);
+    return decryptDependencySyncMessages(deps, accountWithResource.projectId);
   };
 
   const getResourceDependencies = async ({
@@ -709,10 +736,11 @@ export const pamDiscoverySourceServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name })
+      subject(ProjectPermissionSub.PamResources, { name: resource.name, resourceType: resource.resourceType })
     );
 
-    return pamAccountDependenciesDAL.findByResourceId(resourceId);
+    const deps = await pamAccountDependenciesDAL.findByResourceId(resourceId);
+    return decryptDependencySyncMessages(deps, resource.projectId);
   };
 
   const updateAccountDependency = async ({

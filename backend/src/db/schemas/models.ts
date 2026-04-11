@@ -227,12 +227,14 @@ export enum TableName {
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
+  PamSessionEventBatch = "pam_session_event_batches",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
   PamAccountDependency = "pam_account_dependencies",
+  PamResourceRotationRule = "pam_resource_rotation_rules",
   PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
@@ -277,7 +279,9 @@ export enum TableName {
   PkiSigners = "pki_signers",
   PkiSigningOperations = "pki_signing_operations",
 
-  QueueJobs = "queue_jobs",
+  // Deprecated - Not used anymore now that Redis is persistent
+  DeprecatedDurableQueueJobs = "queue_jobs",
+
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules"
 }

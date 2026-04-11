@@ -21,7 +21,7 @@ An approval policy defines the workflow that must be completed before access is 
 
 Key features of approval policies include:
 
-- **Condition-based matching**: Define which resources and accounts the policy applies to using glob patterns (e.g. `prod-*`, `*-admin`).
+- **Condition-based matching**: Define which resources and accounts the policy applies to using [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) (e.g. `prod-*`, `{prod,staging}-*`, `*-admin`).
 - **Multi-step workflows**: Configure sequential approval steps where each step must be completed before the next begins.
 - **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
 - **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).

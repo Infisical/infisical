@@ -3,9 +3,11 @@ import { z } from "zod";
 
 import { TPamResources } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import {
   TActiveDirectoryAccount,
   TActiveDirectoryAccountCredentials,
@@ -25,6 +27,12 @@ import {
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
 import {
+  TMongoDBAccount,
+  TMongoDBAccountCredentials,
+  TMongoDBResource,
+  TMongoDBResourceConnectionDetails
+} from "./mongodb/mongodb-resource-types";
+import {
   TMsSQLAccount,
   TMsSQLAccountCredentials,
   TMsSQLResource,
@@ -36,6 +44,7 @@ import {
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
+import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
   TPostgresAccount,
@@ -73,6 +82,7 @@ export type TPamResource =
   | TAwsIamResource
   | TKubernetesResource
   | TRedisResource
+  | TMongoDBResource
   | TWindowsResource
   | TActiveDirectoryResource;
 export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
@@ -84,6 +94,7 @@ export type TPamResourceConnectionDetails =
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
+  | TMongoDBResourceConnectionDetails
   | TWindowsResourceConnectionDetails
   | TActiveDirectoryResourceConnectionDetails;
 export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
@@ -97,6 +108,7 @@ export type TPamAccount =
   | TAwsIamAccount
   | TKubernetesAccount
   | TRedisAccount
+  | TMongoDBAccount
   | TWindowsAccount
   | TActiveDirectoryAccount;
 
@@ -108,6 +120,7 @@ export type TPamAccountCredentials =
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
+  | TMongoDBAccountCredentials
   | TWindowsAccountCredentials
   | TActiveDirectoryAccountCredentials;
 
@@ -143,6 +156,12 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
+export type TPostRotateContext = {
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById" | "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
 export type TPamResourceFactory<
   T extends TPamResourceConnectionDetails,
   C extends TPamAccountCredentials,
@@ -158,5 +177,12 @@ export type TPamResourceFactory<
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
+  postRotate?: (
+    accountId: string,
+    newCredentials: C,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: C
+  ) => Promise<void>;
   handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };

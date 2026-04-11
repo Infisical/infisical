@@ -1,0 +1,735 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
+import { EyeIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { ContentLoader } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription } from "@app/components/v3/generic/Alert";
+import { Checkbox } from "@app/components/v3/generic/Checkbox";
+import type { CellOpts } from "@app/components/v3/generic/DataGrid";
+import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
+import { Skeleton } from "@app/components/v3/generic/Skeleton";
+
+import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
+import { getColumnIndicator } from "../data-explorer-utils";
+import type { FilterCondition, SortCondition } from "../sql-generation";
+import {
+  buildCountQuery,
+  buildDeleteQuery,
+  buildInsertQuery,
+  buildSelectQuery,
+  buildUpdateQuery,
+  wrapInTransaction
+} from "../sql-generation";
+import { DataExplorerToolbar } from "./DataExplorerToolbar";
+
+type DataExplorerGridProps = {
+  tableDetail: TableDetail | null;
+  tableType?: string;
+  schema: string;
+  table: string;
+  executeQuery: (sql: string) => Promise<{
+    rows: Record<string, unknown>[];
+    fields: FieldInfo[];
+    rowCount: number | null;
+    command: string;
+    executionTimeMs: number;
+  }>;
+  isLoading: boolean;
+  onChangeCountUpdate?: (count: number) => void;
+  onFullRefresh?: () => Promise<void>;
+};
+
+const ROW_KEY_PREFIX = "__new_";
+
+function cellValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  if (a === undefined && b === undefined) return true;
+  if (a === undefined || b === undefined) return false;
+  return String(a) === String(b);
+}
+
+function pgTypeToCellOpts(): CellOpts {
+  return { variant: "short-text" };
+}
+
+function getColumnSize(col: ColumnInfo, hasIndicator: boolean): number {
+  // Extra width for PK/FK icon + badge + type label in header
+  const indicatorExtra = hasIndicator ? 40 : 0;
+  const t = col.type.toLowerCase();
+  if (t === "boolean" || t === "bool" || t === "smallint" || t === "int2")
+    return 100 + indicatorExtra;
+  if (t === "integer" || t === "int4" || t === "serial") return 120 + indicatorExtra;
+  if (t === "uuid") return 280 + indicatorExtra;
+  if (t === "json" || t === "jsonb") return 250 + indicatorExtra;
+  if (t === "text" || t === "xml") return 220 + indicatorExtra;
+  // Scale with column name length as a rough heuristic
+  return Math.max(180, Math.min(350, col.name.length * 10 + 120)) + indicatorExtra;
+}
+
+type RowData = Record<string, unknown>;
+
+type SelectionMeta = {
+  onRowSelect?: (rowIndex: number, checked: boolean, shiftKey: boolean) => void;
+};
+
+function SelectHeader({ table: t }: HeaderContext<RowData, unknown>) {
+  const isAllSelected = t.getIsAllRowsSelected();
+  const isSomeSelected = t.getIsSomeRowsSelected();
+  return (
+    <Checkbox
+      isChecked={isAllSelected || isSomeSelected}
+      isIndeterminate={isSomeSelected && !isAllSelected}
+      onCheckedChange={() => {
+        t.toggleAllRowsSelected(!isAllSelected);
+      }}
+    />
+  );
+}
+
+function SelectCell({ row, table: t }: CellContext<RowData, unknown>) {
+  const meta = t.options.meta as SelectionMeta | undefined;
+  const isSelected = row.getIsSelected();
+  return (
+    <Checkbox
+      isChecked={isSelected}
+      onCheckedChange={(checked) => {
+        if (meta?.onRowSelect) {
+          meta.onRowSelect(row.index, Boolean(checked), false);
+        } else {
+          row.toggleSelected(Boolean(checked));
+        }
+      }}
+    />
+  );
+}
+
+const SELECT_COLUMN: ColumnDef<RowData> = {
+  id: "select",
+  header: SelectHeader,
+  cell: SelectCell,
+  size: 40,
+  minSize: 40,
+  maxSize: 40,
+  enableSorting: false,
+  enableHiding: false,
+  enablePinning: false,
+  enableResizing: false
+};
+
+function buildColumnDefs(
+  cols: ColumnInfo[],
+  primaryKeys: string[],
+  foreignKeys: ForeignKeyInfo[]
+): ColumnDef<Record<string, unknown>>[] {
+  // Build a map from column name → FK info for O(1) lookup
+  const fkMap = new Map<string, ForeignKeyInfo>();
+  foreignKeys.forEach((fk) => {
+    fk.columns.forEach((c) => {
+      if (!fkMap.has(c)) fkMap.set(c, fk);
+    });
+  });
+
+  return cols.map((col) => {
+    const columnIndicator = getColumnIndicator(col.name, primaryKeys, fkMap);
+    return {
+      id: col.name,
+      accessorKey: col.name,
+      header: col.name,
+      meta: {
+        label: col.name,
+        typeLabel: col.type,
+        cell: pgTypeToCellOpts(),
+        columnIndicator
+      },
+      size: getColumnSize(col, Boolean(columnIndicator)),
+      minSize: 80,
+      maxSize: 600,
+      enableSorting: true,
+      enablePinning: true,
+      enableHiding: true
+    };
+  });
+}
+
+function getRowKey(row: Record<string, unknown>, primaryKeys: string[]): string {
+  if (primaryKeys.length === 0) return "";
+  const keyObj: Record<string, unknown> = {};
+  primaryKeys.forEach((pk) => {
+    keyObj[pk] = row[pk];
+  });
+  return JSON.stringify(keyObj);
+}
+
+function getPkMatch(row: Record<string, unknown>, primaryKeys: string[]): Record<string, unknown> {
+  const match: Record<string, unknown> = {};
+  primaryKeys.forEach((pk) => {
+    match[pk] = row[pk];
+  });
+  return match;
+}
+
+export const DataExplorerGrid = ({
+  tableDetail,
+  tableType,
+  schema,
+  table,
+  executeQuery,
+  isLoading,
+  onChangeCountUpdate,
+  onFullRefresh
+}: DataExplorerGridProps) => {
+  const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
+  const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const [sorts, setSorts] = useState<SortCondition[]>([]);
+  const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [newRowTempIds, setNewRowTempIds] = useState<Set<string>>(new Set());
+  const newRowCounterRef = useRef(0);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const isFetchingRef = useRef(false);
+
+  const primaryKeys = tableDetail?.primaryKeys ?? [];
+  const foreignKeys = tableDetail?.foreignKeys ?? [];
+  const tableColumns = tableDetail?.columns ?? [];
+  const hasPrimaryKey = primaryKeys.length > 0;
+  const primaryKeysRef = useRef(primaryKeys);
+  primaryKeysRef.current = primaryKeys;
+
+  const [selectedRowCount, setSelectedRowCount] = useState(0);
+  const gridRef = useRef<ReturnType<typeof useDataGrid<Record<string, unknown>>>["table"] | null>(
+    null
+  );
+  const selectedRowsRef = useRef<Record<string, unknown>[]>([]);
+
+  // Build TanStack Table column definitions from PG metadata
+  const columnDefs = useMemo(
+    () =>
+      hasPrimaryKey
+        ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns, primaryKeys, foreignKeys)]
+        : buildColumnDefs(tableColumns, primaryKeys, foreignKeys),
+    [hasPrimaryKey, tableColumns, primaryKeys, foreignKeys]
+  );
+
+  const fetchData = useCallback(
+    async (o: number, ps: number, f: FilterCondition[], s: SortCondition[]): Promise<number> => {
+      if (!tableDetail) return 0;
+      isFetchingRef.current = true;
+      setIsDataLoading(true);
+      try {
+        const selectSql = buildSelectQuery({
+          schema,
+          table,
+          filters: f,
+          sorts: s,
+          limit: ps,
+          offset: o,
+          primaryKeys
+        });
+        const countSql = buildCountQuery({ schema, table, filters: f });
+
+        // These two queries don't share a database snapshot (the backend processes them
+        // sequentially, not in a single transaction), so the count could be off by 1 if
+        // another session modifies data between them. Acceptable for a data explorer.
+        const [dataResult, countResult] = await Promise.all([
+          executeQuery(selectSql),
+          executeQuery(countSql)
+        ]);
+
+        const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
+          ...row,
+          originalPkKey: getRowKey(row, primaryKeys)
+        }));
+        setOriginalData(taggedRows);
+        setCurrentData(taggedRows);
+        setExecutionTimeMs(dataResult.executionTimeMs);
+        setTotalCount(Number(countResult.rows[0]?.count ?? 0));
+        setNewRowTempIds(new Set());
+        setSelectedRowCount(0);
+        selectedRowsRef.current = [];
+        setHasLoaded(true);
+        return dataResult.rows.length;
+      } catch (err) {
+        createNotification({
+          title: "Failed to load data",
+          text: err instanceof Error ? err.message : "Unknown error",
+          type: "error"
+        });
+        return -1;
+      } finally {
+        isFetchingRef.current = false;
+        setIsDataLoading(false);
+      }
+    },
+    [tableDetail, schema, table, primaryKeys, executeQuery]
+  );
+
+  // Fetch data when filters/sorts/pagination change.
+  // Table switches are handled by the parent via key={schema.table} which
+  // remounts this component with fresh state — no manual reset needed.
+  const prevFetchKeyRef = useRef("");
+  const fetchKey = `${schema}.${table}.${offset}.${pageSize}.${JSON.stringify(filters)}.${JSON.stringify(sorts)}`;
+  if (fetchKey !== prevFetchKeyRef.current && tableDetail && !isLoading) {
+    prevFetchKeyRef.current = fetchKey;
+    fetchData(offset, pageSize, filters, sorts);
+  } else if (isDataLoading && hasLoaded && !isFetchingRef.current) {
+    // Handlers eagerly set isDataLoading so the overlay appears immediately.
+    // If the fetchKey didn't actually change (e.g. applying empty filters when
+    // none were active), no fetch runs — reset loading to avoid getting stuck.
+    setIsDataLoading(false);
+  }
+
+  const pageSizeRef = useRef(pageSize);
+  pageSizeRef.current = pageSize;
+  const sortsRef = useRef(sorts);
+  sortsRef.current = sorts;
+
+  const handleFiltersChange = useCallback(
+    async (newFilters: FilterCondition[]): Promise<boolean> => {
+      setFilters(newFilters);
+      setOffset(0);
+      // Update prevFetchKeyRef so the render-time pattern doesn't double-fire
+      prevFetchKeyRef.current = `${schema}.${table}.${0}.${pageSizeRef.current}.${JSON.stringify(newFilters)}.${JSON.stringify(sortsRef.current)}`;
+      const result = await fetchData(0, pageSizeRef.current, newFilters, sortsRef.current);
+      return result >= 0;
+    },
+    [schema, table, fetchData]
+  );
+
+  const handleSortsChange = useCallback((newSorts: SortCondition[]) => {
+    setIsDataLoading(true);
+    setSorts(newSorts);
+    setOffset(0);
+  }, []);
+
+  const handleOffsetChange = useCallback((newOffset: number) => {
+    setIsDataLoading(true);
+    setOffset(Math.max(0, newOffset));
+  }, []);
+
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    setIsDataLoading(true);
+    setPageSize(newSize);
+    setOffset(0);
+  }, []);
+
+  // PK-based lookup map for O(1) original row matching (avoids index misalignment after prepend)
+  const originalDataByPk = useMemo(() => {
+    if (primaryKeys.length === 0) return null;
+    const map = new Map<string, Record<string, unknown>>();
+    originalData.forEach((row) => {
+      map.set(getRowKey(row, primaryKeys), row);
+    });
+    return map;
+  }, [originalData, primaryKeys]);
+
+  const originalDataByPkRef = useRef(originalDataByPk);
+  originalDataByPkRef.current = originalDataByPk;
+
+  // Change tracking — use PK-based lookup so new row prepends don't misalign indices
+  const changeCount = useMemo(() => {
+    let count = newRowTempIds.size;
+    if (!originalDataByPk) return count;
+    currentData.forEach((row) => {
+      if (row.tempRowId && newRowTempIds.has(String(row.tempRowId))) return;
+      const key = row.originalPkKey as string;
+      if (!key) return;
+      const original = originalDataByPk.get(key);
+      if (!original) return;
+      const hasChanges = tableColumns.some(
+        (col) => !cellValuesEqual(row[col.name], original[col.name])
+      );
+      if (hasChanges) count += 1;
+    });
+    return count;
+  }, [currentData, originalDataByPk, primaryKeys, newRowTempIds, tableColumns]);
+
+  useEffect(() => {
+    onChangeCountUpdate?.(changeCount);
+  }, [changeCount, onChangeCountUpdate]);
+
+  const handleAddRecord = useCallback(() => {
+    newRowCounterRef.current += 1;
+    const tempId = `${ROW_KEY_PREFIX}${newRowCounterRef.current}`;
+    const newRow: Record<string, unknown> = { tempRowId: tempId };
+    tableColumns.forEach((col) => {
+      newRow[col.name] = null;
+    });
+    setCurrentData((prev) => [newRow, ...prev]);
+    setNewRowTempIds((prev) => new Set(prev).add(tempId));
+    return null;
+  }, [tableColumns]);
+
+  const handleRowsDelete = useCallback(
+    async (_rows: Record<string, unknown>[], rowIndices: number[]) => {
+      const tempIdsToRemove: string[] = [];
+      const deleteStatements: string[] = [];
+
+      rowIndices.forEach((idx) => {
+        const row = currentData[idx];
+        if (!row) return;
+        const tempId = row.tempRowId ? String(row.tempRowId) : null;
+        if (tempId) {
+          tempIdsToRemove.push(tempId);
+        } else {
+          deleteStatements.push(
+            buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+          );
+        }
+      });
+
+      // Remove unsaved new rows from local state immediately
+      if (tempIdsToRemove.length > 0) {
+        const tempIdSet = new Set(tempIdsToRemove);
+        setCurrentData((prev) =>
+          prev.filter((r) => !r.tempRowId || !tempIdSet.has(String(r.tempRowId)))
+        );
+        setNewRowTempIds((prev) => {
+          const next = new Set(prev);
+          tempIdsToRemove.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+
+      // Execute DELETE SQL for persisted rows immediately
+      if (deleteStatements.length > 0) {
+        try {
+          const sql = wrapInTransaction(deleteStatements);
+          await executeQuery(sql);
+          createNotification({
+            text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
+            type: "success"
+          });
+          const rowCount = await fetchData(offset, pageSize, filters, sorts);
+          if (rowCount === 0 && offset > 0) {
+            setOffset(Math.max(0, offset - pageSize));
+          }
+        } catch (err) {
+          createNotification({
+            title: "Delete failed",
+            text: err instanceof Error ? err.message : "Unknown error",
+            type: "error"
+          });
+        }
+      }
+    },
+    [
+      currentData,
+      primaryKeys,
+      schema,
+      table,
+      executeQuery,
+      fetchData,
+      offset,
+      pageSize,
+      filters,
+      sorts
+    ]
+  );
+
+  const handleDiscard = useCallback(() => {
+    setCurrentData(originalData);
+    setNewRowTempIds(new Set());
+  }, [originalData]);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const statements: string[] = [];
+
+      // Inserts (new rows)
+      currentData.forEach((row) => {
+        const tempId = row.tempRowId ? String(row.tempRowId) : null;
+        if (!tempId || !newRowTempIds.has(tempId)) return;
+        const values: Record<string, unknown> = {};
+        tableColumns.forEach((col) => {
+          if (
+            row[col.name] !== null &&
+            row[col.name] !== undefined &&
+            String(row[col.name]) !== ""
+          ) {
+            values[col.name] = row[col.name];
+          }
+        });
+        statements.push(buildInsertQuery({ schema, table, row: values }));
+      });
+
+      // Updates (changed rows) — use PK-based lookup so prepends don't misalign
+      const pkMap = originalDataByPk;
+      currentData.forEach((row) => {
+        if (row.tempRowId) return;
+        const key = row.originalPkKey as string;
+        const original = key && pkMap ? pkMap.get(key) : undefined;
+        if (!original) return;
+        const changes: Record<string, unknown> = {};
+        tableColumns.forEach((col) => {
+          if (!cellValuesEqual(row[col.name], original[col.name])) {
+            changes[col.name] = row[col.name];
+          }
+        });
+        if (Object.keys(changes).length > 0) {
+          statements.push(
+            buildUpdateQuery({
+              schema,
+              table,
+              changes,
+              primaryKeyMatch: getPkMatch(original, primaryKeys)
+            })
+          );
+        }
+      });
+
+      if (statements.length === 0) {
+        createNotification({ text: "No changes to save", type: "info" });
+        setIsSaving(false);
+        return;
+      }
+
+      const sql = wrapInTransaction(statements);
+
+      // The WebSocket maxPayload is 64 KB. Guard against sending a query
+      // that would exceed the limit and silently kill the connection.
+      const MAX_QUERY_SIZE = 50 * 1024;
+      if (sql.length > MAX_QUERY_SIZE) {
+        createNotification({
+          title: "Save failed",
+          text: "Changes are too large to save at once. Try saving fewer or smaller changes.",
+          type: "error"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      await executeQuery(sql);
+      createNotification({
+        text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,
+        type: "success"
+      });
+
+      await fetchData(offset, pageSize, filters, sorts);
+    } catch (err) {
+      createNotification({
+        title: "Save failed",
+        text: err instanceof Error ? err.message : "Unknown error",
+        type: "error"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    currentData,
+    originalDataByPk,
+    newRowTempIds,
+    tableColumns,
+    primaryKeys,
+    schema,
+    table,
+    executeQuery,
+    fetchData,
+    offset,
+    pageSize,
+    filters,
+    sorts
+  ]);
+
+  const handleDataChange = useCallback((newData: Record<string, unknown>[]) => {
+    setCurrentData(newData);
+  }, []);
+
+  // Use refs so the callback identity is stable (survives tableMeta useMemo)
+  // while always reading the latest data.
+  const currentDataRef = useRef(currentData);
+  currentDataRef.current = currentData;
+  const newRowTempIdsRef = useRef(newRowTempIds);
+  newRowTempIdsRef.current = newRowTempIds;
+
+  const getIsCellDirty = useCallback((rowIndex: number, columnId: string) => {
+    const row = currentDataRef.current[rowIndex];
+    if (!row) return false;
+    if (row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId))) return true;
+    const pkMap = originalDataByPkRef.current;
+    if (!pkMap) return false;
+    const key = row.originalPkKey as string;
+    if (!key) return false;
+    const original = pkMap.get(key);
+    if (!original) return false;
+    return !cellValuesEqual(row[columnId], original[columnId]);
+  }, []);
+
+  const getIsRowNew = useCallback((rowIndex: number) => {
+    const row = currentDataRef.current[rowIndex];
+    if (!row) return false;
+    return Boolean(row.tempRowId && newRowTempIdsRef.current.has(String(row.tempRowId)));
+  }, []);
+
+  // Stable row identity for TanStack Table
+  const getRowId = useCallback(
+    (row: Record<string, unknown>, index: number) => {
+      if (row.tempRowId) return String(row.tempRowId);
+      if (row.originalPkKey) return row.originalPkKey as string;
+      if (primaryKeys.length > 0) return getRowKey(row, primaryKeys);
+      return String(index);
+    },
+    [primaryKeys]
+  );
+
+  // Dice UI DataGrid
+  const gridProps = useDataGrid<Record<string, unknown>>({
+    data: currentData,
+    columns: columnDefs,
+    onDataChange: handleDataChange,
+    getRowId,
+    readOnly: !hasPrimaryKey,
+    rowHeight: "short",
+    enableSearch: true,
+    enablePaste: hasPrimaryKey,
+    onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
+    onRowSelectionChange: (rowSelection) => {
+      const selectedIds = new Set(Object.keys(rowSelection).filter((k) => rowSelection[k]));
+      setSelectedRowCount(selectedIds.size);
+      if (selectedIds.size > 0) {
+        selectedRowsRef.current = currentData.filter((_row, idx) =>
+          selectedIds.has(getRowId(_row, idx))
+        );
+      } else {
+        selectedRowsRef.current = [];
+      }
+    },
+    meta: { getIsCellDirty, getIsRowNew } as Record<string, unknown>
+  });
+  gridRef.current = gridProps.table;
+
+  const handleDeleteSelected = useCallback(async () => {
+    // Use the snapshot captured at selection time — by the time this click handler
+    // fires, the DataGrid's outside-click listener has already cleared rowSelection.
+    const rows = selectedRowsRef.current;
+    if (rows.length === 0) return;
+
+    const tempIdsToRemove: string[] = [];
+    const deleteStatements: string[] = [];
+
+    rows.forEach((row) => {
+      const tempId = row.tempRowId ? String(row.tempRowId) : null;
+      if (tempId) {
+        tempIdsToRemove.push(tempId);
+      } else {
+        deleteStatements.push(
+          buildDeleteQuery({ schema, table, primaryKeyMatch: getPkMatch(row, primaryKeys) })
+        );
+      }
+    });
+
+    // Remove unsaved new rows from local state immediately
+    if (tempIdsToRemove.length > 0) {
+      const tempIdSet = new Set(tempIdsToRemove);
+      setCurrentData((prev) =>
+        prev.filter((r) => !r.tempRowId || !tempIdSet.has(String(r.tempRowId)))
+      );
+      setNewRowTempIds((prev) => {
+        const next = new Set(prev);
+        tempIdsToRemove.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    // Execute DELETE SQL for persisted rows
+    if (deleteStatements.length > 0) {
+      try {
+        const sql = wrapInTransaction(deleteStatements);
+        await executeQuery(sql);
+        createNotification({
+          text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
+          type: "success"
+        });
+        const rowCount = await fetchData(offset, pageSize, filters, sorts);
+        if (rowCount === 0 && offset > 0) {
+          setOffset(Math.max(0, offset - pageSize));
+        }
+      } catch (err) {
+        createNotification({
+          title: "Delete failed",
+          text: err instanceof Error ? err.message : "Unknown error",
+          type: "error"
+        });
+      }
+    }
+
+    gridRef.current?.resetRowSelection();
+    selectedRowsRef.current = [];
+    setSelectedRowCount(0);
+  }, [schema, table, primaryKeys, executeQuery, fetchData, offset, pageSize, filters, sorts]);
+
+  if (!tableDetail) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Skeleton className="h-64 w-96" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <DataExplorerToolbar
+        columns={tableColumns}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        sorts={sorts}
+        onSortsChange={handleSortsChange}
+        changeCount={changeCount}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        isSaving={isSaving}
+        onAddRecord={handleAddRecord}
+        selectedRowCount={selectedRowCount}
+        onDeleteSelected={handleDeleteSelected}
+        totalCount={totalCount}
+        offset={offset}
+        pageSize={pageSize}
+        onOffsetChange={handleOffsetChange}
+        onPageSizeChange={handlePageSizeChange}
+        executionTimeMs={executionTimeMs}
+        hasPrimaryKey={hasPrimaryKey}
+        isDataLoading={isDataLoading}
+        onRefresh={async () => {
+          if (onFullRefresh) await onFullRefresh();
+          await fetchData(offset, pageSize, filters, sorts);
+        }}
+        isRefreshing={isDataLoading && hasLoaded}
+      />
+
+      {!hasPrimaryKey && (
+        <div className="shrink-0 px-3 py-3">
+          <UnstableAlert variant="info" className="py-2">
+            <EyeIcon />
+            <UnstableAlertDescription>
+              {tableType === "view" || tableType === "materialized_view"
+                ? "This view is read-only."
+                : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
+            </UnstableAlertDescription>
+          </UnstableAlert>
+        </div>
+      )}
+
+      {/* Dice UI DataGrid */}
+      <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-bunker-800">
+        {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
+        <DataGrid
+          {...gridProps}
+          className={`min-h-0 flex-1 ${isDataLoading && !hasLoaded ? "hidden" : ""}`}
+          stretchColumns
+        />
+        {isDataLoading && hasLoaded && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-bunker-800/60">
+            <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

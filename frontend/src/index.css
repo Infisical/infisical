@@ -34,7 +34,7 @@
     caret-color: var(--color-foreground);
     transition: background-color 5000s ease-in-out 0s;
   }
-  
+
   /* NordPass autofill override */
   input[data-np-input-autofilled],
   input[data-np-input-autofilled]:hover,
@@ -70,6 +70,7 @@
   --color-org: #30b3ff;
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
+  --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
   --color-label: #adaeb0;
@@ -80,6 +81,14 @@
   --color-accent: #7d7f80;
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
+
+  /* Sidebar */
+  --color-sidebar: #19191c;
+  --color-sidebar-foreground: #ebebeb;
+  --color-sidebar-border: #2b2c30;
+  --color-sidebar-accent: #1e1f22;
+  --color-sidebar-accent-foreground: #ebebeb;
+  --color-sidebar-ring: #2d2f33;
 
   /* secret management product colors */
   --color-folder: #a4873e;
@@ -300,7 +309,7 @@
     background-color: gray;
   }
   scrollbar-width: thin;
-  scrollbar-color: gray transparent;
+  scrollbar-color: #39393d transparent;
 }
 
 @layer utilities {

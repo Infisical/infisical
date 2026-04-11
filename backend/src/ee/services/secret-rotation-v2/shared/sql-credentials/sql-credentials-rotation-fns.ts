@@ -8,6 +8,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
@@ -54,6 +55,13 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     activeIndex,
     secretsMapping
   } = secretRotation;
+
+  if (username1 === connection.credentials.username || username2 === connection.credentials.username) {
+    throw new BadRequestError({
+      message:
+        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
+    });
+  }
 
   const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;

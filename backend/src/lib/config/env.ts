@@ -131,10 +131,13 @@ const envSchema = z
       z.string().optional().default("audit_logs").describe("ClickHouse table name for audit logs")
     ),
     CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
-    CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED: zodStrBool
-      .default("false")
-      .describe("Enable querying audit logs from ClickHouse instead of Postgres"),
-    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
+    AUDIT_LOG_STREAMS_ENABLED: zodStrBool.default("true").describe("Enable sending audit logs to external log streams"),
+    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.optional(), // deprecated: use DISABLE_POSTGRES_AUDIT_LOG_STORAGE instead
+    DISABLE_POSTGRES_AUDIT_LOG_STORAGE: z
+      .string()
+      .optional()
+      .transform((val) => (val === undefined ? undefined : val === "true"))
+      .describe("Disable PostgreSQL audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
       .describe("Generate sanitized schema with views after migrations"),
@@ -208,7 +211,7 @@ const envSchema = z
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
-    POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
+    POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_swoSUd69FLA4ztGPkBhnNHDVbrssfPkuYEGCquN33FCX")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
     // HubSpot Forms API for capturing signups
     HUBSPOT_PORTAL_ID: zpStr(z.string().optional()),
@@ -462,6 +465,8 @@ const envSchema = z
   .transform((data) => ({
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
+    DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
+      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
@@ -656,8 +661,12 @@ export const overwriteSchema: {
     name: "Audit Logs",
     fields: [
       {
+        key: "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
+        description: "Disable PostgreSQL audit log storage"
+      },
+      {
         key: "DISABLE_AUDIT_LOG_STORAGE",
-        description: "Disable audit log storage"
+        description: "Legacy alias for DISABLE_POSTGRES_AUDIT_LOG_STORAGE (deprecated)"
       }
     ]
   },

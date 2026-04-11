@@ -236,11 +236,13 @@ const PamAccountPolicyActionSchema = z.object({
   [ProjectPermissionPamAccountActions.Create]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional()
+  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.ReadCredentials]: z.boolean().optional()
 });
 
 const PamSessionPolicyActionSchema = z.object({
-  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
+  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
 });
 
 const PamDiscoveryPolicyActionSchema = z.object({
@@ -815,6 +817,28 @@ export const projectRoleFormSchema = z.object({
     })
     .partial()
     .optional()
+    .superRefine((permissions, ctx) => {
+      if (!permissions) return;
+
+      const NON_ACTION_KEYS = new Set(["conditions", "inverted"]);
+
+      Object.entries(permissions).forEach(([subject, rules]) => {
+        if (!Array.isArray(rules)) return;
+        rules.forEach((rule, ruleIndex) => {
+          if (!rule || typeof rule !== "object") return;
+          const hasAction = Object.entries(rule).some(
+            ([key, value]) => !NON_ACTION_KEYS.has(key) && value === true
+          );
+          if (!hasAction) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "At least one action is required",
+              path: [subject, ruleIndex, "actionRequired"]
+            });
+          }
+        });
+      });
+    })
 });
 
 export type TFormSchema = z.infer<typeof projectRoleFormSchema>;
@@ -1761,6 +1785,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionPamAccountActions.Read]: action.includes(
           ProjectPermissionPamAccountActions.Read
         ),
+        [ProjectPermissionPamAccountActions.ReadCredentials]: action.includes(
+          ProjectPermissionPamAccountActions.ReadCredentials
+        ),
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
@@ -1769,10 +1796,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
     if (subject === ProjectPermissionSub.PamSessions) {
       const canRead = action.includes(ProjectPermissionPamSessionActions.Read);
+      const canTerminate = action.includes(ProjectPermissionPamSessionActions.Terminate);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
+      if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
     }
 
     if (subject === ProjectPermissionSub.PamDiscovery) {
@@ -1934,7 +1963,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([subject, rules]) => {
-    rules.forEach((actions) => {
+    (rules ?? []).forEach((actions) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
@@ -1989,7 +2018,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Describe Secret",
         description:
-          "View secret metadata (name, tags, etc.) without revealing the actual secret value",
+          "View secret metadata (name, tags, access insights, etc.) without revealing the actual secret value",
         value: ProjectPermissionSecretActions.DescribeSecret
       },
       {
@@ -3111,6 +3140,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionPamAccountActions.Delete,
         description: "Delete PAM accounts"
+      },
+      {
+        label: "View Credentials",
+        value: ProjectPermissionPamAccountActions.ReadCredentials,
+        description: "View full account credentials and connection details"
       }
     ]
   },
@@ -3122,6 +3156,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read",
         value: ProjectPermissionPamSessionActions.Read,
         description: "View PAM session history and recordings"
+      },
+      {
+        label: "Terminate",
+        value: ProjectPermissionPamSessionActions.Terminate,
+        description: "Terminate active PAM sessions"
       }
     ]
   },

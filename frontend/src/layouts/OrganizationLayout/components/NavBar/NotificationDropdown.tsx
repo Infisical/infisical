@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
+import { Bell, BellDotIcon } from "lucide-react";
 
 import {
   ContentLoader,
@@ -9,12 +10,14 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from "@app/components/v2";
+import { UnstableIconButton } from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
   useUpdateNotification
 } from "@app/hooks/api/notifications/mutations";
 import { useGetMyNotifications } from "@app/hooks/api/notifications/queries";
+import { isCriticalNotification } from "@app/hooks/api/notifications/types";
 
 import { Notification } from "./Notification";
 
@@ -31,17 +34,24 @@ export const NotificationDropdown = () => {
     [notifications]
   );
 
+  const criticalCount = useMemo(
+    () => notifications?.filter((n) => !n.isRead && isCriticalNotification(n.type)).length || 0,
+    [notifications]
+  );
+
+  const hasCritical = criticalCount > 0;
+
   return (
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger>
-        <div className="relative border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-          <FontAwesomeIcon icon={faBell} className="text-mineshaft-200" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </div>
+      <DropdownMenuTrigger asChild>
+        <UnstableIconButton
+          variant="outline"
+          size="sm"
+          aria-label="Notifications"
+          className="relative"
+        >
+          {unreadCount > 0 ? <BellDotIcon className="text-warning" /> : <Bell />}
+        </UnstableIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
@@ -50,7 +60,14 @@ export const NotificationDropdown = () => {
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
-            <span className="font-medium text-white">Notifications</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-white">Notifications</span>
+              {hasCritical && (
+                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  {criticalCount > 99 ? "99+" : criticalCount} critical
+                </span>
+              )}
+            </div>
             <button
               type="button"
               className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"

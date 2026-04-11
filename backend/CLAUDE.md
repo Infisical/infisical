@@ -128,7 +128,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpack
 
 Queue infrastructure in `src/queue/queue-service.ts`. Defines 30+ named queues via `QueueName` enum (e.g., `SecretRotation`, `AuditLog`, `IntegrationSync`, `SecretReplication`, `SecretSync`, `DynamicSecretRevocation`). Each queue has typed payloads defined in `TQueueJobTypes`.
 
-Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup. A `PersistenceQueueStatus` enum tracks durable job states (`Pending`, `Processing`, `Completed`, `Failed`, `Stuck`, `Dead`).
+Queue jobs support: delays, attempts with exponential/fixed backoff, cron-pattern repeats, and completion/failure cleanup.
 
 Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the same DI pattern as services — they receive DALs and services as dependencies.
 
@@ -147,6 +147,21 @@ Custom error classes in `src/lib/errors/index.ts`:
 - `ScimRequestError` — SCIM-specific formatting with schemas and status
 
 Global error handler in `src/server/plugins/error-handler.ts` maps these to HTTP status codes and records OpenTelemetry error metrics.
+
+### Logging
+
+Uses Pino via `@app/lib/logger`. Always include key identifiers in the message string using `[key=value]` format for log searchability. You may also pass a structured object as the first argument for programmatic access, but the message must be self-contained:
+
+```ts
+// Preferred: identifiers in message + structured object
+logger.error({ sessionId, err }, `Failed to get connection details [sessionId=${sessionId}]`);
+
+// Also acceptable: identifiers in message only
+logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
+
+// NOT preferred: identifiers only in structured object, not in message
+logger.error({ sessionId, err }, "Failed to get connection details");
+```
 
 ### Enterprise (EE) Features
 

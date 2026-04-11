@@ -128,7 +128,7 @@ jobs:
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
     trigger-binary-release:
       runs-on: ubuntu-latest
-      needs: [infisical-standalone, infisical-fips-standalone]
+      needs: [infisical-tests]
       steps:
         - name: Create tag if it doesn't exist
           run: |

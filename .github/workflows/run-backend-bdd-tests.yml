@@ -35,10 +35,10 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 20
+      - name: 🔧 Setup Node 22
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: Setup Python 3.11
@@ -71,6 +71,14 @@ jobs:
           # We are not using FIPS mode, need a different encryption key for BDD tests
           NEW_ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
           sed -i "s#ENCRYPTION_KEY=.*#ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY#" .env
+          # Disable SMTP so email sends don't fail in CI (no Mailhog available)
+          sed -i "s#SMTP_HOST=.*#SMTP_HOST=#" .env
+          sed -i "s#SMTP_PORT=.*#SMTP_PORT=#" .env
+          sed -i "s#SMTP_FROM_ADDRESS=.*#SMTP_FROM_ADDRESS=#" .env
+          sed -i "s#SMTP_FROM_NAME=.*#SMTP_FROM_NAME=#" .env
+          sed -i "s#SMTP_REQUIRE_TLS=.*#SMTP_REQUIRE_TLS=#" .env
+          sed -i "s#SMTP_USERNAME=.*#SMTP_USERNAME=#" .env
+          sed -i "s#SMTP_PASSWORD=.*#SMTP_PASSWORD=#" .env
           # Enable ACME and SCEP features in license for BDD tests
           sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
           sed -i 's/pkiScep: .*/pkiScep: true,/g' backend/src/ee/services/license/license-fns.ts
