@@ -89,10 +89,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
 
-      console.log("isSuperAdminUser");
-      console.log(JSON.stringify(req.auth));
-      console.log(isSuperAdminUser);
-
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
         return {

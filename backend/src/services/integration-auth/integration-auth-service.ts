@@ -178,6 +178,10 @@ export const integrationAuthServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
+
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
