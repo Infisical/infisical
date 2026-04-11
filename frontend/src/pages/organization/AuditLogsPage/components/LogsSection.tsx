@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  UnstableAlert,
+  UnstableAlertDescription
+} from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -11,7 +15,9 @@ import {
   useSubscription
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission, withProjectPermission } from "@app/hoc";
+import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -48,6 +54,17 @@ const LogsSectionComponent = ({
 }: Props) => {
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { data: postgresStorageStatus } = useGetAuditLogPostgresStorageStatus();
+
+  const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
+  const showClickHouseWarning =
+    !isInfisicalCloud() &&
+    postgresStorageStatus &&
+    !postgresStorageStatus.clickHouseConfigured &&
+    !postgresStorageStatus.auditLogStorageDisabled &&
+    !postgresStorageStatus.auditLogGenerationDisabled &&
+    postgresStorageStatus.auditLogRowCount >= AUDIT_LOG_ROW_WARNING_THRESHOLD;
+
   const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
     eventType: presets?.eventType || [],
     actor: presets?.actorId,
@@ -88,6 +105,34 @@ const LogsSectionComponent = ({
   if (pageView)
     return (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        {showClickHouseWarning && (
+          <UnstableAlert variant="warning" className="mb-4">
+            <UnstableAlertDescription>
+              <p>
+                Your audit log volume is growing. To keep searches fast and reduce database load, we
+                recommend streaming logs to an{" "}
+                <a
+                  href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:opacity-80"
+                >
+                  external destination
+                </a>{" "}
+                like Splunk or using the built-in{" "}
+                <a
+                  href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:opacity-80"
+                >
+                  ClickHouse integration
+                </a>
+                .
+              </p>
+            </UnstableAlertDescription>
+          </UnstableAlert>
+        )}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
             <div className="flex items-center gap-x-2 whitespace-nowrap">
@@ -154,6 +199,34 @@ const LogsSectionComponent = ({
 
   return (
     <div className="space-y-2">
+      {showClickHouseWarning && (
+        <UnstableAlert variant="warning">
+          <UnstableAlertDescription>
+            <p>
+              Your audit log volume is growing. To keep searches fast and reduce database load, we
+              recommend streaming logs to an{" "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-80"
+              >
+                external destination
+              </a>{" "}
+              like Splunk or using the built-in{" "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-80"
+              >
+                ClickHouse integration
+              </a>
+              .
+            </p>
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
           <LogsDateFilter

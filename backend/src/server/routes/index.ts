@@ -102,6 +102,7 @@ import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resourc
 import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionEventBatchDALFactory } from "@app/ee/services/pam-session/pam-session-event-batch-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -830,7 +831,11 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     permissionService,
-    auditLogQueue
+    auditLogQueue,
+    keyStore,
+    smtpService,
+    userDAL,
+    notificationService
   });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
@@ -2150,6 +2155,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
+    auditLogService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
@@ -2790,6 +2796,7 @@ export const registerRoutes = async (
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamSessionEventBatchDAL = pamSessionEventBatchDALFactory(db);
   const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
   const pamDiscoverySourceResourcesDAL = pamDiscoverySourceResourcesDALFactory(db);
   const pamDiscoverySourceAccountsDAL = pamDiscoverySourceAccountsDALFactory(db);
@@ -2876,6 +2883,7 @@ export const registerRoutes = async (
 
   const pamSessionService = pamSessionServiceFactory({
     pamSessionDAL,
+    pamSessionEventBatchDAL,
     projectDAL,
     userDAL,
     permissionService,
@@ -3281,7 +3289,7 @@ export const registerRoutes = async (
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE)
       };
     }
   });

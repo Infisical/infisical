@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faTable, faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import ms from "ms";
@@ -96,8 +96,6 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
     account.resource?.resourceType === PamResourceType.SSH ||
     account.resource?.resourceType === PamResourceType.Redis;
 
-  const showDataExplorer = account.resource?.resourceType === PamResourceType.Postgres;
-
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -164,23 +162,6 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
               <p className="text-sm font-medium text-mineshaft-400">Browser</p>
               <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
               <div className="flex gap-2">
-                {showDataExplorer && (
-                  <Link
-                    to={ROUTE_PATHS.Pam.PamDataExplorerPage.path}
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      resourceType: account.resource?.resourceType ?? "",
-                      resourceId: account.resource?.id ?? "",
-                      accountId: account.id
-                    }}
-                    target="_blank"
-                    className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
-                  >
-                    <FontAwesomeIcon icon={faTable} />
-                    Open Data Explorer
-                  </Link>
-                )}
                 <Link
                   to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
                   params={{
@@ -191,10 +172,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
                     accountId: account.id
                   }}
                   target="_blank"
-                  className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${showDataExplorer ? "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20" : "bg-primary text-black hover:bg-primary/80"}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
                 >
                   <FontAwesomeIcon icon={faTerminal} />
-                  {showDataExplorer ? "Open Console" : "Connect in Browser"}
+                  Connect in Browser
                 </Link>
               </div>
             </div>

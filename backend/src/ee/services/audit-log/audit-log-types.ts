@@ -29,7 +29,7 @@ import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -118,6 +118,13 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
+  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
+    clickHouseConfigured: boolean;
+    auditLogGenerationDisabled: boolean;
+    auditLogStorageDisabled: boolean;
+    auditLogRowCount: number;
+  }>;
+  checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
@@ -597,6 +604,7 @@ export enum EventType {
   PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
+  PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -4753,6 +4761,14 @@ interface PamSessionListEvent {
   };
 }
 
+interface PamSessionEventBatchUploadEvent {
+  type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD;
+  metadata: {
+    sessionId: string;
+    startOffset: number;
+  };
+}
+
 interface PamFolderCreateEvent {
   type: EventType.PAM_FOLDER_CREATE;
   metadata: {
@@ -6217,6 +6233,7 @@ export type Event =
   | PamSessionTerminateEvent
   | PamSessionGetEvent
   | PamSessionListEvent
+  | PamSessionEventBatchUploadEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent

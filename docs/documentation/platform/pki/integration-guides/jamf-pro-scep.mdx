@@ -1,0 +1,119 @@
+---
+title: "Jamf Pro"
+description: "Learn how to distribute certificates to computers and mobile devices using Infisical SCEP enrollment with Jamf Pro"
+---
+
+This guide demonstrates how to use Infisical to issue and distribute certificates to devices managed by [Jamf Pro](https://www.jamf.com/products/jamf-pro/) using the [SCEP enrollment method](/documentation/platform/pki/enrollment-methods/scep) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles).
+
+With this integration, Jamf Pro acts as the SCEP client on behalf of your managed devices, once a configuration profile is saved and scoped, enrolled devices automatically receive certificates issued by your Infisical Certificate Manager without any manual intervention on the device.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- A [Jamf Pro](https://www.jamf.com/products/jamf-pro/) instance with administrative access.
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [SCEP enrollment method](/documentation/platform/pki/enrollment-methods/scep) in Infisical. Refer to the [SCEP enrollment guide](/documentation/platform/pki/enrollment-methods/scep) for setup instructions.
+- One or more computers or mobile devices enrolled in Jamf Pro.
+
+## Guide
+
+<Steps>
+    <Step title="Gather SCEP details from Infisical">
+        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [SCEP enrollment method](/documentation/platform/pki/enrollment-methods/scep).
+
+        From the certificate profile, gather the following values:
+
+        - **SCEP URL**: The SCEP endpoint URL for your certificate profile. This takes the form `https://app.infisical.com/scep/{profile_id}/pkiclient.exe`. For self-hosted instances, replace `app.infisical.com` with your instance's domain.
+        - **Challenge Password**: The shared secret configured on the SCEP enrollment method.
+    </Step>
+
+    <Step title="Create a configuration profile in Jamf Pro">
+        In Jamf Pro, configuration profiles can be created for both **Computers** and **Mobile Devices**. The SCEP payload and configuration fields are identical for both. This guide walks through the **Computers** flow.
+
+        1. In Jamf Pro, click **Computers** in the sidebar.
+        2. Under **Content management**, click **Configuration profiles**.
+        3. Click **+ New** to create a new macOS configuration profile.
+
+        ![Jamf Pro Configuration profiles list](/images/platform/pki/integrations/jamf-pro/configuration-profiles-list.png)
+
+        4. In the **General** payload, enter a **Name** for the profile (e.g., `My SCEP Configuration Profile`).
+        5. Optionally, fill in the **Description** and **Category** fields.
+        6. Set **Level** to **Computer Level** and choose your preferred **Distribution Method**.
+
+        ![New macOS Configuration Profile — General payload](/images/platform/pki/integrations/jamf-pro/new-profile-general.png)
+    </Step>
+
+    <Step title="Add the SCEP payload">
+        1. In the left-hand payload list, scroll down and select **SCEP**.
+        2. Click **Configure** to add the SCEP payload to the profile.
+
+        ![Selecting the SCEP payload](/images/platform/pki/integrations/jamf-pro/select-scep-payload.png)
+    </Step>
+
+    <Step title="Configure the SCEP payload">
+        Fill in the SCEP payload fields using the values from your Infisical certificate profile:
+
+        ![SCEP configuration — URL, Name, and Subject fields](/images/platform/pki/integrations/jamf-pro/scep-config-top.png)
+
+        - **URL**: Enter your Infisical SCEP endpoint URL (e.g., `https://app.infisical.com/scep/{profile_id}/pkiclient.exe`).
+        - **Name**: Enter a descriptive name for the SCEP instance (e.g., `CA-IDENT`). This value is used internally by the device to identify the SCEP configuration.
+        - **Subject**: Enter the distinguished name for the certificate in X.500 format (e.g., `O=CompanyName, CN=Foo`). Adjust the subject components to match your organization's naming convention.
+        - **Subject Alternative Names (Optional)**: Add any SANs if required by your certificate policy.
+
+        Next, configure the challenge authentication:
+
+        <Tabs>
+            <Tab title="Static">
+                - **Challenge Type**: Select **Static** from the dropdown.
+                - **Challenge**: Enter the **Challenge Password** from your Infisical certificate profile.
+                - **Verify Challenge**: Re-enter the challenge password to confirm.
+
+                ![SCEP configuration — Challenge and certificate options](/images/platform/pki/integrations/jamf-pro/scep-config-challenge.png)
+            </Tab>
+        </Tabs>
+
+        Finally, configure the remaining certificate options:
+
+        - **Retries**: Number of times the device will retry after receiving a PENDING response from the SCEP server. The default of `0` is typically sufficient.
+        - **Retry Delay**: Number of seconds to wait between each retry attempt.
+        - **Certificate Expiration Notification Threshold**: The number of days before certificate expiration at which to display a notification (e.g., `14`).
+        - **Key Size**: Select the key size in bits. Use **2048** or higher.
+        - **Use as digital signature**: Enable if the certificate will be used for signing operations.
+        - **Use for key encipherment**: Enable if the certificate will be used for encryption.
+        - **Allow export from keychain**: Enable to allow computer administrators to export the private key from the keychain.
+        - **Allow all apps access**: Enable to allow all applications to access the certificate in the keychain.
+
+        ![SCEP configuration — Key size, usage, and keychain options](/images/platform/pki/integrations/jamf-pro/scep-config-bottom.png)
+
+        <Note>
+            If your certificate profile uses a private or non-publicly trusted CA, upload the CA certificate using the **Upload Certificate** option at the bottom of the SCEP payload. This ensures macOS trusts the issuing CA, without it, the device may reject the SCEP-issued certificate as untrusted.
+        </Note>
+    </Step>
+
+    <Step title="Define the scope">
+        1. Click the **Scope** tab at the top of the profile.
+        2. Under **Target Computers**, choose whether to assign the profile to **All Computers**, **Specific Computers**, or a **Smart/Static Computer Group**.
+        3. Under **Target Users**, choose the users who should receive the profile.
+        4. Optionally, configure **Limitations** and **Exclusions** to refine which devices receive the profile.
+
+        ![Scope tab — Targets configuration](/images/platform/pki/integrations/jamf-pro/scope-tab.png)
+    </Step>
+
+    <Step title="Save and distribute">
+        Click **Save** to create the configuration profile. Jamf Pro will automatically distribute the profile to all devices within the defined scope.
+
+        Each targeted device will contact Infisical's SCEP server, authenticate using the challenge password, and receive a certificate issued by your Infisical Certificate Manager, all without manual intervention on the device.
+    </Step>
+
+    <Step title="Verify certificate installation">
+        On a targeted macOS device, open **System Settings** > **Privacy & Security** > **Profiles** to confirm the configuration profile has been installed.
+
+        ![macOS Profiles list showing the installed configuration profile](/images/platform/pki/integrations/jamf-pro/mac-profiles-list.png)
+
+        Click on the profile to view its details, including the SCEP enrollment settings, the issued certificate, and its expiration date.
+
+        ![Certificate details showing the issued certificate from Infisical](/images/platform/pki/integrations/jamf-pro/mac-certificate-details.png)
+
+        You can also verify the certificate was issued by checking the **Certificates** section in your Infisical certificate management project, the certificate enrolled via Jamf Pro will appear in the list under the corresponding certificate profile.
+    </Step>
+</Steps>

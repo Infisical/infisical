@@ -92,6 +92,7 @@
                 "group": "Audit Logs",
                 "pages": [
                   "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
                   "documentation/platform/audit-log-streams/audit-log-streams",
                   "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
                 ]
@@ -506,6 +507,7 @@
                       "documentation/platform/dynamic-secrets/sap-ase",
                       "documentation/platform/dynamic-secrets/sap-hana",
                       "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/ssh",
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
@@ -802,7 +804,8 @@
                   "documentation/platform/pki/integration-guides/nginx-certbot",
                   "documentation/platform/pki/integration-guides/apache-certbot",
                   "documentation/platform/pki/integration-guides/tomcat-certbot",
-                  "documentation/platform/pki/integration-guides/jboss-certbot"
+                  "documentation/platform/pki/integration-guides/jboss-certbot",
+                  "documentation/platform/pki/integration-guides/jamf-pro-scep"
                 ]
               },
               {
@@ -3496,7 +3499,7 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE",
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
       "apiHost": "https://p.infisical.com"
     },
     "koala": {
