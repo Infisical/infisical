@@ -21,7 +21,7 @@ export const SessionSummaryConfigSchema = z
   .object({
     aiInsightsEnabled: z.boolean(),
     connectionId: z.string().uuid(),
-    model: z.string()
+    model: z.enum(["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"])
   })
   .nullable()
   .optional();

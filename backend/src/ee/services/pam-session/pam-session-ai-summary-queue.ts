@@ -268,8 +268,14 @@ export const pamSessionAiSummaryServiceFactory = ({
               encryptedLogs: session.encryptedLogsBlob,
               kmsService
             });
-            const legacyChars = legacyLogs.reduce((sum, l) => {
-              const cmd = l as TPamSessionCommandLog;
+            const isSshLegacy = resource.resourceType === PamResource.SSH;
+            const legacyChars = legacyLogs.reduce((sum, e) => {
+              if (isSshLegacy) {
+                const termEvent = e as TTerminalEvent;
+                if (termEvent.eventType !== "input") return sum;
+                return sum + (termEvent.data ? Buffer.from(termEvent.data, "base64").length : 0);
+              }
+              const cmd = e as TPamSessionCommandLog;
               return sum + (cmd.input?.length ?? 0) + (cmd.output?.length ?? 0);
             }, 0);
             if (legacyChars >= MAX_LOG_CHARS) {
@@ -314,6 +320,16 @@ export const pamSessionAiSummaryServiceFactory = ({
             : 0;
 
           const formattedLogs = formatLogsForSummary(logs, resourceType);
+
+          if (!formattedLogs) {
+            logger.info(
+              { sessionId },
+              `${QueueName.PamSessionAiSummary}: no usable log content after formatting, skipping [sessionId=${sessionId}]`
+            );
+            await pamSessionDAL.updateById(sessionId, { aiInsightsStatus: null });
+            return;
+          }
+
           const { system, user } = buildSummaryPrompt({
             resourceType,
             resourceName: resource.name,

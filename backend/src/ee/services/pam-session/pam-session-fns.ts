@@ -1,4 +1,5 @@
 import { TPamSessionEventBatches, TPamSessions } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -62,8 +63,8 @@ export const decryptSession = async (
         summary: string;
         warnings: { text: string; logIndex?: number }[];
       };
-    } catch {
-      // AI insights are non-essential — fall back to null on KMS failure or corrupted blob
+    } catch (err) {
+      logger.warn({ err }, "decryptSession: failed to decrypt aiInsights, falling back to null");
     }
   }
 
