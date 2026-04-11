@@ -163,11 +163,17 @@ export const internalCertificateAuthorityServiceFactory = ({
             ? "SLH-DSA"
             : "unknown";
 
-    const isRequestValid =
-      (requestedKeyType === "RSA" && isRsaCa) ||
-      (requestedKeyType === "ECDSA" && isEcdsaCa) ||
-      (requestedKeyType === "ML-DSA" && isMlDsaCa) ||
-      (requestedKeyType === "SLH-DSA" && isSlhDsaCa);
+    // PQC: exact variant match required (ML-DSA-44 CA can only sign with ML-DSA-44)
+    if ((isMlDsaCa || isSlhDsaCa) && signatureAlgorithm) {
+      if (signatureAlgorithm !== caKeyAlg) {
+        throw new BadRequestError({
+          message: `Requested signature algorithm ${signatureAlgorithm} does not match CA key algorithm ${caKeyAlg}. PQC CAs require an exact algorithm match.`
+        });
+      }
+      return;
+    }
+
+    const isRequestValid = (requestedKeyType === "RSA" && isRsaCa) || (requestedKeyType === "ECDSA" && isEcdsaCa);
 
     if (!isRequestValid) {
       throw new BadRequestError({
@@ -1486,8 +1492,11 @@ export const internalCertificateAuthorityServiceFactory = ({
         "sign"
       ]);
 
-      const pubRaw = derivePublicKeyFromSecret(caKeyAlg, (privateKey as InstanceType<typeof PqcCryptoKey>).rawKey);
-      publicKey = new PqcCryptoKey(pubRaw, caKeyAlg, "public", ["verify"]);
+      const { raw: pubRaw, spkiDer } = await derivePublicKeyFromSecret(
+        caKeyAlg,
+        (privateKey as InstanceType<typeof PqcCryptoKey>).rawKey
+      );
+      publicKey = new PqcCryptoKey(pubRaw, caKeyAlg, "public", ["verify"], spkiDer);
     } else {
       const skObj = crypto.nativeCrypto.createPrivateKey({ key: caPrivateKey, format: "der", type: "pkcs8" });
       const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
@@ -2575,11 +2584,11 @@ export const internalCertificateAuthorityServiceFactory = ({
         "sign"
       ]);
 
-      const pubKeyRaw = derivePublicKeyFromSecret(
+      const { raw: pubKeyRaw, spkiDer } = await derivePublicKeyFromSecret(
         rootKeyAlg,
         (actualPrivateKey as InstanceType<typeof PqcCryptoKey>).rawKey
       );
-      actualPublicKey = new PqcCryptoKey(pubKeyRaw, rootKeyAlg, "public", ["verify"]);
+      actualPublicKey = new PqcCryptoKey(pubKeyRaw, rootKeyAlg, "public", ["verify"], spkiDer);
     } else {
       const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKeyBlob, format: "der", type: "pkcs8" });
       const pkObj = crypto.nativeCrypto.createPublicKey(skObj);

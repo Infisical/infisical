@@ -1,18 +1,3 @@
-import { ml_dsa44, ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
-import {
-  slh_dsa_sha2_128f,
-  slh_dsa_sha2_128s,
-  slh_dsa_sha2_192f,
-  slh_dsa_sha2_192s,
-  slh_dsa_sha2_256f,
-  slh_dsa_sha2_256s,
-  slh_dsa_shake_128f,
-  slh_dsa_shake_128s,
-  slh_dsa_shake_192f,
-  slh_dsa_shake_192s,
-  slh_dsa_shake_256f,
-  slh_dsa_shake_256s
-} from "@noble/post-quantum/slh-dsa.js";
 // eslint-disable-next-line import/no-extraneous-dependencies -- transitive deps of @peculiar/x509
 import { PrivateKeyInfo } from "@peculiar/asn1-pkcs8";
 // eslint-disable-next-line import/no-extraneous-dependencies -- transitive dep of @peculiar/x509
@@ -22,38 +7,8 @@ import { AlgorithmIdentifier, SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
+import { opensslDerivePublicKey, opensslGenpkey, opensslSign, opensslVerify } from "./pqc-openssl";
 import { isPqcAlgorithm, pqcNameToOid, pqcOidToName } from "./pqc-utils";
-
-type PqcSignImpl = {
-  keygen: () => { publicKey: Uint8Array; secretKey: Uint8Array };
-  sign: (msg: Uint8Array, sk: Uint8Array) => Uint8Array;
-  verify: (sig: Uint8Array, msg: Uint8Array, pk: Uint8Array) => boolean;
-  getPublicKey: (sk: Uint8Array) => Uint8Array;
-};
-
-const PQC_IMPLS: Record<string, PqcSignImpl> = {
-  [CertKeyAlgorithm.ML_DSA_44]: ml_dsa44,
-  [CertKeyAlgorithm.ML_DSA_65]: ml_dsa65,
-  [CertKeyAlgorithm.ML_DSA_87]: ml_dsa87,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_128F]: slh_dsa_sha2_128f,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_128S]: slh_dsa_sha2_128s,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_192F]: slh_dsa_sha2_192f,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_192S]: slh_dsa_sha2_192s,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_256F]: slh_dsa_sha2_256f,
-  [CertKeyAlgorithm.SLH_DSA_SHA2_256S]: slh_dsa_sha2_256s,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_128F]: slh_dsa_shake_128f,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_128S]: slh_dsa_shake_128s,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_192F]: slh_dsa_shake_192f,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_192S]: slh_dsa_shake_192s,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_256F]: slh_dsa_shake_256f,
-  [CertKeyAlgorithm.SLH_DSA_SHAKE_256S]: slh_dsa_shake_256s
-};
-
-const getImpl = (name: string): PqcSignImpl => {
-  const impl = PQC_IMPLS[name];
-  if (!impl) throw new Error(`Unknown PQC algorithm variant: ${name}`);
-  return impl;
-};
 
 const encodePkcs8 = (oid: string, rawPrivateKey: Uint8Array): Buffer => {
   const pkcs8 = new PrivateKeyInfo({
@@ -75,7 +30,8 @@ const encodeSpki = (oid: string, rawPublicKey: Uint8Array): Buffer => {
 const extractRawKeyFromPkcs8 = (der: Buffer): Buffer => {
   const parsed = AsnConvert.parse(der, PrivateKeyInfo);
   const raw = Buffer.from(parsed.privateKey.buffer);
-  // Handle keys stored with double OCTET STRING wrapping (legacy encoding)
+  // Handle keys stored with double OCTET STRING wrapping (legacy encoding).
+  // Guarded with try/catch because a raw key can naturally start with 0x04.
   if (raw[0] === 0x04) {
     try {
       return Buffer.from(AsnConvert.parse(raw, OctetString).buffer);
@@ -125,16 +81,28 @@ class PqcCryptoKey implements CryptoKey {
 
   public readonly usages: KeyUsage[];
 
+  // DER-encoded key bytes (PKCS#8 for private, SPKI for public)
+  public readonly derKey: Buffer;
+
   constructor(
     public readonly rawKey: Uint8Array,
     algorithmName: string,
     keyType: KeyType,
-    usages: KeyUsage[]
+    usages: KeyUsage[],
+    derKey?: Buffer
   ) {
     this.algorithm = { name: algorithmName };
     this.extractable = true;
     this.type = keyType;
     this.usages = usages;
+
+    if (derKey) {
+      this.derKey = derKey;
+    } else {
+      const oid = pqcNameToOid(algorithmName);
+      if (!oid) throw new Error(`Unknown PQC OID for ${algorithmName}`);
+      this.derKey = keyType === "private" ? encodePkcs8(oid, rawKey) : encodeSpki(oid, rawKey);
+    }
   }
 }
 
@@ -183,21 +151,26 @@ const resolveAlgName = (algorithm: any): string =>
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   typeof algorithm === "string" ? algorithm : (algorithm.name as string);
 
-const pqcGenerateKey = (algName: string): CryptoKeyPair => {
-  const kp = getImpl(algName).keygen();
+const pqcGenerateKey = async (algName: string): Promise<CryptoKeyPair> => {
+  const privateDer = await opensslGenpkey(algName);
+  const rawPrivateKey = extractRawKeyFromPkcs8(privateDer);
+
+  const publicDer = await opensslDerivePublicKey(privateDer);
+  const rawPublicKey = extractRawKeyFromSpki(publicDer);
+
   return {
-    publicKey: new PqcCryptoKey(kp.publicKey, algName, "public", ["verify"]),
-    privateKey: new PqcCryptoKey(kp.secretKey, algName, "private", ["sign"])
+    publicKey: new PqcCryptoKey(rawPublicKey, algName, "public", ["verify"], publicDer),
+    privateKey: new PqcCryptoKey(rawPrivateKey, algName, "private", ["sign"], privateDer)
   } as CryptoKeyPair;
 };
 
-const pqcSign = (key: PqcCryptoKey, data: BufferSource): ArrayBuffer => {
-  const sig = getImpl(key.algorithm.name).sign(toUint8Array(data), key.rawKey);
+const pqcSign = async (key: PqcCryptoKey, data: BufferSource): Promise<ArrayBuffer> => {
+  const sig = await opensslSign(key.derKey, Buffer.from(toUint8Array(data)));
   return sig.buffer.slice(sig.byteOffset, sig.byteOffset + sig.byteLength);
 };
 
-const pqcVerify = (key: PqcCryptoKey, signature: BufferSource, data: BufferSource): boolean => {
-  return getImpl(key.algorithm.name).verify(toUint8Array(signature), toUint8Array(data), key.rawKey);
+const pqcVerify = async (key: PqcCryptoKey, signature: BufferSource, data: BufferSource): Promise<boolean> => {
+  return opensslVerify(key.derKey, Buffer.from(toUint8Array(signature)), Buffer.from(toUint8Array(data)));
 };
 
 const pqcImportKey = (
@@ -213,14 +186,14 @@ const pqcImportKey = (
     const rawKey = extractRawKeyFromPkcs8(derBuf);
     const actualAlg =
       detectPqcVariantFromDer(derBuf) || detectPqcVariantFromKeySize(rawKey.length, "private") || algName;
-    return new PqcCryptoKey(rawKey, actualAlg, "private", keyUsages);
+    return new PqcCryptoKey(rawKey, actualAlg, "private", keyUsages, derBuf);
   }
 
   if (format === "spki" && !isPrivate) {
     const rawKey = extractRawKeyFromSpki(derBuf);
     const actualAlg =
       detectPqcVariantFromDer(derBuf) || detectPqcVariantFromKeySize(rawKey.length, "public") || algName;
-    return new PqcCryptoKey(rawKey, actualAlg, "public", keyUsages);
+    return new PqcCryptoKey(rawKey, actualAlg, "public", keyUsages, derBuf);
   }
 
   throw new Error(`Unsupported PQC import format: ${format}`);
@@ -281,16 +254,11 @@ export const createPqcCrypto = (): Crypto => {
 
     async exportKey(format: "pkcs8" | "spki" | "raw" | "jwk", key: CryptoKey) {
       if (isPqcCryptoKey(key)) {
-        const oid = pqcNameToOid(key.algorithm.name);
-        if (!oid) throw new Error(`Unknown PQC OID for ${key.algorithm.name}`);
-
         if (format === "pkcs8" && key.type === "private") {
-          const der = encodePkcs8(oid, key.rawKey);
-          return der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
+          return key.derKey.buffer.slice(key.derKey.byteOffset, key.derKey.byteOffset + key.derKey.byteLength);
         }
         if (format === "spki" && key.type === "public") {
-          const der = encodeSpki(oid, key.rawKey);
-          return der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
+          return key.derKey.buffer.slice(key.derKey.byteOffset, key.derKey.byteOffset + key.derKey.byteLength);
         }
         throw new Error(`Unsupported PQC export: format=${format}, keyType=${key.type}`);
       }
@@ -362,8 +330,17 @@ export const createPqcCrypto = (): Crypto => {
   } as Crypto;
 };
 
-const derivePublicKeyFromSecret = (algName: string, secretKey: Uint8Array): Uint8Array => {
-  return getImpl(algName).getPublicKey(secretKey);
+const derivePublicKeyFromSecret = async (
+  algName: string,
+  secretKey: Uint8Array
+): Promise<{ raw: Uint8Array; spkiDer: Buffer }> => {
+  const oid = pqcNameToOid(algName);
+  if (!oid) throw new Error(`Unknown PQC algorithm: ${algName}`);
+
+  const pkcs8Der = encodePkcs8(oid, secretKey);
+  const spkiDer = await opensslDerivePublicKey(pkcs8Der);
+  const raw = extractRawKeyFromSpki(spkiDer);
+  return { raw, spkiDer };
 };
 
 export { derivePublicKeyFromSecret, isPqcCryptoKey, PqcCryptoKey };

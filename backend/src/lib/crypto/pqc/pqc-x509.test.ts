@@ -3,13 +3,21 @@ import * as x509 from "@peculiar/x509";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { getPqcCrypto, initializePqcSupport } from "./index";
+import { verifyPqcOpenSSLAvailability } from "./pqc-openssl";
 
+// These tests require the PQC OpenSSL 3.5+ binary
 describe("ML-DSA X.509 Certificate Operations", () => {
-  beforeAll(() => {
-    initializePqcSupport();
+  let pqcAvailable = false;
+
+  beforeAll(async () => {
+    pqcAvailable = await verifyPqcOpenSSLAvailability();
+    if (pqcAvailable) {
+      await initializePqcSupport();
+    }
   });
 
-  it("should create and verify self-signed cert directly", async () => {
+  it("should create and verify self-signed cert directly", async ({ skip }) => {
+    if (!pqcAvailable) skip();
     const pqcCrypto = getPqcCrypto();
     const alg = { name: "ML-DSA-87" };
     const keys = (await pqcCrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
@@ -43,7 +51,8 @@ describe("ML-DSA X.509 Certificate Operations", () => {
     expect(isSelfSigned).toBe(true);
   });
 
-  it("should create a self-signed root CA cert with ML-DSA-87", async () => {
+  it("should create a self-signed root CA cert with ML-DSA-87", async ({ skip }) => {
+    if (!pqcAvailable) skip();
     const pqcCrypto = getPqcCrypto();
     const alg = { name: "ML-DSA-87" };
     const keys = (await pqcCrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
@@ -68,7 +77,8 @@ describe("ML-DSA X.509 Certificate Operations", () => {
     expect(pem).toContain("-----BEGIN CERTIFICATE-----");
   });
 
-  it("should sign an intermediate CA cert with an ML-DSA-87 root", async () => {
+  it("should sign an intermediate CA cert with an ML-DSA-87 root", async ({ skip }) => {
+    if (!pqcAvailable) skip();
     const pqcCrypto = getPqcCrypto();
     const alg = { name: "ML-DSA-87" };
 
@@ -143,7 +153,8 @@ describe("ML-DSA X.509 Certificate Operations", () => {
     expect(chainItems.length).toBe(2); // intermediate + root
   });
 
-  it("should sign an ML-DSA-65 intermediate cert with an ML-DSA-87 root", async () => {
+  it("should sign an ML-DSA-65 intermediate cert with an ML-DSA-87 root", async ({ skip }) => {
+    if (!pqcAvailable) skip();
     const pqcCrypto = getPqcCrypto();
 
     // ML-DSA-87 root

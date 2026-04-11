@@ -572,7 +572,7 @@ export const initEnvConfig = async (
   if (superAdminDAL) {
     const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
 
-    initializePqcSupport();
+    await initializePqcSupport();
 
     if (fipsEnabled) {
       const newEnvCfg = {

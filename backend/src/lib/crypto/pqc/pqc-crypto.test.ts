@@ -1,16 +1,23 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { createPqcCrypto, isPqcCryptoKey, PqcCryptoKey } from "./pqc-crypto";
+import { verifyPqcOpenSSLAvailability } from "./pqc-openssl";
 
+// These tests require the PQC OpenSSL 3.5+ binary
 describe("ML-DSA PQC Crypto Provider", () => {
   let pqcCrypto: Crypto;
+  let pqcAvailable = false;
 
-  beforeAll(() => {
-    pqcCrypto = createPqcCrypto();
+  beforeAll(async () => {
+    pqcAvailable = await verifyPqcOpenSSLAvailability();
+    if (pqcAvailable) {
+      pqcCrypto = createPqcCrypto();
+    }
   });
 
   describe.each(["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"])("%s", (algName) => {
-    it("should generate a key pair", async () => {
+    it("should generate a key pair", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       expect(keys.privateKey).toBeDefined();
@@ -23,7 +30,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
       expect(keys.publicKey.algorithm.name).toBe(algName);
     });
 
-    it("should sign and verify", async () => {
+    it("should sign and verify", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       const message = new TextEncoder().encode("Hello, post-quantum world!");
@@ -36,7 +44,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
       expect(isValid).toBe(true);
     });
 
-    it("should fail verification with wrong message", async () => {
+    it("should fail verification with wrong message", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       const message = new TextEncoder().encode("Original message");
@@ -47,7 +56,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
       expect(isValid).toBe(false);
     });
 
-    it("should export and import private key via PKCS#8 DER roundtrip", async () => {
+    it("should export and import private key via PKCS#8 DER roundtrip", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       // Export private key as PKCS#8 DER
@@ -67,7 +77,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
       expect(isValid).toBe(true);
     });
 
-    it("should export and import public key via SPKI DER roundtrip", async () => {
+    it("should export and import public key via SPKI DER roundtrip", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       // Export public key as SPKI DER
@@ -87,7 +98,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
       expect(isValid).toBe(true);
     });
 
-    it("should produce correct key sizes", async () => {
+    it("should produce correct key sizes", async ({ skip }) => {
+      if (!pqcAvailable) skip();
       const keys = (await pqcCrypto.subtle.generateKey({ name: algName }, true, ["sign", "verify"])) as CryptoKeyPair;
 
       const privKey = keys.privateKey as PqcCryptoKey;
@@ -106,7 +118,8 @@ describe("ML-DSA PQC Crypto Provider", () => {
 
   it("should delegate classical algorithms to default subtle", async () => {
     // RSA key generation should still work through the provider
-    const keys = await pqcCrypto.subtle.generateKey(
+    const crypto = createPqcCrypto();
+    const keys = await crypto.subtle.generateKey(
       {
         name: "RSASSA-PKCS1-v1_5",
         modulusLength: 2048,

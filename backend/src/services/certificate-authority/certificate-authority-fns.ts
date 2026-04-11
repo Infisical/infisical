@@ -308,11 +308,11 @@ export const getCaCredentials = async ({
     const caKeyAlg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
     const pqcCrypto = getPqcCrypto();
     const caPrivateKey = await pqcCrypto.subtle.importKey("pkcs8", decryptedPrivateKey, caKeyAlg, true, ["sign"]);
-    const pubKeyRaw = derivePublicKeyFromSecret(
+    const { raw: pubKeyRaw, spkiDer } = await derivePublicKeyFromSecret(
       ca.internalCa.keyAlgorithm,
       (caPrivateKey as InstanceType<typeof PqcCryptoKey>).rawKey
     );
-    const caPublicKey = new PqcCryptoKey(pubKeyRaw, ca.internalCa.keyAlgorithm, "public", ["verify"]);
+    const caPublicKey = new PqcCryptoKey(pubKeyRaw, ca.internalCa.keyAlgorithm, "public", ["verify"], spkiDer);
 
     return { caSecret, caPrivateKey, caPublicKey };
   }

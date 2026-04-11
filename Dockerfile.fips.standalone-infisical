@@ -124,6 +124,7 @@ RUN apt-get update && apt-get install -y \
     automake \
     libtool \
     wget \
+    perl \
     libssl-dev \
     ca-certificates \
     curl \
@@ -184,6 +185,18 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
 
 # Install smbclient for Windows SMB operations
 RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
+
+# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+# Installed to /opt/openssl-pqc so it does not conflict with the FIPS OpenSSL above.
+WORKDIR /tmp/openssl-pqc-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-pqc-build
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \

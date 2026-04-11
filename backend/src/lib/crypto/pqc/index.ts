@@ -2,13 +2,19 @@ import * as x509 from "@peculiar/x509";
 
 import { registerPqcAlgorithms } from "./pqc-algorithm";
 import { createPqcCrypto, isPqcCryptoKey } from "./pqc-crypto";
+import { verifyPqcOpenSSLAvailability } from "./pqc-openssl";
 
 export { derivePublicKeyFromSecret, isPqcCryptoKey, PqcCryptoKey } from "./pqc-crypto";
 export { isPqcAlgorithm } from "./pqc-utils";
 
 let pqcCryptoInstance: Crypto | null = null;
 
-export const initializePqcSupport = () => {
+export const initializePqcSupport = async () => {
+  const available = await verifyPqcOpenSSLAvailability();
+  if (!available) {
+    return;
+  }
+
   registerPqcAlgorithms();
   pqcCryptoInstance = createPqcCrypto();
   x509.cryptoProvider.set(pqcCryptoInstance);
