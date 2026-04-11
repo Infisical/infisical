@@ -100,7 +100,7 @@ const SessionSummarySchema = z.object({
   warnings: z.array(
     z.object({
       text: z.string(),
-      logIndex: z.number().int().min(1).optional()
+      logIndex: z.number().int().optional()
     })
   )
 });

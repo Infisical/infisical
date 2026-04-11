@@ -138,7 +138,10 @@ export const decryptResource = async (
         model: string;
       };
     } catch (err) {
-      logger.warn({ err, resourceId: resource.id }, "decryptResource: failed to decrypt sessionSummaryConfig, falling back to null");
+      logger.warn(
+        { err, resourceId: resource.id },
+        "decryptResource: failed to decrypt sessionSummaryConfig, falling back to null"
+      );
     }
   }
 
