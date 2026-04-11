@@ -26,24 +26,14 @@ import {
 } from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
+import { useGetPamAiInsightsModels } from "@app/hooks/api/pam";
 
 import { SessionRecordingConfig } from "./PamResourceSessionRecordingSection";
 
 // Extend this array as more LLM providers are added
 const LLM_APP_CONNECTIONS = [AppConnection.Anthropic] as const;
-type LlmAppConnection = (typeof LLM_APP_CONNECTIONS)[number];
 
-const LLM_MODELS: Record<LlmAppConnection, { id: string; label: string }[]> = {
-  [AppConnection.Anthropic]: [
-    { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
-    { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" }
-  ]
-};
-
-const DEFAULT_MODEL: Record<LlmAppConnection, string> = {
-  [AppConnection.Anthropic]: "claude-sonnet-4-6"
-};
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 const formSchema = z.object({
   aiInsightsEnabled: z.boolean(),
@@ -64,6 +54,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
   const { data: allConnections = [], isPending } = useListAppConnections(undefined, {
     enabled: isOpen
   });
+  const { data: aiModels = [] } = useGetPamAiInsightsModels();
 
   const llmConnections = allConnections.filter((c) =>
     (LLM_APP_CONNECTIONS as readonly string[]).includes(c.app)
@@ -80,7 +71,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
     defaultValues: {
       aiInsightsEnabled: config?.aiInsightsEnabled ?? false,
       connectionId: config?.connectionId ?? "",
-      model: config?.model ?? DEFAULT_MODEL[AppConnection.Anthropic]
+      model: config?.model ?? DEFAULT_MODEL
     }
   });
 
@@ -89,7 +80,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
       reset({
         aiInsightsEnabled: config?.aiInsightsEnabled ?? false,
         connectionId: config?.connectionId ?? "",
-        model: config?.model ?? DEFAULT_MODEL[AppConnection.Anthropic]
+        model: config?.model ?? DEFAULT_MODEL
       });
     }
   }, [isOpen, config, reset]);
@@ -97,16 +88,19 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
   const aiInsightsEnabled = useWatch({ control, name: "aiInsightsEnabled" });
   const selectedConnectionId = useWatch({ control, name: "connectionId" });
   const selectedConnection = llmConnections.find((c) => c.id === selectedConnectionId);
-  const selectedProvider = selectedConnection?.app as LlmAppConnection | undefined;
-  const availableModels = selectedProvider ? LLM_MODELS[selectedProvider] : [];
+  const selectedProvider = selectedConnection?.app;
+  const availableModels = selectedProvider
+    ? aiModels.filter((m) => m.connectionApp === selectedProvider)
+    : [];
 
   // Only reset the model when the user explicitly changes the connection (field is dirty),
   // not when connections load async and selectedProvider goes undefined → defined on open.
   useEffect(() => {
     if (selectedProvider && dirtyFields.connectionId) {
-      setValue("model", DEFAULT_MODEL[selectedProvider], { shouldDirty: true });
+      const firstModel = aiModels.find((m) => m.connectionApp === selectedProvider);
+      setValue("model", firstModel?.id ?? DEFAULT_MODEL, { shouldDirty: true });
     }
-  }, [selectedProvider, dirtyFields.connectionId, setValue]);
+  }, [selectedProvider, dirtyFields.connectionId, setValue, aiModels]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -117,7 +111,7 @@ export const PamSessionRecordingModal = ({ isOpen, onOpenChange, config, onSave 
           aiInsightsEnabled: true,
           connectionId: data.connectionId ?? "",
           connectionName: selectedConnection?.name ?? data.connectionId ?? "",
-          model: data.model ?? DEFAULT_MODEL[AppConnection.Anthropic]
+          model: data.model ?? DEFAULT_MODEL
         });
       }
       onOpenChange(false);

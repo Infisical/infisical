@@ -26,9 +26,20 @@ export const formatLogsForSummary = (
   for (const event of terminalLogs.filter((e) => e.eventType === "input")) {
     try {
       const decoded = Buffer.from(event.data, "base64").toString("utf8");
-      // Keep only printable ASCII and common whitespace, strip ANSI escape codes
+      // Strip ANSI escape codes first, then apply backspace/DEL line-editing semantics
+      // so that characters the user erased are not sent to the AI
       // eslint-disable-next-line no-control-regex
-      const cleaned = decoded.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").replace(/[^\x20-\x7e\t\n\r]/g, "");
+      const noAnsi = decoded.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
+      let edited = "";
+      for (const ch of noAnsi) {
+        if (ch === "\x08" || ch === "\x7f") {
+          edited = edited.slice(0, -1);
+        } else {
+          edited += ch;
+        }
+      }
+      // eslint-disable-next-line no-control-regex
+      const cleaned = edited.replace(/[^\x20-\x7e\t\n\r]/g, "");
       if (cleaned.trim()) inputLines.push(cleaned);
     } catch {
       // skip malformed base64
@@ -77,7 +88,9 @@ export const buildSummaryPrompt = ({
 - Duration: ${Math.round(durationSeconds)}s
 
 Session logs:
-${formattedLogs}`;
+<formattedLogs>
+${formattedLogs}
+</formattedLogs>`;
 
   return { system, user };
 };
