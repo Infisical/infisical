@@ -20,6 +20,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -296,6 +297,10 @@ export const integrationAuthServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
+
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
       namespace,
@@ -453,6 +458,10 @@ export const integrationAuthServiceFactory = ({
 
     const { projectId } = integrationAuth;
     const integration = newIntegration || integrationAuth.integration;
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
