@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -97,12 +97,13 @@ export const sshHostServiceFactory = ({
     }
 
     const sshProjects = await projectDAL.find({
-      orgId: actorOrgId
+      orgId: actorOrgId,
+      type: ProjectType.SSH
     });
 
-    const allowedHosts = [];
+    const permittedProjectIds: string[] = [];
 
-    for await (const project of sshProjects) {
+    for (const project of sshProjects) {
       try {
         await permissionService.getProjectPermission({
           actor,
@@ -113,15 +114,17 @@ export const sshHostServiceFactory = ({
           actionProjectType: ActionProjectType.SSH
         });
 
-        const projectHosts = await sshHostDAL.findUserAccessibleSshHosts([project.id], actorId);
-
-        allowedHosts.push(...projectHosts);
+        permittedProjectIds.push(project.id);
       } catch {
-        // intentionally ignore projects where user lacks access
+        // user lacks access to this project, skip it
       }
     }
 
-    return allowedHosts;
+    if (permittedProjectIds.length === 0) {
+      return [];
+    }
+
+    return sshHostDAL.findUserAccessibleSshHosts(permittedProjectIds, actorId);
   };
 
   const createSshHost = async ({
