@@ -119,16 +119,19 @@ export const decryptResource = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
+  const { encryptedConnectionDetails, encryptedRotationAccountCredentials, encryptedResourceMetadata, ...rest } =
+    resource;
+
   return {
-    ...resource,
+    ...rest,
     connectionDetails: await decryptResourceConnectionDetails({
-      encryptedConnectionDetails: resource.encryptedConnectionDetails,
+      encryptedConnectionDetails,
       projectId,
       kmsService
     }),
-    rotationAccountCredentials: resource.encryptedRotationAccountCredentials
+    rotationAccountCredentials: encryptedRotationAccountCredentials
       ? await decryptAccountCredentials({
-          encryptedCredentials: resource.encryptedRotationAccountCredentials,
+          encryptedCredentials: encryptedRotationAccountCredentials,
           projectId,
           kmsService
         })

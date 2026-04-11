@@ -236,7 +236,7 @@ export const PamDomainsTable = ({ projectId }: Props) => {
       <DeleteActionModal
         isOpen={popUp.deleteDomain.isOpen}
         title={`Delete domain "${(popUp.deleteDomain.data as TPamDomain)?.name}"?`}
-        subTitle="This will permanently remove this domain and all associated accounts."
+        subTitle="This will permanently remove this domain. Associated resources will be unlinked but not deleted."
         onChange={(isOpen) => handlePopUpToggle("deleteDomain", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={handleDelete}

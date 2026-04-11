@@ -22,6 +22,7 @@ export const GatewayAccessResponseSchema = z.object({
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   encryptedRotationAccountCredentials: true,
+  encryptedResourceMetadata: true,
   resourceType: true
 }).extend({
   metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()

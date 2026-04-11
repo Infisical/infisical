@@ -107,6 +107,13 @@ export const pamDomainServiceFactory = ({
       })
     );
 
+    const existingDomain = await pamDomainDAL.findOne({ name, projectId });
+    if (existingDomain) {
+      throw new BadRequestError({
+        message: `Domain with name '${name}' already exists in this project`
+      });
+    }
+
     const factory = PAM_DOMAIN_FACTORY_MAP[domainType](
       domainType,
       connectionDetails,
@@ -375,19 +382,21 @@ export const pamDomainServiceFactory = ({
 
     return Promise.all(
       relatedResources.map(async (r) => {
+        const { encryptedConnectionDetails, encryptedRotationAccountCredentials, encryptedResourceMetadata, ...rest } =
+          r;
         const rConnectionDetails = await decryptResourceConnectionDetails({
-          encryptedConnectionDetails: r.encryptedConnectionDetails,
+          encryptedConnectionDetails,
           projectId: domain.projectId,
           kmsService
         });
-        const rotationAccountCredentials = r.encryptedRotationAccountCredentials
+        const rotationAccountCredentials = encryptedRotationAccountCredentials
           ? await decryptAccountCredentials({
-              encryptedCredentials: r.encryptedRotationAccountCredentials,
+              encryptedCredentials: encryptedRotationAccountCredentials,
               projectId: domain.projectId,
               kmsService
             })
           : null;
-        return { ...r, connectionDetails: rConnectionDetails, rotationAccountCredentials } as TWindowsResource;
+        return { ...rest, connectionDetails: rConnectionDetails, rotationAccountCredentials } as TWindowsResource;
       })
     );
   };
