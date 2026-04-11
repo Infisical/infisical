@@ -214,7 +214,8 @@ const PageContent = () => {
 
       <DeleteActionModal
         isOpen={isDeleteModalOpen}
-        title={`Delete Domain ${domain.name}?`}
+        title={`Delete Domain "${domain.name}"?`}
+        subTitle="This will permanently remove this domain. Associated resources will be unlinked but not deleted."
         onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
         deleteKey={domain.name}
         onDeleteApproved={handleDeleteConfirm}
