@@ -461,7 +461,7 @@ export const CreatePolicyModal = ({
     }
     if (data.keyAlgorithm?.allowedKeyTypes && data.keyAlgorithm.allowedKeyTypes.length > 0) {
       algorithms.keyAlgorithm = data.keyAlgorithm.allowedKeyTypes as Array<
-        "RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384"
+        "RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384" | "ECDSA-P521"
       >;
     }
 

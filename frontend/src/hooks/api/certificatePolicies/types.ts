@@ -27,7 +27,9 @@ export type TCertificatePolicyRule = {
     signature?: Array<
       "SHA256-RSA" | "SHA384-RSA" | "SHA512-RSA" | "SHA256-ECDSA" | "SHA384-ECDSA" | "SHA512-ECDSA"
     >;
-    keyAlgorithm?: Array<"RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384">;
+    keyAlgorithm?: Array<
+      "RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384" | "ECDSA-P521"
+    >;
   };
   validity?: {
     max?: string;
