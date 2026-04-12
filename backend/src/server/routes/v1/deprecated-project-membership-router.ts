@@ -7,8 +7,7 @@ import {
   OrgMembershipStatus,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
-  TemporaryPermissionMode,
-  UsersSchema
+  TemporaryPermissionMode
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
@@ -16,6 +15,8 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -39,15 +40,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       response: {
         200: z.object({
           memberships: ProjectMembershipsSchema.extend({
-            user: UsersSchema.pick({
-              email: true,
-              firstName: true,
-              lastName: true,
-              id: true,
-              username: true
-            }).extend({
-              publicKey: z.string().optional().nullable()
-            }),
+            user: SanitizedUserSchema,
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -110,15 +103,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       response: {
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
-            user: UsersSchema.pick({
-              email: true,
-              firstName: true,
-              lastName: true,
-              id: true,
-              username: true
-            }).extend({
-              publicKey: z.string().optional().nullable()
-            }),
+            user: SanitizedUserSchema,
             roles: z.array(
               z.object({
                 id: z.string(),
@@ -190,14 +175,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       response: {
         200: z.object({
           membership: ProjectMembershipsSchema.extend({
-            user: UsersSchema.pick({
-              email: true,
-              firstName: true,
-              lastName: true,
-              id: true
-            }).extend({
-              publicKey: z.string().optional().nullable()
-            }),
+            user: SanitizedUserSchema,
             roles: z.array(
               z.object({
                 id: z.string(),

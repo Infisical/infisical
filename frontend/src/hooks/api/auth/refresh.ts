@@ -30,14 +30,19 @@ export const fetchAuthToken = async (): Promise<GetAuthTokenAPI> => {
   const currentToken = getAuthToken();
   if (currentToken) {
     try {
-      const decoded = jwtDecode<{ organizationId?: string; subOrganizationId?: string }>(
-        currentToken
-      );
-      return {
-        token: currentToken,
-        organizationId: decoded.organizationId,
-        subOrganizationId: decoded.subOrganizationId
-      };
+      const decoded = jwtDecode<{
+        organizationId?: string;
+        subOrganizationId?: string;
+        exp?: number;
+      }>(currentToken);
+      // Only reuse if the token has more than 10 seconds before expiry
+      if (decoded.exp && decoded.exp * 1000 > Date.now() + 10_000) {
+        return {
+          token: currentToken,
+          organizationId: decoded.organizationId,
+          subOrganizationId: decoded.subOrganizationId
+        };
+      }
     } catch {
       // decode failed — fall through to refresh
     }

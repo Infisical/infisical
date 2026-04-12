@@ -1,7 +1,7 @@
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { Alert, AlertDescription, Button, ContentLoader, EmptyState } from "@app/components/v2";
 import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects,
@@ -11,7 +11,12 @@ import {
 } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
-import { useGetLDAPConfig, useGetOIDCConfig, useGetSSOConfig } from "@app/hooks/api";
+import {
+  useGetEmailDomains,
+  useGetLDAPConfig,
+  useGetOIDCConfig,
+  useGetSSOConfig
+} from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
 import { LDAPModal } from "./LDAPModal";
@@ -37,6 +42,10 @@ export const OrgSsoTab = withPermission(
     ] as const);
 
     const { subscription } = useSubscription();
+
+    const { data: emailDomains, isPending } = useGetEmailDomains(
+      subscription?.emailDomainVerification ? currentOrg?.id : ""
+    );
 
     const { data: oidcConfig, isPending: isLoadingOidcConfig } = useGetOIDCConfig(
       currentOrg?.id ?? ""
@@ -79,6 +88,13 @@ export const OrgSsoTab = withPermission(
                 Connect your identity provider to simplify user management with options like SAML,
                 OIDC, and LDAP.
               </p>
+              {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
+                <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
+                  <AlertDescription>
+                    Email domain verification is required to use an identity provider.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
             {shouldDisplaySection(LoginMethod.SAML) && (
               <div
@@ -198,6 +214,13 @@ export const OrgSsoTab = withPermission(
             createIdentityProviderView
           ) : (
             <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+              {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
+                <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
+                  <AlertDescription>
+                    Email domain verification is required to use an identity provider.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
                 {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}

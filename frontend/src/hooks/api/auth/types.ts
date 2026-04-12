@@ -89,6 +89,7 @@ export type LoginLDAPDTO = {
   organizationSlug: string;
   username: string;
   password: string;
+  callbackPort?: number;
 };
 
 export type LoginLDAPRes = {

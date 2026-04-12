@@ -1135,6 +1135,7 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     userAliasDAL,
+    emailDomainDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     authService: loginService,

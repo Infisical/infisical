@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { AuthTokenSessionsSchema, UsersSchema } from "@app/db/schemas";
+import { AuthTokenSessionsSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -45,7 +47,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -75,7 +77,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -99,7 +101,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -154,7 +156,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -391,7 +393,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteUser",
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },

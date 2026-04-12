@@ -1193,6 +1193,7 @@ export const authLoginServiceFactory = ({
       rootOrg.authEnforced &&
       !isAuthMethodSaml(userAuthMethod) &&
       userAuthMethod !== AuthMethod.OIDC &&
+      userAuthMethod !== AuthMethod.LDAP &&
       !canBypassSso
     ) {
       throw new BadRequestError({
@@ -1213,6 +1214,18 @@ export const authLoginServiceFactory = ({
       await orgDAL.updateById(rootOrg.id, {
         googleSsoAuthLastUsed: new Date()
       });
+    }
+
+    if (!isSubOrganization && orgMembership.status !== OrgMembershipStatus.Accepted) {
+      // Promote any Invited memberships to Accepted now that the user has authenticated into this org
+      await membershipUserDAL.update(
+        {
+          actorUserId: user.id,
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization
+        },
+        { status: OrgMembershipStatus.Accepted }
+      );
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
@@ -1250,24 +1263,15 @@ export const authLoginServiceFactory = ({
       mfaMethod
     });
 
-    // Promote any Invited memberships to Accepted now that the user has authenticated into this org
-    await membershipUserDAL.update(
-      {
-        actorUserId: user.id,
-        scopeOrgId: organizationId,
-        scope: AccessScope.Organization,
-        status: OrgMembershipStatus.Invited
-      },
-      { status: OrgMembershipStatus.Accepted }
-    );
-
     // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
     const isAuthEnforcedBypass =
       rootOrg.authEnforced &&
       rootOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(userAuthMethod) &&
       userAuthMethod !== AuthMethod.OIDC &&
+      userAuthMethod !== AuthMethod.LDAP &&
       userAuthMethod !== AuthMethod.GOOGLE;
+
     const isGoogleSsoEnforcedBypass =
       rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && userAuthMethod !== AuthMethod.GOOGLE;
     if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {

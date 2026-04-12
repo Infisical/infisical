@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
@@ -9,6 +8,8 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -72,7 +73,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string(),
           token: z.string(),
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -115,7 +116,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UsersSchema,
+          user: SanitizedUserSchema,
           token: z.string()
         })
       }

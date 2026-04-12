@@ -77,19 +77,10 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           const externalId = ldapConfig.uniqueUserAttribute ? user[ldapConfig.uniqueUserAttribute] : user.uidNumber;
           const username = ldapConfig.uniqueUserAttribute ? externalId : user.uid;
 
-          // had to put any due to passport ts issue with signature
-          let callbackPort: number | undefined;
-          try {
-            const relayStatePayload =
-              typeof fastifyReq?.body === "object"
-                ? (fastifyReq.body as { RelayState?: string })?.RelayState
-                : undefined;
-            if (relayStatePayload && Buffer.byteLength(relayStatePayload) <= 1024) {
-              callbackPort = Number(JSON.parse(relayStatePayload)?.callbackPort);
-            }
-          } catch (err) {
-            logger.error(err, "Relay state parsing failed");
-          }
+          const callbackPort =
+            typeof fastifyReq?.body === "object"
+              ? (fastifyReq.body as { callbackPort?: number })?.callbackPort
+              : undefined;
 
           const loginResult = await server.services.ldap.ldapLogin({
             externalId,
@@ -122,7 +113,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        organizationSlug: z.string().trim()
+        organizationSlug: z.string().trim(),
+        callbackPort: z.coerce.number().optional()
       })
     },
     preValidation: passport.authenticate("ldapauth", {
@@ -143,9 +135,14 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED
         });
-        nextUrl = `${appCfg.SITE_URL}/login/select-organization${cbPort ? `?callback_port=${cbPort}` : ""}`;
+        const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
+        if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+        nextUrl = sessionUrl.toString();
       } else if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-        nextUrl = `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${cbPort ? `&callback_port=${cbPort}` : ""}`;
+        const signupUrl = new URL("/signup/sso", appCfg.SITE_URL);
+        signupUrl.searchParams.set("token", passportResult.signupToken);
+        if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
+        nextUrl = signupUrl.toString();
       } else {
         throw new BadRequestError({ message: "Unexpected auth result" });
       }

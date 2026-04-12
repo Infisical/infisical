@@ -368,7 +368,14 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
           {shouldDisplayLoginMethod(LoginMethod.LDAP) && (
             <OrgLoginButton
               label="Continue with LDAP"
-              onClick={() => navigate({ to: "/login/ldap" })}
+              onClick={() =>
+                navigate({
+                  to: "/login/ldap",
+                  search: {
+                    callback_port: callbackPort
+                  }
+                })
+              }
               className="mt-2"
               showLastUsed={isLastUsedMethod(LoginMethod.LDAP)}
             />

@@ -393,25 +393,19 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
       addAuthOriginDomainCookie(res);
-      const sessionParams = [
-        isAdminLogin ? `isAdminLogin=${isAdminLogin}` : "",
-        cbPort ? `callback_port=${cbPort}` : ""
-      ]
-        .filter(Boolean)
-        .join("&");
-      return res.redirect(`${appCfg.SITE_URL}/login/select-organization${sessionParams ? `?${sessionParams}` : ""}`);
+      const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
+      if (isAdminLogin) sessionUrl.searchParams.set("isAdminLogin", isAdminLogin);
+      if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+      return res.redirect(sessionUrl.toString());
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
       const serverCfg = await getServerCfg();
-      const signupParams = [
-        `token=${encodeURIComponent(passportResult.signupToken)}`,
-        serverCfg.defaultAuthOrgId && !appCfg.isCloud ? "defaultOrgAllowed=true" : "",
-        cbPort ? `callback_port=${cbPort}` : ""
-      ]
-        .filter(Boolean)
-        .join("&");
-      return res.redirect(`${appCfg.SITE_URL}/signup/sso?${signupParams}`);
+      const signupUrl = new URL("/signup/sso", appCfg.SITE_URL);
+      signupUrl.searchParams.set("token", passportResult.signupToken);
+      if (serverCfg.defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");
+      if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
+      return res.redirect(signupUrl.toString());
     }
 
     throw new BadRequestError({ message: "Unexpected auth result" });
@@ -522,7 +516,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
-          expires: new Date(Date.now() + ms("15m"))
+          expires: new Date(Date.now() + ms(appCfg.JWT_PROVIDER_AUTH_LIFETIME))
         });
       }
       return handleOAuthCallbackRedirect(req, res);

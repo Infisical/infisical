@@ -90,7 +90,7 @@ export const SelectOrgPage = () => {
   );
   const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const mfaSuccessCallback = useRef<() => void>(() => {});
+  const mfaOrgInfo = useRef<{ rootOrg: TOrgWithSubOrgs; subOrgId?: string } | null>(null);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -133,114 +133,112 @@ export const SelectOrgPage = () => {
   }, [selectedRootOrg, searchTerm]);
 
   // For sub-orgs, inherit the root org's SSO settings but override the ID
-  const handleSelectOrganization = useCallback(
-    async (org: TOrgWithSubOrgs, subOrgId?: string) => {
-      const targetOrgId = subOrgId || org.id;
-      const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
+  const handleSelectOrganization = async (org: TOrgWithSubOrgs, subOrgId?: string) => {
+    const targetOrgId = subOrgId || org.id;
+    const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
 
-      if (isBreakglassRoute && !org.bypassOrgAuthEnabled) {
+    if (isBreakglassRoute && !org.bypassOrgAuthEnabled) {
+      createNotification({
+        text: "This organization does not have bypass org auth enabled",
+        type: "error"
+      });
+      return;
+    }
+
+    if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
+      const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
+
+      let ssoRequired = false;
+      let ssoType = "";
+
+      if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
+        ssoRequired = true;
+        ssoType = "Google SSO";
+      } else if (
+        org.orgAuthMethod === AuthMethod.OIDC &&
+        authToken.authMethod !== AuthMethod.OIDC
+      ) {
+        ssoRequired = true;
+        ssoType = "OIDC SSO";
+      } else if (
+        org.orgAuthMethod === AuthMethod.SAML &&
+        !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
+      ) {
+        ssoRequired = true;
+        ssoType = "SAML SSO";
+      }
+
+      if (ssoRequired) {
         createNotification({
-          text: "This organization does not have bypass org auth enabled",
+          text: `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`,
           type: "error"
         });
         return;
       }
+    }
 
-      if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
-        const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
+    let token;
+    let isMfaEnabled;
+    let mfaMethod;
 
-        let ssoRequired = false;
-        let ssoType = "";
+    try {
+      const result = await selectOrg.mutateAsync({
+        organizationId: targetOrgId,
+        userAgent: callbackPort ? UserAgentType.CLI : undefined
+      });
+      token = result.token;
+      isMfaEnabled = result.isMfaEnabled;
+      mfaMethod = result.mfaMethod;
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to select organization.";
+      createNotification({ text: message, type: "error" });
+      return;
+    }
 
-        if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-          ssoRequired = true;
-          ssoType = "Google SSO";
-        } else if (
-          org.orgAuthMethod === AuthMethod.OIDC &&
-          authToken.authMethod !== AuthMethod.OIDC
-        ) {
-          ssoRequired = true;
-          ssoType = "OIDC SSO";
-        } else if (
-          org.orgAuthMethod === AuthMethod.SAML &&
-          !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
-        ) {
-          ssoRequired = true;
-          ssoType = "SAML SSO";
-        }
+    await router.invalidate();
 
-        if (ssoRequired) {
-          createNotification({
-            text: `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`,
-            type: "error"
-          });
-          return;
-        }
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
       }
+      toggleShowMfa.on();
+      mfaOrgInfo.current = { rootOrg: org, subOrgId };
+      return;
+    }
 
-      let token;
-      let isMfaEnabled;
-      let mfaMethod;
+    if (callbackPort) {
+      let error: string | null = null;
 
-      try {
-        const result = await selectOrg.mutateAsync({
-          organizationId: targetOrgId,
-          userAgent: callbackPort ? UserAgentType.CLI : undefined
-        });
-        token = result.token;
-        isMfaEnabled = result.isMfaEnabled;
-        mfaMethod = result.mfaMethod;
-      } catch (error: any) {
-        const message = error?.response?.data?.message || "Failed to select organization.";
-        createNotification({ text: message, type: "error" });
+      console.log(user);
+      if (!user?.email) error = "User email not found";
+      if (!token) error = "No token found";
+
+      if (error) {
+        createNotification({ text: error, type: "error" });
         return;
       }
 
-      await router.invalidate();
+      const payload = {
+        JTWToken: token,
+        email: user?.email,
+        privateKey: ""
+      };
 
-      if (isMfaEnabled) {
-        SecurityClient.setMfaToken(token);
-        if (mfaMethod) {
-          setRequiredMfaMethod(mfaMethod);
-        }
-        toggleShowMfa.on();
-        mfaSuccessCallback.current = () => handleSelectOrganization(org, subOrgId);
-        return;
-      }
-
-      if (callbackPort) {
-        let error: string | null = null;
-
-        if (!user?.email) error = "User email not found";
-        if (!token) error = "No token found";
-
-        if (error) {
-          createNotification({ text: error, type: "error" });
-          return;
-        }
-
-        const payload = {
-          JTWToken: token,
-          email: user?.email,
-          privateKey: ""
-        };
-
-        sessionStorage.setItem(
-          SessionStorageKeys.CLI_TERMINAL_TOKEN,
-          JSON.stringify({
-            expiry: formatISO(addSeconds(new Date(), 30)),
-            data: window.btoa(JSON.stringify(payload)),
-            callbackPort
-          })
-        );
-        navigate({ to: "/cli-redirect" });
-      } else {
-        setAuthToken(token);
-        navigateUserToOrg({ navigate, organizationId: targetOrgId });
-      }
-    },
-    [selectOrg, callbackPort, isBreakglassRoute, user, router, toggleShowMfa, navigate]
-  );
+      sessionStorage.setItem(
+        SessionStorageKeys.CLI_TERMINAL_TOKEN,
+        JSON.stringify({
+          expiry: formatISO(addSeconds(new Date(), 30)),
+          data: window.btoa(JSON.stringify(payload)),
+          callbackPort
+        })
+      );
+      navigate({ to: "/cli-redirect" });
+    } else {
+      setAuthToken(token);
+      navigateUserToOrg({ navigate, organizationId: targetOrgId });
+    }
+  };
 
   // MFA pending from IdP redirect
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,7 +249,7 @@ export const SelectOrgPage = () => {
       sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
       SecurityClient.setMfaToken(storedMfaToken);
       toggleShowMfa.on();
-      mfaSuccessCallback.current = () => handleSelectOrganization(defaultOrg);
+      mfaOrgInfo.current = { rootOrg: defaultOrg };
     }
   }, [mfaMethodFromSearch, orgs?.length, orgId]);
 
@@ -386,7 +384,11 @@ export const SelectOrgPage = () => {
       {shouldShowMfa ? (
         <Mfa
           email={user.email as string}
-          successCallback={mfaSuccessCallback.current}
+          successCallback={() => {
+            if (mfaOrgInfo.current) {
+              handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+            }
+          }}
           method={requiredMfaMethod as MfaMethod}
         />
       ) : (

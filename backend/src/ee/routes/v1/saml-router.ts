@@ -338,13 +338,16 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           secure: appCfg.HTTPS_ENABLED
         });
         addAuthOriginDomainCookie(res);
-        return res.redirect(`${appCfg.SITE_URL}/login/select-organization${cbPort ? `?callback_port=${cbPort}` : ""}`);
+        const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
+        if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(sessionUrl.toString());
       }
 
       if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(passportResult.signupToken)}${cbPort ? `&callback_port=${cbPort}` : ""}`
-        );
+        const signupUrl = new URL("/signup/sso", appCfg.SITE_URL);
+        signupUrl.searchParams.set("token", passportResult.signupToken);
+        if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(signupUrl.toString());
       }
 
       throw new BadRequestError({ message: "Unexpected auth result" });

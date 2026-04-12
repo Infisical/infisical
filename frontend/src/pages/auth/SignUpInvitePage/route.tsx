@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { authKeys, fetchAuthToken, verifySignupInvite } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
@@ -39,6 +40,13 @@ export const Route = createFileRoute("/_restrict-login-signup/signupinvite")({
         code: token,
         organizationId
       });
+
+      if (!result.token) {
+        createNotification({
+          text: "Invitation accepted. Please login into your account",
+          type: "success"
+        });
+      }
 
       if (authData) {
         // Logged-in user — invitation accepted, go to the org

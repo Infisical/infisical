@@ -37,7 +37,7 @@ export const OrgEmailDomainsSection = () => {
               />
             </div>
             <p className="mt-1 mb-2 text-gray-400">
-              Verify ownership of your email domains to use with SSO and identity providers. For mo
+              Verify ownership of your email domains to use with SSO and identity providers.
             </p>
           </div>
           {hasEmailDomainVerification && (

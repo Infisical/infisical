@@ -9,6 +9,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -54,6 +55,9 @@ import {
   EnvOverrides,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
+  TAdminCreateEmailDomainDTO,
+  TAdminDeleteEmailDomainDTO,
+  TAdminGetEmailDomainsDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
@@ -74,6 +78,7 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
@@ -132,6 +137,7 @@ export const superAdminServiceFactory = ({
   identityDAL,
   orgDAL,
   userAliasDAL,
+  emailDomainDAL,
   authService,
   orgService,
   keyStore,
@@ -1182,6 +1188,39 @@ export const superAdminServiceFactory = ({
     return job;
   };
 
+  const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {
+    return emailDomainDAL.findByFilter({ offset, limit, searchTerm });
+  };
+
+  const createEmailDomain = async ({ orgId, domain }: TAdminCreateEmailDomainDTO) => {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+    const existing = await emailDomainDAL.findOne({ orgId, domain: domain.toLowerCase() });
+    if (existing) throw new BadRequestError({ message: `Domain '${domain}' already exists for this organization` });
+
+    const emailDomain = await emailDomainDAL.create({
+      orgId,
+      domain: domain.toLowerCase(),
+      verificationMethod: "admin",
+      verificationCode: crypto.randomBytes(16).toString("hex"),
+      verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
+      status: "verified",
+      verifiedAt: new Date(),
+      codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    });
+
+    return emailDomain;
+  };
+
+  const deleteEmailDomain = async ({ emailDomainId }: TAdminDeleteEmailDomainDTO) => {
+    const emailDomain = await emailDomainDAL.findById(emailDomainId);
+    if (!emailDomain) throw new NotFoundError({ message: `Email domain with ID '${emailDomainId}' not found` });
+
+    await emailDomainDAL.deleteById(emailDomainId);
+    return emailDomain;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -1208,6 +1247,9 @@ export const superAdminServiceFactory = ({
     deleteUsers,
     createOrganization,
     joinOrganization,
-    resendOrgInvite
+    resendOrgInvite,
+    getEmailDomains,
+    createEmailDomain,
+    deleteEmailDomain
   };
 };
