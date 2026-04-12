@@ -210,7 +210,6 @@ export const SelectOrgPage = () => {
     if (callbackPort) {
       let error: string | null = null;
 
-      console.log(user);
       if (!user?.email) error = "User email not found";
       if (!token) error = "No token found";
 
