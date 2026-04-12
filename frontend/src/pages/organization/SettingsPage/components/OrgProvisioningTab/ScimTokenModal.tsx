@@ -293,7 +293,7 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
         <DeleteActionModal
           isOpen={popUp.deleteScimToken.isOpen}
           title="Are you sure you want to delete the SCIM token?"
-          onChange={(isOpen) => handlePopUpToggle("scimToken", isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("deleteScimToken", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => {
             const deleteScimTokenData = popUp?.deleteScimToken?.data as {
