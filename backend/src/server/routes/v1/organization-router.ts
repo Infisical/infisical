@@ -8,8 +8,7 @@ import {
   IncidentContactsSchema,
   OrgMembershipsSchema,
   OrgMembershipStatus,
-  OrgRolesSchema,
-  UsersSchema
+  OrgRolesSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
@@ -20,7 +19,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
-import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -307,7 +306,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
-              user: UsersSchema.pick({
+              user: SanitizedUserSchema.pick({
                 username: true,
                 email: true,
                 firstName: true,

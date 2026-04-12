@@ -6,8 +6,7 @@ import {
   IdentitiesSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
-  OrgMembershipStatus,
-  SuperAdminSchema as SuperAdminDbSchema
+  OrgMembershipStatus
 } from "@app/db/schemas";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
@@ -33,6 +32,33 @@ const SuperAdminSchema = SanitizedUserSchema.extend({
   superAdmin: z.boolean().optional().nullable()
 });
 
+const SanitizedSuperAdminSchema = z.object({
+  id: z.string().uuid(),
+  initialized: z.boolean().default(false).nullable().optional(),
+  allowSignUp: z.boolean().default(true).nullable().optional(),
+  allowedSignUpDomain: z.string().nullable().optional(),
+  defaultAuthOrgId: z.string().uuid().nullable().optional(),
+  enabledLoginMethods: z.string().array().nullable().optional(),
+  authConsentContent: z.string().nullable().optional(),
+  pageFrameContent: z.string().nullable().optional(),
+  // Super admin-only fields (omitted for non-super-admin callers)
+  instanceId: z.string().uuid().optional(),
+  trustSamlEmails: z.boolean().nullish(),
+  trustLdapEmails: z.boolean().nullish(),
+  trustOidcEmails: z.boolean().nullish(),
+  adminIdentityIds: z.string().array().nullable().optional(),
+  fipsEnabled: z.boolean().optional(),
+  isMigrationModeOn: z.boolean().optional(),
+  isSecretScanningDisabled: z.boolean().optional(),
+  kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
+  paramsFolderSecretDetectionEnabled: z.boolean().optional(),
+  isOfflineUsageReportsEnabled: z.boolean().optional(),
+  // Always returned
+  defaultAuthOrgSlug: z.string().nullable(),
+  defaultAuthOrgAuthEnforced: z.boolean().nullish(),
+  defaultAuthOrgAuthMethod: z.string().nullish()
+});
+
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -44,45 +70,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "getAdminConfig",
       response: {
         200: z.object({
-          config: SuperAdminDbSchema.omit({
-            createdAt: true,
-            updatedAt: true,
-            encryptedSlackClientId: true,
-            encryptedSlackClientSecret: true,
-            encryptedMicrosoftTeamsAppId: true,
-            encryptedMicrosoftTeamsClientSecret: true,
-            encryptedMicrosoftTeamsBotId: true,
-            encryptedGitHubAppConnectionClientId: true,
-            encryptedGitHubAppConnectionClientSecret: true,
-            encryptedGitHubAppConnectionSlug: true,
-            encryptedGitHubAppConnectionId: true,
-            encryptedGitHubAppConnectionPrivateKey: true,
-            encryptedEnvOverrides: true,
-            // Fields below are only returned for super admins
-            instanceId: true,
-            trustSamlEmails: true,
-            trustLdapEmails: true,
-            trustOidcEmails: true,
-            adminIdentityIds: true,
-            fipsEnabled: true
-          }).extend({
-            // Super admin-only fields (omitted for non-super-admin callers)
-            instanceId: z.string().uuid().optional(),
-            trustSamlEmails: z.boolean().nullish(),
-            trustLdapEmails: z.boolean().nullish(),
-            trustOidcEmails: z.boolean().nullish(),
-            adminIdentityIds: z.string().array().nullable().optional(),
-            fipsEnabled: z.boolean().optional(),
-            isMigrationModeOn: z.boolean().optional(),
-            isSecretScanningDisabled: z.boolean().optional(),
-            kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
-            paramsFolderSecretDetectionEnabled: z.boolean().optional(),
-            isOfflineUsageReportsEnabled: z.boolean().optional(),
-            // Always returned
-            defaultAuthOrgSlug: z.string().nullable(),
-            defaultAuthOrgAuthEnforced: z.boolean().nullish(),
-            defaultAuthOrgAuthMethod: z.string().nullish()
-          })
+          config: SanitizedSuperAdminSchema
         })
       }
     },
@@ -178,9 +166,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          config: SuperAdminSchema.omit({
-            encryptedEnvOverrides: true
-          }).extend({
+          config: SanitizedSuperAdminSchema.extend({
             defaultAuthOrgSlug: z.string().nullable()
           })
         })

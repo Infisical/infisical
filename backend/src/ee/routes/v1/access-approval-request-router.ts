@@ -1,16 +1,17 @@
 import { z } from "zod";
 
-import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
+import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string() }).merge(
-  UsersSchema.pick({
+  SanitizedUserSchema.pick({
     email: true,
     firstName: true,
     lastName: true,

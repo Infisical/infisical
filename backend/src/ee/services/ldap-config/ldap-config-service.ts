@@ -14,6 +14,7 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -161,6 +162,8 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
+    await blockLocalAndPrivateIpAddresses(url);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -285,6 +288,10 @@ export const ldapConfigServiceFactory = ({
         message:
           "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
       });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const updateQuery: TLdapConfigsUpdate = {
