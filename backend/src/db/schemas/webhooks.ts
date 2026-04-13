@@ -6,7 +6,6 @@
 import { z } from "zod";
 
 import { zodBuffer } from "@app/lib/zod";
-import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TImmutableDBKeys } from "./models";
 
@@ -31,10 +30,7 @@ export const WebhooksSchema = z.object({
   type: z.string().default("general").nullable().optional(),
   encryptedPassKey: zodBuffer.nullable().optional(),
   encryptedUrl: zodBuffer,
-  blockedEvents: z
-    .nativeEnum(WebhookEvents)
-    .array()
-    .default([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+  blockedEvents: z.string().array().nullable().optional()
 });
 
 export type TWebhooks = z.infer<typeof WebhooksSchema>;

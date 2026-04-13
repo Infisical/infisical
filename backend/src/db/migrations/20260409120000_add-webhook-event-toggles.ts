@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.schema.alterTable(TableName.Webhook, (table) => {
     if (!hasBlockedEventsColumn) {
-      table.specificType(BLOCKED_EVENTS_COLUMN, "text[]").notNullable().defaultTo(knex.raw("'{}'"));
+      table.specificType(BLOCKED_EVENTS_COLUMN, "text[]").nullable();
     }
   });
 }

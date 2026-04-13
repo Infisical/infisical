@@ -18,6 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -28,7 +29,7 @@ import {
   useTestWebhook,
   useUpdateWebhook
 } from "@app/hooks/api";
-import { TWebhook } from "@app/hooks/api/webhooks/types";
+import { TWebhook, WEBHOOK_EVENT_METADATA, WEBHOOK_EVENTS } from "@app/hooks/api/webhooks/types";
 
 import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
 import { EditWebhookEventsModal } from "./EditWebhookEventsModal";
@@ -156,15 +157,27 @@ export const WebhooksTab = withProjectPermission(
                   <Td>URL</Td>
                   <Td>Environment</Td>
                   <Td>Secret Path</Td>
+                  <Td>
+                    <div className="flex items-center gap-1">
+                      <span>Events</span>
+                      <Tooltip content="Events that are configured to trigger this webhook.">
+                        <FontAwesomeIcon
+                          icon={faInfoCircle}
+                          size="xs"
+                          className="text-mineshaft-400"
+                        />
+                      </Tooltip>
+                    </div>
+                  </Td>
                   <Td>Status</Td>
                   <Td className="text-right">Action</Td>
                 </Tr>
               </THead>
               <TBody>
-                {isWebhooksLoading && <TableSkeleton columns={5} innerKey="webhooks-loading" />}
+                {isWebhooksLoading && <TableSkeleton columns={6} innerKey="webhooks-loading" />}
                 {!isWebhooksLoading && webhooks && webhooks?.length === 0 && (
                   <Tr>
-                    <Td colSpan={5}>
+                    <Td colSpan={6}>
                       <EmptyState title="No webhooks found" icon={faPlug} />
                     </Td>
                   </Tr>
@@ -182,6 +195,12 @@ export const WebhooksTab = withProjectPermission(
                       lastRunErrorMessage
                     } = webhook;
 
+                    const enabledEvents = WEBHOOK_EVENTS.filter(
+                      (event) => webhook[WEBHOOK_EVENT_METADATA[event].key] !== false
+                    );
+                    const enabledEventsCount = enabledEvents.length;
+                    const hasEnabledEvents = enabledEventsCount > 0;
+
                     return (
                       <Tr key={id}>
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
@@ -190,6 +209,27 @@ export const WebhooksTab = withProjectPermission(
                         </Td>
                         <Td>{environment.slug}</Td>
                         <Td>{secretPath}</Td>
+                        <Td>
+                          <Tooltip
+                            content={
+                              hasEnabledEvents ? (
+                                <div className="space-y-0.5 text-xs">
+                                  {enabledEvents.map((event) => (
+                                    <div key={event}>{WEBHOOK_EVENT_METADATA[event].label}</div>
+                                  ))}
+                                </div>
+                              ) : (
+                                "This webhook is not triggered by any events."
+                              )
+                            }
+                          >
+                            <Badge variant={hasEnabledEvents ? "success" : "danger"}>
+                              {hasEnabledEvents
+                                ? `${enabledEventsCount} Event${enabledEventsCount === 1 ? "" : "s"}`
+                                : "No Events"}
+                            </Badge>
+                          </Tooltip>
+                        </Td>
                         <Td>
                           {!lastStatus ? (
                             "-"

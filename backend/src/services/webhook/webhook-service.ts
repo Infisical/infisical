@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -41,14 +41,14 @@ export const webhookServiceFactory = ({
   const toBlockedEvents = (
     isSecretModifiedEventEnabled?: boolean,
     isSecretRotationFailedEventEnabled?: boolean
-  ): WebhookEvents[] => {
-    const blocked: WebhookEvents[] = [];
+  ): string[] => {
+    const blocked: string[] = [];
     if (isSecretModifiedEventEnabled === false) blocked.push(WebhookEvents.SecretModified);
     if (isSecretRotationFailedEventEnabled === false) blocked.push(WebhookEvents.SecretRotationFailed);
     return blocked;
   };
 
-  const withEventFlags = <T extends { blockedEvents?: WebhookEvents[] | null }>(webhook: T) => ({
+  const withEventFlags = <T extends { blockedEvents?: string[] | null }>(webhook: T) => ({
     ...webhook,
     isSecretModifiedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretModified),
     isSecretRotationFailedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretRotationFailed)
@@ -136,13 +136,13 @@ export const webhookServiceFactory = ({
 
     const updateData: {
       isDisabled?: boolean;
-      blockedEvents?: WebhookEvents[];
+      blockedEvents?: string[];
     } = {
       ...(isDisabled !== undefined ? { isDisabled } : {})
     };
 
     if (hasEventToggleUpdate) {
-      const currentBlocked = new Set<WebhookEvents>(webhook.blockedEvents ?? []);
+      const currentBlocked = new Set<string>(webhook.blockedEvents ?? []);
 
       if (isSecretModifiedEventEnabled !== undefined) {
         if (isSecretModifiedEventEnabled) {
@@ -207,19 +207,23 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
     try {
+      const payload = getWebhookPayload({
+        type: WebhookEvents.TestEvent,
+        payload: {
+          projectName: project.name,
+          projectId: webhook.projectId,
+          environment: webhook.environment.slug,
+          secretPath: webhook.secretPath,
+          type: webhook.type
+        }
+      });
+
+      if (!payload) throw new BadRequestError({ message: "Failed to get webhook payload for test event" });
+
       await triggerWebhookRequest(
         webhook,
         (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
-        getWebhookPayload({
-          type: WebhookEvents.TestEvent,
-          payload: {
-            projectName: project.name,
-            projectId: webhook.projectId,
-            environment: webhook.environment.slug,
-            secretPath: webhook.secretPath,
-            type: webhook.type
-          }
-        })
+        payload
       );
     } catch (err) {
       webhookError = (err as Error).message;
