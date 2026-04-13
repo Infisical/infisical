@@ -1254,6 +1254,8 @@ export const gatewayV2ServiceFactory = ({
     }
 
     await gatewayEnrollmentTokenDAL.deleteById(tokenId);
+
+    return { name: token.name };
   };
 
   const enrollGateway = async ({ token, relayName }: { token: string; relayName?: string }) => {
@@ -1295,11 +1297,23 @@ export const gatewayV2ServiceFactory = ({
     const orgCAs = await $getOrgCAs(orgId);
 
     try {
-      const gateway = await gatewayV2DAL.create({
-        orgId,
-        name,
-        relayId: relay.id
-      });
+      let gateway;
+      if (tokenRecord.gatewayId) {
+        // Re-enrollment: reuse existing gateway record, update relay if changed
+        const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId);
+        if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
+        if (relay.id !== existing.relayId) {
+          await gatewayV2DAL.updateById(existing.id, { relayId: relay.id });
+        }
+        gateway = { ...existing, relayId: relay.id };
+      } else {
+        // Fresh enrollment: create new gateway record
+        gateway = await gatewayV2DAL.create({
+          orgId,
+          name,
+          relayId: relay.id
+        });
+      }
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
@@ -1367,7 +1381,8 @@ export const gatewayV2ServiceFactory = ({
         {
           gatewayId: gateway.id,
           orgId,
-          authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN
+          authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN,
+          tokenVersion: gateway.tokenVersion ?? 1
         },
         appCfg.AUTH_SECRET
       );
@@ -1375,6 +1390,8 @@ export const gatewayV2ServiceFactory = ({
       return {
         accessToken,
         gatewayId: gateway.id,
+        gatewayName: gateway.name,
+        orgId,
         relayHost: relayCredentials.relayHost,
         pki: {
           serverCertificate: gatewayServerCertificate.toString("pem"),
@@ -1395,6 +1412,96 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
+  const reEnrollGateway = async ({
+    orgPermission,
+    gatewayId,
+    tokenId,
+    ttlSeconds = 3600
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId?: string;
+    tokenId?: string;
+    ttlSeconds?: number;
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    if (gatewayId) {
+      // Re-enroll an existing (enrolled) gateway
+      const gateway = await gatewayV2DAL.findById(gatewayId);
+      if (!gateway || gateway.orgId !== orgPermission.orgId) {
+        throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+      }
+
+      // Bump tokenVersion to invalidate the current JWT and clear health status
+      await gatewayV2DAL.updateById(gatewayId, {
+        $incr: { tokenVersion: 1 },
+        heartbeat: null,
+        lastHealthCheckStatus: null
+      });
+
+      // Delete any existing unused enrollment tokens for this gateway
+      const existingTokens = await gatewayEnrollmentTokenDAL.find({ gatewayId });
+      const unusedTokenIds = existingTokens.filter((t) => !t.usedAt).map((t) => t.id);
+      if (unusedTokenIds.length > 0) {
+        await gatewayEnrollmentTokenDAL.delete({ $in: { id: unusedTokenIds } });
+      }
+
+      // Create a new enrollment token linked to the existing gateway
+      const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+      const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+      const record = await gatewayEnrollmentTokenDAL.create({
+        orgId: orgPermission.orgId,
+        name: gateway.name,
+        tokenHash,
+        ttl: ttlSeconds,
+        expiresAt,
+        gatewayId
+      });
+
+      return { ...record, token: plainToken };
+    }
+
+    if (tokenId) {
+      // Re-enroll a pending gateway (replace the enrollment token)
+      const oldToken = await gatewayEnrollmentTokenDAL.findOne({ id: tokenId, orgId: orgPermission.orgId });
+      if (!oldToken) {
+        throw new NotFoundError({ message: `Enrollment token ${tokenId} not found` });
+      }
+
+      await gatewayEnrollmentTokenDAL.deleteById(tokenId);
+
+      const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+      const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+      const record = await gatewayEnrollmentTokenDAL.create({
+        orgId: orgPermission.orgId,
+        name: oldToken.name,
+        tokenHash,
+        ttl: ttlSeconds,
+        expiresAt
+      });
+
+      return { ...record, token: plainToken };
+    }
+
+    throw new BadRequestError({ message: "Either gatewayId or tokenId must be provided" });
+  };
+
   return {
     listGateways,
     registerGateway,
@@ -1410,6 +1517,7 @@ export const gatewayV2ServiceFactory = ({
     createEnrollmentToken,
     listEnrollmentTokens,
     deleteEnrollmentToken,
-    enrollGateway
+    enrollGateway,
+    reEnrollGateway
   };
 };

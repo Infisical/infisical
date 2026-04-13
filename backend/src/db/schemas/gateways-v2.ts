@@ -17,6 +17,7 @@ export const GatewaysV2Schema = z.object({
   identityId: z.string().uuid().nullable().optional(),
   relayId: z.string().uuid().nullable().optional(),
   name: z.string(),
+  tokenVersion: z.number().default(1),
   heartbeat: z.date().nullable().optional(),
   encryptedPamSessionKey: zodBuffer.nullable().optional(),
   healthAlertedAt: z.date().nullable().optional(),

@@ -18,25 +18,34 @@ export const gatewaysQueryKeys = {
           apiRequest.get<TGatewayEnrollmentToken[]>("/api/v2/gateways/enrollment-tokens")
         ]);
 
-        // Build a set of names that already have a real gateway (enrolled + registered)
-        const enrolledNames = new Set(dataV2.map((g) => g.name));
-
-        // Pending tokens: unused, not expired, and not already enrolled as a gateway
         const now = new Date();
-        const pendingTokens = enrollmentTokens.filter(
-          (t) => !t.usedAt && new Date(t.expiresAt) > now && !enrolledNames.has(t.name)
+        const activeTokens = enrollmentTokens.filter(
+          (t) => !t.usedAt && new Date(t.expiresAt) > now
+        );
+
+        // Gateways that have a pending re-enrollment token
+        const reEnrollGatewayIds = new Set(
+          activeTokens.filter((t) => t.gatewayId).map((t) => t.gatewayId)
+        );
+
+        // Fresh pending tokens (no gateway record yet)
+        const enrolledNames = new Set(dataV2.map((g) => g.name));
+        const pendingTokens = activeTokens.filter(
+          (t) => !t.gatewayId && !enrolledNames.has(t.name)
         );
 
         return [
           ...data.gateways.map((g) => ({
             ...g,
             isV1: true as const,
-            isPending: false as const
+            isPending: false as const,
+            isTokenOnly: false as const
           })),
           ...dataV2.map((g) => ({
             ...g,
             isV1: false as const,
-            isPending: false as const
+            isPending: reEnrollGatewayIds.has(g.id) as boolean,
+            isTokenOnly: false as const
           })),
           ...pendingTokens.map((t) => ({
             id: t.id,
@@ -44,7 +53,8 @@ export const gatewaysQueryKeys = {
             createdAt: t.createdAt,
             expiresAt: t.expiresAt,
             isV1: false as const,
-            isPending: true as const
+            isPending: true as const,
+            isTokenOnly: true as const
           }))
         ];
       }

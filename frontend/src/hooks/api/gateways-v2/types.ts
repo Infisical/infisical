@@ -24,6 +24,7 @@ export type TGatewayEnrollmentToken = {
   ttl: number;
   expiresAt: string;
   usedAt: string | null;
+  gatewayId: string | null;
   createdAt: string;
 };
 

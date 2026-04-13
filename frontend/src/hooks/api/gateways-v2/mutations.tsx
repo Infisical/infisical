@@ -47,6 +47,22 @@ export const useCreateGatewayEnrollmentToken = () => {
   });
 };
 
+export const useReEnrollGateway = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gatewayId, tokenId }: { gatewayId?: string; tokenId?: string }) => {
+      const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
+        "/api/v2/gateways/re-enroll",
+        { gatewayId, tokenId }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+    }
+  });
+};
+
 export const useDeleteGatewayEnrollmentToken = () => {
   const queryClient = useQueryClient();
   return useMutation({

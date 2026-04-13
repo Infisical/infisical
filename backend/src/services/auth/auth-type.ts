@@ -55,6 +55,7 @@ export type TGatewayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
   gatewayId: string;
   orgId: string;
+  tokenVersion: number;
 };
 
 // This will be null unless the token-type is JWT

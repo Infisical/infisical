@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { GatewayEnrollmentTokensSchema, GatewaysV2Schema } from "@app/db/schemas";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -26,6 +27,7 @@ const SanitizedEnrollmentTokenSchema = GatewayEnrollmentTokensSchema.pick({
   ttl: true,
   expiresAt: true,
   usedAt: true,
+  gatewayId: true,
   createdAt: true
 });
 
@@ -300,7 +302,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.createEnrollmentToken({
+      const result = await server.services.gatewayV2.createEnrollmentToken({
         orgId: req.permission.orgId,
         actorId: req.permission.id,
         actorType: req.permission.type,
@@ -308,6 +310,20 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         name: req.body.name,
         ttlSeconds: req.body.ttlSeconds
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
+          metadata: {
+            tokenId: result.id,
+            name: req.body.name
+          }
+        }
+      });
+
+      return result;
     }
   });
 
@@ -336,11 +352,63 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.gatewayV2.deleteEnrollmentToken({
+      const { name } = await server.services.gatewayV2.deleteEnrollmentToken({
         orgPermission: req.permission,
         tokenId: req.params.tokenId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_ENROLLMENT_TOKEN_DELETE,
+          metadata: {
+            tokenId: req.params.tokenId,
+            name
+          }
+        }
+      });
+
       return { message: "Enrollment token deleted" };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/re-enroll",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "reEnrollGateway",
+      body: z.object({
+        gatewayId: z.string().uuid().optional(),
+        tokenId: z.string().uuid().optional()
+      }),
+      response: {
+        200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.gatewayV2.reEnrollGateway({
+        orgPermission: req.permission,
+        gatewayId: req.body.gatewayId,
+        tokenId: req.body.tokenId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_RE_ENROLL,
+          metadata: {
+            gatewayId: req.body.gatewayId,
+            tokenId: result.id,
+            name: result.name
+          }
+        }
+      });
+
+      return result;
     }
   });
 
@@ -374,10 +442,30 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      return server.services.gatewayV2.enrollGateway({
+      const result = await server.services.gatewayV2.enrollGateway({
         token: req.body.token,
         relayName: req.body.relayName
       });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: result.orgId,
+        actor: {
+          type: ActorType.GATEWAY,
+          metadata: { gatewayId: result.gatewayId }
+        },
+        event: {
+          type: EventType.GATEWAY_ENROLL,
+          metadata: {
+            gatewayId: result.gatewayId,
+            name: result.gatewayName
+          }
+        },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"] ?? "",
+        userAgentType: UserAgentType.CLI
+      });
+
+      return result;
     }
   });
 };

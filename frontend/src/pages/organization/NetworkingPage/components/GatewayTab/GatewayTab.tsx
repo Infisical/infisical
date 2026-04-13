@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  faArrowsRotate,
   faClock,
   faCopy,
   faDoorClosed,
@@ -57,6 +58,7 @@ import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
+import { ReEnrollGatewayModal } from "./components/ReEnrollGatewayModal";
 
 const GatewayHealthStatus = ({
   heartbeat,
@@ -144,7 +146,8 @@ export const GatewayTab = withPermission(
       "deployGateway",
       "deleteGateway",
       "editDetails",
-      "connectedResources"
+      "connectedResources",
+      "reEnrollGateway"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -172,8 +175,9 @@ export const GatewayTab = withPermission(
         id: string;
         isV1: boolean;
         isPending: boolean;
+        isTokenOnly: boolean;
       };
-      if (data.isPending) {
+      if (data.isTokenOnly) {
         await deleteEnrollmentToken.mutateAsync(data.id);
       } else if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
@@ -184,7 +188,7 @@ export const GatewayTab = withPermission(
       handlePopUpToggle("deleteGateway");
       createNotification({
         type: "success",
-        text: data.isPending
+        text: data.isTokenOnly
           ? "Successfully deleted enrollment token"
           : "Successfully deleted gateway"
       });
@@ -201,13 +205,21 @@ export const GatewayTab = withPermission(
             <h3 className="text-lg font-medium text-mineshaft-100">Gateways</h3>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/overview" />
             <div className="flex grow" />
-            <Button
-              variant="outline_bg"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("deployGateway")}
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.CreateGateways}
+              a={OrgPermissionSubjects.Gateway}
             >
-              Deploy Gateway
-            </Button>
+              {(isAllowed: boolean) => (
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("deployGateway")}
+                  isDisabled={!isAllowed}
+                >
+                  Deploy Gateway
+                </Button>
+              )}
+            </OrgPermissionCan>
           </div>
         </div>
         <p className="mb-4 text-sm text-mineshaft-400">
@@ -331,6 +343,24 @@ export const GatewayTab = withPermission(
                                 )}
                               </OrgPermissionCan>
                             )}
+                            {!el.isV1 &&
+                              (el.isPending ||
+                                ("identityId" in el && !el.identityId)) && (
+                              <OrgPermissionCan
+                                I={OrgGatewayPermissionActions.EditGateways}
+                                a={OrgPermissionSubjects.Gateway}
+                              >
+                                {(isAllowed: boolean) => (
+                                  <DropdownMenuItem
+                                    isDisabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faArrowsRotate} />}
+                                    onClick={() => handlePopUpOpen("reEnrollGateway", el)}
+                                  >
+                                    Re-enroll
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            )}
                             <OrgPermissionCan
                               I={OrgGatewayPermissionActions.DeleteGateways}
                               a={OrgPermissionSubjects.Gateway}
@@ -342,7 +372,7 @@ export const GatewayTab = withPermission(
                                   className="text-red"
                                   onClick={() => handlePopUpOpen("deleteGateway", el)}
                                 >
-                                  {el.isPending ? "Delete Token" : "Delete Gateway"}
+                                  {el.isTokenOnly ? "Delete Token" : "Delete Gateway"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -378,7 +408,7 @@ export const GatewayTab = withPermission(
             <DeleteActionModal
               isOpen={popUp.deleteGateway.isOpen}
               title={`Are you sure you want to delete ${
-                (popUp?.deleteGateway?.data as { isPending?: boolean })?.isPending
+                (popUp?.deleteGateway?.data as { isTokenOnly?: boolean })?.isTokenOnly
                   ? "enrollment token"
                   : "gateway"
               } ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
@@ -389,6 +419,18 @@ export const GatewayTab = withPermission(
             <GatewayDeployModal
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
+            />
+            <ReEnrollGatewayModal
+              isOpen={popUp.reEnrollGateway.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("reEnrollGateway", isOpen)}
+              gatewayData={
+                popUp.reEnrollGateway.data as {
+                  id: string;
+                  name: string;
+                  isPending: boolean;
+                  isTokenOnly: boolean;
+                } | null
+              }
             />
             {selectedGateway && (
               <GatewayConnectedResourcesDrawer
