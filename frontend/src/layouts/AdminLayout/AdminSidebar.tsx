@@ -16,7 +16,6 @@ import {
   User
 } from "lucide-react";
 
-import { SidebarVersionFooter } from "@app/components/navigation/SidebarVersionFooter";
 import {
   Sidebar,
   SidebarContent,
@@ -202,7 +201,6 @@ export const AdminSidebar = () => {
           )}
         </AnimatePresence>
       </SidebarContent>
-      <SidebarVersionFooter />
       <SidebarFooter className="border-t border-border p-2">
         <SidebarTrigger variant="ghost" className="w-full" />
       </SidebarFooter>

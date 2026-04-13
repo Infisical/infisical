@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { VersionBadge } from "./VersionBadge";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -582,6 +583,7 @@ export const Navbar = () => {
           {getPlan(subscription)}
         </Badge>
       )}
+      <VersionBadge />
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
