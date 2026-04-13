@@ -3,9 +3,11 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Alert, AlertDescription, Button, ContentLoader, EmptyState } from "@app/components/v2";
 import {
+  OrgPermissionEmailDomainActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription
 } from "@app/context";
@@ -42,6 +44,7 @@ export const OrgSsoTab = withPermission(
     ] as const);
 
     const { subscription } = useSubscription();
+    const { permission } = useOrgPermission();
 
     const { data: emailDomains, isPending } = useGetEmailDomains(
       subscription?.emailDomainVerification ? currentOrg?.id : ""
@@ -214,13 +217,19 @@ export const OrgSsoTab = withPermission(
             createIdentityProviderView
           ) : (
             <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-              {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
-                <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
-                  <AlertDescription>
-                    Email domain verification is required to use an identity provider.
-                  </AlertDescription>
-                </Alert>
-              )}
+              {subscription?.emailDomainVerification &&
+                permission.can(
+                  OrgPermissionEmailDomainActions.Read,
+                  OrgPermissionSubjects.EmailDomains
+                ) &&
+                !isPending &&
+                !emailDomains?.length && (
+                  <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
+                    <AlertDescription>
+                      Email domain verification is required to use an identity provider.
+                    </AlertDescription>
+                  </Alert>
+                )}
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
                 {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}

@@ -10,6 +10,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -1196,21 +1197,45 @@ export const superAdminServiceFactory = ({
     const org = await orgDAL.findOrgById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    const existing = await emailDomainDAL.findOne({ orgId, domain: domain.toLowerCase() });
-    if (existing) throw new BadRequestError({ message: `Domain '${domain}' already exists for this organization` });
+    const config = getConfig();
+    if (!config.isCloud) {
+      const plan = licenseService.onPremFeatures;
+      const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+      if (!canEmailDomainVerification) {
+        throw new BadRequestError({
+          message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
+        });
+      }
+    }
 
-    const emailDomain = await emailDomainDAL.create({
-      orgId,
-      domain: domain.toLowerCase(),
-      verificationMethod: "admin",
-      verificationCode: crypto.randomBytes(16).toString("hex"),
-      verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
-      status: "verified",
-      verifiedAt: new Date(),
-      codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    const emailDomain = await emailDomainDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.EmailDomainCreationLock()]);
+
+      // Check if any org (including this one) already has this domain verified
+      const platformExisting = await emailDomainDAL.findOne({ domain, status: EmailDomainStatus.Verified }, tx);
+      if (platformExisting) {
+        return { error: "This domain is already verified by an organization.", data: null } as const;
+      }
+
+      const data = await emailDomainDAL.create({
+        orgId,
+        domain: domain.toLowerCase(),
+        verificationMethod: "admin",
+        verificationCode: crypto.randomBytes(16).toString("hex"),
+        verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
+        status: "verified",
+        verifiedAt: new Date(),
+        codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+      });
+
+      return { error: undefined, data } as const;
     });
 
-    return emailDomain;
+    if (emailDomain.error) {
+      throw new BadRequestError({ message: emailDomain.error });
+    }
+
+    return emailDomain.data;
   };
 
   const deleteEmailDomain = async ({ emailDomainId }: TAdminDeleteEmailDomainDTO) => {

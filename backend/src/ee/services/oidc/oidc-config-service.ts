@@ -126,7 +126,7 @@ export const oidcConfigServiceFactory = ({
     });
     if (!oidcCfg) {
       throw new NotFoundError({
-        message: `OIDC configuration for organization with ID '${dto.organizationId}' not found`
+        message: "Failed to find OIDC SSO data"
       });
     }
 

@@ -30,7 +30,7 @@ export type FormData = z.infer<typeof schema>;
 
 interface CreateOrgModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
@@ -71,7 +71,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     localStorage.setItem("orgData.id", organization.id);
 
     reset();
-    onClose();
+    onClose?.();
   };
 
   return (
@@ -80,7 +80,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
       onOpenChange={(open) => {
         if (!open) {
           reset();
-          onClose();
+          onClose?.();
         }
       }}
     >
@@ -106,9 +106,11 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
             )}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
+            {onClose && (
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+            )}
             <Button
               type="submit"
               variant="project"
