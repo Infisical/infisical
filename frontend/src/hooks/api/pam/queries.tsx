@@ -54,7 +54,23 @@ export const pamKeys = {
   rotationRules: (resourceId: string) => [...pamKeys.resource(), "rotation-rules", resourceId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   getSessionLogs: (sessionId: string) => [...pamKeys.session(), "logs", sessionId],
-  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
+  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
+  aiInsightsModels: () => [...pamKeys.all, "ai-insights-models"] as const
+};
+
+export type TPamAiInsightsModel = { connectionApp: string; id: string; label: string };
+
+export const useGetPamAiInsightsModels = () => {
+  return useQuery({
+    queryKey: pamKeys.aiInsightsModels(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ models: TPamAiInsightsModel[] }>(
+        "/api/v1/pam/resources/ai-insights/models"
+      );
+
+      return data.models;
+    }
+  });
 };
 
 // Resources

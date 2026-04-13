@@ -18,6 +18,7 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TPamSessionAiSummaryServiceFactory } from "./pam-session-ai-summary-queue";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
 import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
@@ -32,6 +33,7 @@ type TPamSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  pamSessionAiSummaryService: Pick<TPamSessionAiSummaryServiceFactory, "queueAiSummary">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -43,13 +45,20 @@ export const pamSessionServiceFactory = ({
   userDAL,
   permissionService,
   kmsService,
-  gatewayV2Service
+  gatewayV2Service,
+  pamSessionAiSummaryService
 }: TPamSessionServiceFactoryDep) => {
   // Helper to check and update expired sessions when viewing session details (redundancy for scheduled job)
   // Only applies to non-gateway sessions (e.g., AWS IAM) - gateway sessions are managed by the gateway
   // This is intentionally only called in getById (session details view), not in list
   const checkAndExpireSessionIfNeeded = async <
-    T extends { id: string; status: string; expiresAt: Date | null; gatewayIdentityId?: string | null }
+    T extends {
+      id: string;
+      status: string;
+      expiresAt: Date | null;
+      gatewayIdentityId?: string | null;
+      projectId?: string | null;
+    }
   >(
     session: T
   ): Promise<T> => {
@@ -62,13 +71,24 @@ export const pamSessionServiceFactory = ({
     const isExpired = session.expiresAt && new Date(session.expiresAt) <= new Date();
 
     if (isActive && isExpired) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const updatedSession = await pamSessionDAL.updateById(session.id, {
-        status: PamSessionStatus.Ended,
-        endedAt: new Date()
-      });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      return { ...session, ...updatedSession };
+      const updated = await pamSessionDAL.expireSessionById(session.id);
+      if (updated > 0) {
+        const { projectId } = session;
+        if (projectId) {
+          void (async () => {
+            try {
+              await pamSessionAiSummaryService.queueAiSummary(session.id, projectId);
+            } catch (err) {
+              logger.error(
+                { sessionId: session.id, err },
+                `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
+              );
+            }
+          })();
+        }
+        return { ...session, status: PamSessionStatus.Ended, endedAt: new Date() } as T;
+      }
+      return session;
     }
 
     return session;
@@ -219,6 +239,15 @@ export const pamSessionServiceFactory = ({
       return { session, projectId: project.id, alreadyEnded: true };
     }
 
+    // Fire-and-forget AI summarization
+    void (async () => {
+      try {
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+      } catch (err) {
+        logger.error({ sessionId, err }, `Failed to queue AI summary for ended session [sessionId=${sessionId}]`);
+      }
+    })();
+
     return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
@@ -248,6 +277,15 @@ export const pamSessionServiceFactory = ({
     if (!updatedSession) {
       return { session, projectId: project.id, alreadyEnded: true };
     }
+
+    // Fire-and-forget AI summarization
+    void (async () => {
+      try {
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+      } catch (err) {
+        logger.error({ sessionId, err }, `Failed to queue AI summary for terminated session [sessionId=${sessionId}]`);
+      }
+    })();
 
     // Fire-and-forget ALPN cancellation for gateway sessions
     if (session.gatewayId) {

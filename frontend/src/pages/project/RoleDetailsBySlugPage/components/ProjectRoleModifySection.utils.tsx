@@ -3142,9 +3142,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Delete PAM accounts"
       },
       {
-        label: "View Credentials",
+        label: "Read Credentials",
         value: ProjectPermissionPamAccountActions.ReadCredentials,
-        description: "View full account credentials and connection details"
+        description: "View sensitive account credentials like passwords and private keys"
       }
     ]
   },

@@ -106,6 +106,7 @@
                     "group": "Connections",
                     "pages": [
                       "integrations/app-connections/1password",
+                      "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
@@ -896,7 +897,9 @@
                   "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/ai-session-insights",
                   "documentation/platform/pam/product-reference/credential-rotation",
+                  "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
                     "pages": [

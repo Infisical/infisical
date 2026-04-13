@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
@@ -67,7 +68,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         }
       };
     } else if (req.auth.actor === ActorType.IDENTITY) {
-      const identityAuthInfo = requestContext.get("identityAuthInfo");
+      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
 
       payload.actor = {
         type: ActorType.IDENTITY,

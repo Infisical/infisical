@@ -782,6 +782,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         status: PamSessionStatus.Active, // AWS IAM sessions are immediately active
         accountId: account.id,
+        resourceId: resource.id,
         userId: actor.id,
         expiresAt,
         startedAt: new Date()
@@ -816,6 +817,7 @@ export const pamAccountServiceFactory = ({
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
       accountId: account.id,
+      resourceId: resource.id,
       userId: actor.id,
       expiresAt: new Date(Date.now() + duration)
     });
