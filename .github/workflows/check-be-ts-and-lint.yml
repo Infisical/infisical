@@ -10,25 +10,61 @@ on:
       - "backend/.eslintrc.js"
 
 jobs:
-  check-be-pr:
-    name: Check TS and Lint
+  type-check:
+    name: Type Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: ☁️ Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 🔧 Setup Node 22
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+      - name: 📦 Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: backend-node-modules-${{ hashFiles('backend/package-lock.json') }}
+      - name: 📦 Cache tsbuildinfo
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules/.tmp/tsconfig.tsbuildinfo
+          key: backend-tsbuildinfo-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            backend-tsbuildinfo-${{ github.ref }}-
+            backend-tsbuildinfo-
       - name: Install dependencies
-        run: npm install
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
         working-directory: backend
       - name: Run type check
         run: npm run type:check
+        working-directory: backend
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v4
+      - name: 🔧 Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 📦 Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: backend-node-modules-${{ hashFiles('backend/package-lock.json') }}
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
         working-directory: backend
       - name: Run lint check
         run: npm run lint

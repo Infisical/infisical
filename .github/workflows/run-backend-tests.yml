@@ -25,20 +25,25 @@ jobs:
           docker system prune -af
 
       - name: ☁️ Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: KengoTODA/actions-setup-docker-compose@v1
         if: ${{ env.ACT }}
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
       - name: 🔧 Setup Node 22
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+      - name: 📦 Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: backend-node-modules-${{ hashFiles('backend/package-lock.json') }}
       - name: Install dependencies
-        run: npm install
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
