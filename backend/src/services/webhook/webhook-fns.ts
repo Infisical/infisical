@@ -101,6 +101,40 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             }
           ]
         };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: "A secret value has been added or modified."
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Modified By", value: changedBy || "" },
+                      {
+                        title: "Modified By Actor Type",
+                        value: changedByActorType?.toString() || "Unknown Actor Type"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
       case WebhookType.GENERAL:
       default:
         return {
@@ -164,6 +198,39 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             }
           ]
         };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              contentUrl: null,
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: "A secret rotation has failed."
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Rotation Name", value: rotationName || "" },
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Error Message", value: errorMessage || "" },
+                      { title: "Triggered Manually", value: triggeredManually ? "Yes" : "No" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
       case WebhookType.GENERAL:
       default:
         return {
@@ -217,6 +284,38 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                 short: false
               }
             ]
+          }
+        ]
+      };
+    case WebhookType.MICROSOFT_TEAMS:
+      return {
+        type: "message",
+        attachments: [
+          {
+            contentType: "application/vnd.microsoft.card.adaptive",
+            contentUrl: null,
+            content: {
+              type: "AdaptiveCard",
+              version: "1.2",
+              body: [
+                {
+                  type: "TextBlock",
+                  size: "Medium",
+                  weight: "Bolder",
+                  text: "You have a secret reminder"
+                },
+                {
+                  type: "FactSet",
+                  facts: [
+                    { title: "Project", value: projectName || "" },
+                    { title: "Environment", value: environment },
+                    { title: "Secret Path", value: secretPath || "" },
+                    { title: "Secret Name", value: secretName },
+                    { title: "Reminder Note", value: reminderNote || "" }
+                  ]
+                }
+              ]
+            }
           }
         ]
       };
@@ -281,6 +380,7 @@ export const fnTriggerWebhook = async ({
         type: event.type,
         payload: { ...event.payload, type: hook.type, projectName }
       } as TWebhookPayloads;
+
       return triggerWebhookRequest(hook, secretManagerDecryptor, getWebhookPayload(formattedEvent));
     })
   );

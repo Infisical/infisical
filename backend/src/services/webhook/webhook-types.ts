@@ -30,7 +30,8 @@ export type TListWebhookDTO = {
 
 export enum WebhookType {
   GENERAL = "general",
-  SLACK = "slack"
+  SLACK = "slack",
+  MICROSOFT_TEAMS = "microsoft-teams"
 }
 
 export enum WebhookEvents {
