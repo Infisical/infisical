@@ -310,7 +310,6 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                     { title: "Project", value: projectName || "" },
                     { title: "Environment", value: environment },
                     { title: "Secret Path", value: secretPath || "" },
-                    { title: "Secret Name", value: secretName },
                     { title: "Reminder Note", value: reminderNote || "" }
                   ]
                 }
