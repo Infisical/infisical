@@ -897,6 +897,7 @@
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/credential-rotation",
+                  "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
                     "pages": [
