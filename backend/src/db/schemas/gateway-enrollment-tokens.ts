@@ -9,14 +9,14 @@ import { TImmutableDBKeys } from "./models";
 
 export const GatewayEnrollmentTokensSchema = z.object({
   id: z.string().uuid(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
   orgId: z.string().uuid(),
   name: z.string(),
   tokenHash: z.string(),
-  ttl: z.number().int(),
+  ttl: z.number().default(3600),
   expiresAt: z.date(),
   usedAt: z.date().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   gatewayId: z.string().uuid().nullable().optional()
 });
 

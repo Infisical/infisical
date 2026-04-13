@@ -36,7 +36,7 @@ export const GatewayDeployModal = ({ isOpen, onOpenChange }: Props) => {
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl"
-        title="Deploy Gateway"
+        title="Create Gateway"
         subTitle="Select a deployment method to use for the gateway."
         bodyClassName="overflow-visible"
       >

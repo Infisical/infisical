@@ -228,7 +228,7 @@ export const GatewayTab = withPermission(
                   onClick={() => handlePopUpOpen("deployGateway")}
                   isDisabled={!isAllowed}
                 >
-                  Deploy Gateway
+                  Create Gateway
                 </Button>
               )}
             </OrgPermissionCan>
