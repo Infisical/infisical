@@ -22,6 +22,7 @@ import {
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -71,11 +72,11 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         name: error.name
       });
 
-      const orgId = requestContext.get("orgId");
-      const orgName = requestContext.get("orgName");
-      const userAuthInfo = requestContext.get("userAuthInfo");
-      const identityAuthInfo = requestContext.get("identityAuthInfo");
-      const projectDetails = requestContext.get("projectDetails");
+      const orgId = requestContext.get(RequestContextKey.OrgId);
+      const orgName = requestContext.get(RequestContextKey.OrgName);
+      const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+      const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
 
       const attributes: Record<string, string | number> = {
         "http.request.method": method,

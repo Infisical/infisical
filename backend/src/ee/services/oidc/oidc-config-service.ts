@@ -15,6 +15,7 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
@@ -774,8 +775,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -789,8 +790,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 

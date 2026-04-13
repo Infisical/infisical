@@ -4,6 +4,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -90,7 +91,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
-      const assumedPrivilegeDetails = requestContext.get("assumedPrivilegeDetails");
+      const assumedPrivilegeDetails = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
       if (req.auth.authMode === AuthMode.JWT && assumedPrivilegeDetails) {
         const appCfg = getConfig();
         void res.setCookie("infisical-project-assume-privileges", "", {
