@@ -99,6 +99,7 @@ import { pamResourceFavoriteDALFactory } from "@app/ee/services/pam-resource/pam
 import { pamResourceRotationRulesDALFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-dal";
 import { pamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
+import { pamSessionAiSummaryServiceFactory } from "@app/ee/services/pam-session/pam-session-ai-summary-queue";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionEventBatchDALFactory } from "@app/ee/services/pam-session/pam-session-event-batch-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
@@ -2820,7 +2821,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2Service,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    appConnectionDAL
   });
 
   const pamResourceRotationRulesService = pamResourceRotationRulesServiceFactory({
@@ -2836,9 +2838,19 @@ export const registerRoutes = async (
     totpService
   });
 
+  const pamSessionAiSummaryService = pamSessionAiSummaryServiceFactory({
+    queueService,
+    pamSessionDAL,
+    pamSessionEventBatchDAL,
+    pamResourceDAL,
+    appConnectionDAL,
+    kmsService
+  });
+
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
-    pamSessionDAL
+    pamSessionDAL,
+    pamSessionAiSummaryService
   });
 
   const pamAccountService = pamAccountServiceFactory({
@@ -2875,7 +2887,8 @@ export const registerRoutes = async (
     userDAL,
     permissionService,
     kmsService,
-    gatewayV2Service
+    gatewayV2Service,
+    pamSessionAiSummaryService
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
@@ -3015,6 +3028,7 @@ export const registerRoutes = async (
   pamDiscoveryQueue.startPamDiscoveryQueue();
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
+  pamSessionAiSummaryService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await secretSyncQueue.startDailySecretSyncRetryJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();

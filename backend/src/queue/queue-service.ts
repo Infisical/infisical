@@ -97,6 +97,7 @@ export enum QueueName {
   CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
+  PamSessionAiSummary = "pam-session-ai-summary",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
@@ -162,6 +163,7 @@ export enum QueueJobs {
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
+  PamSessionAiSummary = "pam-session-ai-summary-job",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -484,6 +486,10 @@ export type TQueueJobTypes = {
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
+  };
+  [QueueName.PamSessionAiSummary]: {
+    name: QueueJobs.PamSessionAiSummary;
+    payload: { sessionId: string; projectId: string };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
