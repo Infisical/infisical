@@ -87,25 +87,6 @@ export const accessApprovalRequestServiceFactory = ({
   projectSlackConfigDAL,
   notificationService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
-  const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
-    if (!Array.isArray(permissions) || permissions.length === 0) {
-      return null;
-    }
-
-    const firstPermission = permissions[0] as unknown[];
-    if (!Array.isArray(firstPermission) || firstPermission.length < 3) {
-      return null;
-    }
-
-    const metadata = firstPermission[2] as Record<string, unknown>;
-    if (typeof metadata === "object" && metadata !== null && "environment" in metadata) {
-      const env = metadata.environment;
-      return typeof env === "string" ? env : null;
-    }
-
-    return null;
-  };
-
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -520,10 +501,11 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     requests = requests.map((request) => {
-      const permissionEnvironment = $getEnvironmentFromPermissions(request.permissions);
-
-      if (permissionEnvironment) {
-        request.environmentName = permissionEnvironment;
+      try {
+        const { envSlug: requestEnvSlug } = verifyRequestedPermissions({ permissions: request.permissions });
+        request.environmentName = requestEnvSlug;
+      } catch {
+        // Leave environmentName as-is if permissions are malformed (legacy data)
       }
       return request;
     });
@@ -552,11 +534,8 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const permissionEnvironment = $getEnvironmentFromPermissions(permissions);
-    if (
-      !permissionEnvironment ||
-      (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED)
-    ) {
+    const { envSlug: permissionEnvironment } = verifyRequestedPermissions({ permissions });
+    if (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED) {
       throw new BadRequestError({
         message: `The original policy ${policy.name} is not attached to environment '${permissionEnvironment}'.`
       });
