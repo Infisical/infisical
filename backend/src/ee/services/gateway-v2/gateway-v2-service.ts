@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -14,7 +15,7 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType, AuthTokenType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -30,6 +31,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
+import { TGatewayEnrollmentTokenDALFactory } from "./gateway-enrollment-token-dal";
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
@@ -49,6 +51,7 @@ type TGatewayV2ServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
+  gatewayEnrollmentTokenDAL: TGatewayEnrollmentTokenDALFactory;
   relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
@@ -70,6 +73,7 @@ export const gatewayV2ServiceFactory = ({
   kmsService,
   relayService,
   gatewayV2DAL,
+  gatewayEnrollmentTokenDAL,
   relayDAL,
   permissionService,
   orgDAL,
@@ -648,30 +652,147 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  const $issueGatewayCerts = async ({
+    orgId,
+    orgCAs,
+    relayName,
+    gateway
+  }: {
+    orgId: string;
+    orgCAs: Awaited<ReturnType<typeof $getOrgCAs>>;
+    relayName: string;
+    gateway: { id: string; name: string };
+  }) => {
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+    const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
+    const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
+    const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
+
+    const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
+      key: orgCAs.gatewayServerCaPrivateKey,
+      format: "der",
+      type: "pkcs8"
+    });
+    const gatewayServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      gatewayServerCaSkObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
+
+    const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const gatewayServerCertIssuedAt = new Date();
+    const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
+    const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
+
+    const gatewayServerCertExtensions: x509.Extension[] = [
+      new x509.BasicConstraintsExtension(false),
+      await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
+      await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
+      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+      new x509.KeyUsagesExtension(
+        // eslint-disable-next-line no-bitwise
+        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
+        true
+      ),
+      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "localhost" },
+        { type: "ip", value: "127.0.0.1" },
+        { type: "ip", value: "::1" }
+      ])
+    ];
+
+    const gatewayServerSerialNumber = createSerialNumber();
+    const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
+      serialNumber: gatewayServerSerialNumber,
+      subject: `O=${orgId},CN=Gateway`,
+      issuer: gatewayServerCaCert.subject,
+      notBefore: gatewayServerCertIssuedAt,
+      notAfter: gatewayServerCertExpireAt,
+      signingKey: gatewayServerCaPrivateKey,
+      publicKey: gatewayServerKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: gatewayServerCertExtensions
+    });
+
+    const relayCredentials = await relayService.getCredentialsForGateway({
+      relayName,
+      orgId,
+      gatewayId: gateway.id,
+      gatewayName: gateway.name
+    });
+
+    return {
+      gatewayId: gateway.id,
+      relayHost: relayCredentials.relayHost,
+      pki: {
+        serverCertificate: gatewayServerCertificate.toString("pem"),
+        serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+        clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
+      },
+      ssh: {
+        clientCertificate: relayCredentials.clientSshCert,
+        clientPrivateKey: relayCredentials.clientSshPrivateKey,
+        serverCAPublicKey: relayCredentials.serverCAPublicKey
+      }
+    };
+  };
+
   const registerGateway = async ({
     orgId,
     actorId,
+    actorType,
     actorAuthMethod,
     relayName,
     name
   }: {
     orgId: string;
     actorId: string;
+    actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
-    relayName: string;
-    name: string;
+    relayName?: string;
+    name?: string;
   }) => {
-    await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
     const orgCAs = await $getOrgCAs(orgId);
 
-    let relay: TRelays = await relayDAL.findOne({ orgId, name: relayName });
-    if (!relay) {
-      relay = await relayDAL.findOne({ name: relayName, orgId: null });
+    // Enrollment-flow gateways authenticate with GATEWAY_ACCESS_TOKEN — the gateway row
+    // already exists, so we just look it up and issue fresh certs using its stored relay.
+    if (actorType === ActorType.GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(actorId);
+      if (!gateway || gateway.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway ${actorId} not found` });
+      }
+
+      let resolvedRelay: TRelays | undefined;
+      if (relayName) {
+        resolvedRelay = await relayDAL.findOne({ orgId, name: relayName });
+        if (!resolvedRelay) resolvedRelay = await relayDAL.findOne({ name: relayName, orgId: null });
+        if (!resolvedRelay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+      } else {
+        if (!gateway.relayId) throw new NotFoundError({ message: "No relay associated with this gateway" });
+        resolvedRelay = await relayDAL.findById(gateway.relayId);
+        if (!resolvedRelay) throw new NotFoundError({ message: "No relay associated with this gateway" });
+      }
+
+      return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay.name, gateway });
     }
 
-    if (!relay) {
-      throw new NotFoundError({ message: `Relay ${relayName} not found` });
+    // Identity-based flow: upsert the gateway row then issue certs.
+    await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
+
+    if (!name) {
+      throw new BadRequestError({ message: "Gateway name is required" });
     }
+
+    if (!relayName) {
+      throw new BadRequestError({ message: "Relay name is required" });
+    }
+
+    let relay: TRelays = await relayDAL.findOne({ orgId, name: relayName });
+    if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
+    if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
 
     try {
       const [gateway] = await gatewayV2DAL.upsert(
@@ -686,81 +807,7 @@ export const gatewayV2ServiceFactory = ({
         ["identityId"]
       );
 
-      const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-      const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
-      const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
-      const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
-
-      const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
-        key: orgCAs.gatewayServerCaPrivateKey,
-        format: "der",
-        type: "pkcs8"
-      });
-      const gatewayServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
-        "pkcs8",
-        gatewayServerCaSkObj.export({ format: "der", type: "pkcs8" }),
-        alg,
-        true,
-        ["sign"]
-      );
-
-      const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const gatewayServerCertIssuedAt = new Date();
-      const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
-      const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
-
-      const gatewayServerCertExtensions: x509.Extension[] = [
-        new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-        await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
-        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-        new x509.KeyUsagesExtension(
-          // eslint-disable-next-line no-bitwise
-          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
-          true
-        ),
-        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-        new x509.SubjectAlternativeNameExtension([
-          { type: "dns", value: "localhost" },
-          { type: "ip", value: "127.0.0.1" },
-          { type: "ip", value: "::1" }
-        ])
-      ];
-
-      const gatewayServerSerialNumber = createSerialNumber();
-      const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-        serialNumber: gatewayServerSerialNumber,
-        subject: `O=${orgId},CN=Gateway`,
-        issuer: gatewayServerCaCert.subject,
-        notBefore: gatewayServerCertIssuedAt,
-        notAfter: gatewayServerCertExpireAt,
-        signingKey: gatewayServerCaPrivateKey,
-        publicKey: gatewayServerKeys.publicKey,
-        signingAlgorithm: alg,
-        extensions: gatewayServerCertExtensions
-      });
-
-      const relayCredentials = await relayService.getCredentialsForGateway({
-        relayName,
-        orgId,
-        gatewayId: gateway.id,
-        gatewayName: gateway.name
-      });
-
-      return {
-        gatewayId: gateway.id,
-        relayHost: relayCredentials.relayHost,
-        pki: {
-          serverCertificate: gatewayServerCertificate.toString("pem"),
-          serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-          clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
-        },
-        ssh: {
-          clientCertificate: relayCredentials.clientSshCert,
-          clientPrivateKey: relayCredentials.clientSshPrivateKey,
-          serverCAPublicKey: relayCredentials.serverCAPublicKey
-        }
-      };
+      return $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });
@@ -888,6 +935,15 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    if (orgPermission.type === ActorType.GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(orgPermission.id);
+      if (!gateway || gateway.orgId !== orgPermission.orgId) {
+        throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
+      }
+      await $checkGatewayHealth(gateway.id);
+      return;
+    }
+
     await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
 
     const gateway = await gatewayV2DAL.findOne({
@@ -939,25 +995,26 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const getPamSessionKey = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    // Gateway actors are already authenticated via GATEWAY_ACCESS_TOKEN JWT — skip org permission check.
+    if (orgPermission.type !== ActorType.GATEWAY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: orgPermission.type,
+        actorId: orgPermission.id,
+        orgId: orgPermission.orgId,
+        actorAuthMethod: orgPermission.authMethod,
+        actorOrgId: orgPermission.orgId,
+        scope: OrganizationActionScope.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
     return gatewayV2DAL.transaction(async (tx) => {
       const gateway = await gatewayV2DAL.findOne(
-        {
-          identityId: orgPermission.id
-        },
+        orgPermission.type === ActorType.GATEWAY ? { id: orgPermission.id } : { identityId: orgPermission.id },
         tx
       );
 
@@ -1098,6 +1155,246 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  const getGatewayById = async ({ gatewayId }: { gatewayId: string }) => {
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+    return gateway;
+  };
+
+  const createEnrollmentToken = async ({
+    orgId,
+    actorId,
+    actorType,
+    actorAuthMethod,
+    name,
+    ttlSeconds = 3600
+  }: {
+    orgId: string;
+    actorId: string;
+    actorType: ActorType;
+    actorAuthMethod: ActorAuthMethod;
+    name: string;
+    ttlSeconds?: number;
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actorType,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId: orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+    const record = await gatewayEnrollmentTokenDAL.create({
+      orgId,
+      name,
+      tokenHash,
+      ttl: ttlSeconds,
+      expiresAt
+    });
+
+    return { ...record, token: plainToken };
+  };
+
+  const listEnrollmentTokens = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const now = new Date();
+    const tokens = await gatewayEnrollmentTokenDAL.find({ orgId: orgPermission.orgId });
+    return tokens.filter((t) => t.expiresAt > now && !t.usedAt).map(({ tokenHash: _, ...rest }) => rest);
+  };
+
+  const deleteEnrollmentToken = async ({
+    orgPermission,
+    tokenId
+  }: {
+    orgPermission: OrgServiceActor;
+    tokenId: string;
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.DeleteGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    const token = await gatewayEnrollmentTokenDAL.findOne({ id: tokenId, orgId: orgPermission.orgId });
+    if (!token) {
+      throw new NotFoundError({ message: `Enrollment token ${tokenId} not found` });
+    }
+
+    await gatewayEnrollmentTokenDAL.deleteById(tokenId);
+  };
+
+  const enrollGateway = async ({ token, relayName }: { token: string; relayName?: string }) => {
+    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
+
+    const tokenRecord = await gatewayEnrollmentTokenDAL.findOne({ tokenHash });
+    if (!tokenRecord) {
+      throw new BadRequestError({ message: "Invalid enrollment token" });
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
+      throw new BadRequestError({ message: "Enrollment token has expired" });
+    }
+
+    const { orgId, name } = tokenRecord;
+
+    // Resolve the relay before consuming the token so a missing relay doesn't burn it.
+    let relay: TRelays | undefined;
+    if (relayName) {
+      relay = await relayDAL.findOne({ orgId, name: relayName });
+      if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
+      if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+    } else {
+      // Auto-select: prefer an org-specific relay, fall back to a global one
+      const orgRelays = await relayDAL.find({ orgId });
+      relay = orgRelays[0] ?? (await relayDAL.find({ orgId: null }))[0];
+      if (!relay) throw new NotFoundError({ message: "No relay available for auto-selection" });
+    }
+
+    // Single-use check inside a transaction — re-read to guard against races
+    await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
+      const locked = await gatewayEnrollmentTokenDAL.findOne({ id: tokenRecord.id }, tx);
+      if (!locked || locked.usedAt) {
+        throw new BadRequestError({ message: "Enrollment token has already been used" });
+      }
+      await gatewayEnrollmentTokenDAL.updateById(tokenRecord.id, { usedAt: new Date() }, tx);
+    });
+
+    const orgCAs = await $getOrgCAs(orgId);
+
+    try {
+      const gateway = await gatewayV2DAL.create({
+        orgId,
+        name,
+        relayId: relay.id
+      });
+
+      const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+      const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
+      const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
+      const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
+
+      const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
+        key: orgCAs.gatewayServerCaPrivateKey,
+        format: "der",
+        type: "pkcs8"
+      });
+      const gatewayServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+        "pkcs8",
+        gatewayServerCaSkObj.export({ format: "der", type: "pkcs8" }),
+        alg,
+        true,
+        ["sign"]
+      );
+
+      const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const gatewayServerCertIssuedAt = new Date();
+      const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
+      const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
+
+      const gatewayServerCertExtensions: x509.Extension[] = [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
+        await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]),
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
+        new x509.SubjectAlternativeNameExtension([
+          { type: "dns", value: "localhost" },
+          { type: "ip", value: "127.0.0.1" },
+          { type: "ip", value: "::1" }
+        ])
+      ];
+
+      const gatewayServerSerialNumber = createSerialNumber();
+      const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
+        serialNumber: gatewayServerSerialNumber,
+        subject: `O=${orgId},CN=Gateway`,
+        issuer: gatewayServerCaCert.subject,
+        notBefore: gatewayServerCertIssuedAt,
+        notAfter: gatewayServerCertExpireAt,
+        signingKey: gatewayServerCaPrivateKey,
+        publicKey: gatewayServerKeys.publicKey,
+        signingAlgorithm: alg,
+        extensions: gatewayServerCertExtensions
+      });
+
+      const relayCredentials = await relayService.getCredentialsForGateway({
+        relayName: relay.name,
+        orgId,
+        gatewayId: gateway.id,
+        gatewayName: gateway.name
+      });
+
+      const appCfg = getConfig();
+      const accessToken = crypto.jwt().sign(
+        {
+          gatewayId: gateway.id,
+          orgId,
+          authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN
+        },
+        appCfg.AUTH_SECRET
+      );
+
+      return {
+        accessToken,
+        gatewayId: gateway.id,
+        relayHost: relayCredentials.relayHost,
+        pki: {
+          serverCertificate: gatewayServerCertificate.toString("pem"),
+          serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+          clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
+        },
+        ssh: {
+          clientCertificate: relayCredentials.clientSshCert,
+          clientPrivateKey: relayCredentials.clientSshPrivateKey,
+          serverCAPublicKey: relayCredentials.serverCAPublicKey
+        }
+      };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });
+      }
+      throw err;
+    }
+  };
+
   return {
     listGateways,
     registerGateway,
@@ -1108,6 +1405,11 @@ export const gatewayV2ServiceFactory = ({
     triggerHeartbeat,
     getPamSessionKey,
     healthcheckNotify,
-    getConnectedResources
+    getConnectedResources,
+    getGatewayById,
+    createEnrollmentToken,
+    listEnrollmentTokens,
+    deleteEnrollmentToken,
+    enrollGateway
   };
 };

@@ -8,7 +8,14 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
+import {
+  ActorType,
+  AuthMethod,
+  AuthMode,
+  AuthModeJwtTokenPayload,
+  AuthTokenType,
+  TGatewayAccessTokenJwtPayload
+} from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -68,6 +75,16 @@ export type TAuthMode =
       rootOrgId: string;
       parentOrgId: string;
       authMethod: null;
+    }
+  | {
+      authMode: AuthMode.GATEWAY_ACCESS_TOKEN;
+      actor: ActorType.GATEWAY;
+      gatewayId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TGatewayAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -120,6 +137,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         token: decodedToken as TScimTokenJwtPayload,
         actor: ActorType.SCIM_CLIENT
       } as const;
+    case AuthTokenType.GATEWAY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
+        token: decodedToken as TGatewayAccessTokenJwtPayload,
+        actor: ActorType.GATEWAY
+      } as const;
     default:
       return { authMode: null, token: null } as const;
   }
@@ -160,6 +183,11 @@ export const injectIdentity = fp(
 
       // Authentication is handled on a route-level
       if (req.url === "/api/v1/relays/register-instance-relay") {
+        return;
+      }
+
+      // Authentication is handled on a route-level (enrollment token in body)
+      if (req.url === "/api/v2/gateways/enroll") {
         return;
       }
 
@@ -304,6 +332,23 @@ export const injectIdentity = fp(
             // scim cannot be done for sub organization
             rootOrgId: orgId,
             parentOrgId: orgId
+          };
+          break;
+        }
+        case AuthMode.GATEWAY_ACCESS_TOKEN: {
+          // Validate gateway exists — deletion is the revocation mechanism
+          const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: token.gatewayId });
+          requestContext.set("orgId", token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
+            actor,
+            gatewayId: token.gatewayId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
           };
           break;
         }

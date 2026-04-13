@@ -122,8 +122,8 @@ export const pamSessionServiceFactory = ({
   };
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {
-    // To be hit by gateways only
-    if (actor.type !== ActorType.IDENTITY) {
+    // To be hit by gateways only (identity-based or enrollment-flow)
+    if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
     }
 
@@ -137,19 +137,21 @@ export const pamSessionServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: project.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    if (actor.type === ActorType.IDENTITY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: project.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
     if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Identity does not have access to update logs for this session" });
@@ -178,16 +180,16 @@ export const pamSessionServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: project.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
-
     if (actor.type === ActorType.IDENTITY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: project.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.Any
+      });
+
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionGatewayActions.CreateGateways,
         OrgPermissionSubjects.Gateway
@@ -196,12 +198,17 @@ export const pamSessionServiceFactory = ({
       if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
         throw new ForbiddenRequestError({ message: "Identity does not have access to end this session" });
       }
+    } else if (actor.type === ActorType.GATEWAY) {
+      // Enrollment-flow gateways authenticate directly; JWT proves org membership.
+      if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to end this session" });
+      }
     } else if (actor.type === ActorType.USER) {
       if (session.userId !== actor.id) {
         throw new ForbiddenRequestError({ message: "You are not authorized to end this session" });
       }
     } else {
-      throw new ForbiddenRequestError({ message: "Only identities and users can perform this action" });
+      throw new ForbiddenRequestError({ message: "Only gateways and users can perform this action" });
     }
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
@@ -337,7 +344,8 @@ export const pamSessionServiceFactory = ({
   };
 
   const uploadEventBatch = async ({ sessionId, startOffset, events }: TUploadEventBatchDTO, actor: OrgServiceActor) => {
-    if (actor.type !== ActorType.IDENTITY) {
+    // To be hit by gateways only (identity-based or enrollment-flow)
+    if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
     }
 
@@ -347,19 +355,21 @@ export const pamSessionServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: project.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    if (actor.type === ActorType.IDENTITY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: project.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
     if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });

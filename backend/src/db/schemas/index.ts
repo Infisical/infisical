@@ -53,6 +53,7 @@ export * from "./folder-tree-checkpoint-resources";
 export * from "./folder-tree-checkpoints";
 export * from "./gateways";
 export * from "./gateways-v2";
+export * from "./gateway-enrollment-tokens";
 export * from "./git-app-install-sessions";
 export * from "./git-app-org";
 export * from "./github-org-sync-configs";

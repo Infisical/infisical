@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
-import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
@@ -8,61 +8,25 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Checkbox,
   FilterableSelect,
   FormLabel,
   IconButton,
   Input,
-  ModalClose,
-  Tooltip
+  ModalClose
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  useOrganization,
-  useOrgPermission
-} from "@app/context";
-import {
-  useAddIdentityTokenAuth,
-  useCreateTokenIdentityTokenAuth,
-  useGetIdentityMembershipOrgs,
-  useGetIdentityTokenAuth,
-  useGetRelays
-} from "@app/hooks/api";
-import { safeJWTSchema, slugSchema } from "@app/lib/schemas";
+import { useCreateGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2";
+import { useGetRelays } from "@app/hooks/api/relays/queries";
+import { slugSchema } from "@app/lib/schemas";
 
 import { RelayOption } from "./RelayOption";
 
-const baseFormSchema = z.object({
+const formSchema = z.object({
   name: slugSchema({ field: "name" }),
   relay: z
-    .object(
-      {
-        id: z.string(),
-        name: z.string()
-      },
-      { required_error: "Relay is required" }
-    )
+    .object({ id: z.string(), name: z.string() }, { required_error: "Relay is required" })
     .nullable()
     .refine((val) => val !== null, { message: "Relay is required" })
-});
-
-const formSchemaWithIdentity = baseFormSchema.extend({
-  identity: z
-    .object(
-      {
-        id: z.string(),
-        name: z.string()
-      },
-      { required_error: "Machine identity is required" }
-    )
-    .nullable()
-    .refine((val) => val !== null, { message: "Machine identity is required" })
-});
-
-const formSchemaWithToken = baseFormSchema.extend({
-  identityToken: safeJWTSchema
 });
 
 export const GatewayCliDeploymentMethod = () => {
@@ -70,126 +34,62 @@ export const GatewayCliDeploymentMethod = () => {
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  const navigate = useNavigate({
-    from: ROUTE_PATHS.Organization.NetworkingPage.path
-  });
+  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.path });
 
-  const [autogenerateToken, setAutogenerateToken] = useState(true);
   const [step, setStep] = useState<"form" | "command">("form");
   const [name, setName] = useState("");
-  const [relay, setRelay] = useState<null | {
-    id: string;
-    name: string;
-  }>({ id: "_auto", name: "Auto Select Relay" });
-  const [identity, setIdentity] = useState<null | {
-    id: string;
-    name: string;
-  }>(null);
-  const [identityToken, setIdentityToken] = useState("");
+  const [relay, setRelay] = useState<null | { id: string; name: string }>({
+    id: "_auto",
+    name: "Auto Select Relay"
+  });
+  const [enrollmentToken, setEnrollmentToken] = useState("");
+  const [resolvedRelayName, setResolvedRelayName] = useState("");
   const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
 
   const errors = useMemo(() => {
     const errorMap: Record<string, string | undefined> = {};
     formErrors.forEach((issue) => {
-      if (issue.path.length > 0) {
-        errorMap[String(issue.path[0])] = issue.message;
-      }
+      if (issue.path.length > 0) errorMap[String(issue.path[0])] = issue.message;
     });
     return errorMap;
   }, [formErrors]);
 
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
+  const { mutateAsync: createEnrollmentToken, isPending: isCreatingToken } =
+    useCreateGatewayEnrollmentToken();
 
-  const { currentOrg } = useOrganization();
-  const organizationId = currentOrg?.id || "";
-
-  const { permission } = useOrgPermission();
-  const canCreateToken = permission.can(
-    OrgPermissionIdentityActions.CreateToken,
-    OrgPermissionSubjects.Identity
-  );
-
-  const { data: identityMembershipOrgsData, isPending: isIdentitiesLoading } =
-    useGetIdentityMembershipOrgs({
-      organizationId,
-      limit: 20000
-    });
-  const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships || [];
-
-  const { mutateAsync: createToken, isPending: isCreatingToken } =
-    useCreateTokenIdentityTokenAuth();
-  const { mutateAsync: addIdentityTokenAuth, isPending: isAddingTokenAuth } =
-    useAddIdentityTokenAuth();
-  const { refetch } = useGetIdentityTokenAuth(identity?.id ?? "");
-
-  const handleGenerateCommand = async () => {
+  const handleContinue = async () => {
     setFormErrors([]);
+    const validation = formSchema.safeParse({ name, relay });
+    if (!validation.success) {
+      setFormErrors(validation.error.issues);
+      return;
+    }
 
-    if (canCreateToken && autogenerateToken) {
-      const validation = formSchemaWithIdentity.safeParse({
-        name,
-        relay,
-        identity
-      });
-      if (!validation.success) {
-        setFormErrors(validation.error.issues);
-        return;
-      }
+    try {
+      const result = await createEnrollmentToken({ name });
+      setEnrollmentToken(result.token);
 
-      const validatedIdentity = validation.data.identity;
-
-      try {
-        const { data: identityTokenAuth } = await refetch();
-        if (!identityTokenAuth) {
-          await addIdentityTokenAuth({
-            identityId: validatedIdentity.id,
-            organizationId,
-            accessTokenTTL: 2592000,
-            accessTokenMaxTTL: 2592000,
-            accessTokenNumUsesLimit: 0,
-            accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
-          });
-          createNotification({
-            text: "Token authentication has been automatically enabled for the selected identity. By default, it is configured to allow all IP addresses with a default token TTL of 30 days. You can manage these settings in Access Control.",
-            type: "warning"
-          });
-        }
-
-        const token = await createToken({
-          identityId: validatedIdentity.id,
-          name: `gateway token for ${name} (autogenerated)`
-        });
-        setIdentityToken(token.accessToken);
-        createNotification({
-          text: "Automatically generated a token for the selected identity.",
-          type: "info"
-        });
-        setStep("command");
-      } catch {
-        setIdentityToken("");
-      }
-    } else {
-      const validation = formSchemaWithToken.safeParse({
-        name,
-        relay,
-        identityToken
-      });
-      if (!validation.success) {
-        setFormErrors(validation.error.issues);
-        return;
-      }
+      const relayName = relay?.id === "_auto" ? "" : relay?.name ?? "";
+      setResolvedRelayName(relayName);
       setStep("command");
+    } catch {
+      createNotification({ type: "error", text: "Failed to create enrollment token" });
     }
   };
 
   const command = useMemo(() => {
-    const relayPart = relay?.id !== "_auto" ? ` --target-relay-name=${relay?.name || ""}` : "";
-    return `sudo infisical gateway start --name=${name}${relayPart} --domain=${siteURL} --token=${identityToken}`;
-  }, [name, relay, identityToken, siteURL]);
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
+    return `infisical gateway start --enroll-method=static --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
+  }, [enrollmentToken, resolvedRelayName, siteURL]);
 
   if (step === "command") {
     return (
       <>
+        <p className="mb-3 text-sm text-mineshaft-300">
+          Run the following command on the machine where you want to deploy the gateway. The token
+          expires in 1 hour and can only be used once.
+        </p>
         <FormLabel label="CLI Command" />
         <div className="flex gap-2">
           <Input value={command} isDisabled />
@@ -199,10 +99,7 @@ export const GatewayCliDeploymentMethod = () => {
             colorSchema="secondary"
             onClick={() => {
               navigator.clipboard.writeText(command);
-              createNotification({
-                text: "Command copied to clipboard",
-                type: "info"
-              });
+              createNotification({ text: "Command copied to clipboard", type: "info" });
             }}
             className="w-10"
           >
@@ -250,19 +147,12 @@ export const GatewayCliDeploymentMethod = () => {
             });
             return;
           }
-
           setRelay(newValue as SingleValue<{ id: string; name: string }>);
         }}
         isLoading={isRelaysLoading}
         options={[
-          {
-            id: "_auto",
-            name: "Auto Select Relay"
-          },
-          {
-            id: "_create",
-            name: "Deploy New Relay"
-          },
+          { id: "_auto", name: "Auto Select Relay" },
+          { id: "_create", name: "Deploy New Relay" },
           ...(relays || [])
         ]}
         placeholder="Select relay..."
@@ -272,87 +162,13 @@ export const GatewayCliDeploymentMethod = () => {
       />
       {errors.relay && <p className="mt-1 text-sm text-red">{errors.relay}</p>}
 
-      {canCreateToken && autogenerateToken ? (
-        <>
-          <FormLabel
-            label="Machine Identity"
-            tooltipText="The machine identity that your gateway will use for authentication."
-            className="mt-4"
-          />
-          <FilterableSelect
-            value={identity}
-            onChange={(e) =>
-              setIdentity(
-                e as SingleValue<{
-                  id: string;
-                  name: string;
-                }>
-              )
-            }
-            isLoading={isIdentitiesLoading}
-            placeholder="Select machine identity..."
-            options={identityMembershipOrgs.map((membership) => membership.identity)}
-            getOptionValue={(option) => option.id}
-            getOptionLabel={(option) => option.name}
-          />
-          {errors.identity && <p className="mt-1 text-sm text-red">{errors.identity}</p>}
-        </>
-      ) : (
-        <>
-          <FormLabel
-            label="Machine Identity Token"
-            tooltipText="The machine identity token that your gateway will use for authentication."
-            className="mt-4"
-          />
-          <Input
-            value={identityToken}
-            onChange={(e) => setIdentityToken(e.target.value)}
-            placeholder="Enter machine identity token..."
-            isError={Boolean(errors.identityToken)}
-          />
-          {errors.identityToken && <p className="mt-1 text-sm text-red">{errors.identityToken}</p>}
-        </>
-      )}
-
-      {canCreateToken && (
-        <div className="mt-2">
-          <Checkbox
-            isChecked={autogenerateToken}
-            onCheckedChange={(e) => {
-              setAutogenerateToken(Boolean(e));
-            }}
-            id="autogenerate-token"
-            className="mr-2"
-          >
-            <div className="flex items-center">
-              <span>Automatically enable token auth and generate a token for machine identity</span>
-              <Tooltip
-                className="max-w-md"
-                content={
-                  <>
-                    Token authentication will be automatically enabled for the selected machine
-                    identity if it isn&apos;t already configured. By default, it will be configured
-                    to allow all IP addresses with a token TTL of 30 days. You can manage these
-                    settings in Access Control.
-                    <br />
-                    <br />A token will automatically be generated to be used with the CLI command.
-                  </>
-                }
-              >
-                <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="mt-0.5 ml-1" />
-              </Tooltip>
-            </div>
-          </Checkbox>
-        </div>
-      )}
-
       <div className="mt-6 flex items-center">
         <Button
           className="mr-4"
           size="sm"
           colorSchema="secondary"
-          onClick={handleGenerateCommand}
-          isLoading={isCreatingToken || isAddingTokenAuth}
+          onClick={handleContinue}
+          isLoading={isCreatingToken}
         >
           Continue
         </Button>

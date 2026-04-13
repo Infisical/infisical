@@ -1,11 +1,14 @@
 import z from "zod";
 
-import { GatewaysV2Schema } from "@app/db/schemas";
+import { GatewayEnrollmentTokensSchema, GatewaysV2Schema } from "@app/db/schemas";
 import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+
+// Stricter rate limit for the unauthenticated enroll endpoint
+const enrollRateLimit = { windowMs: 60 * 1000, max: 10 };
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
@@ -17,6 +20,15 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   lastHealthCheckStatus: true
 });
 
+const SanitizedEnrollmentTokenSchema = GatewayEnrollmentTokensSchema.pick({
+  id: true,
+  name: true,
+  ttl: true,
+  expiresAt: true,
+  usedAt: true,
+  createdAt: true
+});
+
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -24,8 +36,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "registerGateway",
       body: z.object({
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
-        name: slugSchema({ min: 1, max: 32, field: "name" })
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional(),
+        name: slugSchema({ min: 1, max: 32, field: "name" }).optional()
       }),
       response: {
         200: z.object({
@@ -47,17 +59,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const gateway = await server.services.gatewayV2.registerGateway({
+      return server.services.gatewayV2.registerGateway({
         orgId: req.permission.orgId,
         relayName: req.body.relayName,
         actorId: req.permission.id,
+        actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         name: req.body.name
       });
-
-      return gateway;
     }
   });
 
@@ -75,7 +86,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.gatewayV2.heartbeat({
         orgPermission: req.permission
@@ -92,10 +103,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "listGateways",
       response: {
         200: SanitizedGatewayV2Schema.extend({
-          identity: z.object({
-            name: z.string(),
-            id: z.string()
-          }),
+          identity: z.object({ name: z.string(), id: z.string() }).nullable(),
           connectedResourcesCount: z.number()
         }).array()
       }
@@ -178,7 +186,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         200: zodBuffer
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pamSessionKey = await server.services.gatewayV2.getPamSessionKey({
         orgPermission: req.permission
@@ -272,6 +280,104 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       });
 
       return resources;
+    }
+  });
+
+  // Enrollment token management
+  server.route({
+    method: "POST",
+    url: "/enrollment-tokens",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "createGatewayEnrollmentToken",
+      body: z.object({
+        name: slugSchema({ min: 1, max: 64, field: "name" }),
+        ttlSeconds: z.number().int().min(60).max(86400).default(3600).optional()
+      }),
+      response: {
+        200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.gatewayV2.createEnrollmentToken({
+        orgId: req.permission.orgId,
+        actorId: req.permission.id,
+        actorType: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        name: req.body.name,
+        ttlSeconds: req.body.ttlSeconds
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/enrollment-tokens",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listGatewayEnrollmentTokens",
+      response: { 200: SanitizedEnrollmentTokenSchema.array() }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.gatewayV2.listEnrollmentTokens({ orgPermission: req.permission });
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/enrollment-tokens/:tokenId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "deleteGatewayEnrollmentToken",
+      params: z.object({ tokenId: z.string().uuid() }),
+      response: { 200: z.object({ message: z.string() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.gatewayV2.deleteEnrollmentToken({
+        orgPermission: req.permission,
+        tokenId: req.params.tokenId
+      });
+      return { message: "Enrollment token deleted" };
+    }
+  });
+
+  // Enrollment endpoint — no standard auth; enrollment token in body is the credential
+  server.route({
+    method: "POST",
+    url: "/enroll",
+    config: { rateLimit: enrollRateLimit },
+    schema: {
+      operationId: "enrollGateway",
+      body: z.object({
+        token: z.string().min(1),
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional()
+      }),
+      response: {
+        200: z.object({
+          accessToken: z.string(),
+          gatewayId: z.string(),
+          relayHost: z.string(),
+          pki: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCertificateChain: z.string()
+          }),
+          ssh: z.object({
+            clientCertificate: z.string(),
+            clientPrivateKey: z.string(),
+            serverCAPublicKey: z.string()
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      return server.services.gatewayV2.enrollGateway({
+        token: req.body.token,
+        relayName: req.body.relayName
+      });
     }
   });
 };

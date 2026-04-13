@@ -945,8 +945,8 @@ export const pamAccountServiceFactory = ({
   };
 
   const getSessionCredentials = async (sessionId: string, actor: OrgServiceActor) => {
-    // To be hit by gateways only
-    if (actor.type !== ActorType.IDENTITY) {
+    // To be hit by gateways only (identity-based or enrollment-flow)
+    if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
     }
 
@@ -956,19 +956,21 @@ export const pamAccountServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: project.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    if (actor.type === ActorType.IDENTITY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: project.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
     if (!session.accountId) throw new NotFoundError({ message: "Session is missing accountId column" });
 
@@ -983,10 +985,16 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    if (resource.gatewayId && resource.gatewayIdentityId !== actor.id) {
-      throw new ForbiddenRequestError({
-        message: "Identity does not have access to fetch the PAM session credentials"
-      });
+    if (resource.gatewayId) {
+      const authorized =
+        actor.type === ActorType.GATEWAY
+          ? resource.gatewayId === actor.id
+          : resource.gatewayIdentityId === actor.id;
+      if (!authorized) {
+        throw new ForbiddenRequestError({
+          message: "Gateway does not have access to fetch the PAM session credentials"
+        });
+      }
     }
 
     const decryptedAccount = await decryptAccount(account, session.projectId, kmsService);

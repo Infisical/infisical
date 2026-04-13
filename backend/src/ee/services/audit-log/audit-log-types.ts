@@ -88,7 +88,8 @@ export type TCreateAuditLogDTO = {
     | AcmeProfileActor
     | AcmeAccountActor
     | EstAccountActor
-    | ScepAccountActor;
+    | ScepAccountActor
+    | GatewayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -810,6 +811,10 @@ interface ScepAccountActorMetadata {
 
 interface UnknownUserActorMetadata {}
 
+interface GatewayActorMetadata {
+  gatewayId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -863,6 +868,12 @@ export interface ScepAccountActor {
   type: ActorType.SCEP_ACCOUNT;
   metadata: ScepAccountActorMetadata;
 }
+
+export interface GatewayActor {
+  type: ActorType.GATEWAY;
+  metadata: GatewayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -873,7 +884,8 @@ export type Actor =
   | AcmeProfileActor
   | AcmeAccountActor
   | EstAccountActor
-  | ScepAccountActor;
+  | ScepAccountActor
+  | GatewayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

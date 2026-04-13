@@ -22,7 +22,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.GatewayV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(regularFilter, TableName.GatewayV2))
-        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
+        .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
         .select(selectAllTableCols(TableName.GatewayV2))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
@@ -54,7 +54,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
 
       return docs.map((el) => ({
         ...GatewaysV2Schema.parse(el),
-        identity: { id: el.identityId, name: el.identityName }
+        identity: el.identityId ? { id: el.identityId, name: el.identityName as string } : null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: `${TableName.GatewayV2}: Find` });

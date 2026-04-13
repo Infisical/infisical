@@ -56,6 +56,7 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
+import { gatewayEnrollmentTokenDALFactory } from "@app/ee/services/gateway-v2/gateway-enrollment-token-dal";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
@@ -1271,6 +1272,7 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
+  const gatewayEnrollmentTokenDAL = gatewayEnrollmentTokenDALFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
@@ -1429,6 +1431,7 @@ export const registerRoutes = async (
     relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
+    gatewayEnrollmentTokenDAL,
     relayDAL,
     permissionService,
     orgDAL,

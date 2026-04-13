@@ -164,6 +164,9 @@ import {
   TGatewaysV2,
   TGatewaysV2Insert,
   TGatewaysV2Update,
+  TGatewayEnrollmentTokens,
+  TGatewayEnrollmentTokensInsert,
+  TGatewayEnrollmentTokensUpdate,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -1578,6 +1581,11 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TGatewayEnrollmentTokens,
+      TGatewayEnrollmentTokensInsert,
+      TGatewayEnrollmentTokensUpdate
+    >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,

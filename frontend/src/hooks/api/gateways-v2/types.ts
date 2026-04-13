@@ -5,17 +5,30 @@ export enum GatewayHealthCheckStatus {
 
 export type TGatewayV2 = {
   id: string;
-  identityId: string;
+  identityId: string | null;
   name: string;
   createdAt: string;
   updatedAt: string;
-  heartbeat: string;
+  heartbeat: string | null;
   lastHealthCheckStatus: GatewayHealthCheckStatus | null;
   connectedResourcesCount: number;
   identity: {
     name: string;
     id: string;
-  };
+  } | null;
+};
+
+export type TGatewayEnrollmentToken = {
+  id: string;
+  name: string;
+  ttl: number;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+};
+
+export type TCreateGatewayEnrollmentTokenResponse = TGatewayEnrollmentToken & {
+  token: string;
 };
 
 export type TGatewayConnectedAppConnection = {

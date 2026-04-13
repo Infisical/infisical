@@ -84,6 +84,13 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.SCIM_CLIENT,
         metadata: {}
       };
+    } else if (req.auth.actor === ActorType.GATEWAY) {
+      payload.actor = {
+        type: ActorType.GATEWAY,
+        metadata: {
+          gatewayId: req.permission.id
+        }
+      };
     } else {
       throw new BadRequestError({ message: "Invalid actor type provided" });
     }

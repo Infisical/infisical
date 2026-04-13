@@ -3,6 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { gatewaysQueryKeys } from "../gateways/queries";
+import { TCreateGatewayEnrollmentTokenResponse } from "./types";
+
+export const gatewayEnrollmentTokenQueryKey = () => ["gateway-enrollment-tokens"];
 
 export const useDeleteGatewayV2ById = () => {
   const queryClient = useQueryClient();
@@ -23,6 +26,34 @@ export const useTriggerGatewayV2Heartbeat = () => {
       return apiRequest.post(`/api/v2/gateways/${id}/heartbeat`);
     },
     onSettled: () => {
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+    }
+  });
+};
+
+export const useCreateGatewayEnrollmentToken = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, ttlSeconds }: { name: string; ttlSeconds?: number }) => {
+      const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
+        "/api/v2/gateways/enrollment-tokens",
+        { name, ttlSeconds }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+    }
+  });
+};
+
+export const useDeleteGatewayEnrollmentToken = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (tokenId: string) => {
+      await apiRequest.delete(`/api/v2/gateways/enrollment-tokens/${tokenId}`);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries(gatewaysQueryKeys.list());
     }
   });

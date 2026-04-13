@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  faClock,
   faCopy,
   faDoorClosed,
   faEdit,
@@ -46,7 +47,11 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import {
+  useDeleteGatewayEnrollmentToken,
+  useDeleteGatewayV2ById,
+  useTriggerGatewayV2Heartbeat
+} from "@app/hooks/api/gateways-v2";
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
@@ -55,11 +60,32 @@ import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
 const GatewayHealthStatus = ({
   heartbeat,
-  lastHealthCheckStatus
+  lastHealthCheckStatus,
+  isPending
 }: {
-  heartbeat?: string;
+  heartbeat?: string | null;
   lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
+  isPending?: boolean;
 }) => {
+  if (isPending) {
+    return (
+      <Tooltip content="Waiting for gateway to enroll using the CLI command">
+        <span className="inline-flex cursor-default items-center gap-1.5 text-yellow-500">
+          <FontAwesomeIcon icon={faClock} className="size-3" />
+          Pending
+        </span>
+      </Tooltip>
+    );
+  }
+
+  if (!heartbeat && !lastHealthCheckStatus) {
+    return (
+      <Tooltip content="Gateway has not connected yet">
+        <span className="cursor-default text-yellow-500">Unregistered</span>
+      </Tooltip>
+    );
+  }
+
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
 
   const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
@@ -123,6 +149,7 @@ export const GatewayTab = withPermission(
 
     const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
+    const deleteEnrollmentToken = useDeleteGatewayEnrollmentToken();
     const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
 
     const handleTriggerHealthCheck = async (id: string) => {
@@ -141,8 +168,14 @@ export const GatewayTab = withPermission(
     };
 
     const handleDeleteGateway = async () => {
-      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
-      if (data.isV1) {
+      const data = popUp.deleteGateway.data as {
+        id: string;
+        isV1: boolean;
+        isPending: boolean;
+      };
+      if (data.isPending) {
+        await deleteEnrollmentToken.mutateAsync(data.id);
+      } else if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
       } else {
         await deleteGatewayV2ById.mutateAsync(data.id);
@@ -151,7 +184,9 @@ export const GatewayTab = withPermission(
       handlePopUpToggle("deleteGateway");
       createNotification({
         type: "success",
-        text: "Successfully deleted gateway"
+        text: data.isPending
+          ? "Successfully deleted enrollment token"
+          : "Successfully deleted gateway"
       });
     };
 
@@ -216,29 +251,40 @@ export const GatewayTab = withPermission(
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
-                        <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                          Gateway v{el.isV1 ? "1" : "2"}
-                        </span>
+                        {el.isPending ? (
+                          <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
+                            Pending
+                          </span>
+                        ) : (
+                          <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                            Gateway v{el.isV1 ? "1" : "2"}
+                          </span>
+                        )}
                       </div>
                     </Td>
                     <Td>
-                      <GatewayConnectedCell
-                        isV1={el.isV1}
-                        connectedResourcesCount={
-                          "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
-                        }
-                        onClick={() => {
-                          setSelectedGateway({ id: el.id, name: el.name });
-                          handlePopUpOpen("connectedResources");
-                        }}
-                      />
+                      {el.isPending ? (
+                        <span className="text-mineshaft-400">—</span>
+                      ) : (
+                        <GatewayConnectedCell
+                          isV1={el.isV1}
+                          connectedResourcesCount={
+                            "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                          }
+                          onClick={() => {
+                            setSelectedGateway({ id: el.id, name: el.name });
+                            handlePopUpOpen("connectedResources");
+                          }}
+                        />
+                      )}
                     </Td>
                     <Td>
                       <GatewayHealthStatus
-                        heartbeat={el.heartbeat}
+                        heartbeat={"heartbeat" in el ? el.heartbeat : null}
                         lastHealthCheckStatus={
                           "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
                         }
+                        isPending={el.isPending}
                       />
                     </Td>
                     <Td className="w-5">
@@ -261,7 +307,7 @@ export const GatewayTab = withPermission(
                             >
                               Copy ID
                             </DropdownMenuItem>
-                            {!el.isV1 && (
+                            {!el.isV1 && !el.isPending && (
                               <DropdownMenuItem
                                 icon={<FontAwesomeIcon icon={faHeartPulse} />}
                                 onClick={() => handleTriggerHealthCheck(el.id)}
@@ -296,7 +342,7 @@ export const GatewayTab = withPermission(
                                   className="text-red"
                                   onClick={() => handlePopUpOpen("deleteGateway", el)}
                                 >
-                                  Delete Gateway
+                                  {el.isPending ? "Delete Token" : "Delete Gateway"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -331,9 +377,11 @@ export const GatewayTab = withPermission(
             )}
             <DeleteActionModal
               isOpen={popUp.deleteGateway.isOpen}
-              title={`Are you sure you want to delete gateway ${
-                (popUp?.deleteGateway?.data as { name: string })?.name || ""
-              }?`}
+              title={`Are you sure you want to delete ${
+                (popUp?.deleteGateway?.data as { isPending?: boolean })?.isPending
+                  ? "enrollment token"
+                  : "gateway"
+              } ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
               onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteGateway()}
