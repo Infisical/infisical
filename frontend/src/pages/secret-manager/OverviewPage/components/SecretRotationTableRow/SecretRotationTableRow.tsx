@@ -57,6 +57,15 @@ type Props = {
   onDelete: (secretRotation: TSecretRotationV2) => void;
 };
 
+const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
+  (secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
+    secretRotation.parameters.rotationMethod ===
+      UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
+  (secretRotation.type === SecretRotation.WindowsLocalAccount &&
+    secretRotation.parameters.rotationMethod === WindowsLocalAccountRotationMethod.LoginAsTarget) ||
+  (secretRotation.type === SecretRotation.HpIloLocalAccount &&
+    secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
+
 export const SecretRotationTableRow = ({
   secretRotationName,
   environments = [],
@@ -86,15 +95,7 @@ export const SecretRotationTableRow = ({
   const renderActionButtons = (secretRotation: TSecretRotationV2) => {
     const { environment, folder } = secretRotation;
 
-    const showReconcileButton =
-      (secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
-        secretRotation.parameters.rotationMethod ===
-          UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
-      (secretRotation.type === SecretRotation.WindowsLocalAccount &&
-        secretRotation.parameters.rotationMethod ===
-          WindowsLocalAccountRotationMethod.LoginAsTarget) ||
-      (secretRotation.type === SecretRotation.HpIloLocalAccount &&
-        secretRotation.parameters.rotationMethod === HpIloRotationMethod.LoginAsTarget);
+    const showReconcileButton = shouldShowReconciliationButton(secretRotation);
 
     return (
       <div
@@ -296,7 +297,14 @@ export const SecretRotationTableRow = ({
               )}
               {isSingleEnvView && singleEnvRotation && (
                 <>
-                  <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-32">
+                  <div
+                    className={twMerge(
+                      "ml-auto flex items-center transition-[margin] duration-300",
+                      shouldShowReconciliationButton(singleEnvRotation)
+                        ? "group-hover:mr-40"
+                        : "group-hover:mr-32"
+                    )}
+                  >
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
                   </div>
                   <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
@@ -363,8 +371,10 @@ export const SecretRotationTableRow = ({
 
                       const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
 
+                      const showReconcileButton = shouldShowReconciliationButton(secretRotation);
+
                       return (
-                        <UnstableTableRow className="group relative hover:z-10">
+                        <UnstableTableRow key={slug} className="group relative hover:z-10">
                           <UnstableTableCell colSpan={2}>
                             <div className="relative flex w-full flex-wrap items-center">
                               <span>{envName}</span>
@@ -386,7 +396,12 @@ export const SecretRotationTableRow = ({
                                   <TooltipContent>{description}</TooltipContent>
                                 </Tooltip>
                               )}
-                              <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-32">
+                              <div
+                                className={twMerge(
+                                  "ml-auto flex items-center transition-[margin] duration-300",
+                                  showReconcileButton ? "group-hover:mr-40" : "group-hover:mr-32"
+                                )}
+                              >
                                 <SecretRotationV2StatusBadge secretRotation={secretRotation} />
                               </div>
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">

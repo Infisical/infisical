@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ChevronDownIcon,
@@ -494,11 +494,8 @@ export const SecretTableRow = ({
                     const showOverrideRow = hasOverride || isCreatingOverride;
 
                     return (
-                      <>
-                        <UnstableTableRow
-                          className="group hover:z-10"
-                          key={`secret-expanded-${slug}-${secretKey}`}
-                        >
+                      <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
+                        <UnstableTableRow className="group hover:z-10">
                           <UnstableTableCell
                             className={hasOverride ? "border-b-border/50" : undefined}
                           >
@@ -593,7 +590,7 @@ export const SecretTableRow = ({
                             </UnstableTableCell>
                           </UnstableTableRow>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </UnstableTableBody>

@@ -902,7 +902,13 @@ export const SecretEditTableRow = ({
             </TooltipContent>
           </Tooltip>
         )}
-        <div className={twMerge("grow pr-2 pl-1", isFieldFocused && !isBatchMode && "pr-16")}>
+        <div
+          className={twMerge(
+            "grow pr-2 pl-1",
+            isFieldFocused && !isBatchMode && "pr-16",
+            isFieldFocused && isBatchMode && "pr-6"
+          )}
+        >
           <Controller
             control={control}
             name="value"
@@ -1714,7 +1720,6 @@ export const SecretEditTableRow = ({
         >
           <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>
         </UnstableTableCell>
-        <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </>
     );
   }

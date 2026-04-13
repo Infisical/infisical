@@ -359,10 +359,44 @@ export const SecretImportTableRow = ({
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
           "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+          resyncSecretReplication.isPending && "pointer-events-auto gap-1 opacity-100"
         )}
       >
-        {renderReplicationStatus(singleEnvImport, singleEnvSlug)}
+        {singleEnvImport.isReplication && (
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={subject(ProjectPermissionSub.SecretImports, {
+              environment: singleEnvSlug,
+              secretPath: secretPath || "/"
+            })}
+            renderTooltip
+            allowedLabel="Resync replicated secrets"
+          >
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      resyncSecretReplication.isPending && "w-7 animate-spin"
+                    )}
+                    isDisabled={!isAllowed}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResyncSecretReplication(singleEnvImport, singleEnvSlug);
+                    }}
+                  >
+                    <RefreshCwIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>Resync</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+        )}
         <ProjectPermissionCan
           I={ProjectPermissionActions.Delete}
           a={subject(ProjectPermissionSub.SecretImports, {
@@ -630,6 +664,50 @@ export const SecretImportTableRow = ({
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
               <span className="truncate">{importPath}</span>
             </div>
+            {isSingleEnvView &&
+              singleEnvImport?.isReplication &&
+              singleEnvImport.lastReplicated && (
+                <div className="ml-auto flex items-center transition-[margin] duration-300 group-hover:mr-16">
+                  <Tooltip disableHoverableContent>
+                    <TooltipTrigger>
+                      <div
+                        className={twMerge(
+                          "flex justify-center",
+                          !singleEnvImport.isReplicationSuccess && "text-danger"
+                        )}
+                      >
+                        {singleEnvImport.isReplicationSuccess ? (
+                          <InfoIcon className="size-3.5 text-muted" />
+                        ) : (
+                          <TriangleAlertIcon className="size-3.5" />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <InfoIcon className="size-3" />
+                          <span className="text-sm">Last Replication</span>
+                        </div>
+                        <span className="pl-4 text-xs text-foreground/50">
+                          {new Date(singleEnvImport.lastReplicated).toLocaleString()}
+                        </span>
+                        {!singleEnvImport.isReplicationSuccess && (
+                          <>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <TriangleAlertIcon className="size-3" />
+                              <span className="text-sm">Fail reason</span>
+                            </div>
+                            <span className="pl-4 text-xs text-muted">
+                              {singleEnvImport.replicationStatus}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             {isSingleEnvView && (
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
                 {renderSingleEnvActions()}

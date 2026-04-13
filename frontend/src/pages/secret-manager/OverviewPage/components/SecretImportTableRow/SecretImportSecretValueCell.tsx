@@ -58,8 +58,9 @@ export const SecretImportSecretValueCell = ({
       if (secretValue?.value) {
         await navigator.clipboard.writeText(secretValue.value);
       } else {
-        const { data } = await refetchSecretValue();
-        await navigator.clipboard.writeText(data?.value ?? "");
+        const { data, error } = await refetchSecretValue();
+        if (error || !data) throw error ?? new Error("No data");
+        await navigator.clipboard.writeText(data.value ?? "");
       }
       setIsCopied(true);
       createNotification({
