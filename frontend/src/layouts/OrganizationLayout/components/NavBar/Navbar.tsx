@@ -88,10 +88,10 @@ import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
-import { VersionBadge } from "./VersionBadge";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { VersionBadge } from "./VersionBadge";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
