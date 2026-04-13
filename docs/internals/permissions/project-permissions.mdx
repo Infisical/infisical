@@ -442,11 +442,12 @@ Supports conditions and permission inversion.
 
 | Action             | Description                                              | Condition keys |
 | ------------------ | -------------------------------------------------------- | ----- |
-| `read`   | View PAM accounts the identity is allowed to use | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `access` | Request or use access to PAM accounts            | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `create` | Create new PAM accounts                          | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `edit`   | Modify existing PAM accounts                     | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `delete` | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `read`             | View PAM accounts the identity is allowed to use | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `access`           | Request or use access to PAM accounts            | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `create`           | Create new PAM accounts                          | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `edit`             | Modify existing PAM accounts                     | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `delete`           | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `read-credentials` | View sensitive credentials like passwords        | `resourceName`, `accountName`, `resourceType`, `metadata` |
 
 ## Condition Operators
 
