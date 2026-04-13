@@ -180,8 +180,7 @@ export enum CertKeyAlgorithm {
   RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
-  ECDSA_P384 = "EC_secp384r1",
-  ECDSA_P521 = "EC_secp521r1"
+  ECDSA_P384 = "EC_secp384r1"
 }
 
 export enum CertSignatureAlgorithm {
