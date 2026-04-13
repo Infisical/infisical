@@ -213,10 +213,13 @@ export const WebhooksTab = withProjectPermission(
                           <Tooltip
                             content={
                               hasEnabledEvents ? (
-                                <div className="space-y-0.5 text-xs">
-                                  {enabledEvents.map((event) => (
-                                    <div key={event}>{WEBHOOK_EVENT_METADATA[event].label}</div>
-                                  ))}
+                                <div className="text-xs">
+                                  <p className="mb-1 font-medium">Enabled Events:</p>
+                                  <ul className="list-disc space-y-0.5 pl-4">
+                                    {enabledEvents.map((event) => (
+                                      <li key={event}>{WEBHOOK_EVENT_METADATA[event].label}</li>
+                                    ))}
+                                  </ul>
                                 </div>
                               ) : (
                                 "This webhook is not triggered by any events."

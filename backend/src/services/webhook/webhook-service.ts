@@ -134,13 +134,7 @@ export const webhookServiceFactory = ({
     const hasEventToggleUpdate =
       isSecretModifiedEventEnabled !== undefined || isSecretRotationFailedEventEnabled !== undefined;
 
-    const updateData: {
-      isDisabled?: boolean;
-      blockedEvents?: string[];
-    } = {
-      ...(isDisabled !== undefined ? { isDisabled } : {})
-    };
-
+    let blockedEvents: string[] | undefined;
     if (hasEventToggleUpdate) {
       const currentBlocked = new Set<string>(webhook.blockedEvents ?? []);
 
@@ -160,8 +154,13 @@ export const webhookServiceFactory = ({
         }
       }
 
-      updateData.blockedEvents = Array.from(currentBlocked);
+      blockedEvents = Array.from(currentBlocked);
     }
+
+    const updateData = {
+      ...(isDisabled !== undefined ? { isDisabled } : {}),
+      ...(blockedEvents !== undefined ? { blockedEvents } : {})
+    };
 
     const updatedWebhook = await webhookDAL.updateById(id, updateData);
     return withEventFlags({ ...webhook, ...updatedWebhook });
