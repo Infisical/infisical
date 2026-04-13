@@ -248,7 +248,21 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
-  logger.warn({ event }, "Unhandled webhook event");
+  if (event.type === WebhookEvents.TestEvent) {
+    const { projectName, projectId, environment, secretPath } = event.payload;
+    return {
+      event: event.type,
+      project: {
+        workspaceId: projectId,
+        projectId,
+        projectName,
+        environment,
+        secretPath
+      }
+    };
+  }
+
+  throw new Error(`Unhandled webhook event type: ${(event as { type: string }).type}`);
 };
 
 export type TFnTriggerWebhookDTO = {

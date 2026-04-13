@@ -41,14 +41,14 @@ export const webhookServiceFactory = ({
   const toBlockedEvents = (
     isSecretModifiedEventEnabled?: boolean,
     isSecretRotationFailedEventEnabled?: boolean
-  ): string[] => {
-    const blocked: string[] = [];
+  ): WebhookEvents[] => {
+    const blocked: WebhookEvents[] = [];
     if (isSecretModifiedEventEnabled === false) blocked.push(WebhookEvents.SecretModified);
     if (isSecretRotationFailedEventEnabled === false) blocked.push(WebhookEvents.SecretRotationFailed);
     return blocked;
   };
 
-  const withEventFlags = <T extends { blockedEvents?: string[] | null }>(webhook: T) => ({
+  const withEventFlags = <T extends { blockedEvents?: WebhookEvents[] | null }>(webhook: T) => ({
     ...webhook,
     isSecretModifiedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretModified),
     isSecretRotationFailedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretRotationFailed)
@@ -136,13 +136,13 @@ export const webhookServiceFactory = ({
 
     const updateData: {
       isDisabled?: boolean;
-      blockedEvents?: string[];
+      blockedEvents?: WebhookEvents[];
     } = {
       ...(isDisabled !== undefined ? { isDisabled } : {})
     };
 
     if (hasEventToggleUpdate) {
-      const currentBlocked = new Set(webhook.blockedEvents ?? []);
+      const currentBlocked = new Set<WebhookEvents>(webhook.blockedEvents ?? []);
 
       if (isSecretModifiedEventEnabled !== undefined) {
         if (isSecretModifiedEventEnabled) {
@@ -211,7 +211,7 @@ export const webhookServiceFactory = ({
         webhook,
         (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
         getWebhookPayload({
-          type: "test" as WebhookEvents.SecretModified,
+          type: WebhookEvents.TestEvent,
           payload: {
             projectName: project.name,
             projectId: webhook.projectId,

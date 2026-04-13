@@ -72,4 +72,18 @@ type TWebhookSecretRotationFailedEventPayload = {
   };
 };
 
-export type TWebhookPayloads = TWebhookSecretModifiedEventPayload | TWebhookSecretRotationFailedEventPayload;
+type TWebhookTestEventPayload = {
+  type: WebhookEvents.TestEvent;
+  payload: {
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    secretPath?: string;
+    type?: string | null;
+  };
+};
+
+export type TWebhookPayloads =
+  | TWebhookSecretModifiedEventPayload
+  | TWebhookSecretRotationFailedEventPayload
+  | TWebhookTestEventPayload;
