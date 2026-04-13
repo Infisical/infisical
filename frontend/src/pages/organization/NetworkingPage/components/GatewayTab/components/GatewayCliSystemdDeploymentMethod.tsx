@@ -3,6 +3,7 @@ import { SingleValue } from "react-select";
 import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,6 +16,7 @@ import {
   ModalClose
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useCreateGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 import { slugSchema } from "@app/lib/schemas";
@@ -54,6 +56,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
     return errorMap;
   }, [formErrors]);
 
+  const { data: gateways } = useQuery(gatewaysQueryKeys.list());
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const { mutateAsync: createEnrollmentToken, isPending: isCreatingToken } =
     useCreateGatewayEnrollmentToken();
@@ -63,6 +66,15 @@ export const GatewayCliSystemdDeploymentMethod = () => {
     const validation = formSchema.safeParse({ name, relay });
     if (!validation.success) {
       setFormErrors(validation.error.issues);
+      return;
+    }
+
+    const existingNames = gateways?.map((g) => g.name) || [];
+    if (existingNames.includes(name.trim())) {
+      createNotification({
+        type: "error",
+        text: "A gateway or enrollment token with this name already exists."
+      });
       return;
     }
 
@@ -80,7 +92,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
 
   const installCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `sudo infisical gateway systemd install --enroll-method=static --token=${enrollmentToken} --name=${name}${relayPart} --domain=${siteURL}`;
+    return `sudo infisical gateway systemd install ${name} --enroll-method=static --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
   }, [enrollmentToken, name, resolvedRelayName, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-gateway";

@@ -1168,15 +1168,13 @@ export const gatewayV2ServiceFactory = ({
     actorId,
     actorType,
     actorAuthMethod,
-    name,
-    ttlSeconds = 3600
+    name
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
-    ttlSeconds?: number;
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1192,15 +1190,26 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
+    const existingGateway = await gatewayV2DAL.find({ orgId, name });
+    if (existingGateway.length > 0) {
+      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    }
+
+    const existingTokens = await gatewayEnrollmentTokenDAL.find({ orgId, name });
+    if (existingTokens.length > 0) {
+      throw new BadRequestError({ message: `An enrollment token named "${name}" already exists` });
+    }
+
+    const TTL_SECONDS = 3600;
     const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
     const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
     const record = await gatewayEnrollmentTokenDAL.create({
       orgId,
       name,
       tokenHash,
-      ttl: ttlSeconds,
+      ttl: TTL_SECONDS,
       expiresAt
     });
 
@@ -1222,9 +1231,8 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const now = new Date();
     const tokens = await gatewayEnrollmentTokenDAL.find({ orgId: orgPermission.orgId });
-    return tokens.filter((t) => t.expiresAt > now && !t.usedAt).map(({ tokenHash: _, ...rest }) => rest);
+    return tokens.filter((t) => !t.usedAt).map(({ tokenHash: _, ...rest }) => rest);
   };
 
   const deleteEnrollmentToken = async ({
@@ -1415,13 +1423,11 @@ export const gatewayV2ServiceFactory = ({
   const reEnrollGateway = async ({
     orgPermission,
     gatewayId,
-    tokenId,
-    ttlSeconds = 3600
+    tokenId
   }: {
     orgPermission: OrgServiceActor;
     gatewayId?: string;
     tokenId?: string;
-    ttlSeconds?: number;
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -1459,15 +1465,16 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // Create a new enrollment token linked to the existing gateway
+      const TTL_SECONDS = 3600;
       const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
       const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
       const record = await gatewayEnrollmentTokenDAL.create({
         orgId: orgPermission.orgId,
         name: gateway.name,
         tokenHash,
-        ttl: ttlSeconds,
+        ttl: TTL_SECONDS,
         expiresAt,
         gatewayId
       });
@@ -1484,15 +1491,16 @@ export const gatewayV2ServiceFactory = ({
 
       await gatewayEnrollmentTokenDAL.deleteById(tokenId);
 
+      const TTL_SECONDS = 3600;
       const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
       const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
       const record = await gatewayEnrollmentTokenDAL.create({
         orgId: orgPermission.orgId,
         name: oldToken.name,
         tokenHash,
-        ttl: ttlSeconds,
+        ttl: TTL_SECONDS,
         expiresAt
       });
 

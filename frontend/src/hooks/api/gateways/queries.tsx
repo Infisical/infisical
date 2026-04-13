@@ -19,18 +19,18 @@ export const gatewaysQueryKeys = {
         ]);
 
         const now = new Date();
-        const activeTokens = enrollmentTokens.filter(
-          (t) => !t.usedAt && new Date(t.expiresAt) > now
-        );
+        const unusedTokens = enrollmentTokens.filter((t) => !t.usedAt);
 
-        // Gateways that have a pending re-enrollment token
+        // Gateways that have a pending (non-expired) re-enrollment token
         const reEnrollGatewayIds = new Set(
-          activeTokens.filter((t) => t.gatewayId).map((t) => t.gatewayId)
+          unusedTokens
+            .filter((t) => t.gatewayId && new Date(t.expiresAt) > now)
+            .map((t) => t.gatewayId)
         );
 
-        // Fresh pending tokens (no gateway record yet)
+        // Standalone tokens (no gateway record yet), both active and expired
         const enrolledNames = new Set(dataV2.map((g) => g.name));
-        const pendingTokens = activeTokens.filter(
+        const standaloneTokens = unusedTokens.filter(
           (t) => !t.gatewayId && !enrolledNames.has(t.name)
         );
 
@@ -39,21 +39,24 @@ export const gatewaysQueryKeys = {
             ...g,
             isV1: true as const,
             isPending: false as const,
+            isExpired: false as const,
             isTokenOnly: false as const
           })),
           ...dataV2.map((g) => ({
             ...g,
             isV1: false as const,
             isPending: reEnrollGatewayIds.has(g.id) as boolean,
+            isExpired: false as const,
             isTokenOnly: false as const
           })),
-          ...pendingTokens.map((t) => ({
+          ...standaloneTokens.map((t) => ({
             id: t.id,
             name: t.name,
             createdAt: t.createdAt,
             expiresAt: t.expiresAt,
             isV1: false as const,
-            isPending: true as const,
+            isPending: new Date(t.expiresAt) > now,
+            isExpired: new Date(t.expiresAt) <= now,
             isTokenOnly: true as const
           }))
         ];

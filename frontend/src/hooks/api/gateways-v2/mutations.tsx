@@ -34,10 +34,10 @@ export const useTriggerGatewayV2Heartbeat = () => {
 export const useCreateGatewayEnrollmentToken = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, ttlSeconds }: { name: string; ttlSeconds?: number }) => {
+    mutationFn: async ({ name }: { name: string }) => {
       const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
         "/api/v2/gateways/enrollment-tokens",
-        { name, ttlSeconds }
+        { name }
       );
       return data;
     },

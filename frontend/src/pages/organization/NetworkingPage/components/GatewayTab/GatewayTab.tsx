@@ -63,12 +63,24 @@ import { ReEnrollGatewayModal } from "./components/ReEnrollGatewayModal";
 const GatewayHealthStatus = ({
   heartbeat,
   lastHealthCheckStatus,
-  isPending
+  isPending,
+  isExpired
 }: {
   heartbeat?: string | null;
   lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
   isPending?: boolean;
+  isExpired?: boolean;
 }) => {
+  if (isExpired) {
+    return (
+      <Tooltip content="Enrollment token has expired. Re-enroll to generate a new one.">
+        <span className="inline-flex cursor-default items-center gap-1.5 text-red-400">
+          Expired
+        </span>
+      </Tooltip>
+    );
+  }
+
   if (isPending) {
     return (
       <Tooltip content="Waiting for gateway to enroll using the CLI command">
@@ -263,7 +275,11 @@ export const GatewayTab = withPermission(
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
-                        {el.isPending ? (
+                        {"isExpired" in el && el.isExpired ? (
+                          <span className="rounded-sm bg-red-900/30 px-1.5 py-0.5 text-xs text-red-400">
+                            Expired
+                          </span>
+                        ) : el.isPending ? (
                           <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
                             Pending
                           </span>
@@ -297,6 +313,7 @@ export const GatewayTab = withPermission(
                           "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
                         }
                         isPending={el.isPending}
+                        isExpired={"isExpired" in el ? el.isExpired : false}
                       />
                     </Td>
                     <Td className="w-5">

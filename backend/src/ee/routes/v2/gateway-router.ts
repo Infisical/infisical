@@ -293,8 +293,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "createGatewayEnrollmentToken",
       body: z.object({
-        name: slugSchema({ min: 1, max: 64, field: "name" }),
-        ttlSeconds: z.number().int().min(60).max(86400).default(3600).optional()
+        name: slugSchema({ min: 1, max: 64, field: "name" })
       }),
       response: {
         200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
@@ -307,8 +306,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
-        name: req.body.name,
-        ttlSeconds: req.body.ttlSeconds
+        name: req.body.name
       });
 
       await server.services.auditLog.createAuditLog({
