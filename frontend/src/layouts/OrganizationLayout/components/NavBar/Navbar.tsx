@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { VersionBadge } from "./VersionBadge";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -89,6 +88,7 @@ import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
+import { VersionBadge } from "./VersionBadge";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
