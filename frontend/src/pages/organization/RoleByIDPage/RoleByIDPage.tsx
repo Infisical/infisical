@@ -1,20 +1,19 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft, faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  PageHeader
-} from "@app/components/v2";
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
@@ -76,9 +75,9 @@ export const Page = () => {
             search={{
               selectedTab: OrgAccessControlTabSections.Roles
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
+            <ChevronLeftIcon className="size-4" />
             Roles
           </Link>
           <PageHeader
@@ -91,17 +90,15 @@ export const Page = () => {
             }
           >
             {isCustomRole && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    colorSchema="secondary"
-                    rightIcon={<FontAwesomeIcon icon={faEllipsisV} className="ml-2" />}
-                  >
+              <UnstableDropdownMenu>
+                <UnstableDropdownMenuTrigger asChild>
+                  <Button variant="outline">
                     Options
+                    <EllipsisIcon />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={2} className="p-1">
-                  <DropdownMenuItem
+                </UnstableDropdownMenuTrigger>
+                <UnstableDropdownMenuContent align="end">
+                  <UnstableDropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.id);
 
@@ -110,11 +107,11 @@ export const Page = () => {
                         type: "info"
                       });
                     }}
-                    icon={<FontAwesomeIcon icon={faCopy} />}
                   >
+                    <CopyIcon />
                     Copy ID
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
+                  </UnstableDropdownMenuItem>
+                  <UnstableDropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.slug);
 
@@ -123,13 +120,16 @@ export const Page = () => {
                         type: "info"
                       });
                     }}
-                    icon={<FontAwesomeIcon icon={faCopy} />}
                   >
+                    <CopyIcon />
                     Copy Slug
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                   <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
-                      <DropdownMenuItem
+                      <UnstableDropdownMenuItem
+                        className={twMerge(
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                        )}
                         onClick={() => {
                           handlePopUpOpen("role", {
                             roleId
@@ -137,36 +137,43 @@ export const Page = () => {
                         }}
                         isDisabled={!isAllowed}
                       >
+                        <PencilIcon />
                         Edit Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </OrgPermissionCan>
                   <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
-                      <DropdownMenuItem
+                      <UnstableDropdownMenuItem
+                        className={twMerge(
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                        )}
                         onClick={() => {
                           handlePopUpOpen("duplicateRole");
                         }}
                         isDisabled={!isAllowed}
                       >
+                        <CopyIcon />
                         Duplicate Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </OrgPermissionCan>
                   <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
-                      <DropdownMenuItem
+                      <UnstableDropdownMenuItem
+                        variant="danger"
                         onClick={() => {
                           handlePopUpOpen("deleteOrgRole");
                         }}
                         isDisabled={!isAllowed}
                       >
+                        <TrashIcon />
                         Delete Role
-                      </DropdownMenuItem>
+                      </UnstableDropdownMenuItem>
                     )}
                   </OrgPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </UnstableDropdownMenuContent>
+              </UnstableDropdownMenu>
             )}
           </PageHeader>
           <RolePermissionsSection roleId={roleId} />
