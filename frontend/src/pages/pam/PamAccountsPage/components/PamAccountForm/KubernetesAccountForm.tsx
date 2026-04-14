@@ -38,7 +38,13 @@ const formSchema = genericAccountFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-const KubernetesAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
+const KubernetesAccountFields = ({
+  isUpdate,
+  originalAuthMethod
+}: {
+  isUpdate: boolean;
+  originalAuthMethod?: KubernetesAuthMethod;
+}) => {
   const { control, setValue } = useFormContext<FormData>();
 
   const authMethod =
@@ -64,7 +70,9 @@ const KubernetesAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                 // Clear credentials from other auth methods, restoring sentinel in update mode
                 setValue(
                   "credentials.serviceAccountToken" as never,
-                  (newAuthMethod === KubernetesAuthMethod.ServiceAccountToken && isUpdate
+                  (newAuthMethod === KubernetesAuthMethod.ServiceAccountToken &&
+                  isUpdate &&
+                  originalAuthMethod === KubernetesAuthMethod.ServiceAccountToken
                     ? UNCHANGED_PASSWORD_SENTINEL
                     : undefined) as never,
                   { shouldDirty: true }
@@ -201,7 +209,10 @@ export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) 
       >
         <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
           <GenericAccountFields />
-          <KubernetesAccountFields isUpdate={isUpdate} />
+          <KubernetesAccountFields
+            isUpdate={isUpdate}
+            originalAuthMethod={account?.credentials.authMethod}
+          />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">
