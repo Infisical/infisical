@@ -61,7 +61,11 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.kmip", { [OrgPermissionKmipActions.Proxy]: false }, { shouldDirty: true });
+      setValue(
+        "permissions.kmip",
+        { [OrgPermissionKmipActions.Proxy]: false },
+        { shouldDirty: true }
+      );
     }
   };
 
