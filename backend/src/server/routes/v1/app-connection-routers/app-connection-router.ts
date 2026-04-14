@@ -232,7 +232,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
-  ...SanitizedPowerDNSConnectionSchema.options
+  ...SanitizedPowerDNSConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options
 ]);
 
@@ -291,8 +291,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
-  PowerDNSConnectionListItemSchema
-  NetScalerConnectionListItemSchema
+  PowerDNSConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
   AnthropicConnectionListItemSchema
 ]);
