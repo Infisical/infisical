@@ -126,7 +126,7 @@ export const authLoginServiceFactory = ({
               userAgent
             }
           })
-          .catch((err) => throwIfSmtpError(err, `Failed to send new device login email [userId=${user.id}]`));
+          .catch((err) => logger.error(err, `Failed to send new device login email [userId=${user.id}]`));
       }
     }
   };
@@ -749,7 +749,7 @@ export const authLoginServiceFactory = ({
             template: SmtpTemplates.OrgAdminBreakglassAccess
           })
           .catch((err) =>
-            throwIfSmtpError(err, `Failed to send SSO bypass alert email [orgId=${organizationId}] [userId=${user.id}]`)
+            logger.error(err, `Failed to send SSO bypass alert email [orgId=${organizationId}] [userId=${user.id}]`)
           );
       }
     }
