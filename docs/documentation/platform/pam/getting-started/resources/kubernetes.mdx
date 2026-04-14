@@ -231,6 +231,10 @@ Choose one of the two authentication methods below based on your setup.
           - apiGroups: [""]
             resources: ["groups"]
             verbs: ["impersonate"]
+            resourceNames:
+              - "system:serviceaccounts"
+              - "system:serviceaccounts:default"  # Match the namespace(s) of the target SAs
+              - "system:authenticated"
         ---
         apiVersion: rbac.authorization.k8s.io/v1
         kind: ClusterRoleBinding
@@ -370,7 +374,7 @@ Once your resource and accounts are configured, users can request access through
   </Accordion>
 
   <Accordion title="Do I need to configure SSL certificates for Gateway auth?">
-    No. When using Gateway auth, the Gateway automatically uses the in-cluster CA certificate mounted at `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`. The SSL settings on the resource (certificate, verification toggle) are only used for the Service Account Token method.
+    No. When using Gateway auth, the Gateway automatically uses the in-cluster CA certificate mounted at `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`. The SSL settings on the resource (certificate, verification toggle) are only used for the Service Account Token method. If the in-cluster CA certificate is missing or invalid, the session will fail rather than falling back to an insecure connection.
   </Accordion>
 
   <Accordion title="What happens if the Gateway can't impersonate a service account?">
