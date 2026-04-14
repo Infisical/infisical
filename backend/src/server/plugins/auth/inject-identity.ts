@@ -339,10 +339,7 @@ export const injectIdentity = fp(
         case AuthMode.GATEWAY_ACCESS_TOKEN: {
           const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: token.gatewayId });
 
-          // Reject JWTs whose tokenVersion doesn't match the gateway's current version.
-          // Tokens issued before the tokenVersion field existed lack the claim, so treat undefined as version 1.
-          const jwtVersion = token.tokenVersion ?? 1;
-          if (gateway.tokenVersion !== undefined && gateway.tokenVersion !== jwtVersion) {
+          if (gateway.tokenVersion !== token.tokenVersion) {
             throw new UnauthorizedError({ message: "Gateway token has been revoked" });
           }
 

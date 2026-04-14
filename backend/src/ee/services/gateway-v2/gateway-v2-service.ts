@@ -86,6 +86,15 @@ export const gatewayV2ServiceFactory = ({
   aiMcpServerDAL,
   pkiDiscoveryConfigDAL
 }: TGatewayV2ServiceFactoryDep) => {
+  const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
+
+  const $generateEnrollmentToken = () => {
+    const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
+    const expiresAt = new Date(Date.now() + ENROLLMENT_TOKEN_TTL_SECONDS * 1000);
+    return { plainToken, tokenHash, expiresAt };
+  };
+
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -1200,16 +1209,13 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: `An enrollment token named "${name}" already exists` });
     }
 
-    const TTL_SECONDS = 3600;
-    const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
-    const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-    const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
+    const { plainToken, tokenHash, expiresAt } = $generateEnrollmentToken();
 
     const record = await gatewayEnrollmentTokenDAL.create({
       orgId,
       name,
       tokenHash,
-      ttl: TTL_SECONDS,
+      ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
       expiresAt
     });
 
@@ -1287,9 +1293,18 @@ export const gatewayV2ServiceFactory = ({
       if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
       if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
     } else {
-      // Auto-select: prefer an org-specific relay, fall back to a global one
+      // Auto-select: prefer a healthy org-specific relay, fall back to a healthy global one
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const isHealthy = (r: TRelays) => r.heartbeat && r.heartbeat > oneHourAgo;
+
       const orgRelays = await relayDAL.find({ orgId });
-      relay = orgRelays[0] ?? (await relayDAL.find({ orgId: null }))[0];
+      relay = orgRelays.find(isHealthy) ?? orgRelays[0];
+
+      if (!relay) {
+        const globalRelays = await relayDAL.find({ orgId: null });
+        relay = globalRelays.find(isHealthy) ?? globalRelays[0];
+      }
+
       if (!relay) throw new NotFoundError({ message: "No relay available for auto-selection" });
     }
 
@@ -1465,21 +1480,18 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // Create a new enrollment token linked to the existing gateway
-      const TTL_SECONDS = 3600;
-      const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
-      const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-      const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
+      const gatewayToken = $generateEnrollmentToken();
 
       const record = await gatewayEnrollmentTokenDAL.create({
         orgId: orgPermission.orgId,
         name: gateway.name,
-        tokenHash,
-        ttl: TTL_SECONDS,
-        expiresAt,
+        tokenHash: gatewayToken.tokenHash,
+        ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
+        expiresAt: gatewayToken.expiresAt,
         gatewayId
       });
 
-      return { ...record, token: plainToken };
+      return { ...record, token: gatewayToken.plainToken };
     }
 
     if (tokenId) {
@@ -1491,20 +1503,17 @@ export const gatewayV2ServiceFactory = ({
 
       await gatewayEnrollmentTokenDAL.deleteById(tokenId);
 
-      const TTL_SECONDS = 3600;
-      const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
-      const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
-      const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
+      const pendingToken = $generateEnrollmentToken();
 
       const record = await gatewayEnrollmentTokenDAL.create({
         orgId: orgPermission.orgId,
         name: oldToken.name,
-        tokenHash,
-        ttl: TTL_SECONDS,
-        expiresAt
+        tokenHash: pendingToken.tokenHash,
+        ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
+        expiresAt: pendingToken.expiresAt
       });
 
-      return { ...record, token: plainToken };
+      return { ...record, token: pendingToken.plainToken };
     }
 
     throw new BadRequestError({ message: "Either gatewayId or tokenId must be provided" });
