@@ -52,7 +52,7 @@ const PERMISSION_ACTIONS = [
   {
     action: OrgPermissionAppConnectionActions.Connect,
     label: "Connect",
-    description: "Establish connections to external platforms and services"
+    description: "Use this connection when configuring syncs and integrations"
   },
   {
     action: OrgPermissionAppConnectionActions.RotateCredentials,

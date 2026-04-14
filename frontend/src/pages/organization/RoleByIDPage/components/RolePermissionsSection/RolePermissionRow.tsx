@@ -4,16 +4,11 @@ import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
-import { FilterableSelect } from "@app/components/v3";
+import { PermissionActionSelect } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
-import {
-  MultiValueRemove,
-  MultiValueWithTooltip,
-  OptionWithDescription
-} from "./OrgPermissionRowComponents";
 
 const PERMISSIONS = [
   { action: "read", label: "View", description: undefined as string | undefined },
@@ -244,8 +239,7 @@ export const RolePermissionRow = ({
       {isRowExpanded && (
         <Tr>
           <Td colSpan={3} className="bg-mineshaft-800 px-6 py-4">
-            <FilterableSelect
-              isMulti
+            <PermissionActionSelect
               value={selectedActions}
               onChange={handleActionsChange}
               options={actionOptions}
@@ -254,11 +248,6 @@ export const RolePermissionRow = ({
               isClearable={isEditable}
               className="w-full"
               menuPosition="fixed"
-              components={{
-                Option: OptionWithDescription,
-                MultiValueRemove,
-                MultiValue: MultiValueWithTooltip
-              }}
             />
           </Td>
         </Tr>

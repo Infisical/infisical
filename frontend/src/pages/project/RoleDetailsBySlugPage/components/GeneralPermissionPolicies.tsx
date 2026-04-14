@@ -7,14 +7,13 @@ import {
   useFormState,
   useWatch
 } from "react-hook-form";
-import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
-import { CheckIcon, NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { NetworkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
   Badge,
   Button,
-  FilterableSelect,
+  PermissionActionSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -51,56 +50,6 @@ type Props<T extends ProjectPermissionSub> = {
   isOpen?: boolean;
   onShowAccessTree?: (subject: ProjectPermissionSub) => void;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
-};
-
-type ActionOption = {
-  label: string;
-  value: string;
-  description?: string;
-};
-
-const OptionWithDescription = <T extends ActionOption>(props: OptionProps<T>) => {
-  const { data, children, isSelected } = props;
-
-  return (
-    <components.Option {...props}>
-      <div className="flex flex-row items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="truncate">{children}</p>
-          {data.description && (
-            <p className="truncate text-xs leading-4 text-muted">{data.description}</p>
-          )}
-        </div>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
-
-const MultiValueRemove = ({ selectProps, ...props }: MultiValueRemoveProps) => {
-  if (selectProps?.isDisabled) {
-    return null;
-  }
-  return <components.MultiValueRemove selectProps={selectProps} {...props} />;
-};
-
-const MultiValueWithTooltip = <T extends ActionOption>(props: MultiValueProps<T>) => {
-  const { data } = props;
-
-  if (!data.description) {
-    return <components.MultiValue {...props} />;
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div>
-          <components.MultiValue {...props} />
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>{data.description}</TooltipContent>
-    </Tooltip>
-  );
 };
 
 type ActionsMultiSelectProps<T extends ProjectPermissionSub> = {
@@ -221,8 +170,7 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
 
   return (
     <div className="flex w-full flex-col">
-      <FilterableSelect
-        isMulti
+      <PermissionActionSelect
         value={selectedActions}
         onChange={handleChange}
         options={actionOptions}
@@ -234,11 +182,6 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
         {...(menuPortalContainerRef?.current
           ? { menuPortalTarget: menuPortalContainerRef.current }
           : {})}
-        components={{
-          Option: OptionWithDescription,
-          MultiValueRemove,
-          MultiValue: MultiValueWithTooltip
-        }}
         isError={actionsError}
       />
       {actionsError && (
