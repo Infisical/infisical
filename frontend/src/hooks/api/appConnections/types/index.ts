@@ -170,7 +170,7 @@ export type TAppConnection =
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
-  | TPowerDNSConnection;
+  | TPowerDNSConnection
   | TNetScalerConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
