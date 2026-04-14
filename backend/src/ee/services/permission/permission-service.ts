@@ -350,10 +350,10 @@ export const permissionServiceFactory = ({
     let username = "";
     if (actor === ActorType.USER) {
       const userDetails = await userDAL.findById(actorId);
-      username = userDetails?.username;
+      username = userDetails?.username ?? "";
     } else {
       const identityDetails = await identityDAL.findById(actorId);
-      username = identityDetails?.name;
+      username = identityDetails?.name ?? "";
     }
 
     // SSO bypass check (for USER actors) — pre-compute and cache the boolean

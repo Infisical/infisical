@@ -852,7 +852,9 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           if (actorType === ActorType.IDENTITY) {
             qb.on(`${TableName.IdentityMetadata}.identityId`, `${TableName.Membership}.actorIdentityId`);
           } else {
-            qb.on(`${TableName.IdentityMetadata}.identityId`, `${TableName.Membership}.actorUserId`);
+            void qb
+              .on(`${TableName.IdentityMetadata}.userId`, db.raw("?", [actorId]))
+              .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           }
         })
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
