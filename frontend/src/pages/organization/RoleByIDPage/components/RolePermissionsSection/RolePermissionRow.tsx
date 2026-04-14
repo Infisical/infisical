@@ -1,20 +1,25 @@
 import { useEffect, useMemo } from "react";
-import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
+import { Control, UseFormSetValue, useWatch } from "react-hook-form";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
-import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
+import {
+  MultiValueRemove,
+  MultiValueWithTooltip,
+  OptionWithDescription
+} from "./OrgPermissionRowComponents";
 
 const PERMISSIONS = [
-  { action: "read", label: "View" },
-  { action: "create", label: "Create" },
-  { action: "edit", label: "Modify" },
-  { action: "delete", label: "Remove" }
+  { action: "read", label: "View", description: undefined as string | undefined },
+  { action: "create", label: "Create", description: undefined as string | undefined },
+  { action: "edit", label: "Modify", description: undefined as string | undefined },
+  { action: "delete", label: "Remove", description: undefined as string | undefined }
 ] as const;
 
 const SECRET_SCANNING_PERMISSIONS = [
@@ -63,6 +68,8 @@ const getPermissionList = (formName: Props["formName"]) => {
 type Props = {
   isEditable: boolean;
   title: string;
+  description?: string;
+  actionDescriptions?: Partial<Record<string, string>>;
   formName: keyof Omit<
     Exclude<TFormSchema["permissions"], undefined>,
     | "project"
@@ -89,7 +96,15 @@ enum Permission {
   Custom = "custom"
 }
 
-export const RolePermissionRow = ({ isEditable, title, formName, control, setValue }: Props) => {
+export const RolePermissionRow = ({
+  isEditable,
+  title,
+  description,
+  actionDescriptions,
+  formName,
+  control,
+  setValue
+}: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
@@ -98,14 +113,33 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
     name: `permissions.${formName}`
   });
 
+  const permissionList = getPermissionList(formName);
+
+  const actionOptions = useMemo(
+    () =>
+      permissionList.map(({ action, label }) => ({
+        value: action as string,
+        label,
+        description: actionDescriptions?.[action as string]
+      })),
+    [permissionList, actionDescriptions]
+  );
+
+  const selectedActions = useMemo(
+    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value as keyof typeof rule])),
+    [actionOptions, rule]
+  );
+
+  const selectedCount = selectedActions.length;
+
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
-    if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
+    if (isCustom) return Permission.Custom;
     if (score === 1 && rule?.read) return Permission.ReadOnly;
 
     return Permission.Custom;
@@ -163,16 +197,30 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
     }
   };
 
+  const handleActionsChange = (newValue: unknown) => {
+    const selected = Array.isArray(newValue) ? newValue : [];
+    const updated = Object.fromEntries(
+      permissionList.map(({ action }) => [
+        action,
+        selected.some((s: { value: string }) => s.value === action)
+      ])
+    );
+    setValue(`permissions.${formName}`, updated as any, { shouldDirty: true });
+  };
+
   return (
     <>
       <Tr
-        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+        className="min-h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
         onClick={() => setIsRowExpanded.toggle()}
       >
         <Td className="w-4">
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
-        <Td className="w-full select-none">{title}</Td>
+        <Td className="w-full select-none">
+          <p>{title}</p>
+          {description && <p className="text-xs text-mineshaft-400">{description}</p>}
+        </Td>
         <Td>
           <Select
             value={selectedPermissionCategory}
@@ -185,42 +233,33 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
             <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
             <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
-            <SelectItem value={Permission.Custom}>Custom</SelectItem>
+            <SelectItem value={Permission.Custom}>
+              {selectedPermissionCategory === Permission.Custom
+                ? `Custom (${selectedCount})`
+                : "Custom"}
+            </SelectItem>
           </Select>
         </Td>
       </Tr>
       {isRowExpanded && (
         <Tr>
-          <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
-            <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
-              {getPermissionList(formName).map(({ action, label }) => {
-                return (
-                  <Controller
-                    name={`permissions.${formName}.${action}`}
-                    key={`permissions.${formName}.${action}`}
-                    control={control}
-                    render={({ field }) => (
-                      <Checkbox
-                        isChecked={Boolean(field.value)}
-                        onCheckedChange={(e) => {
-                          if (!isEditable) {
-                            createNotification({
-                              type: "error",
-                              text: "Failed to update default role"
-                            });
-                            return;
-                          }
-                          field.onChange(e);
-                        }}
-                        id={`permissions.${formName}.${action}`}
-                      >
-                        {label}
-                      </Checkbox>
-                    )}
-                  />
-                );
-              })}
-            </div>
+          <Td colSpan={3} className="bg-mineshaft-800 px-6 py-4">
+            <FilterableSelect
+              isMulti
+              value={selectedActions}
+              onChange={handleActionsChange}
+              options={actionOptions}
+              placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+              isDisabled={!isEditable}
+              isClearable={isEditable}
+              className="w-full"
+              menuPosition="fixed"
+              components={{
+                Option: OptionWithDescription,
+                MultiValueRemove,
+                MultiValue: MultiValueWithTooltip
+              }}
+            />
           </Td>
         </Tr>
       )}

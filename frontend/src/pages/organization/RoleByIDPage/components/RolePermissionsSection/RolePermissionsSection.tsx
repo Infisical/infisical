@@ -34,41 +34,114 @@ import { RolePermissionRow } from "./RolePermissionRow";
 const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "User Management",
-    formName: "member"
+    formName: "member",
+    description: "Manage organization member access and role assignments",
+    actionDescriptions: {
+      read: "View organization members and their roles",
+      create: "Invite new users to join the organization",
+      edit: "Modify member roles and access settings",
+      delete: "Remove members from the organization"
+    }
   },
   {
     title: "Role Management",
-    formName: "role"
+    formName: "role",
+    description: "Define and configure custom organization-level permission roles",
+    actionDescriptions: {
+      read: "View organization roles and their permissions",
+      create: "Create new custom organization roles",
+      edit: "Update role permissions and settings",
+      delete: "Delete organization roles"
+    }
   },
   {
     title: "Incident Contacts",
-    formName: "incident-contact"
+    formName: "incident-contact",
+    description: "Manage contacts notified during security incidents",
+    actionDescriptions: {
+      read: "View contacts notified during security incidents",
+      create: "Add new contacts for incident notifications",
+      edit: "Update existing contact information",
+      delete: "Remove contacts from incident notifications"
+    }
   },
   {
     title: "Organization Profile",
-    formName: "settings"
+    formName: "settings",
+    description: "Configure organization-wide settings and preferences",
+    actionDescriptions: {
+      read: "View organization settings and configuration",
+      create: "Configure new organization settings",
+      edit: "Update organization profile and settings",
+      delete: "Remove organization configuration entries"
+    }
   },
   {
     title: "Secret Scanning",
-    formName: "secret-scanning"
+    formName: "secret-scanning",
+    description: "Configure automated scanning for leaked secrets",
+    actionDescriptions: {
+      read: "View detected leaked secret risks",
+      create: "Connect new secret scanning integrations",
+      edit: "Update the status of detected risks",
+      delete: "Disconnect secret scanning integrations"
+    }
   },
   {
     title: "LDAP",
-    formName: "ldap"
+    formName: "ldap",
+    description: "Configure LDAP directory integration for authentication",
+    actionDescriptions: {
+      read: "View LDAP directory configuration",
+      create: "Configure LDAP integration",
+      edit: "Update LDAP settings",
+      delete: "Remove LDAP configuration"
+    }
   },
   {
     title: "SCIM",
-    formName: "scim"
+    formName: "scim",
+    description: "Manage SCIM provisioning for automated user lifecycle management",
+    actionDescriptions: {
+      read: "View SCIM provisioning configuration",
+      create: "Set up SCIM provisioning",
+      edit: "Update SCIM settings",
+      delete: "Remove SCIM configuration"
+    }
   },
   {
     title: "GitHub Organization Sync",
-    formName: OrgPermissionSubjects.GithubOrgSync
+    formName: OrgPermissionSubjects.GithubOrgSync,
+    description: "Sync GitHub organization teams with Infisical groups",
+    actionDescriptions: {
+      read: "View GitHub organization sync configuration",
+      create: "Set up GitHub organization team sync",
+      edit: "Update sync configuration",
+      delete: "Remove GitHub organization sync"
+    }
   },
   {
     title: "External KMS",
-    formName: OrgPermissionSubjects.Kms
+    formName: OrgPermissionSubjects.Kms,
+    description: "Configure external key management systems for encryption",
+    actionDescriptions: {
+      read: "View external KMS configuration",
+      create: "Configure external key management systems",
+      edit: "Update KMS settings",
+      delete: "Remove external KMS configuration"
+    }
   },
-  { title: "Project Templates", formName: OrgPermissionSubjects.ProjectTemplates }
+  {
+    title: "Project Templates",
+    formName: OrgPermissionSubjects.ProjectTemplates,
+    description: "Manage reusable templates applied when creating new projects",
+    actionDescriptions: {
+      read: "View and apply templates when creating projects",
+      create: "Create new project templates",
+      edit: "Update existing project templates",
+      delete: "Delete project templates"
+    }
+  }
 ] as const;
 
 type Props = {
@@ -111,6 +184,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       ...el,
       permissions: formRolePermission2API(el.permissions)
     });
+    reset(el);
     createNotification({ type: "success", text: "Successfully updated role" });
   };
 
@@ -119,12 +193,12 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4"
     >
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+      <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
-          <p className="text-sm leading-3 text-mineshaft-400">Configure granular access policies</p>
+          <h3 className="text-lg font-medium text-foreground">Policies</h3>
+          <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
         </div>
         {isCustomRole && (
           <div className="flex items-center">
@@ -152,7 +226,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
           </div>
         )}
       </div>
-      <div className="py-4">
+      <div className="px-4 py-4">
         <TableContainer>
           <Table>
             <TBody>
@@ -165,6 +239,8 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   <RolePermissionRow
                     title={permission.title}
                     formName={permission.formName}
+                    description={permission.description}
+                    actionDescriptions={permission.actionDescriptions}
                     control={control}
                     setValue={setValue}
                     key={`org-role-${roleId}-permission-${permission.formName}`}

@@ -1,13 +1,18 @@
 import { useEffect, useMemo } from "react";
-import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
+import { Control, UseFormSetValue, useWatch } from "react-hook-form";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
-import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
+import {
+  MultiValueRemove,
+  MultiValueWithTooltip,
+  OptionWithDescription
+} from "./OrgPermissionRowComponents";
 
 type Props = {
   isEditable: boolean;
@@ -20,7 +25,19 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [{ action: "manage-settings", label: "Manage settings" }] as const;
+const PERMISSION_ACTIONS = [
+  {
+    action: "manage-settings",
+    label: "Manage settings",
+    description: "Configure settings for sharing secrets externally"
+  }
+] as const;
+
+const actionOptions = PERMISSION_ACTIONS.map(({ action, label, description }) => ({
+  value: action as string,
+  label,
+  description
+}));
 
 export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
@@ -30,6 +47,13 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
     control,
     name: "permissions.secret-share"
   });
+
+  const selectedActions = useMemo(
+    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value as keyof typeof rule])),
+    [rule]
+  );
+
+  const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     if (rule?.["manage-settings"]) {
@@ -64,16 +88,32 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
     }
   };
 
+  const handleActionsChange = (newValue: unknown) => {
+    const selected = Array.isArray(newValue) ? newValue : [];
+    const updated = Object.fromEntries(
+      PERMISSION_ACTIONS.map(({ action }) => [
+        action,
+        selected.some((s: { value: string }) => s.value === action)
+      ])
+    );
+    setValue("permissions.secret-share", updated as any, { shouldDirty: true });
+  };
+
   return (
     <>
       <Tr
-        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+        className="min-h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
         onClick={() => setIsRowExpanded.toggle()}
       >
         <Td className="w-4">
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
-        <Td className="w-full select-none">Secret Share</Td>
+        <Td className="w-full select-none">
+          <p>Secret Share</p>
+          <p className="text-xs text-mineshaft-400">
+            Configure settings for sharing secrets externally
+          </p>
+        </Td>
         <Td>
           <Select
             value={selectedPermissionCategory}
@@ -84,42 +124,33 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
             position="popper"
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={Permission.Custom}>Custom</SelectItem>
+            <SelectItem value={Permission.Custom}>
+              {selectedPermissionCategory === Permission.Custom
+                ? `Custom (${selectedCount})`
+                : "Custom"}
+            </SelectItem>
           </Select>
         </Td>
       </Tr>
       {isRowExpanded && (
         <Tr>
-          <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
-            <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
-              {PERMISSION_ACTIONS.map(({ action, label }) => {
-                return (
-                  <Controller
-                    name={`permissions.secret-share.${action}`}
-                    key={`permissions.secret-share.${action}`}
-                    control={control}
-                    render={({ field }) => (
-                      <Checkbox
-                        isChecked={field.value}
-                        onCheckedChange={(e) => {
-                          if (!isEditable) {
-                            createNotification({
-                              type: "error",
-                              text: "Failed to update default role"
-                            });
-                            return;
-                          }
-                          field.onChange(e);
-                        }}
-                        id={`permissions.secret-share.${action}`}
-                      >
-                        {label}
-                      </Checkbox>
-                    )}
-                  />
-                );
-              })}
-            </div>
+          <Td colSpan={3} className="bg-mineshaft-800 px-6 py-4">
+            <FilterableSelect
+              isMulti
+              value={selectedActions}
+              onChange={handleActionsChange}
+              options={actionOptions}
+              placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+              isDisabled={!isEditable}
+              isClearable={isEditable}
+              className="w-full"
+              menuPosition="fixed"
+              components={{
+                Option: OptionWithDescription,
+                MultiValueRemove,
+                MultiValue: MultiValueWithTooltip
+              }}
+            />
           </Td>
         </Tr>
       )}
