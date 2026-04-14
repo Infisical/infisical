@@ -159,6 +159,33 @@ export const useUpdateAccessRequest = () => {
   });
 };
 
+export const useRevokeAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/access-approvals/requests/${requestId}/revoke`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
 export const useReviewAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<
