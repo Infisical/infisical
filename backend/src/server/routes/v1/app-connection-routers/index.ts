@@ -117,7 +117,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.PowerDNS]: registerPowerDNSConnectionRouter
-    [AppConnection.NetScaler]: registerNetScalerConnectionRouter
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter
   };
