@@ -248,9 +248,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
           } catch (error) {
             if (error instanceof AxiosError) {
               const errorMessage =
-                (error.response?.data as { message?: string })?.message ||
-                error.response?.statusText ||
-                error.message;
+                (error.response?.data as { message?: string })?.message || error.response?.statusText || error.message;
 
               if (errorMessage?.includes("failed to read k8s sa auth token")) {
                 throw new BadRequestError({
