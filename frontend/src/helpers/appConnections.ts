@@ -160,8 +160,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
-  [AppConnection.PowerDNS]: { name: "PowerDNS", image: "PowerDNS.png" }
-  [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" }
+  [AppConnection.PowerDNS]: { name: "PowerDNS", image: "PowerDNS.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
 };
