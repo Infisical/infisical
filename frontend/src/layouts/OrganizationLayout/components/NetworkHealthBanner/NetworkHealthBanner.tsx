@@ -64,7 +64,6 @@ export const NetworkHealthBanner = () => {
   const unreachableGateways = useMemo(
     () =>
       gateways?.filter((g) => {
-        if (g.isPending) return false;
         if (
           "lastHealthCheckStatus" in g &&
           g.lastHealthCheckStatus === GatewayHealthCheckStatus.Failed

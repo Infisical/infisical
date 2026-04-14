@@ -12,6 +12,28 @@ export const gatewaysQueryKeys = {
     queryOptions({
       queryKey: gatewaysQueryKeys.listKey(),
       queryFn: async () => {
+        const [{ data }, { data: dataV2 }] = await Promise.all([
+          apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways"),
+          apiRequest.get<TGatewayV2[]>("/api/v2/gateways")
+        ]);
+
+        return [
+          ...data.gateways.map((g) => ({
+            ...g,
+            isV1: true as const
+          })),
+          ...dataV2.map((g) => ({
+            ...g,
+            isV1: false as const
+          }))
+        ];
+      }
+    }),
+  listWithTokensKey: () => [...gatewaysQueryKeys.allKey(), "list-with-tokens"],
+  listWithTokens: () =>
+    queryOptions({
+      queryKey: gatewaysQueryKeys.listWithTokensKey(),
+      queryFn: async () => {
         const [{ data }, { data: dataV2 }, { data: enrollmentTokens }] = await Promise.all([
           apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways"),
           apiRequest.get<TGatewayV2[]>("/api/v2/gateways"),

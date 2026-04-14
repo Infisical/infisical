@@ -7,6 +7,11 @@ import { TCreateGatewayEnrollmentTokenResponse } from "./types";
 
 export const gatewayEnrollmentTokenQueryKey = () => ["gateway-enrollment-tokens"];
 
+const invalidateGatewayQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries(gatewaysQueryKeys.list());
+  queryClient.invalidateQueries(gatewaysQueryKeys.listWithTokens());
+};
+
 export const useDeleteGatewayV2ById = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -14,7 +19,7 @@ export const useDeleteGatewayV2ById = () => {
       return apiRequest.delete(`/api/v2/gateways/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+      invalidateGatewayQueries(queryClient);
     }
   });
 };
@@ -26,7 +31,7 @@ export const useTriggerGatewayV2Heartbeat = () => {
       return apiRequest.post(`/api/v2/gateways/${id}/heartbeat`);
     },
     onSettled: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+      invalidateGatewayQueries(queryClient);
     }
   });
 };
@@ -42,7 +47,7 @@ export const useCreateGatewayEnrollmentToken = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+      invalidateGatewayQueries(queryClient);
     }
   });
 };
@@ -58,7 +63,7 @@ export const useReEnrollGateway = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+      invalidateGatewayQueries(queryClient);
     }
   });
 };
@@ -70,7 +75,7 @@ export const useDeleteGatewayEnrollmentToken = () => {
       await apiRequest.delete(`/api/v2/gateways/enrollment-tokens/${tokenId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(gatewaysQueryKeys.list());
+      invalidateGatewayQueries(queryClient);
     }
   });
 };

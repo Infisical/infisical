@@ -56,7 +56,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
     return errorMap;
   }, [formErrors]);
 
-  const { data: gateways } = useQuery(gatewaysQueryKeys.list());
+  const { data: gateways } = useQuery(gatewaysQueryKeys.listWithTokens());
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const { mutateAsync: createEnrollmentToken, isPending: isCreatingToken } =
     useCreateGatewayEnrollmentToken();
