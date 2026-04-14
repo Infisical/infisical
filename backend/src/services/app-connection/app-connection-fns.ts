@@ -298,7 +298,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
-    getPowerDNSConnectionListItem()
+    getPowerDNSConnectionListItem(),
     getNetScalerConnectionListItem()
   ]
     .filter((option) => {
