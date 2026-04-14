@@ -41,6 +41,8 @@ import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -345,7 +347,9 @@ export const secretV2BridgeServiceFactory = ({
       })
     );
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     await scanSecretPolicyViolations(
       projectId,
       secretPath,
@@ -603,7 +607,9 @@ export const secretV2BridgeServiceFactory = ({
     const { secretName, secretValue } = inputSecret;
 
     if (secretValue) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       await scanSecretPolicyViolations(
         projectId,
         secretPath,
@@ -1946,7 +1952,9 @@ export const secretV2BridgeServiceFactory = ({
     if (secrets.length)
       throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     await scanSecretPolicyViolations(
       projectId,
       secretPath,
@@ -2310,7 +2318,9 @@ export const secretV2BridgeServiceFactory = ({
         });
         await $validateSecretReferences(projectId, permission, secretReferences, tx);
 
-        const project = await projectDAL.findById(projectId);
+        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+          projectDAL.findById(projectId)
+        );
         await scanSecretPolicyViolations(
           projectId,
           secretPath,

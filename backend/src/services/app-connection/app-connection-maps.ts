@@ -57,6 +57,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.PowerDNS]: "PowerDNS"
   [AppConnection.NetScaler]: "NetScaler"
+  [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.Anthropic]: "Anthropic"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -116,4 +118,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.PowerDNS]: AppConnectionPlanType.Regular
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular
+  [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.Anthropic]: AppConnectionPlanType.Regular
 };

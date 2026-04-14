@@ -236,7 +236,8 @@ const PamAccountPolicyActionSchema = z.object({
   [ProjectPermissionPamAccountActions.Create]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamAccountActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional()
+  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.ReadCredentials]: z.boolean().optional()
 });
 
 const PamSessionPolicyActionSchema = z.object({
@@ -1784,6 +1785,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionPamAccountActions.Read]: action.includes(
           ProjectPermissionPamAccountActions.Read
         ),
+        [ProjectPermissionPamAccountActions.ReadCredentials]: action.includes(
+          ProjectPermissionPamAccountActions.ReadCredentials
+        ),
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
@@ -3136,6 +3140,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionPamAccountActions.Delete,
         description: "Delete PAM accounts"
+      },
+      {
+        label: "Read Credentials",
+        value: ProjectPermissionPamAccountActions.ReadCredentials,
+        description: "View sensitive account credentials like passwords and private keys"
       }
     ]
   },
@@ -3479,15 +3488,21 @@ const projectManagerTemplate = (
     },
     {
       subject: ProjectPermissionSub.Groups,
-      actions: Object.values(ProjectPermissionGroupActions)
+      actions: Object.values(ProjectPermissionGroupActions).filter(
+        (a) => a !== ProjectPermissionGroupActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Member,
-      actions: Object.values(ProjectPermissionMemberActions)
+      actions: Object.values(ProjectPermissionMemberActions).filter(
+        (a) => a !== ProjectPermissionMemberActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Identity,
-      actions: Object.values(ProjectPermissionIdentityActions)
+      actions: Object.values(ProjectPermissionIdentityActions).filter(
+        (a) => a !== ProjectPermissionIdentityActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Project,

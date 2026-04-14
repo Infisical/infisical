@@ -48,6 +48,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
@@ -161,6 +162,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.PowerDNS]: { name: "PowerDNS", image: "PowerDNS.png" }
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" }
+  [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -238,6 +241,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case AnthropicConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faChevronLeft, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,6 +22,7 @@ import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
+import { PamSessionAiInsightsSection } from "./components/PamSessionAiInsightsSection";
 import { PamSessionDetailsSection } from "./components/PamSessionDetailsSection";
 import { PamSessionLogsSection } from "./components/PamSessionLogsSection";
 
@@ -29,15 +31,35 @@ const Page = () => {
     from: ROUTE_PATHS.Pam.PamSessionByIDPage.id,
     select: (el) => el.sessionId
   });
-  const { data: session } = useGetPamSessionById(sessionId);
+  const { data: session } = useGetPamSessionById(sessionId, {
+    refetchInterval: (query) => {
+      const { data } = query.state;
+      if (!data) return false;
+      if (data.aiInsightsStatus === "pending") return 3000;
+      // Also poll briefly after a session ends to catch the null → pending transition,
+      // since queueAiSummary runs asynchronously after the session status is written.
+      const isEnded =
+        data.status === PamSessionStatus.Ended || data.status === PamSessionStatus.Terminated;
+      const isRecentlyEnded =
+        data.endedAt && Date.now() - new Date(data.endedAt).getTime() < 30_000;
+      if (isEnded && data.aiInsightsStatus === null && isRecentlyEnded) return 3000;
+      return false;
+    }
+  });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["terminateSession"] as const);
+  const [scrollToLogIndex, setScrollToLogIndex] = useState<number | undefined>();
+
+  const handleWarningClick = (logIndex: number) => {
+    // Reset to undefined first so clicking the same warning twice triggers a new scroll
+    setScrollToLogIndex(undefined);
+    requestAnimationFrame(() => setScrollToLogIndex(logIndex));
+  };
 
   const isActive =
     session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
   const isGatewaySession = !!session?.gatewayIdentityId;
-
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (
@@ -91,11 +113,12 @@ const Page = () => {
             )}
           </PageHeader>
           <div className="flex">
-            <div className="mr-4 flex h-fit w-96">
+            <div className="mr-4 flex h-fit w-96 shrink-0">
               <PamSessionDetailsSection session={session} />
             </div>
-            <div className="flex w-full min-w-0">
-              <PamSessionLogsSection session={session} />
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <PamSessionAiInsightsSection session={session} onWarningClick={handleWarningClick} />
+              <PamSessionLogsSection session={session} scrollToLogIndex={scrollToLogIndex} />
             </div>
           </div>
 

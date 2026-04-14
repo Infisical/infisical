@@ -55,4 +55,6 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   PowerDNS = "powerdns"
   NetScaler = "netscaler"
+  NetScaler = "netscaler",
+  Anthropic = "anthropic"
 }

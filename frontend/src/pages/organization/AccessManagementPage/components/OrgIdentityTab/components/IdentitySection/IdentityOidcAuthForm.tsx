@@ -8,6 +8,7 @@ import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -118,7 +119,7 @@ export const IdentityOidcAuthForm = ({
     defaultValues: {
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
-      accessTokenNumUsesLimit: "0",
+      accessTokenNumUsesLimit: "",
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
       boundClaims: [],
       claimMetadataMapping: []
@@ -168,7 +169,9 @@ export const IdentityOidcAuthForm = ({
         boundSubject: data.boundSubject,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -187,7 +190,7 @@ export const IdentityOidcAuthForm = ({
         boundSubject: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
-        accessTokenNumUsesLimit: "0",
+        accessTokenNumUsesLimit: "",
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
         claimMetadataMapping: []
       });
@@ -226,7 +229,7 @@ export const IdentityOidcAuthForm = ({
         boundSubject,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     } else {
@@ -244,7 +247,7 @@ export const IdentityOidcAuthForm = ({
         ...(projectId ? { projectId } : { organizationId: orgId }),
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     }
@@ -321,10 +324,7 @@ export const IdentityOidcAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -342,10 +342,7 @@ export const IdentityOidcAuthForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
                 icon={
-                  <Tooltip
-                    className="text-center"
-                    content={<span>This field supports glob patterns</span>}
-                  >
+                  <Tooltip content={<BashGlobPatternTooltip />}>
                     <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                   </Tooltip>
                 }
@@ -366,10 +363,7 @@ export const IdentityOidcAuthForm = ({
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
-                          <Tooltip
-                            className="text-center"
-                            content={<span>This field supports glob patterns</span>}
-                          >
+                          <Tooltip content={<BashGlobPatternTooltip />}>
                             <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
                           </Tooltip>
                         ) : undefined
@@ -471,8 +465,9 @@ export const IdentityOidcAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
+                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
               </FormControl>
             )}
           />

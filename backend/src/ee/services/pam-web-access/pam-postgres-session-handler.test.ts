@@ -30,7 +30,7 @@ vi.mock("./pam-web-access-repl", () => ({
 
 // Mock pg
 vi.mock("pg", () => {
-  const mockQuery = vi.fn();
+  const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
   const mockConnect = vi.fn().mockResolvedValue(undefined);
   const mockEnd = vi.fn().mockResolvedValue(undefined);
   const mockOn = vi.fn();
