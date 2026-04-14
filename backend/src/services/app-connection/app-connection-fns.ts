@@ -237,7 +237,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
   AppConnection.Venafi,
-  AppConnection.PowerDNS
+  AppConnection.PowerDNS,
   AppConnection.NetScaler
 ];
 
