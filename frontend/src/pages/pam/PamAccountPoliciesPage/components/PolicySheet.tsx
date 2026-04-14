@@ -382,7 +382,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                                 }}
                                 className="flex items-center justify-between gap-2"
                               >
-                                <span className="text-sm font-medium">
+                                <span className="text-sm">
                                   {isAdded ? (
                                     <span className="text-mineshaft-400">{meta.name}</span>
                                   ) : (
