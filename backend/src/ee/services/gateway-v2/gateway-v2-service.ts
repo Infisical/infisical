@@ -355,14 +355,15 @@ export const gatewayV2ServiceFactory = ({
     const now = new Date();
     const tokenStatusMap = new Map<string, "pending" | "expired">();
     for (const token of allTokens) {
-      if (token.usedAt || !token.gatewayId) continue;
-      const isExpired = token.expiresAt <= now;
-      const current = tokenStatusMap.get(token.gatewayId);
-      // A non-expired token takes priority over an expired one
-      if (!isExpired) {
-        tokenStatusMap.set(token.gatewayId, "pending");
-      } else if (!current) {
-        tokenStatusMap.set(token.gatewayId, "expired");
+      if (!token.usedAt && token.gatewayId) {
+        const isExpired = token.expiresAt <= now;
+        const current = tokenStatusMap.get(token.gatewayId);
+        // A non-expired token takes priority over an expired one
+        if (!isExpired) {
+          tokenStatusMap.set(token.gatewayId, "pending");
+        } else if (!current) {
+          tokenStatusMap.set(token.gatewayId, "expired");
+        }
       }
     }
 

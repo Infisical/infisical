@@ -109,13 +109,10 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
         </ModalContent>
       )}
       {step === "command" && (
-        <ModalContent
-          className="max-w-2xl"
-          title={`Re-enroll ${gatewayData.name}`}
-        >
+        <ModalContent className="max-w-2xl" title={`Re-enroll ${gatewayData.name}`}>
           <p className="mb-3 text-sm text-mineshaft-300">
-            Run the following command on the machine where you want to deploy the gateway. The
-            token expires in 1 hour and can only be used once.
+            Run the following command on the machine where you want to deploy the gateway. The token
+            expires in 1 hour and can only be used once.
           </p>
           <FormLabel label="CLI Command" />
           <div className="flex gap-2">
