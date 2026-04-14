@@ -1327,13 +1327,17 @@ export const gatewayV2ServiceFactory = ({
     try {
       let gateway;
       if (tokenRecord.gatewayId) {
-        // Re-enrollment: reuse existing gateway record, update relay if changed
+        // Re-enrollment: reuse existing gateway record.
+        // Bump tokenVersion to invalidate the old machine's JWT and clear health status.
         const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId);
         if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
-        if (relay.id !== existing.relayId) {
-          await gatewayV2DAL.updateById(existing.id, { relayId: relay.id });
-        }
-        gateway = { ...existing, relayId: relay.id };
+        const updated = await gatewayV2DAL.updateById(existing.id, {
+          $incr: { tokenVersion: 1 },
+          relayId: relay.id,
+          heartbeat: null,
+          lastHealthCheckStatus: null
+        });
+        gateway = updated;
       } else {
         // Fresh enrollment: create new gateway record
         gateway = await gatewayV2DAL.create({
@@ -1465,8 +1469,8 @@ export const gatewayV2ServiceFactory = ({
 
     if (gatewayId) {
       // Re-enroll an existing (enrolled) gateway.
-      // Wrapped in a transaction so tokenVersion bump, old token cleanup, and new token
-      // creation are atomic. If any step fails, the gateway's JWT is not revoked.
+      // The old gateway keeps running until the new machine enrolls with this token.
+      // tokenVersion is bumped in enrollGateway when the token is consumed, not here.
       const gateway = await gatewayV2DAL.findById(gatewayId);
       if (!gateway || gateway.orgId !== orgPermission.orgId) {
         throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
@@ -1475,12 +1479,6 @@ export const gatewayV2ServiceFactory = ({
       const gatewayToken = $generateEnrollmentToken();
 
       const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-        await gatewayV2DAL.updateById(
-          gatewayId,
-          { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
-          tx
-        );
-
         const existingTokens = await gatewayEnrollmentTokenDAL.find({ gatewayId }, { tx });
         const unusedTokenIds = existingTokens.filter((t) => !t.usedAt).map((t) => t.id);
         if (unusedTokenIds.length > 0) {

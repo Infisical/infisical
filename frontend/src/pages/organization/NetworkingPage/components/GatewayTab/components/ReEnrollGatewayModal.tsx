@@ -68,7 +68,7 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
           if (step !== "confirm") return undefined;
           if (gatewayData.isTokenOnly)
             return "This will create a new enrollment token, replacing the expired one.";
-          return "This will create a new enrollment token and invalidate the current gateway credentials. The gateway will stop working until re-enrolled.";
+          return "This will create a new enrollment token. The existing gateway will keep running until the new machine enrolls.";
         })()}
       >
         {step === "confirm" && (

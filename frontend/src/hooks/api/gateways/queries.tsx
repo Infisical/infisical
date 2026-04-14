@@ -67,9 +67,10 @@ export const gatewaysQueryKeys = {
           ...dataV2.map((g) => ({
             ...g,
             isV1: false as const,
-            isPending: reEnrollGatewayIds.has(g.id) as boolean,
+            isPending: false as const,
             isExpired: false as const,
-            isTokenOnly: false as const
+            isTokenOnly: false as const,
+            hasReEnrollToken: reEnrollGatewayIds.has(g.id) as boolean
           })),
           ...standaloneTokens.map((t) => ({
             id: t.id,

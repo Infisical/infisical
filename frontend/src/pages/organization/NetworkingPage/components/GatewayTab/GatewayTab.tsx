@@ -298,6 +298,11 @@ export const GatewayTab = withPermission(
                             </span>
                           );
                         })()}
+                        {"hasReEnrollToken" in el && el.hasReEnrollToken && (
+                          <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
+                            Re-enrolling
+                          </span>
+                        )}
                       </div>
                     </Td>
                     <Td>
