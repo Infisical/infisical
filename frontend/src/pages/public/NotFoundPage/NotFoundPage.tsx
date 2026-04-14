@@ -11,7 +11,10 @@ export const NotFoundPage = () => {
         <p className="mt-32 text-4xl">Oops, something went wrong</p>
         <p className="mt-2 mb-1 text-lg">
           Think this is a mistake? Email{" "}
-          <a className="text-primary underline underline-offset-4" href="mailto:support@infisical.com">
+          <a
+            className="text-primary underline underline-offset-4"
+            href="mailto:support@infisical.com"
+          >
             support@infisical.com
           </a>{" "}
           and we`ll fix it!{" "}
