@@ -1345,66 +1345,7 @@ export const gatewayV2ServiceFactory = ({
         lastHealthCheckStatus: null
       });
 
-      const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-      const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
-      const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
-      const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
-
-      const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
-        key: orgCAs.gatewayServerCaPrivateKey,
-        format: "der",
-        type: "pkcs8"
-      });
-      const gatewayServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
-        "pkcs8",
-        gatewayServerCaSkObj.export({ format: "der", type: "pkcs8" }),
-        alg,
-        true,
-        ["sign"]
-      );
-
-      const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const gatewayServerCertIssuedAt = new Date();
-      const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
-      const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
-
-      const gatewayServerCertExtensions: x509.Extension[] = [
-        new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-        await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
-        new x509.CertificatePolicyExtension(["2.5.29.32.0"]),
-        new x509.KeyUsagesExtension(
-          // eslint-disable-next-line no-bitwise
-          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
-          true
-        ),
-        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-        new x509.SubjectAlternativeNameExtension([
-          { type: "dns", value: "localhost" },
-          { type: "ip", value: "127.0.0.1" },
-          { type: "ip", value: "::1" }
-        ])
-      ];
-
-      const gatewayServerSerialNumber = createSerialNumber();
-      const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-        serialNumber: gatewayServerSerialNumber,
-        subject: `O=${orgId},CN=Gateway`,
-        issuer: gatewayServerCaCert.subject,
-        notBefore: gatewayServerCertIssuedAt,
-        notAfter: gatewayServerCertExpireAt,
-        signingKey: gatewayServerCaPrivateKey,
-        publicKey: gatewayServerKeys.publicKey,
-        signingAlgorithm: alg,
-        extensions: gatewayServerCertExtensions
-      });
-
-      const relayCredentials = await relayService.getCredentialsForGateway({
-        relayName: relay.name,
-        orgId,
-        gatewayId: gateway.id,
-        gatewayName: gateway.name
-      });
+      const certs = await $issueGatewayCerts({ orgId, orgCAs, relayName: relay.name, gateway });
 
       const appCfg = getConfig();
       const accessToken = crypto.jwt().sign(
@@ -1419,20 +1360,9 @@ export const gatewayV2ServiceFactory = ({
 
       return {
         accessToken,
-        gatewayId: gateway.id,
         gatewayName: gateway.name,
         orgId,
-        relayHost: relayCredentials.relayHost,
-        pki: {
-          serverCertificate: gatewayServerCertificate.toString("pem"),
-          serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-          clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
-        },
-        ssh: {
-          clientCertificate: relayCredentials.clientSshCert,
-          clientPrivateKey: relayCredentials.clientSshPrivateKey,
-          serverCAPublicKey: relayCredentials.serverCAPublicKey
-        }
+        ...certs
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
