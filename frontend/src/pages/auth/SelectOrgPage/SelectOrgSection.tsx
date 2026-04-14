@@ -168,6 +168,14 @@ export const SelectOrganizationSection = () => {
           await handleLogout();
           return;
         }
+        if (error?.response?.data?.error === "SmtpError") {
+          createNotification({
+            title: "SMTP Misconfiguration",
+            text: error.response.data.message,
+            type: "error"
+          });
+          return;
+        }
         throw error;
       } finally {
         setIsInitialOrgCheckLoading(false);

@@ -20,6 +20,7 @@ import {
   BadRequestError,
   DatabaseError,
   ForbiddenRequestError,
+  InternalServerError,
   NotFoundError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -114,17 +115,26 @@ export const authLoginServiceFactory = ({
       ]);
 
       if (user.email) {
-        await smtpService.sendMail({
-          template: SmtpTemplates.NewDeviceJoin,
-          subjectLine: "Successful login from new device",
-          recipients: [user.email],
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toString(),
-            ip,
-            userAgent
-          }
-        });
+        await smtpService
+          .sendMail({
+            template: SmtpTemplates.NewDeviceJoin,
+            subjectLine: "Successful login from new device",
+            recipients: [user.email],
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toString(),
+              ip,
+              userAgent
+            }
+          })
+          .catch((err) => {
+            logger.error(err, "Failed to send new device login email [userId=%s]", user.id);
+            throw new InternalServerError({
+              message:
+                "Failed to send new device login notification. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+              name: "SmtpError"
+            });
+          });
       }
     }
   };
@@ -139,14 +149,23 @@ export const authLoginServiceFactory = ({
       userId
     });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical MFA code",
-      recipients: [email],
-      substitutions: {
-        code
-      }
-    });
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.EmailMfa,
+        subjectLine: "Infisical MFA code",
+        recipients: [email],
+        substitutions: {
+          code
+        }
+      })
+      .catch((err) => {
+        logger.error(err, "Failed to send MFA code email [userId=%s]", userId);
+        throw new InternalServerError({
+          message:
+            "Failed to send MFA verification code. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+          name: "SmtpError"
+        });
+      });
   };
 
   /*
@@ -730,19 +749,28 @@ export const authLoginServiceFactory = ({
             }))
         );
 
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
-            orgId: organizationId
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
+        await smtpService
+          .sendMail({
+            recipients: adminEmails,
+            subjectLine: "Security Alert: SSO Bypass",
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toISOString(),
+              ip: ipAddress,
+              userAgent,
+              siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
+              orgId: organizationId
+            },
+            template: SmtpTemplates.OrgAdminBreakglassAccess
+          })
+          .catch((err) => {
+            logger.error(err, "Failed to send SSO bypass alert email [orgId=%s] [userId=%s]", organizationId, user.id);
+            throw new InternalServerError({
+              message:
+                "Failed to send SSO bypass security alert. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+              name: "SmtpError"
+            });
+          });
       }
     }
 
