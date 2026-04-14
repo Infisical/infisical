@@ -168,6 +168,7 @@ export const SelectOrganizationSection = () => {
           await handleLogout();
           return;
         }
+        // React Query already shows a bad request toast; just log out silently.
         if (error?.response?.data?.error === "SmtpError") {
           await handleLogout();
           return;

@@ -242,6 +242,10 @@ export const PasswordStep = ({
             if (userOrgs.length > 0) {
               navigateToSelectOrganization(undefined, isAdminLogin);
             } else {
+              createNotification({
+                text: "Successfully logged in",
+                type: "success"
+              });
               await navigateUserToOrg({ navigate });
             }
           }
@@ -262,6 +266,14 @@ export const PasswordStep = ({
 
       if (err.response.data.error === "Captcha Required") {
         setShouldShowCaptcha(true);
+        return;
+      }
+
+      if (err.response.data.error === "SmtpError") {
+        createNotification({
+          text: err.response.data.message,
+          type: "error"
+        });
         return;
       }
 

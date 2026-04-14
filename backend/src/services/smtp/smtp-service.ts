@@ -159,13 +159,14 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
 export const throwIfSmtpError = (err: unknown, logMessage: string) => {
   logger.error(err, logMessage);
   const { isCloud } = getConfig();
-  if (!isCloud) {
-    throw new InternalServerError({
-      message:
-        "Failed to send email. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
-      name: "SmtpError"
-    });
-  }
+  // We must always throw so the user is not left waiting for an email that never arrives.
+  // On cloud, we show a generic message to avoid exposing internal misconfiguration details.
+  throw new InternalServerError({
+    message: isCloud
+      ? "We could not send you an email. Please try again later."
+      : "Failed to send email. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+    name: "SmtpError"
+  });
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
