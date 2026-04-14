@@ -185,7 +185,7 @@ When any of these events are received, the proxy identifies the affected cache e
 </Warning>
 
 **Fallback to Static Secrets Refresh:**
-When the SSE connection is active, the proxy relies on real-time events to keep the cache up to date. If the SSE connection fails, the proxy automatically falls back to the static secrets refresh mechanism, periodically polling Infisical to re-fetch cached secrets based on the `--static-secrets-refresh-interval`. The proxy will continue attempting to reconnect the SSE connection, and once re-established, polling stops and real-time event-based refresh resumes.
+When the SSE connection is active, the proxy relies on real-time events to keep the cache up to date. If the SSE connection fails, the proxy automatically falls back to the static secrets refresh mechanism, periodically polling Infisical to re-fetch cached secrets based on the `--polling-fallback-interval`. The proxy will continue attempting to reconnect the SSE connection, and once re-established, polling stops and real-time event-based refresh resumes.
 
 
 ### Mutation-Based Cache Invalidation
