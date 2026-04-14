@@ -139,6 +139,8 @@ export const ReviewAccessRequestModal = ({
   );
 
   const canRevokeAccess = useMemo(() => {
+    if (request.isApprover) return true;
+
     const hasBasePermission = permission.can(
       ProjectPermissionMemberActions.AssignAdditionalPrivileges,
       ProjectPermissionSub.Member
@@ -154,7 +156,7 @@ export const ReviewAccessRequestModal = ({
       forbidden: assignPrivilegesConditions?.forbiddenEmails,
       isMatch: (value, pattern) => picomatch.isMatch(value, pattern, { nocase: true })
     });
-  }, [permission, assignPrivilegesConditions, request.user?.email]);
+  }, [permission, assignPrivilegesConditions, request.user?.email, request.isApprover]);
 
   const accessDetails = {
     env: request.environmentName,

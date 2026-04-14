@@ -275,26 +275,32 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                     I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
                                     a={ProjectPermissionSub.Member}
                                   >
-                                    {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
-                                        isDisabled={
-                                          !isAllowed ||
-                                          !canModifyMemberPrivileges ||
-                                          !privilegeDetails.accessApprovalRequestId
-                                        }
-                                        variant="danger"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("revokeAccess", {
-                                            accessApprovalRequestId:
-                                              privilegeDetails.accessApprovalRequestId,
-                                            slug: privilegeDetails.slug
-                                          });
-                                        }}
-                                      >
-                                        Revoke Access
-                                      </UnstableDropdownMenuItem>
-                                    )}
+                                    {(isAllowed) => {
+                                      const isApproverForPrivilege =
+                                        privilegeDetails.policyApproverUserIds?.includes(
+                                          userId || ""
+                                        );
+                                      return (
+                                        <UnstableDropdownMenuItem
+                                          isDisabled={
+                                            !privilegeDetails.accessApprovalRequestId ||
+                                            ((!isAllowed || !canModifyMemberPrivileges) &&
+                                              !isApproverForPrivilege)
+                                          }
+                                          variant="danger"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePopUpOpen("revokeAccess", {
+                                              accessApprovalRequestId:
+                                                privilegeDetails.accessApprovalRequestId,
+                                              slug: privilegeDetails.slug
+                                            });
+                                          }}
+                                        >
+                                          Revoke Access
+                                        </UnstableDropdownMenuItem>
+                                      );
+                                    }}
                                   </ProjectPermissionCan>
                                 ) : (
                                   <>

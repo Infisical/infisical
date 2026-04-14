@@ -247,7 +247,8 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           privileges: SanitizedUserProjectAdditionalPrivilegeSchema.omit({ permissions: true })
             .extend({
               isLinkedToAccessApproval: z.boolean(),
-              accessApprovalRequestId: z.string().uuid().nullable()
+              accessApprovalRequestId: z.string().uuid().nullable(),
+              policyApproverUserIds: z.string().uuid().array()
             })
             .array()
         })

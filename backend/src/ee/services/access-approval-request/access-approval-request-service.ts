@@ -858,8 +858,9 @@ export const accessApprovalRequestServiceFactory = ({
       memberSubject
     );
     const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
+    const isApprover = accessApprovalRequest.policy.approvers.some((approver) => approver.userId === actorId);
 
-    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy) {
+    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
       throw new ForbiddenRequestError({
         message: "You do not have permission to revoke additional privileges for this user"
       });
