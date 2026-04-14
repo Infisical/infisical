@@ -89,11 +89,7 @@ The Gateway supports multiple authentication methods. Below are the available au
       infisical gateway start my-gateway --enroll-method=static --token=<enrollment-token> --domain=https://app.infisical.com
     ```
 
-    After enrollment, the gateway saves its credentials locally. On subsequent restarts, just run:
-
-    ```bash
-      infisical gateway start my-gateway
-    ```
+    After enrollment, the gateway saves its credentials locally. You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
 
   </Accordion>
   <Accordion title="Universal Auth">
@@ -756,6 +752,9 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 ## Frequently Asked Questions
 
 <AccordionGroup>
+  <Accordion title="Can I re-run the same enrollment command after a restart?">
+      Yes. The CLI stores the enrollment token locally after the first successful enrollment. If you run the same command again with the same `--token` value, it detects the token has already been used and skips enrollment, proceeding directly to start the gateway. This means you can safely use the same command (e.g., via up-arrow in your shell) without getting "token already used" or "token expired" errors.
+  </Accordion>
   <Accordion title="How are relays auto-selected?">
       If the `--target-relay-name` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
   </Accordion>
