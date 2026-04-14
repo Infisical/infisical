@@ -1036,7 +1036,7 @@ export const secretQueueFactory = ({
 
             await telemetryService.sendPostHogEvents({
               event: PostHogEventTypes.IntegrationSynced,
-              distinctId: `project/${projectId}`,
+              distinctId: actorId ?? `platform/${projectId}`,
               organizationId: project.orgId,
               properties: {
                 integrationId: integration.id,
