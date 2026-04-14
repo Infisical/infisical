@@ -169,11 +169,7 @@ export const SelectOrganizationSection = () => {
           return;
         }
         if (error?.response?.data?.error === "SmtpError") {
-          createNotification({
-            title: "SMTP Misconfiguration",
-            text: error.response.data.message,
-            type: "error"
-          });
+          await handleLogout();
           return;
         }
         throw error;
@@ -222,6 +218,10 @@ export const SelectOrganizationSection = () => {
         });
         navigate({ to: "/cli-redirect" });
       } else {
+        createNotification({
+          text: "Successfully logged in",
+          type: "success"
+        });
         navigateUserToOrg({ navigate, organizationId: organization.id });
       }
     },

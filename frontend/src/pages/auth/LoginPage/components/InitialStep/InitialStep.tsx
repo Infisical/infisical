@@ -164,10 +164,6 @@ export const InitialStep = ({
         if (isLoginSuccessful && isLoginSuccessful.success) {
           saveLastLogin({ method: LoginMethod.EMAIL });
           navigateToSelectOrganization(undefined, isAdmin);
-          createNotification({
-            text: "Successfully logged in",
-            type: "success"
-          });
         }
       }
     } catch (err: any) {

@@ -225,13 +225,13 @@ export const PasswordStep = ({
         if (loginAttempt && loginAttempt.success) {
           // case: login was successful
           setIsLoading(false);
-          createNotification({
-            text: "Successfully logged in",
-            type: "success"
-          });
 
           // case: organization ID is present from the provider auth token -- navigate directly to the org
           if (organizationId) {
+            createNotification({
+              text: "Successfully logged in",
+              type: "success"
+            });
             await navigateUserToOrg({ navigate, organizationId });
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
