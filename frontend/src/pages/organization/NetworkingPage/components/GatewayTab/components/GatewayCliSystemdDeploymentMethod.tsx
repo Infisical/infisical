@@ -92,7 +92,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
 
   const installCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `sudo infisical gateway systemd install ${name} --enroll-method=static --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
+    return `sudo infisical gateway systemd install ${name} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
   }, [enrollmentToken, name, resolvedRelayName, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-gateway";

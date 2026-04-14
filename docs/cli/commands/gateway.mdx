@@ -6,7 +6,7 @@ description: "Run the Infisical gateway or manage its systemd service"
 <Tabs>
   <Tab title="Enrollment token">
     ```bash
-    infisical gateway start <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
   <Tab title="Machine identity">
@@ -16,7 +16,7 @@ description: "Run the Infisical gateway or manage its systemd service"
   </Tab>
   <Tab title="systemd (enrollment token)">
     ```bash
-    sudo infisical gateway systemd install <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    sudo infisical gateway systemd install <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
   <Tab title="systemd (machine identity)">
@@ -46,7 +46,7 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
   Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
 
 ```bash
-infisical gateway start <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
+infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
 ```
 
 The gateway name is provided as a positional argument. The `--name` flag is still accepted for backwards compatibility but is deprecated.
@@ -86,7 +86,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      infisical gateway start my-gateway --enroll-method=static --token=<enrollment-token> --domain=https://app.infisical.com
+      infisical gateway start my-gateway --enroll-method=token --token=<enrollment-token> --domain=https://app.infisical.com
     ```
 
     After enrollment, the gateway saves its credentials locally. You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
@@ -316,11 +316,11 @@ The Gateway supports multiple authentication methods. Below are the available au
   </Accordion>
 
   <Accordion title="--enroll-method">
-    The enrollment method to use. When set to `static`, the `--token` flag is treated as a one-time enrollment token instead of a machine identity access token.
+    The enrollment method to use. When set to `token`, the `--token` flag is treated as a one-time enrollment token instead of a machine identity access token.
 
     ```bash
     # Example
-    infisical gateway start my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    infisical gateway start my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
 
   </Accordion>
@@ -342,7 +342,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
 ```bash
 # Enrollment token
-sudo infisical gateway systemd install my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
+sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
 
 # Machine identity
 sudo infisical gateway systemd install my-gateway --token=<machine-identity-token> --domain=<domain>
@@ -358,17 +358,17 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    The enrollment method to use. When set to `static`, the `--token` flag is treated as a one-time enrollment token.
+    The enrollment method to use. When set to `token`, the `--token` flag is treated as a one-time enrollment token.
 
     ```bash
     # Example
-    sudo infisical gateway systemd install my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
 
   </Accordion>
 
   <Accordion title="--token">
-    The authentication token. When `--enroll-method=static` is set, this is a one-time enrollment token. Otherwise, it is a machine identity access token.
+    The authentication token. When `--enroll-method=token` is set, this is a one-time enrollment token. Otherwise, it is a machine identity access token.
 
     ```bash
     # Example

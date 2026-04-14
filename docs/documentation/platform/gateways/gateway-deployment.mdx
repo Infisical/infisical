@@ -43,7 +43,7 @@ The recommended way to deploy a gateway. Create the gateway in the Infisical UI,
         For production deployments on Linux, install as a systemd service:
         ```bash
         sudo infisical gateway systemd install my-gateway \
-          --enroll-method=static \
+          --enroll-method=token \
           --token=<enrollment-token> \
           --domain=<your-infisical-domain>
         sudo systemctl start infisical-gateway
@@ -53,7 +53,7 @@ The recommended way to deploy a gateway. Create the gateway in the Infisical UI,
         For development or testing, run directly in the foreground:
         ```bash
         infisical gateway start my-gateway \
-          --enroll-method=static \
+          --enroll-method=token \
           --token=<enrollment-token> \
           --domain=<your-infisical-domain>
         ```

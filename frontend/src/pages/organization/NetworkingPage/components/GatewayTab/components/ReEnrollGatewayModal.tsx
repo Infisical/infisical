@@ -46,7 +46,7 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
 
   const command = useMemo(() => {
     const gatewayName = gatewayData?.name ?? "";
-    return `infisical gateway start ${gatewayName} --enroll-method=static --token=${enrollmentToken} --domain=${siteURL}`;
+    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
   }, [gatewayData?.name, enrollmentToken, siteURL]);
 
   const handleClose = (open: boolean) => {

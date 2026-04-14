@@ -92,7 +92,7 @@ export const GatewayCliDeploymentMethod = () => {
 
   const command = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `infisical gateway start ${name} --enroll-method=static --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
+    return `infisical gateway start ${name} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
   }, [name, enrollmentToken, resolvedRelayName, siteURL]);
 
   if (step === "command") {
