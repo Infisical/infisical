@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
 import picomatch from "picomatch";
@@ -45,14 +46,17 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
-  useListProjectUserPrivileges
+  useListProjectUserPrivileges,
+  useRevokeAccessRequest
 } from "@app/hooks/api";
+import { projectUserPrivilegeKeys } from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
   canModifyByGrantConditions,
@@ -67,15 +71,19 @@ type Props = {
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   const { user } = useUser();
   const userId = user?.id;
+  const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
-    "modifyPrivilege"
+    "modifyPrivilege",
+    "revokeAccess"
   ] as const);
   const { permission } = useProjectPermission();
 
   const { mutateAsync: deletePrivilege } = useDeleteProjectUserAdditionalPrivilege();
+  const { mutateAsync: revokeAccessRequest } = useRevokeAccessRequest();
 
   const { data: userProjectPrivileges, isPending } = useListProjectUserPrivileges(
     membershipDetails?.id
@@ -108,6 +116,21 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     });
     createNotification({ type: "success", text: "Successfully removed the privilege" });
     handlePopUpClose("deletePrivilege");
+  };
+
+  const handleRevokeAccess = async () => {
+    const { accessApprovalRequestId } = popUp?.revokeAccess?.data as {
+      accessApprovalRequestId: string;
+    };
+    await revokeAccessRequest({
+      requestId: accessApprovalRequestId,
+      projectSlug: currentProject?.slug || ""
+    });
+    await queryClient.invalidateQueries({
+      queryKey: projectUserPrivilegeKeys.list(membershipDetails.id)
+    });
+    createNotification({ type: "success", text: "Successfully revoked access" });
+    handlePopUpClose("revokeAccess");
   };
 
   const hasAdditionalPrivileges = Boolean(userProjectPrivileges?.length);
@@ -215,8 +238,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
-                                This privilege was granted via an access request, therefore it
-                                cannot be edited or deleted
+                                This privilege is managed by an access approval request.
                               </TooltipContent>
                             </Tooltip>
                           )}
@@ -241,53 +263,87 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                         </UnstableTableCell>
                         {!isOwnProjectMembershipDetails && (
                           <UnstableTableCell>
-                            {!isLinkedToAccessApproval && (
-                              <UnstableDropdownMenu>
-                                <UnstableDropdownMenuTrigger asChild>
-                                  <UnstableIconButton size="xs" variant="ghost">
-                                    <EllipsisIcon />
-                                  </UnstableIconButton>
-                                </UnstableDropdownMenuTrigger>
-                                <UnstableDropdownMenuContent align="end">
+                            <UnstableDropdownMenu>
+                              <UnstableDropdownMenuTrigger asChild>
+                                <UnstableIconButton size="xs" variant="ghost">
+                                  <EllipsisIcon />
+                                </UnstableIconButton>
+                              </UnstableDropdownMenuTrigger>
+                              <UnstableDropdownMenuContent align="end">
+                                {isLinkedToAccessApproval ? (
                                   <ProjectPermissionCan
-                                    I={ProjectPermissionActions.Edit}
+                                    I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
                                     a={ProjectPermissionSub.Member}
                                   >
-                                    {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
-                                        isDisabled={!isAllowed || !canModifyMemberPrivileges}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("modifyPrivilege", privilegeDetails);
-                                        }}
-                                      >
-                                        Edit Additional Privilege
-                                      </UnstableDropdownMenuItem>
-                                    )}
+                                    {(isAllowed) => {
+                                      const isApproverForPrivilege =
+                                        privilegeDetails.policyApproverUserIds?.includes(
+                                          userId || ""
+                                        );
+                                      return (
+                                        <UnstableDropdownMenuItem
+                                          isDisabled={
+                                            !privilegeDetails.accessApprovalRequestId ||
+                                            ((!isAllowed || !canModifyMemberPrivileges) &&
+                                              !isApproverForPrivilege)
+                                          }
+                                          variant="danger"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePopUpOpen("revokeAccess", {
+                                              accessApprovalRequestId:
+                                                privilegeDetails.accessApprovalRequestId,
+                                              slug: privilegeDetails.slug
+                                            });
+                                          }}
+                                        >
+                                          Revoke Access
+                                        </UnstableDropdownMenuItem>
+                                      );
+                                    }}
                                   </ProjectPermissionCan>
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionActions.Edit}
-                                    a={ProjectPermissionSub.Member}
-                                  >
-                                    {(isAllowed) => (
-                                      <UnstableDropdownMenuItem
-                                        isDisabled={!isAllowed || !canModifyMemberPrivileges}
-                                        variant="danger"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handlePopUpOpen("deletePrivilege", {
-                                            id: privilegeDetails?.id,
-                                            slug: privilegeDetails?.slug
-                                          });
-                                        }}
-                                      >
-                                        Remove Additional Privilege
-                                      </UnstableDropdownMenuItem>
-                                    )}
-                                  </ProjectPermissionCan>
-                                </UnstableDropdownMenuContent>
-                              </UnstableDropdownMenu>
-                            )}
+                                ) : (
+                                  <>
+                                    <ProjectPermissionCan
+                                      I={ProjectPermissionActions.Edit}
+                                      a={ProjectPermissionSub.Member}
+                                    >
+                                      {(isAllowed) => (
+                                        <UnstableDropdownMenuItem
+                                          isDisabled={!isAllowed || !canModifyMemberPrivileges}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePopUpOpen("modifyPrivilege", privilegeDetails);
+                                          }}
+                                        >
+                                          Edit Additional Privilege
+                                        </UnstableDropdownMenuItem>
+                                      )}
+                                    </ProjectPermissionCan>
+                                    <ProjectPermissionCan
+                                      I={ProjectPermissionActions.Edit}
+                                      a={ProjectPermissionSub.Member}
+                                    >
+                                      {(isAllowed) => (
+                                        <UnstableDropdownMenuItem
+                                          isDisabled={!isAllowed || !canModifyMemberPrivileges}
+                                          variant="danger"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePopUpOpen("deletePrivilege", {
+                                              id: privilegeDetails?.id,
+                                              slug: privilegeDetails?.slug
+                                            });
+                                          }}
+                                        >
+                                          Remove Additional Privilege
+                                        </UnstableDropdownMenuItem>
+                                      )}
+                                    </ProjectPermissionCan>
+                                  </>
+                                )}
+                              </UnstableDropdownMenuContent>
+                            </UnstableDropdownMenu>
                           </UnstableTableCell>
                         )}
                       </UnstableTableRow>
@@ -375,6 +431,16 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
         onDeleteApproved={() => handlePrivilegeDelete()}
+      />
+      <DeleteActionModal
+        isOpen={popUp.revokeAccess.isOpen}
+        deleteKey="revoke"
+        title={`Do you want to revoke access for ${
+          (popUp?.revokeAccess?.data as { slug: string })?.slug
+        }?`}
+        subTitle="This will revoke the granted access approval request and remove the associated privilege."
+        onChange={(isOpen) => handlePopUpToggle("revokeAccess", isOpen)}
+        onDeleteApproved={() => handleRevokeAccess()}
       />
     </>
   );
