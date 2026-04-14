@@ -190,6 +190,7 @@ RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/
 # Installed to /opt/openssl-pqc so it does not conflict with the FIPS OpenSSL above.
 WORKDIR /tmp/openssl-pqc-build
 RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
     && tar -xf openssl-3.5.6.tar.gz \
     && cd openssl-3.5.6 \
     && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \

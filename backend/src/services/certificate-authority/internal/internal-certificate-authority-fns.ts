@@ -114,7 +114,7 @@ export const InternalCertificateAuthorityFns = ({
 
     const caKeyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
     const alg = keyAlgorithmToAlgCfg(caKeyAlgorithm);
-    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : globalThis.crypto;
+    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
     const leafKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
     // eslint-disable-next-line no-bitwise
@@ -155,10 +155,15 @@ export const InternalCertificateAuthorityFns = ({
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
-    let selectedKeyUsages = subscriber.keyUsages as CertKeyUsage[];
+    const selectedKeyUsages = subscriber.keyUsages as CertKeyUsage[];
     if (isPqcAlgorithm(caKeyAlgorithm)) {
       const invalidForPqc = [CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT, CertKeyUsage.DATA_ENCIPHERMENT];
-      selectedKeyUsages = selectedKeyUsages.filter((ku) => !invalidForPqc.includes(ku));
+      const requested = selectedKeyUsages.filter((ku) => invalidForPqc.includes(ku));
+      if (requested.length > 0) {
+        throw new BadRequestError({
+          message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+        });
+      }
     }
     // eslint-disable-next-line no-bitwise
     const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
@@ -357,7 +362,7 @@ export const InternalCertificateAuthorityFns = ({
 
     const caKeyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
     const alg = keyAlgorithmToAlgCfg(caKeyAlgorithm);
-    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : globalThis.crypto;
+    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
     const leafKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
     // eslint-disable-next-line no-bitwise
@@ -419,7 +424,12 @@ export const InternalCertificateAuthorityFns = ({
 
     if (isPqcAlgorithm(caKeyAlgorithm)) {
       const invalidForPqc = [CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT, CertKeyUsage.DATA_ENCIPHERMENT];
-      selectedKeyUsages = selectedKeyUsages.filter((ku) => !invalidForPqc.includes(ku));
+      const requested = selectedKeyUsages.filter((ku) => invalidForPqc.includes(ku));
+      if (requested.length > 0) {
+        throw new BadRequestError({
+          message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+        });
+      }
     }
 
     const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);

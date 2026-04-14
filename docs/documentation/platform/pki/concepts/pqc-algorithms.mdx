@@ -1,0 +1,67 @@
+---
+title: "Post-Quantum Cryptography (PQC)"
+sidebarTitle: "Post-Quantum Algorithms"
+description: "Learn about Infisical's support for post-quantum cryptographic algorithms in certificate management."
+---
+
+## What is Post-Quantum Cryptography?
+
+Post-Quantum Cryptography (PQC) refers to cryptographic algorithms designed to be secure against attacks by quantum computers. Traditional algorithms like RSA and ECDSA rely on mathematical problems (integer factorization, discrete logarithm) that quantum computers could efficiently solve using Shor's algorithm.
+
+PQC algorithms are based on different mathematical foundations, such as lattice problems, that are believed to resist both classical and quantum attacks.
+
+## Supported PQC Algorithms
+
+Infisical supports the following NIST-standardized post-quantum signature algorithms for certificate authorities and certificate issuance:
+
+### ML-DSA (Module-Lattice Digital Signature Algorithm)
+
+ML-DSA (formerly known as CRYSTALS-Dilithium) is a lattice-based digital signature scheme standardized in [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final). It offers a strong balance of security, performance, and key/signature size.
+
+<Note>
+ML-DSA is the recommended PQC algorithm for most use cases due to its efficient key generation, signing, and verification performance.
+</Note>
+
+## Using PQC Algorithms
+
+### Creating a PQC Certificate Authority
+
+You can create a Certificate Authority with a PQC key algorithm through the Infisical UI or API.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    When creating a new Internal CA, select one of the ML-DSA variants from the **Key Algorithm** dropdown:
+    - **ML-DSA-44** for NIST Level 2 security
+    - **ML-DSA-65** for NIST Level 3 security
+    - **ML-DSA-87** for NIST Level 5 security
+  </Tab>
+  <Tab title="API">
+    When creating a CA via the API, set the `keyAlgorithm` field to one of:
+    - `ML-DSA-44`
+    - `ML-DSA-65`
+    - `ML-DSA-87`
+
+    ```bash
+    curl --request POST \
+      --url https://your-infisical-instance.com/api/v1/pki/ca \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "projectSlug": "your-project",
+        "type": "root",
+        "commonName": "My PQC Root CA",
+        "keyAlgorithm": "ML-DSA-65",
+        "notAfter": "2035-01-01"
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## Key Differences from Classical Algorithms
+
+When using PQC algorithms, keep the following constraints in mind:
+
+- **Signature-only**: PQC algorithms are digital signature algorithms. Key usages like `keyEncipherment`, `keyAgreement`, and `dataEncipherment` are not valid for PQC certificates. Requesting these usages will return an error.
+- **No PKCS#12 export**: PQC certificates cannot be exported in PKCS#12 (.p12/.pfx) format. Use PEM format instead.
+- **Larger keys and signatures**: PQC keys and signatures are significantly larger than RSA/ECDSA equivalents. Plan for increased certificate sizes in bandwidth-constrained environments.
+- **OpenSSL 3.5+ required**: PQC operations require OpenSSL 3.5 or later. Infisical ships with a dedicated PQC-capable OpenSSL installation for these operations.
