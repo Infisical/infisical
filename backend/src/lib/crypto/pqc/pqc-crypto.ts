@@ -34,7 +34,10 @@ const extractRawKeyFromPkcs8 = (der: Buffer): Buffer => {
   // Guarded with try/catch because a raw key can naturally start with 0x04.
   if (raw[0] === 0x04) {
     try {
-      return Buffer.from(AsnConvert.parse(raw, OctetString).buffer);
+      const inner = Buffer.from(AsnConvert.parse(raw, OctetString).buffer);
+      if (inner.length < raw.length) {
+        return inner;
+      }
     } catch {
       // Not actually double-wrapped — use raw bytes directly
     }
@@ -180,16 +183,15 @@ const pqcImportKey = (
   keyUsages: KeyUsage[]
 ): PqcCryptoKey => {
   const derBuf = Buffer.from(keyData as ArrayBuffer);
-  const isPrivate = keyUsages.includes("sign");
 
-  if (format === "pkcs8" && isPrivate) {
+  if (format === "pkcs8") {
     const rawKey = extractRawKeyFromPkcs8(derBuf);
     const actualAlg =
       detectPqcVariantFromDer(derBuf) || detectPqcVariantFromKeySize(rawKey.length, "private") || algName;
     return new PqcCryptoKey(rawKey, actualAlg, "private", keyUsages, derBuf);
   }
 
-  if (format === "spki" && !isPrivate) {
+  if (format === "spki") {
     const rawKey = extractRawKeyFromSpki(derBuf);
     const actualAlg =
       detectPqcVariantFromDer(derBuf) || detectPqcVariantFromKeySize(rawKey.length, "public") || algName;

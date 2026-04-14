@@ -295,8 +295,22 @@ export const generateSelfSignedCertificate = async ({
     policy?.sans
   );
 
+  if (isPqcAlgorithm(effectiveKeyAlgorithm) && certificateRequest.keyUsages?.length) {
+    const invalidForPqc = [
+      CertKeyUsageType.KEY_ENCIPHERMENT,
+      CertKeyUsageType.KEY_AGREEMENT,
+      CertKeyUsageType.DATA_ENCIPHERMENT
+    ];
+    const requested = certificateRequest.keyUsages.filter((ku) => invalidForPqc.includes(ku));
+    if (requested.length > 0) {
+      throw new BadRequestError({
+        message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+      });
+    }
+  }
+
   const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
-  const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : globalThis.crypto;
+  const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
   const keyPair = await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
