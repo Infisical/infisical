@@ -110,6 +110,10 @@ export const PasswordStep = ({
       }
       // case: no orgs found, so we navigate the user to create an org
       else {
+        createNotification({
+          text: "Successfully logged in",
+          type: "success"
+        });
         await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
@@ -122,6 +126,12 @@ export const PasswordStep = ({
           text: err.response.data.message,
           type: "error"
         });
+        return;
+      }
+
+      // React Query's global MutationCache.onError already shows the SmtpError toast.
+      // Return early so we don't also show the misleading "check your password" message.
+      if (err.response.data.error === "SmtpError") {
         return;
       }
 
@@ -269,11 +279,9 @@ export const PasswordStep = ({
         return;
       }
 
+      // React Query's global MutationCache.onError already shows the SmtpError toast.
+      // Return early so we don't also show the misleading "check your password" message.
       if (err.response.data.error === "SmtpError") {
-        createNotification({
-          text: err.response.data.message,
-          type: "error"
-        });
         return;
       }
 
