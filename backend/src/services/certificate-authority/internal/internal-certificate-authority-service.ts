@@ -409,8 +409,10 @@ export const internalCertificateAuthorityServiceFactory = ({
               maxPathLength === -1 || maxPathLength === null ? undefined : maxPathLength,
               true
             ),
-            // eslint-disable-next-line no-bitwise
-            new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+            new x509.KeyUsagesExtension(
+              isPqcAlgorithm(keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
+              true
+            ),
             await x509.SubjectKeyIdentifierExtension.create(keys.publicKey)
           ]
         });
@@ -734,8 +736,10 @@ export const internalCertificateAuthorityServiceFactory = ({
                 : ca.internalCa.maxPathLength,
               true
             ),
-            // eslint-disable-next-line no-bitwise
-            new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+            new x509.KeyUsagesExtension(
+              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
+              true
+            ),
             await x509.SubjectKeyIdentifierExtension.create(caPublicKey)
           ]
         });
@@ -1516,16 +1520,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       signingAlgorithm: alg,
       extensions: [
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
-        // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(
-          isPqcAlgorithm(caKeyAlg)
-            ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign | x509.KeyUsageFlags.digitalSignature
-            : x509.KeyUsageFlags.keyCertSign |
-              x509.KeyUsageFlags.cRLSign |
-              x509.KeyUsageFlags.digitalSignature |
-              x509.KeyUsageFlags.keyEncipherment,
-          true
-        ),
+        new x509.KeyUsagesExtension(isPqcAlgorithm(caKeyAlg) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(keys.publicKey)
       ]
     });
@@ -2615,8 +2610,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             : Number(maxPathLength),
           true
         ),
-        // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+        new x509.KeyUsagesExtension(isPqcAlgorithm(rootKeyAlg) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(actualPublicKey)
       ]
     });
