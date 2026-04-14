@@ -146,9 +146,12 @@ export const internalCertificateAuthorityServiceFactory = ({
   permissionService,
   caSigningConfigDAL
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
-  // CA key usage flags: PQC algorithms are signature-only (no keyEncipherment)
-  const PQC_CA_KEY_USAGES =
-    x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign | x509.KeyUsageFlags.digitalSignature;
+  // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
+  const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
+  // PQC root CAs also need digitalSignature per FIPS 204/205
+  const PQC_ROOT_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
+  // Intermediate CAs: add digitalSignature + keyEncipherment for leaf cert operations
+  const PQC_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
   const CLASSICAL_CA_KEY_USAGES = PQC_CA_KEY_USAGES | x509.KeyUsageFlags.keyEncipherment;
 
   const $getSignatureKeyFamily = (sigAlg: string): string => {
@@ -410,7 +413,7 @@ export const internalCertificateAuthorityServiceFactory = ({
               true
             ),
             new x509.KeyUsagesExtension(
-              isPqcAlgorithm(keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
+              isPqcAlgorithm(keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
               true
             ),
             await x509.SubjectKeyIdentifierExtension.create(keys.publicKey)
@@ -737,7 +740,7 @@ export const internalCertificateAuthorityServiceFactory = ({
               true
             ),
             new x509.KeyUsagesExtension(
-              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
+              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
               true
             ),
             await x509.SubjectKeyIdentifierExtension.create(caPublicKey)
@@ -2610,7 +2613,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             : Number(maxPathLength),
           true
         ),
-        new x509.KeyUsagesExtension(isPqcAlgorithm(rootKeyAlg) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES, true),
+        new x509.KeyUsagesExtension(isPqcAlgorithm(rootKeyAlg) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(actualPublicKey)
       ]
     });
