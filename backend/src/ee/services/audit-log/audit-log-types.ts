@@ -735,6 +735,7 @@ export enum EventType {
   SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
 
   // Gateway Enrollment Tokens
+  GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLLMENT_TOKEN_DELETE = "gateway-enrollment-token-delete",
   GATEWAY_ENROLL = "gateway-enroll",
@@ -5782,6 +5783,14 @@ interface SecretValidationRuleDeleteEvent {
   };
 }
 
+interface GatewayCreateEvent {
+  type: EventType.GATEWAY_CREATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 interface GatewayEnrollmentTokenCreateEvent {
   type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
@@ -6336,6 +6345,7 @@ export type Event =
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
   | SecretValidationRuleDeleteEvent
+  | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollmentTokenDeleteEvent
   | GatewayEnrollEvent

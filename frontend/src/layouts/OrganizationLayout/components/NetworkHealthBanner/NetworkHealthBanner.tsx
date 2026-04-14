@@ -70,7 +70,11 @@ export const NetworkHealthBanner = () => {
         ) {
           return true;
         }
-        return "heartbeat" in g && isHeartbeatStale(g.heartbeat);
+        if (!("heartbeat" in g)) return false;
+        // Skip gateways that have never connected (both fields null)
+        if (g.heartbeat === null && ("lastHealthCheckStatus" in g ? g.lastHealthCheckStatus : null) === null)
+          return false;
+        return isHeartbeatStale(g.heartbeat);
       }).length ?? 0,
     [gateways]
   );

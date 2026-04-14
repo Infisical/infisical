@@ -188,7 +188,7 @@ export const injectIdentity = fp(
       }
 
       // Authentication is handled on a route-level (enrollment token in body)
-      if (req.url === "/api/v2/gateways/enroll") {
+      if (req.url === "/api/v3/gateways/token-auth/enroll") {
         return;
       }
 

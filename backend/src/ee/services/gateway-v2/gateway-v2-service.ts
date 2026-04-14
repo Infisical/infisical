@@ -1261,6 +1261,10 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
     }
 
+    if (gateway.identityId) {
+      throw new BadRequestError({ message: "Cannot configure token auth for identity-based gateways" });
+    }
+
     const gatewayToken = $generateEnrollmentToken();
 
     const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
@@ -1360,36 +1364,35 @@ export const gatewayV2ServiceFactory = ({
       if (!relay) throw new NotFoundError({ message: "No relay available for auto-selection" });
     }
 
-    // Atomic single-use consumption: only marks the token as used if usedAt is still null.
-    // The WHERE usedAt IS NULL ensures concurrent requests can't both succeed.
-    const consumed = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
+    if (!tokenRecord.gatewayId) {
+      throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
+    }
+
+    // Fetch org CAs before the transaction to avoid holding a long DB lock during KMS calls.
+    const orgCAs = await $getOrgCAs(orgId);
+
+    // Consume the token and update the gateway in a single transaction.
+    // If the gateway update fails, the token consumption is rolled back.
+    const gateway = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
       const rows = await tx(TableName.GatewayEnrollmentTokens)
         .where({ id: tokenRecord.id })
         .whereNull("usedAt")
         .update({ usedAt: new Date() })
         .returning("*");
-      return rows.length > 0;
-    });
-    if (!consumed) {
-      throw new BadRequestError({ message: "Enrollment token has already been used" });
-    }
+      if (rows.length === 0) {
+        throw new BadRequestError({ message: "Enrollment token has already been used" });
+      }
 
-    const orgCAs = await $getOrgCAs(orgId);
+      const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId!, tx);
+      if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
+      return gatewayV2DAL.updateById(
+        existing.id,
+        { $incr: { tokenVersion: 1 }, relayId: relay!.id, heartbeat: null, lastHealthCheckStatus: null },
+        tx
+      );
+    });
 
     try {
-      // The gateway record was created at token creation time.
-      // Bump tokenVersion to invalidate any previous JWT and set the relay.
-      if (!tokenRecord.gatewayId) {
-        throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
-      }
-      const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId);
-      if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
-      const gateway = await gatewayV2DAL.updateById(existing.id, {
-        $incr: { tokenVersion: 1 },
-        relayId: relay.id,
-        heartbeat: null,
-        lastHealthCheckStatus: null
-      });
 
       const certs = await $issueGatewayCerts({ orgId, orgCAs, relayName: relay.name, gateway });
 
