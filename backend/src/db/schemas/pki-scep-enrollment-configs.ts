@@ -14,9 +14,12 @@ export const PkiScepEnrollmentConfigsSchema = z.object({
   encryptedRaPrivateKey: zodBuffer,
   raCertificate: z.string(),
   raCertExpiresAt: z.date(),
-  hashedChallengePassword: z.string(),
+  hashedChallengePassword: z.string().nullable().optional(),
   includeCaCertInResponse: z.boolean().default(true),
   allowCertBasedRenewal: z.boolean().default(true),
+  challengeType: z.string().default("static"),
+  dynamicChallengeExpiryMinutes: z.number().default(60),
+  dynamicChallengeMaxPending: z.number().default(100),
   createdAt: z.date(),
   updatedAt: z.date()
 });

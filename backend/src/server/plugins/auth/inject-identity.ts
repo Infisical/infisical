@@ -150,7 +150,11 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url.includes(".well-known/est") || req.url.includes("/scep/") || req.url.includes("/api/v3/auth/")) {
+      if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
+        return;
+      }
+
+      if (req.url.includes("/scep/") && !req.url.includes("/challenge")) {
         return;
       }
 

@@ -122,6 +122,7 @@ import { pkiDiscoveryQueueFactory } from "@app/ee/services/pki-discovery/pki-dis
 import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-scan-history-dal";
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
@@ -1240,6 +1241,7 @@ export const registerRoutes = async (
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
   const scepEnrollmentConfigDAL = scepEnrollmentConfigDALFactory(db);
   const scepTransactionDAL = scepTransactionDALFactory(db);
+  const scepDynamicChallengeDAL = scepDynamicChallengeDALFactory(db);
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
@@ -2610,6 +2612,7 @@ export const registerRoutes = async (
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
+    scepDynamicChallengeDAL,
     scepTransactionDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -2622,7 +2625,8 @@ export const registerRoutes = async (
     certificatePolicyService,
     certificateRequestService,
     certificateIssuanceQueue,
-    auditLogService
+    auditLogService,
+    permissionService
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({

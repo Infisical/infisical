@@ -1,6 +1,15 @@
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { randomBytes } from "crypto";
 
+import { ActionProjectType } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -31,6 +40,8 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { convertRawCertsToPkcs7 } from "../certificate-est/certificate-est-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { getScepChallengeValidator, ScepChallengeType } from "./challenge";
+import { TScepDynamicChallengeDALFactory } from "./pki-scep-dynamic-challenge-dal";
 import { getScepCapabilities, isSignerCertIssuedByCa } from "./pki-scep-fns";
 import { buildCertRepFailure, buildCertRepPending, buildCertRepSuccess } from "./pki-scep-message-builder";
 import { parseScepMessage } from "./pki-scep-message-parser";
@@ -38,6 +49,7 @@ import { TScepTransactionDALFactory } from "./pki-scep-transaction-dal";
 import {
   ScepFailInfo,
   ScepMessageType,
+  TGenerateDynamicChallengeDTO,
   TGetCaCapsDTO,
   TGetCaCertDTO,
   THandlePkiOperationDTO,
@@ -48,6 +60,7 @@ type TPkiScepServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
+  scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
@@ -61,6 +74,7 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -71,6 +85,7 @@ export const pkiScepServiceFactory = ({
   certificateV3Service,
   certificateProfileDAL,
   scepEnrollmentConfigDAL,
+  scepDynamicChallengeDAL,
   scepTransactionDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -83,7 +98,8 @@ export const pkiScepServiceFactory = ({
   certificatePolicyService,
   certificateRequestService,
   certificateIssuanceQueue,
-  auditLogService
+  auditLogService,
+  permissionService
 }: TPkiScepServiceFactoryDep) => {
   const loadScepContext = async (profileId: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -303,9 +319,11 @@ export const pkiScepServiceFactory = ({
       }
     }
 
-    const isValid = challengePassword
-      ? await crypto.hashing().compareHash(challengePassword, scepConfig.hashedChallengePassword)
-      : false;
+    const challengeValidator = getScepChallengeValidator(scepConfig.challengeType as ScepChallengeType, {
+      scepEnrollmentConfigDAL,
+      scepDynamicChallengeDAL
+    });
+    const isValid = await challengeValidator.validate(challengePassword, scepConfig.id);
 
     if (!isValid) {
       // Many SCEP clients (including sscep) send PKCSReq for both initial enrollment
@@ -350,7 +368,7 @@ export const pkiScepServiceFactory = ({
             profileSlug: profile.slug,
             transactionId: parsed.transactionId,
             csrSubject: csrObj.subject,
-            challengeType: "static" as const,
+            challengeType: scepConfig.challengeType as ScepChallengeType,
             status: "failure" as const,
             failReason: "Invalid challenge password",
             clientIp
@@ -385,7 +403,7 @@ export const pkiScepServiceFactory = ({
       profileSlug: profile.slug,
       transactionId: parsed.transactionId,
       csrSubject: csrObj.subject,
-      challengeType: "static" as const,
+      challengeType: scepConfig.challengeType as ScepChallengeType,
       clientIp
     };
 
@@ -838,9 +856,102 @@ export const pkiScepServiceFactory = ({
     }
   };
 
+  const generateDynamicChallenge = async ({
+    profileId,
+    clientIp,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGenerateDynamicChallengeDTO) => {
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile || profile.enrollmentType !== EnrollmentType.SCEP) {
+      throw new NotFoundError({ message: "SCEP profile not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.Edit,
+      subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+    );
+
+    if (!profile.scepConfigId) {
+      throw new BadRequestError({ message: "SCEP enrollment not configured for this profile" });
+    }
+
+    const scepConfig = await scepEnrollmentConfigDAL.findById(profile.scepConfigId);
+    if (!scepConfig) {
+      throw new NotFoundError({ message: "SCEP configuration not found" });
+    }
+
+    if (scepConfig.challengeType !== ScepChallengeType.DYNAMIC) {
+      throw new BadRequestError({ message: "Dynamic challenges are not enabled for this SCEP profile" });
+    }
+
+    const project = await projectDAL.findOne({ id: profile.projectId });
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
+
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.pkiScep) {
+      throw new BadRequestError({
+        message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
+    const pendingCount = await scepDynamicChallengeDAL.countPending(scepConfig.id);
+    if (pendingCount >= scepConfig.dynamicChallengeMaxPending) {
+      throw new BadRequestError({
+        message: `Maximum number of pending challenges (${scepConfig.dynamicChallengeMaxPending}) reached. Wait for existing challenges to expire or be used.`
+      });
+    }
+
+    const challengePlaintext = randomBytes(32).toString("hex");
+
+    const appCfg = getConfig();
+    const hashedChallenge = await crypto.hashing().createHash(challengePlaintext, appCfg.SALT_ROUNDS);
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + scepConfig.dynamicChallengeExpiryMinutes);
+
+    await scepDynamicChallengeDAL.create({
+      scepConfigId: scepConfig.id,
+      hashedChallenge,
+      expiresAt,
+      clientIp: clientIp || null
+    });
+
+    void scepDynamicChallengeDAL.pruneExpired(scepConfig.id);
+
+    void auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: profile.id } },
+      event: {
+        type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED,
+        metadata: {
+          profileId: profile.id,
+          profileSlug: profile.slug,
+          expiresAt: expiresAt.toISOString(),
+          clientIp: clientIp || "unknown"
+        }
+      }
+    });
+
+    return { challenge: challengePlaintext };
+  };
+
   return {
     getCaCaps,
     getCaCert,
-    handlePkiOperation
+    handlePkiOperation,
+    generateDynamicChallenge
   };
 };

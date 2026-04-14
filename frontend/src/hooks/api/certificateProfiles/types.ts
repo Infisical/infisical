@@ -10,6 +10,11 @@ export enum IssuerType {
   SELF_SIGNED = "self-signed"
 }
 
+export enum ScepChallengeType {
+  STATIC = "static",
+  DYNAMIC = "dynamic"
+}
+
 export type TCertificateProfileDefaults = {
   ttlDays?: number;
   commonName?: string;
@@ -89,6 +94,10 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     raCertExpiresAt: string;
     includeCaCertInResponse: boolean;
     allowCertBasedRenewal: boolean;
+    challengeType: ScepChallengeType;
+    challengeEndpointUrl?: string;
+    dynamicChallengeExpiryMinutes: number;
+    dynamicChallengeMaxPending: number;
   };
 };
 
@@ -114,9 +123,12 @@ export type TCreateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   scepConfig?: {
-    challengePassword: string;
+    challengeType?: ScepChallengeType;
+    challengePassword?: string;
     includeCaCertInResponse?: boolean;
     allowCertBasedRenewal?: boolean;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;
@@ -142,9 +154,12 @@ export type TUpdateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   scepConfig?: {
+    challengeType?: ScepChallengeType;
     challengePassword?: string;
     includeCaCertInResponse?: boolean;
     allowCertBasedRenewal?: boolean;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
   externalConfigs?: Record<string, unknown> | null;
   defaults?: TCertificateProfileDefaults | null;

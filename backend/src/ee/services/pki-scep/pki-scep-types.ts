@@ -1,3 +1,5 @@
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+
 export enum ScepMessageType {
   CertRep = "3",
   RenewalReq = "17",
@@ -62,4 +64,13 @@ export type THandlePkiOperationDTO = {
   profileId: string;
   message: Buffer;
   clientIp: string;
+};
+
+export type TGenerateDynamicChallengeDTO = {
+  profileId: string;
+  clientIp: string;
+  actor: ActorType;
+  actorId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
 };

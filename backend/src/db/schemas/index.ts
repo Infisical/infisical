@@ -145,6 +145,7 @@ export * from "./pki-discovery-configs";
 export * from "./pki-discovery-installations";
 export * from "./pki-discovery-scan-history";
 export * from "./pki-est-enrollment-configs";
+export * from "./pki-scep-dynamic-challenges";
 export * from "./pki-scep-enrollment-configs";
 export * from "./pki-scep-transactions";
 export * from "./pki-signers";
