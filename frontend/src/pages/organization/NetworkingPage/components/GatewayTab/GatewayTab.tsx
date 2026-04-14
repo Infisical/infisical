@@ -275,19 +275,27 @@ export const GatewayTab = withPermission(
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
-                        {"isExpired" in el && el.isExpired ? (
-                          <span className="rounded-sm bg-red-900/30 px-1.5 py-0.5 text-xs text-red-400">
-                            Expired
-                          </span>
-                        ) : el.isPending ? (
-                          <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
-                            Pending
-                          </span>
-                        ) : (
-                          <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                            Gateway v{el.isV1 ? "1" : "2"}
-                          </span>
-                        )}
+                        {(() => {
+                          if ("isExpired" in el && el.isExpired) {
+                            return (
+                              <span className="rounded-sm bg-red-900/30 px-1.5 py-0.5 text-xs text-red-400">
+                                Expired
+                              </span>
+                            );
+                          }
+                          if (el.isPending) {
+                            return (
+                              <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
+                                Pending
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                              Gateway v{el.isV1 ? "1" : "2"}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </Td>
                     <Td>
@@ -361,23 +369,22 @@ export const GatewayTab = withPermission(
                               </OrgPermissionCan>
                             )}
                             {!el.isV1 &&
-                              (el.isPending ||
-                                ("identityId" in el && !el.identityId)) && (
-                              <OrgPermissionCan
-                                I={OrgGatewayPermissionActions.EditGateways}
-                                a={OrgPermissionSubjects.Gateway}
-                              >
-                                {(isAllowed: boolean) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    icon={<FontAwesomeIcon icon={faArrowsRotate} />}
-                                    onClick={() => handlePopUpOpen("reEnrollGateway", el)}
-                                  >
-                                    Re-enroll
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                            )}
+                              (el.isPending || ("identityId" in el && !el.identityId)) && (
+                                <OrgPermissionCan
+                                  I={OrgGatewayPermissionActions.EditGateways}
+                                  a={OrgPermissionSubjects.Gateway}
+                                >
+                                  {(isAllowed: boolean) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faArrowsRotate} />}
+                                      onClick={() => handlePopUpOpen("reEnrollGateway", el)}
+                                    >
+                                      Re-enroll
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
                             <OrgPermissionCan
                               I={OrgGatewayPermissionActions.DeleteGateways}
                               a={OrgPermissionSubjects.Gateway}

@@ -3,7 +3,15 @@ import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormLabel, IconButton, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  FormLabel,
+  IconButton,
+  Input,
+  Modal,
+  ModalClose,
+  ModalContent
+} from "@app/components/v2";
 import { useReEnrollGateway } from "@app/hooks/api/gateways-v2";
 
 type Props = {
@@ -56,33 +64,30 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
       <ModalContent
         className="max-w-2xl"
         title={`Re-enroll ${gatewayData.name}`}
-        subTitle={
-          step === "confirm"
-            ? gatewayData.isTokenOnly
-              ? "This will create a new enrollment token, replacing the expired one."
-              : "This will create a new enrollment token and invalidate the current gateway credentials. The gateway will stop working until re-enrolled."
-            : undefined
-        }
+        subTitle={(() => {
+          if (step !== "confirm") return undefined;
+          if (gatewayData.isTokenOnly)
+            return "This will create a new enrollment token, replacing the expired one.";
+          return "This will create a new enrollment token and invalidate the current gateway credentials. The gateway will stop working until re-enrolled.";
+        })()}
       >
         {step === "confirm" && (
-          <>
-            <div className="mt-4 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                colorSchema="danger"
-                onClick={handleReEnroll}
-                isLoading={isReEnrolling}
-              >
-                {gatewayData.isTokenOnly ? "Create New Token" : "Re-enroll"}
+          <div className="mt-4 flex items-center">
+            <Button
+              className="mr-4"
+              size="sm"
+              colorSchema="danger"
+              onClick={handleReEnroll}
+              isLoading={isReEnrolling}
+            >
+              {gatewayData.isTokenOnly ? "Create New Token" : "Re-enroll"}
+            </Button>
+            <ModalClose asChild>
+              <Button colorSchema="secondary" variant="plain">
+                Cancel
               </Button>
-              <ModalClose asChild>
-                <Button colorSchema="secondary" variant="plain">
-                  Cancel
-                </Button>
-              </ModalClose>
-            </div>
-          </>
+            </ModalClose>
+          </div>
         )}
         {step === "command" && (
           <>

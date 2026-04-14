@@ -989,9 +989,7 @@ export const pamAccountServiceFactory = ({
 
     if (resource.gatewayId) {
       const authorized =
-        actor.type === ActorType.GATEWAY
-          ? resource.gatewayId === actor.id
-          : resource.gatewayIdentityId === actor.id;
+        actor.type === ActorType.GATEWAY ? resource.gatewayId === actor.id : resource.gatewayIdentityId === actor.id;
       if (!authorized) {
         throw new ForbiddenRequestError({
           message: "Gateway does not have access to fetch the PAM session credentials"

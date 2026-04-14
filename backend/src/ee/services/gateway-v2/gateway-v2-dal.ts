@@ -54,7 +54,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
 
       return docs.map((el) => ({
         ...GatewaysV2Schema.parse(el),
-        identity: el.identityId ? { id: el.identityId, name: el.identityName as string } : null
+        identity: el.identityId ? { id: el.identityId, name: el.identityName } : null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: `${TableName.GatewayV2}: Find` });

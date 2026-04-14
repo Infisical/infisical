@@ -31,7 +31,6 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
-import { TGatewayEnrollmentTokenDALFactory } from "./gateway-enrollment-token-dal";
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
@@ -41,6 +40,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
+import { TGatewayEnrollmentTokenDALFactory } from "./gateway-enrollment-token-dal";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
@@ -816,7 +816,7 @@ export const gatewayV2ServiceFactory = ({
         ["identityId"]
       );
 
-      return $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
+      return await $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });

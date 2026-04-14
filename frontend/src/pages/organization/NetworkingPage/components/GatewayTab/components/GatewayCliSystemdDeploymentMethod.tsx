@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
 import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -82,7 +82,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
       const result = await createEnrollmentToken({ name });
       setEnrollmentToken(result.token);
 
-      const relayName = relay?.id === "_auto" ? "" : relay?.name ?? "";
+      const relayName = relay?.id === "_auto" ? "" : (relay?.name ?? "");
       setResolvedRelayName(relayName);
       setStep("command");
     } catch {
@@ -113,7 +113,10 @@ export const GatewayCliSystemdDeploymentMethod = () => {
             colorSchema="secondary"
             onClick={() => {
               navigator.clipboard.writeText(installCommand);
-              createNotification({ text: "Installation command copied to clipboard", type: "info" });
+              createNotification({
+                text: "Installation command copied to clipboard",
+                type: "info"
+              });
             }}
             className="w-10"
           >

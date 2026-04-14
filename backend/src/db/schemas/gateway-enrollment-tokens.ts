@@ -15,9 +15,9 @@ export const GatewayEnrollmentTokensSchema = z.object({
   ttl: z.number().default(3600),
   expiresAt: z.date(),
   usedAt: z.date().nullable().optional(),
+  gatewayId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  gatewayId: z.string().uuid().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TGatewayEnrollmentTokens = z.infer<typeof GatewayEnrollmentTokensSchema>;
