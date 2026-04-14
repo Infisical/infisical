@@ -177,7 +177,7 @@ export const userServiceFactory = ({
       }
 
       // Silently check if another user already has this email - don't send OTP if email is taken
-      const existingUser = await userDAL.findOne({ username: newEmail }, tx);
+      const existingUser = await userDAL.findOne({ username: normalizedNewEmail }, tx);
       if (!existingUser) {
         // Generate 6-digit OTP
         const otpCode = await tokenService.createTokenForUser({

@@ -36,6 +36,9 @@ export const Route = createFileRoute("/_authenticate")({
           })
         );
 
+        context.queryClient.removeQueries({
+          queryKey: authKeys.getAuthToken
+        });
         throw redirect({
           to: "/login"
         });

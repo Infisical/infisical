@@ -1217,16 +1217,19 @@ export const superAdminServiceFactory = ({
         return { error: "This domain is already verified by an organization.", data: null } as const;
       }
 
-      const data = await emailDomainDAL.create({
-        orgId,
-        domain: domain.toLowerCase(),
-        verificationMethod: "admin",
-        verificationCode: crypto.randomBytes(16).toString("hex"),
-        verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
-        status: "verified",
-        verifiedAt: new Date(),
-        codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-      });
+      const data = await emailDomainDAL.create(
+        {
+          orgId,
+          domain: domain.toLowerCase(),
+          verificationMethod: "admin",
+          verificationCode: crypto.randomBytes(16).toString("hex"),
+          verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
+          status: "verified",
+          verifiedAt: new Date(),
+          codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        },
+        tx
+      );
 
       return { error: undefined, data } as const;
     });

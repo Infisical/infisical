@@ -176,7 +176,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             email: email.toLowerCase(),
             firstName,
             lastName: lastName as string,
-            callbackPort,
+            callbackPort: callbackPort || undefined,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId,
             ip: requestContext.get("ip") || "",

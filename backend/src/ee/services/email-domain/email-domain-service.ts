@@ -192,12 +192,34 @@ export const emailDomainServiceFactory = ({
       });
     }
 
-    const updatedEmailDomain = await emailDomainDAL.updateById(emailDomainId, {
-      status: EmailDomainStatus.Verified,
-      verifiedAt: new Date()
+    const updatedEmailDomain = await emailDomainDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.EmailDomainCreationLock()]);
+      // Check if any org (including this one) already has this domain verified
+      const platformExisting = await emailDomainDAL.findOne(
+        { domain: emailDomainRecord.domain, status: EmailDomainStatus.Verified },
+        tx
+      );
+      if (platformExisting) {
+        return { error: "This domain is already verified by an organization.", data: null } as const;
+      }
+
+      const data = await emailDomainDAL.updateById(
+        emailDomainId,
+        {
+          status: EmailDomainStatus.Verified,
+          verifiedAt: new Date()
+        },
+        tx
+      );
+
+      return { error: null, data } as const;
     });
 
-    return { emailDomain: updatedEmailDomain };
+    if (updatedEmailDomain.error) {
+      throw new BadRequestError({ message: updatedEmailDomain.error });
+    }
+
+    return { emailDomain: updatedEmailDomain.data };
   };
 
   const listEmailDomains = async ({ actor, actorId, actorAuthMethod, actorOrgId, orgId }: TListEmailDomainsDTO) => {
