@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Control, UseFormSetValue, useWatch } from "react-hook-form";
+import { Control, UseFormSetValue } from "react-hook-form";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -7,11 +7,12 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
-  OptionWithDescription
+  OptionWithDescription,
+  useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
 
 type Props = {
@@ -25,33 +26,16 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: "create",
-    label: "Create projects",
-    description: "Create new projects within the organization"
-  }
-] as const;
-
-const actionOptions = PERMISSION_ACTIONS.map(({ action, label, description }) => ({
-  value: action as string,
-  label,
-  description
-}));
-
 export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const rule = useWatch({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
-    name: "permissions.project"
+    setValue,
+    formPath: "permissions.project",
+    permissionActions: ORG_PERMISSION_OBJECT.project.actions
   });
-
-  const selectedActions = useMemo(
-    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value as keyof typeof rule])),
-    [rule]
-  );
 
   const selectedCount = selectedActions.length;
 
@@ -88,17 +72,6 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     }
   };
 
-  const handleActionsChange = (newValue: unknown) => {
-    const selected = Array.isArray(newValue) ? newValue : [];
-    const updated = Object.fromEntries(
-      PERMISSION_ACTIONS.map(({ action }) => [
-        action,
-        selected.some((s: { value: string }) => s.value === action)
-      ])
-    );
-    setValue("permissions.project", updated as any, { shouldDirty: true });
-  };
-
   return (
     <>
       <Tr
@@ -109,8 +82,8 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Project</p>
-          <p className="text-xs text-mineshaft-400">Create new projects within the organization</p>
+          <p>{ORG_PERMISSION_OBJECT.project.title}</p>
+          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT.project.description}</p>
         </Td>
         <Td>
           <Select
@@ -137,7 +110,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.project.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

@@ -5,54 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionGroupActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
   OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
-
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgPermissionGroupActions.Read,
-    label: "Read Groups",
-    description: "View groups and their members"
-  },
-  {
-    action: OrgPermissionGroupActions.Create,
-    label: "Create Groups",
-    description: "Create new user groups"
-  },
-  {
-    action: OrgPermissionGroupActions.Edit,
-    label: "Edit Groups",
-    description: "Update group membership and settings"
-  },
-  {
-    action: OrgPermissionGroupActions.Delete,
-    label: "Delete Groups",
-    description: "Delete groups"
-  },
-  {
-    action: OrgPermissionGroupActions.GrantPrivileges,
-    label: "Grant Privileges",
-    description: undefined
-  },
-  {
-    action: OrgPermissionGroupActions.AddMembers,
-    label: "Add Members",
-    description: "Add users to a group"
-  },
-  {
-    action: OrgPermissionGroupActions.RemoveMembers,
-    label: "Remove Members",
-    description: "Remove users from a group"
-  }
-] as const;
 
 type Props = {
   isEditable: boolean;
@@ -71,18 +32,18 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.groups",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.groups.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.groups.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -118,13 +79,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            [OrgPermissionGroupActions.Read]: false,
-            [OrgPermissionGroupActions.Create]: false,
-            [OrgPermissionGroupActions.Edit]: false,
-            [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.GrantPrivileges]: false,
-            [OrgPermissionGroupActions.AddMembers]: false,
-            [OrgPermissionGroupActions.RemoveMembers]: false
+            read: false,
+            create: false,
+            edit: false,
+            delete: false,
+            "grant-privileges": false,
+            "add-members": false,
+            "remove-members": false
           },
           { shouldDirty: true }
         );
@@ -133,13 +94,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            [OrgPermissionGroupActions.Read]: true,
-            [OrgPermissionGroupActions.Create]: true,
-            [OrgPermissionGroupActions.Edit]: true,
-            [OrgPermissionGroupActions.Delete]: true,
-            [OrgPermissionGroupActions.GrantPrivileges]: true,
-            [OrgPermissionGroupActions.AddMembers]: true,
-            [OrgPermissionGroupActions.RemoveMembers]: true
+            read: true,
+            create: true,
+            edit: true,
+            delete: true,
+            "grant-privileges": true,
+            "add-members": true,
+            "remove-members": true
           },
           { shouldDirty: true }
         );
@@ -148,13 +109,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            [OrgPermissionGroupActions.Read]: true,
-            [OrgPermissionGroupActions.Edit]: false,
-            [OrgPermissionGroupActions.Create]: false,
-            [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.GrantPrivileges]: false,
-            [OrgPermissionGroupActions.AddMembers]: false,
-            [OrgPermissionGroupActions.RemoveMembers]: false
+            read: true,
+            edit: false,
+            create: false,
+            delete: false,
+            "grant-privileges": false,
+            "add-members": false,
+            "remove-members": false
           },
           { shouldDirty: true }
         );
@@ -163,13 +124,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            [OrgPermissionGroupActions.Read]: false,
-            [OrgPermissionGroupActions.Edit]: false,
-            [OrgPermissionGroupActions.Create]: false,
-            [OrgPermissionGroupActions.Delete]: false,
-            [OrgPermissionGroupActions.GrantPrivileges]: false,
-            [OrgPermissionGroupActions.AddMembers]: false,
-            [OrgPermissionGroupActions.RemoveMembers]: false
+            read: false,
+            edit: false,
+            create: false,
+            delete: false,
+            "grant-privileges": false,
+            "add-members": false,
+            "remove-members": false
           },
           { shouldDirty: true }
         );
@@ -187,9 +148,9 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Group Management</p>
+          <p>{ORG_PERMISSION_OBJECT.groups.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Organize users into groups for bulk permission management
+            {ORG_PERMISSION_OBJECT.groups.description}
           </p>
         </Td>
         <Td>
@@ -219,7 +180,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.groups.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

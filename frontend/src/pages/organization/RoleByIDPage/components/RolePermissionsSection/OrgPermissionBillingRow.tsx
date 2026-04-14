@@ -5,29 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionBillingActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
   OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
-
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgPermissionBillingActions.Read,
-    label: "View bills",
-    description: "View invoices and billing history"
-  },
-  {
-    action: OrgPermissionBillingActions.ManageBilling,
-    label: "Manage billing",
-    description: "Update payment methods and billing settings"
-  }
-] as const;
 
 type Props = {
   isEditable: boolean;
@@ -46,24 +32,24 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.billing",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.billing.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.billing.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.[OrgPermissionBillingActions.Read]) return Permission.ReadOnly;
+    if (score === 1 && rule?.read) return Permission.ReadOnly;
     return Permission.Custom;
   }, [rule, isCustom]);
 
@@ -85,8 +71,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            [OrgPermissionBillingActions.Read]: false,
-            [OrgPermissionBillingActions.ManageBilling]: false
+            read: false,
+            "manage-billing": false
           },
           { shouldDirty: true }
         );
@@ -95,8 +81,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            [OrgPermissionBillingActions.Read]: true,
-            [OrgPermissionBillingActions.ManageBilling]: false
+            read: true,
+            "manage-billing": false
           },
           { shouldDirty: true }
         );
@@ -105,8 +91,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            [OrgPermissionBillingActions.Read]: true,
-            [OrgPermissionBillingActions.ManageBilling]: true
+            read: true,
+            "manage-billing": true
           },
           { shouldDirty: true }
         );
@@ -115,8 +101,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            [OrgPermissionBillingActions.Read]: false,
-            [OrgPermissionBillingActions.ManageBilling]: false
+            read: false,
+            "manage-billing": false
           },
           { shouldDirty: true }
         );
@@ -134,9 +120,9 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Billing</p>
+          <p>{ORG_PERMISSION_OBJECT.billing.title}</p>
           <p className="text-xs text-mineshaft-400">
-            View and manage billing details, invoices, and payment methods
+            {ORG_PERMISSION_OBJECT.billing.description}
           </p>
         </Td>
         <Td>
@@ -166,7 +152,7 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.billing.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

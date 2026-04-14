@@ -5,10 +5,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgRelayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
@@ -29,51 +28,28 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgRelayPermissionActions.ListRelays,
-    label: "List Relays",
-    description: "View available relay servers"
-  },
-  {
-    action: OrgRelayPermissionActions.CreateRelays,
-    label: "Create Relays",
-    description: "Add new relay servers for network tunneling"
-  },
-  {
-    action: OrgRelayPermissionActions.EditRelays,
-    label: "Edit Relays",
-    description: "Update relay server configuration"
-  },
-  {
-    action: OrgRelayPermissionActions.DeleteRelays,
-    label: "Delete Relays",
-    description: "Remove relay servers"
-  }
-] as const;
-
 export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.relay",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.relay.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.relay.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.[OrgRelayPermissionActions.ListRelays]) return Permission.ReadOnly;
+    if (score === 1 && rule?.["list-relays"]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -104,10 +80,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            [OrgRelayPermissionActions.ListRelays]: true,
-            [OrgRelayPermissionActions.EditRelays]: true,
-            [OrgRelayPermissionActions.CreateRelays]: true,
-            [OrgRelayPermissionActions.DeleteRelays]: true
+            "list-relays": true,
+            "edit-relays": true,
+            "create-relays": true,
+            "delete-relays": true
           },
           { shouldDirty: true }
         );
@@ -116,10 +92,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            [OrgRelayPermissionActions.ListRelays]: true,
-            [OrgRelayPermissionActions.EditRelays]: false,
-            [OrgRelayPermissionActions.CreateRelays]: false,
-            [OrgRelayPermissionActions.DeleteRelays]: false
+            "list-relays": true,
+            "edit-relays": false,
+            "create-relays": false,
+            "delete-relays": false
           },
           { shouldDirty: true }
         );
@@ -130,10 +106,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            [OrgRelayPermissionActions.ListRelays]: false,
-            [OrgRelayPermissionActions.EditRelays]: false,
-            [OrgRelayPermissionActions.CreateRelays]: false,
-            [OrgRelayPermissionActions.DeleteRelays]: false
+            "list-relays": false,
+            "edit-relays": false,
+            "create-relays": false,
+            "delete-relays": false
           },
           { shouldDirty: true }
         );
@@ -150,9 +126,9 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Relays</p>
+          <p>{ORG_PERMISSION_OBJECT.relay.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Manage relay servers used for secure network tunneling
+            {ORG_PERMISSION_OBJECT.relay.description}
           </p>
         </Td>
         <Td>
@@ -182,7 +158,7 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.relay.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

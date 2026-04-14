@@ -5,64 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionIdentityActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
   OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
-
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgPermissionIdentityActions.Read,
-    label: "Read Identities",
-    description: "View machine identities and their configuration"
-  },
-  {
-    action: OrgPermissionIdentityActions.Create,
-    label: "Create Identities",
-    description: "Create new machine identities"
-  },
-  {
-    action: OrgPermissionIdentityActions.Edit,
-    label: "Edit Identities",
-    description: "Update machine identity settings"
-  },
-  {
-    action: OrgPermissionIdentityActions.Delete,
-    label: "Delete Identities",
-    description: "Delete machine identities"
-  },
-  {
-    action: OrgPermissionIdentityActions.GrantPrivileges,
-    label: "Grant Privileges",
-    description: undefined
-  },
-  {
-    action: OrgPermissionIdentityActions.RevokeAuth,
-    label: "Revoke Auth",
-    description: "Revoke authentication for a machine identity"
-  },
-  {
-    action: OrgPermissionIdentityActions.CreateToken,
-    label: "Create Token",
-    description: "Generate access tokens for machine identities"
-  },
-  {
-    action: OrgPermissionIdentityActions.GetToken,
-    label: "Get Token",
-    description: "View existing access tokens"
-  },
-  {
-    action: OrgPermissionIdentityActions.DeleteToken,
-    label: "Delete Token",
-    description: "Revoke access tokens"
-  }
-] as const;
 
 type Props = {
   isEditable: boolean;
@@ -81,18 +32,18 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.identity",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.identity.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.identity.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -128,15 +79,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            [OrgPermissionIdentityActions.Read]: false,
-            [OrgPermissionIdentityActions.Edit]: false,
-            [OrgPermissionIdentityActions.Create]: false,
-            [OrgPermissionIdentityActions.Delete]: false,
-            [OrgPermissionIdentityActions.GrantPrivileges]: false,
-            [OrgPermissionIdentityActions.RevokeAuth]: false,
-            [OrgPermissionIdentityActions.CreateToken]: false,
-            [OrgPermissionIdentityActions.GetToken]: false,
-            [OrgPermissionIdentityActions.DeleteToken]: false
+            read: false,
+            edit: false,
+            create: false,
+            delete: false,
+            "grant-privileges": false,
+            "revoke-auth": false,
+            "create-token": false,
+            "get-token": false,
+            "delete-token": false
           },
           { shouldDirty: true }
         );
@@ -145,15 +96,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            [OrgPermissionIdentityActions.Read]: true,
-            [OrgPermissionIdentityActions.Edit]: true,
-            [OrgPermissionIdentityActions.Create]: true,
-            [OrgPermissionIdentityActions.Delete]: true,
-            [OrgPermissionIdentityActions.GrantPrivileges]: true,
-            [OrgPermissionIdentityActions.RevokeAuth]: true,
-            [OrgPermissionIdentityActions.CreateToken]: true,
-            [OrgPermissionIdentityActions.GetToken]: true,
-            [OrgPermissionIdentityActions.DeleteToken]: true
+            read: true,
+            edit: true,
+            create: true,
+            delete: true,
+            "grant-privileges": true,
+            "revoke-auth": true,
+            "create-token": true,
+            "get-token": true,
+            "delete-token": true
           },
           { shouldDirty: true }
         );
@@ -162,15 +113,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            [OrgPermissionIdentityActions.Read]: true,
-            [OrgPermissionIdentityActions.Edit]: false,
-            [OrgPermissionIdentityActions.Create]: false,
-            [OrgPermissionIdentityActions.Delete]: false,
-            [OrgPermissionIdentityActions.GrantPrivileges]: false,
-            [OrgPermissionIdentityActions.RevokeAuth]: false,
-            [OrgPermissionIdentityActions.CreateToken]: false,
-            [OrgPermissionIdentityActions.GetToken]: false,
-            [OrgPermissionIdentityActions.DeleteToken]: false
+            read: true,
+            edit: false,
+            create: false,
+            delete: false,
+            "grant-privileges": false,
+            "revoke-auth": false,
+            "create-token": false,
+            "get-token": false,
+            "delete-token": false
           },
           { shouldDirty: true }
         );
@@ -179,15 +130,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            [OrgPermissionIdentityActions.Read]: false,
-            [OrgPermissionIdentityActions.Edit]: false,
-            [OrgPermissionIdentityActions.Create]: false,
-            [OrgPermissionIdentityActions.Delete]: false,
-            [OrgPermissionIdentityActions.GrantPrivileges]: false,
-            [OrgPermissionIdentityActions.RevokeAuth]: false,
-            [OrgPermissionIdentityActions.CreateToken]: false,
-            [OrgPermissionIdentityActions.GetToken]: false,
-            [OrgPermissionIdentityActions.DeleteToken]: false
+            read: false,
+            edit: false,
+            create: false,
+            delete: false,
+            "grant-privileges": false,
+            "revoke-auth": false,
+            "create-token": false,
+            "get-token": false,
+            "delete-token": false
           },
           { shouldDirty: true }
         );
@@ -205,9 +156,9 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Machine Identity Management</p>
+          <p>{ORG_PERMISSION_OBJECT.identity.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Manage machine identities and their access within the organization
+            {ORG_PERMISSION_OBJECT.identity.description}
           </p>
         </Td>
         <Td>
@@ -237,7 +188,7 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.identity.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

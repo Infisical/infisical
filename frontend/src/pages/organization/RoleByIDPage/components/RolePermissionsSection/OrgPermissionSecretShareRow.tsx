@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
@@ -26,23 +26,15 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: "manage-settings",
-    label: "Manage settings",
-    description: "Configure settings for sharing secrets externally"
-  }
-] as const;
-
 export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.secret-share",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT["secret-share"].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -90,9 +82,9 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Secret Share</p>
+          <p>{ORG_PERMISSION_OBJECT["secret-share"].title}</p>
           <p className="text-xs text-mineshaft-400">
-            Configure settings for sharing secrets externally
+            {ORG_PERMISSION_OBJECT["secret-share"].description}
           </p>
         </Td>
         <Td>
@@ -120,7 +112,7 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT["secret-share"].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

@@ -5,10 +5,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
@@ -29,56 +28,28 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgGatewayPermissionActions.ListGateways,
-    label: "List Gateways",
-    description: "View available gateways"
-  },
-  {
-    action: OrgGatewayPermissionActions.CreateGateways,
-    label: "Create Gateways",
-    description: "Register new gateways for private network access"
-  },
-  {
-    action: OrgGatewayPermissionActions.EditGateways,
-    label: "Edit Gateways",
-    description: "Update gateway configuration"
-  },
-  {
-    action: OrgGatewayPermissionActions.DeleteGateways,
-    label: "Delete Gateways",
-    description: "Remove gateways"
-  },
-  {
-    action: OrgGatewayPermissionActions.AttachGateways,
-    label: "Attach Gateways",
-    description: "Attach gateways to organization resources"
-  }
-] as const;
-
 export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.gateway",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.gateway.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.gateway.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.[OrgGatewayPermissionActions.ListGateways]) return Permission.ReadOnly;
+    if (score === 1 && rule?.["list-gateways"]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -109,10 +80,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.ListGateways]: true,
-            [OrgGatewayPermissionActions.EditGateways]: true,
-            [OrgGatewayPermissionActions.CreateGateways]: true,
-            [OrgGatewayPermissionActions.DeleteGateways]: true
+            "list-gateways": true,
+            "edit-gateways": true,
+            "create-gateways": true,
+            "delete-gateways": true
           },
           { shouldDirty: true }
         );
@@ -121,10 +92,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.ListGateways]: true,
-            [OrgGatewayPermissionActions.EditGateways]: false,
-            [OrgGatewayPermissionActions.CreateGateways]: false,
-            [OrgGatewayPermissionActions.DeleteGateways]: false
+            "list-gateways": true,
+            "edit-gateways": false,
+            "create-gateways": false,
+            "delete-gateways": false
           },
           { shouldDirty: true }
         );
@@ -135,10 +106,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            [OrgGatewayPermissionActions.ListGateways]: false,
-            [OrgGatewayPermissionActions.EditGateways]: false,
-            [OrgGatewayPermissionActions.CreateGateways]: false,
-            [OrgGatewayPermissionActions.DeleteGateways]: false
+            "list-gateways": false,
+            "edit-gateways": false,
+            "create-gateways": false,
+            "delete-gateways": false
           },
           { shouldDirty: true }
         );
@@ -155,9 +126,9 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Gateways</p>
+          <p>{ORG_PERMISSION_OBJECT.gateway.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Manage gateways used for private network access
+            {ORG_PERMISSION_OBJECT.gateway.description}
           </p>
         </Td>
         <Td>
@@ -187,7 +158,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.gateway.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

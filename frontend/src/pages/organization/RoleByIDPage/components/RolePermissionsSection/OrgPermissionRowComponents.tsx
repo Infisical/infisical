@@ -7,11 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
 
-type PermissionActionDef = {
-  action: string;
-  label: string;
-  description?: string;
-};
+import { TOrgPermissionAction } from "../OrgRoleModifySection.utils";
 
 export const useOrgPermissionActions = ({
   control,
@@ -22,39 +18,29 @@ export const useOrgPermissionActions = ({
   control: Control<TFormSchema>;
   setValue: UseFormSetValue<TFormSchema>;
   formPath: string;
-  permissionActions: readonly PermissionActionDef[];
+  permissionActions: readonly TOrgPermissionAction[];
 }) => {
-  const actionOptions = useMemo(
-    () =>
-      permissionActions.map(({ action, label, description }) => ({
-        value: action,
-        label,
-        description
-      })),
-    [permissionActions]
-  );
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rule = useWatch({ control, name: formPath as any });
 
   const selectedActions = useMemo(
-    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value])),
-    [rule, actionOptions]
+    () => permissionActions.filter((opt) => Boolean(rule?.[opt.value])),
+    [rule, permissionActions]
   );
 
   const handleActionsChange = (newValue: unknown) => {
     const selected = Array.isArray(newValue) ? newValue : [];
     const updated = Object.fromEntries(
-      permissionActions.map(({ action }) => [
-        action,
-        selected.some((s: { value: string }) => s.value === action)
+      permissionActions.map(({ value }) => [
+        value,
+        selected.some((s: { value: string }) => s.value === value)
       ])
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setValue(formPath as any, updated as any, { shouldDirty: true });
   };
 
-  return { rule, actionOptions, selectedActions, handleActionsChange };
+  return { rule, selectedActions, handleActionsChange };
 };
 
 export type OrgPermissionActionOption = {

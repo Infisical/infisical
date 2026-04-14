@@ -5,44 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
   OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
-
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgPermissionSubOrgActions.Create,
-    label: "Create",
-    description: "Create new sub-organizations"
-  },
-  {
-    action: OrgPermissionSubOrgActions.Edit,
-    label: "Edit",
-    description: "Update sub-organization settings"
-  },
-  {
-    action: OrgPermissionSubOrgActions.Delete,
-    label: "Delete",
-    description: "Remove sub-organizations"
-  },
-  {
-    action: OrgPermissionSubOrgActions.DirectAccess,
-    label: "Direct Access",
-    description: "Access sub-organizations directly without membership"
-  },
-  {
-    action: OrgPermissionSubOrgActions.LinkGroup,
-    label: "Link Group",
-    description: "Link organization groups to sub-organizations"
-  }
-] as const;
 
 type Props = {
   isEditable: boolean;
@@ -60,18 +31,18 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.sub-organization",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT["sub-organization"].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT["sub-organization"].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -98,11 +69,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            [OrgPermissionSubOrgActions.Create]: false,
-            [OrgPermissionSubOrgActions.Edit]: false,
-            [OrgPermissionSubOrgActions.Delete]: false,
-            [OrgPermissionSubOrgActions.DirectAccess]: false,
-            [OrgPermissionSubOrgActions.LinkGroup]: false
+            create: false,
+            edit: false,
+            delete: false,
+            "direct-access": false,
+            "link-group": false
           },
           { shouldDirty: true }
         );
@@ -111,11 +82,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            [OrgPermissionSubOrgActions.Create]: true,
-            [OrgPermissionSubOrgActions.Edit]: true,
-            [OrgPermissionSubOrgActions.Delete]: true,
-            [OrgPermissionSubOrgActions.DirectAccess]: true,
-            [OrgPermissionSubOrgActions.LinkGroup]: true
+            create: true,
+            edit: true,
+            delete: true,
+            "direct-access": true,
+            "link-group": true
           },
           { shouldDirty: true }
         );
@@ -124,11 +95,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            [OrgPermissionSubOrgActions.Create]: true,
-            [OrgPermissionSubOrgActions.Edit]: true,
-            [OrgPermissionSubOrgActions.Delete]: true,
-            [OrgPermissionSubOrgActions.DirectAccess]: true,
-            [OrgPermissionSubOrgActions.LinkGroup]: true
+            create: true,
+            edit: true,
+            delete: true,
+            "direct-access": true,
+            "link-group": true
           },
           { shouldDirty: true }
         );
@@ -146,9 +117,9 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Sub-Organizations</p>
+          <p>{ORG_PERMISSION_OBJECT["sub-organization"].title}</p>
           <p className="text-xs text-mineshaft-400">
-            Create and manage namespaces within the organization
+            {ORG_PERMISSION_OBJECT["sub-organization"].description}
           </p>
         </Td>
         <Td>
@@ -177,7 +148,7 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT["sub-organization"].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

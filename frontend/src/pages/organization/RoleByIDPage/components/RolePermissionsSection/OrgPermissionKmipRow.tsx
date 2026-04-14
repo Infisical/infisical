@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
@@ -26,23 +26,15 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: "proxy",
-    label: "Proxy KMIP requests",
-    description: "Route KMIP requests to organization key management infrastructure"
-  }
-] as const;
-
 export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.kmip",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.kmip.actions
   });
 
   const selectedCount = selectedActions.length;
@@ -90,9 +82,9 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>KMIP</p>
+          <p>{ORG_PERMISSION_OBJECT.kmip.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Proxy KMIP requests to organization key management infrastructure
+            {ORG_PERMISSION_OBJECT.kmip.description}
           </p>
         </Td>
         <Td>
@@ -120,7 +112,7 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.kmip.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

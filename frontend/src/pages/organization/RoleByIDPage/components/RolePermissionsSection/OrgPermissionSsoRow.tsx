@@ -5,40 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionSsoActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
   OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
-
-const PERMISSION_ACTIONS = [
-  { action: OrgPermissionSsoActions.Read, label: "View", description: "View SSO configuration" },
-  {
-    action: OrgPermissionSsoActions.Create,
-    label: "Create",
-    description: "Set up new SSO providers"
-  },
-  {
-    action: OrgPermissionSsoActions.Edit,
-    label: "Modify",
-    description: "Update SSO configuration"
-  },
-  {
-    action: OrgPermissionSsoActions.Delete,
-    label: "Remove",
-    description: "Remove SSO providers"
-  },
-  {
-    action: OrgPermissionSsoActions.BypassSsoEnforcement,
-    label: "Bypass SSO Enforcement",
-    description: "Allow login without SSO when enforcement is enabled"
-  }
-] as const;
 
 type Props = {
   isEditable: boolean;
@@ -57,18 +32,18 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.sso",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT.sso.actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
+    const totalActions = ORG_PERMISSION_OBJECT.sso.actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -104,11 +79,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            [OrgPermissionSsoActions.Read]: false,
-            [OrgPermissionSsoActions.Create]: false,
-            [OrgPermissionSsoActions.Edit]: false,
-            [OrgPermissionSsoActions.Delete]: false,
-            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
+            read: false,
+            create: false,
+            edit: false,
+            delete: false,
+            "bypass-sso-enforcement": false
           },
           { shouldDirty: true }
         );
@@ -117,11 +92,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            [OrgPermissionSsoActions.Read]: true,
-            [OrgPermissionSsoActions.Create]: true,
-            [OrgPermissionSsoActions.Edit]: true,
-            [OrgPermissionSsoActions.Delete]: true,
-            [OrgPermissionSsoActions.BypassSsoEnforcement]: true
+            read: true,
+            create: true,
+            edit: true,
+            delete: true,
+            "bypass-sso-enforcement": true
           },
           { shouldDirty: true }
         );
@@ -130,11 +105,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            [OrgPermissionSsoActions.Read]: true,
-            [OrgPermissionSsoActions.Create]: false,
-            [OrgPermissionSsoActions.Edit]: false,
-            [OrgPermissionSsoActions.Delete]: false,
-            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
+            read: true,
+            create: false,
+            edit: false,
+            delete: false,
+            "bypass-sso-enforcement": false
           },
           { shouldDirty: true }
         );
@@ -143,11 +118,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            [OrgPermissionSsoActions.Read]: false,
-            [OrgPermissionSsoActions.Create]: false,
-            [OrgPermissionSsoActions.Edit]: false,
-            [OrgPermissionSsoActions.Delete]: false,
-            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
+            read: false,
+            create: false,
+            edit: false,
+            delete: false,
+            "bypass-sso-enforcement": false
           },
           { shouldDirty: true }
         );
@@ -165,9 +140,9 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>SSO</p>
+          <p>{ORG_PERMISSION_OBJECT.sso.title}</p>
           <p className="text-xs text-mineshaft-400">
-            Configure and enforce single sign-on authentication for the organization
+            {ORG_PERMISSION_OBJECT.sso.description}
           </p>
         </Td>
         <Td>
@@ -197,7 +172,7 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT.sso.actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

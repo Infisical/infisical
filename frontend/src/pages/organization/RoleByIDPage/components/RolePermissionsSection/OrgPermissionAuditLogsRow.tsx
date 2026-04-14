@@ -5,10 +5,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
-import { OrgPermissionAuditLogsActions } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
@@ -27,23 +26,15 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [
-  {
-    action: OrgPermissionAuditLogsActions.Read,
-    label: "Read",
-    description: "View organization activity and audit events"
-  }
-] as const;
-
 export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
     formPath: "permissions.audit-logs",
-    permissionActions: PERMISSION_ACTIONS
+    permissionActions: ORG_PERMISSION_OBJECT["audit-logs"].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -85,7 +76,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
         setValue(
           "permissions.audit-logs",
           {
-            [OrgPermissionAuditLogsActions.Read]: false
+            read: false
           },
           { shouldDirty: true }
         );
@@ -102,8 +93,8 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>Audit Logs</p>
-          <p className="text-xs text-mineshaft-400">View organization activity and audit trail</p>
+          <p>{ORG_PERMISSION_OBJECT["audit-logs"].title}</p>
+          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT["audit-logs"].description}</p>
         </Td>
         <Td>
           <Select
@@ -130,7 +121,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={actionOptions}
+              options={ORG_PERMISSION_OBJECT["audit-logs"].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}
