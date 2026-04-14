@@ -9,6 +9,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
+import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
   account?: TKubernetesAccount;
@@ -33,7 +34,8 @@ const formSchema = genericAccountFieldsSchema.extend({
   credentials: z.discriminatedUnion("authMethod", [
     KubernetesServiceAccountTokenCredentialsSchema,
     KubernetesGatewayAuthCredentialsSchema
-  ])
+  ]),
+  requireMfa: z.boolean().nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -187,6 +189,7 @@ export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) 
       : {
           name: "",
           description: "",
+          requireMfa: false,
           credentials: {
             authMethod: KubernetesAuthMethod.ServiceAccountToken,
             serviceAccountToken: ""
@@ -213,6 +216,7 @@ export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) 
             isUpdate={isUpdate}
             originalAuthMethod={account?.credentials.authMethod}
           />
+          <RequireMfaField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">
