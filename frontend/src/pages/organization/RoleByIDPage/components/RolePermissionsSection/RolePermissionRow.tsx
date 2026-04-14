@@ -41,7 +41,7 @@ type Props = {
 enum Permission {
   NoAccess = "no-access",
   ReadOnly = "read-only",
-  FullAccess = "full-acess",
+  FullAccess = "full-access",
   Custom = "custom"
 }
 

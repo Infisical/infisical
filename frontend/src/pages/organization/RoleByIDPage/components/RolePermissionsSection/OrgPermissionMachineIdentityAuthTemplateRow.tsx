@@ -99,7 +99,7 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
-            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: true
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: false
           },
           { shouldDirty: true }
         );

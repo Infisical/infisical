@@ -96,11 +96,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            [OrgPermissionSubOrgActions.Create]: true,
-            [OrgPermissionSubOrgActions.Edit]: true,
-            [OrgPermissionSubOrgActions.Delete]: true,
-            [OrgPermissionSubOrgActions.DirectAccess]: true,
-            [OrgPermissionSubOrgActions.LinkGroup]: true
+            [OrgPermissionSubOrgActions.Create]: false,
+            [OrgPermissionSubOrgActions.Edit]: false,
+            [OrgPermissionSubOrgActions.Delete]: false,
+            [OrgPermissionSubOrgActions.DirectAccess]: false,
+            [OrgPermissionSubOrgActions.LinkGroup]: false
           },
           { shouldDirty: true }
         );
