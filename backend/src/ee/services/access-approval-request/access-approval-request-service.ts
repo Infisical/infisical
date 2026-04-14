@@ -363,9 +363,17 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
-    const { envSlug, secretPath, accessTypes } = verifyRequestedPermissions({
-      permissions: accessApprovalRequest.permissions
-    });
+    let envSlug = "unknown";
+    let secretPath = "/";
+    let accessTypes: string[] = [];
+    try {
+      const verified = verifyRequestedPermissions({ permissions: accessApprovalRequest.permissions });
+      envSlug = verified.envSlug;
+      secretPath = verified.secretPath;
+      accessTypes = verified.accessTypes;
+    } catch {
+      // Legacy request with mismatched permissions -- allow update to proceed with fallback values for notifications
+    }
 
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
       const approvalRequest = await accessApprovalRequestDAL.updateById(
@@ -534,16 +542,29 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { envSlug: permissionEnvironment } = verifyRequestedPermissions({ permissions });
-    if (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED) {
+    // Validate permissions strictly when approving. Legacy requests with mismatched
+    // env/paths will fail here, but can still be rejected to clear them out
+    let permissionEnvironment: string | undefined;
+    try {
+      const verified = verifyRequestedPermissions({ permissions });
+      permissionEnvironment = verified.envSlug;
+    } catch (err) {
+      if (status === ApprovalStatus.APPROVED) {
+        throw err;
+      }
+    }
+
+    if (permissionEnvironment && !environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED) {
       throw new BadRequestError({
         message: `The original policy ${policy.name} is not attached to environment '${permissionEnvironment}'.`
       });
     }
-    const environment = await projectEnvDAL.findOne({
-      projectId: accessApprovalRequest.projectId,
-      slug: permissionEnvironment
-    });
+    const environment = permissionEnvironment
+      ? await projectEnvDAL.findOne({
+          projectId: accessApprovalRequest.projectId,
+          slug: permissionEnvironment
+        })
+      : undefined;
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor,
