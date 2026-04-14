@@ -220,7 +220,9 @@ export const kubernetesResourceFactory: TPamResourceFactory<
       // Validate gateway auth by performing an impersonated SelfSubjectReview through the gateway.
       // The gateway's use-k8s-sa handler injects its own pod token and discovers the K8s API.
       // We add Impersonate-User header which passes through untouched.
-      // This validates both that the SA exists and the gateway can impersonate it.
+      // This validates that the gateway has RBAC permission to impersonate the specified SA.
+      // NOTE: It does NOT verify the SA exists — K8s impersonation is a pure permission check.
+      // A non-existent SA passes validation here but fails at session time with 403.
       try {
         await validateWithGatewayHttp({ gatewayId }, gatewayV2Service, async (baseUrl) => {
           const impersonateUser = `system:serviceaccount:${credentials.namespace}:${credentials.serviceAccountName}`;

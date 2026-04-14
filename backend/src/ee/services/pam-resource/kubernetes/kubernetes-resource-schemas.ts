@@ -38,7 +38,7 @@ export const KubernetesServiceAccountTokenCredentialsSchema = z.object({
 
 export const KubernetesGatewayAuthCredentialsSchema = z.object({
   authMethod: z.literal(KubernetesAuthMethod.GatewayKubernetesAuth),
-  namespace: z.string().trim().min(1).max(253),
+  namespace: z.string().trim().min(1).max(63),
   serviceAccountName: z.string().trim().min(1).max(253)
 });
 
