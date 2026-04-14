@@ -4,6 +4,7 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 import React from "react";
 
 import { getConfig } from "@app/lib/config/env";
+import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
@@ -153,6 +154,18 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate
+};
+
+export const throwIfSmtpError = (err: unknown, logMessage: string) => {
+  logger.error(err, logMessage);
+  const { isCloud } = getConfig();
+  if (!isCloud) {
+    throw new InternalServerError({
+      message:
+        "Failed to send email. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
+      name: "SmtpError"
+    });
+  }
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

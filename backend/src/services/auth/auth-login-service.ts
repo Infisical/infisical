@@ -20,7 +20,6 @@ import {
   BadRequestError,
   DatabaseError,
   ForbiddenRequestError,
-  InternalServerError,
   NotFoundError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -38,7 +37,7 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { SmtpTemplates, TSmtpService, throwIfSmtpError } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
@@ -127,14 +126,7 @@ export const authLoginServiceFactory = ({
               userAgent
             }
           })
-          .catch((err) => {
-            logger.error(err, "Failed to send new device login email [userId=%s]", user.id);
-            throw new InternalServerError({
-              message:
-                "Failed to send new device login notification. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
-              name: "SmtpError"
-            });
-          });
+          .catch((err) => throwIfSmtpError(err, `Failed to send new device login email [userId=${user.id}]`));
       }
     }
   };
@@ -158,14 +150,7 @@ export const authLoginServiceFactory = ({
           code
         }
       })
-      .catch((err) => {
-        logger.error(err, "Failed to send MFA code email [userId=%s]", userId);
-        throw new InternalServerError({
-          message:
-            "Failed to send MFA verification code. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
-          name: "SmtpError"
-        });
-      });
+      .catch((err) => throwIfSmtpError(err, `Failed to send MFA code email [userId=${userId}]`));
   };
 
   /*
@@ -763,14 +748,9 @@ export const authLoginServiceFactory = ({
             },
             template: SmtpTemplates.OrgAdminBreakglassAccess
           })
-          .catch((err) => {
-            logger.error(err, "Failed to send SSO bypass alert email [orgId=%s] [userId=%s]", organizationId, user.id);
-            throw new InternalServerError({
-              message:
-                "Failed to send SSO bypass security alert. This is likely due to a misconfigured SMTP server. Please check your SMTP settings and try again.",
-              name: "SmtpError"
-            });
-          });
+          .catch((err) =>
+            throwIfSmtpError(err, `Failed to send SSO bypass alert email [orgId=${organizationId}] [userId=${user.id}]`)
+          );
       }
     }
 

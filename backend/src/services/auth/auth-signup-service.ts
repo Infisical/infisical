@@ -6,6 +6,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { isDisposableEmail } from "@app/lib/validator";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,7 +18,7 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { SmtpTemplates, TSmtpService, throwIfSmtpError } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { UserEncryption } from "../user/user-types";
@@ -79,16 +80,22 @@ export const authSignupServiceFactory = ({
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
       const appCfg = getConfig();
-      await smtpService.sendMail({
-        template: SmtpTemplates.SignupExistingAccount,
-        subjectLine: "Sign-up Request for Your Infisical Account",
-        recipients: [sanitizedEmail],
-        substitutions: {
-          email: sanitizedEmail,
-          loginUrl: `${appCfg.SITE_URL}/login`,
-          resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
-        }
-      });
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.SignupExistingAccount,
+          subjectLine: "Sign-up Request for Your Infisical Account",
+          recipients: [sanitizedEmail],
+          substitutions: {
+            email: sanitizedEmail,
+            loginUrl: `${appCfg.SITE_URL}/login`,
+            resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
+          }
+        })
+        .catch((err) => {
+          // Intentionally not rethrowing: this email is an anti-enumeration measure.
+          // Surfacing an SMTP error would reveal that the account already exists.
+          logger.error(err, `Failed to send existing account signup email [email=${sanitizedEmail}]`);
+        });
       return;
     }
     if (!user) {
@@ -106,14 +113,16 @@ export const authSignupServiceFactory = ({
       userId: user.id
     });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.SignupEmailVerification,
-      subjectLine: "Infisical confirmation code",
-      recipients: [sanitizedEmail],
-      substitutions: {
-        code: token
-      }
-    });
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.SignupEmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [sanitizedEmail],
+        substitutions: {
+          code: token
+        }
+      })
+      .catch((err) => throwIfSmtpError(err, `Failed to send signup verification email [email=${sanitizedEmail}]`));
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
