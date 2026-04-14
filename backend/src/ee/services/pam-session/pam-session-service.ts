@@ -57,13 +57,14 @@ export const pamSessionServiceFactory = ({
       status: string;
       expiresAt: Date | null;
       gatewayIdentityId?: string | null;
+      gatewayId?: string | null;
       projectId?: string | null;
     }
   >(
     session: T
   ): Promise<T> => {
     // Skip gateway-based sessions - they have their own lifecycle managed by the gateway
-    if (session.gatewayIdentityId) {
+    if (session.gatewayIdentityId || session.gatewayId) {
       return session;
     }
 
