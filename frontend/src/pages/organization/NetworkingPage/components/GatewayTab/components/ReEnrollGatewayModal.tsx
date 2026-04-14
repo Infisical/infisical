@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FormControl,
   FormLabel,
   IconButton,
   Input,
@@ -27,11 +28,12 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
 
   const [step, setStep] = useState<"confirm" | "command">("confirm");
   const [enrollmentToken, setEnrollmentToken] = useState("");
+  const [confirmText, setConfirmText] = useState("");
 
   const { mutateAsync: reEnroll, isPending: isReEnrolling } = useReEnrollGateway();
 
   const handleReEnroll = async () => {
-    if (!gatewayData) return;
+    if (!gatewayData || confirmText !== "confirm") return;
 
     try {
       const result = await reEnroll({ gatewayId: gatewayData.id });
@@ -51,6 +53,7 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
     if (!open) {
       setStep("confirm");
       setEnrollmentToken("");
+      setConfirmText("");
     }
     onOpenChange(open);
   };
@@ -59,65 +62,86 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
 
   return (
     <Modal isOpen={isOpen} onOpenChange={handleClose}>
-      <ModalContent
-        className="max-w-2xl"
-        title={`Re-enroll ${gatewayData.name}`}
-        subTitle={
-          step === "confirm"
-            ? "This will create a new enrollment token. The existing gateway will keep running until the new machine enrolls."
-            : undefined
-        }
-      >
-        {step === "confirm" && (
-          <div className="mt-4 flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              colorSchema="danger"
-              onClick={handleReEnroll}
-              isLoading={isReEnrolling}
-            >
-              Re-enroll
-            </Button>
-            <ModalClose asChild>
-              <Button colorSchema="secondary" variant="plain">
-                Cancel
-              </Button>
-            </ModalClose>
-          </div>
-        )}
-        {step === "command" && (
-          <>
-            <p className="mb-3 text-sm text-mineshaft-300">
-              Run the following command on the machine where you want to deploy the gateway. The
-              token expires in 1 hour and can only be used once.
-            </p>
-            <FormLabel label="CLI Command" />
-            <div className="flex gap-2">
-              <Input value={command} isDisabled />
-              <IconButton
-                ariaLabel="copy"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => {
-                  navigator.clipboard.writeText(command);
-                  createNotification({ text: "Command copied to clipboard", type: "info" });
-                }}
-                className="w-10"
+      {step === "confirm" && (
+        <ModalContent
+          title={`Re-enroll ${gatewayData.name}`}
+          subTitle="This will create a new enrollment token. The existing gateway will keep running until the new machine enrolls."
+          footerContent={
+            <div className="mx-2 flex items-center">
+              <Button
+                className="mr-4"
+                colorSchema="danger"
+                isDisabled={confirmText !== "confirm" || isReEnrolling}
+                onClick={handleReEnroll}
+                isLoading={isReEnrolling}
               >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-            <div className="mt-6 flex items-center">
+                Re-enroll
+              </Button>
               <ModalClose asChild>
-                <Button className="mr-4" size="sm" colorSchema="secondary">
-                  Done
+                <Button variant="plain" colorSchema="secondary">
+                  Cancel
                 </Button>
               </ModalClose>
             </div>
-          </>
-        )}
-      </ModalContent>
+          }
+        >
+          <form
+            onSubmit={(evt) => {
+              evt.preventDefault();
+              if (confirmText === "confirm") handleReEnroll();
+            }}
+          >
+            <FormControl
+              label={
+                <div className="pb-2 text-sm break-words">
+                  Type <span className="font-bold">confirm</span> to perform this action
+                </div>
+              }
+              className="mb-0"
+            >
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="Type confirm here"
+              />
+            </FormControl>
+          </form>
+        </ModalContent>
+      )}
+      {step === "command" && (
+        <ModalContent
+          className="max-w-2xl"
+          title={`Re-enroll ${gatewayData.name}`}
+        >
+          <p className="mb-3 text-sm text-mineshaft-300">
+            Run the following command on the machine where you want to deploy the gateway. The
+            token expires in 1 hour and can only be used once.
+          </p>
+          <FormLabel label="CLI Command" />
+          <div className="flex gap-2">
+            <Input value={command} isDisabled />
+            <IconButton
+              ariaLabel="copy"
+              variant="outline_bg"
+              colorSchema="secondary"
+              onClick={() => {
+                navigator.clipboard.writeText(command);
+                createNotification({ text: "Command copied to clipboard", type: "info" });
+              }}
+              className="w-10"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </div>
+          <div className="mt-6 flex items-center">
+            <ModalClose asChild>
+              <Button className="mr-4" size="sm" colorSchema="secondary">
+                Done
+              </Button>
+            </ModalClose>
+          </div>
+        </ModalContent>
+      )}
     </Modal>
   );
 };
