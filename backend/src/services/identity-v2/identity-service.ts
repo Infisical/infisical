@@ -203,7 +203,7 @@ export const identityV2ServiceFactory = ({
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
     if (existingIdentity.hasDeleteProtection) {
-      throw new BadRequestError({ message: "Identity has delete protection" });
+      throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }
 
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
