@@ -13,7 +13,7 @@ import {
   ModalClose,
   ModalContent
 } from "@app/components/v2";
-import { useReEnrollGateway } from "@app/hooks/api/gateways-v2";
+import { useConfigureGatewayTokenAuth } from "@app/hooks/api/gateways-v2";
 
 type Props = {
   isOpen: boolean;
@@ -30,13 +30,14 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
   const [enrollmentToken, setEnrollmentToken] = useState("");
   const [confirmText, setConfirmText] = useState("");
 
-  const { mutateAsync: reEnroll, isPending: isReEnrolling } = useReEnrollGateway();
+  const { mutateAsync: configureTokenAuth, isPending: isReEnrolling } =
+    useConfigureGatewayTokenAuth();
 
   const handleReEnroll = async () => {
     if (!gatewayData || confirmText !== "confirm") return;
 
     try {
-      const result = await reEnroll({ gatewayId: gatewayData.id });
+      const result = await configureTokenAuth({ gatewayId: gatewayData.id });
       setEnrollmentToken(result.token);
       setStep("command");
     } catch {

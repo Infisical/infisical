@@ -1,15 +1,11 @@
 import z from "zod";
 
-import { GatewayEnrollmentTokensSchema, GatewaysV2Schema } from "@app/db/schemas";
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { GatewaysV2Schema } from "@app/db/schemas";
 import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-
-// Stricter rate limit for the unauthenticated enroll endpoint
-const enrollRateLimit = { windowMs: 60 * 1000, max: 10 };
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
@@ -19,16 +15,6 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   updatedAt: true,
   heartbeat: true,
   lastHealthCheckStatus: true
-});
-
-const SanitizedEnrollmentTokenSchema = GatewayEnrollmentTokensSchema.pick({
-  id: true,
-  name: true,
-  ttl: true,
-  expiresAt: true,
-  usedAt: true,
-  gatewayId: true,
-  createdAt: true
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
@@ -286,168 +272,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Enrollment token management
-  server.route({
-    method: "POST",
-    url: "/enrollment-tokens",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "createGatewayEnrollmentToken",
-      body: z.object({
-        name: slugSchema({ min: 1, max: 64, field: "name" })
-      }),
-      response: {
-        200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const result = await server.services.gatewayV2.createEnrollmentToken({
-        orgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorType: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        name: req.body.name
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
-          metadata: {
-            tokenId: result.id,
-            name: req.body.name
-          }
-        }
-      });
-
-      return result;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/enrollment-tokens/:tokenId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "deleteGatewayEnrollmentToken",
-      params: z.object({ tokenId: z.string().uuid() }),
-      response: { 200: z.object({ message: z.string() }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { name } = await server.services.gatewayV2.deleteEnrollmentToken({
-        orgPermission: req.permission,
-        tokenId: req.params.tokenId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.GATEWAY_ENROLLMENT_TOKEN_DELETE,
-          metadata: {
-            tokenId: req.params.tokenId,
-            name
-          }
-        }
-      });
-
-      return { message: "Enrollment token deleted" };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/re-enroll",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "reEnrollGateway",
-      body: z.object({
-        gatewayId: z.string().uuid()
-      }),
-      response: {
-        200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const result = await server.services.gatewayV2.reEnrollGateway({
-        orgPermission: req.permission,
-        gatewayId: req.body.gatewayId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.GATEWAY_RE_ENROLL,
-          metadata: {
-            gatewayId: req.body.gatewayId,
-            name: result.name
-          }
-        }
-      });
-
-      return result;
-    }
-  });
-
-  // Enrollment endpoint — no standard auth; enrollment token in body is the credential
-  server.route({
-    method: "POST",
-    url: "/enroll",
-    config: { rateLimit: enrollRateLimit },
-    schema: {
-      operationId: "enrollGateway",
-      body: z.object({
-        token: z.string().min(1),
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional()
-      }),
-      response: {
-        200: z.object({
-          accessToken: z.string(),
-          gatewayId: z.string(),
-          relayHost: z.string(),
-          pki: z.object({
-            serverCertificate: z.string(),
-            serverPrivateKey: z.string(),
-            clientCertificateChain: z.string()
-          }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
-        })
-      }
-    },
-    handler: async (req) => {
-      const result = await server.services.gatewayV2.enrollGateway({
-        token: req.body.token,
-        relayName: req.body.relayName
-      });
-
-      await server.services.auditLog.createAuditLog({
-        orgId: result.orgId,
-        actor: {
-          type: ActorType.GATEWAY,
-          metadata: { gatewayId: result.gatewayId }
-        },
-        event: {
-          type: EventType.GATEWAY_ENROLL,
-          metadata: {
-            gatewayId: result.gatewayId,
-            name: result.gatewayName
-          }
-        },
-        ipAddress: req.ip,
-        userAgent: req.headers["user-agent"] ?? "",
-        userAgentType: UserAgentType.CLI
-      });
-
-      return result;
-    }
-  });
+  // Enrollment endpoints have moved to V3: /api/v3/gateways
 };
+

@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
-import { useCreateGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2";
+import { useConfigureGatewayTokenAuth, useCreateGateway } from "@app/hooks/api/gateways-v2";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -58,8 +58,9 @@ export const GatewayCliSystemdDeploymentMethod = () => {
 
   const { data: gateways } = useQuery(gatewaysQueryKeys.listWithTokens());
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
-  const { mutateAsync: createEnrollmentToken, isPending: isCreatingToken } =
-    useCreateGatewayEnrollmentToken();
+  const { mutateAsync: createGateway, isPending: isCreatingGateway } = useCreateGateway();
+  const { mutateAsync: configureTokenAuth, isPending: isConfiguringToken } =
+    useConfigureGatewayTokenAuth();
 
   const handleContinue = async () => {
     setFormErrors([]);
@@ -73,20 +74,21 @@ export const GatewayCliSystemdDeploymentMethod = () => {
     if (existingNames.includes(name.trim())) {
       createNotification({
         type: "error",
-        text: "A gateway or enrollment token with this name already exists."
+        text: "A gateway with this name already exists."
       });
       return;
     }
 
     try {
-      const result = await createEnrollmentToken({ name });
-      setEnrollmentToken(result.token);
+      const gateway = await createGateway({ name });
+      const tokenResult = await configureTokenAuth({ gatewayId: gateway.id });
+      setEnrollmentToken(tokenResult.token);
 
       const relayName = relay?.id === "_auto" ? "" : (relay?.name ?? "");
       setResolvedRelayName(relayName);
       setStep("command");
     } catch {
-      createNotification({ type: "error", text: "Failed to create enrollment token" });
+      createNotification({ type: "error", text: "Failed to create gateway" });
     }
   };
 
@@ -205,7 +207,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
           size="sm"
           colorSchema="secondary"
           onClick={handleContinue}
-          isLoading={isCreatingToken}
+          isLoading={isCreatingGateway || isConfiguringToken}
         >
           Continue
         </Button>

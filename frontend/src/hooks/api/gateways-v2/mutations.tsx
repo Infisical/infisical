@@ -3,9 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { gatewaysQueryKeys } from "../gateways/queries";
-import { TCreateGatewayEnrollmentTokenResponse } from "./types";
-
-export const gatewayEnrollmentTokenQueryKey = () => ["gateway-enrollment-tokens"];
+import { TGatewayV2 } from "./types";
 
 const invalidateGatewayQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries(gatewaysQueryKeys.list());
@@ -36,14 +34,11 @@ export const useTriggerGatewayV2Heartbeat = () => {
   });
 };
 
-export const useCreateGatewayEnrollmentToken = () => {
+export const useCreateGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ name }: { name: string }) => {
-      const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
-        "/api/v2/gateways/enrollment-tokens",
-        { name }
-      );
+      const { data } = await apiRequest.post<TGatewayV2>("/api/v3/gateways", { name });
       return data;
     },
     onSuccess: () => {
@@ -52,27 +47,14 @@ export const useCreateGatewayEnrollmentToken = () => {
   });
 };
 
-export const useReEnrollGateway = () => {
+export const useConfigureGatewayTokenAuth = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
-      const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
-        "/api/v2/gateways/re-enroll",
-        { gatewayId }
+      const { data } = await apiRequest.post<{ token: string; expiresAt: string }>(
+        `/api/v3/gateways/${gatewayId}/token-auth/configure`
       );
       return data;
-    },
-    onSuccess: () => {
-      invalidateGatewayQueries(queryClient);
-    }
-  });
-};
-
-export const useDeleteGatewayEnrollmentToken = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (tokenId: string) => {
-      await apiRequest.delete(`/api/v2/gateways/enrollment-tokens/${tokenId}`);
     },
     onSuccess: () => {
       invalidateGatewayQueries(queryClient);

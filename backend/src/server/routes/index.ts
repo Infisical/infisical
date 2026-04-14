@@ -14,6 +14,7 @@ import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
+import { registerV3EERoutes } from "@app/ee/routes/v3";
 import {
   accessApprovalPolicyApproverDALFactory,
   accessApprovalPolicyBypasserDALFactory
@@ -3322,7 +3323,13 @@ export const registerRoutes = async (
     },
     { prefix: "/api/v2" }
   );
-  await server.register(registerV3Routes, { prefix: "/api/v3" });
+  await server.register(
+    async (v3Server) => {
+      await v3Server.register(registerV3EERoutes);
+      await v3Server.register(registerV3Routes);
+    },
+    { prefix: "/api/v3" }
+  );
   await server.register(registerV4Routes, { prefix: "/api/v4" });
 
   // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
