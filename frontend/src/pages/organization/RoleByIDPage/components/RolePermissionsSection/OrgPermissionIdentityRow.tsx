@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionIdentityActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionIdentityActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -79,15 +80,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            read: false,
-            edit: false,
-            create: false,
-            delete: false,
-            "grant-privileges": false,
-            "revoke-auth": false,
-            "create-token": false,
-            "get-token": false,
-            "delete-token": false
+            [OrgPermissionIdentityActions.Read]: false,
+            [OrgPermissionIdentityActions.Edit]: false,
+            [OrgPermissionIdentityActions.Create]: false,
+            [OrgPermissionIdentityActions.Delete]: false,
+            [OrgPermissionIdentityActions.GrantPrivileges]: false,
+            [OrgPermissionIdentityActions.RevokeAuth]: false,
+            [OrgPermissionIdentityActions.CreateToken]: false,
+            [OrgPermissionIdentityActions.GetToken]: false,
+            [OrgPermissionIdentityActions.DeleteToken]: false
           },
           { shouldDirty: true }
         );
@@ -96,15 +97,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            read: true,
-            edit: true,
-            create: true,
-            delete: true,
-            "grant-privileges": true,
-            "revoke-auth": true,
-            "create-token": true,
-            "get-token": true,
-            "delete-token": true
+            [OrgPermissionIdentityActions.Read]: true,
+            [OrgPermissionIdentityActions.Edit]: true,
+            [OrgPermissionIdentityActions.Create]: true,
+            [OrgPermissionIdentityActions.Delete]: true,
+            [OrgPermissionIdentityActions.GrantPrivileges]: true,
+            [OrgPermissionIdentityActions.RevokeAuth]: true,
+            [OrgPermissionIdentityActions.CreateToken]: true,
+            [OrgPermissionIdentityActions.GetToken]: true,
+            [OrgPermissionIdentityActions.DeleteToken]: true
           },
           { shouldDirty: true }
         );
@@ -113,15 +114,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            read: true,
-            edit: false,
-            create: false,
-            delete: false,
-            "grant-privileges": false,
-            "revoke-auth": false,
-            "create-token": false,
-            "get-token": false,
-            "delete-token": false
+            [OrgPermissionIdentityActions.Read]: true,
+            [OrgPermissionIdentityActions.Edit]: false,
+            [OrgPermissionIdentityActions.Create]: false,
+            [OrgPermissionIdentityActions.Delete]: false,
+            [OrgPermissionIdentityActions.GrantPrivileges]: false,
+            [OrgPermissionIdentityActions.RevokeAuth]: false,
+            [OrgPermissionIdentityActions.CreateToken]: false,
+            [OrgPermissionIdentityActions.GetToken]: false,
+            [OrgPermissionIdentityActions.DeleteToken]: false
           },
           { shouldDirty: true }
         );
@@ -130,15 +131,15 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
         setValue(
           "permissions.identity",
           {
-            read: false,
-            edit: false,
-            create: false,
-            delete: false,
-            "grant-privileges": false,
-            "revoke-auth": false,
-            "create-token": false,
-            "get-token": false,
-            "delete-token": false
+            [OrgPermissionIdentityActions.Read]: false,
+            [OrgPermissionIdentityActions.Edit]: false,
+            [OrgPermissionIdentityActions.Create]: false,
+            [OrgPermissionIdentityActions.Delete]: false,
+            [OrgPermissionIdentityActions.GrantPrivileges]: false,
+            [OrgPermissionIdentityActions.RevokeAuth]: false,
+            [OrgPermissionIdentityActions.CreateToken]: false,
+            [OrgPermissionIdentityActions.GetToken]: false,
+            [OrgPermissionIdentityActions.DeleteToken]: false
           },
           { shouldDirty: true }
         );

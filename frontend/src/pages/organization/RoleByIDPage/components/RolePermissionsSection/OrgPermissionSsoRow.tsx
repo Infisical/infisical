@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionSsoActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionSsoActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -79,11 +80,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            read: false,
-            create: false,
-            edit: false,
-            delete: false,
-            "bypass-sso-enforcement": false
+            [OrgPermissionSsoActions.Read]: false,
+            [OrgPermissionSsoActions.Create]: false,
+            [OrgPermissionSsoActions.Edit]: false,
+            [OrgPermissionSsoActions.Delete]: false,
+            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
           },
           { shouldDirty: true }
         );
@@ -92,11 +93,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            read: true,
-            create: true,
-            edit: true,
-            delete: true,
-            "bypass-sso-enforcement": true
+            [OrgPermissionSsoActions.Read]: true,
+            [OrgPermissionSsoActions.Create]: true,
+            [OrgPermissionSsoActions.Edit]: true,
+            [OrgPermissionSsoActions.Delete]: true,
+            [OrgPermissionSsoActions.BypassSsoEnforcement]: true
           },
           { shouldDirty: true }
         );
@@ -105,11 +106,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            read: true,
-            create: false,
-            edit: false,
-            delete: false,
-            "bypass-sso-enforcement": false
+            [OrgPermissionSsoActions.Read]: true,
+            [OrgPermissionSsoActions.Create]: false,
+            [OrgPermissionSsoActions.Edit]: false,
+            [OrgPermissionSsoActions.Delete]: false,
+            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
           },
           { shouldDirty: true }
         );
@@ -118,11 +119,11 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
         setValue(
           "permissions.sso",
           {
-            read: false,
-            create: false,
-            edit: false,
-            delete: false,
-            "bypass-sso-enforcement": false
+            [OrgPermissionSsoActions.Read]: false,
+            [OrgPermissionSsoActions.Create]: false,
+            [OrgPermissionSsoActions.Edit]: false,
+            [OrgPermissionSsoActions.Delete]: false,
+            [OrgPermissionSsoActions.BypassSsoEnforcement]: false
           },
           { shouldDirty: true }
         );

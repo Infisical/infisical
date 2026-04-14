@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionGroupActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionGroupActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -79,13 +80,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            read: false,
-            create: false,
-            edit: false,
-            delete: false,
-            "grant-privileges": false,
-            "add-members": false,
-            "remove-members": false
+            [OrgPermissionGroupActions.Read]: false,
+            [OrgPermissionGroupActions.Create]: false,
+            [OrgPermissionGroupActions.Edit]: false,
+            [OrgPermissionGroupActions.Delete]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
+            [OrgPermissionGroupActions.AddMembers]: false,
+            [OrgPermissionGroupActions.RemoveMembers]: false
           },
           { shouldDirty: true }
         );
@@ -94,13 +95,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            read: true,
-            create: true,
-            edit: true,
-            delete: true,
-            "grant-privileges": true,
-            "add-members": true,
-            "remove-members": true
+            [OrgPermissionGroupActions.Read]: true,
+            [OrgPermissionGroupActions.Create]: true,
+            [OrgPermissionGroupActions.Edit]: true,
+            [OrgPermissionGroupActions.Delete]: true,
+            [OrgPermissionGroupActions.GrantPrivileges]: true,
+            [OrgPermissionGroupActions.AddMembers]: true,
+            [OrgPermissionGroupActions.RemoveMembers]: true
           },
           { shouldDirty: true }
         );
@@ -109,13 +110,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            read: true,
-            edit: false,
-            create: false,
-            delete: false,
-            "grant-privileges": false,
-            "add-members": false,
-            "remove-members": false
+            [OrgPermissionGroupActions.Read]: true,
+            [OrgPermissionGroupActions.Edit]: false,
+            [OrgPermissionGroupActions.Create]: false,
+            [OrgPermissionGroupActions.Delete]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
+            [OrgPermissionGroupActions.AddMembers]: false,
+            [OrgPermissionGroupActions.RemoveMembers]: false
           },
           { shouldDirty: true }
         );
@@ -124,13 +125,13 @@ export const OrgPermissionGroupRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.groups",
           {
-            read: false,
-            edit: false,
-            create: false,
-            delete: false,
-            "grant-privileges": false,
-            "add-members": false,
-            "remove-members": false
+            [OrgPermissionGroupActions.Read]: false,
+            [OrgPermissionGroupActions.Edit]: false,
+            [OrgPermissionGroupActions.Create]: false,
+            [OrgPermissionGroupActions.Delete]: false,
+            [OrgPermissionGroupActions.GrantPrivileges]: false,
+            [OrgPermissionGroupActions.AddMembers]: false,
+            [OrgPermissionGroupActions.RemoveMembers]: false
           },
           { shouldDirty: true }
         );

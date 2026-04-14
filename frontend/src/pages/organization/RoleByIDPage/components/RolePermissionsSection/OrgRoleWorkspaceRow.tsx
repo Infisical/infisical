@@ -7,6 +7,8 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
+import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
@@ -40,7 +42,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.create) {
+    if (rule?.[OrgPermissionActions.Create]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -68,7 +70,11 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.project", { create: false }, { shouldDirty: true });
+      setValue(
+        "permissions.project",
+        { [OrgPermissionActions.Create]: false },
+        { shouldDirty: true }
+      );
     }
   };
 

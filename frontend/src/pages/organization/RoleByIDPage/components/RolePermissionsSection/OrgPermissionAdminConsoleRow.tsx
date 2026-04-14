@@ -7,6 +7,8 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
+import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
+
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
@@ -40,7 +42,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.["access-all-projects"]) {
+    if (rule?.[OrgPermissionAdminConsoleAction.AccessAllProjects]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -70,7 +72,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
     if (val === Permission.NoAccess) {
       setValue(
         "permissions.organization-admin-console",
-        { "access-all-projects": false },
+        { [OrgPermissionAdminConsoleAction.AccessAllProjects]: false },
         { shouldDirty: true }
       );
     }

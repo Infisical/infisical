@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -69,11 +70,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            create: false,
-            edit: false,
-            delete: false,
-            "direct-access": false,
-            "link-group": false
+            [OrgPermissionSubOrgActions.Create]: false,
+            [OrgPermissionSubOrgActions.Edit]: false,
+            [OrgPermissionSubOrgActions.Delete]: false,
+            [OrgPermissionSubOrgActions.DirectAccess]: false,
+            [OrgPermissionSubOrgActions.LinkGroup]: false
           },
           { shouldDirty: true }
         );
@@ -82,11 +83,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            create: true,
-            edit: true,
-            delete: true,
-            "direct-access": true,
-            "link-group": true
+            [OrgPermissionSubOrgActions.Create]: true,
+            [OrgPermissionSubOrgActions.Edit]: true,
+            [OrgPermissionSubOrgActions.Delete]: true,
+            [OrgPermissionSubOrgActions.DirectAccess]: true,
+            [OrgPermissionSubOrgActions.LinkGroup]: true
           },
           { shouldDirty: true }
         );
@@ -95,11 +96,11 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
         setValue(
           "permissions.sub-organization",
           {
-            create: true,
-            edit: true,
-            delete: true,
-            "direct-access": true,
-            "link-group": true
+            [OrgPermissionSubOrgActions.Create]: true,
+            [OrgPermissionSubOrgActions.Edit]: true,
+            [OrgPermissionSubOrgActions.Delete]: true,
+            [OrgPermissionSubOrgActions.DirectAccess]: true,
+            [OrgPermissionSubOrgActions.LinkGroup]: true
           },
           { shouldDirty: true }
         );

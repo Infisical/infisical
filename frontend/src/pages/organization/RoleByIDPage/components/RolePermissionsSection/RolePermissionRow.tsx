@@ -7,53 +7,54 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { PermissionActionSelect } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
 
 const PERMISSIONS = [
-  { action: "read", label: "View", description: undefined as string | undefined },
-  { action: "create", label: "Create", description: undefined as string | undefined },
-  { action: "edit", label: "Modify", description: undefined as string | undefined },
-  { action: "delete", label: "Remove", description: undefined as string | undefined }
+  { action: OrgPermissionActions.Read, label: "View", description: undefined as string | undefined },
+  { action: OrgPermissionActions.Create, label: "Create", description: undefined as string | undefined },
+  { action: OrgPermissionActions.Edit, label: "Modify", description: undefined as string | undefined },
+  { action: OrgPermissionActions.Delete, label: "Remove", description: undefined as string | undefined }
 ] as const;
 
 const SECRET_SCANNING_PERMISSIONS = [
-  { action: "read", label: "View risks" },
-  { action: "create", label: "Add integrations" },
-  { action: "edit", label: "Edit risk status" },
-  { action: "delete", label: "Remove integrations" }
+  { action: OrgPermissionActions.Read, label: "View risks" },
+  { action: OrgPermissionActions.Create, label: "Add integrations" },
+  { action: OrgPermissionActions.Edit, label: "Edit risk status" },
+  { action: OrgPermissionActions.Delete, label: "Remove integrations" }
 ] as const;
 
 const INCIDENT_CONTACTS_PERMISSIONS = [
-  { action: "read", label: "View contacts" },
-  { action: "create", label: "Add new contacts" },
-  { action: "edit", label: "Edit contacts" },
-  { action: "delete", label: "Remove contacts" }
+  { action: OrgPermissionActions.Read, label: "View contacts" },
+  { action: OrgPermissionActions.Create, label: "Add new contacts" },
+  { action: OrgPermissionActions.Edit, label: "Edit contacts" },
+  { action: OrgPermissionActions.Delete, label: "Remove contacts" }
 ] as const;
 
 const MEMBERS_PERMISSIONS = [
-  { action: "read", label: "View all members" },
-  { action: "create", label: "Invite members" },
-  { action: "edit", label: "Edit members" },
-  { action: "delete", label: "Remove members" }
+  { action: OrgPermissionActions.Read, label: "View all members" },
+  { action: OrgPermissionActions.Create, label: "Invite members" },
+  { action: OrgPermissionActions.Edit, label: "Edit members" },
+  { action: OrgPermissionActions.Delete, label: "Remove members" }
 ] as const;
 
 const PROJECT_TEMPLATES_PERMISSIONS = [
-  { action: "read", label: "View & Apply" },
-  { action: "create", label: "Create" },
-  { action: "edit", label: "Modify" },
-  { action: "delete", label: "Remove" }
+  { action: OrgPermissionActions.Read, label: "View & Apply" },
+  { action: OrgPermissionActions.Create, label: "Create" },
+  { action: OrgPermissionActions.Edit, label: "Modify" },
+  { action: OrgPermissionActions.Delete, label: "Remove" }
 ] as const;
 
 const getPermissionList = (formName: Props["formName"]) => {
   switch (formName) {
-    case "member":
+    case OrgPermissionSubjects.Member:
       return MEMBERS_PERMISSIONS;
     case OrgPermissionSubjects.ProjectTemplates:
       return PROJECT_TEMPLATES_PERMISSIONS;
-    case "secret-scanning":
+    case OrgPermissionSubjects.SecretScanning:
       return SECRET_SCANNING_PERMISSIONS;
-    case "incident-contact":
+    case OrgPermissionSubjects.IncidentAccount:
       return INCIDENT_CONTACTS_PERMISSIONS;
     default:
       return PERMISSIONS;
@@ -135,7 +136,7 @@ export const RolePermissionRow = ({
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -164,28 +165,48 @@ export const RolePermissionRow = ({
       case Permission.NoAccess:
         setValue(
           `permissions.${formName}`,
-          { read: false, edit: false, create: false, delete: false },
+          {
+            [OrgPermissionActions.Read]: false,
+            [OrgPermissionActions.Edit]: false,
+            [OrgPermissionActions.Create]: false,
+            [OrgPermissionActions.Delete]: false
+          },
           { shouldDirty: true }
         );
         break;
       case Permission.FullAccess:
         setValue(
           `permissions.${formName}`,
-          { read: true, edit: true, create: true, delete: true },
+          {
+            [OrgPermissionActions.Read]: true,
+            [OrgPermissionActions.Edit]: true,
+            [OrgPermissionActions.Create]: true,
+            [OrgPermissionActions.Delete]: true
+          },
           { shouldDirty: true }
         );
         break;
       case Permission.ReadOnly:
         setValue(
           `permissions.${formName}`,
-          { read: true, edit: false, create: false, delete: false },
+          {
+            [OrgPermissionActions.Read]: true,
+            [OrgPermissionActions.Edit]: false,
+            [OrgPermissionActions.Create]: false,
+            [OrgPermissionActions.Delete]: false
+          },
           { shouldDirty: true }
         );
         break;
       default:
         setValue(
           `permissions.${formName}`,
-          { read: false, edit: false, create: false, delete: false },
+          {
+            [OrgPermissionActions.Read]: false,
+            [OrgPermissionActions.Edit]: false,
+            [OrgPermissionActions.Create]: false,
+            [OrgPermissionActions.Delete]: false
+          },
           { shouldDirty: true }
         );
         break;

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionAppConnectionActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -80,12 +81,12 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
         setValue(
           "permissions.app-connections",
           {
-            read: true,
-            edit: true,
-            create: true,
-            delete: true,
-            connect: true,
-            "rotate-credentials": true
+            [OrgPermissionAppConnectionActions.Read]: true,
+            [OrgPermissionAppConnectionActions.Edit]: true,
+            [OrgPermissionAppConnectionActions.Create]: true,
+            [OrgPermissionAppConnectionActions.Delete]: true,
+            [OrgPermissionAppConnectionActions.Connect]: true,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: true
           },
           { shouldDirty: true }
         );
@@ -94,12 +95,12 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
         setValue(
           "permissions.app-connections",
           {
-            read: true,
-            edit: false,
-            create: false,
-            delete: false,
-            connect: false,
-            "rotate-credentials": false
+            [OrgPermissionAppConnectionActions.Read]: true,
+            [OrgPermissionAppConnectionActions.Edit]: false,
+            [OrgPermissionAppConnectionActions.Create]: false,
+            [OrgPermissionAppConnectionActions.Delete]: false,
+            [OrgPermissionAppConnectionActions.Connect]: false,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: false
           },
           { shouldDirty: true }
         );
@@ -110,12 +111,12 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
         setValue(
           "permissions.app-connections",
           {
-            read: false,
-            edit: false,
-            create: false,
-            delete: false,
-            connect: false,
-            "rotate-credentials": false
+            [OrgPermissionAppConnectionActions.Read]: false,
+            [OrgPermissionAppConnectionActions.Edit]: false,
+            [OrgPermissionAppConnectionActions.Create]: false,
+            [OrgPermissionAppConnectionActions.Delete]: false,
+            [OrgPermissionAppConnectionActions.Connect]: false,
+            [OrgPermissionAppConnectionActions.RotateCredentials]: false
           },
           { shouldDirty: true }
         );

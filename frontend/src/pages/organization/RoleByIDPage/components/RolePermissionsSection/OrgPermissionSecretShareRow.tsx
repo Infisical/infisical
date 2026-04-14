@@ -7,6 +7,8 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
+import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
+
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
@@ -40,7 +42,7 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.["manage-settings"]) {
+    if (rule?.[OrgPermissionSecretShareAction.ManageSettings]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -68,7 +70,11 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.secret-share", { "manage-settings": false }, { shouldDirty: true });
+      setValue(
+        "permissions.secret-share",
+        { [OrgPermissionSecretShareAction.ManageSettings]: false },
+        { shouldDirty: true }
+      );
     }
   };
 

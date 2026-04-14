@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgRelayPermissionActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.["list-relays"]) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgRelayPermissionActions.ListRelays]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -80,10 +81,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            "list-relays": true,
-            "edit-relays": true,
-            "create-relays": true,
-            "delete-relays": true
+            [OrgRelayPermissionActions.ListRelays]: true,
+            [OrgRelayPermissionActions.EditRelays]: true,
+            [OrgRelayPermissionActions.CreateRelays]: true,
+            [OrgRelayPermissionActions.DeleteRelays]: true
           },
           { shouldDirty: true }
         );
@@ -92,10 +93,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            "list-relays": true,
-            "edit-relays": false,
-            "create-relays": false,
-            "delete-relays": false
+            [OrgRelayPermissionActions.ListRelays]: true,
+            [OrgRelayPermissionActions.EditRelays]: false,
+            [OrgRelayPermissionActions.CreateRelays]: false,
+            [OrgRelayPermissionActions.DeleteRelays]: false
           },
           { shouldDirty: true }
         );
@@ -106,10 +107,10 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
         setValue(
           "permissions.relay",
           {
-            "list-relays": false,
-            "edit-relays": false,
-            "create-relays": false,
-            "delete-relays": false
+            [OrgRelayPermissionActions.ListRelays]: false,
+            [OrgRelayPermissionActions.EditRelays]: false,
+            [OrgRelayPermissionActions.CreateRelays]: false,
+            [OrgRelayPermissionActions.DeleteRelays]: false
           },
           { shouldDirty: true }
         );

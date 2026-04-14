@@ -7,6 +7,8 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
+import { OrgPermissionAuditLogsActions } from "@app/context/OrgPermissionContext/types";
+
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
@@ -76,7 +78,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
         setValue(
           "permissions.audit-logs",
           {
-            read: false
+            [OrgPermissionAuditLogsActions.Read]: false
           },
           { shouldDirty: true }
         );

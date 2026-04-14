@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -53,7 +54,7 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.["list-templates"])
+    if (score === 1 && rule?.[OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates])
       return Permission.ReadOnly;
 
     return Permission.Custom;
@@ -85,12 +86,12 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
         setValue(
           "permissions.machine-identity-auth-template",
           {
-            "list-templates": true,
-            "edit-templates": true,
-            "create-templates": true,
-            "delete-templates": true,
-            "unlink-templates": true,
-            "attach-templates": true
+            [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -99,12 +100,12 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
         setValue(
           "permissions.machine-identity-auth-template",
           {
-            "list-templates": true,
-            "edit-templates": false,
-            "create-templates": false,
-            "delete-templates": false,
-            "unlink-templates": false,
-            "attach-templates": true
+            [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -115,12 +116,12 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
         setValue(
           "permissions.machine-identity-auth-template",
           {
-            "list-templates": false,
-            "edit-templates": false,
-            "create-templates": false,
-            "delete-templates": false,
-            "unlink-templates": false,
-            "attach-templates": false
+            [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: false
           },
           { shouldDirty: true }
         );

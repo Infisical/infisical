@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgPermissionBillingActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgPermissionBillingActions.Read]) return Permission.ReadOnly;
     return Permission.Custom;
   }, [rule, isCustom]);
 
@@ -71,8 +72,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            read: false,
-            "manage-billing": false
+            [OrgPermissionBillingActions.Read]: false,
+            [OrgPermissionBillingActions.ManageBilling]: false
           },
           { shouldDirty: true }
         );
@@ -81,8 +82,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            read: true,
-            "manage-billing": false
+            [OrgPermissionBillingActions.Read]: true,
+            [OrgPermissionBillingActions.ManageBilling]: false
           },
           { shouldDirty: true }
         );
@@ -91,8 +92,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            read: true,
-            "manage-billing": true
+            [OrgPermissionBillingActions.Read]: true,
+            [OrgPermissionBillingActions.ManageBilling]: true
           },
           { shouldDirty: true }
         );
@@ -101,8 +102,8 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.billing",
           {
-            read: false,
-            "manage-billing": false
+            [OrgPermissionBillingActions.Read]: false,
+            [OrgPermissionBillingActions.ManageBilling]: false
           },
           { shouldDirty: true }
         );

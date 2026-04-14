@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -49,7 +50,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
     if (isCustom) return Permission.Custom;
-    if (score === 1 && rule?.["list-gateways"]) return Permission.ReadOnly;
+    if (score === 1 && rule?.[OrgGatewayPermissionActions.ListGateways]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -80,10 +81,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            "list-gateways": true,
-            "edit-gateways": true,
-            "create-gateways": true,
-            "delete-gateways": true
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.EditGateways]: true,
+            [OrgGatewayPermissionActions.CreateGateways]: true,
+            [OrgGatewayPermissionActions.DeleteGateways]: true
           },
           { shouldDirty: true }
         );
@@ -92,10 +93,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            "list-gateways": true,
-            "edit-gateways": false,
-            "create-gateways": false,
-            "delete-gateways": false
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false
           },
           { shouldDirty: true }
         );
@@ -106,10 +107,10 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
         setValue(
           "permissions.gateway",
           {
-            "list-gateways": false,
-            "edit-gateways": false,
-            "create-gateways": false,
-            "delete-gateways": false
+            [OrgGatewayPermissionActions.ListGateways]: false,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false
           },
           { shouldDirty: true }
         );
