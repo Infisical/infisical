@@ -48,14 +48,7 @@ const attemptSshConnection = (
       readyTimeout: SSH_TIMEOUT,
       tryKeyboard: false,
       algorithms: {
-        serverHostKey: [
-          "ssh-rsa", // Required for HP iLO 4/5
-          "ssh-dss"
-        ],
-        kex: [
-          "diffie-hellman-group14-sha1", // Required for HP iLO 4/5
-          "diffie-hellman-group1-sha1"
-        ]
+        serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
       }
     };
 
