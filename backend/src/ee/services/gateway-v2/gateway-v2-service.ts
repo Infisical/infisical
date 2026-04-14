@@ -350,9 +350,26 @@ export const gatewayV2ServiceFactory = ({
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
 
+    // Check enrollment token status for each gateway
+    const allTokens = await gatewayEnrollmentTokenDAL.find({ orgId: orgPermission.orgId });
+    const now = new Date();
+    const tokenStatusMap = new Map<string, "pending" | "expired">();
+    for (const token of allTokens) {
+      if (token.usedAt || !token.gatewayId) continue;
+      const isExpired = token.expiresAt <= now;
+      const current = tokenStatusMap.get(token.gatewayId);
+      // A non-expired token takes priority over an expired one
+      if (!isExpired) {
+        tokenStatusMap.set(token.gatewayId, "pending");
+      } else if (!current) {
+        tokenStatusMap.set(token.gatewayId, "expired");
+      }
+    }
+
     return gateways.map((gateway) => ({
       ...gateway,
-      connectedResourcesCount: countMap.get(gateway.id) ?? 0
+      connectedResourcesCount: countMap.get(gateway.id) ?? 0,
+      enrollmentTokenStatus: tokenStatusMap.get(gateway.id) ?? null
     }));
   };
 
@@ -1230,25 +1247,6 @@ export const gatewayV2ServiceFactory = ({
     return { ...tokenRecord, token: plainToken, gatewayId: gateway.id };
   };
 
-  const listEnrollmentTokens = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
-
-    const tokens = await gatewayEnrollmentTokenDAL.find({ orgId: orgPermission.orgId });
-    return tokens.filter((t) => !t.usedAt).map(({ tokenHash: _, ...rest }) => rest);
-  };
-
   const deleteEnrollmentToken = async ({
     orgPermission,
     tokenId
@@ -1511,7 +1509,6 @@ export const gatewayV2ServiceFactory = ({
     getConnectedResources,
     getGatewayById,
     createEnrollmentToken,
-    listEnrollmentTokens,
     deleteEnrollmentToken,
     enrollGateway,
     reEnrollGateway

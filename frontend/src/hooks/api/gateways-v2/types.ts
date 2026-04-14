@@ -16,6 +16,7 @@ export type TGatewayV2 = {
     name: string;
     id: string;
   } | null;
+  enrollmentTokenStatus: "pending" | "expired" | null;
 };
 
 export type TGatewayEnrollmentToken = {

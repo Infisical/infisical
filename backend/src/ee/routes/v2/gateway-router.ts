@@ -106,7 +106,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       response: {
         200: SanitizedGatewayV2Schema.extend({
           identity: z.object({ name: z.string(), id: z.string() }).nullable(),
-          connectedResourcesCount: z.number()
+          connectedResourcesCount: z.number(),
+          enrollmentTokenStatus: z.enum(["pending", "expired"]).nullable()
         }).array()
       }
     },
@@ -322,20 +323,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       });
 
       return result;
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/enrollment-tokens",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "listGatewayEnrollmentTokens",
-      response: { 200: SanitizedEnrollmentTokenSchema.array() }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      return server.services.gatewayV2.listEnrollmentTokens({ orgPermission: req.permission });
     }
   });
 
