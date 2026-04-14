@@ -1204,22 +1204,30 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
     }
 
-    const existingTokens = await gatewayEnrollmentTokenDAL.find({ orgId, name });
-    if (existingTokens.length > 0) {
-      throw new BadRequestError({ message: `An enrollment token named "${name}" already exists` });
-    }
-
     const { plainToken, tokenHash, expiresAt } = $generateEnrollmentToken();
 
-    const record = await gatewayEnrollmentTokenDAL.create({
-      orgId,
-      name,
-      tokenHash,
-      ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
-      expiresAt
+    // Create both the gateway record and the enrollment token in a single transaction.
+    // The gateway exists immediately so other features (K8s auth, dynamic secrets, etc.)
+    // can reference it by ID before the CLI enrolls.
+    const { gateway, token: tokenRecord } = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
+      const gw = await gatewayV2DAL.create({ orgId, name }, tx);
+
+      const tkn = await gatewayEnrollmentTokenDAL.create(
+        {
+          orgId,
+          name,
+          tokenHash,
+          ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
+          expiresAt,
+          gatewayId: gw.id
+        },
+        tx
+      );
+
+      return { gateway: gw, token: tkn };
     });
 
-    return { ...record, token: plainToken };
+    return { ...tokenRecord, token: plainToken, gatewayId: gateway.id };
   };
 
   const listEnrollmentTokens = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
@@ -1325,27 +1333,19 @@ export const gatewayV2ServiceFactory = ({
     const orgCAs = await $getOrgCAs(orgId);
 
     try {
-      let gateway;
-      if (tokenRecord.gatewayId) {
-        // Re-enrollment: reuse existing gateway record.
-        // Bump tokenVersion to invalidate the old machine's JWT and clear health status.
-        const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId);
-        if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
-        const updated = await gatewayV2DAL.updateById(existing.id, {
-          $incr: { tokenVersion: 1 },
-          relayId: relay.id,
-          heartbeat: null,
-          lastHealthCheckStatus: null
-        });
-        gateway = updated;
-      } else {
-        // Fresh enrollment: create new gateway record
-        gateway = await gatewayV2DAL.create({
-          orgId,
-          name,
-          relayId: relay.id
-        });
+      // The gateway record was created at token creation time.
+      // Bump tokenVersion to invalidate any previous JWT and set the relay.
+      if (!tokenRecord.gatewayId) {
+        throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
       }
+      const existing = await gatewayV2DAL.findById(tokenRecord.gatewayId);
+      if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
+      const gateway = await gatewayV2DAL.updateById(existing.id, {
+        $incr: { tokenVersion: 1 },
+        relayId: relay.id,
+        heartbeat: null,
+        lastHealthCheckStatus: null
+      });
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
@@ -1446,12 +1446,10 @@ export const gatewayV2ServiceFactory = ({
 
   const reEnrollGateway = async ({
     orgPermission,
-    gatewayId,
-    tokenId
+    gatewayId
   }: {
     orgPermission: OrgServiceActor;
-    gatewayId?: string;
-    tokenId?: string;
+    gatewayId: string;
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: orgPermission.type,
@@ -1467,69 +1465,37 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    if (gatewayId) {
-      // Re-enroll an existing (enrolled) gateway.
-      // The old gateway keeps running until the new machine enrolls with this token.
-      // tokenVersion is bumped in enrollGateway when the token is consumed, not here.
-      const gateway = await gatewayV2DAL.findById(gatewayId);
-      if (!gateway || gateway.orgId !== orgPermission.orgId) {
-        throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
-      }
-
-      const gatewayToken = $generateEnrollmentToken();
-
-      const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-        const existingTokens = await gatewayEnrollmentTokenDAL.find({ gatewayId }, { tx });
-        const unusedTokenIds = existingTokens.filter((t) => !t.usedAt).map((t) => t.id);
-        if (unusedTokenIds.length > 0) {
-          await gatewayEnrollmentTokenDAL.delete({ $in: { id: unusedTokenIds } }, tx);
-        }
-
-        return gatewayEnrollmentTokenDAL.create(
-          {
-            orgId: orgPermission.orgId,
-            name: gateway.name,
-            tokenHash: gatewayToken.tokenHash,
-            ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
-            expiresAt: gatewayToken.expiresAt,
-            gatewayId
-          },
-          tx
-        );
-      });
-
-      return { ...record, token: gatewayToken.plainToken };
+    // Re-enroll a gateway (pending or enrolled).
+    // The old gateway keeps running until the new machine enrolls with this token.
+    // tokenVersion is bumped in enrollGateway when the token is consumed, not here.
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway || gateway.orgId !== orgPermission.orgId) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
     }
 
-    if (tokenId) {
-      // Re-enroll a pending gateway (replace the enrollment token).
-      // Wrapped in a transaction so delete + create are atomic.
-      const oldToken = await gatewayEnrollmentTokenDAL.findOne({ id: tokenId, orgId: orgPermission.orgId });
-      if (!oldToken) {
-        throw new NotFoundError({ message: `Enrollment token ${tokenId} not found` });
+    const gatewayToken = $generateEnrollmentToken();
+
+    const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
+      const existingTokens = await gatewayEnrollmentTokenDAL.find({ gatewayId }, { tx });
+      const unusedTokenIds = existingTokens.filter((t) => !t.usedAt).map((t) => t.id);
+      if (unusedTokenIds.length > 0) {
+        await gatewayEnrollmentTokenDAL.delete({ $in: { id: unusedTokenIds } }, tx);
       }
 
-      const pendingToken = $generateEnrollmentToken();
+      return gatewayEnrollmentTokenDAL.create(
+        {
+          orgId: orgPermission.orgId,
+          name: gateway.name,
+          tokenHash: gatewayToken.tokenHash,
+          ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
+          expiresAt: gatewayToken.expiresAt,
+          gatewayId
+        },
+        tx
+      );
+    });
 
-      const record = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-        await gatewayEnrollmentTokenDAL.deleteById(tokenId, tx);
-
-        return gatewayEnrollmentTokenDAL.create(
-          {
-            orgId: orgPermission.orgId,
-            name: oldToken.name,
-            tokenHash: pendingToken.tokenHash,
-            ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
-            expiresAt: pendingToken.expiresAt
-          },
-          tx
-        );
-      });
-
-      return { ...record, token: pendingToken.plainToken };
-    }
-
-    throw new BadRequestError({ message: "Either gatewayId or tokenId must be provided" });
+    return { ...record, token: gatewayToken.plainToken };
   };
 
   return {

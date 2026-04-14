@@ -5809,8 +5809,7 @@ interface GatewayEnrollEvent {
 interface GatewayReEnrollEvent {
   type: EventType.GATEWAY_RE_ENROLL;
   metadata: {
-    gatewayId?: string;
-    tokenId?: string;
+    gatewayId: string;
     name: string;
   };
 }

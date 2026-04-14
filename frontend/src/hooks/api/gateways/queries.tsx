@@ -43,17 +43,18 @@ export const gatewaysQueryKeys = {
         const now = new Date();
         const unusedTokens = enrollmentTokens.filter((t) => !t.usedAt);
 
-        // Gateways that have a pending (non-expired) re-enrollment token
-        const reEnrollGatewayIds = new Set(
+        // Gateways with a non-expired unused enrollment token (pending initial enrollment or re-enrollment)
+        const pendingGatewayIds = new Set(
           unusedTokens
             .filter((t) => t.gatewayId && new Date(t.expiresAt) > now)
             .map((t) => t.gatewayId)
         );
 
-        // Standalone tokens (no gateway record yet), both active and expired
-        const enrolledNames = new Set(dataV2.map((g) => g.name));
-        const standaloneTokens = unusedTokens.filter(
-          (t) => !t.gatewayId && !enrolledNames.has(t.name)
+        // Gateways whose only unused token is expired
+        const expiredGatewayIds = new Set(
+          unusedTokens
+            .filter((t) => t.gatewayId && new Date(t.expiresAt) <= now && !pendingGatewayIds.has(t.gatewayId))
+            .map((t) => t.gatewayId)
         );
 
         return [
@@ -62,26 +63,22 @@ export const gatewaysQueryKeys = {
             isV1: true as const,
             isPending: false as const,
             isExpired: false as const,
-            isTokenOnly: false as const
+            hasReEnrollToken: false as const
           })),
-          ...dataV2.map((g) => ({
-            ...g,
-            isV1: false as const,
-            isPending: false as const,
-            isExpired: false as const,
-            isTokenOnly: false as const,
-            hasReEnrollToken: reEnrollGatewayIds.has(g.id) as boolean
-          })),
-          ...standaloneTokens.map((t) => ({
-            id: t.id,
-            name: t.name,
-            createdAt: t.createdAt,
-            expiresAt: t.expiresAt,
-            isV1: false as const,
-            isPending: new Date(t.expiresAt) > now,
-            isExpired: new Date(t.expiresAt) <= now,
-            isTokenOnly: true as const
-          }))
+          ...dataV2.map((g) => {
+            const hasHeartbeat = !!g.heartbeat;
+            const isPending = pendingGatewayIds.has(g.id) && !hasHeartbeat;
+            const hasReEnrollToken = pendingGatewayIds.has(g.id) && hasHeartbeat;
+            const isExpired = expiredGatewayIds.has(g.id) && !hasHeartbeat;
+
+            return {
+              ...g,
+              isV1: false as const,
+              isPending,
+              isExpired,
+              hasReEnrollToken
+            };
+          })
         ];
       }
     })

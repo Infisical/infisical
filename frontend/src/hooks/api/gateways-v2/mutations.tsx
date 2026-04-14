@@ -55,10 +55,10 @@ export const useCreateGatewayEnrollmentToken = () => {
 export const useReEnrollGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ gatewayId, tokenId }: { gatewayId?: string; tokenId?: string }) => {
+    mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<TCreateGatewayEnrollmentTokenResponse>(
         "/api/v2/gateways/re-enroll",
-        { gatewayId, tokenId }
+        { gatewayId }
       );
       return data;
     },

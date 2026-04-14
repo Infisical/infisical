@@ -378,8 +378,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "reEnrollGateway",
       body: z.object({
-        gatewayId: z.string().uuid().optional(),
-        tokenId: z.string().uuid().optional()
+        gatewayId: z.string().uuid()
       }),
       response: {
         200: SanitizedEnrollmentTokenSchema.extend({ token: z.string() })
@@ -389,8 +388,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.gatewayV2.reEnrollGateway({
         orgPermission: req.permission,
-        gatewayId: req.body.gatewayId,
-        tokenId: req.body.tokenId
+        gatewayId: req.body.gatewayId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -400,7 +398,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           type: EventType.GATEWAY_RE_ENROLL,
           metadata: {
             gatewayId: req.body.gatewayId,
-            tokenId: result.id,
             name: result.name
           }
         }

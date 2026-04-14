@@ -49,7 +49,6 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import {
-  useDeleteGatewayEnrollmentToken,
   useDeleteGatewayV2ById,
   useTriggerGatewayV2Heartbeat
 } from "@app/hooks/api/gateways-v2";
@@ -166,7 +165,6 @@ export const GatewayTab = withPermission(
 
     const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
-    const deleteEnrollmentToken = useDeleteGatewayEnrollmentToken();
     const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
 
     const handleTriggerHealthCheck = async (id: string) => {
@@ -188,12 +186,8 @@ export const GatewayTab = withPermission(
       const data = popUp.deleteGateway.data as {
         id: string;
         isV1: boolean;
-        isPending: boolean;
-        isTokenOnly: boolean;
       };
-      if (data.isTokenOnly) {
-        await deleteEnrollmentToken.mutateAsync(data.id);
-      } else if (data.isV1) {
+      if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
       } else {
         await deleteGatewayV2ById.mutateAsync(data.id);
@@ -202,9 +196,7 @@ export const GatewayTab = withPermission(
       handlePopUpToggle("deleteGateway");
       createNotification({
         type: "success",
-        text: data.isTokenOnly
-          ? "Successfully deleted enrollment token"
-          : "Successfully deleted gateway"
+        text: "Successfully deleted gateway"
       });
     };
 
@@ -403,7 +395,7 @@ export const GatewayTab = withPermission(
                                   className="text-red"
                                   onClick={() => handlePopUpOpen("deleteGateway", el)}
                                 >
-                                  {el.isTokenOnly ? "Delete Token" : "Delete Gateway"}
+                                  Delete Gateway
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -438,11 +430,7 @@ export const GatewayTab = withPermission(
             )}
             <DeleteActionModal
               isOpen={popUp.deleteGateway.isOpen}
-              title={`Are you sure you want to delete ${
-                (popUp?.deleteGateway?.data as { isTokenOnly?: boolean })?.isTokenOnly
-                  ? "enrollment token"
-                  : "gateway"
-              } ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
+              title={`Are you sure you want to delete gateway ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
               onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteGateway()}
@@ -459,7 +447,6 @@ export const GatewayTab = withPermission(
                   id: string;
                   name: string;
                   isPending: boolean;
-                  isTokenOnly: boolean;
                 } | null
               }
             />

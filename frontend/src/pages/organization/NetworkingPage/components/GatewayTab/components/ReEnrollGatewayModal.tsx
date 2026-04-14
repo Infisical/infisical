@@ -17,7 +17,7 @@ import { useReEnrollGateway } from "@app/hooks/api/gateways-v2";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  gatewayData: { id: string; name: string; isPending: boolean; isTokenOnly: boolean } | null;
+  gatewayData: { id: string; name: string; isPending: boolean } | null;
 };
 
 export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Props) => {
@@ -34,9 +34,7 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
     if (!gatewayData) return;
 
     try {
-      const result = await reEnroll(
-        gatewayData.isTokenOnly ? { tokenId: gatewayData.id } : { gatewayId: gatewayData.id }
-      );
+      const result = await reEnroll({ gatewayId: gatewayData.id });
       setEnrollmentToken(result.token);
       setStep("command");
     } catch {
@@ -64,12 +62,11 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
       <ModalContent
         className="max-w-2xl"
         title={`Re-enroll ${gatewayData.name}`}
-        subTitle={(() => {
-          if (step !== "confirm") return undefined;
-          if (gatewayData.isTokenOnly)
-            return "This will create a new enrollment token, replacing the expired one.";
-          return "This will create a new enrollment token. The existing gateway will keep running until the new machine enrolls.";
-        })()}
+        subTitle={
+          step === "confirm"
+            ? "This will create a new enrollment token. The existing gateway will keep running until the new machine enrolls."
+            : undefined
+        }
       >
         {step === "confirm" && (
           <div className="mt-4 flex items-center">
@@ -80,7 +77,7 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
               onClick={handleReEnroll}
               isLoading={isReEnrolling}
             >
-              {gatewayData.isTokenOnly ? "Create New Token" : "Re-enroll"}
+              Re-enroll
             </Button>
             <ModalClose asChild>
               <Button colorSchema="secondary" variant="plain">
