@@ -36,7 +36,11 @@ const PERMISSION_ACTIONS = [
     label: "Delete Identities",
     description: "Delete machine identities"
   },
-  { action: OrgPermissionIdentityActions.GrantPrivileges, label: "Grant Privileges", description: undefined },
+  {
+    action: OrgPermissionIdentityActions.GrantPrivileges,
+    label: "Grant Privileges",
+    description: undefined
+  },
   {
     action: OrgPermissionIdentityActions.RevokeAuth,
     label: "Revoke Auth",

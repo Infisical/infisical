@@ -1,4 +1,11 @@
-import { components, GroupBase, MultiValueProps, MultiValueRemoveProps, OptionProps, Props } from "react-select";
+import {
+  components,
+  GroupBase,
+  MultiValueProps,
+  MultiValueRemoveProps,
+  OptionProps,
+  Props
+} from "react-select";
 import { CheckIcon } from "lucide-react";
 
 import { FilterableSelect } from "../generic/ReactSelect";

@@ -36,7 +36,11 @@ const PERMISSION_ACTIONS = [
     label: "Delete Groups",
     description: "Delete groups"
   },
-  { action: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges", description: undefined },
+  {
+    action: OrgPermissionGroupActions.GrantPrivileges,
+    label: "Grant Privileges",
+    description: undefined
+  },
   {
     action: OrgPermissionGroupActions.AddMembers,
     label: "Add Members",
