@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -36,7 +36,7 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
     control,
     setValue,
     formPath: "permissions.secret-share",
-    permissionActions: ORG_PERMISSION_OBJECT["secret-share"].actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SecretShare].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -88,9 +88,9 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT["secret-share"].title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SecretShare].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT["secret-share"].description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SecretShare].description}
           </p>
         </Td>
         <Td>
@@ -118,7 +118,7 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT["secret-share"].actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SecretShare].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

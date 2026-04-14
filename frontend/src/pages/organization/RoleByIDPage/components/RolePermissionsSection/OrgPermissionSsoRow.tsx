@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
-import { OrgPermissionSsoActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -37,14 +37,14 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
     control,
     setValue,
     formPath: "permissions.sso",
-    permissionActions: ORG_PERMISSION_OBJECT.sso.actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Sso].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = ORG_PERMISSION_OBJECT.sso.actions.length;
+    const totalActions = ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Sso].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -141,9 +141,9 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT.sso.title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Sso].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT.sso.description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Sso].description}
           </p>
         </Td>
         <Td>
@@ -173,7 +173,7 @@ export const OrgPermissionSsoRow = ({ isEditable, control, setValue }: Props) =>
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT.sso.actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Sso].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

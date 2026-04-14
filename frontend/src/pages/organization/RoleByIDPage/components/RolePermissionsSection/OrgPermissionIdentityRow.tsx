@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
-import { OrgPermissionIdentityActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -37,14 +37,14 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
     control,
     setValue,
     formPath: "permissions.identity",
-    permissionActions: ORG_PERMISSION_OBJECT.identity.actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Identity].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = ORG_PERMISSION_OBJECT.identity.actions.length;
+    const totalActions = ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Identity].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -157,9 +157,9 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT.identity.title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Identity].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT.identity.description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Identity].description}
           </p>
         </Td>
         <Td>
@@ -189,7 +189,7 @@ export const OrgPermissionIdentityRow = ({ isEditable, control, setValue }: Prop
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT.identity.actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Identity].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

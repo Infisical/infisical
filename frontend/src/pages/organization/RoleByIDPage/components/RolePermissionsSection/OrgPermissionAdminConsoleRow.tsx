@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -36,7 +36,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
     control,
     setValue,
     formPath: "permissions.organization-admin-console",
-    permissionActions: ORG_PERMISSION_OBJECT["organization-admin-console"].actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -88,9 +88,9 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT["organization-admin-console"].title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT["organization-admin-console"].description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].description}
           </p>
         </Td>
         <Td>
@@ -118,7 +118,7 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT["organization-admin-console"].actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

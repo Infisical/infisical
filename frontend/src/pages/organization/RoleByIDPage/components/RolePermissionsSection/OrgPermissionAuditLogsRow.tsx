@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { OrgPermissionAuditLogsActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -36,7 +36,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
     control,
     setValue,
     formPath: "permissions.audit-logs",
-    permissionActions: ORG_PERMISSION_OBJECT["audit-logs"].actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AuditLogs].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -95,8 +95,8 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT["audit-logs"].title}</p>
-          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT["audit-logs"].description}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AuditLogs].title}</p>
+          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AuditLogs].description}</p>
         </Td>
         <Td>
           <Select
@@ -123,7 +123,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT["audit-logs"].actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AuditLogs].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

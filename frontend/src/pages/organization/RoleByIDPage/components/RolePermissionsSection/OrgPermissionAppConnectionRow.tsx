@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
-import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -37,14 +37,14 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
     control,
     setValue,
     formPath: "permissions.app-connections",
-    permissionActions: ORG_PERMISSION_OBJECT["app-connections"].actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AppConnections].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = ORG_PERMISSION_OBJECT["app-connections"].actions.length;
+    const totalActions = ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AppConnections].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -133,9 +133,9 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT["app-connections"].title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AppConnections].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT["app-connections"].description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AppConnections].description}
           </p>
         </Td>
         <Td>
@@ -165,7 +165,7 @@ export const OrgPermissionAppConnectionRow = ({ isEditable, control, setValue }:
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT["app-connections"].actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AppConnections].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

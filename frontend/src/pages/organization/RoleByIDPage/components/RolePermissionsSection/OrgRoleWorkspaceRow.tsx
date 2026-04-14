@@ -7,7 +7,7 @@ import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 
-import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -36,7 +36,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     control,
     setValue,
     formPath: "permissions.project",
-    permissionActions: ORG_PERMISSION_OBJECT.project.actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Project].actions
   });
 
   const selectedCount = selectedActions.length;
@@ -88,8 +88,8 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT.project.title}</p>
-          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT.project.description}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Project].title}</p>
+          <p className="text-xs text-mineshaft-400">{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Project].description}</p>
         </Td>
         <Td>
           <Select
@@ -116,7 +116,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT.project.actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Project].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}

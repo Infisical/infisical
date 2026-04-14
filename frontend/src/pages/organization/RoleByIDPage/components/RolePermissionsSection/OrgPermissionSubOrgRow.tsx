@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem, Td, Tr } from "@app/components/v2";
 import { FilterableSelect } from "@app/components/v3";
 import { useToggle } from "@app/hooks";
-import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -36,14 +36,14 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
     control,
     setValue,
     formPath: "permissions.sub-organization",
-    permissionActions: ORG_PERMISSION_OBJECT["sub-organization"].actions
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = ORG_PERMISSION_OBJECT["sub-organization"].actions.length;
+    const totalActions = ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -118,9 +118,9 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
           <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
         <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT["sub-organization"].title}</p>
+          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].title}</p>
           <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT["sub-organization"].description}
+            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].description}
           </p>
         </Td>
         <Td>
@@ -149,7 +149,7 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
               isMulti
               value={selectedActions}
               onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT["sub-organization"].actions}
+              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions}
               placeholder={isEditable ? "Select actions..." : "No actions allowed"}
               isDisabled={!isEditable}
               isClearable={isEditable}
