@@ -2,17 +2,17 @@
 
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import { TPkiAlertV2ServiceFactory } from "./pki-alert-v2-service";
-import { CertificateOrigin, PkiAlertEventType, TPkiFilterRule } from "./pki-alert-v2-types";
+import { CertificateOrigin, PkiAlertEventType, TNotificationConfig, TPkiFilterRule } from "./pki-alert-v2-types";
 
 type TPkiAlertV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
-  pkiAlertV2Service: Pick<TPkiAlertV2ServiceFactory, "sendAlertNotifications">;
+  pkiAlertV2Service: Pick<TPkiAlertV2ServiceFactory, "sendAlertNotifications" | "sendEventNotifications">;
   pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findByProjectId" | "findMatchingCertificates" | "getDistinctProjectIds">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "findRecentlyAlertedCertificates">;
 };
@@ -26,7 +26,9 @@ export const pkiAlertV2QueueServiceFactory = ({
   pkiAlertHistoryDAL
 }: TPkiAlertV2QueueServiceFactoryDep) => {
   const appCfg = getConfig();
-  const calculateDeduplicationWindow = (alertBefore: string): number => {
+  const calculateDeduplicationWindow = (alertBefore: string, enableDailyNotification = false): number => {
+    if (enableDailyNotification) return 24;
+
     const alertDays = parseTimeToDays(alertBefore);
 
     if (alertDays === 0) {
@@ -67,6 +69,7 @@ export const pkiAlertV2QueueServiceFactory = ({
       eventType: string;
       alertBefore: string;
       filters: TPkiFilterRule[];
+      notificationConfig?: TNotificationConfig | null;
     },
     projectId: string
   ): Promise<{ shouldNotify: boolean; certificateIds: string[] }> => {
@@ -89,7 +92,8 @@ export const pkiAlertV2QueueServiceFactory = ({
         .filter((cert) => cert.enrollmentType !== CertificateOrigin.CA)
         .map((cert) => cert.id);
 
-      const deduplicationHours = calculateDeduplicationWindow(alert.alertBefore);
+      const enableDailyNotification = alert.notificationConfig?.enableDailyNotification ?? false;
+      const deduplicationHours = calculateDeduplicationWindow(alert.alertBefore, enableDailyNotification);
       const recentlyAlertedIds = await pkiAlertHistoryDAL.findRecentlyAlertedCertificates(
         alert.id,
         allCertificateIds,
@@ -133,27 +137,30 @@ export const pkiAlertV2QueueServiceFactory = ({
     let notificationsSent = 0;
 
     for (const alert of alerts) {
-      const typedAlert = alert as {
-        id: string;
-        name: string;
-        eventType: string;
-        alertBefore: string;
-        filters: TPkiFilterRule[];
-      };
       try {
-        const { shouldNotify, certificateIds } = await evaluateAlert(typedAlert, projectId);
+        const { shouldNotify, certificateIds } = await evaluateAlert(
+          {
+            id: alert.id,
+            name: alert.name,
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore ?? "",
+            filters: (alert.filters ?? []) as TPkiFilterRule[],
+            notificationConfig: alert.notificationConfig as TNotificationConfig | null
+          },
+          projectId
+        );
 
         if (shouldNotify && certificateIds.length > 0) {
-          await pkiAlertV2Service.sendAlertNotifications(typedAlert.id, certificateIds);
+          await pkiAlertV2Service.sendAlertNotifications(alert.id, certificateIds);
           notificationsSent += 1;
           logger.info(
-            `Sent notification for alert ${typedAlert.id} (${typedAlert.name}) with ${certificateIds.length} certificates`
+            `Sent notification for alert ${alert.id} (${alert.name}) with ${certificateIds.length} certificates`
           );
         }
 
         alertsProcessed += 1;
       } catch (error) {
-        logger.error(error, `Failed to process alert ${typedAlert.id} (${typedAlert.name})`);
+        logger.error(error, `Failed to process alert ${alert.id} (${alert.name})`);
       }
     }
 
@@ -187,34 +194,84 @@ export const pkiAlertV2QueueServiceFactory = ({
     );
   };
 
+  const processEventAlert = async (payload: {
+    certificateId: string;
+    projectId: string;
+    eventType: PkiAlertEventType;
+  }) => {
+    const { certificateId, projectId, eventType } = payload;
+
+    const alerts = await pkiAlertV2DAL.findByProjectId(projectId, {
+      eventType,
+      enabled: true
+    });
+
+    if (alerts.length === 0) return;
+
+    for (const alert of alerts) {
+      try {
+        await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType);
+        logger.info(
+          { alertId: alert.id, alertName: alert.name, certificateId, eventType },
+          "Sent PKI event notification"
+        );
+      } catch (error) {
+        logger.error({ alertId: alert.id, certificateId, eventType, error }, "Failed to process PKI event alert");
+      }
+    }
+  };
+
+  const queueCertificateEvent = async (payload: {
+    certificateId: string;
+    projectId: string;
+    eventType: PkiAlertEventType;
+  }) => {
+    await queueService.queue(QueueName.PkiAlertV2Event, QueueJobs.PkiAlertV2ProcessEvent, payload, {
+      jobId: `pki-alert-event-${payload.projectId}-${payload.certificateId}-${payload.eventType}`,
+      removeOnFail: { count: 5 },
+      removeOnComplete: true,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 }
+    });
+  };
+
   const init = async () => {
     if (appCfg.isSecondaryInstance) {
       return;
     }
 
-    await queueService.startPg<QueueName.DailyPkiAlertV2Processing>(
-      QueueJobs.DailyPkiAlertV2Processing,
-      async () => {
-        try {
-          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
-          await processDailyAlerts();
-          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
-        } catch (error) {
-          logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 60
+    queueService.start(QueueName.DailyPkiAlertV2Processing, async () => {
+      try {
+        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
+        await processDailyAlerts();
+        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
+      } catch (error) {
+        logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(QueueJobs.DailyPkiAlertV2Processing, "0 0 * * *", undefined, { tz: "UTC" });
+    queueService.start(QueueName.PkiAlertV2Event, async (job) => {
+      try {
+        logger.info(`${QueueJobs.PkiAlertV2ProcessEvent}: processing ${job.data.eventType} event`);
+        await processEventAlert(job.data);
+        logger.info(`${QueueJobs.PkiAlertV2ProcessEvent}: completed successfully`);
+      } catch (error) {
+        logger.error(error, `${QueueJobs.PkiAlertV2ProcessEvent}: failed`);
+        throw error;
+      }
+    });
+
+    await queueService.upsertJobScheduler(
+      QueueName.DailyPkiAlertV2Processing,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyPkiAlertV2Processing}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailyPkiAlertV2Processing }
+    );
   };
 
   return {
-    init
+    init,
+    queueCertificateEvent
   };
 };

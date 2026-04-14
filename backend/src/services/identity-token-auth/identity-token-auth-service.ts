@@ -59,7 +59,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -510,7 +510,7 @@ export const identityTokenAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    if (organizationSlug) {
+    if (organizationSlug && org.slug !== organizationSlug) {
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -518,10 +518,10 @@ export const identityTokenAuthServiceFactory = ({
           throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
         }
 
-        const subOrgMembership = await membershipIdentityDAL.findOne({
-          scope: AccessScope.Organization,
-          actorIdentityId: identity.id,
-          scopeOrgId: subOrg.id
+        const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.IDENTITY,
+          actorId: identity.id,
+          orgId: subOrg.id
         });
 
         if (!subOrgMembership) {

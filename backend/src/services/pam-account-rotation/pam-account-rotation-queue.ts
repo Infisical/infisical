@@ -1,7 +1,7 @@
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 type TPamAccountRotationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -21,37 +21,22 @@ export const pamAccountRotationServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.PamAccountRotation,
-      QueueJobs.PamAccountRotation,
-      { pattern: "0 * * * *", utc: true },
-      QueueName.PamAccountRotation // job id
-    );
-
-    await queueService.startPg<QueueName.PamAccountRotation>(
-      QueueJobs.PamAccountRotation,
-      async () => {
-        try {
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
-          await pamAccountService.rotateAllDueAccounts();
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 5 * 60
+    queueService.start(QueueName.PamAccountRotation, async () => {
+      try {
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
+        await pamAccountService.rotateAllDueAccounts();
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(
-      QueueJobs.PamAccountRotation,
-      "0 * * * *", // Schedule to run every hour
-      undefined,
-      { tz: "UTC" }
+    await queueService.upsertJobScheduler(
+      QueueName.PamAccountRotation,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PamAccountRotation}`,
+      { pattern: "0 * * * *" },
+      { name: QueueJobs.PamAccountRotation }
     );
   };
 

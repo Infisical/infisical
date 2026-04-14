@@ -1,25 +1,67 @@
-import { FilterIcon, FingerprintIcon, FolderIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
+import {
+  FilterIcon,
+  FingerprintIcon,
+  FolderIcon,
+  ImportIcon,
+  KeyIcon,
+  RefreshCwIcon
+} from "lucide-react";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
   UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
+import { WsTag } from "@app/hooks/api/tags/types";
 import { RowType } from "@app/pages/secret-manager/OverviewPage/OverviewPage";
+
+import { ResourceFilterMenuContent, type ResourceTypeOption } from "./ResourceFilterMenuContent";
+
+// Use string literals to avoid circular dependency with OverviewPage at module init time
+const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
+  { type: "folder", label: "Folders", icon: <FolderIcon className="text-folder" /> },
+  {
+    type: "dynamic",
+    label: "Dynamic Secrets",
+    icon: <FingerprintIcon className="text-dynamic-secret" />
+  },
+  {
+    type: "rotation",
+    label: "Secret Rotations",
+    icon: <RefreshCwIcon className="text-secret-rotation" />
+  },
+  {
+    type: "import",
+    label: "Secret Imports",
+    icon: <ImportIcon className="text-import" />
+  },
+  { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
+];
 
 type Props = {
   onToggleRowType: (resource: RowType) => void;
   rowTypeFilter: Record<RowType, boolean>;
+  tags?: WsTag[];
+  selectedTagSlugs: Record<string, boolean>;
+  onToggleTag: (tagSlug: string) => void;
+  onClearTags: () => void;
 };
 
-export function ResourceFilter({ onToggleRowType, rowTypeFilter }: Props) {
+export function ResourceFilter({
+  onToggleRowType,
+  rowTypeFilter,
+  tags,
+  selectedTagSlugs,
+  onToggleTag,
+  onClearTags
+}: Props) {
   const filterCount = Object.values(rowTypeFilter).filter(Boolean).length;
+  const tagCount = Object.values(selectedTagSlugs).filter(Boolean).length;
+  const isActive = filterCount > 0 || tagCount > 0;
 
   return (
     <UnstableDropdownMenu>
@@ -29,62 +71,24 @@ export function ResourceFilter({ onToggleRowType, rowTypeFilter }: Props) {
             <UnstableIconButton
               className="relative"
               size="md"
-              variant={filterCount ? "project" : "outline"}
+              variant={isActive ? "project" : "outline"}
             >
               <FilterIcon />
-              {/* TODO: scott figure out how to not clip with the required overflow */}
-              {/* {Boolean(filterCount) && (
-                <Badge className="absolute -top-2 -right-2" isSquare>
-                  {filterCount}
-                </Badge>
-              )} */}
             </UnstableIconButton>
           </TooltipTrigger>
           <TooltipContent>Filter resources</TooltipContent>
         </Tooltip>
       </UnstableDropdownMenuTrigger>
       <UnstableDropdownMenuContent align="end">
-        <UnstableDropdownMenuLabel>Filter by Resource</UnstableDropdownMenuLabel>
-        <UnstableDropdownMenuCheckboxItem
-          onClick={(e) => {
-            e.preventDefault();
-            onToggleRowType(RowType.Folder);
-          }}
-          checked={Boolean(rowTypeFilter[RowType.Folder])}
-        >
-          <FolderIcon className="text-folder" />
-          Folders
-        </UnstableDropdownMenuCheckboxItem>
-        <UnstableDropdownMenuCheckboxItem
-          onClick={(e) => {
-            e.preventDefault();
-            onToggleRowType(RowType.DynamicSecret);
-          }}
-          checked={Boolean(rowTypeFilter[RowType.DynamicSecret])}
-        >
-          <FingerprintIcon className="text-dynamic-secret" />
-          Dynamic Secrets
-        </UnstableDropdownMenuCheckboxItem>
-        <UnstableDropdownMenuCheckboxItem
-          onClick={(e) => {
-            e.preventDefault();
-            onToggleRowType(RowType.SecretRotation);
-          }}
-          checked={rowTypeFilter[RowType.SecretRotation]}
-        >
-          <RefreshCwIcon className="text-secret-rotation" />
-          Secret Rotations
-        </UnstableDropdownMenuCheckboxItem>
-        <UnstableDropdownMenuCheckboxItem
-          onClick={(e) => {
-            e.preventDefault();
-            onToggleRowType(RowType.Secret);
-          }}
-          checked={Boolean(rowTypeFilter[RowType.Secret])}
-        >
-          <KeyIcon className="text-accent" />
-          Secrets
-        </UnstableDropdownMenuCheckboxItem>
+        <ResourceFilterMenuContent
+          resourceTypes={OVERVIEW_RESOURCE_TYPES}
+          resourceTypeFilter={rowTypeFilter}
+          onToggleResourceType={onToggleRowType as (type: string) => void}
+          tags={tags}
+          selectedTagSlugs={selectedTagSlugs}
+          onToggleTag={onToggleTag}
+          onClearTags={onClearTags}
+        />
       </UnstableDropdownMenuContent>
     </UnstableDropdownMenu>
   );

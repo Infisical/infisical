@@ -13,9 +13,11 @@ import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 import {
   AwsCertificateManagerPkiSyncDestinationSection,
+  AwsElasticLoadBalancerPkiSyncDestinationSection,
   AwsSecretsManagerPkiSyncDestinationSection,
   AzureKeyVaultPkiSyncDestinationSection,
-  ChefPkiSyncDestinationSection
+  ChefPkiSyncDestinationSection,
+  NetScalerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -40,6 +42,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
     case PkiSync.AwsCertificateManager:
       DestinationComponents = <AwsCertificateManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
+    case PkiSync.AwsElasticLoadBalancer:
+      DestinationComponents = <AwsElasticLoadBalancerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
     case PkiSync.AwsSecretsManager:
       DestinationComponents = <AwsSecretsManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
@@ -48,6 +53,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.Chef:
       DestinationComponents = <ChefPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.NetScaler:
+      DestinationComponents = <NetScalerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)

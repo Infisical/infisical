@@ -11,10 +11,11 @@ import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { EventType, filterableSecretEvents } from "./audit-log-types";
+import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
+  getApproximateRowCount: () => Promise<number>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -93,7 +94,12 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
       // Special case: Filter by actor ID
       if (actorId) {
-        void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object('userId', ?::text)`, [actorId]);
+        const metadataKey = actorType
+          ? ACTOR_TYPE_TO_METADATA_ID_KEY[actorType]
+          : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
+        if (metadataKey) {
+          void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object(?::text, ?::text)`, [metadataKey, actorId]);
+        }
       }
 
       // Special case: Filter by key/value pairs in eventMetadata field
@@ -197,10 +203,40 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
+  const getApproximateRowCount: TAuditLogDALFactory["getApproximateRowCount"] = async () => {
+    try {
+      // Sum across parent + all partitions via pg_inherits
+      const result = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT COALESCE(SUM(s.n_live_tup), 0)::bigint AS count
+         FROM pg_stat_user_tables s
+         JOIN pg_class c ON s.relname = c.relname
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
+      );
+
+      const count = Number(result.rows?.[0]?.count ?? 0);
+      if (count > 0) return count;
+
+      // Fallback: reltuples (handles never-analyzed tables returning -1)
+      const fallback = await db.raw<{ rows: Array<{ count: string | number }> }>(
+        `SELECT COALESCE(SUM(GREATEST(c.reltuples, 0)), 0)::bigint AS count
+         FROM pg_class c
+         WHERE c.oid = ?::regclass
+            OR c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = ?::regclass)`,
+        [TableName.AuditLog, TableName.AuditLog]
+      );
+      return Number(fallback.rows?.[0]?.count ?? 0);
+    } catch (error) {
+      logger.error(error, "Failed to get approximate audit log row count");
+      return 0;
+    }
+  };
+
   const create: TAuditLogDALFactory["create"] = async (tx) => {
     const config = getConfig();
 
-    if (config.DISABLE_AUDIT_LOG_STORAGE) {
+    if (config.DISABLE_POSTGRES_AUDIT_LOG_STORAGE) {
       return {
         ...tx,
         id: uuidv4(),
@@ -212,5 +248,5 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
-  return { ...auditLogOrm, create, pruneAuditLog, find };
+  return { ...auditLogOrm, create, pruneAuditLog, getApproximateRowCount, find };
 };

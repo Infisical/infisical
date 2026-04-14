@@ -11,6 +11,7 @@ import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
+import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
 import { mockSmtpServer } from "./mocks/smtp";
 import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
@@ -55,6 +56,8 @@ export default {
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
 
+    const clickhouseClient = buildClickHouseFromConfig(envCfg);
+
     try {
       // called after all tests with this env have been run
       await db.raw("DROP SCHEMA IF EXISTS public CASCADE");
@@ -72,11 +75,9 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      const queue = queueServiceFactory(envCfg);
       const keyValueStoreDAL = keyValueStoreDALFactory(db);
       const keyStore = keyStoreFactory(envCfg, keyValueStoreDAL);
-
-      await queue.initialize();
 
       const server = await main({
         db,
@@ -88,6 +89,7 @@ export default {
         kmsRootConfigDAL,
         superAdminDAL,
         redis,
+        clickhouse: clickhouseClient,
         envConfig: envCfg
       });
 

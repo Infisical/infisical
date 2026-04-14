@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
 
-// 30 to  7 days
 const DurationSchema = (
   min = 30,
   max = 604800,
@@ -12,8 +11,6 @@ const DurationSchema = (
   z.string().refine(
     (val) => {
       const duration = ms(val) / 1000;
-
-      // 30 seconds to 7 days
       return duration >= min && duration <= max;
     },
     { message: msg }
@@ -28,19 +25,20 @@ export const PolicyFormSchema = z.object({
   ).nullish(),
   conditions: z
     .object({
-      accountPaths: z
-        .string()
-        .array()
-        .min(1, "Must have at least one account path")
-        .refine((val) => val.every((path) => path.length > 0), {
-          message: "All account paths must be non-empty"
-        })
-        .refine((val) => val.every((path) => path.startsWith("/")), {
-          message: "All account paths must start with /"
-        })
-        .refine((val) => val.every((path) => !path.endsWith("/")), {
-          message: "All account paths cannot end with /"
-        })
+      resourceNames: z.string().array().optional(),
+      accountNames: z.string().array().optional()
+    })
+    .superRefine((data, ctx) => {
+      // At least one condition type must be provided
+      const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
+      const hasAccountNames = data.accountNames && data.accountNames.length > 0;
+      if (!hasResourceNames && !hasAccountNames) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one condition type must be provided (Resource Names or Account Names)",
+          path: ["resourceNames"]
+        });
+      }
     })
     .array()
     .min(1, "At least one condition is required"),

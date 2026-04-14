@@ -4,37 +4,55 @@ import {
   PamAccountView,
   PamResourceOrderBy,
   PamResourceType,
-  PamSessionStatus
+  PamSessionStatus,
+  TerminalChannelType
 } from "../enums";
+import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
+import { TSessionSummaryConfig } from "./base-resource";
 import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
+import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
+import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
+import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
+export * from "./active-directory-resource";
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
+export * from "./mongodb-resource";
+export * from "./mssql-resource";
 export * from "./mysql-resource";
 export * from "./postgres-resource";
 export * from "./redis-resource";
 export * from "./ssh-resource";
+export * from "./windows-server-resource";
 
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TRedisResource
+  | TMongoDBResource
   | TSSHResource
   | TAwsIamResource
-  | TKubernetesResource;
+  | TKubernetesResource
+  | TWindowsResource
+  | TActiveDirectoryResource;
 
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TRedisAccount
+  | TMongoDBAccount
   | TSSHAccount
   | TAwsIamAccount
-  | TKubernetesAccount;
+  | TKubernetesAccount
+  | TWindowsAccount
+  | TActiveDirectoryAccount;
 
 export type TPamFolder = {
   id: string;
@@ -56,6 +74,7 @@ export type TPamCommandLog = {
 export type TTerminalEvent = {
   timestamp: string;
   eventType: "input" | "output" | "resize" | "error";
+  channelType?: TerminalChannelType; // Optional for backwards compatibility with existing logs
   data: string; // Base64 encoded binary data
   elapsedTime: number; // Seconds since session start (for replay)
 };
@@ -83,10 +102,16 @@ export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
 export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
 
+export type TPamSessionAiInsights = {
+  summary: string;
+  warnings: { text: string; logIndex?: number }[];
+};
+
 export type TPamSession = {
   id: string;
   projectId: string;
   accountId?: string | null;
+  resourceId?: string | null;
   resourceType: PamResourceType;
   resourceName: string;
   accountName: string;
@@ -102,6 +127,10 @@ export type TPamSession = {
   createdAt: string;
   updatedAt: string;
   logs: TPamSessionLog[];
+  gatewayIdentityId?: string | null;
+  aiInsightsStatus?: string | null;
+  aiInsightsError?: string | null;
+  aiInsights?: TPamSessionAiInsights | null;
 };
 
 // Resource DTOs
@@ -113,18 +142,28 @@ export type TListPamResourcesDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceTypes?: string;
+  metadataFilter?: Array<{ key: string; value?: string }>;
 };
 
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
   "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
->;
+> & {
+  adServerResourceId?: string | null;
+  metadata?: { key: string; value: string }[];
+};
+
+export type { TSessionSummaryConfig };
 
 export type TUpdatePamResourceDTO = Partial<
   Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
 > & {
   resourceId: string;
   resourceType: PamResourceType;
+  adServerResourceId?: string | null;
+  metadata?: { key: string; value: string }[];
+  rotationAccountCredentials?: { username: string; password: string } | null;
+  sessionSummaryConfig?: TSessionSummaryConfig;
 };
 
 export type TDeletePamResourceDTO = {
@@ -135,7 +174,6 @@ export type TDeletePamResourceDTO = {
 // Account DTOs
 export type TListPamAccountsDTO = {
   projectId: string;
-  accountPath?: string | null;
   accountView?: PamAccountView;
   offset?: number;
   limit?: number;
@@ -143,6 +181,7 @@ export type TListPamAccountsDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceIds?: string;
+  metadataFilter?: Array<{ key: string; value?: string }>;
 };
 
 export type TCreatePamAccountDTO = Pick<
@@ -150,6 +189,8 @@ export type TCreatePamAccountDTO = Pick<
   "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
 > & {
   resourceType: PamResourceType;
+  internalMetadata?: Record<string, unknown>;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -157,6 +198,8 @@ export type TUpdatePamAccountDTO = Partial<
 > & {
   accountId: string;
   resourceType: PamResourceType;
+  internalMetadata?: Record<string, unknown>;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TDeletePamAccountDTO = {
@@ -176,4 +219,72 @@ export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description
 
 export type TDeletePamFolderDTO = {
   folderId: string;
+};
+
+export type TPamAccountDependency = {
+  id: string;
+  accountId: string;
+  resourceId: string;
+  dependencyType: string;
+  name: string;
+  displayName?: string | null;
+  state?: string | null;
+  data: Record<string, unknown>;
+  source: string;
+  isRotationSyncEnabled: boolean;
+  syncStatus?: string | null;
+  lastSyncedAt?: string | null;
+  lastSyncMessage?: string | null;
+  resourceName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TPamRotationRule = {
+  id: string;
+  resourceId: string;
+  name?: string | null;
+  namePattern: string;
+  enabled: boolean;
+  intervalSeconds?: number | null;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreatePamRotationRuleDTO = {
+  resourceId: string;
+  name?: string;
+  namePattern: string;
+  enabled: boolean;
+  intervalSeconds?: number | null;
+};
+
+export type TUpdatePamRotationRuleDTO = {
+  resourceId: string;
+  ruleId: string;
+  name?: string | null;
+  namePattern?: string;
+  enabled?: boolean;
+  intervalSeconds?: number | null;
+};
+
+export type TDeletePamRotationRuleDTO = {
+  resourceId: string;
+  ruleId: string;
+};
+
+export type TReorderPamRotationRulesDTO = {
+  resourceId: string;
+  ruleIds: string[];
+};
+
+export type TPamResourceDependency = TPamAccountDependency & {
+  accountName: string | null;
+};
+
+export type TPamSessionLogsPage = {
+  logs: TPamSessionLog[];
+  hasMore: boolean;
+  batchCount: number;
 };

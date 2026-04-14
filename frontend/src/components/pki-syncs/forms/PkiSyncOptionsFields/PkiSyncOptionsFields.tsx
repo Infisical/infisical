@@ -80,6 +80,15 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         When enabled, Infisical will remove certificates from the destination during
                         a sync if they are no longer active in Infisical.
                       </p>
+                      {currentDestination === PkiSync.AwsElasticLoadBalancer && (
+                        <p className="mt-4">
+                          For AWS Elastic Load Balancer, this will remove the certificate from both
+                          the load balancer listeners and AWS Certificate Manager. This only affects
+                          certificates managed by this specific sync and will not interfere with
+                          certificates managed by other syncs (such as ACM syncs or other ELB
+                          syncs).
+                        </p>
+                      )}
                       <p className="mt-4">
                         Disable this option if you intend to manage some certificates manually
                         outside of Infisical.
@@ -95,49 +104,52 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name="syncOptions.includeRootCa"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message}>
-            <Switch
-              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              id="include-root-ca"
-              thumbClassName="bg-mineshaft-800"
-              onCheckedChange={onChange}
-              isChecked={value}
-            >
-              <p>
-                Include Root CA in Certificate Chain{" "}
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      <p>
-                        When enabled, the full certificate chain including the root CA will be
-                        synced to the destination.
-                      </p>
-                      <p className="mt-4">
-                        When disabled, the root CA will be excluded from the certificate chain
-                        during sync operations, reducing the size of the synced certificate chain.
-                      </p>
-                      <p className="mt-4">
-                        Most applications and services work correctly with intermediate certificates
-                        only, as they can validate the trust chain up to a root CA they already
-                        trust.
-                      </p>
-                    </>
-                  }
-                >
-                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                </Tooltip>
-              </p>
-            </Switch>
-          </FormControl>
-        )}
-      />
+      {currentDestination !== PkiSync.CloudflareCustomCertificate && (
+        <Controller
+          control={control}
+          name="syncOptions.includeRootCa"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="include-root-ca"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Include Root CA in Certificate Chain{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          When enabled, the full certificate chain including the root CA will be
+                          synced to the destination.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, the root CA will be excluded from the certificate chain
+                          during sync operations, reducing the size of the synced certificate chain.
+                        </p>
+                        <p className="mt-4">
+                          Most applications and services work correctly with intermediate
+                          certificates only, as they can validate the trust chain up to a root CA
+                          they already trust.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
 
-      {currentDestination === PkiSync.AwsCertificateManager && (
+      {(currentDestination === PkiSync.AwsCertificateManager ||
+        currentDestination === PkiSync.AwsElasticLoadBalancer) && (
         <Controller
           control={control}
           name="syncOptions.preserveArn"
@@ -303,6 +315,50 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         <p className="mt-4">
                           When disabled, the renewed certificate will be created as a new data bag
                           item with a new name, and the old item will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.NetScaler && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveItemOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-item-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Certificate on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> When a certificate
+                          is renewed in Infisical, this option controls how the renewed certificate
+                          is handled in NetScaler.
+                        </p>
+                        <p className="mt-4">
+                          When enabled, the renewed certificate will update the existing certkey
+                          object, preserving the same name and vServer bindings.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, the renewed certificate will be created as a new certkey
+                          object with a new name, and the old certificate will remain on NetScaler.
                         </p>
                       </>
                     }

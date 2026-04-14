@@ -5,6 +5,7 @@ import axios from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { getConfig } from "../config/env";
@@ -64,19 +65,19 @@ export const createRelayConnection = async ({
       });
 
       socket.on("timeout", () => {
-        logger.error(`TLS connection timeout after 30 seconds`);
+        logger.error(`TLS connection timeout after 120 seconds`);
         socket.destroy();
         reject(new Error("TLS connection timeout"));
       });
 
-      socket.setTimeout(30000);
+      socket.setTimeout(100000);
     } catch (error: unknown) {
       reject(new Error(`Failed to create TLS connection: ${error instanceof Error ? error.message : String(error)}`));
     }
   });
 };
 
-const createGatewayConnection = async (
+export const createGatewayConnection = async (
   relayConn: net.Socket,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
   protocol: GatewayProxyProtocol
@@ -86,7 +87,9 @@ const createGatewayConnection = async (
   const protocolToAlpn = {
     [GatewayProxyProtocol.Http]: "infisical-http-proxy",
     [GatewayProxyProtocol.Tcp]: "infisical-tcp-proxy",
-    [GatewayProxyProtocol.Ping]: "infisical-ping"
+    [GatewayProxyProtocol.Ping]: "infisical-ping",
+    [GatewayProxyProtocol.Pam]: "infisical-pam-proxy",
+    [GatewayProxyProtocol.PamSessionCancellation]: "infisical-pam-session-cancellation"
   };
 
   const tlsOptions: tls.ConnectionOptions = {
@@ -119,7 +122,7 @@ const createGatewayConnection = async (
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
-      gatewaySocket.setTimeout(30000);
+      gatewaySocket.setTimeout(120000);
       gatewaySocket.on("timeout", () => {
         gatewaySocket.destroy();
         reject(new Error("Gateway connection timeout"));
@@ -137,13 +140,15 @@ export const setupRelayServer = async ({
   relayHost,
   gateway,
   relay,
-  httpsAgent
+  httpsAgent,
+  longLived
 }: {
   protocol: GatewayProxyProtocol;
   relayHost: string;
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   httpsAgent?: https.Agent;
+  longLived?: boolean;
 }): Promise<IGatewayRelayServer> => {
   const relayErrorMsg: string[] = [];
 
@@ -166,6 +171,18 @@ export const setupRelayServer = async ({
 
           // Stage 2: Establish mTLS connection to gateway through the relay
           const gatewayConn = await createGatewayConnection(relayConn, gateway, protocol);
+
+          if (longLived) {
+            // Disable the 30s idle-activity timeout that was set during connection establishment.
+            // Without this, the socket is destroyed after 30s of no data, killing idle sessions.
+            relayConn.setTimeout(0);
+            gatewayConn.setTimeout(0);
+
+            // Enable TCP keep-alive probes every 30s to detect dead connections
+            // without terminating idle-but-alive ones.
+            relayConn.setKeepAlive(true, 30000);
+            gatewayConn.setKeepAlive(true, 30000);
+          }
 
           // Send protocol-specific configuration for HTTP requests
           if (protocol === GatewayProxyProtocol.Http) {
@@ -247,11 +264,8 @@ export const withGatewayV2Proxy = async <T>(
   callback: (port: number) => Promise<T>,
   options: {
     protocol: GatewayProxyProtocol;
-    relayHost: string;
-    gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-    relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     httpsAgent?: https.Agent;
-  }
+  } & TGatewayV2ConnectionDetails
 ): Promise<T> => {
   const { protocol, relayHost, gateway, relay, httpsAgent } = options;
 

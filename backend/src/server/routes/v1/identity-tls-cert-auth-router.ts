@@ -1,17 +1,20 @@
 import { z } from "zod";
 
-import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityTlsCertAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const validateCommonNames = z
   .string()
@@ -61,37 +64,82 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }
     },
     handler: async (req) => {
-      const appCfg = getConfig();
-      const clientCertificate = req.headers[appCfg.IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
-      if (!clientCertificate) {
-        throw new BadRequestError({ message: "Missing TLS certificate in header" });
-      }
+      try {
+        const appCfg = getConfig();
+        const clientCertificate = req.headers[appCfg.IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
+        if (!clientCertificate) {
+          throw new BadRequestError({ message: "Missing TLS certificate in header" });
+        }
 
-      const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityTlsCertAuth.login({
-          ...req.body,
-          clientCertificate: clientCertificate as string
+        const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityTlsCertAuth.login({
+            ...req.body,
+            clientCertificate: clientCertificate as string
+          });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
+            metadata: {
+              identityId: identityTlsCertAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityTlsCertAuthId: identityTlsCertAuth.id
+            }
+          }
         });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
-          metadata: {
-            identityId: identityTlsCertAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityTlsCertAuthId: identityTlsCertAuth.id
-          }
-        }
-      });
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityTlsCertAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityTlsCertAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
+          });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityTlsCertAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL
-      };
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityTlsCertAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 
@@ -192,6 +240,21 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityTlsCertAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
+        });
 
       return { identityTlsCertAuth };
     }
@@ -295,6 +358,21 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityTlsCertAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
+        });
+
       return { identityTlsCertAuth };
     }
   });
@@ -395,6 +473,21 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityTlsCertAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
+        });
 
       return { identityTlsCertAuth };
     }

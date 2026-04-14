@@ -9,6 +9,7 @@ import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretAzureSqlDatabaseForm } from "./EditDynamicSecretAzureSqlDatabaseForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
+import { EditDynamicSecretClickHouseForm } from "./EditDynamicSecretClickHouseForm";
 import { EditDynamicSecretCouchbaseForm } from "./EditDynamicSecretCouchbaseForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
 import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
@@ -23,6 +24,7 @@ import { EditDynamicSecretSapAseForm } from "./EditDynamicSecretSapAseForm";
 import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
 import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
+import { EditDynamicSecretSshForm } from "./EditDynamicSecretSshForm";
 import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
 import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
 
@@ -413,6 +415,40 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretCouchbaseForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Clickhouse && (
+        <motion.div
+          key="clickhouse-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretClickHouseForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Ssh && (
+        <motion.div
+          key="ssh-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretSshForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

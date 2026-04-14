@@ -9,6 +9,7 @@ export enum AppConnection {
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
+  AzureDNS = "azure-dns",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
   Vercel = "vercel",
@@ -48,7 +49,12 @@ export enum AppConnection {
   Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
-  CircleCI = "circleci"
+  CircleCI = "circleci",
+  AzureEntraId = "azure-entra-id",
+  Venafi = "venafi",
+  ExternalInfisical = "external-infisical",
+  NetScaler = "netscaler",
+  Anthropic = "anthropic"
 }
 
 export enum AWSRegion {

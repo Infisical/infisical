@@ -395,8 +395,13 @@ const Page = () => {
       message
     });
 
-    if (!isProtectedBranch) {
-      pendingChanges.secrets.forEach((secret) => {
+    // Check if there are only folder changes (no secret changes)
+    // Folder changes are not affected by approval policies, so they're saved directly
+    const hasOnlyFolderChanges = changes.folders.length > 0 && changes.secrets.length === 0;
+    const requiresApproval = isProtectedBranch && !hasOnlyFolderChanges;
+
+    if (!requiresApproval) {
+      changes.secrets.forEach((secret) => {
         if (secret.type === "update" && secret.secretValue !== undefined) {
           queryClient.setQueryData(
             dashboardKeys.getSecretValue({
@@ -413,7 +418,7 @@ const Page = () => {
     }
 
     createNotification({
-      text: isProtectedBranch
+      text: requiresApproval
         ? "Requested changes have been sent for review"
         : "Changes saved successfully",
       type: "success"
@@ -868,7 +873,7 @@ const Page = () => {
             ,
             <a
               className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-              href="https://infisical.com/docs/documentation/getting-started/api"
+              href="https://infisical.com/docs/api-reference/overview/introduction"
               target="_blank"
               rel="noopener noreferrer"
             >

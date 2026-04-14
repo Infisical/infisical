@@ -64,9 +64,7 @@ export const AwsIamAccountSchema = BasePamAccountSchema.extend({
 });
 
 export const CreateAwsIamAccountSchema = BaseCreatePamAccountSchema.extend({
-  credentials: AwsIamAccountCredentialsSchema,
-  // AWS IAM accounts don't support credential rotation - they use role assumption
-  rotationEnabled: z.boolean().default(false)
+  credentials: AwsIamAccountCredentialsSchema
 });
 
 export const UpdateAwsIamAccountSchema = BaseUpdatePamAccountSchema.extend({
@@ -74,6 +72,7 @@ export const UpdateAwsIamAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedAwsIamAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.AwsIam),
   credentials: AwsIamAccountCredentialsSchema.pick({
     targetRoleArn: true,
     defaultSessionDuration: true

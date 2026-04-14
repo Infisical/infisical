@@ -50,7 +50,14 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -1228,14 +1235,18 @@ export const ActionBar = ({
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
-      <Modal
-        isOpen={popUp.addFolder.isOpen}
+      <Dialog
+        open={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}
       >
-        <ModalContent title="Create Folder">
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Folder</DialogTitle>
+            <DialogDescription>Add a new folder to organize your secrets.</DialogDescription>
+          </DialogHeader>
           <FolderForm onCreateFolder={handleFolderCreate} />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <DeleteActionModal
         isOpen={popUp.bulkDeleteSecrets.isOpen}
         deleteKey="delete"
@@ -1257,6 +1268,10 @@ export const ActionBar = ({
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
         onMoveApproved={handleSecretsMove}
+        secretsToMove={Object.values(selectedSecrets).map((s) => ({ id: s.id, key: s.key }))}
+        environment={environment}
+        secretPath={secretPath}
+        projectId={projectId}
       />
       <ReplicateFolderFromBoard
         isOpen={popUp.replicateFolder.isOpen}

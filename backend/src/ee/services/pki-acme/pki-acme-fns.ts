@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { isValidIp } from "@app/lib/ip";
 
 import { AcmeAccountDoesNotExistError } from "./pki-acme-errors";
 
@@ -17,6 +18,10 @@ export const extractAccountIdFromKid = (kid: string, profileId: string): string 
     throw new AcmeAccountDoesNotExistError({ message: "KID must start with the profile account URL" });
   }
   return z.string().uuid().parse(kid.slice(kidPrefix.length));
+};
+
+export const validateIpIdentifier = (identifier: string): boolean => {
+  return isValidIp(identifier);
 };
 
 export const validateDnsIdentifier = (identifier: string): boolean => {

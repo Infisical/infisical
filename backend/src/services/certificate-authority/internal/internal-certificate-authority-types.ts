@@ -98,14 +98,40 @@ export type TGenerateRootCaCertificateDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCaCsrDTO = {
-  caId: string;
-} & Omit<TProjectPermission, "projectId">;
+  isInternal?: boolean;
+  maxPathLength?: number;
+} & (
+  | {
+      isInternal: true;
+      caId: string;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+    } & Omit<TProjectPermission, "projectId">)
+);
 
-export type TRenewCaCertDTO = {
-  caId: string;
-  notAfter: string;
-  type: CaRenewalType;
-} & Omit<TProjectPermission, "projectId">;
+export type TRenewCaCertDTO =
+  | {
+      isInternal: true;
+      caId: string;
+      notAfter: string;
+      type?: CaRenewalType;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+      notAfter: string;
+      type: CaRenewalType;
+    } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertsDTO = {
   caId: string;
@@ -233,6 +259,7 @@ export type TSignCertFromCaDTO =
       profileId?: string;
       basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
+      subjectOverride?: string;
       tx?: Knex;
     }
   | ({
@@ -255,6 +282,7 @@ export type TSignCertFromCaDTO =
       profileId?: string;
       basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
+      subjectOverride?: string;
       tx?: Knex;
     } & Omit<TProjectPermission, "projectId">);
 

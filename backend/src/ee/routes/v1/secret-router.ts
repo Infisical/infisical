@@ -7,13 +7,12 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const AccessListEntrySchema = z
-  .object({
-    allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
-    id: z.string(),
-    name: z.string()
-  })
-  .array();
+const AccessListEntrySchema = z.object({
+  allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
+  id: z.string(),
+  name: z.string(),
+  membershipId: z.string()
+});
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -40,20 +39,28 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .trim()
           .default("/")
           .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.GET_ACCESS_LIST.secretPath)
+          .describe(RAW_SECRETS.GET_ACCESS_LIST.secretPath),
+        includeAllEntities: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((val) => val === "true")
+          .describe(RAW_SECRETS.GET_ACCESS_LIST.includeAllEntities)
       }),
       response: {
         200: z.object({
-          groups: AccessListEntrySchema,
-          identities: AccessListEntrySchema,
-          users: AccessListEntrySchema
+          groups: AccessListEntrySchema.extend({
+            userIds: z.string().array(),
+            identityIds: z.string().array()
+          }).array(),
+          identities: AccessListEntrySchema.array(),
+          users: AccessListEntrySchema.array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secretName } = req.params;
-      const { secretPath, environment, projectId } = req.query;
+      const { secretPath, environment, projectId, includeAllEntities } = req.query;
 
       return server.services.secret.getSecretAccessList({
         actorId: req.permission.id,
@@ -63,7 +70,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment,
         projectId,
-        secretName
+        secretName,
+        includeAllEntities
       });
     }
   });

@@ -23,6 +23,26 @@
   html {
     @apply overflow-hidden;
   }
+
+  /* Override browser/password-manager autofill styling for dark theme */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: var(--color-foreground) !important;
+    caret-color: var(--color-foreground);
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* NordPass autofill override */
+  input[data-np-input-autofilled],
+  input[data-np-input-autofilled]:hover,
+  input[data-np-input-autofilled]:focus,
+  input[data-np-input-autofilled]:active {
+    background-color: transparent !important;
+    transition: none !important;
+  }
 }
 
 :root {
@@ -34,6 +54,8 @@
 }
 
 @theme {
+  --breakpoint-dashboard: 1100px;
+
   /* Fonts */
   --font-inter: "Inter", sans-serif;
   --max-width-8xl: 88rem; /* 1408px */
@@ -48,6 +70,7 @@
   --color-org: #30b3ff;
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
+  --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
   --color-label: #adaeb0;
@@ -59,12 +82,21 @@
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
 
+  /* Sidebar */
+  --color-sidebar: #19191c;
+  --color-sidebar-foreground: #ebebeb;
+  --color-sidebar-border: #2b2c30;
+  --color-sidebar-accent: #1e1f22;
+  --color-sidebar-accent-foreground: #ebebeb;
+  --color-sidebar-ring: #2d2f33;
+
   /* secret management product colors */
   --color-folder: #a4873e;
   --color-secret: #7d7f80;
   --color-dynamic-secret: #a6702b;
   --color-import: #457d91;
   --color-secret-rotation: #4c6081;
+  --color-override: #694c81;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;
@@ -277,7 +309,7 @@
     background-color: gray;
   }
   scrollbar-width: thin;
-  scrollbar-color: gray transparent;
+  scrollbar-color: #39393d transparent;
 }
 
 @layer utilities {
@@ -468,4 +500,11 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* v3-style focus ring for ReactCodeInput */
+.code-input-v3 input:focus {
+  outline: none;
+  border-color: var(--color-ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 50%, transparent);
 }

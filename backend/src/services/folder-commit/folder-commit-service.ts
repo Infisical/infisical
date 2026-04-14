@@ -106,6 +106,9 @@ type SecretChange = BaseChange & {
     metadata?: unknown;
     tags?: string[] | null;
     secretValue?: string;
+    isRedacted: boolean;
+    redactedAt: Date | null;
+    redactedByUserId: string | null;
   }[];
 };
 
@@ -1024,8 +1027,11 @@ export const folderCommitServiceFactory = ({
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
 
-            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
-              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
+              secretVersion.metadata
+            )
+              ? (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[])
+              : [];
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(
                 metadata.map(({ key, value, encryptedValue }) => ({
@@ -1099,8 +1105,11 @@ export const folderCommitServiceFactory = ({
               tx
             );
 
-            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
-              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
+              secretVersion.metadata
+            )
+              ? (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[])
+              : [];
             await resourceMetadataDAL.delete({ secretId: change.id }, tx);
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(
@@ -1908,7 +1917,8 @@ export const folderCommitServiceFactory = ({
     actorType: ActorType,
     projectId: string,
     message?: string
-  ) => {
+  ): Promise<{ affectedFolderIds: string[] }> => {
+    const affectedFolderIds: string[] = [];
     await folderCommitDAL.transaction(async (tx) => {
       const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
       if (!targetCommit) {
@@ -2013,9 +2023,12 @@ export const folderCommitServiceFactory = ({
             reconstructUpToCommit: targetCommit.commitId.toString(),
             tx
           });
+          affectedFolderIds.push(folder.id);
         }
       }
     });
+
+    return { affectedFolderIds };
   };
 
   const getLatestCommit = async ({
@@ -2147,7 +2160,8 @@ export const folderCommitServiceFactory = ({
       message: "Changes reverted successfully",
       originalCommitId: commitId,
       revertCommitId: latestCommit?.id,
-      changesReverted: revertResult.totalChanges
+      changesReverted: revertResult.totalChanges,
+      folderId: commitToRevert.folderId
     };
   };
 

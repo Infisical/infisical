@@ -14,9 +14,29 @@ export const CertificatePermissionConditions = ({ position = 0, isDisabled }: Pr
       subject={ProjectPermissionSub.Certificates}
       position={position}
       selectOptions={[
-        { value: "commonName", label: "Common Name" },
-        { value: "altNames", label: "Subject Alternative Names" },
-        { value: "serialNumber", label: "Serial Number" }
+        {
+          value: "commonName",
+          label: "Common Name",
+          description: "The common name (CN) of the certificate"
+        },
+        {
+          value: "altNames",
+          label: "Subject Alternative Names",
+          description: "The subject alternative names (SANs) of the certificate"
+        },
+        {
+          value: "serialNumber",
+          label: "Serial Number",
+          description: "The serial number of the certificate"
+        },
+        {
+          value: "metadataKey",
+          label: "Metadata Key"
+        },
+        {
+          value: "metadataValue",
+          label: "Metadata Value"
+        }
       ]}
     />
   );

@@ -15,9 +15,12 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   id: true,
@@ -277,6 +280,19 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            provider: "oidc",
+            action: "update"
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
+
       return oidc;
     }
   });
@@ -401,6 +417,19 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SSOConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            provider: "oidc",
+            action: "create"
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
+
       return oidc;
     }
   });

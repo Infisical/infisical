@@ -8,7 +8,7 @@ import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center rounded-md active:scale-[0.95] justify-center border cursor-pointer whitespace-nowrap",
+    "inline-flex items-center rounded-md active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap",
     " text-sm transition-all disabled:pointer-events-none disabled:opacity-75 shrink-0",
     "[&>svg]:pointer-events-none  [&>svg]:shrink-0",
     "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none"
@@ -48,7 +48,7 @@ const buttonVariants = cva(
       }
     },
     defaultVariants: {
-      variant: "neutral",
+      variant: "outline",
       size: "md"
     }
   }
@@ -75,13 +75,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
-      variant = "neutral",
+      variant = "outline",
       size = "md",
       isPending = false,
       isFullWidth = false,
       isDisabled = false,
       children: _children,
       asChild = false,
+      type = "button",
       ...props
     },
     ref
@@ -105,6 +106,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-slot="button"
         data-variant={variant}
         data-size={size}
+        type={type}
         disabled={isDisabled || isPending}
         className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
         {...props}

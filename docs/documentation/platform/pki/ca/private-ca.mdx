@@ -72,43 +72,70 @@ consisting of an (optional) root CA and an intermediate CA.
         </Note>
     </Step>
     <Step title="Creating an intermediate CA">
-        2.1. To create an intermediate CA, press **Create CA** again but this time specifying the **CA Type** to be **Intermediate**. Fill out the details for the intermediate CA.
+        To create an intermediate CA, press **Create CA** again but this time specifying the **CA Type** to be **Intermediate**. Fill out the details for the intermediate CA.
 
         ![pki create intermediate ca](/images/platform/pki/ca/ca-create-intermediate.png)
 
-        2.2. Next, press the **Install Certificate** option on the intermediate CA from step 1.1.
+        Next, press the **Install CA Certificate** option on the intermediate CA.
 
         ![pki install cert opt](/images/platform/pki/ca/ca-install-intermediate-opt.png)
 
-        2.3a. If you created a root CA in step 1, select **Infisical CA** for the **Parent CA Type** field.
+        You will be presented with the installation method selector. Choose how the signing certificate for this CA should be issued:
 
-        Next, set the **Parent CA** to the root CA created in step 1 and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
+        ![pki install select method](/images/platform/pki/ca/ca-install-venafi-select-method.png)
 
-        ![pki install cert](/images/platform/pki/ca/ca-install-intermediate.png)
+        <Tabs>
+          <Tab title="Infisical CA">
+            Select **Infisical CA** and press **Continue**. This option chains the intermediate CA to a root or intermediate CA managed by Infisical.
 
-        Here's some guidance on each field:
+            Set the **Parent CA** to the root CA created in step 1 (or any other existing root or intermediate CA) and configure the intended **Valid Until** and **Path Length** fields on the intermediate CA; feel free to use the prefilled values.
 
-        - Parent CA: The parent CA to which this intermediate CA will be chained. In this case, it should be the root CA created in step 1.
-        - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). The date must be within the validity period of the parent CA.
-        - Path Length: The maximum number of intermediate CAs that can be chained to this CA. The path length must be less than the path length of the parent CA.
+            ![pki install infisical ca](/images/platform/pki/ca/ca-install-infisical-ca.png)
 
-        Finally, press **Install** to chain the intermediate CA to the root CA; this creates a Certificate Signing Request (CSR) for the intermediate CA, creates an intermediate certificate using the root CA private key and CSR, and imports the signed certificate back to the intermediate CA.
+            Here's some guidance on each field:
 
-        ![pki cas](/images/platform/pki/ca/cas.png)
+            - Parent CA: The parent CA to which this intermediate CA will be chained. In this case, it should be the root CA created in step 1.
+            - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). The date must be within the validity period of the parent CA.
+            - Path Length: The maximum number of intermediate CAs that can be chained to this CA. The path length must be less than the path length of the parent CA.
 
-        Great! You've successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the [Certificates section](/documentation/platform/pki/certificates/overview) to learn more about how to issue X.509 certificates using the intermediate CA.
+            Press **Install** to chain the intermediate CA to the root CA. This creates a Certificate Signing Request (CSR) for the intermediate CA, creates an intermediate certificate using the root CA private key and CSR, and imports the signed certificate back to the intermediate CA.
 
-        2.3b. If you have an external root CA, select **External CA** for the **Parent CA Type** field.
+            ![pki cas](/images/platform/pki/ca/cas.png)
 
-        Next, use the provided intermediate CSR to generate a certificate from your external root CA and paste the PEM-encoded certificate back into the **Certificate Body** field; the PEM-encoded external root CA certificate should be pasted under the **Certificate Chain** field.
+            You've successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the [Certificates section](/documentation/platform/pki/certificates/overview) to learn more about how to issue X.509 certificates using the intermediate CA.
+          </Tab>
+          <Tab title="Manual">
+            Select **Manual** and press **Continue**. This option allows you to sign the intermediate CA certificate using an external root CA that you manage outside of Infisical.
 
-        ![pki ca csr](/images/platform/pki/ca/ca-install-intermediate-csr.png)
+            Use the provided CSR to generate a certificate from your external root CA and paste the PEM-encoded certificate back into the **Certificate Body** field; the PEM-encoded external root CA certificate should be pasted under the **Certificate Chain** field.
 
-        Finally, press **Install** to import the certificate and certificate chain as part of the installation step for the intermediate CA
+            ![pki install manual](/images/platform/pki/ca/ca-install-manual.png)
 
-        Great! You've successfully created a Private CA hierarchy with an intermediate CA chained to an external root CA.
-        Now check out the [Certificates section](/documentation/platform/pki/certificates/overview) to learn more about how to issue X.509 certificates using the intermediate CA.
+            Press **Install** to import the certificate and certificate chain as part of the installation step for the intermediate CA.
 
+            You've successfully created a Private CA hierarchy with an intermediate CA chained to an external root CA.
+            Now check out the [Certificates section](/documentation/platform/pki/certificates/overview) to learn more about how to issue X.509 certificates using the intermediate CA.
+          </Tab>
+          <Tab title="External CA">
+            Select **External CA (Automated)** and press **Continue**. This option connects to a third-party CA provider to handle certificate signing and renewal automatically via API.
+
+            You will be prompted to choose a CA integration provider:
+
+            ![pki install external select](/images/platform/pki/ca/ca-install-venafi-external-select.png)
+
+            Infisical currently supports the following external CA providers for signing intermediate CAs:
+
+            - [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi)
+            - [Azure AD CS](/documentation/platform/pki/ca/azure-adcs#signing-internal-intermediate-cas-with-ad-cs)
+
+            <Note>
+              When using an external CA, the certificate issued by the provider **must** correspond to the CSR generated by Infisical.
+              If the external CA returns a certificate that does not match the CSR (e.g., different subject or key), the installation will fail.
+            </Note>
+
+            Refer to the provider-specific documentation linked above for detailed setup and installation instructions.
+          </Tab>
+        </Tabs>
 </Step>
 </Steps>
   </Tab>
@@ -150,109 +177,112 @@ consisting of an (optional) root CA and an intermediate CA.
 
   </Step>
   <Step title="Creating an intermediate CA">
-    2.1. To create an intermediate CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint, specifying the `type` as `intermediate`.
-    
+    To create an intermediate CA, make an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint, specifying the `type` as `intermediate`.
+
     ### Sample request
-    
+
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
-      --header 'Authorization: Bearer <access-token>' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{
+    curl --location --request POST ‘https://app.infisical.com/api/v1/cert-manager/ca/internal’ \
+      --header ‘Authorization: Bearer <access-token>’ \
+      --header ‘Content-Type: application/json’ \
+      --data-raw ‘{
           "projectSlug": "<your-project-slug>",
           "type": "intermediate",
           "commonName": "My Intermediate CA"
-      }'
+      }’
     ```
-    
+
     ### Sample response
-    
-    ```bash Response
+
+    ```json Response
     {
-      ca: {
-        id: "<intermediate-ca-id>",
-        type: "intermediate",
-        commonName: "My Intermediate CA",
-        ...
+      "ca": {
+        "id": "<intermediate-ca-id>",
+        "type": "intermediate",
+        "commonName": "My Intermediate CA"
       }
     }
     ```
-    
-    2.2. Next, get a certificate signing request from the intermediate CA by making an API request to the [Get CSR](/api-reference/endpoints/certificate-authorities/csr) API endpoint.
-    
-    ### Sample request
-    
-    ```bash Request
-    curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr' \
-      --header 'Authorization: Bearer <access-token>' \
-      --data-raw ''
-    ```
 
-    ### Sample response
+    Next, install a certificate for the intermediate CA using one of the following methods:
 
-    ```bash Response
-    {
-      csr: "..."
-    }
-    ```
+    <Tabs>
+      <Tab title="Infisical CA">
+        Get a CSR from the intermediate CA, sign it with the root CA, and import the certificate back.
 
-    If using an external root CA, then use the CSR to generate a certificate for the intermediate CA using your external root CA and skip to step 2.4.
+        **Get the CSR:**
 
-    2.3. Next, create an intermediate certificate by making an API request to the [Sign Intermediate](/api-reference/endpoints/certificate-authorities/sign-intermediate) API endpoint
-    containing the CSR from step 2.2, referencing the root CA created in step 1.
+        ```bash Request
+        curl --location --request GET ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr’ \
+          --header ‘Authorization: Bearer <access-token>’
+        ```
 
-    ### Sample request
+        **Sign the intermediate certificate using the root CA:**
 
-    ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<root-ca-id>/sign-intermediate' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{
-          "csr": "<csr>",
-          "notAfter": "2029-06-12"
-      }'
-    ```
+        ```bash Request
+        curl --location --request POST ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<root-ca-id>/sign-intermediate’ \
+          --header ‘Authorization: Bearer <access-token>’ \
+          --header ‘Content-Type: application/json’ \
+          --data-raw ‘{
+              "csr": "<csr>",
+              "notAfter": "2029-06-12"
+          }’
+        ```
 
-    ### Sample response
+        <Note>
+          The `notAfter` value must be within the validity period of the root CA.
+        </Note>
 
-    ```bash Response
-    {
-      certificate: "...",
-      certificateChain: "...",
-      issuingCaCertificate: "...",
-      serialNumber: "...",
-    }
-    ```
+        **Import the signed certificate back to the intermediate CA:**
 
-    <Note>
-      The `notAfter` value must be within the validity period of the root CA that is if the root CA is valid until `2029-06-12`, the intermediate CA must be valid until a date before `2029-06-12`.
-    </Note>
+        ```bash Request
+        curl --location --request POST ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/import-certificate’ \
+          --header ‘Authorization: Bearer <access-token>’ \
+          --header ‘Content-Type: application/json’ \
+          --data-raw ‘{
+              "certificate": "<certificate>",
+              "certificateChain": "<certificate-chain>"
+          }’
+        ```
 
-    2.4. Finally, import the intermediate certificate and certificate chain from step 2.3 back to the intermediate CA by making an API request to the [Import Certificate](/api-reference/endpoints/certificate-authorities/import-cert) API endpoint.
+        You’ve successfully created a Private CA hierarchy. Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about issuing certificates.
+      </Tab>
+      <Tab title="Manual">
+        Get the CSR from the intermediate CA and use it to generate a certificate from your external root CA.
 
-    If using an external root CA, then import the generated certificate and root CA certificate under certificate chain back into the intermediate CA.
+        **Get the CSR:**
 
-    ### Sample request
+        ```bash Request
+        curl --location --request GET ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr’ \
+          --header ‘Authorization: Bearer <access-token>’
+        ```
 
-    ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/import-certificate' \
-      --header 'Authorization: Bearer <access-token>' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{
-          "certificate": "<certificate>",
-          "certificateChain": "<certificate-chain>"
-      }'
-    ```
+        Use this CSR with your external root CA to generate a signed certificate. Then import the certificate and chain back:
 
-    ### Sample response
+        ```bash Request
+        curl --location --request POST ‘https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/import-certificate’ \
+          --header ‘Authorization: Bearer <access-token>’ \
+          --header ‘Content-Type: application/json’ \
+          --data-raw ‘{
+              "certificate": "<certificate-from-external-ca>",
+              "certificateChain": "<external-root-ca-certificate>"
+          }’
+        ```
 
-    ```bash Response
-    {
-      message: "Successfully imported certificate to CA",
-      caId: "..."
-    }
-    ```
+        You’ve successfully chained an intermediate CA to an external root CA. Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about issuing certificates.
+      </Tab>
+      <Tab title="External CA">
+        You can use an external CA provider to automatically sign the intermediate CA certificate via API. See the provider-specific documentation for the full API workflow:
 
-    Great! You’ve successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about how to issue X.509 certificates using the intermediate CA.
+        - [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi)
+        - [Azure AD CS](/documentation/platform/pki/ca/azure-adcs#signing-internal-intermediate-cas-with-ad-cs)
+
+        <Note>
+          When using an external CA, the certificate issued by the provider **must** correspond to the CSR generated by Infisical.
+          If the external CA returns a certificate that does not match the CSR, the installation will fail.
+        </Note>
+      </Tab>
+    </Tabs>
 
   </Step>
 </Steps>
@@ -264,13 +294,9 @@ consisting of an (optional) root CA and an intermediate CA.
 In the following steps, we explore how to renew a CA certificate.
 
 <Note>
-  If renewing an intermediate CA chained to an Infisical CA, then Infisical will
-  automate the process of generating a new certificate for the intermediate CA for you.
-
-If renewing an intermediate CA chained to an external parent CA, you'll be
-required to generate a new certificate from the external parent CA and manually import
-the certificate back to the intermediate CA.
-
+  - If renewing an intermediate CA chained to an **Infisical CA**, Infisical will automate the process of generating a new certificate for you.
+  - If renewing an intermediate CA signed by an **external CA provider** (e.g., Venafi, Azure AD CS), you can configure auto-renewal to automate the process. See [Venafi auto-renewal](/documentation/platform/pki/ca/venafi#auto-renewal) or [AD CS auto-renewal](/documentation/platform/pki/ca/azure-adcs#auto-renewal-for-ad-cs-signed-cas).
+  - If renewing an intermediate CA chained to an **external parent CA via manual import**, you'll need to generate a new certificate from the external parent CA and manually import it back.
 </Note>
 
 <Tabs>
@@ -326,9 +352,7 @@ the certificate back to the intermediate CA.
     anticipate supporting CA renewal via new key pair in the coming month.
   </Accordion>
   <Accordion title="Does Infisical support chaining an Intermediate CA to an external CA?">
-    Yes. You may obtain a CSR from the Intermediate CA and use it to generate a
-    certificate from your external CA. The certificate, along with the external
-    CA certificate chain, can be imported back to the Intermediate CA as part of
-    the CA installation step.
+    Yes. You can either manually obtain a CSR and import the signed certificate, or use an integrated external CA provider
+    like [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi) or [Azure AD CS](/documentation/platform/pki/ca/azure-adcs#signing-internal-intermediate-cas-with-ad-cs) to automate the signing process.
   </Accordion>
 </AccordionGroup>

@@ -3,6 +3,7 @@ import { Job } from "bullmq";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -63,6 +64,7 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     app: string;
     credentials: Record<string, unknown>;
     orgId: string;
+    gatewayId?: string;
   };
 };
 
@@ -95,7 +97,7 @@ export type TCreatePkiSyncDTO = {
   projectId: string;
   certificateIds?: string[];
   auditLogInfo: AuditLogInfo;
-  resourceMetadata?: ResourceMetadataDTO;
+  resourceInternalMetadata?: ResourceMetadataDTO;
 };
 
 export type TUpdatePkiSyncDTO = {
@@ -110,7 +112,7 @@ export type TUpdatePkiSyncDTO = {
   connectionId?: string;
   certificateIds?: string[];
   auditLogInfo: AuditLogInfo;
-  resourceMetadata?: ResourceMetadataDTO;
+  resourceInternalMetadata?: ResourceMetadataDTO;
 };
 
 export type TDeletePkiSyncDTO = {
@@ -168,6 +170,17 @@ export type TListPkiSyncCertificatesDTO = {
   limit?: number;
 };
 
+export type TSetCertificateAsDefaultDTO = {
+  pkiSyncId: string;
+  certificateId: string;
+  auditLogInfo?: AuditLogInfo;
+};
+
+export type TClearDefaultCertificateDTO = {
+  pkiSyncId: string;
+  auditLogInfo?: AuditLogInfo;
+};
+
 export type TPkiSyncCertificate = {
   id: string;
   pkiSyncId: string;
@@ -187,6 +200,7 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  syncMetadata?: TSyncMetadata;
 };
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;

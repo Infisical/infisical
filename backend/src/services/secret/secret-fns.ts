@@ -21,10 +21,10 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllSecretReferences
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -795,8 +795,7 @@ export const createManySecretsRawFnFactory = ({
     secrets,
     userId
   }: TCreateManySecretsRawFn) => {
-    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-    const project = await projectDAL.findById(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await getBotKeyFn(projectId);
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new NotFoundError({
@@ -979,8 +978,7 @@ export const updateManySecretsRawFnFactory = ({
     secrets, // consider accepting instead ciphertext secrets
     userId
   }: TUpdateManySecretsRawFn): Promise<Array<{ id: string }>> => {
-    const { botKey, shouldUseSecretV2Bridge } = await getBotKeyFn(projectId);
-    const project = await projectDAL.findById(projectId);
+    const { botKey, shouldUseSecretV2Bridge, project } = await getBotKeyFn(projectId);
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)

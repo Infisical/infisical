@@ -25,6 +25,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      serviceAccountName: {{ include "infisical.serviceAccountName" . }}
     {{- with $infisicalValues.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
@@ -72,6 +73,9 @@ spec:
         {{- if .Values.redis.enabled }}
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
+        {{- end }}
+        {{- with $infisicalValues.extraEnv }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
         envFrom:
         - secretRef:

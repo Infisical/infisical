@@ -43,6 +43,13 @@ import {
   TDbtServiceTokenRotationWithConnection
 } from "./dbt-service-token/dbt-service-token-rotation-types";
 import {
+  THpIloRotation,
+  THpIloRotationGeneratedCredentials,
+  THpIloRotationInput,
+  THpIloRotationListItem,
+  THpIloRotationWithConnection
+} from "./hp-ilo-rotation";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput,
@@ -133,7 +140,8 @@ export type TSecretRotationV2 =
   | TUnixLinuxLocalAccountRotation
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
-  | TOpenRouterApiKeyRotation;
+  | TOpenRouterApiKeyRotation
+  | THpIloRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -151,7 +159,8 @@ export type TSecretRotationV2WithConnection =
   | TUnixLinuxLocalAccountRotationWithConnection
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
-  | TOpenRouterApiKeyRotationWithConnection;
+  | TOpenRouterApiKeyRotationWithConnection
+  | THpIloRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -165,7 +174,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TUnixLinuxLocalAccountRotationGeneratedCredentials
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
-  | TOpenRouterApiKeyRotationGeneratedCredentials;
+  | TOpenRouterApiKeyRotationGeneratedCredentials
+  | THpIloRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -183,7 +193,8 @@ export type TSecretRotationV2Input =
   | TUnixLinuxLocalAccountRotationInput
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
-  | TOpenRouterApiKeyRotationInput;
+  | TOpenRouterApiKeyRotationInput
+  | THpIloRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -201,12 +212,14 @@ export type TSecretRotationV2ListItem =
   | TUnixLinuxLocalAccountRotationListItem
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
-  | TOpenRouterApiKeyRotationListItem;
+  | TOpenRouterApiKeyRotationListItem
+  | THpIloRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
   | TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
   | TWindowsLocalAccountRotationInput["temporaryParameters"]
+  | THpIloRotationInput["temporaryParameters"]
   | undefined;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
@@ -306,10 +319,17 @@ export type TSecretRotationRotateGeneratedCredentials = {
   isManualRotation?: boolean;
 };
 
-export type TSecretRotationRotateSecretsJobPayload = { rotationId: string; queuedAt: Date; isManualRotation: boolean };
-
+export type TSecretRotationRotateSecretsJobPayload = { rotationId: string; queuedAt: Date; isManualRotation?: boolean };
 export type TSecretRotationSendNotificationJobPayload = {
-  secretRotation: TSecretRotationV2Raw;
+  secretRotation: {
+    id: string;
+    name: string;
+    type: string;
+    projectId: string;
+    folder: { path: string };
+    lastRotationAttemptedAt: Date;
+    environment: { name: string; slug: string };
+  };
 };
 
 // scott: the reason for the callback structure of the rotation factory is to facilitate, when possible,

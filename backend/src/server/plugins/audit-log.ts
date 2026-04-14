@@ -1,7 +1,9 @@
+import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
@@ -35,6 +37,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {
       ipAddress: req.realIp,
+      orgId: req?.permission?.orgId,
       userAgent,
       userAgentType: getUserAgentType(userAgent)
     } as typeof req.auditLogInfo;
@@ -65,11 +68,16 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         }
       };
     } else if (req.auth.actor === ActorType.IDENTITY) {
+      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+
       payload.actor = {
         type: ActorType.IDENTITY,
         metadata: {
           name: req.auth.identityName,
-          identityId: req.auth.identityId
+          identityId: req.auth.identityId,
+          ...(identityAuthInfo?.aws ? { aws: identityAuthInfo.aws } : {}),
+          ...(identityAuthInfo?.kubernetes ? { kubernetes: identityAuthInfo.kubernetes } : {}),
+          ...(identityAuthInfo?.oidc ? { oidc: identityAuthInfo.oidc } : {})
         }
       };
     } else if (req.auth.actor === ActorType.SCIM_CLIENT) {

@@ -12,6 +12,7 @@ import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
   GetSecretVersionsDTO,
   SecretAccessListEntry,
+  SecretAccessListGroupEntry,
   SecretType,
   SecretV3Raw,
   SecretV3RawResponse,
@@ -21,8 +22,10 @@ import {
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey,
   TGetSecretAccessListDTO,
+  TGetSecretReferencesDTO,
   TGetSecretReferenceTreeDTO,
   TGetSecretVersionValue,
+  TSecretDependencyTreeNode,
   TSecretReferenceTraceNode,
   TSecretVersionValue
 } from "./types";
@@ -43,10 +46,15 @@ export const secretKeys = {
     projectId,
     environment,
     secretPath,
-    secretKey
+    secretKey,
+    includeAllEntities
   }: TGetSecretAccessListDTO) =>
-    ["secret-access-list", { projectId, environment, secretPath, secretKey }] as const,
-  getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
+    [
+      "secret-access-list",
+      { projectId, environment, secretPath, secretKey, includeAllEntities }
+    ] as const,
+  getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
+  getSecretReferences: (dto: TGetSecretReferencesDTO) => ["secret-references", dto]
 };
 
 export const fetchProjectSecrets = async ({
@@ -102,7 +110,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
     };
 
     if (el.type === SecretType.Personal) {
-      personalSecrets[decryptedSecret.key] = {
+      personalSecrets[`${decryptedSecret.key}_${el.environment}`] = {
         id: el.id,
         value: el.secretValue,
         env: el.environment,
@@ -114,12 +122,12 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
   });
 
   secrets.forEach((sec) => {
-    const personalSecret = personalSecrets?.[sec.key];
-    if (personalSecret && personalSecret.env === sec.env) {
+    const personalSecret = personalSecrets?.[`${sec.key}_${sec.env}`];
+    if (personalSecret) {
       sec.idOverride = personalSecret.id;
       sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";
-      sec.isEmpty = personalSecret.isEmpty;
+      sec.isOverrideEmpty = personalSecret.isEmpty;
       sec.secretValueHidden = false;
     }
   });
@@ -297,14 +305,15 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
     queryKey: secretKeys.getSecretAccessList(dto),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        groups: SecretAccessListEntry[];
+        groups: SecretAccessListGroupEntry[];
         identities: SecretAccessListEntry[];
         users: SecretAccessListEntry[];
       }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
         params: {
           projectId: dto.projectId,
           environment: dto.environment,
-          secretPath: dto.secretPath
+          secretPath: dto.secretPath,
+          includeAllEntities: dto.includeAllEntities
         }
       });
 
@@ -340,4 +349,32 @@ export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
       Boolean(dto.secretKey),
     queryKey: secretKeys.getSecretReferenceTree(dto),
     queryFn: () => fetchSecretReferenceTree(dto)
+  });
+
+export const fetchSecretReferences = async (dto: TGetSecretReferencesDTO) => {
+  const { data } = await apiRequest.get<{
+    tree: TSecretDependencyTreeNode;
+  }>(`/api/v4/secrets/${encodeURIComponent(dto.secretKey)}/reference-dependency-tree`, {
+    params: {
+      projectId: dto.projectId,
+      secretPath: dto.secretPath,
+      environment: dto.environment
+    }
+  });
+  return data;
+};
+
+export const useGetSecretReferences = (
+  dto: TGetSecretReferencesDTO,
+  options?: { enabled?: boolean }
+) =>
+  useQuery({
+    enabled:
+      (options?.enabled ?? true) &&
+      Boolean(dto.environment) &&
+      Boolean(dto.secretPath) &&
+      Boolean(dto.projectId) &&
+      Boolean(dto.secretKey),
+    queryKey: secretKeys.getSecretReferences(dto),
+    queryFn: () => fetchSecretReferences(dto)
   });

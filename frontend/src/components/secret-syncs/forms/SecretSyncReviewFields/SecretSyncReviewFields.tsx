@@ -20,6 +20,7 @@ import {
 } from "./AwsSecretsManagerSyncReviewFields";
 import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSyncReviewFields";
 import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
+import { AzureEntraIdScimSyncReviewFields } from "./AzureEntraIdScimSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { BitbucketSyncReviewFields } from "./BitbucketSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
@@ -30,7 +31,8 @@ import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
-import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
+import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
+import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
@@ -143,6 +145,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <FlyioSyncOptionsReviewFields />;
       break;
     case SecretSync.GitLab:
       DestinationFieldsComponent = <GitLabSyncReviewFields />;
@@ -188,6 +191,12 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CircleCI:
       DestinationFieldsComponent = <CircleCISyncReviewFields />;
+      break;
+    case SecretSync.AzureEntraIdScim:
+      DestinationFieldsComponent = <AzureEntraIdScimSyncReviewFields />;
+      break;
+    case SecretSync.ExternalInfisical:
+      DestinationFieldsComponent = <ExternalInfisicalSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

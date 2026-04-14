@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
@@ -175,6 +176,41 @@ export const DynamicSecretSqlDBSchema = z.object({
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
   sslEnabled: z.boolean().optional(),
+  gatewayId: z.string().nullable().optional()
+});
+
+export const DynamicSecretClickhouseSchema = z.object({
+  host: z.string().trim(),
+  port: z.number(),
+  database: z.string().trim(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim().optional(),
+  ca: z.string().optional(),
   gatewayId: z.string().nullable().optional()
 });
 
@@ -643,6 +679,7 @@ export const DynamicSecretCouchbaseSchema = z.object({
 
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
+  Clickhouse = "clickhouse",
   Cassandra = "cassandra",
   AwsIam = "aws-iam",
   Redis = "redis",
@@ -662,11 +699,25 @@ export enum DynamicSecretProviders {
   Vertica = "vertica",
   GcpIam = "gcp-iam",
   Github = "github",
-  Couchbase = "couchbase"
+  Couchbase = "couchbase",
+  Ssh = "ssh"
 }
+
+export const DynamicSecretSshSchema = z.object({
+  principals: z.array(z.string().trim().min(1)).min(1),
+  keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm).default(SshCertKeyAlgorithm.ED25519)
+});
+
+export const SshStoredSchema = z.object({
+  caPrivateKey: z.string(),
+  caPublicKey: z.string(),
+  principals: z.array(z.string().trim().min(1)).min(1),
+  keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm)
+});
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Clickhouse), inputs: DynamicSecretClickhouseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Cassandra), inputs: DynamicSecretCassandraSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.SapAse), inputs: DynamicSecretSapAseSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AwsIam), inputs: DynamicSecretAwsIamSchema }),
@@ -686,7 +737,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Ssh), inputs: DynamicSecretSshSchema })
 ]);
 
 export type TDynamicProviderFns = {

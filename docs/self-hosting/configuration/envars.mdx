@@ -70,11 +70,6 @@ Example values:
   auth method.
 </ParamField>
 
-<ParamField query="DISABLE_AUDIT_LOG_STORAGE" type="string" default="false">
-  Disable storing audit logs in the database. This is useful if you're using
-  audit log streams and don't want to store them in the database.
-</ParamField>
-
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
@@ -158,9 +153,63 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
   </Expandable>
 </ParamField>
 
+### Audit Log PostgreSQL (Optional)
+
+<ParamField query="AUDIT_LOGS_DB_CONNECTION_URI" type="string" optional>
+  Separate PostgreSQL connection string for audit log storage. If not set, audit logs are stored in the main database.
+</ParamField>
+
+<ParamField query="AUDIT_LOGS_DB_ROOT_CERT" type="string" optional>
+  Base64-encoded CA certificate for the audit log PostgreSQL database connection. Only needed if `AUDIT_LOGS_DB_CONNECTION_URI` is set.
+</ParamField>
+
+### ClickHouse (Optional)
+
+ClickHouse can be used as an alternative audit log storage backend for high-volume deployments. See the [ClickHouse Setup Guide](/documentation/platform/audit-logs-clickhouse-setup) for more details.
+
+<ParamField query="CLICKHOUSE_URL" type="string" optional>
+  ClickHouse connection URL. Example: `http://user:password@host:8123/database`
+</ParamField>
+
+<ParamField query="CLICKHOUSE_AUDIT_LOG_ENABLED" type="string" default="true">
+  Enable inserting audit logs into ClickHouse. Defaults to `true` when `CLICKHOUSE_URL` is set.
+</ParamField>
+
+<ParamField query="CLICKHOUSE_AUDIT_LOG_TABLE_NAME" type="string" default="audit_logs">
+  ClickHouse table name for audit logs.
+</ParamField>
+
+<ParamField query="CLICKHOUSE_AUDIT_LOG_ENGINE" type="string" default="ReplacingMergeTree">
+  ClickHouse engine for the audit logs table, used during table creation. Example: `ReplacingMergeTree` or `SharedReplacingMergeTree('/clickhouse/tables/{uuid}/{shard}', '{replica}')`.
+</ParamField>
+
+<ParamField query="CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS" type="string" optional>
+  ClickHouse insert settings as a JSON string. Applied when inserting audit logs.
+
+  Default: `{"async_insert":1,"wait_for_async_insert":0,"date_time_input_format":"best_effort"}`
+</ParamField>
+
+### Audit Log Behavior
+
+<ParamField query="DISABLE_POSTGRES_AUDIT_LOG_STORAGE" type="string" default="false">
+  Disable storing audit logs in PostgreSQL. When set to `true`, audit logs are not written to PostgreSQL but are still sent to ClickHouse (if configured) and any configured [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams).
+</ParamField>
+
+<ParamField query="AUDIT_LOG_STREAMS_ENABLED" type="string" default="true">
+  Enable sending audit logs to external [audit log streams](/documentation/platform/audit-log-streams/audit-log-streams). When set to `false`, no events are sent to configured stream destinations, but PostgreSQL and ClickHouse storage are unaffected.
+</ParamField>
+
+<ParamField query="DISABLE_AUDIT_LOG_GENERATION" type="string" default="false">
+  Disable audit log generation entirely. When set to `true`, no audit log events are produced — neither PostgreSQL, ClickHouse, nor audit log streams will receive events.
+</ParamField>
+
 ### Redis
 
 Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
+
+<Info>
+**Active-passive** setup is recommended for Redis. Infisical has not been tested with **Active-active** setup for Redis and may result in undocumented behavior. 
+</Info>
 
 <Tabs>
   <Tab title="Redis Standalone">
@@ -273,7 +322,7 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 </ParamField>
 
 <ParamField query="SMTP_USERNAME" type="string" default="none" optional>
-  Credential to connect to host (e.g. team@infisical.com)
+  Credential to connect to host (e.g. you@example.com)
 </ParamField>
 
 <ParamField query="SMTP_PASSWORD" type="string" default="none" optional>
@@ -611,17 +660,17 @@ When set, all visits to the Infisical login page will automatically redirect use
 </Accordion>
 
 <Accordion title="Okta SAML">
-  Requires enterprise license. Please contact team@infisical.com to get more
+  Requires enterprise license. Please contact sales@infisical.com to get more
   information.
 </Accordion>
 
 <Accordion title="Azure SAML">
-  Requires enterprise license. Please contact team@infisical.com to get more
+  Requires enterprise license. Please contact sales@infisical.com to get more
   information.
 </Accordion>
 
 <Accordion title="JumpCloud SAML">
-  Requires enterprise license. Please contact team@infisical.com to get more
+  Requires enterprise license. Please contact sales@infisical.com to get more
   information.
 </Accordion>
 

@@ -16,6 +16,7 @@ import {
   TRevokeCertDTO,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
+  TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./types";
 
@@ -197,6 +198,33 @@ export const useDownloadCertPkcs12 = () => {
         }
         throw error;
       }
+    }
+  });
+};
+
+export const useUpdateCertificate = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { metadata: Array<{ key: string; value: string }> },
+    object,
+    TUpdateCertificateDTO
+  >({
+    mutationFn: async ({ certificateId, metadata }) => {
+      const { data } = await apiRequest.patch<{
+        metadata: Array<{ key: string; value: string }>;
+      }>(`/api/v1/cert-manager/certificates/${certificateId}`, { metadata });
+      return data;
+    },
+    onSuccess: (_, { certificateId, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getCertificateById(certificateId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectId)
+      });
     }
   });
 };

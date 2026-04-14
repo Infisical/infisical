@@ -1,4 +1,5 @@
 /* eslint-disable no-nested-ternary */
+import { useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,6 +10,7 @@ import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -30,12 +32,19 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
+import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
+import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
+import {
+  canModifyByGrantConditions,
+  filterByGrantConditions,
+  getIdentityAssignRoleConditions
+} from "@app/lib/fn/permission";
 
 const roleFormSchema = z.object({
   roles: z
@@ -63,12 +72,62 @@ type Props = {
 
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
   const { projectId } = useProject();
+  const { subscription } = useSubscription();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
   const { permission } = useProjectPermission();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
   const isIdentityEditDisabled = permission.cannot(
     ProjectPermissionIdentityActions.Edit,
     ProjectPermissionSub.Identity
   );
+
+  const assignRoleConditions = useMemo(
+    () => getIdentityAssignRoleConditions(permission),
+    [permission]
+  );
+
+  const canModifyIdentityRoles = useMemo(() => {
+    const targetIdentityId = identityProjectMembership?.identity?.id;
+    if (!targetIdentityId) return false;
+
+    return canModifyByGrantConditions({
+      targetValue: targetIdentityId,
+      allowed: assignRoleConditions?.identityIds,
+      forbidden: assignRoleConditions?.forbiddenIdentityIds
+    });
+  }, [assignRoleConditions, identityProjectMembership?.identity?.id]);
+
+  const filteredRoles = useMemo(
+    () =>
+      filterByGrantConditions(projectRoles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
+      }),
+    [projectRoles, assignRoleConditions]
+  );
+
+  const assignableRoleSlugs = useMemo(
+    () => new Set(filteredRoles.map((r) => r.slug)),
+    [filteredRoles]
+  );
+
+  const getRolesForSelect = (currentSlug: string) => {
+    const assignable = filteredRoles;
+    const currentInAssignable = assignableRoleSlugs.has(currentSlug);
+    if (currentInAssignable) return assignable;
+
+    const currentRole = projectRoles?.find((r) => r.slug === currentSlug) ?? {
+      slug: currentSlug,
+      name: formatProjectRoleName(currentSlug),
+      id: currentSlug
+    };
+    return [currentRole, ...assignable];
+  };
 
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
@@ -99,6 +158,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
 
   const handleRoleUpdate = async (data: TRoleForm) => {
     if (updateProjectIdentityMembership.isPending) return;
+
+    const hasCustomRole = data.roles.some((el) => isCustomProjectRole(el.slug));
+    if (hasCustomRole && subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
 
     const sanitizedRoles = data.roles.map((el) => {
       const { isTemporary } = el.temporaryAccess;
@@ -144,25 +209,52 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
               <Controller
                 control={roleForm.control}
                 name={`roles.${index}.slug`}
-                render={({ field: { onChange, ...field } }) => (
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    isDisabled={isIdentityEditDisabled}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
-                    containerClassName="w-1/2"
-                  >
-                    {projectRoles?.map(({ name, slug, id: projectRoleId }) => (
-                      <SelectItem value={slug} key={projectRoleId}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                )}
+                render={({ field: { onChange, ...field } }) => {
+                  const rolesForSelect = getRolesForSelect(field.value);
+                  return (
+                    <Select
+                      defaultValue={field.value}
+                      {...field}
+                      isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
+                      onValueChange={(e) => onChange(e)}
+                      className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
+                      containerClassName="w-1/2"
+                    >
+                      {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
+                        const isAssignable = assignableRoleSlugs.has(slug);
+                        if (!isAssignable) {
+                          return (
+                            <Tooltip
+                              key={projectRoleId ?? slug}
+                              content="You don't have permission to assign this role"
+                            >
+                              <div>
+                                <SelectItem
+                                  value={slug}
+                                  isDisabled
+                                  className="cursor-not-allowed opacity-50"
+                                >
+                                  {name}
+                                </SelectItem>
+                              </div>
+                            </Tooltip>
+                          );
+                        }
+                        return (
+                          <SelectItem value={slug} key={projectRoleId}>
+                            {name}
+                          </SelectItem>
+                        );
+                      })}
+                    </Select>
+                  );
+                }}
               />
               <Popover>
-                <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
+                <PopoverTrigger
+                  disabled={isIdentityEditDisabled || !canModifyIdentityRoles}
+                  asChild
+                >
                   <div className="grow">
                     <Tooltip
                       content={
@@ -180,7 +272,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                         variant="outline_bg"
                         leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isIdentityEditDisabled}
+                        isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
                         className={twMerge(
                           "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                           isTemporary && "text-primary",
@@ -279,7 +371,11 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                 variant="outline_bg"
                 className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                 ariaLabel="delete-role"
-                isDisabled={isIdentityEditDisabled || selectedRoleList.fields.length === 1}
+                isDisabled={
+                  isIdentityEditDisabled ||
+                  !canModifyIdentityRoles ||
+                  selectedRoleList.fields.length === 1
+                }
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
@@ -297,14 +393,15 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
           {(isAllowed) => (
             <Button
               variant="outline_bg"
-              isDisabled={!isAllowed}
+              isDisabled={!isAllowed || !canModifyIdentityRoles || filteredRoles.length === 0}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() =>
+              onClick={() => {
+                if (filteredRoles.length === 0) return;
                 selectedRoleList.append({
-                  slug: ProjectMembershipRole.Member,
+                  slug: filteredRoles[0].slug,
                   temporaryAccess: { isTemporary: false }
-                })
-              }
+                });
+              }}
             >
               Add Role
             </Button>
@@ -323,6 +420,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
           Save Roles
         </Button>
       </div>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
+      />
     </form>
   );
 };

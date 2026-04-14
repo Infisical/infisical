@@ -1,6 +1,6 @@
 export enum VercelSyncScope {
-  Application = "application",
-  Environment = "environment"
+  Project = "project",
+  Team = "team"
 }
 
 export const VercelEnvironmentType = {

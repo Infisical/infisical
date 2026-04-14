@@ -384,6 +384,10 @@ export const buildTeamsPayload = (orgId: string, notification: TNotification) =>
             type: "FactSet",
             facts: [
               {
+                title: "Project",
+                value: payload.projectName
+              },
+              {
                 title: "Environment",
                 value: payload.environment
               },

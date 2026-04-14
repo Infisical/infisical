@@ -118,7 +118,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <div className="mt-4 ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-4 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
         <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
         {pkiSync.isAutoSyncEnabled ? (

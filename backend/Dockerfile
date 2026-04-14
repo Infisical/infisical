@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20.20.0-trixie-slim AS build
+FROM node:22.22.0-trixie-slim AS build
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20.20.0-trixie-slim
+FROM node:22.22.0-trixie-slim
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
@@ -78,6 +78,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
+RUN rm -rf ./bdd ./e2e-test
 
 # Install smbclient for Windows SMB operations
 RUN apt-get update && apt-get install -y smbclient

@@ -6,8 +6,10 @@ import { ApiDocsTags, FOLDERS } from "@app/lib/api-docs";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -79,6 +81,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretFolderCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          projectId: req.body.projectId,
+          environment: req.body.environment,
+          folderPath: req.body.path,
+          folderId: folder.id
+        }
+      });
+
       return { folder };
     }
   });

@@ -18,12 +18,29 @@ export enum CertKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
   ECDSA_P384 = "EC_secp384r1",
-  ECDSA_P521 = "EC_secp521r1"
+  ECDSA_P521 = "EC_secp521r1",
+  ML_DSA_44 = "ML-DSA-44",
+  ML_DSA_65 = "ML-DSA-65",
+  ML_DSA_87 = "ML-DSA-87",
+  SLH_DSA_SHA2_128F = "SLH-DSA-SHA2-128f",
+  SLH_DSA_SHA2_128S = "SLH-DSA-SHA2-128s",
+  SLH_DSA_SHA2_192F = "SLH-DSA-SHA2-192f",
+  SLH_DSA_SHA2_192S = "SLH-DSA-SHA2-192s",
+  SLH_DSA_SHA2_256F = "SLH-DSA-SHA2-256f",
+  SLH_DSA_SHA2_256S = "SLH-DSA-SHA2-256s",
+  SLH_DSA_SHAKE_128F = "SLH-DSA-SHAKE-128f",
+  SLH_DSA_SHAKE_128S = "SLH-DSA-SHAKE-128s",
+  SLH_DSA_SHAKE_192F = "SLH-DSA-SHAKE-192f",
+  SLH_DSA_SHAKE_192S = "SLH-DSA-SHAKE-192s",
+  SLH_DSA_SHAKE_256F = "SLH-DSA-SHAKE-256f",
+  SLH_DSA_SHAKE_256S = "SLH-DSA-SHAKE-256s"
 }
 
 export enum CertKeyType {
   RSA = "RSA",
-  ECDSA = "ECDSA"
+  ECDSA = "ECDSA",
+  ML_DSA = "ML-DSA",
+  SLH_DSA = "SLH-DSA"
 }
 
 export enum CertSignatureAlgorithm {
@@ -32,7 +49,22 @@ export enum CertSignatureAlgorithm {
   RSA_SHA512 = "RSA-SHA512",
   ECDSA_SHA256 = "ECDSA-SHA256",
   ECDSA_SHA384 = "ECDSA-SHA384",
-  ECDSA_SHA512 = "ECDSA-SHA512"
+  ECDSA_SHA512 = "ECDSA-SHA512",
+  ML_DSA_44 = "ML-DSA-44",
+  ML_DSA_65 = "ML-DSA-65",
+  ML_DSA_87 = "ML-DSA-87",
+  SLH_DSA_SHA2_128F = "SLH-DSA-SHA2-128f",
+  SLH_DSA_SHA2_128S = "SLH-DSA-SHA2-128s",
+  SLH_DSA_SHA2_192F = "SLH-DSA-SHA2-192f",
+  SLH_DSA_SHA2_192S = "SLH-DSA-SHA2-192s",
+  SLH_DSA_SHA2_256F = "SLH-DSA-SHA2-256f",
+  SLH_DSA_SHA2_256S = "SLH-DSA-SHA2-256s",
+  SLH_DSA_SHAKE_128F = "SLH-DSA-SHAKE-128f",
+  SLH_DSA_SHAKE_128S = "SLH-DSA-SHAKE-128s",
+  SLH_DSA_SHAKE_192F = "SLH-DSA-SHAKE-192f",
+  SLH_DSA_SHAKE_192S = "SLH-DSA-SHAKE-192s",
+  SLH_DSA_SHAKE_256F = "SLH-DSA-SHAKE-256f",
+  SLH_DSA_SHAKE_256S = "SLH-DSA-SHAKE-256s"
 }
 
 export enum CertKeyUsage {
@@ -58,7 +90,9 @@ export enum CertExtendedKeyUsage {
 
 export enum CertSignatureType {
   RSA = "RSA",
-  ECDSA = "ECDSA"
+  ECDSA = "ECDSA",
+  ML_DSA = "ML-DSA",
+  SLH_DSA = "SLH-DSA"
 }
 
 export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = {
@@ -169,6 +203,18 @@ export const mapLegacyAltNameType = (legacyType: TAltNameType): CertSubjectAlter
       throw new Error(`Unknown legacy alt name type: ${legacyType}`);
   }
 };
+
+const SAN_TYPE_TO_X509_TYPE: Record<CertSubjectAlternativeNameType, TAltNameType> = {
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: TAltNameType.IP,
+  [CertSubjectAlternativeNameType.EMAIL]: TAltNameType.EMAIL,
+  [CertSubjectAlternativeNameType.URI]: TAltNameType.URL,
+  [CertSubjectAlternativeNameType.DNS_NAME]: TAltNameType.DNS
+};
+
+export const mapSanTypeToX509Type = (sanType: CertSubjectAlternativeNameType): TAltNameType => {
+  return SAN_TYPE_TO_X509_TYPE[sanType] ?? TAltNameType.DNS;
+};
+
 export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
@@ -197,7 +243,7 @@ export type TCertificateSubject = {
 
 export type TCertificateFingerprints = {
   sha256: string;
-  sha1: string;
+  sha1?: string;
 };
 
 export type TCertificateBasicConstraints = {

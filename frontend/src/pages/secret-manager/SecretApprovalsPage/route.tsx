@@ -5,7 +5,8 @@ import { z } from "zod";
 import { SecretApprovalsPage } from "./SecretApprovalsPage";
 
 const SecretApprovalPageQueryParams = z.object({
-  requestId: z.string().catch("")
+  requestId: z.string().catch(""),
+  selectedTab: z.string().catch("")
 });
 
 export const Route = createFileRoute(

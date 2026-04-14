@@ -13,7 +13,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   name: true,
   createdAt: true,
   updatedAt: true,
-  heartbeat: true
+  heartbeat: true,
+  lastHealthCheckStatus: true
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
@@ -94,7 +95,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           identity: z.object({
             name: z.string(),
             id: z.string()
-          })
+          }),
+          connectedResourcesCount: z.number()
         }).array()
       }
     },
@@ -137,6 +139,34 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:id/heartbeat",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerGatewayHeartbeat",
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.gatewayV2.triggerHeartbeat({
+        orgPermission: req.permission,
+        id: req.params.id
+      });
+
+      return { message: "Successfully triggered heartbeat" };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/pam-session-key",
     config: {
@@ -155,6 +185,93 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       });
 
       return pamSessionKey;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/resources",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getGatewayConnectedResources",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          appConnections: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              app: z.string(),
+              projectId: z.string().nullish(),
+              projectName: z.string().nullish()
+            })
+          ),
+          dynamicSecrets: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              folderId: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environmentSlug: z.string()
+            })
+          ),
+          pamResources: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              resourceType: z.string()
+            })
+          ),
+          pamDiscoverySources: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              discoveryType: z.string()
+            })
+          ),
+          kubernetesAuths: z.array(
+            z.object({
+              id: z.string(),
+              identityId: z.string(),
+              identityName: z.string()
+            })
+          ),
+          mcpServers: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string()
+            })
+          ),
+          pkiDiscoveryConfigs: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              projectId: z.string(),
+              projectName: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const resources = await server.services.gatewayV2.getConnectedResources({
+        orgPermission: req.permission,
+        gatewayId: req.params.id
+      });
+
+      return resources;
     }
   });
 };

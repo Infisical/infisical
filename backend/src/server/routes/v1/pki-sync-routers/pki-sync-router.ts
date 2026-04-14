@@ -7,6 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 const PkiSyncSchema = z.object({
@@ -96,7 +97,8 @@ const PkiSyncCertificateSchema = z.object({
   certificateRenewBeforeDays: z.number().nullish(),
   certificateRenewalError: z.string().nullish(),
   pkiSyncName: z.string().optional(),
-  pkiSyncDestination: z.string().optional()
+  pkiSyncDestination: z.string().optional(),
+  syncMetadata: SyncMetadataSchema
 });
 
 export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOperationId: boolean = true) => {

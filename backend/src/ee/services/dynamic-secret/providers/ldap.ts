@@ -1,5 +1,5 @@
+import ldapjs from "@infisical/ldapjs";
 import handlebars from "handlebars";
-import ldapjs from "ldapjs";
 import ldif from "ldif";
 import { customAlphabet } from "nanoid";
 import RE2 from "re2";
@@ -103,7 +103,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
       type: string;
 
       changes: {
-        operation?: string;
+        type?: string;
         attribute: {
           attribute: string;
         };
@@ -159,7 +159,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
         entry.changes.forEach((change) => {
           changes.push(
             new ldapjs.Change({
-              operation: change.operation || "replace",
+              operation: change.type || "replace",
               modification: {
                 type: change.attribute.attribute,
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-return

@@ -18,6 +18,7 @@ export type TAcmeCertificateAuthority = {
     accountEmail: string;
     eabKid?: string;
     eabHmacKey?: string;
+    dnsResolver?: string;
   };
 };
 
@@ -31,6 +32,20 @@ export type TAzureAdCsCertificateAuthority = {
   configuration: {
     azureAdcsConnectionId: string;
     templateName: string;
+  };
+};
+
+export type TAwsPcaCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.AWS_PCA;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    certificateAuthorityArn: string;
+    region: string;
   };
 };
 
@@ -64,6 +79,7 @@ export type TInternalCertificateAuthority = {
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
+  | TAwsPcaCertificateAuthority
   | TInternalCertificateAuthority;
 
 export type TCreateCertificateAuthorityDTO = Omit<

@@ -46,7 +46,7 @@ export const PkiSyncDestinationConfigSchema = z.object({
 // Base PKI sync schema for API responses
 export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().max(255),
+  name: z.string().max(256),
   description: z.string().nullable().optional(),
   destination: z.nativeEnum(PkiSync),
   isAutoSyncEnabled: z.boolean(),

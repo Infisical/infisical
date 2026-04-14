@@ -9,12 +9,12 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ms } from "@app/lib/ms";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -24,19 +24,29 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
-import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
+import {
+  TAcmeConfigData,
+  TApiConfigData,
+  TEstConfigData,
+  TScepConfigData
+} from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
+import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
   EnrollmentType,
   IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
+  TCertificateProfileDefaults,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
@@ -215,19 +225,22 @@ const decryptCaChain = async (
 
 export type TCertificateProfileCreateData = Omit<
   TCertificateProfileInsert,
-  "estConfigId" | "apiConfigId" | "acmeConfigId"
+  "estConfigId" | "apiConfigId" | "acmeConfigId" | "scepConfigId"
 > & {
   estConfig?: TEstConfigData;
   apiConfig?: TApiConfigData;
   acmeConfig?: TAcmeConfigData;
+  scepConfig?: TScepConfigData;
 };
 
 type TCertificateProfileServiceFactoryDep = {
   certificateProfileDAL: TCertificateProfileDALFactory;
   certificatePolicyDAL: TCertificatePolicyDALFactory;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateRequestAgainstPolicy">;
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
   acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
+  scepEnrollmentConfigDAL: TScepEnrollmentConfigDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
@@ -235,6 +248,7 @@ type TCertificateProfileServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -251,49 +265,34 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
     parsedExternalConfigs = dalResult.externalConfigs as Record<string, unknown>;
   }
 
+  const parsedDefaults = (dalResult.defaults as TCertificateProfileDefaults) ?? null;
+
   return {
     ...dalResult,
     enrollmentType: dalResult.enrollmentType as EnrollmentType,
     issuerType: dalResult.issuerType as IssuerType,
-    externalConfigs: parsedExternalConfigs
+    externalConfigs: parsedExternalConfigs,
+    defaults: parsedDefaults
   } as TCertificateProfile;
 };
 
 export const certificateProfileServiceFactory = ({
   certificateProfileDAL,
   certificatePolicyDAL,
+  certificatePolicyService,
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
+  scepEnrollmentConfigDAL,
   certificateBodyDAL,
   certificateSecretDAL,
   certificateAuthorityDAL,
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
-  projectDAL
+  projectDAL,
+  resourceMetadataDAL
 }: TCertificateProfileServiceFactoryDep) => {
-  const validateDefaultTtlDaysAgainstPolicy = async (
-    defaultTtlDays: number | undefined | null,
-    certificatePolicyId: string
-  ) => {
-    if (!defaultTtlDays) return; // No defaultTtlDays to validate
-
-    const policy = await certificatePolicyDAL.findById(certificatePolicyId);
-    if (!policy) return; // Policy validation happens elsewhere
-
-    if (!policy.validity?.max) return; // No max constraint
-
-    const defaultTtlMs = defaultTtlDays * 24 * 60 * 60 * 1000;
-    const maxTtlMs = ms(policy.validity.max);
-
-    if (defaultTtlMs > maxTtlMs) {
-      throw new BadRequestError({
-        message: `Default TTL (${defaultTtlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
-      });
-    }
-  };
-
   const createProfile = async ({
     actor,
     actorId,
@@ -352,8 +351,30 @@ export const certificateProfileServiceFactory = ({
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
-    // Validate defaultTtlDays against policy constraints
-    await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, data.certificatePolicyId);
+    // Validate defaults against policy constraints
+    if (data.defaults && data.certificatePolicyId) {
+      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
+      if (policy) {
+        const request: TCertificateRequest = {
+          commonName: data.defaults.commonName,
+          organization: data.defaults.organization,
+          organizationalUnit: data.defaults.organizationalUnit,
+          country: data.defaults.country,
+          state: data.defaults.state,
+          locality: data.defaults.locality,
+          keyUsages: data.defaults.keyUsages,
+          extendedKeyUsages: data.defaults.extendedKeyUsages,
+          signatureAlgorithm: data.defaults.signatureAlgorithm,
+          keyAlgorithm: data.defaults.keyAlgorithm,
+          validity: data.defaults.ttlDays ? { ttl: `${data.defaults.ttlDays}d` } : undefined,
+          basicConstraints: data.defaults.basicConstraints
+        };
+        const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
+        if (!result.isValid) {
+          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+        }
+      }
+    }
 
     // Validate external configs
     await validateExternalConfigs(
@@ -381,12 +402,58 @@ export const certificateProfileServiceFactory = ({
         });
       }
     }
+    if (data.enrollmentType === EnrollmentType.SCEP && !data.scepConfig) {
+      throw new ForbiddenRequestError({
+        message: "SCEP enrollment requires SCEP configuration"
+      });
+    }
+
+    // Perform crypto operations before the transaction to avoid holding DB connections
+    let precomputedScepConfig:
+      | {
+          encryptedRaPrivateKey: Buffer;
+          raCertificatePem: string;
+          raCertExpiresAt: Date;
+          hashedChallengePassword: string;
+          includeCaCertInResponse: boolean;
+          allowCertBasedRenewal: boolean;
+        }
+      | undefined;
+
+    if (data.enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
+      const raCert = await generateRaCertificate(data.slug);
+
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+        projectId,
+        projectDAL,
+        kmsService
+      });
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const { cipherTextBlob: encryptedRaPrivateKey } = await kmsEncryptor({
+        plainText: Buffer.from(raCert.privateKeyDer)
+      });
+
+      const appCfg = getConfig();
+      const hashedChallengePassword = await crypto
+        .hashing()
+        .createHash(data.scepConfig.challengePassword, appCfg.SALT_ROUNDS);
+
+      precomputedScepConfig = {
+        encryptedRaPrivateKey,
+        raCertificatePem: raCert.certificatePem,
+        raCertExpiresAt: raCert.expiresAt,
+        hashedChallengePassword,
+        includeCaCertInResponse: data.scepConfig.includeCaCertInResponse ?? true,
+        allowCertBasedRenewal: data.scepConfig.allowCertBasedRenewal ?? true
+      };
+    }
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
       let apiConfigId: string | null = null;
       let acmeConfigId: string | null = null;
+      let scepConfigId: string | null = null;
 
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
@@ -433,10 +500,23 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         acmeConfigId = acmeConfig.id;
+      } else if (precomputedScepConfig) {
+        const scepConfig = await scepEnrollmentConfigDAL.create(
+          {
+            encryptedRaPrivateKey: precomputedScepConfig.encryptedRaPrivateKey,
+            raCertificate: precomputedScepConfig.raCertificatePem,
+            raCertExpiresAt: precomputedScepConfig.raCertExpiresAt,
+            hashedChallengePassword: precomputedScepConfig.hashedChallengePassword,
+            includeCaCertInResponse: precomputedScepConfig.includeCaCertInResponse,
+            allowCertBasedRenewal: precomputedScepConfig.allowCertBasedRenewal
+          },
+          tx
+        );
+        scepConfigId = scepConfig.id;
       }
 
       // Create the profile with the created config IDs
-      const { estConfig, apiConfig, acmeConfig, ...profileData } = data;
+      const { estConfig, apiConfig, acmeConfig, scepConfig: profileScepConfig, ...profileData } = data;
       const profileResult = await certificateProfileDAL.create(
         {
           ...profileData,
@@ -444,6 +524,7 @@ export const certificateProfileServiceFactory = ({
           estConfigId,
           apiConfigId,
           acmeConfigId,
+          scepConfigId,
           externalConfigs: data.externalConfigs
         },
         tx
@@ -544,16 +625,36 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
-    // Validate defaultTtlDays against policy constraints if provided
-    if (data.defaultTtlDays !== undefined) {
+    // Validate defaults against policy constraints if provided
+    if (data.defaults) {
       const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
-      await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, policyId);
+      const policy = await certificatePolicyDAL.findById(policyId);
+      if (policy) {
+        const request: TCertificateRequest = {
+          commonName: data.defaults.commonName,
+          organization: data.defaults.organization,
+          organizationalUnit: data.defaults.organizationalUnit,
+          country: data.defaults.country,
+          state: data.defaults.state,
+          locality: data.defaults.locality,
+          keyUsages: data.defaults.keyUsages,
+          extendedKeyUsages: data.defaults.extendedKeyUsages,
+          signatureAlgorithm: data.defaults.signatureAlgorithm,
+          keyAlgorithm: data.defaults.keyAlgorithm,
+          validity: data.defaults.ttlDays ? { ttl: `${data.defaults.ttlDays}d` } : undefined,
+          basicConstraints: data.defaults.basicConstraints
+        };
+        const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
+        if (!result.isValid) {
+          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+        }
+      }
     }
 
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
-    const { estConfig, apiConfig, acmeConfig, ...profileUpdateData } = updatedData;
+    const { estConfig, apiConfig, acmeConfig, scepConfig, ...profileUpdateData } = updatedData;
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
@@ -605,6 +706,29 @@ export const certificateProfileServiceFactory = ({
         }
         if (Object.keys(acmeUpdateData).length > 0) {
           await acmeEnrollmentConfigDAL.updateById(existingProfile.acmeConfigId, acmeUpdateData, tx);
+        }
+      }
+
+      if (scepConfig && existingProfile.scepConfigId) {
+        const scepUpdateData: {
+          hashedChallengePassword?: string;
+          includeCaCertInResponse?: boolean;
+          allowCertBasedRenewal?: boolean;
+        } = {};
+
+        if (scepConfig.challengePassword) {
+          scepUpdateData.hashedChallengePassword = await crypto
+            .hashing()
+            .createHash(scepConfig.challengePassword, getConfig().SALT_ROUNDS);
+        }
+        if (scepConfig.includeCaCertInResponse !== undefined) {
+          scepUpdateData.includeCaCertInResponse = scepConfig.includeCaCertInResponse;
+        }
+        if (scepConfig.allowCertBasedRenewal !== undefined) {
+          scepUpdateData.allowCertBasedRenewal = scepConfig.allowCertBasedRenewal;
+        }
+        if (Object.keys(scepUpdateData).length > 0) {
+          await scepEnrollmentConfigDAL.updateById(existingProfile.scepConfigId, scepUpdateData, tx);
         }
       }
 
@@ -709,6 +833,12 @@ export const certificateProfileServiceFactory = ({
       if (profile.acmeConfig.encryptedEabSecret) {
         profile.acmeConfig.encryptedEabSecret = undefined;
       }
+    }
+
+    if (profile.enrollmentType === EnrollmentType.SCEP && profile.scepConfig) {
+      const appCfg = getConfig();
+      const siteUrl = appCfg.SITE_URL ?? "";
+      profile.scepConfig.scepEndpointUrl = `${siteUrl}/scep/${profile.id}/pkiclient.exe`;
     }
 
     // Parse externalConfigs from JSON string to object if it exists
@@ -877,12 +1007,17 @@ export const certificateProfileServiceFactory = ({
         }
 
         const converted = convertDalToService(profileWithConfigs);
+        const appCfg = getConfig();
+        const siteUrl = appCfg.SITE_URL ?? "";
         const result: TCertificateProfileWithConfigs = {
           ...converted,
           estConfig: decryptedEstConfig,
           apiConfig: profileWithConfigs.apiConfig,
           acmeConfig: profileWithConfigs.acmeConfig
             ? { ...profileWithConfigs.acmeConfig, directoryUrl: buildUrl(profile.id, "/directory") }
+            : undefined,
+          scepConfig: profileWithConfigs.scepConfig
+            ? { ...profileWithConfigs.scepConfig, scepEndpointUrl: `${siteUrl}/scep/${profile.id}/pkiclient.exe` }
             : undefined
         };
 
@@ -1026,12 +1161,16 @@ export const certificateProfileServiceFactory = ({
       return null;
     }
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -1039,8 +1178,9 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateActions.ReadPrivateKey,
       subject(ProjectPermissionSub.Certificates, {
         commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        altNames: cert.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: cert.serialNumber,
+        metadata: certMetadata
       })
     );
 

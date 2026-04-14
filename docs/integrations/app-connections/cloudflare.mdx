@@ -51,15 +51,32 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
         </AccordionGroup>
       </Tab>
       <Tab title="PKI">
-          Use the following permissions to grant Infisical access to verify certificates using DNS TXT records with ACME:
+        <AccordionGroup>
+          <Accordion title="ACME DNS Verification">
+            Use the following permissions to grant Infisical access to verify certificates using DNS TXT records with ACME:
 
-          ![Configure Token](/images/app-connections/cloudflare/cloudflare-dns-configure-permissions.png)
+            ![Configure Token](/images/app-connections/cloudflare/cloudflare-dns-configure-permissions.png)
 
-          **Required Permissions:**
-          - **Account** - **Account Settings** - **Read**
-          - **Zone** - **DNS** - **Edit**
+            **Required Permissions:**
+            - **Account** - **Account Settings** - **Read**
+            - **Zone** - **DNS** - **Edit**
 
-          Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+          </Accordion>
+          <Accordion title="Certificate Sync (Custom SSL)">
+            Use the following permissions to grant Infisical access to sync certificates to Cloudflare as Custom SSL certificates:
+
+            ![Configure Token](/images/app-connections/cloudflare/cloudflare-ssl-configure-permissions.png)
+
+            **Required Permissions:**
+            - **Account** - **Account Settings** - **Read**
+            - **Zone** - **SSL and Certificates** - **Edit**
+
+            These permissions allow Infisical to upload, update, and delete custom SSL certificates in your Cloudflare zones.
+
+            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+          </Accordion>
+        </AccordionGroup>
       </Tab>
     </Tabs>
 

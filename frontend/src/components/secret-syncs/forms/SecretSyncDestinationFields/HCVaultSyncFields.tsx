@@ -44,7 +44,7 @@ export const HCVaultSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure the Secrets Engine mount exists and that your App Role / Access Token has permission to access it. Infisical only supports version 2 KV Secrets Engine mounts. If you're using Hashicorp Cloud Platform, ensure that you correctly defined your 'namespace' when creating the App Connection."
+                content="Ensure the Secrets Engine mount exists and that your App Role / Access Token has permission to access it. Infisical currently supports KV Engines version 1 and 2. If you're using Hashicorp Cloud Platform, ensure that you correctly defined your 'namespace' when creating the App Connection."
               >
                 <div>
                   <span>Don&#39;t see the mount you&#39;re looking for?</span>{" "}

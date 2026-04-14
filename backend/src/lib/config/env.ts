@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
@@ -12,6 +13,20 @@ import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
+
+const DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: Record<string, string | number | boolean> = {
+  async_insert: 1,
+  // !!!NOTICE!!! by disabling wait_for_async_insert, we shouldn't suffer from the audit log queue piles up jobs
+  //              issues anymore as now insert won't be blocked until the data is written to disk.
+  //              However, this works at the cost of DATA LOSS if the ClickHouse server crashes
+  //              before the data is written to disk.
+  //              Because our Redis queue if without AOF + Fsync, may already suffer data loss issues,
+  //              so it's not worsening the issue at least for now.
+  //              Let's have this rolled out in production and see how things go for now,
+  //              in the meantime, we should think about a better solution to handle this.
+  wait_for_async_insert: 0,
+  date_time_input_format: "best_effort"
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
 export const IS_PACKAGED = (process as any)?.pkg !== undefined;
@@ -85,7 +100,45 @@ const envSchema = z
     AUDIT_LOGS_DB_ROOT_CERT: zpStr(
       z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
     ),
-    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
+    CLICKHOUSE_URL: zpStr(
+      z
+        .string()
+        .optional()
+        .describe("ClickHouse connection URL. Eg: http://localhost:8123 or https://user:password@host:8443/database")
+    ),
+    CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val || val.trim() === "") return DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS;
+          return JSON.parse(val) as Record<string, string | number | boolean>;
+        })
+        .default(JSON.stringify(DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS))
+        .describe(
+          'ClickHouse insert settings as JSON. Eg: {"async_insert":1,"wait_for_async_insert":1}. Applied when inserting audit logs.'
+        )
+    ),
+    CLICKHOUSE_AUDIT_LOG_ENGINE: zpStr(
+      z
+        .string()
+        .optional()
+        .default("ReplacingMergeTree")
+        .describe(
+          "ClickHouse engine for the audit_logs table. Used during migrations. Eg: ReplacingMergeTree or SharedReplacingMergeTree('/clickhouse/tables/{uuid}/{shard}', '{replica}')"
+        )
+    ),
+    CLICKHOUSE_AUDIT_LOG_TABLE_NAME: zpStr(
+      z.string().optional().default("audit_logs").describe("ClickHouse table name for audit logs")
+    ),
+    CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
+    AUDIT_LOG_STREAMS_ENABLED: zodStrBool.default("true").describe("Enable sending audit logs to external log streams"),
+    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.optional(), // deprecated: use DISABLE_POSTGRES_AUDIT_LOG_STORAGE instead
+    DISABLE_POSTGRES_AUDIT_LOG_STORAGE: z
+      .string()
+      .optional()
+      .transform((val) => (val === undefined ? undefined : val === "true"))
+      .describe("Disable PostgreSQL audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
       .describe("Generate sanitized schema with views after migrations"),
@@ -159,8 +212,11 @@ const envSchema = z
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
-    POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
+    POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_swoSUd69FLA4ztGPkBhnNHDVbrssfPkuYEGCquN33FCX")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
+    // HubSpot Forms API for capturing signups
+    HUBSPOT_PORTAL_ID: zpStr(z.string().optional()),
+    HUBSPOT_SIGNUP_FORM_ID: zpStr(z.string().optional()),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
@@ -410,12 +466,15 @@ const envSchema = z
   .transform((data) => ({
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
+    DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
+      data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
+    isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
     isTestMode: data.NODE_ENV === "test",
     isRotationDevelopmentMode:
@@ -513,6 +572,8 @@ export const initEnvConfig = async (
   if (superAdminDAL) {
     const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
 
+    await initializePqcSupport();
+
     if (fipsEnabled) {
       const newEnvCfg = {
         ...parsedEnv.data,
@@ -603,8 +664,12 @@ export const overwriteSchema: {
     name: "Audit Logs",
     fields: [
       {
+        key: "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
+        description: "Disable PostgreSQL audit log storage"
+      },
+      {
         key: "DISABLE_AUDIT_LOG_STORAGE",
-        description: "Disable audit log storage"
+        description: "Legacy alias for DISABLE_POSTGRES_AUDIT_LOG_STORAGE (deprecated)"
       }
     ]
   },

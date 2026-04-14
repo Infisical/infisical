@@ -9,14 +9,17 @@ import {
   faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { BanIcon, CheckIcon, HourglassIcon } from "lucide-react";
 import ms from "ms";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
+  DeleteActionModal,
   FormControl,
   GenericFieldLabel,
   IconButton,
@@ -26,9 +29,20 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, useProject, useUser } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
+import {
+  useListWorkspaceGroups,
+  useReviewAccessRequest,
+  useRevokeAccessRequest
+} from "@app/hooks/api";
 import {
   Approver,
   ApproverType,
@@ -38,6 +52,10 @@ import {
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
+import {
+  canModifyByGrantConditions,
+  getMemberAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
@@ -99,17 +117,46 @@ export const ReviewAccessRequestModal = ({
   members: TWorkspaceUser[];
   onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
-  const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
+  const [isLoading, setIsLoading] = useState<"approved" | "rejected" | "revoked" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
 
   const [bypassReason, setBypassReason] = useState("");
   const { currentProject } = useProject();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
+  const { permission } = useProjectPermission();
 
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
+    "editRequest",
+    "revokeConfirm"
+  ] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+
+  const assignPrivilegesConditions = useMemo(
+    () => getMemberAssignPrivilegesConditions(permission),
+    [permission]
+  );
+
+  const canRevokeAccess = useMemo(() => {
+    if (request.isApprover) return true;
+
+    const hasBasePermission = permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Member
+    );
+    if (!hasBasePermission) return false;
+
+    const targetEmail = request.user?.email;
+    if (!targetEmail) return false;
+
+    return canModifyByGrantConditions({
+      targetValue: targetEmail,
+      allowed: assignPrivilegesConditions?.emails,
+      forbidden: assignPrivilegesConditions?.forbiddenEmails,
+      isMatch: (value, pattern) => picomatch.isMatch(value, pattern, { nocase: true })
+    });
+  }, [permission, assignPrivilegesConditions, request.user?.email, request.isApprover]);
 
   const accessDetails = {
     env: request.environmentName,
@@ -150,6 +197,7 @@ export const ReviewAccessRequestModal = ({
   };
 
   const reviewAccessRequest = useReviewAccessRequest();
+  const revokeAccessRequest = useRevokeAccessRequest();
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -196,6 +244,26 @@ export const ReviewAccessRequestModal = ({
       onOpenChange
     ]
   );
+
+  const handleRevoke = useCallback(async () => {
+    setIsLoading("revoked");
+    try {
+      await revokeAccessRequest.mutateAsync({
+        requestId: request.id,
+        projectSlug
+      });
+      createNotification({
+        title: "Access revoked",
+        text: "The access has been successfully revoked",
+        type: "success"
+      });
+    } catch {
+      setIsLoading(null);
+      return;
+    }
+    setIsLoading(null);
+    onOpenChange(false);
+  }, [revokeAccessRequest, request, projectSlug, onOpenChange]);
 
   const approverSequence = useMemo(() => {
     const policy = policies.find((el) => el.id === request.policy.id);
@@ -244,7 +312,8 @@ export const ReviewAccessRequestModal = ({
       return { ...approverChain, reviewers, hasApproved, hasRejected };
     });
     const currentSequenceApprover = approvers?.find((el) => !el.hasApproved);
-    const currentSequence = currentSequenceApprover?.sequence || 1;
+    const currentSequence =
+      currentSequenceApprover?.sequence ?? (approvers?.[approvers.length - 1]?.sequence ?? 1) + 1;
     const isMyReviewInThisSequence = currentSequenceApprover?.reviewers.find(
       (i) => i.userId === user.id
     );
@@ -260,16 +329,30 @@ export const ReviewAccessRequestModal = ({
 
   const hasRejected = request.status === ApprovalStatus.REJECTED;
   const hasApproved = request.status === ApprovalStatus.APPROVED;
+  const hasRevoked = request.status === ApprovalStatus.REVOKED;
+  const hasExpired =
+    !hasApproved &&
+    !hasRejected &&
+    !hasRevoked &&
+    request.expiresAt &&
+    new Date(request.expiresAt) < new Date();
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
 
   const shouldBlockRequestActions =
     hasRejected ||
     hasApproved ||
+    hasRevoked ||
+    hasExpired ||
     isReviewedByMe ||
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
 
   const renderCompletedMessages = () => {
+    if (hasExpired) return "This request has expired.";
     if (hasRejected) return "This request has been rejected.";
+    if (hasRevoked) {
+      const revokedByEmail = request.revokedByUser?.email;
+      return `This access has been revoked${revokedByEmail ? ` by ${revokedByEmail}` : ""}.`;
+    }
     if (hasApproved) return "This request has been approved.";
     if (isReviewedByMe) return "You have reviewed this request.";
     return "You are not the reviewer in this step.";
@@ -301,7 +384,7 @@ export const ReviewAccessRequestModal = ({
         </div>
         <div className="">
           <div className="mt-4 mb-2 text-mineshaft-200">
-            <div className="flex flex-wrap gap-8">
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
               <GenericFieldLabel label="Environment">{accessDetails.env}</GenericFieldLabel>
               <GenericFieldLabel truncate label="Secret Path">
                 {accessDetails.secretPath}
@@ -339,15 +422,57 @@ export const ReviewAccessRequestModal = ({
                   {request.note}
                 </GenericFieldLabel>
               )}
+              {request.expiresAt &&
+                request.status === ApprovalStatus.PENDING &&
+                new Date(request.expiresAt) > new Date() && (
+                  <GenericFieldLabel label="Request Expires">
+                    <span>
+                      In{" "}
+                      {ms(new Date(request.expiresAt).getTime() - Date.now(), {
+                        long: true
+                      })}
+                    </span>
+                  </GenericFieldLabel>
+                )}
+              {hasExpired && request.expiresAt && (
+                <GenericFieldLabel label="Expired At">
+                  <span className="text-red-400">
+                    {format(new Date(request.expiresAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {hasRejected && (
+                <GenericFieldLabel label="Rejected At">
+                  <span className="text-red-400">
+                    {format(new Date(request.updatedAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {(hasApproved || hasRevoked) && (request.approvedAt || hasApproved) && (
+                <GenericFieldLabel label="Approved At">
+                  <span className="text-green-400">
+                    {format(
+                      new Date(request.approvedAt || request.updatedAt),
+                      "MMM d, yyyy h:mm aa"
+                    )}
+                  </span>
+                </GenericFieldLabel>
+              )}
+              {hasRevoked && request.revokedAt && (
+                <GenericFieldLabel label="Revoked At">
+                  <span className="text-red-400">
+                    {format(new Date(request.revokedAt), "MMM d, yyyy h:mm aa")}
+                  </span>
+                </GenericFieldLabel>
+              )}
             </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between border-b-2 border-mineshaft-500 py-2">
             <span>Approvers</span>
             {approverSequence.isMyReviewInThisSequence &&
-              request.status === ApprovalStatus.PENDING && (
-                <Badge variant="warning">Awaiting Your Review</Badge>
-              )}
+              request.status === ApprovalStatus.PENDING &&
+              !hasExpired && <Badge variant="warning">Awaiting Your Review</Badge>}
           </div>
           <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
             {approverSequence?.approvers &&
@@ -374,7 +499,7 @@ export const ReviewAccessRequestModal = ({
                     </Badge>
                   );
                   BadgeComponent = <Badge variant="success">Approved</Badge>;
-                } else if (isPending) {
+                } else if (isPending && !hasExpired) {
                   StepComponent = (
                     <Badge isSquare variant="warning">
                       <HourglassIcon />
@@ -417,7 +542,28 @@ export const ReviewAccessRequestModal = ({
                           <div className="flex flex-row flex-wrap gap-2">
                             {approver?.user?.map((el, idx) => {
                               const member = approverSequence?.membersGroupById?.[el.id]?.[0];
-                              if (!member) return null;
+
+                              if (!member) {
+                                const policyApprover = request.policy.approvers.find(
+                                  (a) => a.userId === el.id
+                                );
+                                return (
+                                  <div className="flex items-center" key={el.id}>
+                                    <span className="flex items-center gap-2 opacity-40">
+                                      {policyApprover?.email || policyApprover?.username || el.id}
+                                      <span className="text-xs">
+                                        <Tooltip content="This user has been removed from the project.">
+                                          <Badge variant="neutral">
+                                            <BanIcon />
+                                            Removed
+                                          </Badge>
+                                        </Tooltip>
+                                      </span>
+                                    </span>
+                                    {idx < approver.user.length - 1 && ","}
+                                  </div>
+                                );
+                              }
 
                               return member.user.isOrgMembershipActive ? (
                                 <div className="flex items-center" key={member.user.id}>
@@ -426,7 +572,7 @@ export const ReviewAccessRequestModal = ({
                                 </div>
                               ) : (
                                 <div className="flex items-center" key={member.user.id}>
-                                  <span className="flex items-center opacity-40">
+                                  <span className="flex items-center gap-2 opacity-40">
                                     {member.user.username}
                                     <span className="text-xs">
                                       <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
@@ -501,7 +647,9 @@ export const ReviewAccessRequestModal = ({
                 "mt-2 rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm",
                 isReviewedByMe && "border-l-green-400",
                 !approverSequence.isMyReviewInThisSequence && "border-l-primary-400",
-                hasRejected && "border-l-red-500"
+                hasRejected && "border-l-red-500",
+                hasRevoked && "border-l-red-500",
+                hasExpired && "border-l-red-500"
               )}
             >
               {renderCompletedMessages()}
@@ -568,8 +716,30 @@ export const ReviewAccessRequestModal = ({
               </div>
             </>
           )}
+          {hasApproved && canRevokeAccess && (
+            <div className="mt-4">
+              <Button
+                isDisabled={Boolean(isLoading)}
+                onClick={() => handlePopUpOpen("revokeConfirm")}
+                size="sm"
+                colorSchema="danger"
+                variant="outline_bg"
+              >
+                Revoke Access
+              </Button>
+            </div>
+          )}
         </div>
       </ModalContent>
+      <DeleteActionModal
+        isOpen={popUp.revokeConfirm.isOpen}
+        onChange={(isOpenState) => handlePopUpToggle("revokeConfirm", isOpenState)}
+        title="Revoke access?"
+        subTitle="This will immediately remove the privilege granted by this access request. This action cannot be undone."
+        deleteKey="confirm"
+        buttonText="Revoke Access"
+        onDeleteApproved={handleRevoke}
+      />
     </Modal>
   );
 };

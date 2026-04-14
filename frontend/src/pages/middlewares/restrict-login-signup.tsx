@@ -12,6 +12,7 @@ import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
+import { GtmHead } from "@app/hooks/useGtm";
 
 const QueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
@@ -50,6 +51,7 @@ export const AuthConsentWrapper = () => {
 
   return (
     <>
+      <GtmHead />
       {config.authConsentContent && !hasConsented && (
         <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-mineshaft-700/80">
           <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-white">

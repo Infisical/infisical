@@ -20,7 +20,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
-import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
+import {
+  enterpriseSyncCheck,
+  listSecretSyncOptions,
+  preSaveTransformDestinationConfig,
+  preSaveTransformSyncOptions
+} from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -37,7 +42,10 @@ import {
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
@@ -50,7 +58,10 @@ import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -70,8 +81,11 @@ export const secretSyncServiceFactory = ({
   secretSyncDAL,
   folderDAL,
   secretImportDAL,
-  permissionService,
+  secretV2BridgeDAL,
+  appConnectionDAL,
   appConnectionService,
+  kmsService,
+  permissionService,
   projectDAL,
   orgDAL,
   projectBotService,
@@ -102,6 +116,8 @@ export const secretSyncServiceFactory = ({
       ...(connectionId && { connectionId })
     });
   };
+
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
 
   const listSecretSyncsByProjectId = async (
     { projectId, destination }: TListSecretSyncsByProjectId,
@@ -377,15 +393,35 @@ export const secretSyncServiceFactory = ({
       actor
     );
 
+    const resolvedSyncOptions = await preSaveTransformSyncOptions(
+      params.destination,
+      { syncOptions: params.syncOptions as Record<string, unknown> | undefined, folderId: folder.id },
+      preSaveTransformDeps
+    );
+
+    const enrichedDestinationConfig = await preSaveTransformDestinationConfig(
+      params.destination,
+      {
+        destinationConfig: params.destinationConfig as Record<string, unknown> | undefined,
+        connectionId: params.connectionId
+      },
+      preSaveTransformDeps
+    );
+
     try {
       const secretSync = await secretSyncDAL.create({
         folderId: folder.id,
         ...params,
+        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
       });
 
-      if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+      if (secretSync.isAutoSyncEnabled)
+        await secretSyncQueue.queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id
+        });
 
       return secretSync as TSecretSync;
     } catch (err) {
@@ -530,15 +566,44 @@ export const secretSyncServiceFactory = ({
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
 
+    const resolvedSyncOptions = folderId
+      ? await preSaveTransformSyncOptions(
+          destination,
+          {
+            syncOptions: params.syncOptions as Record<string, unknown> | undefined,
+            existingSyncOptions: secretSync.syncOptions as Record<string, unknown> | undefined,
+            folderId
+          },
+          preSaveTransformDeps
+        )
+      : (params.syncOptions as Record<string, unknown> | undefined);
+
+    const connectionIdForEnrich = params.connectionId ?? secretSync.connectionId;
+
+    const enrichedDestinationConfig = connectionIdForEnrich
+      ? await preSaveTransformDestinationConfig(
+          destination,
+          {
+            destinationConfig: params.destinationConfig as Record<string, unknown> | undefined,
+            connectionId: connectionIdForEnrich
+          },
+          preSaveTransformDeps
+        )
+      : params.destinationConfig;
+
     try {
       const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
         ...params,
+        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId
       });
 
       if (updatedSecretSync.isAutoSyncEnabled)
-        await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
+        await secretSyncQueue.queueSecretSyncSyncSecretsById({
+          syncId: secretSync.id
+        });
 
       return updatedSecretSync as TSecretSync;
     } catch (err) {

@@ -160,7 +160,7 @@ export const IdentityKubernetesAuthForm = ({
       caCert: "",
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
-      accessTokenNumUsesLimit: "0",
+      accessTokenNumUsesLimit: "",
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
     }
   });
@@ -184,7 +184,9 @@ export const IdentityKubernetesAuthForm = ({
         gatewayId: data.gatewayId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
-        accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
+          ? String(data.accessTokenNumUsesLimit)
+          : "",
         accessTokenTrustedIps: data.accessTokenTrustedIps.map(
           ({ ipAddress, prefix }: IdentityTrustedIp) => {
             return {
@@ -204,7 +206,7 @@ export const IdentityKubernetesAuthForm = ({
         caCert: "",
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
-        accessTokenNumUsesLimit: "0",
+        accessTokenNumUsesLimit: "",
         accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
       });
     }
@@ -219,22 +221,14 @@ export const IdentityKubernetesAuthForm = ({
       });
 
       if (role.bound_service_account_names?.length > 0) {
-        // In Vault, "*" means allow all; in Infisical, empty field means allow any
-        const allowedNames = role.bound_service_account_names.includes("*")
-          ? ""
-          : role.bound_service_account_names.join(", ");
-        setValue("allowedNames", allowedNames, {
+        setValue("allowedNames", role.bound_service_account_names.join(", "), {
           shouldDirty: true,
           shouldTouch: true
         });
       }
 
       if (role.bound_service_account_namespaces?.length > 0) {
-        // In Vault, "*" means allow all; in Infisical, empty field means allow any
-        const allowedNamespaces = role.bound_service_account_namespaces.includes("*")
-          ? ""
-          : role.bound_service_account_namespaces.join(", ");
-        setValue("allowedNamespaces", allowedNamespaces, {
+        setValue("allowedNamespaces", role.bound_service_account_namespaces.join(", "), {
           shouldDirty: true,
           shouldTouch: true
         });
@@ -339,7 +333,7 @@ export const IdentityKubernetesAuthForm = ({
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     } else {
@@ -362,7 +356,7 @@ export const IdentityKubernetesAuthForm = ({
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
         accessTokenTrustedIps
       });
     }
@@ -575,11 +569,27 @@ export const IdentityKubernetesAuthForm = ({
                 label="Allowed Namespaces"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
+                tooltipText={
+                  <div className="flex flex-col gap-1">
+                    <p>
+                      A comma-separated list of trusted namespaces that service accounts must belong
+                      to authenticate with Infisical.
+                    </p>
+                    <p>
+                      Regex and Wildcard patterns are supported. Use{" "}
+                      <span className="font-mono">*</span> to explicitly allow all.
+                    </p>
+                    <p className="text-sm">
+                      Examples: <span className="font-mono">dev-*</span>,{" "}
+                      <span className="font-mono">staging-*</span>,{" "}
+                      <span className="font-mono">team-{"{a,b}"}</span>
+                    </p>
+                  </div>
+                }
               >
                 <Input
                   {...field}
-                  placeholder="namespaceA, namespaceB"
+                  placeholder="namespaceA, namespaceB, dev-*"
                   type="text"
                   autoComplete="off"
                 />
@@ -594,12 +604,29 @@ export const IdentityKubernetesAuthForm = ({
               <FormControl
                 label="Allowed Service Account Names"
                 isError={Boolean(error)}
-                tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
+                tooltipText={
+                  <div className="flex flex-col gap-1">
+                    <p>
+                      An optional comma-separated list of trusted service account names that are
+                      allowed to authenticate with Infisical. Leave empty to allow any service
+                      account.
+                    </p>
+                    <p>
+                      Regex and Wildcard patterns are supported. Use{" "}
+                      <span className="font-mono">*</span> to explicitly allow all.
+                    </p>
+                    <p className="text-sm">
+                      Examples: <span className="font-mono">dev-*</span>,{" "}
+                      <span className="font-mono">staging-*</span>,{" "}
+                      <span className="font-mono">team-{"{a,b}"}</span>
+                    </p>
+                  </div>
+                }
                 errorText={error?.message}
               >
                 <Input
                   {...field}
-                  placeholder="service-account-1-name, service-account-1-name"
+                  placeholder="service-account-1-name, sa-*, app-*-prod"
                   autoComplete="off"
                 />
               </FormControl>
@@ -644,9 +671,9 @@ export const IdentityKubernetesAuthForm = ({
                 label="Access Token Max Number of Uses"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
               >
-                <Input {...field} placeholder="0" type="number" min="0" step="1" />
+                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
               </FormControl>
             )}
           />

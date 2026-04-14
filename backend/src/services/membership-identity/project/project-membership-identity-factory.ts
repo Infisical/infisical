@@ -15,6 +15,7 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { ActorType } from "../../auth/auth-type";
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
@@ -22,14 +23,13 @@ type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
 };
 
 export const newProjectMembershipIdentityFactory = ({
   permissionService,
   orgDAL,
-  membershipIdentityDAL,
   identityDAL
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
@@ -64,11 +64,12 @@ export const newProjectMembershipIdentityFactory = ({
       ProjectPermissionIdentityActions.Create,
       ProjectPermissionSub.Identity
     );
-    const orgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: dto.data.identityId,
-      scopeOrgId: dto.permission.orgId,
-      scope: AccessScope.Organization
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: dto.data.identityId,
+      orgId: dto.permission.orgId
     });
+
     if (!orgMembership)
       throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
 
@@ -86,17 +87,22 @@ export const newProjectMembershipIdentityFactory = ({
       if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
           shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.GrantPrivileges,
+          [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
           ProjectPermissionSub.Identity,
           permission,
-          permissionRole.permission
+          permissionRole.permission,
+          {
+            identityId: identityDetails.id,
+            assignableRole: permissionRole.role?.slug
+          }
         );
+
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
               "Failed to create identity project membership",
               shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionIdentityActions.AssignRole,
               ProjectPermissionSub.Identity
             ),
             details: { missingPermissions: permissionBoundary.missingPermissions }
@@ -135,17 +141,22 @@ export const newProjectMembershipIdentityFactory = ({
     for (const permissionRole of permissionRoles) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.GrantPrivileges,
+        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         ProjectPermissionSub.Identity,
         permission,
-        permissionRole.permission
+        permissionRole.permission,
+        {
+          identityId: identityDetails.id,
+          assignableRole: permissionRole.role?.slug
+        }
       );
+
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update identity project membership",
             shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionIdentityActions.AssignRole,
             ProjectPermissionSub.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

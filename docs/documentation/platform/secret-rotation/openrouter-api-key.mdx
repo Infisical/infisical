@@ -3,6 +3,12 @@ title: "OpenRouter API Key"
 description: "Learn how to automatically rotate OpenRouter API keys."
 ---
 
+<Note>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
 ## Prerequisites
 
 - Create an [OpenRouter Connection](/integrations/app-connections/openrouter) using a **Provisioning API key**. That connection is used to create and delete API keys on your behalf during rotation.

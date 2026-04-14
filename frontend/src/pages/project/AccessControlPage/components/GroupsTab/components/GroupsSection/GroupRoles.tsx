@@ -1,37 +1,50 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faClock, faEdit, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PopperContentProps } from "@radix-ui/react-popper";
+import { CheckIcon, ClockAlertIcon, ClockIcon, EditIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
+import { FormControl, Spinner } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  Checkbox,
-  FormControl,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  IconButton,
-  Input,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Spinner,
-  Tag,
-  Tooltip
-} from "@app/components/v2";
-import { useProject } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableIconButton,
+  UnstableInput
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import {
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
+import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { groupBy } from "@app/lib/fn/array";
+import {
+  canModifyByGrantConditions,
+  filterByGrantConditions,
+  getGroupAssignRoleConditions
+} from "@app/lib/fn/permission";
 
 const temporaryRoleFormSchema = z.object({
   temporaryRange: z.string().min(1, "Required")
@@ -73,31 +86,30 @@ const IdentityTemporaryRoleForm = ({
         handlePopUpToggle("setTempRole", isOpen);
       }}
     >
-      <PopoverTrigger asChild>
-        <IconButton ariaLabel="role-temp" variant="plain" size="md">
-          <Tooltip content={isExpired ? "Access Expired" : "Grant Temporary Access"}>
-            <FontAwesomeIcon
-              icon={faClock}
-              className={twMerge(
-                isTemporaryFieldValue && "text-primary",
-                isExpired && "text-red-600"
-              )}
-            />
-          </Tooltip>
-        </IconButton>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <UnstableIconButton
+              // eslint-disable-next-line no-nested-ternary
+              variant={isExpired ? "danger" : isTemporaryFieldValue ? "warning" : "ghost"}
+              size="xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ClockIcon />
+            </UnstableIconButton>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{isExpired ? "Access Expired" : "Grant Temporary Access"}</TooltipContent>
+      </Tooltip>
       <PopoverContent
-        arrowClassName="fill-gray-600"
         side="right"
         sideOffset={12}
-        hideCloseBtn
-        className="border border-gray-600 pt-4"
+        className="w-72"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col space-y-4">
-          <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-            Set Role Temporarily
-          </div>
-          {isExpired && <Tag colorSchema="red">Expired</Tag>}
+          <div className="border-b border-border pb-2 text-sm text-muted">Set Role Temporarily</div>
+          {isExpired && <Badge variant="danger">Expired</Badge>}
           <Controller
             control={control}
             name="temporaryRange"
@@ -113,18 +125,18 @@ const IdentityTemporaryRoleForm = ({
                       href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-700"
+                      className="underline"
                     >
                       More
                     </a>
                   </span>
                 }
               >
-                <Input {...field} />
+                <UnstableInput {...field} isError={Boolean(error?.message)} />
               </FormControl>
             )}
           />
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             {isTemporaryFieldValue && (
               <Button
                 size="xs"
@@ -157,13 +169,12 @@ const IdentityTemporaryRoleForm = ({
                   })()
                 }
               >
-                Grant access
+                Configure Duration
               </Button>
             ) : (
               <Button
                 size="xs"
-                variant="outline_bg"
-                colorSchema="danger"
+                variant="danger"
                 onClick={() => {
                   onRemoveTemporary();
                   handlePopUpToggle("setTempRole");
@@ -198,9 +209,9 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupId: string;
+  groupName: string;
   className?: string;
   roles: TGroupMembership["roles"];
-  popperContentProps?: PopperContentProps;
 };
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
@@ -214,8 +225,12 @@ type FormProps = {
 
 const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
   const { currentProject } = useProject();
-
-  const [searchRoles, setSearchRoles] = useState("");
+  const { subscription } = useSubscription();
+  const {
+    popUp: upgradePlanPopUp,
+    handlePopUpOpen: handleUpgradePlanPopUpOpen,
+    handlePopUpToggle: handleUpgradePlanPopUpToggle
+  } = usePopUp(["upgradePlan"] as const);
 
   const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
 
@@ -231,6 +246,15 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
   });
 
   const handleRoleUpdate = async (data: TForm) => {
+    const hasCustomRole = Object.keys(data)
+      .filter((el) => Boolean(data[el].isChecked))
+      .some((slug) => isCustomProjectRole(slug));
+
+    if (hasCustomRole && subscription && !subscription?.rbac) {
+      handleUpgradePlanPopUpOpen("upgradePlan");
+      return;
+    }
+
     const selectedRoles = Object.keys(data)
       .filter((el) => Boolean(data[el].isChecked))
       .map((el) => {
@@ -260,109 +284,104 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
     });
     createNotification({ text: "Successfully updated group role", type: "success" });
     onClose();
-    setSearchRoles("");
   };
-
-  const filteredRoles =
-    projectRoles?.filter(
-      ({ name, slug }) =>
-        name.toLowerCase().includes(searchRoles.toLowerCase()) ||
-        slug.toLowerCase().includes(searchRoles.toLowerCase())
-    ) ?? [];
 
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
-      <div className="max-h-80 thin-scrollbar space-y-4 overflow-y-auto">
-        {filteredRoles.length > 0 ? (
-          filteredRoles.map(({ id, name, slug }) => {
-            const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
+      <Command>
+        <CommandInput placeholder="Search roles..." />
+        <CommandList>
+          <CommandEmpty>No roles found</CommandEmpty>
+          <CommandGroup>
+            {(projectRoles ?? []).map(({ id, name, slug }) => {
+              const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
 
-            return (
-              <div key={id} className="flex items-center space-x-4">
-                <div className="flex-1 truncate">
-                  <Controller
-                    control={control}
-                    defaultValue={Boolean(userProjectRoleDetails?.id)}
-                    name={`${slug}.isChecked`}
-                    render={({ field }) => (
-                      <Checkbox
-                        id={slug}
-                        isChecked={field.value}
-                        onCheckedChange={(isChecked) => {
-                          field.onChange(isChecked);
-                          setValue(`${slug}.temporaryAccess`, false);
-                        }}
-                      >
-                        {name}
-                      </Checkbox>
-                    )}
-                  />
-                </div>
-                <div>
-                  <Controller
-                    control={control}
-                    name={`${slug}.temporaryAccess`}
-                    defaultValue={
-                      userProjectRoleDetails?.isTemporary
-                        ? {
-                            isTemporary: true,
-                            temporaryAccessStartTime:
-                              userProjectRoleDetails.temporaryAccessStartTime as string,
-                            temporaryRange: userProjectRoleDetails.temporaryRange as string,
-                            temporaryAccessEndTime: userProjectRoleDetails.temporaryAccessEndTime
-                          }
-                        : false
-                    }
-                    render={({ field }) => (
-                      <IdentityTemporaryRoleForm
-                        temporaryConfig={
-                          typeof field.value === "boolean"
-                            ? { isTemporary: field.value }
-                            : field.value
-                        }
-                        onSetTemporary={(data) => {
-                          setValue(`${slug}.isChecked`, true, { shouldDirty: true });
-                          field.onChange({ isTemporary: true, ...data });
-                        }}
-                        onRemoveTemporary={() => {
-                          setValue(`${slug}.isChecked`, false, { shouldDirty: true });
-                          field.onChange(false);
-                        }}
+              return (
+                <Controller
+                  key={id}
+                  control={control}
+                  defaultValue={Boolean(userProjectRoleDetails?.id)}
+                  name={`${slug}.isChecked`}
+                  render={({ field }) => (
+                    <CommandItem
+                      value={slug}
+                      keywords={[name]}
+                      onSelect={() => {
+                        field.onChange(!field.value);
+                        setValue(`${slug}.temporaryAccess`, false);
+                      }}
+                    >
+                      <CheckIcon
+                        className={cn("size-4 shrink-0", field.value ? "opacity-100" : "opacity-0")}
                       />
-                    )}
-                  />
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <span className="text-sm text-mineshaft-400">No roles match search...</span>
-        )}
+                      <span className="truncate">{name}</span>
+                      <div className="ml-auto">
+                        <Controller
+                          control={control}
+                          name={`${slug}.temporaryAccess`}
+                          defaultValue={
+                            userProjectRoleDetails?.isTemporary
+                              ? {
+                                  isTemporary: true,
+                                  temporaryAccessStartTime:
+                                    userProjectRoleDetails.temporaryAccessStartTime as string,
+                                  temporaryRange: userProjectRoleDetails.temporaryRange as string,
+                                  temporaryAccessEndTime:
+                                    userProjectRoleDetails.temporaryAccessEndTime
+                                }
+                              : false
+                          }
+                          render={({ field: tempField }) => (
+                            <IdentityTemporaryRoleForm
+                              temporaryConfig={
+                                typeof tempField.value === "boolean"
+                                  ? { isTemporary: tempField.value }
+                                  : tempField.value
+                              }
+                              onSetTemporary={(data) => {
+                                setValue(`${slug}.isChecked`, true, {
+                                  shouldDirty: true
+                                });
+                                tempField.onChange({ isTemporary: true, ...data });
+                              }}
+                              onRemoveTemporary={() => {
+                                setValue(`${slug}.isChecked`, false, {
+                                  shouldDirty: true
+                                });
+                                tempField.onChange(false);
+                              }}
+                            />
+                          )}
+                        />
+                      </div>
+                    </CommandItem>
+                  )}
+                />
+              );
+            })}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+      <div className="flex items-center justify-end border-t border-border p-2">
+        <Button
+          size="xs"
+          type="submit"
+          isFullWidth
+          variant="project"
+          form="role-update-form"
+          isDisabled={!isDirty || isSubmitting}
+          isPending={isSubmitting}
+        >
+          <CheckIcon />
+          Save
+        </Button>
       </div>
-      <div className="mt-3 flex items-center space-x-2 border-t border-t-gray-700 pt-3">
-        <div>
-          <Input
-            className="w-full p-1.5 pl-8"
-            size="xs"
-            value={searchRoles}
-            onChange={(el) => setSearchRoles(el.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faSearch} />}
-            placeholder="Search roles.."
-          />
-        </div>
-        <div>
-          <Button
-            size="xs"
-            type="submit"
-            form="role-update-form"
-            leftIcon={<FontAwesomeIcon icon={faCheck} />}
-            isDisabled={!isDirty || isSubmitting}
-            isLoading={isSubmitting}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
+      <UpgradePlanModal
+        isOpen={upgradePlanPopUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature
+      />
     </form>
   );
 };
@@ -371,113 +390,144 @@ export const GroupRoles = ({
   roles = [],
   disableEdit = false,
   groupId,
-  className,
-  popperContentProps
+  groupName,
+  className
 }: TMemberRolesProp) => {
   const { currentProject } = useProject();
-  const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
+  const { permission } = useProjectPermission();
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
     currentProject?.id ?? ""
   );
 
+  const assignRoleConditions = useMemo(
+    () => getGroupAssignRoleConditions(permission),
+    [permission]
+  );
+
+  const canModifyGroupRoles = useMemo(() => {
+    if (!groupName) return false;
+
+    const hasAnyGroupPrivilegeRule = permission.rules.some((rule) => {
+      if (rule.inverted) return false;
+      const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+      if (!ruleSubjects.includes(ProjectPermissionSub.Groups)) return false;
+      const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+      return actions.some((a) => String(a) === "grant-privileges" || String(a) === "assign-role");
+    });
+
+    if (!hasAnyGroupPrivilegeRule) return false;
+    if (!assignRoleConditions) return true;
+
+    return canModifyByGrantConditions({
+      targetValue: groupName,
+      allowed: assignRoleConditions.groupNames,
+      forbidden: assignRoleConditions.forbiddenGroupNames
+    });
+  }, [permission, assignRoleConditions, groupName]);
+
+  const filteredProjectRoles = useMemo(
+    () =>
+      filterByGrantConditions(projectRoles ?? [], {
+        getKey: (role) => role.slug,
+        allowed: assignRoleConditions?.roles,
+        forbidden: assignRoleConditions?.forbiddenRoles
+      }),
+    [projectRoles, assignRoleConditions]
+  );
+
+  const isEditDisabled = disableEdit || !canModifyGroupRoles;
+
   return (
-    <div className={twMerge("flex items-center space-x-1", className)}>
+    <div className={twMerge("flex items-center gap-1.5", className)}>
       {roles
         .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
         .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
           const isExpired = new Date() > new Date(temporaryAccessEndTime || ("" as string));
           return (
-            <Tag key={id} className="capitalize">
-              <div className="flex items-center space-x-2">
-                <div className="max-w-32 truncate">
-                  {formatProjectRoleName(role, customRoleName)}
-                </div>
-                {isTemporary && (
-                  <div>
-                    <Tooltip content={isExpired ? "Expired Temporary Access" : "Temporary Access"}>
-                      <FontAwesomeIcon
-                        icon={faClock}
-                        className={twMerge(isExpired && "text-red-600")}
-                      />
-                    </Tooltip>
-                  </div>
-                )}
-              </div>
-            </Tag>
+            <Badge key={id} variant={isExpired ? "danger" : "neutral"}>
+              <span className="max-w-32 truncate capitalize">
+                {formatProjectRoleName(role, customRoleName)}
+              </span>
+              {isTemporary && (
+                <Tooltip>
+                  <TooltipTrigger>{isExpired ? <ClockAlertIcon /> : <ClockIcon />}</TooltipTrigger>
+                  <TooltipContent>
+                    {isExpired ? "Expired access" : "Temporary access"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </Badge>
           );
         })}
       {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
-        <HoverCard>
-          <HoverCardTrigger>
-            <Tag>+{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}</Tag>
-          </HoverCardTrigger>
-          <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-4">
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger className="flex h-4 items-center">
+              <PopoverTrigger asChild>
+                <Badge variant="neutral" asChild>
+                  <button type="button" onClick={(e) => e.stopPropagation()}>
+                    +{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}
+                  </button>
+                </Badge>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Click to view additional roles</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            side="right"
+            className="flex w-auto max-w-sm flex-wrap gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
             {roles
               .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
               .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
                 const isExpired = new Date() > new Date(temporaryAccessEndTime || ("" as string));
                 return (
-                  <Tag key={id} className="capitalize">
-                    <div className="flex items-center space-x-2">
-                      <div>{formatProjectRoleName(role, customRoleName)}</div>
-                      {isTemporary && (
-                        <div>
-                          <Tooltip
-                            content={isExpired ? "Expired Temporary Access" : "Temporary Access"}
-                          >
-                            <FontAwesomeIcon
-                              icon={faClock}
-                              className={twMerge(
-                                new Date() > new Date(temporaryAccessEndTime as string) &&
-                                  "text-red-600"
-                              )}
-                            />
-                          </Tooltip>
-                        </div>
-                      )}
-                    </div>
-                  </Tag>
+                  <Badge key={id} className="z-10" variant={isExpired ? "danger" : "neutral"}>
+                    <span className="capitalize">
+                      {formatProjectRoleName(role, customRoleName)}
+                    </span>
+                    {isTemporary && (
+                      <Tooltip>
+                        <TooltipTrigger tabIndex={-1}>
+                          {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isExpired ? "Access expired" : "Temporary access"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </Badge>
                 );
-              })}{" "}
-          </HoverCardContent>
-        </HoverCard>
+              })}
+          </PopoverContent>
+        </Popover>
       )}
-      <div>
-        <Popover
-          open={popUp.editRole.isOpen}
-          onOpenChange={(isOpen) => {
-            handlePopUpToggle("editRole", isOpen);
-          }}
-        >
-          {!disableEdit && (
-            <PopoverTrigger onClick={(e) => e.stopPropagation()}>
-              <IconButton size="sm" variant="plain" ariaLabel="update">
-                <FontAwesomeIcon icon={faEdit} />
-              </IconButton>
-            </PopoverTrigger>
-          )}
-          <PopoverContent
-            {...popperContentProps}
-            onClick={(e) => e.stopPropagation()}
-            hideCloseBtn
-            className="pt-4"
-          >
+      {!isEditDisabled && (
+        <Popover open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <PopoverTrigger asChild>
+            <UnstableIconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+              <EditIcon />
+            </UnstableIconButton>
+          </PopoverTrigger>
+          <PopoverContent side="right" className="w-72 p-0" onClick={(e) => e.stopPropagation()}>
             {isRolesLoading ? (
               <div className="flex h-8 w-full items-center justify-center">
                 <Spinner />
               </div>
             ) : (
               <GroupRolesForm
-                projectRoles={projectRoles}
+                projectRoles={filteredProjectRoles}
                 groupId={groupId}
                 roles={roles}
-                onClose={() => handlePopUpToggle("editRole")}
+                onClose={() => setIsEditOpen(false)}
               />
             )}
           </PopoverContent>
         </Popover>
-      </div>
+      )}
     </div>
   );
 };

@@ -136,7 +136,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, organizationId } =
+      const { user, accessToken, refreshToken, organizationId, authMethod } =
         await server.services.signup.completeEmailAccountSignup({
           ...req.body,
           ip: req.realIp,
@@ -146,17 +146,42 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          authMethod,
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
+        ...(organizationId ? { organizationId } : {}),
         properties: {
           username: user.username,
           email: user.email ?? "",
           attributionSource: req.body.attributionSource
         }
       });
+
+      const signupDistinctId = user.username ?? user.email ?? "";
+      if (signupDistinctId) {
+        void server.services.telemetry.identifyUser(
+          signupDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
+      }
 
       void res.setCookie("jid", refreshToken, {
         httpOnly: true,
@@ -199,7 +224,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken } = await server.services.signup.completeAccountInvite({
+      const { user, accessToken, refreshToken, organizationId } = await server.services.signup.completeAccountInvite({
         ...req.body,
         ip: req.realIp,
         userAgent,
@@ -208,17 +233,42 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (user.email) {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
+        void server.services.telemetry.sendHubSpotSignupEvent(
+          user.email,
+          "invite",
+          user.firstName || "",
+          user.lastName || ""
+        );
       }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
+        ...(organizationId ? { organizationId } : {}),
         properties: {
           username: user.username,
           email: user.email ?? "",
           attributionSource: "Team Invite"
         }
       });
+
+      const inviteDistinctId = user.username ?? user.email ?? "";
+      if (inviteDistinctId) {
+        void server.services.telemetry.identifyUser(
+          inviteDistinctId,
+          {
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            isEmailVerified: user.isEmailVerified ?? undefined,
+            isMfaEnabled: user.isMfaEnabled ?? undefined,
+            superAdmin: user.superAdmin ?? undefined
+          },
+          { skipDedup: true }
+        );
+      }
 
       void res.setCookie("jid", refreshToken, {
         httpOnly: true,

@@ -277,7 +277,8 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
           </div>
           {!hasMerged &&
             secretApprovalRequestDetails.status === "open" &&
-            !shouldBlockSelfReview && (
+            !shouldBlockSelfReview &&
+            canApprove && (
               <DropdownMenu
                 open={popUp.reviewChanges.isOpen}
                 onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}

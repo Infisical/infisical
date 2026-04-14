@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SubOrgOrderBy } from "@app/ee/services/sub-org/sub-org-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
+import { pick } from "@app/lib/fn";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -26,6 +29,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSubOrganization",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Create a sub organization",
       security: [
@@ -34,7 +38,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: slugSchema().describe(SUB_ORGANIZATIONS.CREATE.name)
+        name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name),
+        slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -46,7 +51,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
-        permissionActor: req.permission
+        slug: req.body.slug,
+        permission: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -55,7 +61,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
-            name: req.body.name,
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }
@@ -73,6 +79,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSubOrganizations",
       tags: [ApiDocsTags.SubOrganizations],
       description: "List of sub organizations",
       security: [
@@ -83,6 +90,12 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         limit: z.coerce.number().min(1).max(1000).default(25).describe(SUB_ORGANIZATIONS.LIST.limit),
         offset: z.coerce.number().min(0).default(0).describe(SUB_ORGANIZATIONS.LIST.offset),
+        search: z.string().trim().optional().describe(SUB_ORGANIZATIONS.LIST.search),
+        orderBy: z.nativeEnum(SubOrgOrderBy).default(SubOrgOrderBy.Name).describe(SUB_ORGANIZATIONS.LIST.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(SUB_ORGANIZATIONS.LIST.orderDirection),
         isAccessible: z
           .enum(["true", "false"])
           .optional()
@@ -91,22 +104,26 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organizations: sanitizedSubOrganizationSchema.array()
+          organizations: sanitizedSubOrganizationSchema.array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { organizations } = await server.services.subOrganization.listSubOrgs({
-        permissionActor: req.permission,
+      const { organizations, totalCount } = await server.services.subOrganization.listSubOrgs({
+        permission: req.permission,
         data: {
           limit: req.query.limit,
           offset: req.query.offset,
+          search: req.query.search,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection,
           isAccessible: req.query.isAccessible
         }
       });
 
-      return { organizations };
+      return { organizations, totalCount };
     }
   });
 
@@ -118,6 +135,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateSubOrganization",
       tags: [ApiDocsTags.SubOrganizations],
       description: "Update a sub organization",
       security: [
@@ -128,9 +146,14 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.UPDATE.subOrgId)
       }),
-      body: z.object({
-        name: slugSchema().describe(SUB_ORGANIZATIONS.UPDATE.name)
-      }),
+      body: z
+        .object({
+          name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
+          slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
+        })
+        .refine((data) => data.name !== undefined || data.slug !== undefined, {
+          message: "At least one field (name or slug) must be provided"
+        }),
       response: {
         200: z.object({
           organization: sanitizedSubOrganizationSchema
@@ -142,7 +165,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       const { organization } = await server.services.subOrganization.updateSubOrg({
         subOrgId: req.params.subOrgId,
         name: req.body.name,
-        permissionActor: req.permission
+        slug: req.body.slug,
+        permission: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -151,7 +175,103 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.UPDATE_SUB_ORGANIZATION,
           metadata: {
-            name: req.body.name,
+            ...pick(organization, ["name", "slug"]),
+            organizationId: organization.id
+          }
+        }
+      });
+
+      return { organization };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:subOrgId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "createSubOrganizationMembership",
+      tags: [ApiDocsTags.SubOrganizations],
+      description: "Join a sub organization",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.JOIN.subOrgId)
+      }),
+      response: {
+        200: z.object({
+          organization: sanitizedSubOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { organization } = await server.services.subOrganization.joinSubOrg({
+        subOrgId: req.params.subOrgId,
+        permission: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.JOIN_SUB_ORGANIZATION,
+          metadata: {
+            ...pick(organization, ["name", "slug"]),
+            organizationId: organization.id
+          }
+        }
+      });
+
+      return { organization };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:subOrgId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "deleteSubOrganization",
+      tags: [ApiDocsTags.SubOrganizations],
+      description: "Delete a sub organization",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.DELETE.subOrgId)
+      }),
+      response: {
+        200: z.object({
+          organization: sanitizedSubOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { organization } = await server.services.subOrganization.deleteSubOrg({
+        subOrgId: req.params.subOrgId,
+        permission: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_SUB_ORGANIZATION,
+          metadata: {
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }

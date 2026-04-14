@@ -66,7 +66,7 @@ export const addRenewedCertificateToSyncs = async (
   dependencies: {
     certificateSyncDAL: Pick<
       TCertificateSyncDALFactory,
-      "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
+      "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
     >;
   },
   tx?: Knex
@@ -94,6 +94,12 @@ export const addRenewedCertificateToSyncs = async (
         ],
         tx
       );
+
+      const oldSyncMetadata = oldCertificateRecord?.syncMetadata as { isDefault?: boolean } | null;
+      if (oldSyncMetadata?.isDefault) {
+        await dependencies.certificateSyncDAL.updateSyncMetadata(pkiSyncId, newCertificateId, { isDefault: true }, tx);
+        await dependencies.certificateSyncDAL.updateSyncMetadata(pkiSyncId, oldCertificateId, null, tx);
+      }
     });
     await Promise.all(addPromises);
 

@@ -108,7 +108,16 @@ In the following steps, we explore how to create and use identities to access th
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
     <Info>
         The `subject`, `audiences`, and `claims` fields support glob pattern matching; however, we highly recommend using hardcoded values whenever possible.
-    </Info>
+
+
+        Note that `*` acts as `**` in OIDC auth and matches any characters **including** `:` and `/`. Use specific patterns to avoid overly broad matching.
+
+        | Pattern | Matches | Does not match |
+        |---------|---------|----------------|
+        | `repo:my-org/my-repo:*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:environment:prod` | `repo:other-org/my-repo:ref:refs/heads/main` |
+        | `repo:my-org/{app,api}:*` | `repo:my-org/app:ref:refs/heads/main`, `repo:my-org/api:environment:prod` | `repo:my-org/web:ref:refs/heads/main` |
+        | `repo:my-org/my-repo:ref:refs/heads/*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:ref:refs/heads/dev` | `repo:my-org/my-repo:environment:prod` |
+        </Info>
 
     </Step>
 

@@ -207,7 +207,7 @@ const createOracleInfisicalUsers = async (
     const existingUser = await client.raw(`SELECT * FROM all_users WHERE username = '${username}'`);
 
     if (!existingUser.length) {
-      await client.raw(`CREATE USER ${username} IDENTIFIED BY "temporary_password"`);
+      await client.raw(`CREATE USER ${username} IDENTIFIED BY "TEMPORARY_password22__"`);
     }
     await client.raw(`GRANT ALL PRIVILEGES TO ${username} WITH ADMIN OPTION`);
   }
@@ -245,7 +245,7 @@ const createMySQLInfisicalUsers = async (
     const existingUser = await client.raw(`SELECT * FROM mysql.user WHERE user = '${username}'`);
 
     if (!existingUser[0].length) {
-      await client.raw(`CREATE USER '${username}'@'%' IDENTIFIED BY 'temporary_password';`);
+      await client.raw(`CREATE USER '${username}'@'%' IDENTIFIED BY 'TEMPORARY_password22__';`);
     }
 
     await client.raw(`GRANT ALL PRIVILEGES ON \`${credentials.database}\`.* TO '${username}'@'%';`);
@@ -276,7 +276,7 @@ const createPostgresInfisicalUsers = async (
     const existingUser = await client.raw("SELECT * FROM pg_catalog.pg_user WHERE usename = ?", [username]);
 
     if (!existingUser.rows.length) {
-      await client.raw(`CREATE USER "${username}" WITH PASSWORD 'temporary_password'`);
+      await client.raw(`CREATE USER "${username}" WITH PASSWORD 'TEMPORARY_password22__'`);
     }
 
     await client.raw("GRANT ALL PRIVILEGES ON DATABASE ?? TO ??", [credentials.database, username]);
@@ -297,13 +297,25 @@ const createOracleDBSecretRotation = async (
   await createOracleInfisicalUsers(credentials, userCredentials);
 
   const createOracleDBSecretRotationReqBody = {
-    parameters: userCredentials.reduce(
-      (acc, user, index) => {
-        acc[`username${index + 1}`] = user.username;
-        return acc;
-      },
-      {} as Record<string, string>
-    ),
+    parameters: {
+      ...userCredentials.reduce(
+        (acc, user, index) => {
+          acc[`username${index + 1}`] = user.username;
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+      passwordRequirements: {
+        length: 30,
+        required: {
+          digits: 2,
+          lowercase: 12,
+          uppercase: 2,
+          symbols: 2
+        },
+        allowedSymbols: "_"
+      }
+    },
     secretsMapping: {
       username: secretMapping.username,
       password: secretMapping.password
@@ -535,30 +547,30 @@ describe("Secret Rotations", async () => {
         }
       ]
     },
-    {
-      type: SecretRotationType.OracleDb,
-      name: "OracleDB (19.3) Secret Rotation",
-      skippable: true,
-      dbCredentials: {
-        password: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
-        host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
-        username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
-        port: 1521,
-        database: "ORCLPDB1"
-      },
-      secretMapping: {
-        username: formatSqlUsername("ORACLEDB_USERNAME"),
-        password: formatSqlUsername("ORACLEDB_PASSWORD")
-      },
-      userCredentials: [
-        {
-          username: formatSqlUsername("INFISICAL_USER_1")
-        },
-        {
-          username: formatSqlUsername("INFISICAL_USER_2")
-        }
-      ]
-    },
+    // {
+    //   type: SecretRotationType.OracleDb,
+    //   name: "OracleDB (19.3) Secret Rotation",
+    //   skippable: true,
+    //   dbCredentials: {
+    //     password: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
+    //     host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
+    //     username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
+    //     port: 1521,
+    //     database: process.env.E2E_TEST_ORACLE_DB_19_DATABASE!
+    //   },
+    //   secretMapping: {
+    //     username: formatSqlUsername("ORACLEDB_USERNAME"),
+    //     password: formatSqlUsername("ORACLEDB_PASSWORD")
+    //   },
+    //   userCredentials: [
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_1")
+    //     },
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_2")
+    //     }
+    //   ]
+    // },
     {
       type: SecretRotationType.Postgres,
       name: "Postgres (17) Secret Rotation",

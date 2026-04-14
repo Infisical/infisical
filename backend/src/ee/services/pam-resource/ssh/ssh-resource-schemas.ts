@@ -94,7 +94,7 @@ export const UpdateSSHResourceSchema = BaseUpdateGatewayPamResourceSchema.extend
 });
 
 // Resource Metadata
-export const SSHResourceMetadataSchema = z.object({
+export const SSHResourceInternalMetadataSchema = z.object({
   caPrivateKey: z.string(),
   caPublicKey: z.string(),
   caKeyAlgorithm: z.string()
@@ -114,6 +114,7 @@ export const UpdateSSHAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedSSHAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.SSH),
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
       authMethod: z.literal(SSHAuthMethod.Password),

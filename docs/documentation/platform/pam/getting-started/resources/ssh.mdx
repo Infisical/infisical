@@ -119,12 +119,12 @@ A PAM Account represents a specific user account on the SSH server. You can crea
 ### Password Authentication
 
 <Steps>
-  <Step title="Navigate to Accounts">
-    Go to the **Accounts** tab in your PAM project.
+  <Step title="Navigate to Resource">
+    Go to the **Resources** tab in your PAM project and open your SSH resource.
   </Step>
 
   <Step title="Add Account">
-    Click **Add Account** and select your SSH resource.
+    Click **Add Account**.
   </Step>
 
   <Step title="Configure Password Auth">
@@ -260,13 +260,16 @@ Once your resource and accounts are configured, users can access SSH servers thr
   </Step>
 
   <Step title="Connect to SSH Server">
+    Specify the **resource name** and **account name** as shown in Infisical:
+
     ```bash
-    infisical pam ssh access-account <account-path> --project-id <project-id> --duration <duration>
+    infisical pam ssh access --resource <resource-name> --account <account-name> --project-id <project-id> --duration <duration>
     ```
 
-    For example:
+    For example, to access the account `ubuntu-admin` on the resource `production-server`:
+
     ```bash
-    infisical pam ssh access-account /production-server/ubuntu-admin --project-id 00000000-0000-0000-0000-000000000000 --duration 1h
+    infisical pam ssh access --resource production-server --account ubuntu-admin --project-id 00000000-0000-0000-0000-000000000000 --duration 1h
     ```
   </Step>
 </Steps>

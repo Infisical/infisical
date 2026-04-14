@@ -1,4 +1,5 @@
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -18,7 +19,6 @@ import {
   TListMembershipIdentityDTO,
   TUpdateMembershipIdentityDTO
 } from "./membership-identity-types";
-import { newNamespaceMembershipIdentityFactory } from "./namespace/namespace-membership-identity-factory";
 import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-factory";
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
 
@@ -30,9 +30,10 @@ type TMembershipIdentityServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -44,7 +45,8 @@ export const membershipIdentityServiceFactory = ({
   permissionService,
   orgDAL,
   additionalPrivilegeDAL,
-  identityDAL
+  identityDAL,
+  licenseService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -57,8 +59,7 @@ export const membershipIdentityServiceFactory = ({
       orgDAL,
       permissionService,
       identityDAL
-    }),
-    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
+    })
   };
 
   const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
@@ -90,6 +91,14 @@ export const membershipIdentityServiceFactory = ({
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
+    if (hasCustomRole) {
+      const plan = await licenseService.getPlan(scopeData.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
 
     const scopeField = factory.getScopeField(dto.scopeData);
     const customRoles = hasCustomRole
@@ -171,6 +180,14 @@ export const membershipIdentityServiceFactory = ({
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
+    if (hasCustomRole) {
+      const plan = await licenseService.getPlan(scopeData.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+        });
+    }
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {

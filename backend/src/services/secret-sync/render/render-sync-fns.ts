@@ -274,37 +274,54 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
 export const RenderSyncFns = {
   syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
+    const environmentSlug = secretSync.environment?.slug || "";
+    const { disableSecretDeletion, keySchema } = secretSync.syncOptions;
 
     const finalEnvVars: Array<{ key: string; value: string }> = [];
+    const secretsToDelete: Array<{ key: string; value: string }> = [];
 
+    // Step 1: Process existing Render secrets - determine what to keep or delete
     for (const renderSecret of renderSecrets) {
-      const shouldKeep =
-        secretMap[renderSecret.key] ||
-        (secretSync.syncOptions.disableSecretDeletion &&
-          !matchesSchema(renderSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema));
+      const existsInInfisical = Boolean(secretMap[renderSecret.key]);
+      const isManagedByThisSync = matchesSchema(renderSecret.key, environmentSlug, keySchema);
 
-      if (shouldKeep && !secretMap[renderSecret.key]) {
-        finalEnvVars.push({
-          key: renderSecret.key,
-          value: renderSecret.value
-        });
+      if (existsInInfisical) {
+        // Secret exists in both Render and Infisical - will be updated in Step 2
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      // Secret exists in Render but NOT in Infisical
+      if (isManagedByThisSync) {
+        if (disableSecretDeletion) {
+          finalEnvVars.push({ key: renderSecret.key, value: renderSecret.value });
+        } else {
+          secretsToDelete.push({ key: renderSecret.key, value: renderSecret.value });
+        }
+      } else {
+        // Secret is NOT managed by this sync (doesn't match schema) - always preserve it
+        finalEnvVars.push({ key: renderSecret.key, value: renderSecret.value });
       }
     }
 
+    // Step 2: Process all secrets from Infisical (these will overwrite any duplicates from Step 1)
     for (const [key, secret] of Object.entries(secretMap)) {
-      // Skip empty values as render does not allow empty variables
+      // Skip empty values as Render does not allow empty variables
       if (secret.value === "") {
         // eslint-disable-next-line no-continue
         continue;
       }
 
-      finalEnvVars.push({
-        key,
-        value: secret.value
-      });
+      finalEnvVars.push({ key, value: secret.value });
     }
 
+    // Step 3: Batch update all secrets in Render
     await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
+
+    // Step 4: Delete secrets that were removed from Infisical, only for environment groups because it doesn't delete on the update call
+    if (secretsToDelete.length > 0 && secretSync.destinationConfig.scope === RenderSyncScope.EnvironmentGroup) {
+      await Promise.all(secretsToDelete.map((envVar) => deleteEnvironmentSecret(secretSync, envVar)));
+    }
 
     if (secretSync.syncOptions.autoRedeployServices) {
       await redeployService(secretSync);

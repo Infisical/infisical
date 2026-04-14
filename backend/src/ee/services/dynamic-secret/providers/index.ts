@@ -7,6 +7,7 @@ import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
 import { AzureSqlDatabaseProvider } from "./azure-sql-database";
 import { CassandraProvider } from "./cassandra";
+import { ClickhouseProvider } from "./clickhouse";
 import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
@@ -21,6 +22,7 @@ import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
+import { SshProvider } from "./ssh";
 import { TotpProvider } from "./totp";
 import { VerticaProvider } from "./vertica";
 
@@ -34,6 +36,7 @@ export const buildDynamicSecretProviders = ({
   gatewayV2Service
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service }),
+  [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayService, gatewayV2Service }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
@@ -53,5 +56,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),
-  [DynamicSecretProviders.Couchbase]: CouchbaseProvider()
+  [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
+  [DynamicSecretProviders.Ssh]: SshProvider()
 });

@@ -4,8 +4,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamAccount } from "@app/ee/services/pam-resource/pam-resource-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
@@ -22,20 +25,27 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     folderId?: C["folderId"];
     name: C["name"];
     description?: C["description"];
-    rotationEnabled?: C["rotationEnabled"];
-    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
     name?: C["name"];
     description?: C["description"];
-    rotationEnabled?: C["rotationEnabled"];
-    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
+    internalMetadata?: Record<string, unknown>;
+    metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
+  // Convert resource type enum value to PascalCase for operation IDs
+  // e.g., "postgres" -> "Postgres", "aws-iam" -> "AwsIam"
+  const resourceTypeId = resourceType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+
   server.route({
     method: "POST",
     url: "/",
@@ -43,6 +53,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${resourceTypeId}PamAccount`,
       description: "Create PAM account",
       body: createAccountSchema,
       response: {
@@ -67,12 +78,22 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
             folderId: req.body.folderId,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled ?? false,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
             requireMfa: req.body.requireMfa
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }
@@ -85,6 +106,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${resourceTypeId}PamAccount`,
       description: "Update PAM account",
       params: z.object({
         accountId: z.string().uuid()
@@ -118,8 +140,6 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
             resourceType,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
             requireMfa: req.body.requireMfa
           }
         }
@@ -136,6 +156,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${resourceTypeId}PamAccount`,
       description: "Delete PAM account",
       params: z.object({
         accountId: z.string().uuid()
@@ -164,6 +185,18 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
           }
         }
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
 
       return { account };
     }

@@ -1,6 +1,19 @@
+/* eslint-disable @typescript-eslint/no-duplicate-type-constituents */
+import { z } from "zod";
+
+import { TPamResources } from "@app/db/schemas";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
+import {
+  TActiveDirectoryAccount,
+  TActiveDirectoryAccountCredentials,
+  TActiveDirectoryResource,
+  TActiveDirectoryResourceConnectionDetails
+} from "./active-directory/active-directory-resource-types";
 import {
   TAwsIamAccount,
   TAwsIamAccountCredentials,
@@ -14,11 +27,24 @@ import {
   TKubernetesResourceConnectionDetails
 } from "./kubernetes/kubernetes-resource-types";
 import {
+  TMongoDBAccount,
+  TMongoDBAccountCredentials,
+  TMongoDBResource,
+  TMongoDBResourceConnectionDetails
+} from "./mongodb/mongodb-resource-types";
+import {
+  TMsSQLAccount,
+  TMsSQLAccountCredentials,
+  TMsSQLResource,
+  TMsSQLResourceConnectionDetails
+} from "./mssql/mssql-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
+import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
   TPostgresAccount,
@@ -37,52 +63,84 @@ import {
   TSSHAccountCredentials,
   TSSHResource,
   TSSHResourceConnectionDetails,
-  TSSHResourceMetadata
+  TSSHResourceInternalMetadata
 } from "./ssh/ssh-resource-types";
+import {
+  TWindowsAccount,
+  TWindowsAccountCredentials,
+  TWindowsResource,
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceInternalMetadata
+} from "./windows-server/windows-server-resource-types";
 
 // Resource types
 export type TPamResource =
   | TPostgresResource
   | TMySQLResource
+  | TMsSQLResource
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TRedisResource;
+  | TRedisResource
+  | TMongoDBResource
+  | TWindowsResource
+  | TActiveDirectoryResource;
+export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
+  | TMsSQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
-  | TRedisResourceConnectionDetails;
-export type TPamResourceMetadata = TSSHResourceMetadata;
+  | TRedisResourceConnectionDetails
+  | TMongoDBResourceConnectionDetails
+  | TWindowsResourceConnectionDetails
+  | TActiveDirectoryResourceConnectionDetails;
+export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
 export type TPamAccount =
   | TPostgresAccount
   | TMySQLAccount
+  | TMsSQLAccount
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TRedisAccount;
+  | TRedisAccount
+  | TMongoDBAccount
+  | TWindowsAccount
+  | TActiveDirectoryAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
+  | TMsSQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
-  | TRedisAccountCredentials;
+  | TRedisAccountCredentials
+  | TMongoDBAccountCredentials
+  | TWindowsAccountCredentials
+  | TActiveDirectoryAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
+  adServerResourceId?: string | null;
+  metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
+
+export type TSessionSummaryConfigDTO = {
+  aiInsightsEnabled: boolean;
+  connectionId: string;
+  model: string;
+} | null;
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
   resourceId: string;
+  sessionSummaryConfig?: TSessionSummaryConfigDTO;
 };
 
 export type TListResourcesDTO = {
@@ -92,6 +150,7 @@ export type TListResourcesDTO = {
   limit?: number;
   offset?: number;
   filterResourceTypes?: string[];
+  metadataFilter?: Array<{ key: string; value?: string }>;
 } & TProjectPermission;
 
 // Resource factory
@@ -104,16 +163,33 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
   currentCredentials: C
 ) => Promise<C>;
 
-export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
+export type TPostRotateContext = {
+  pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "findByAccountId" | "updateById">;
+  pamResourceDAL: Pick<TPamResourceDALFactory, "findById" | "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+export type TPamResourceFactory<
+  T extends TPamResourceConnectionDetails,
+  C extends TPamAccountCredentials,
+  M extends TPamResourceInternalMetadata
+> = (
   resourceType: PamResource,
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   projectId: string | null | undefined,
-  resourceMetadata?: TPamResourceMetadata
+  resourceInternalMetadata?: M
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
+  postRotate?: (
+    accountId: string,
+    newCredentials: C,
+    projectId: string,
+    ctx: TPostRotateContext,
+    rotationAccountCredentials: C
+  ) => Promise<void>;
   handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };

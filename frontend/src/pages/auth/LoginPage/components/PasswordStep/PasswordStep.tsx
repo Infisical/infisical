@@ -62,77 +62,55 @@ export const PasswordStep = ({
         providerAuthToken
       });
 
-      // attemptCliLogin
-      const cliUrl = `http://127.0.0.1:${callbackPort}/`;
+      if (oauthLogin.isMfaEnabled) {
+        SecurityClient.setMfaToken(oauthLogin.token);
+        if (oauthLogin.mfaMethod) {
+          setRequiredMfaMethod(oauthLogin.mfaMethod);
+        }
+        toggleShowMfa.on();
+        // After MFA verification succeeds, the Mfa component sets the real auth token.
+        // Navigate to org selection as the post-login step (do NOT re-call handleExchange
+        // which would hit the token exchange endpoint and trigger MFA again in a loop).
+        setMfaSuccessCallback(() => async () => {
+          SecurityClient.setProviderAuthToken("");
+          if (callbackPort) {
+            navigateToSelectOrganization(callbackPort, isAdminLogin);
+          } else {
+            navigateToSelectOrganization(undefined, isAdminLogin);
+          }
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // unset provider auth token in case it was used
       SecurityClient.setProviderAuthToken("");
       // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
-      // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
-      if (organizationId) {
-        const finishWithOrgWorkflow = async () => {
-          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
-
-          if (isMfaEnabled) {
-            SecurityClient.setMfaToken(token);
-            setMfaSuccessCallback(() => finishWithOrgWorkflow);
-            if (mfaMethod) {
-              setRequiredMfaMethod(mfaMethod);
-            }
-            toggleShowMfa.on();
-            return;
-          }
-
-          if (callbackPort) {
-            console.log("organization id was present. new JWT token to be used in CLI:", token);
-            const instance = axios.create();
-            const payload = {
-              privateKey: "", // note(daniel): no longer needed by the CLI, because the CLI only uses the private key to create service tokens, and the private key isn't used anymore when creating service tokens.
-              email,
-              JTWToken: token
-            };
-            await instance.post(cliUrl, payload).catch(() => {
-              // if error happens to communicate we set the token with an expiry in sessino storage
-              // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
-              sessionStorage.setItem(
-                SessionStorageKeys.CLI_TERMINAL_TOKEN,
-                JSON.stringify({
-                  expiry: formatISO(addSeconds(new Date(), 30)),
-                  data: window.btoa(JSON.stringify(payload))
-                })
-              );
-            });
-            navigate({ to: "/cli-redirect" });
-            return;
-          }
-
-          const userDuplicateAccount = await fetchUserDuplicateAccounts();
-          const hasDuplicate = userDuplicateAccount?.length > 1;
-          if (hasDuplicate) {
-            setRemoveDuplicateLater(false);
-            return;
-          }
-
-          await navigateUserToOrg({ navigate, organizationId });
-        };
-
-        await finishWithOrgWorkflow();
+      if (callbackPort) {
+        navigateToSelectOrganization(callbackPort, isAdminLogin);
+        return;
       }
-      // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
-      // if the user has no orgs, navigate to the create org page
-      else {
-        const userOrgs = await fetchOrganizations();
 
-        // case: user has orgs, so we navigate the user to select an org
-        if (userOrgs.length > 0) {
-          navigateToSelectOrganization(callbackPort, isAdminLogin);
+      if (organizationId) {
+        const userDuplicateAccount = await fetchUserDuplicateAccounts();
+        const hasDuplicate = userDuplicateAccount?.length > 1;
+        if (hasDuplicate) {
+          setRemoveDuplicateLater(false);
+          return;
         }
-        // case: no orgs found, so we navigate the user to create an org
-        else {
-          await navigateUserToOrg({ navigate });
-        }
+      }
+
+      // case: user has orgs, so we navigate the user to select an org
+      const userOrgs = await fetchOrganizations();
+
+      if (userOrgs.length > 0) {
+        navigateToSelectOrganization(undefined, isAdminLogin);
+      }
+      // case: no orgs found, so we navigate the user to create an org
+      else {
+        await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
       setIsLoading(false);

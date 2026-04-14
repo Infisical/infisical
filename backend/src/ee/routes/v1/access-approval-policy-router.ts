@@ -6,9 +6,11 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
   .string()
@@ -26,6 +28,45 @@ const maxTimePeriodSchema = z
       });
       return z.NEVER;
     }
+    return val;
+  });
+
+const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
+const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
+const requestExpirationTimeSchema = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((val, ctx) => {
+    if (val === undefined) return undefined;
+    if (!val || val === "never") return null;
+    const parsedMs = ms(val);
+
+    if (typeof parsedMs !== "number" || parsedMs <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '3d', '72h')."
+      });
+      return z.NEVER;
+    }
+
+    if (parsedMs < MIN_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Request expiration time must be at least 1 minute."
+      });
+      return z.NEVER;
+    }
+
+    if (parsedMs > MAX_EXPIRATION_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Request expiration time cannot exceed 1 year."
+      });
+      return z.NEVER;
+    }
+
     return val;
   });
 
@@ -92,7 +133,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          maxTimePeriod: maxTimePeriodSchema
+          maxTimePeriod: maxTimePeriodSchema,
+          requestExpirationTime: requestExpirationTimeSchema
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
@@ -117,6 +159,24 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            environments: approval.environments.map((e: { slug: string }) => e.slug),
+            secretPath: req.body.secretPath,
+            approvals: req.body.approvals,
+            enforcementLevel: req.body.enforcementLevel,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval };
     }
   });
@@ -139,6 +199,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .object({
                   type: z.nativeEnum(ApproverType),
                   id: z.string().nullable().optional(),
+                  name: z.string().nullable().optional(),
                   sequence: z.number().nullable().optional(),
                   approvalsRequired: z.number().nullable().optional()
                 })
@@ -146,7 +207,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .nullable()
                 .optional(),
               bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array(),
-              maxTimePeriod: z.string().nullable().optional()
+              maxTimePeriod: z.string().nullable().optional(),
+              requestExpirationTime: z.string().nullable().optional()
             })
             .array()
             .nullable()
@@ -256,7 +318,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           })
           .array()
           .optional(),
-        maxTimePeriod: maxTimePeriodSchema
+        maxTimePeriod: maxTimePeriodSchema,
+        requestExpirationTime: requestExpirationTimeSchema
       }),
       response: {
         200: z.object({
@@ -302,6 +365,20 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         policyId: req.params.policyId
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyId: approval.id,
+            projectId: approval.projectId,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
       return { approval };
     }
   });
@@ -338,7 +415,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               .array()
               .nullable()
               .optional(),
-            maxTimePeriod: z.string().nullable().optional()
+            maxTimePeriod: z.string().nullable().optional(),
+            requestExpirationTime: z.string().nullable().optional()
           })
         })
       }

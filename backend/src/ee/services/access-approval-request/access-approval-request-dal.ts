@@ -66,6 +66,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           allowedSelfApprovals: boolean;
           deletedAt: Date | null | undefined;
           maxTimePeriod?: string | null;
+          requestExpirationTime?: string | null;
         };
         projectId: string;
         environments: string[];
@@ -76,6 +77,20 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           lastName: string | null | undefined;
           username: string;
         };
+        approvedByUser: {
+          userId: string;
+          email: string | null | undefined;
+          firstName: string | null | undefined;
+          lastName: string | null | undefined;
+          username: string;
+        } | null;
+        revokedByUser: {
+          userId: string;
+          email: string | null | undefined;
+          firstName: string | null | undefined;
+          lastName: string | null | undefined;
+          username: string;
+        } | null;
         status: string;
         id: string;
         createdAt: Date;
@@ -89,6 +104,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         permissions?: unknown;
         note?: string | null | undefined;
         privilegeDeletedAt?: Date | null | undefined;
+        expiresAt?: Date | null | undefined;
         reviewers: {
           userId: string;
           status: string;
@@ -167,6 +183,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         envId: string;
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
+        requestExpirationTime?: string | null;
       };
       projectId: string;
       environment: string;
@@ -178,6 +195,20 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         lastName: string | null | undefined;
         username: string;
       };
+      approvedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
+      revokedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
       privilege: {
         membershipId: string;
         userId: string;
@@ -292,6 +323,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `${TableName.AccessApprovalRequest}.requestedByUserId`,
             `requestedByUser.id`
           )
+          .leftJoin<TUsers>(
+            db(TableName.Users).as("approvedByUser"),
+            `${TableName.AccessApprovalRequest}.approvedByUserId`,
+            `approvedByUser.id`
+          )
+          .leftJoin<TUsers>(
+            db(TableName.Users).as("revokedByUser"),
+            `${TableName.AccessApprovalRequest}.revokedByUserId`,
+            `revokedByUser.id`
+          )
 
           .leftJoin<TMemberships>(db(TableName.Membership).as("approverOrgMembership"), (qb) => {
             qb.on(
@@ -327,7 +368,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("isActive").withSchema("approverOrgMembership").as("approverIsOrgMembershipActive"),
             db.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
             db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
-            db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod")
+            db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
+            db.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -358,6 +400,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("username").withSchema("requestedByUser").as("requestedByUserUsername"),
             db.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
             db.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
+
+            db.ref("email").withSchema("approvedByUser").as("approvedByUserEmail"),
+            db.ref("username").withSchema("approvedByUser").as("approvedByUserUsername"),
+            db.ref("firstName").withSchema("approvedByUser").as("approvedByUserFirstName"),
+            db.ref("lastName").withSchema("approvedByUser").as("approvedByUserLastName"),
+
+            db.ref("email").withSchema("revokedByUser").as("revokedByUserEmail"),
+            db.ref("username").withSchema("revokedByUser").as("revokedByUserUsername"),
+            db.ref("firstName").withSchema("revokedByUser").as("revokedByUserFirstName"),
+            db.ref("lastName").withSchema("revokedByUser").as("revokedByUserLastName"),
 
             db.ref("actorUserId").withSchema(TableName.AdditionalPrivilege).as("privilegeUserId"),
             db.ref("projectId").withSchema(TableName.AdditionalPrivilege).as("privilegeMembershipId"),
@@ -395,7 +447,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               allowedSelfApprovals: doc.policyAllowedSelfApprovals,
               envId: doc.policyEnvId,
               deletedAt: doc.policyDeletedAt,
-              maxTimePeriod: doc.policyMaxTimePeriod
+              maxTimePeriod: doc.policyMaxTimePeriod,
+              requestExpirationTime: doc.policyRequestExpirationTime
             },
             requestedByUser: {
               userId: doc.requestedByUserId,
@@ -404,6 +457,24 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               lastName: doc.requestedByUserLastName,
               username: doc.requestedByUserUsername
             },
+            approvedByUser: doc.approvedByUserId
+              ? {
+                  userId: doc.approvedByUserId,
+                  email: doc.approvedByUserEmail,
+                  firstName: doc.approvedByUserFirstName,
+                  lastName: doc.approvedByUserLastName,
+                  username: doc.approvedByUserUsername
+                }
+              : null,
+            revokedByUser: doc.revokedByUserId
+              ? {
+                  userId: doc.revokedByUserId,
+                  email: doc.revokedByUserEmail,
+                  firstName: doc.revokedByUserFirstName,
+                  lastName: doc.revokedByUserLastName,
+                  username: doc.revokedByUserUsername
+                }
+              : null,
             privilege: doc.privilegeId
               ? {
                   membershipId: doc.privilegeMembershipId,
@@ -502,6 +573,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `${TableName.AccessApprovalRequest}.requestedByUserId`,
         `requestedByUser.id`
       )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("approvedByUser"),
+        `${TableName.AccessApprovalRequest}.approvedByUserId`,
+        `approvedByUser.id`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("revokedByUser"),
+        `${TableName.AccessApprovalRequest}.revokedByUserId`,
+        `revokedByUser.id`
+      )
 
       .leftJoin(
         TableName.AccessApprovalPolicyApprover,
@@ -587,6 +668,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
         tx.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
 
+        tx.ref("email").withSchema("approvedByUser").as("approvedByUserEmail"),
+        tx.ref("username").withSchema("approvedByUser").as("approvedByUserUsername"),
+        tx.ref("firstName").withSchema("approvedByUser").as("approvedByUserFirstName"),
+        tx.ref("lastName").withSchema("approvedByUser").as("approvedByUserLastName"),
+
+        tx.ref("email").withSchema("revokedByUser").as("revokedByUserEmail"),
+        tx.ref("username").withSchema("revokedByUser").as("revokedByUserUsername"),
+        tx.ref("firstName").withSchema("revokedByUser").as("revokedByUserFirstName"),
+        tx.ref("lastName").withSchema("revokedByUser").as("revokedByUserLastName"),
+
         // Bypassers
         tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser),
         tx.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
@@ -617,7 +708,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("allowedSelfApprovals").withSchema(TableName.AccessApprovalPolicy).as("policyAllowedSelfApprovals"),
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
         tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"),
-        tx.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod")
+        tx.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
+        tx.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
       );
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
@@ -639,7 +731,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             enforcementLevel: el.policyEnforcementLevel,
             allowedSelfApprovals: el.policyAllowedSelfApprovals,
             deletedAt: el.policyDeletedAt,
-            maxTimePeriod: el.policyMaxTimePeriod
+            maxTimePeriod: el.policyMaxTimePeriod,
+            requestExpirationTime: el.policyRequestExpirationTime
           },
           requestedByUser: {
             userId: el.requestedByUserId,
@@ -647,7 +740,25 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             firstName: el.requestedByUserFirstName,
             lastName: el.requestedByUserLastName,
             username: el.requestedByUserUsername
-          }
+          },
+          approvedByUser: el.approvedByUserId
+            ? {
+                userId: el.approvedByUserId,
+                email: el.approvedByUserEmail,
+                firstName: el.approvedByUserFirstName,
+                lastName: el.approvedByUserLastName,
+                username: el.approvedByUserUsername
+              }
+            : null,
+          revokedByUser: el.revokedByUserId
+            ? {
+                userId: el.revokedByUserId,
+                email: el.revokedByUserEmail,
+                firstName: el.revokedByUserFirstName,
+                lastName: el.revokedByUserLastName,
+                username: el.revokedByUserUsername
+              }
+            : null
         }),
         childrenMapper: [
           {
@@ -808,22 +919,27 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         ]
       });
 
-      // an approval is pending if there is no reviewer rejections, no privilege ID is set and the status is pending
+      const now = new Date();
+      const isExpired = (req: { expiresAt?: Date | null }) => req.expiresAt && new Date(req.expiresAt) < now;
+
+      // an approval is pending if there is no reviewer rejections, no privilege ID is set, the status is pending, and not expired
       const pendingApprovals = formattedRequests.filter(
         (req) =>
           !req.privilegeId &&
           !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) &&
           req.status === ApprovalStatus.PENDING &&
-          !req.isPolicyDeleted
+          !req.isPolicyDeleted &&
+          !isExpired(req)
       );
 
-      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required.
+      // an approval is finalized if there are any rejections, a privilege ID is set, the status is not pending, policy deleted, or expired
       const finalizedApprovals = formattedRequests.filter(
         (req) =>
           req.privilegeId ||
           req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) ||
           req.status !== ApprovalStatus.PENDING ||
-          req.isPolicyDeleted
+          req.isPolicyDeleted ||
+          isExpired(req)
       );
 
       return { pendingCount: pendingApprovals.length, finalizedCount: finalizedApprovals.length };

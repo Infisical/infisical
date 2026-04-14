@@ -7,7 +7,8 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { fnSecretBulkInsert, getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
+import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 

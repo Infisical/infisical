@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
 import { ActorType } from "../auth/auth-type";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import {
   CertificateRequestStatus,
@@ -31,6 +32,7 @@ type TCertificateRequestServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -120,7 +122,8 @@ export const certificateRequestServiceFactory = ({
   certificateRequestDAL,
   certificateDAL,
   certificateService,
-  permissionService
+  permissionService,
+  resourceMetadataDAL
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
     acmeOrderId,
@@ -133,7 +136,12 @@ export const certificateRequestServiceFactory = ({
     status,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    if (actor !== ActorType.ACME_ACCOUNT && actor !== ActorType.PLATFORM && actor !== ActorType.EST_ACCOUNT) {
+    if (
+      actor !== ActorType.ACME_ACCOUNT &&
+      actor !== ActorType.PLATFORM &&
+      actor !== ActorType.EST_ACCOUNT &&
+      actor !== ActorType.SCEP_ACCOUNT
+    ) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
@@ -154,14 +162,19 @@ export const certificateRequestServiceFactory = ({
 
     const { altNames: altNamesInput, ...restValidatedData } = validatedData;
 
+    // Explicitly set createdAt to ensure millisecond precision matches when used in FK references.
+    // PostgreSQL's DEFAULT now() has microsecond precision, but JavaScript Date only has millisecond precision.
+    // This mismatch causes FK violations when the returned createdAt is used in composite FK references
+    // (e.g., resource_metadata referencing the partitioned certificate_requests table).
     const certificateRequest = await certificateRequestDAL.create(
       {
         status,
         projectId,
         acmeOrderId,
         ...restValidatedData,
-        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null
-      },
+        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null,
+        createdAt: new Date()
+      } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
       tx
     );
 
@@ -176,6 +189,15 @@ export const certificateRequestServiceFactory = ({
     projectId,
     certificateRequestId
   }: TGetCertificateRequestDTO) => {
+    const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
+    if (!certificateRequest) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
+    if (certificateRequest.projectId !== projectId) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -185,19 +207,19 @@ export const certificateRequestServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
-
-    const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
-    if (!certificateRequest) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
-    if (certificateRequest.projectId !== projectId) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
 
     return certificateRequest;
   };
@@ -223,9 +245,18 @@ export const certificateRequestServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
 
     const parsedBasicConstraints = certificateRequest.basicConstraints as {
@@ -250,6 +281,7 @@ export const certificateRequestServiceFactory = ({
           state: certificateRequest.state || null,
           locality: certificateRequest.locality || null,
           basicConstraints: parsedBasicConstraints,
+          metadata: requestMetadata,
           createdAt: certificateRequest.createdAt,
           updatedAt: certificateRequest.updatedAt
         },
@@ -268,7 +300,13 @@ export const certificateRequestServiceFactory = ({
 
     const canReadPrivateKey = permission.can(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificateRequest.commonName ?? undefined,
+        altNames: Array.isArray(certificateRequest.altNames)
+          ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
+          : undefined,
+        metadata: requestMetadata
+      })
     );
 
     let privateKey: string | null = null;
@@ -302,6 +340,7 @@ export const certificateRequestServiceFactory = ({
         state: certificateRequest.state || null,
         locality: certificateRequest.locality || null,
         basicConstraints: parsedBasicConstraints,
+        metadata: requestMetadata,
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },
@@ -353,7 +392,8 @@ export const certificateRequestServiceFactory = ({
     toDate,
     profileIds,
     sortBy,
-    sortOrder
+    sortOrder,
+    metadataFilter
   }: TListCertificateRequestsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -384,7 +424,8 @@ export const certificateRequestServiceFactory = ({
       toDate,
       profileIds,
       sortBy,
-      sortOrder
+      sortOrder,
+      metadataFilter
     };
 
     const [certificateRequests, totalCount] = await Promise.all([

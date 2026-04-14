@@ -1,0 +1,43 @@
+---
+title: "Sectigo"
+description: "Learn how to connect Infisical to Sectigo to issue certificates via ACME."
+---
+
+## Concept
+
+Infisical can connect to [Sectigo](https://www.sectigo.com/) using the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) to issue certificates back to your end-entities.
+
+Sectigo Certificate Manager (SCM) supports the ACME protocol and requires **External Account Binding (EAB)** for all ACME registrations. You will need to obtain the ACME Directory URL, a Key Identifier (KID), and an HMAC Key from your Sectigo account before registering the ACME CA in Infisical.
+
+## Guide to Connecting Infisical to Sectigo
+
+<Steps>
+  <Step title="Retrieve ACME credentials from Sectigo">
+    Log in to your Sectigo Certificate Manager (SCM) portal and navigate to **Manage > ACME Accounts** in the left sidebar. Click **Manage** on the ACME account you want to use.
+
+    ![Sectigo ACME Accounts](/images/platform/pki/sectigo/sectigo-acme-accounts.png)
+
+    On the account details page, copy the following values:
+    - **Server**: This is your ACME Directory URL (e.g., `https://acme.sectigo.com/v2/DV`).
+    - **Key ID**: Found under the **External Account Binding** section.
+    - **HMAC Key**: Found under the **External Account Binding** section.
+
+    ![Sectigo ACME Account Details](/images/platform/pki/sectigo/sectigo-acme-account-details.png)
+  </Step>
+  <Step title="Create an External CA in Infisical">
+    Follow the steps in the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide to create an External CA in Infisical with the **ACME** CA type. When filling out the form, use the values from Sectigo:
+
+    - **Directory URL**: Paste the **Server** URL from Sectigo (e.g., `https://acme.sectigo.com/v2/DV`).
+    - **EAB Key Identifier (KID)**: Paste the **Key ID** from Sectigo.
+    - **EAB HMAC Key**: Paste the **HMAC Key** from Sectigo.
+
+    ![Create External CA with ACME](/images/platform/pki/sectigo/infisical-create-external-ca-acme.png)
+  </Step>
+  <Step title="Issue certificates">
+    Once the External CA is created, follow the rest of the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide to create a Certificate Profile and start issuing certificates through Sectigo.
+  </Step>
+</Steps>
+
+<Note>
+  Sectigo ACME accounts are tied to specific domains configured in SCM. Ensure the domains you want to issue certificates for are added to your ACME account in Sectigo before requesting certificates through Infisical.
+</Note>

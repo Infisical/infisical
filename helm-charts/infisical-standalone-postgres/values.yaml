@@ -65,7 +65,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.151.0"
+    tag: "v0.158.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed
@@ -92,6 +92,13 @@ infisical:
     # -- Optional node port for service when using NodePort type
     nodePort: ""
 
+  # -- Extra environment variables to set on the Infisical container. Useful for setting variables like NODE_EXTRA_CA_CERTS.
+  # -- Example:
+  # -- extraEnv:
+  # --   - name: NODE_EXTRA_CA_CERTS
+  # --     value: /etc/ssl/certs/ca-certificates.crt
+  extraEnv: []
+
   resources:
     limits:
       # -- Memory limit for Infisical container
@@ -105,8 +112,8 @@ ingress:
   enabled: true
   # -- Hostname for ingress access, e.g., app.example.com
   hostName: ""
-  # -- Specifies the ingress class, useful for multi-ingress setups
-  ingressClassName: nginx
+  # -- Specifies the ingress class. When not set, defaults to "infisical-nginx" if the bundled ingress-nginx is enabled, or "nginx" otherwise.
+  ingressClassName: ""
 
   nginx:
     # -- Enable NGINX-specific settings, if using NGINX ingress controller
@@ -180,3 +187,15 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
+
+# -- Configuration for the bundled ingress-nginx subchart (only applies when ingress.nginx.enabled=true)
+ingress-nginx:
+  controller:
+    ingressClassResource:
+      # -- Use a unique IngressClass name so the bundled controller only serves Infisical's Ingress,
+      # -- not other Ingresses in the cluster that use the common "nginx" class.
+      name: infisical-nginx
+      controllerValue: k8s.io/infisical-nginx
+      # -- Do not set this as the default IngressClass for the cluster
+      default: false
+    ingressClass: infisical-nginx

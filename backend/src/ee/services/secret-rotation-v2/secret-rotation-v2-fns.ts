@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TQueueOptions } from "@app/queue/queue-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
@@ -10,6 +11,7 @@ import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret"
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
 import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
+import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
@@ -55,7 +57,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
-  [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -152,14 +155,19 @@ export const decryptSecretRotationCredentials = async ({
 export const getSecretRotationRotateSecretJobOptions = ({
   id,
   nextRotationAt
-}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">) => {
+}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">): TQueueOptions => {
   const appCfg = getConfig();
 
   return {
     jobId: `secret-rotation-v2-rotate-${id}`,
-    retryLimit: appCfg.isRotationDevelopmentMode ? 3 : 5,
-    retryBackoff: true,
-    startAfter: nextRotationAt ?? undefined
+    attempts: appCfg.isRotationDevelopmentMode ? 1 : 5,
+    removeOnFail: true,
+    removeOnComplete: true,
+    backoff: {
+      type: "exponential",
+      delay: 1000
+    },
+    delay: nextRotationAt ? Number(nextRotationAt) - Date.now() : undefined
   };
 };
 
@@ -264,6 +272,38 @@ export const parseRotationErrorMessage = (err: unknown): string => {
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
 };
 
+export const getWebhookSanitizedErrorMessage = (err: unknown): string => {
+  let errorCategory = null;
+
+  if (err instanceof AxiosError) {
+    const status = err?.response?.status;
+    if (status === 401 || status === 403) {
+      errorCategory = "an authentication/authorization error";
+    } else if (status === 404) {
+      errorCategory = "a not found error";
+    } else if (status === 429) {
+      errorCategory = "a rate limit error";
+    } else if (err.code === "ECONNREFUSED" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
+      errorCategory = "a connection error";
+    } else {
+      errorCategory = `an HTTP error (status ${status ?? "unknown"})`;
+    }
+  } else if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes("timeout") || msg.includes("etimedout")) {
+      errorCategory = "a timeout error";
+    } else if (msg.includes("econnrefused") || msg.includes("econnreset") || msg.includes("connect")) {
+      errorCategory = "a connection error";
+    } else if (msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("permission")) {
+      errorCategory = "an authentication/authorization error";
+    }
+  }
+
+  return errorCategory
+    ? `Credential rotation failed due to ${errorCategory}. Check the rotation status in the dashboard for more details.`
+    : `Credential rotation failed. Check the rotation status in the dashboard for more details.`;
+};
+
 function haveUnequalProperties<T>(obj1: T, obj2: T, properties: (keyof T)[]): boolean {
   return properties.some((prop) => obj1[prop] !== obj2[prop]);
 }
@@ -302,6 +342,17 @@ export const throwOnImmutableParameterUpdate = (
         haveUnequalProperties(
           updatePayload.parameters as TWindowsLocalAccountRotation["parameters"],
           secretRotation.parameters as TWindowsLocalAccountRotation["parameters"],
+          ["rotationMethod", "username"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update rotation method or username" });
+      }
+      break;
+    case SecretRotation.HpIloLocalAccount:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as THpIloRotation["parameters"],
+          secretRotation.parameters as THpIloRotation["parameters"],
           ["rotationMethod", "username"]
         )
       ) {

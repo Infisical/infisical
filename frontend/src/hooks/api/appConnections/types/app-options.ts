@@ -45,6 +45,10 @@ export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Databricks;
 };
 
+export type TAzureEntraIdConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureEntraId;
+};
+
 export type TAzureDevOpsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDevOps;
   oauthClientId?: string;
@@ -196,6 +200,10 @@ export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DNSMadeEasy;
 };
 
+export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureDNS;
+};
+
 export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
@@ -214,6 +222,22 @@ export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
 
 export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
+};
+
+export type TVenafiConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Venafi;
+};
+
+export type TExternalInfisicalConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ExternalInfisical;
+};
+
+export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.NetScaler;
+};
+
+export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Anthropic;
 };
 
 export type TAppConnectionOption =
@@ -263,10 +287,16 @@ export type TAppConnectionOption =
   | TMongoDBConnectionOption
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
+  | TAzureDNSConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
-  | TSmbConnectionOption;
+  | TSmbConnectionOption
+  | TAzureEntraIdConnectionOption
+  | TVenafiConnectionOption
+  | TExternalInfisicalConnectionOption
+  | TNetScalerConnectionOption
+  | TAnthropicConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -314,9 +344,15 @@ export type TAppConnectionOptionMap = {
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
+  [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
+  [AppConnection.Venafi]: TVenafiConnectionOption;
+  [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
+  [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.Anthropic]: TAnthropicConnectionOption;
 };

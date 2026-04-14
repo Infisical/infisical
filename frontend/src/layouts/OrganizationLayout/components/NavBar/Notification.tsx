@@ -5,7 +5,7 @@ import { formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { IconButton, Tooltip } from "@app/components/v2";
-import { TUserNotification } from "@app/hooks/api/notifications/types";
+import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifications/types";
 
 type Props = {
   notification: TUserNotification;
@@ -13,18 +13,29 @@ type Props = {
 };
 
 export const Notification = ({ notification, onDelete }: Props) => {
+  const isCritical = isCriticalNotification(notification.type);
+
   return (
     <div
       className={twMerge(
         "group relative flex cursor-pointer items-start border-b border-mineshaft-600 p-2 transition-colors",
         notification.link ? "hover:bg-mineshaft-700" : "cursor-default",
-        !notification.isRead && "bg-mineshaft-800"
+        !notification.isRead && "bg-mineshaft-800",
+        isCritical && !notification.isRead && "border-l-2 border-l-red-700"
       )}
     >
       <div className="flex w-full min-w-0 flex-col p-1">
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           {!notification.isRead && (
-            <FontAwesomeIcon icon={faCircle} className="mt-0.5 size-2 text-yellow-400" />
+            <div className="flex h-5 items-center">
+              <FontAwesomeIcon
+                icon={faCircle}
+                className={twMerge(
+                  "size-2 shrink-0",
+                  isCritical ? "text-red-700" : "text-yellow-400"
+                )}
+              />
+            </div>
           )}
           <Tooltip
             content={<Markdown>{notification.title}</Markdown>}
@@ -40,9 +51,9 @@ export const Notification = ({ notification, onDelete }: Props) => {
           </span>
         </div>
         {notification.body && (
-          <span className="max-w-[350px] text-xs text-mineshaft-300">
+          <div className="w-full overflow-hidden text-xs break-words text-mineshaft-300">
             <Markdown>{notification.body}</Markdown>
-          </span>
+          </div>
         )}
       </div>
       <div className="mt-0.5 flex w-0 shrink-0 justify-end opacity-0 transition-all group-hover:w-[24px] group-hover:opacity-100">

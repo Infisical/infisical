@@ -1,13 +1,29 @@
 export enum EnrollmentType {
   API = "api",
   EST = "est",
-  ACME = "acme"
+  ACME = "acme",
+  SCEP = "scep"
 }
 
 export enum IssuerType {
   CA = "ca",
   SELF_SIGNED = "self-signed"
 }
+
+export type TCertificateProfileDefaults = {
+  ttlDays?: number;
+  commonName?: string;
+  keyAlgorithm?: string;
+  signatureAlgorithm?: string;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  basicConstraints?: { isCA: boolean; pathLength?: number };
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
 
 export type TCertificateProfile = {
   id: string;
@@ -23,7 +39,7 @@ export type TCertificateProfile = {
   createdAt: string;
   updatedAt: string;
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number | null;
+  defaults?: TCertificateProfileDefaults | null;
   certificateAuthority?: {
     id: string;
     projectId?: string;
@@ -66,6 +82,14 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
   };
+  scepConfig?: {
+    id: string;
+    scepEndpointUrl: string;
+    raCertificatePem: string;
+    raCertExpiresAt: string;
+    includeCaCertInResponse: boolean;
+    allowCertBasedRenewal: boolean;
+  };
 };
 
 export type TCreateCertificateProfileDTO = {
@@ -89,8 +113,13 @@ export type TCreateCertificateProfileDTO = {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
   };
+  scepConfig?: {
+    challengePassword: string;
+    includeCaCertInResponse?: boolean;
+    allowCertBasedRenewal?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -112,8 +141,13 @@ export type TUpdateCertificateProfileDTO = {
     skipDnsOwnershipVerification?: boolean;
     skipEabBinding?: boolean;
   };
+  scepConfig?: {
+    challengePassword?: string;
+    includeCaCertInResponse?: boolean;
+    allowCertBasedRenewal?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
-  defaultTtlDays?: number | null;
+  defaults?: TCertificateProfileDefaults | null;
 };
 
 export type TDeleteCertificateProfileDTO = {

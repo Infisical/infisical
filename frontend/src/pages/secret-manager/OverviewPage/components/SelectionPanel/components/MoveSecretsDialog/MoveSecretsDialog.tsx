@@ -1,30 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
-import { IconDefinition } from "@fortawesome/free-brands-svg-icons";
-import {
-  faBan,
-  faCheckCircle,
-  faExclamationCircle,
-  faEyeSlash,
-  faInfoCircle,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { faBan, faEyeSlash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
+import { CheckCircleIcon, CircleAlertIcon, InfoIcon, LoaderCircleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Spinner,
-  Switch
-} from "@app/components/v2";
+  Checkbox,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  UnstableAlert,
+  UnstableAlertDescription
+} from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
@@ -37,6 +46,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   environments: ProjectEnv[];
+  visibleEnvs: ProjectEnv[];
   projectId: string;
   projectSlug: string;
   sourceSecretPath: string;
@@ -44,9 +54,63 @@ type Props = {
   onComplete: () => void;
 };
 
-type ContentProps = Omit<Props, "isOpen" | "onOpenChange">;
+type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
+  onClose: () => void;
+};
 
 type OptionValue = { secretPath: string };
+
+const FolderPathSelect = ({
+  environments,
+  projectId,
+  value,
+  onChange
+}: {
+  environments: ProjectEnv[];
+  projectId: string;
+  value: OptionValue | null;
+  onChange: (newValue: OptionValue | null) => void;
+}) => {
+  const [search, setSearch] = useState("/");
+  const [debouncedSearch] = useDebounce(search);
+  const [previousValue, setPreviousValue] = useState<OptionValue | null>(value);
+
+  const { data, isPending, isLoading, isFetching } = useGetProjectSecretsQuickSearch({
+    secretPath: "/",
+    environments: environments.map((env) => env.slug),
+    projectId,
+    search: debouncedSearch,
+    tags: {}
+  });
+
+  const { folders = {} } = data ?? {};
+
+  return (
+    <FilterableSelect
+      isLoading={isPending || isLoading || isFetching || search !== debouncedSearch}
+      options={Object.keys(folders).map((path) => ({
+        secretPath: path
+      }))}
+      onMenuOpen={() => {
+        setPreviousValue(value);
+        setSearch(value?.secretPath ?? "/");
+        onChange(null);
+      }}
+      onMenuClose={() => {
+        if (!value) onChange(previousValue);
+      }}
+      inputValue={search}
+      onInputChange={setSearch}
+      value={value}
+      onChange={(newValue) => {
+        setPreviousValue(value);
+        onChange(newValue as SingleValue<OptionValue>);
+      }}
+      getOptionLabel={(option) => option.secretPath}
+      getOptionValue={(option) => option.secretPath}
+    />
+  );
+};
 
 enum MoveResult {
   Success = "success",
@@ -61,34 +125,283 @@ type MoveResults = {
   message: string;
 }[];
 
-const Content = ({
+const singleEnvFormSchema = z.object({
+  environment: z.string().trim(),
+  shouldOverwrite: z.boolean().default(false)
+});
+
+type TSingleEnvFormSchema = z.infer<typeof singleEnvFormSchema>;
+
+const MoveResultsView = ({
+  moveResults,
+  onComplete
+}: {
+  moveResults: MoveResults;
+  onComplete: () => void;
+}) => {
+  return (
+    <div className="w-full">
+      <div className="mb-2 text-sm font-medium">Results</div>
+      <div className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border bg-container px-2 py-2">
+        {moveResults.map(({ id, name, status, message }) => {
+          let resultClassName: string;
+          let Icon: typeof CheckCircleIcon;
+
+          switch (status) {
+            case MoveResult.Success:
+              Icon = CheckCircleIcon;
+              resultClassName = "text-success";
+              break;
+            case MoveResult.Info:
+              Icon = InfoIcon;
+              resultClassName = "text-info";
+              break;
+            case MoveResult.Error:
+            default:
+              Icon = CircleAlertIcon;
+              resultClassName = "text-danger";
+          }
+
+          return (
+            <div key={id} className="flex items-start gap-2 p-2 text-sm">
+              <Icon className={twMerge(resultClassName, "mt-0.5 size-3.5 shrink-0")} />
+              <span>
+                {name}: {message}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline" onClick={() => onComplete()}>
+            Dismiss
+          </Button>
+        </DialogClose>
+      </DialogFooter>
+    </div>
+  );
+};
+
+const SingleEnvContent = ({
   onComplete,
+  onClose,
+  secrets,
+  environments,
+  visibleEnvs,
+  projectId,
+  projectSlug,
+  sourceSecretPath
+}: ContentProps) => {
+  const sourceEnv = visibleEnvs[0];
+  const moveSecrets = useMoveSecrets();
+  const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
+    secretPath: "/"
+  });
+
+  const {
+    handleSubmit,
+    control,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<TSingleEnvFormSchema>({
+    resolver: zodResolver(singleEnvFormSchema),
+    defaultValues: {
+      environment: sourceEnv.slug,
+      shouldOverwrite: false
+    }
+  });
+
+  const selectedEnvironment = watch("environment");
+
+  useEffect(() => {
+    setSelectedPath({ secretPath: "/" });
+  }, [selectedEnvironment]);
+
+  const destinationSelected =
+    Boolean(selectedPath?.secretPath) &&
+    (sourceSecretPath !== selectedPath?.secretPath || selectedEnvironment !== sourceEnv.slug);
+
+  const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
+    if (!selectedPath) {
+      createNotification({
+        type: "error",
+        text: "You must specify a secret path to move the selected secrets to"
+      });
+      return;
+    }
+
+    const secretsToMove = Object.values(secrets)
+      .map((secretRecord) => secretRecord[sourceEnv.slug])
+      .filter(
+        (secret): secret is SecretV3RawSanitized => Boolean(secret) && !secret.isRotatedSecret
+      );
+
+    if (!secretsToMove.length) {
+      createNotification({
+        type: "info",
+        text: "No secrets to move in this environment"
+      });
+      return;
+    }
+
+    const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
+      shouldOverwrite: data.shouldOverwrite,
+      sourceEnvironment: sourceEnv.slug,
+      sourceSecretPath,
+      destinationEnvironment: data.environment,
+      destinationSecretPath: selectedPath.secretPath,
+      projectId,
+      projectSlug,
+      secretIds: secretsToMove.map((sec) => sec.id)
+    });
+
+    if (isDestinationUpdated && isSourceUpdated) {
+      createNotification({
+        type: "success",
+        text: "Successfully moved selected secrets"
+      });
+    } else if (isDestinationUpdated) {
+      createNotification({
+        type: "info",
+        text: "Successfully created secrets in destination. A secret approval request has been generated for the source."
+      });
+    } else if (isSourceUpdated) {
+      createNotification({
+        type: "info",
+        text: "A secret approval request has been generated in the destination"
+      });
+    } else {
+      createNotification({
+        type: "info",
+        text: "A secret approval request has been generated in both the source and the destination."
+      });
+    }
+
+    onClose();
+    onComplete();
+  };
+
+  return (
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Controller
+        control={control}
+        name="environment"
+        render={({ field: { onChange, value } }) => (
+          <Field>
+            <FieldLabel>Environment</FieldLabel>
+            <FieldContent>
+              <Select value={value} onValueChange={onChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select environment" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-full">
+                  {environments.map(({ name, slug }) => (
+                    <SelectItem value={slug} key={slug}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
+        )}
+      />
+      <Field className="mt-4">
+        <FieldLabel>Secret Path</FieldLabel>
+        <FieldContent>
+          <FolderPathSelect
+            key={selectedEnvironment}
+            environments={
+              selectedEnvironment
+                ? environments.filter((e) => e.slug === selectedEnvironment)
+                : environments
+            }
+            projectId={projectId}
+            value={selectedPath}
+            onChange={setSelectedPath}
+          />
+          <FieldDescription>
+            Nested folders will be displayed as secret path is typed
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      <Controller
+        control={control}
+        name="shouldOverwrite"
+        render={({ field: { onBlur, value, onChange } }) => (
+          <Field className="mt-4">
+            <Field orientation="horizontal">
+              <Checkbox
+                id="overwrite-checkbox"
+                isChecked={value}
+                onCheckedChange={onChange}
+                onBlur={onBlur}
+                variant="project"
+              />
+              <FieldLabel htmlFor="overwrite-checkbox" className="cursor-pointer">
+                Overwrite existing secrets
+              </FieldLabel>
+            </Field>
+            <FieldDescription>
+              {value
+                ? "Secrets with conflicting keys at the destination will be overwritten"
+                : "Secrets with conflicting keys at the destination will not be overwritten"}
+            </FieldDescription>
+          </Field>
+        )}
+      />
+      <DialogFooter className="mt-6">
+        <DialogClose asChild>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button
+          type="submit"
+          variant="project"
+          isDisabled={!destinationSelected || isSubmitting}
+          isPending={isSubmitting}
+        >
+          Move Secrets
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+};
+
+const multiEnvFormSchema = z.object({
+  shouldOverwrite: z.boolean().default(false)
+});
+
+type TMultiEnvFormSchema = z.infer<typeof multiEnvFormSchema>;
+
+const MultiEnvContent = ({
+  onComplete,
+  onClose,
   secrets,
   environments,
   projectId,
   projectSlug,
   sourceSecretPath
 }: ContentProps) => {
-  const [search, setSearch] = useState(sourceSecretPath);
-  const [debouncedSearch] = useDebounce(search);
-  const [value, setValue] = useState<OptionValue | null>({ secretPath: sourceSecretPath });
-  const [previousValue, setPreviousValue] = useState<OptionValue | null>(value);
   const moveSecrets = useMoveSecrets();
-  const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
-
-  const { data, isPending, isLoading, isFetching } = useGetProjectSecretsQuickSearch({
-    secretPath: "/",
-    environments: environments.map((env) => env.slug),
-    projectId,
-    search: debouncedSearch,
-    tags: {}
+  const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
+    secretPath: "/"
   });
 
-  const { folders = {} } = data ?? {};
-
-  const folderEnvironments = value && folders[value.secretPath]?.map((folder) => folder.envId);
+  const {
+    handleSubmit,
+    control,
+    formState: { isSubmitting }
+  } = useForm<TMultiEnvFormSchema>({
+    resolver: zodResolver(multiEnvFormSchema),
+    defaultValues: {
+      shouldOverwrite: false
+    }
+  });
 
   const moveSecretsEligibility = useMemo(() => {
     return Object.fromEntries(
@@ -103,14 +416,14 @@ const Content = ({
               secretName: "*",
               secretTags: ["*"]
             })
-          ),
-          missingPath: folderEnvironments && !folderEnvironments?.includes(env.id)
+          )
         }
       ])
     );
-  }, [permission, folderEnvironments]);
+  }, [permission, environments, sourceSecretPath]);
 
-  const destinationSelected = Boolean(value?.secretPath) && sourceSecretPath !== value?.secretPath;
+  const destinationSelected =
+    Boolean(selectedPath?.secretPath) && sourceSecretPath !== selectedPath?.secretPath;
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
@@ -125,26 +438,17 @@ const Content = ({
           type: "permission",
           message: `${env.name}: You do not have permission to remove secrets from this environment`
         });
-        return;
-      }
-
-      if (moveSecretsEligibility[env.slug].missingPath) {
-        environmentWarnings.push({
-          id: env.id,
-          type: "missing",
-          message: `${env.name}: Secret path does not exist in environment`
-        });
       }
     });
 
     return environmentWarnings;
-  }, [moveSecretsEligibility]);
+  }, [moveSecretsEligibility, destinationSelected, environments]);
 
-  const handleMoveSecrets = async () => {
-    if (!value) {
+  const handleFormSubmit = async (data: TMultiEnvFormSchema) => {
+    if (!selectedPath) {
       createNotification({
-        text: "error",
-        title: "You must specify a secret path to move the selected secrets to"
+        type: "error",
+        text: "You must specify a secret path to move the selected secrets to"
       });
       return;
     }
@@ -168,10 +472,7 @@ const Content = ({
 
       const secretsToMove = secretsByEnv[envSlug];
 
-      if (
-        moveSecretsEligibility[envSlug].missingPermissions ||
-        moveSecretsEligibility[envSlug].missingPath
-      ) {
+      if (moveSecretsEligibility[envSlug].missingPermissions) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -189,11 +490,11 @@ const Content = ({
 
       try {
         const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-          shouldOverwrite,
+          shouldOverwrite: data.shouldOverwrite,
           sourceEnvironment: environment.slug,
           sourceSecretPath,
           destinationEnvironment: environment.slug,
-          destinationSecretPath: value.secretPath,
+          destinationSecretPath: selectedPath.secretPath,
           projectId,
           projectSlug,
           secretIds: secretsToMove.map((sec) => sec.id)
@@ -247,87 +548,42 @@ const Content = ({
   }, [moveResults]);
 
   if (moveResults) {
-    return (
-      <div className="w-full">
-        <div className="mb-2">Results</div>
-        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded-sm bg-mineshaft-900 px-3 py-2">
-          {moveResults.map(({ id, name, status, message }) => {
-            let className: string;
-            let icon: IconDefinition;
-
-            switch (status) {
-              case MoveResult.Success:
-                icon = faCheckCircle;
-                className = "text-green";
-                break;
-              case MoveResult.Info:
-                icon = faInfoCircle;
-                className = "text-blue-500";
-                break;
-              case MoveResult.Error:
-              default:
-                icon = faExclamationCircle;
-                className = "text-red";
-            }
-
-            return (
-              <div key={id} className="p-2 text-sm">
-                <FontAwesomeIcon className={twMerge(className, "mr-1")} icon={icon} /> {name}:{" "}
-                {message}
-              </div>
-            );
-          })}
-        </div>
-        <ModalClose asChild>
-          <Button size="sm" colorSchema="secondary" onClick={() => onComplete()}>
-            Dismiss
-          </Button>
-        </ModalClose>
-      </div>
-    );
+    return <MoveResultsView moveResults={moveResults} onComplete={onComplete} />;
   }
 
   if (moveSecrets.isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Moving secrets...</p>
+        <LoaderCircleIcon className="size-8 animate-spin text-accent" />
+        <p className="mt-4 text-sm text-accent">Moving secrets...</p>
       </div>
     );
   }
 
   return (
-    <>
-      <FormControl
-        label="Select New Location"
-        helperText="Nested folders will be displayed as secret path is typed"
-      >
-        <FilterableSelect
-          isLoading={isPending || isLoading || isFetching || search !== debouncedSearch}
-          options={Object.keys(folders).map((secretPath) => ({
-            secretPath
-          }))}
-          onMenuOpen={() => {
-            setPreviousValue(value);
-            setSearch(value?.secretPath ?? "/");
-            setValue(null);
-          }}
-          onMenuClose={() => {
-            if (!value) setValue(previousValue);
-          }}
-          inputValue={search}
-          onInputChange={setSearch}
-          value={value}
-          onChange={(newValue) => {
-            setPreviousValue(value);
-            setValue(newValue as SingleValue<OptionValue>);
-          }}
-          getOptionLabel={(option) => option.secretPath}
-          getOptionValue={(option) => option.secretPath}
-        />
-      </FormControl>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <UnstableAlert variant="info" className="mb-4">
+        <InfoIcon />
+        <UnstableAlertDescription>
+          Select a single environment to move secrets across environments.
+        </UnstableAlertDescription>
+      </UnstableAlert>
+      <Field>
+        <FieldLabel>Secret Path</FieldLabel>
+        <FieldContent>
+          <FolderPathSelect
+            environments={environments}
+            projectId={projectId}
+            value={selectedPath}
+            onChange={setSelectedPath}
+          />
+          <FieldDescription>
+            Nested folders will be displayed as secret path is typed
+          </FieldDescription>
+        </FieldContent>
+      </Field>
       {Boolean(environmentsToBeSkipped.length) && (
-        <div className="rounded-sm bg-mineshaft-900 px-3 py-2">
+        <div className="mt-4 rounded-sm bg-mineshaft-900 px-3 py-2">
           <span className="text-sm text-yellow">
             <FontAwesomeIcon icon={faWarning} className="mr-0.5" /> The following environments will
             not be affected
@@ -346,54 +602,84 @@ const Content = ({
           ))}
         </div>
       )}
-      <FormControl
-        className="my-4"
-        helperText={
-          shouldOverwrite
-            ? "Secrets with conflicting keys at the destination will be overwritten"
-            : "Secrets with conflicting keys at the destination will not be overwritten"
-        }
-      >
-        <Switch
-          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-yellow/80"
-          id="overwrite-existing-secrets"
-          thumbClassName="bg-mineshaft-800"
-          onCheckedChange={setShouldOverwrite}
-          isChecked={shouldOverwrite}
-        >
-          <p className="w-44">Overwrite Existing Secrets</p>
-        </Switch>
-      </FormControl>
-      <div className="mt-6 flex items-center">
+      <Controller
+        control={control}
+        name="shouldOverwrite"
+        render={({ field: { onBlur, value, onChange } }) => (
+          <Field className="mt-4">
+            <Field orientation="horizontal">
+              <Checkbox
+                id="overwrite-checkbox-multi"
+                isChecked={value}
+                onCheckedChange={onChange}
+                onBlur={onBlur}
+                variant="project"
+              />
+              <FieldLabel htmlFor="overwrite-checkbox-multi" className="cursor-pointer">
+                Overwrite existing secrets
+              </FieldLabel>
+            </Field>
+            <FieldDescription>
+              {value
+                ? "Secrets with conflicting keys at the destination will be overwritten"
+                : "Secrets with conflicting keys at the destination will not be overwritten"}
+            </FieldDescription>
+          </Field>
+        )}
+      />
+      <DialogFooter className="mt-6">
+        <DialogClose asChild>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </DialogClose>
         <Button
-          isDisabled={!destinationSelected}
-          className="mr-4"
-          size="sm"
-          colorSchema="secondary"
-          onClick={handleMoveSecrets}
+          type="submit"
+          variant="project"
+          isDisabled={!destinationSelected || isSubmitting}
+          isPending={isSubmitting}
         >
           Move Secrets
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
-    </>
+      </DialogFooter>
+    </form>
   );
 };
 
-export const MoveSecretsModal = ({ isOpen, onOpenChange, ...props }: Props) => {
+export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }: Props) => {
+  const isSingleEnvMode = visibleEnvs.length === 1;
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title="Move Secrets Folder Location"
-        subTitle="Move the selected secrets across all environments to a new folder location"
-      >
-        <Content {...props} />
-      </ModalContent>
-    </Modal>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onOpenChange(false);
+        else onOpenChange(open);
+      }}
+    >
+      <DialogContent className="max-w-xl overflow-visible [&>*]:min-w-0">
+        <DialogHeader>
+          <DialogTitle>Move Secrets</DialogTitle>
+          <DialogDescription>
+            {isSingleEnvMode
+              ? "Move the selected secrets to a new environment and folder location"
+              : "Move the selected secrets across all environments to a new folder location"}
+          </DialogDescription>
+        </DialogHeader>
+        {isSingleEnvMode ? (
+          <SingleEnvContent
+            {...props}
+            visibleEnvs={visibleEnvs}
+            onClose={() => onOpenChange(false)}
+          />
+        ) : (
+          <MultiEnvContent
+            {...props}
+            visibleEnvs={visibleEnvs}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -14,8 +14,8 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and $ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ $ingress.ingressClassName | default "nginx" }}
+  {{- if (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ $ingress.ingressClassName | default (ternary "infisical-nginx" "nginx" $ingress.nginx.enabled) }}
   {{- end }}
 {{- if $ingress.tls }}
   tls:

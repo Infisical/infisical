@@ -11,13 +11,15 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -128,7 +130,7 @@ export const oidcConfigServiceFactory = ({
         actorAuthMethod: dto.actorAuthMethod,
         scope: OrganizationActionScope.ParentOrganization
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -273,6 +275,27 @@ export const oidcConfigServiceFactory = ({
             // we automatically mark it as email-verified because we've configured trust for OIDC emails
             newUser = await userDAL.updateById(newUser.id, {
               isEmailVerified: serverCfg.trustOidcEmails
+            });
+          }
+        }
+
+        // Prevent cross-org account takeover: if an existing user was found by email,
+        // verify they are already a member of this org before binding the SSO identity.
+        // Without this check, an attacker could configure OIDC on their own org with a
+        // victim's email and get a provider token signed for the victim's userId.
+        if (newUser) {
+          const [existingMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!existingMembership) {
+            throw new ForbiddenRequestError({
+              message:
+                "User is not a member of this organization. Please contact your organization admin to receive an invite."
             });
           }
         }
@@ -528,7 +551,7 @@ export const oidcConfigServiceFactory = ({
       actorAuthMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
@@ -551,6 +574,19 @@ export const oidcConfigServiceFactory = ({
             "Cannot enable OIDC when there are issues with the instance's SMTP configuration. Bypass this by turning on trust for OIDC emails in the server admin console."
         });
       }
+    }
+
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
     const updateQuery: TOidcConfigsUpdate = {
@@ -623,13 +659,26 @@ export const oidcConfigServiceFactory = ({
       actorAuthMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
           "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
       });
+    }
+
+    if (discoveryURL) {
+      await blockLocalAndPrivateIpAddresses(discoveryURL);
+    }
+    if (jwksUri) {
+      await blockLocalAndPrivateIpAddresses(jwksUri);
+    }
+    if (tokenEndpoint) {
+      await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+    }
+    if (userinfoEndpoint) {
+      await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -688,6 +737,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
       issuer = await Issuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
@@ -701,6 +751,9 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
+      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
+      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -737,13 +790,10 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        if (oidcCfg.allowedEmailDomains) {
-          const allowedDomains = oidcCfg.allowedEmailDomains.split(", ");
-          if (!allowedDomains.includes(claims.email.split("@")[1])) {
-            throw new ForbiddenRequestError({
-              message: "Email not allowed."
-            });
-          }
+        if (!matchesAllowedEmailDomain(claims.email, oidcCfg.allowedEmailDomains ?? "")) {
+          throw new ForbiddenRequestError({
+            message: "Email not allowed."
+          });
         }
 
         const name = claims?.given_name || claims?.name;
@@ -774,8 +824,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -789,8 +839,8 @@ export const oidcConfigServiceFactory = ({
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 

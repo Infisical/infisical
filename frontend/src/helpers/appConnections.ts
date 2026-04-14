@@ -48,15 +48,20 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
+import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
+import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
+import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
@@ -65,6 +70,7 @@ import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/rend
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -98,6 +104,7 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.AzureDevOps]: { name: "Azure DevOps", image: "Microsoft Azure.png" },
   [AppConnection.AzureADCS]: { name: "Azure ADCS", image: "Microsoft Azure.png" },
+  [AppConnection.AzureDNS]: { name: "Azure DNS", image: "Microsoft Azure.png" },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
   [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
@@ -148,7 +155,12 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
   [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
-  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
+  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" },
+  [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
+  [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
+  [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
+  [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -191,6 +203,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
+    case VenafiConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
@@ -224,6 +238,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case AnthropicConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -236,6 +251,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
+    case AzureDNSConnectionMethod.ClientSecret:
+    case AzureEntraIdConnectionMethod.ClientSecret:
+      return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case SshConnectionMethod.Password:
@@ -244,6 +262,10 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
+      return { name: "Machine Identity - Universal Auth", icon: faKey };
+    case NetScalerConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

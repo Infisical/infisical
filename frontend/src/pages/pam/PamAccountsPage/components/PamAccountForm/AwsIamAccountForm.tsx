@@ -11,12 +11,11 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Button,
   FormControl,
-  Input,
-  ModalClose
+  Input
 } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
+import { Button, SheetFooter } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   PamResourceType,
@@ -26,6 +25,7 @@ import {
 } from "@app/hooks/api/pam";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { MetadataFields } from "./MetadataFields";
 
 const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
 const AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING = 3600; // 1 hour
@@ -44,6 +44,7 @@ type Props = {
   resourceId?: string;
   resourceType?: PamResourceType;
   onSubmit: (formData: SubmitData) => Promise<void>;
+  closeSheet: () => void;
 };
 
 const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
@@ -87,7 +88,13 @@ const formSchema = genericAccountFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit }: Props) => {
+export const AwsIamAccountForm = ({
+  account,
+  resourceId,
+  resourceType,
+  onSubmit,
+  closeSheet
+}: Props) => {
   const isUpdate = Boolean(account);
   const { projectId } = useProject();
 
@@ -172,107 +179,109 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <GenericAccountFields />
+      <form
+        className="flex flex-1 flex-col overflow-hidden"
+        onSubmit={handleSubmit(handleFormSubmit)}
+      >
+        <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
+          <GenericAccountFields />
 
-        <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
-          <h4 className="mb-3 text-sm font-medium text-mineshaft-200">AWS IAM Configuration</h4>
+          <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
+            <h4 className="mb-3 text-sm font-medium text-mineshaft-200">AWS IAM Configuration</h4>
 
-          <Controller
-            name="credentials.targetRoleArn"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                className="mb-3"
-                helperText="The ARN of the IAM role that users will assume to access the AWS Console"
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label="Target Role ARN"
-              >
-                <Input
-                  {...field}
-                  placeholder="arn:aws:iam::123456789012:role/infisical-pam-MyTargetRole"
-                  autoComplete="off"
-                />
-              </FormControl>
-            )}
-          />
+            <Controller
+              name="credentials.targetRoleArn"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="mb-3"
+                  helperText="The ARN of the IAM role that users will assume to access the AWS Console"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Target Role ARN"
+                >
+                  <Input
+                    {...field}
+                    placeholder="arn:aws:iam::123456789012:role/infisical-pam-MyTargetRole"
+                    autoComplete="off"
+                  />
+                </FormControl>
+              )}
+            />
 
-          <Controller
-            name="credentials.defaultSessionDuration"
-            control={control}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                className="mb-0"
-                helperText="Min 15m, max 1h due to AWS role chaining limit."
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                label={<TtlFormLabel label="Default Session Duration" />}
-              >
-                <Input {...field} placeholder="1h" />
-              </FormControl>
-            )}
-          />
-        </div>
+            <Controller
+              name="credentials.defaultSessionDuration"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="mb-0"
+                  helperText="Min 15m, max 1h due to AWS role chaining limit."
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label={<TtlFormLabel label="Default Session Duration" />}
+                >
+                  <Input {...field} placeholder="1h" />
+                </FormControl>
+              )}
+            />
+          </div>
 
-        <Accordion
-          type="single"
-          collapsible
-          className="mb-4 w-full rounded-r border-l-2 border-l-primary bg-mineshaft-300/5"
-        >
-          <AccordionItem value="target-role-setup" className="border-b-0">
-            <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
-              <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
-                <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
-                Target Role Setup
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-2.5">
-              <p className="mb-3 text-sm text-mineshaft-300">
-                The target role must have a trust policy that allows the Resource Role (created in
-                the &quot;Resources&quot; tab) to assume it. Ensure the target role&apos;s trust
-                policy includes the Resource Role as a trusted principal.
-              </p>
-
-              <p className="mb-2 text-sm font-medium text-mineshaft-200">
-                Target role trust policy:
-              </p>
-              <div className="relative mb-3">
-                <div className="absolute top-1 right-3">
-                  <CopyButton value={targetRoleTrustPolicy} size="sm" variant="plain" />
+          <Accordion
+            type="single"
+            collapsible
+            className="mb-4 w-full rounded-r border-l-2 border-l-primary bg-mineshaft-300/5"
+          >
+            <AccordionItem value="target-role-setup" className="border-b-0">
+              <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
+                <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
+                  <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+                  Target Role Setup
                 </div>
-                <pre className="max-h-45 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
-                  {targetRoleTrustPolicy}
-                </pre>
-              </div>
-              <p className="text-xs text-mineshaft-400">
-                <strong>Note:</strong> The Principal role ARN shown above is from the Resource
-                selected for this account. The External ID{" "}
-                <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
-                current project ID. If you configured granular permissions in your Resource
-                Role&apos;s policy, ensure this target role&apos;s ARN is included.
-              </p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-2.5">
+                <p className="mb-3 text-sm text-mineshaft-300">
+                  The target role must have a trust policy that allows the Resource Role (created in
+                  the &quot;Resources&quot; tab) to assume it. Ensure the target role&apos;s trust
+                  policy includes the Resource Role as a trusted principal.
+                </p>
 
-        <div className="mt-6 flex items-center">
+                <p className="mb-2 text-sm font-medium text-mineshaft-200">
+                  Target role trust policy:
+                </p>
+                <div className="relative mb-3">
+                  <div className="absolute top-1 right-3">
+                    <CopyButton value={targetRoleTrustPolicy} size="sm" variant="plain" />
+                  </div>
+                  <pre className="max-h-45 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
+                    {targetRoleTrustPolicy}
+                  </pre>
+                </div>
+                <p className="text-xs text-mineshaft-400">
+                  <strong>Note:</strong> The Principal role ARN shown above is from the Resource
+                  selected for this account. The External ID{" "}
+                  <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is
+                  your current project ID. If you configured granular permissions in your Resource
+                  Role&apos;s policy, ensure this target role&apos;s ARN is included.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <MetadataFields />
+        </div>
+        <SheetFooter className="shrink-0 border-t">
           <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
+            variant="neutral"
+            type="submit"
           >
             {isUpdate ? "Update Account" : "Create Account"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button onClick={() => closeSheet()} variant="outline" className="mr-auto" type="button">
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

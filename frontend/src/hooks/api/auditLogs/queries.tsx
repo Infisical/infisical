@@ -4,13 +4,12 @@ import { apiRequest } from "@app/config/request";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
-import { Actor, AuditLog, TGetAuditLogsFilter } from "./types";
+import { AuditLog, AuditLogPostgresStorageStatus, TGetAuditLogsFilter } from "./types";
 
 export const auditLogKeys = {
   getAuditLogs: (projectId: string | null, filters: TGetAuditLogsFilter) =>
     [{ projectId, filters }, "audit-logs"] as const,
-  getAuditLogActorFilterOpts: (projectId: string) =>
-    [{ projectId }, "audit-log-actor-filters"] as const
+  postgresStorageStatus: ["audit-logs-postgres-storage-status"] as const
 };
 
 export const useGetAuditLogs = (
@@ -56,14 +55,16 @@ export const useGetAuditLogs = (
   });
 };
 
-export const useGetAuditLogActorFilterOpts = (projectId: string) => {
+const fetchAuditLogPostgresStorageStatus = async () => {
+  const { data } = await apiRequest.get<AuditLogPostgresStorageStatus>(
+    "/api/v1/organization/audit-logs/postgres-storage-status"
+  );
+  return data;
+};
+
+export const useGetAuditLogPostgresStorageStatus = () => {
   return useQuery({
-    queryKey: auditLogKeys.getAuditLogActorFilterOpts(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ actors: Actor[] }>(
-        `/api/v1/projects/${projectId}/audit-logs/filters/actors`
-      );
-      return data.actors;
-    }
+    queryKey: auditLogKeys.postgresStorageStatus,
+    queryFn: fetchAuditLogPostgresStorageStatus
   });
 };

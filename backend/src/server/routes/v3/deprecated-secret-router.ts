@@ -14,7 +14,12 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretOperations,
+  SecretProtectionType
+} from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -275,7 +280,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       // just for delivery hero usecase
       let { secretPath, environment, workspaceId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -301,7 +306,9 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
 
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
-      const { secrets, imports } = await server.services.secret.getSecretsRaw({
+      const result = await server.services.secret.getSecretsRaw({
+        secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
+        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -314,8 +321,20 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         metadataFilter: req.query.metadataFilter,
         includeImports: req.query.include_imports,
         recursive: req.query.recursive,
-        tagSlugs: req.query.tagSlugs
+        tagSlugs: req.query.tagSlugs,
+        ifNoneMatch: req.headers["if-none-match"]
       });
+
+      const { secrets, imports, etag, notModified } = result;
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId: workspaceId,
@@ -341,7 +360,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -505,7 +525,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -548,7 +569,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
         secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
-        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
         secretReminderRepeatDays: z
           .number()
@@ -653,7 +674,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
 
@@ -811,7 +833,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secret };
@@ -929,7 +952,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
 
@@ -1037,7 +1061,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -1117,7 +1142,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
-            ...req.auditLogInfo
+            ...req.auditLogInfo,
+            actorType: req.permission.type
           }
         });
       }
@@ -1292,7 +1318,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
 
@@ -1486,7 +1513,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secret };
@@ -1614,7 +1642,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secret };
@@ -1801,7 +1830,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -1934,7 +1964,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -2059,7 +2090,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -2099,7 +2131,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+            skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
@@ -2191,7 +2223,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -2375,7 +2408,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };
@@ -2493,7 +2527,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
+          ...req.auditLogInfo,
+          actorType: req.permission.type
         }
       });
       return { secrets };

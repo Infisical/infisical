@@ -29,12 +29,18 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
+import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { TPkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -55,11 +61,13 @@ import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-servi
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -67,8 +75,11 @@ import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
+import { TCaSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { TCertificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
 import { TCertificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
@@ -95,6 +106,7 @@ import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-a
 import { TIdentityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { TIdentitySpiffeAuthServiceFactory } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-service";
 import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
@@ -131,7 +143,9 @@ import { TSecretReplicationServiceFactory } from "@app/services/secret-replicati
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
+import { TSignerServiceFactory } from "@app/services/signer/signer-service";
 import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -183,6 +197,7 @@ declare module "@fastify/request-context" {
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
     assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
+    memoizer?: RequestMemoizer;
   }
 }
 
@@ -231,7 +246,7 @@ declare module "fastify" {
       clientId: string;
       name: string;
     };
-    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -262,6 +277,7 @@ declare module "fastify" {
       secret: TSecretServiceFactory;
       secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
+      secretValidationRule: TSecretValidationRuleServiceFactory;
       secretImport: TSecretImportServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
@@ -284,6 +300,7 @@ declare module "fastify" {
       identityOciAuth: TIdentityOciAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
       identityJwtAuth: TIdentityJwtAuthServiceFactory;
+      identitySpiffeAuth: TIdentitySpiffeAuthServiceFactory;
       identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
@@ -297,6 +314,7 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateCleanup: TCertificateCleanupServiceFactory;
       certificateV3: TCertificateV3ServiceFactory;
       certificateRequest: TCertificateRequestServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
@@ -310,10 +328,14 @@ declare module "fastify" {
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiAcme: TPkiAcmeServiceFactory;
+      pkiScep: TPkiScepServiceFactory;
       certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
       pkiSync: TPkiSyncServiceFactory;
+      pkiDiscovery: TPkiDiscoveryServiceFactory;
+      pkiInstallation: TPkiInstallationServiceFactory;
+      pkiSigner: TSignerServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
@@ -360,8 +382,11 @@ declare module "fastify" {
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       pamFolder: TPamFolderServiceFactory;
       pamResource: TPamResourceServiceFactory;
+      pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
+      pamWebAccess: TPamWebAccessServiceFactory;
+      pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       upgradePath: TUpgradePathService;
 
@@ -377,6 +402,9 @@ declare module "fastify" {
       aiMcpEndpoint: TAiMcpEndpointServiceFactory;
       aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
       approvalPolicy: TApprovalPolicyServiceFactory;
+      appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;
+      caSigningConfig: TCaSigningConfigServiceFactory;
+      caAutoRenewalQueue: TCaAutoRenewalQueueFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

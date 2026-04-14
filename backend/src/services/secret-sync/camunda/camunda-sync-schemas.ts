@@ -48,6 +48,7 @@ export const CamundaSyncListItemSchema = z
     name: z.literal("Camunda"),
     connection: z.literal(AppConnection.Camunda),
     destination: z.literal(SecretSync.Camunda),
-    canImportSecrets: z.literal(true)
+    canImportSecrets: z.literal(true),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Camunda] }));

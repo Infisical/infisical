@@ -170,14 +170,6 @@ const Page = withPermission(
                         <UnstableDropdownMenuItem
                           isDisabled={!isAllowed}
                           onClick={async () => {
-                            if (currentOrg?.scimEnabled) {
-                              createNotification({
-                                text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
-                                type: "error"
-                              });
-                              return;
-                            }
-
                             if (!membership.isActive) {
                               // activate user
                               await updateOrgMembership({
@@ -209,14 +201,6 @@ const Page = withPermission(
                           variant="danger"
                           isDisabled={!isAllowed}
                           onClick={() => {
-                            if (currentOrg?.scimEnabled) {
-                              createNotification({
-                                text: "You cannot manage users from Infisical when SCIM is enabled for your organization",
-                                type: "error"
-                              });
-                              return;
-                            }
-
                             handlePopUpOpen("removeMember", {
                               orgMembershipId: membershipId,
                               username: membership.user.username
@@ -273,6 +257,7 @@ const Page = withPermission(
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan?.data?.text}
+          isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
         />
         <UserOrgMembershipModal
           popUp={popUp}

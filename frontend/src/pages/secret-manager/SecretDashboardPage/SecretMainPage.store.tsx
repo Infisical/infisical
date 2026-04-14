@@ -55,6 +55,10 @@ export interface PendingSecretDelete extends BasePendingChange {
   secretKey: string;
   secretValue: string;
   secretValueHidden: boolean;
+  tags: { id: string; slug: string }[];
+  secretMetadata: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding: boolean | null;
+  comment: string;
 }
 
 // Folder-related change types
@@ -255,6 +259,11 @@ type BatchModeState = {
     setExistingKeys: (secretKeys: string[], folderNames: string[]) => void;
     getTotalPendingChangesCount: () => number;
     removePendingChange: (changeId: string, resourceType: string, context: BatchContext) => void;
+    updatePendingChangeValue: (
+      changeId: string,
+      values: { originalValue?: string; secretValue?: string },
+      context: BatchContext
+    ) => void;
   };
 };
 
@@ -311,14 +320,25 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         }
 
         if (change.resourceType === "secret") {
-          const existingSecret =
-            state.existingSecretKeys.has(change.secretKey) ||
+          // A server key is "freed" if there's a pending rename away from it
+          const isServerKeyFreed = (key: string) =>
             newChanges.secrets.some(
               (s) =>
-                (s.secretKey === change.secretKey && s.type !== PendingAction.Create) ||
-                (change.type === PendingAction.Create &&
-                  change.originalKey !== change.secretKey &&
-                  s.secretKey === change.secretKey)
+                s.type === PendingAction.Update &&
+                s.secretKey === key &&
+                s.newSecretName &&
+                s.newSecretName !== key
+            );
+
+          // Get the effective key for a pending change (accounts for renames)
+          const effectiveKey = (s: (typeof newChanges.secrets)[number]) =>
+            s.type === PendingAction.Update && s.newSecretName ? s.newSecretName : s.secretKey;
+
+          const existingSecret =
+            (state.existingSecretKeys.has(change.secretKey) &&
+              !isServerKeyFreed(change.secretKey)) ||
+            newChanges.secrets.some(
+              (s) => effectiveKey(s) === change.secretKey && s.type !== PendingAction.Create
             );
 
           if (change.type === PendingAction.Create && existingSecret) {
@@ -333,13 +353,10 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             change.type === PendingAction.Update &&
             change.newSecretName &&
             change.newSecretName !== change.secretKey &&
-            (state.existingSecretKeys.has(change.newSecretName) ||
+            ((state.existingSecretKeys.has(change.newSecretName) &&
+              !isServerKeyFreed(change.newSecretName)) ||
               newChanges.secrets.some(
-                (s) =>
-                  (s.secretKey === change.newSecretName ||
-                    (s.type === PendingAction.Update &&
-                      s.newSecretName === change.newSecretName)) &&
-                  s.id !== change.id
+                (s) => s.id !== change.id && effectiveKey(s) === change.newSecretName
               ));
 
           if (existingNewSecretName) {
@@ -605,6 +622,63 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         };
       }),
 
+    updatePendingChangeValue: (
+      changeId: string,
+      values: { originalValue?: string; secretValue?: string },
+      context: BatchContext
+    ) =>
+      set((state) => {
+        const contextKey = generateContextKey(
+          context.projectId,
+          context.environment,
+          context.secretPath
+        );
+
+        const existingChanges = state.pendingChangesByContext.get(contextKey) || {
+          secrets: [],
+          folders: []
+        };
+        const newChanges = { ...existingChanges };
+
+        newChanges.secrets = newChanges.secrets.map((secret) => {
+          if (secret.id !== changeId) return secret;
+
+          if (secret.type === PendingAction.Update) {
+            return {
+              ...secret,
+              originalValue: values.originalValue ?? secret.originalValue,
+              secretValue: values.secretValue ?? secret.secretValue
+            };
+          }
+
+          if (secret.type === PendingAction.Delete && values.secretValue !== undefined) {
+            return {
+              ...secret,
+              secretValue: values.secretValue
+            };
+          }
+
+          return secret;
+        });
+
+        const updatedContextMap = new Map(state.pendingChangesByContext);
+        updatedContextMap.set(contextKey, newChanges);
+
+        const isCurrentContext =
+          state.currentContext &&
+          contextKey ===
+            generateContextKey(
+              state.currentContext.projectId,
+              state.currentContext.environment,
+              state.currentContext.secretPath
+            );
+
+        return {
+          pendingChangesByContext: updatedContextMap,
+          pendingChanges: isCurrentContext ? newChanges : state.pendingChanges
+        };
+      }),
+
     loadPendingChanges: (context) => {
       const contextKey = generateContextKey(
         context.projectId,
@@ -748,3 +822,9 @@ export const useBatchMode = () =>
   );
 
 export const useBatchModeActions = () => useStoreContext(useShallow((state) => state.batchActions));
+
+export const useBatchStoreApi = () => {
+  const ctx = useContext(StoreContext);
+  if (!ctx) throw new Error("Missing StoreProvider");
+  return ctx;
+};

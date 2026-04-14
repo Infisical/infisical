@@ -43,7 +43,7 @@ import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
@@ -274,7 +274,7 @@ export const samlConfigServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
@@ -347,7 +347,7 @@ export const samlConfigServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
@@ -461,7 +461,7 @@ export const samlConfigServiceFactory = ({
         actorAuthMethod: dto.actorAuthMethod,
         actorOrgId: dto.actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -626,6 +626,25 @@ export const samlConfigServiceFactory = ({
           newUser = userWithSameUsername;
         }
 
+        // Prevent cross-org account takeover: if an existing user was found by email,
+        // verify they are already a member of this org before binding the SAML identity.
+        if (newUser) {
+          const [existingMembership] = await orgDAL.findMembership(
+            {
+              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+            },
+            { tx }
+          );
+          if (!existingMembership) {
+            throw new ForbiddenRequestError({
+              message:
+                "User is not a member of this organization. Please contact your organization admin to receive an invite."
+            });
+          }
+        }
+
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
@@ -729,7 +748,7 @@ export const samlConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified && userAlias.isEmailVerified);
+    const isUserCompleted = Boolean(user.isAccepted && userAlias.isEmailVerified);
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,

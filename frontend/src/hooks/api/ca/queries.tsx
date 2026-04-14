@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TCertificateTemplate } from "../certificateTemplates/types";
-import { CaType } from "./enums";
+import { CaRenewalStatus, CaSigningConfigType, CaType } from "./enums";
 import {
   TAzureAdCsTemplate,
   TInternalCertificateAuthority,
@@ -26,7 +26,9 @@ export const caKeys = {
   getAzureAdcsTemplates: (caId: string, projectId: string) => [
     { caId, projectId },
     "azure-adcs-templates"
-  ]
+  ],
+  getCaSigningConfig: (caId: string) => [{ caId }, "ca-signing-config"],
+  getCaAutoRenewal: (caId: string) => [{ caId }, "ca-auto-renewal"]
 };
 
 export const useGetCa = ({
@@ -80,12 +82,15 @@ export const useListExternalCasByProjectId = (projectId: string) => {
   return useQuery({
     queryKey: caKeys.listExternalCasByProjectId(projectId),
     queryFn: async () => {
-      const [acmeResponse, azureAdCsResponse] = await Promise.allSettled([
+      const [acmeResponse, azureAdCsResponse, awsPcaResponse] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.ACME}?projectId=${projectId}`
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
           `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}?projectId=${projectId}`
+        ),
+        apiRequest.get<TUnifiedCertificateAuthority[]>(
+          `/api/v1/cert-manager/ca/${CaType.AWS_PCA}?projectId=${projectId}`
         )
       ]);
 
@@ -97,6 +102,10 @@ export const useListExternalCasByProjectId = (projectId: string) => {
 
       if (azureAdCsResponse.status === "fulfilled") {
         allCas.push(...azureAdCsResponse.value.data);
+      }
+
+      if (awsPcaResponse.status === "fulfilled") {
+        allCas.push(...awsPcaResponse.value.data);
       }
 
       return allCas;
@@ -192,6 +201,57 @@ export const useGetCaCertTemplates = (caId: string) => {
       return data;
     },
     enabled: Boolean(caId)
+  });
+};
+
+export type TCaSigningConfig = {
+  id: string;
+  caId: string;
+  type: CaSigningConfigType;
+  parentCaId: string | null;
+  appConnectionId: string | null;
+  destinationConfig: Record<string, unknown> | null;
+  lastExternalCertificateId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCaAutoRenewalConfig = {
+  autoRenewalEnabled: boolean;
+  autoRenewalDaysBeforeExpiry: number | null;
+  lastRenewalStatus: CaRenewalStatus | null;
+  lastRenewalMessage: string | null;
+  lastRenewalAt: string | null;
+};
+
+export const useGetCaSigningConfig = (caId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: caKeys.getCaSigningConfig(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCaSigningConfig | null>(
+        `/api/v1/cert-manager/ca/internal/${caId}/signing-config`
+      );
+      return data;
+    },
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(caId)
+  });
+};
+
+export const useGetCaAutoRenewal = (caId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: caKeys.getCaAutoRenewal(caId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCaAutoRenewalConfig>(
+        `/api/v1/cert-manager/ca/internal/${caId}/auto-renewal`
+      );
+      return data;
+    },
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(caId),
+    refetchInterval: (query) => {
+      const { data } = query.state;
+      if (data?.lastRenewalStatus === CaRenewalStatus.PENDING) return 3000;
+      return false;
+    }
   });
 };
 

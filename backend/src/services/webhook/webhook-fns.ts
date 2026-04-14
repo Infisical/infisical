@@ -7,6 +7,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -40,6 +41,7 @@ export const triggerWebhookRequest = async (
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
+  await blockLocalAndPrivateIpAddresses(url);
   if (secretKey) {
     const webhookSign = crypto.nativeCrypto
       .createHmac("sha256", secretKey)
@@ -51,7 +53,8 @@ export const triggerWebhookRequest = async (
   const req = await request.post(url, payload, {
     headers,
     timeout: WEBHOOK_TRIGGER_TIMEOUT,
-    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT),
+    maxRedirects: 0
   });
 
   return req;
@@ -59,7 +62,7 @@ export const triggerWebhookRequest = async (
 
 export const getWebhookPayload = (event: TWebhookPayloads) => {
   if (event.type === WebhookEvents.SecretModified) {
-    const { projectName, projectId, environment, secretPath, type } = event.payload;
+    const { projectName, projectId, environment, secretPath, type, changedBy, changedByActorType } = event.payload;
 
     switch (type) {
       case WebhookType.SLACK:
@@ -83,6 +86,16 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                   title: "Secret Path",
                   value: secretPath,
                   short: false
+                },
+                {
+                  title: "Modified By",
+                  value: changedBy,
+                  short: false
+                },
+                {
+                  title: "Modified By Actor Type",
+                  value: changedByActorType?.toString() || "Unknown Actor Type",
+                  short: false
                 }
               ]
             }
@@ -97,7 +110,72 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
             projectId,
             projectName,
             environment,
-            secretPath
+            secretPath,
+            changedBy,
+            changedByActorType
+          }
+        };
+    }
+  }
+
+  if (event.type === WebhookEvents.SecretRotationFailed) {
+    const { projectName, projectId, environment, secretPath, type, rotationName, errorMessage, triggeredManually } =
+      event.payload;
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: "A secret rotation has failed.",
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                {
+                  title: "Rotation Name",
+                  value: rotationName,
+                  short: false
+                },
+                {
+                  title: "Project",
+                  value: projectName,
+                  short: false
+                },
+                {
+                  title: "Environment",
+                  value: environment,
+                  short: false
+                },
+                {
+                  title: "Secret Path",
+                  value: secretPath,
+                  short: false
+                },
+                {
+                  title: "Error Message",
+                  value: errorMessage,
+                  short: false
+                },
+                {
+                  title: "Triggered Manually",
+                  value: triggeredManually ? "Yes" : "No",
+                  short: false
+                }
+              ]
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          project: {
+            projectId,
+            projectName,
+            environment,
+            secretPath,
+            rotationName,
+            errorMessage,
+            triggeredManually
           }
         };
     }

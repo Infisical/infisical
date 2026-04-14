@@ -1,5 +1,20 @@
 import ms from "ms";
 
+import { CertSource } from "@app/hooks/api/certificates/enums";
+import { TCertificateSource } from "@app/hooks/api/certificates/types";
+
+export const getCertSourceLabel = (source: TCertificateSource): string => {
+  switch (source) {
+    case CertSource.Discovered:
+      return "Discovered";
+    case CertSource.Imported:
+      return "Imported";
+    case CertSource.Issued:
+    default:
+      return "Managed";
+  }
+};
+
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {
   const expiryDate = new Date(notAfter);
   const now = new Date();

@@ -13,12 +13,13 @@ export interface TBasePamAccount {
   };
   name: string;
   description?: string | null;
-  rotationEnabled: boolean;
-  rotationIntervalSeconds?: number;
+  credentialsConfigured: boolean;
   requireMfa?: boolean | null;
   lastRotatedAt?: string | null;
   lastRotationMessage?: string | null;
   rotationStatus?: string | null;
+  dependencyCount?: number;
+  metadata?: { key: string; value: string }[];
   createdAt: string;
   updatedAt: string;
 }

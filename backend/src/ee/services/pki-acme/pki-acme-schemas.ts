@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export enum AcmeIdentifierType {
-  DNS = "dns"
+  DNS = "dns",
+  IP = "ip"
 }
 
 export enum AcmeOrderStatus {

@@ -26,6 +26,16 @@ Below is a comprehensive list of all available organization-level subjects and t
 | -------- | ------------------ |
 | `create` | Create new project |
 
+#### Subject: `sub-organization`
+
+| Action          | Description                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| `create`        | Create new sub-organizations under the root organization                                  |
+| `edit`          | Modify existing sub-organizations (e.g., rename, change slug)                             |
+| `delete`        | Remove sub-organizations from the root organization                                       |
+| `direct-access` | Access and switch into sub-organizations the user has membership in                       |
+| `link-group`    | Link a root organization group to a sub-organization (and unlink it). Root org role only. |
+
 ### Role Management
 
 #### Subject: `role`
@@ -113,12 +123,13 @@ Below is a comprehensive list of all available organization-level subjects and t
 
 #### Subject: `sso`
 
-| Action   | Description                        |
-| -------- | ---------------------------------- |
-| `read`   | View Single Sign-On configurations |
-| `create` | Set up new SSO integrations        |
-| `edit`   | Modify existing SSO settings       |
-| `delete` | Remove SSO configurations          |
+| Action                  | Description                                                                 |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `read`                  | View Single Sign-On configurations                                           |
+| `create`                | Set up new SSO integrations                                                  |
+| `edit`                  | Modify existing SSO settings                                                 |
+| `delete`                | Remove SSO configurations                                                    |
+| `bypass-sso-enforcement`| Bypass enforced SSO at login (break-glass) when the organization has "Allow admins to bypass SSO" enabled. Can be granted to custom roles to allow non-admin users to use break-glass access. |
 
 #### Subject: `scim`
 

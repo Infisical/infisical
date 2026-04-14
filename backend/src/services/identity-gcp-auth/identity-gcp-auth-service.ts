@@ -20,6 +20,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -47,7 +48,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -69,7 +70,10 @@ export const identityGcpAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityGcpAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -109,7 +113,13 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isServiceAccountAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP service account not allowed."
+            message: "Access denied: GCP service account not allowed.",
+            detail: {
+              reasonCode: "service_account_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -127,7 +137,13 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isProjectAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP project not allowed."
+            message: "Access denied: GCP project not allowed.",
+            detail: {
+              reasonCode: "project_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -139,11 +155,17 @@ export const identityGcpAuthServiceFactory = ({
 
         if (!isZoneAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: GCP zone not allowed."
+            message: "Access denied: GCP zone not allowed.",
+            detail: {
+              reasonCode: "zone_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -151,15 +173,21 @@ export const identityGcpAuthServiceFactory = ({
             throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -225,8 +253,8 @@ export const identityGcpAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -240,8 +268,8 @@ export const identityGcpAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
       throw error;

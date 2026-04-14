@@ -14,6 +14,7 @@ import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
+import { registerCertificateCleanupRouter } from "./certificate-cleanup-router";
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
@@ -30,6 +31,7 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
@@ -44,6 +46,7 @@ import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
 import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
+import { registerIdentitySpiffeAuthRouter } from "./identity-spiffe-auth-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
@@ -54,6 +57,7 @@ import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
+import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
@@ -61,6 +65,7 @@ import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
+import { registerProjectGroupMembershipsRouter } from "./project-group-memberships-router";
 import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -69,6 +74,8 @@ import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
+import { registerSecretValidationRuleRouter } from "./secret-validation-rule-router";
+import { registerSignerRouter } from "./signer-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUpgradePathRouter } from "./upgrade-path-router";
@@ -95,6 +102,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityOciAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
       await authRouter.register(registerIdentityJwtAuthRouter);
+      await authRouter.register(registerIdentitySpiffeAuthRouter);
       await authRouter.register(registerIdentityLdapAuthRouter);
     },
     { prefix: "/auth" }
@@ -106,9 +114,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await orgRouter.register(registerOrgRouter);
       await orgRouter.register(registerOrgIdentityRouter);
       await orgRouter.register(registerIdentityOrgMembershipRouter);
+      await orgRouter.register(registerGroupOrgMembershipRouter);
     },
     { prefix: "/organization" }
   );
+  await server.register(registerOrganizationMembershipsRouter, { prefix: "/organizations" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
@@ -146,15 +156,20 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerSecretValidationRuleRouter);
       await projectRouter.register(registerGroupProjectRouter);
       await projectRouter.register(registerDeprecatedIdentityProjectMembershipRouter);
     },
     { prefix: "/projects" }
   );
 
-  await server.register(registerIdentityProjectMembershipRouter, {
-    prefix: "/projects/:projectId/memberships"
-  });
+  await server.register(
+    async (membershipsRouter) => {
+      await membershipsRouter.register(registerIdentityProjectMembershipRouter);
+      await membershipsRouter.register(registerProjectGroupMembershipsRouter);
+    },
+    { prefix: "/projects/:projectId/memberships" }
+  );
 
   await server.register(
     async (pkiRouter) => {
@@ -179,6 +194,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
         { prefix: "/certificate-profiles" }
       );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerSignerRouter, { prefix: "/signers" });
+      await pkiRouter.register(registerCertificateCleanupRouter, { prefix: "/certificate-cleanup" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
           await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
@@ -249,10 +266,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretSharingRouter) => {
-      await secretSharingRouter.register(registerSecretSharingRouter, { prefix: "/shared" });
+      await secretSharingRouter.register(registerSecretSharingRouter);
       await secretSharingRouter.register(registerSecretRequestsRouter, { prefix: "/requests" });
     },
-    { prefix: "/secret-sharing" }
+    { prefix: "/shared-secrets" }
   );
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });

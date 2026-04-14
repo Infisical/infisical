@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
 import {
-  OrgPermissionActions,
+  OrgPermissionSsoActions,
   OrgPermissionSubjects,
   useOrganization,
   useServerConfig,
@@ -182,7 +182,7 @@ export const OrgSsoTab = withPermission(
     return (
       <>
         <div className="space-y-4">
-          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE]) && (
+          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE, LoginMethod.OIDC]) && (
             <OrgGeneralAuthSection
               isSamlConfigured={isSamlConfigured}
               isOidcConfigured={isOidcConfigured}
@@ -214,5 +214,5 @@ export const OrgSsoTab = withPermission(
       </>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Sso }
+  { action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso }
 );

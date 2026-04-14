@@ -1,11 +1,20 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
@@ -15,13 +24,17 @@ import {
 import { useDeleteGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { GroupWizardSteps } from "./groupWizardSteps";
 import { OrgGroupModal } from "./OrgGroupModal";
 import { OrgGroupsTable } from "./OrgGroupsTable";
 
+export { GroupWizardSteps };
+
 export const OrgGroupsSection = () => {
   const { subscription } = useSubscription();
-  const { isSubOrganization } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
+  const [wizardStep, setWizardStep] = useState<GroupWizardSteps>(GroupWizardSteps.CreateGroup);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "group",
@@ -37,16 +50,30 @@ export const OrgGroupsSection = () => {
         isEnterpriseFeature: true
       });
     } else {
+      if (!isSubOrganization) {
+        setWizardStep(GroupWizardSteps.CreateGroup);
+      }
       handlePopUpOpen("group");
     }
   };
 
-  const onDeleteGroupSubmit = async ({ name, groupId }: { name: string; groupId: string }) => {
+  const onDeleteGroupSubmit = async ({
+    name,
+    groupId,
+    isLinkedGroup
+  }: {
+    name: string;
+    groupId: string;
+    isLinkedGroup?: boolean;
+  }) => {
     await deleteMutateAsync({
-      id: groupId
+      id: groupId,
+      organizationId: currentOrg?.id
     });
     createNotification({
-      text: `Successfully deleted the group named ${name}`,
+      text: isLinkedGroup
+        ? "Successfully unlinked group from sub-organization"
+        : `Successfully deleted the group named ${name}`,
       type: "success"
     });
 
@@ -54,43 +81,62 @@ export const OrgGroupsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Groups
-          </p>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups" />
-        </div>
-        <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
-          {(isAllowed) => (
-            <Button
-              variant="outline_bg"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handleAddGroupModal()}
-              isDisabled={!isAllowed}
-            >
-              Create {isSubOrganization ? "Sub-" : ""}Organization Group
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <OrgGroupsTable handlePopUpOpen={handlePopUpOpen} />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups" />
+          </UnstableCardTitle>
+          <UnstableCardDescription>
+            Create and manage {isSubOrganization ? "sub-" : ""}organization groups
+          </UnstableCardDescription>
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
+              {(isAllowed) => (
+                <Button
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  onClick={() => handleAddGroupModal()}
+                  isDisabled={!isAllowed}
+                >
+                  <PlusIcon />
+                  {isSubOrganization
+                    ? "Add Group to Sub-Organization"
+                    : "Create Organization Group"}
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <OrgGroupsTable handlePopUpOpen={handlePopUpOpen} />
+        </UnstableCardContent>
+      </UnstableCard>
       <OrgGroupModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
+        wizardStep={wizardStep}
+        setWizardStep={setWizardStep}
+        isSubOrganization={isSubOrganization}
       />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to delete the group named ${
-          (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        }?`}
+        title={
+          (popUp?.deleteGroup?.data as { name: string; isLinkedGroup?: boolean })?.isLinkedGroup
+            ? `Are you sure you want to unlink the group "${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }" from this sub-organization?`
+            : `Are you sure you want to delete the group named ${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }?`
+        }
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; groupId: string })
+          onDeleteGroupSubmit(
+            popUp?.deleteGroup?.data as { name: string; groupId: string; isLinkedGroup?: boolean }
+          )
         }
       />
       <UpgradePlanModal
@@ -99,6 +145,6 @@ export const OrgGroupsSection = () => {
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text={popUp.upgradePlan?.data?.text}
       />
-    </div>
+    </>
   );
 };

@@ -13,8 +13,15 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
+import { DeleteActionModal, IconButton } from "@app/components/v2";
 import { Tooltip } from "@app/components/v2/Tooltip/Tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -289,19 +296,23 @@ export const FolderListView = ({
           )}
         </div>
       ))}
-      <Modal
-        isOpen={popUp.updateFolder.isOpen}
+      <Dialog
+        open={popUp.updateFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
       >
-        <ModalContent title="Edit Folder">
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Folder</DialogTitle>
+            <DialogDescription>Update the folder name and description.</DialogDescription>
+          </DialogHeader>
           <FolderForm
             isEdit
             defaultFolderName={(popUp.updateFolder?.data as TSecretFolder)?.name}
             defaultDescription={(popUp.updateFolder?.data as TSecretFolder)?.description}
             onUpdateFolder={handleFolderUpdate}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <DeleteActionModal
         isOpen={popUp.deleteFolder.isOpen}
         deleteKey={(popUp.deleteFolder?.data as TSecretFolder)?.name}

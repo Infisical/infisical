@@ -15,6 +15,7 @@ const $glob: FieldInstruction<string> = {
 const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   const secretPath = context.get(object, node.field) as string;
   const permissionSecretGlobPath = node.value;
+  if (permissionSecretGlobPath.trim() === "") return false;
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
 
@@ -22,6 +23,7 @@ export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export enum PermissionConditionOperators {
   $IN = "$in",
+  $ALL = "$all",
   $EQ = "$eq",
   $NEQ = "$ne",
   $GLOB = "$glob",

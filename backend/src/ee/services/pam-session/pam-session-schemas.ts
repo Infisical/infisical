@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 
+import { TerminalChannelType } from "./pam-session-enums";
+
 export const PamSessionCommandLogSchema = z.object({
   input: z.string(),
   output: z.string(),
@@ -11,11 +13,14 @@ export const PamSessionCommandLogSchema = z.object({
 // SSH Terminal Event schemas
 export const TerminalEventTypeSchema = z.enum(["input", "output", "resize", "error"]);
 
+export const TerminalChannelTypeSchema = z.nativeEnum(TerminalChannelType);
+
 export const HttpEventTypeSchema = z.enum(["request", "response"]);
 
 export const TerminalEventSchema = z.object({
   timestamp: z.coerce.date(),
   eventType: TerminalEventTypeSchema,
+  channelType: TerminalChannelTypeSchema.optional(), // Optional for backwards compatibility with existing logs
   data: z.string(), // Base64 encoded binary data
   elapsedTime: z.number() // Seconds since session start (for replay)
 });
@@ -41,8 +46,25 @@ export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);
 
+export const AiInsightsSchema = z
+  .object({
+    summary: z.string(),
+    warnings: z.array(z.object({ text: z.string(), logIndex: z.number().int().optional() }))
+  })
+  .nullable()
+  .optional();
+
 export const SanitizedSessionSchema = PamSessionsSchema.omit({
-  encryptedLogsBlob: true
+  encryptedLogsBlob: true,
+  encryptedAiInsights: true
 }).extend({
-  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema]))
+  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
+  gatewayIdentityId: z.string().nullable().optional(),
+  aiInsights: AiInsightsSchema
+});
+
+export const SessionLogsPageSchema = z.object({
+  logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema])),
+  hasMore: z.boolean(),
+  batchCount: z.number()
 });

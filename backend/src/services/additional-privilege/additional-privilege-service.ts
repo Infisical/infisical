@@ -11,6 +11,7 @@ import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission
 
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TAdditionalPrivilegeDALFactory } from "./additional-privilege-dal";
 import {
   TAdditionalPrivilegesScopeFactory,
@@ -21,7 +22,6 @@ import {
   TListAdditionalPrivilegesDTO,
   TUpdateAdditionalPrivilegesDTO
 } from "./additional-privilege-types";
-import { newNamespaceAdditionalPrivilegesFactory } from "./namespace/namespace-additional-privilege-factory";
 import { newOrgAdditionalPrivilegesFactory } from "./org/org-additional-privilege-factory";
 import { newProjectAdditionalPrivilegesFactory } from "./project/project-additional-privilege-factory";
 import { ActorType } from "../auth/auth-type";
@@ -31,6 +31,7 @@ type TAdditionalPrivilegeServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TAdditionalPrivilegeServiceFactory = ReturnType<typeof additionalPrivilegeServiceFactory>;
@@ -39,16 +40,18 @@ export const additionalPrivilegeServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   orgDAL,
-  membershipDAL
+  membershipDAL,
+  userDAL
 }: TAdditionalPrivilegeServiceFactoryDep) => {
   const scopeFactory: Record<AccessScope, TAdditionalPrivilegesScopeFactory> = {
     [AccessScope.Organization]: newOrgAdditionalPrivilegesFactory({}),
     [AccessScope.Project]: newProjectAdditionalPrivilegesFactory({
+      additionalPrivilegeDAL,
       membershipDAL,
       orgDAL,
-      permissionService
-    }),
-    [AccessScope.Namespace]: newNamespaceAdditionalPrivilegesFactory({})
+      permissionService,
+      userDAL
+    })
   };
 
   const createAdditionalPrivilege = async (dto: TCreateAdditionalPrivilegesDTO) => {

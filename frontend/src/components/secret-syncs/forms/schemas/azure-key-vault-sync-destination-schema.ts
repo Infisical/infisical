@@ -3,7 +3,11 @@ import { z } from "zod";
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
-export const AzureKeyVaultSyncDestinationSchema = BaseSecretSyncSchema().merge(
+export const AzureKeyVaultSyncDestinationSchema = BaseSecretSyncSchema(
+  z.object({
+    disableCertificateImport: z.boolean().optional().default(false)
+  })
+).merge(
   z.object({
     destination: z.literal(SecretSync.AzureKeyVault),
     destinationConfig: z.object({

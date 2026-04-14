@@ -39,7 +39,9 @@ export enum DynamicSecretProviders {
   Vertica = "vertica",
   GcpIam = "gcp-iam",
   Github = "github",
-  Couchbase = "couchbase"
+  Couchbase = "couchbase",
+  Clickhouse = "clickhouse",
+  Ssh = "ssh"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -422,6 +424,39 @@ export type TDynamicSecretProvider =
         auth: {
           apiKey: string;
         };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Clickhouse;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        username: string;
+        password: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string;
+        gatewayId?: string;
+        passwordRequirements?: {
+          length: number;
+          required: {
+            lowercase: number;
+            uppercase: number;
+            digits: number;
+            symbols: number;
+          };
+          allowedSymbols?: string;
+        };
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Ssh;
+      inputs: {
+        caPublicKey?: string;
+        principals: string[];
+        keyAlgorithm: string;
       };
     };
 

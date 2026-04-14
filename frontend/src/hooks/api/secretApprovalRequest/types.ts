@@ -5,7 +5,8 @@ import { WsTag } from "../tags/types";
 export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
-  REJECTED = "rejected"
+  REJECTED = "rejected",
+  REVOKED = "revoked"
 }
 
 export enum CommitType {
@@ -20,7 +21,7 @@ export type TSecretApprovalSecChangeData = {
   secretKey: string;
   secretValue?: string;
   secretComment?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
   tags?: WsTag[];

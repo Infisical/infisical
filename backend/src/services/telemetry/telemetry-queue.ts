@@ -3,7 +3,7 @@ import { PostHog } from "posthog-node";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
@@ -63,37 +63,26 @@ export const telemetryQueueServiceFactory = ({
   const startTelemetryCheck = async () => {
     // this is a fast way to check its cloud or not
     if (appCfg.INFISICAL_CLOUD) return;
-    // clear previous job
-    await queueService.stopRepeatableJob(
-      QueueName.TelemetryInstanceStats,
-      QueueJobs.TelemetryInstanceStats,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.TelemetryInstanceStats // just a job id
-    );
 
     if (postHog) {
-      await queueService.queue(QueueName.TelemetryInstanceStats, QueueJobs.TelemetryInstanceStats, undefined, {
-        jobId: QueueName.TelemetryInstanceStats,
-        repeat: { pattern: "0 0 * * *", utc: true }
-      });
+      await queueService.upsertJobScheduler(
+        QueueName.TelemetryInstanceStats,
+        `${JOB_SCHEDULER_PREFIX}:${QueueName.TelemetryInstanceStats}`,
+        { pattern: "0 0 * * *" },
+        { name: QueueJobs.TelemetryInstanceStats }
+      );
     }
   };
 
   const startAggregatedEventsJob = async () => {
-    // clear previous aggregated events job
-    await queueService.stopRepeatableJob(
-      QueueName.TelemetryAggregatedEvents,
-      QueueJobs.TelemetryAggregatedEvents,
-      { pattern: "*/5 * * * *", utc: true },
-      QueueName.TelemetryAggregatedEvents // just a job id
-    );
-
     if (postHog) {
       // Start aggregated events job (runs every five minutes)
-      await queueService.queue(QueueName.TelemetryAggregatedEvents, QueueJobs.TelemetryAggregatedEvents, undefined, {
-        jobId: QueueName.TelemetryAggregatedEvents,
-        repeat: { pattern: "*/5 * * * *", utc: true }
-      });
+      await queueService.upsertJobScheduler(
+        QueueName.TelemetryAggregatedEvents,
+        `${JOB_SCHEDULER_PREFIX}:${QueueName.TelemetryAggregatedEvents}`,
+        { pattern: "*/5 * * * *" },
+        { name: QueueJobs.TelemetryAggregatedEvents }
+      );
     }
   };
 

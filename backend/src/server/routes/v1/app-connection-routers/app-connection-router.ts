@@ -15,6 +15,10 @@ import {
   OnePassConnectionListItemSchema,
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
+import {
+  AnthropicConnectionListItemSchema,
+  SanitizedAnthropicConnectionSchema
+} from "@app/services/app-connection/anthropic";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -33,6 +37,14 @@ import {
   AzureDevOpsConnectionListItemSchema,
   SanitizedAzureDevOpsConnectionSchema
 } from "@app/services/app-connection/azure-devops/azure-devops-schemas";
+import {
+  AzureDnsConnectionListItemSchema,
+  SanitizedAzureDnsConnectionSchema
+} from "@app/services/app-connection/azure-dns/azure-dns-connection-schema";
+import {
+  AzureEntraIdConnectionListItemSchema,
+  SanitizedAzureEntraIdConnectionSchema
+} from "@app/services/app-connection/azure-entra-id";
 import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
@@ -70,6 +82,10 @@ import {
   DNSMadeEasyConnectionListItemSchema,
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
+import {
+  ExternalInfisicalConnectionListItemSchema,
+  SanitizedExternalInfisicalConnectionSchema
+} from "@app/services/app-connection/external-infisical";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -102,6 +118,10 @@ import {
   NetlifyConnectionListItemSchema,
   SanitizedNetlifyConnectionSchema
 } from "@app/services/app-connection/netlify";
+import {
+  NetScalerConnectionListItemSchema,
+  SanitizedNetScalerConnectionSchema
+} from "@app/services/app-connection/netscaler";
 import {
   NorthflankConnectionListItemSchema,
   SanitizedNorthflankConnectionSchema
@@ -142,6 +162,7 @@ import {
   SanitizedTerraformCloudConnectionSchema,
   TerraformCloudConnectionListItemSchema
 } from "@app/services/app-connection/terraform-cloud";
+import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import { SanitizedVercelConnectionSchema, VercelConnectionListItemSchema } from "@app/services/app-connection/vercel";
 import {
   SanitizedWindmillConnectionSchema,
@@ -197,11 +218,17 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedAzureDnsConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
-  ...SanitizedOpenRouterConnectionSchema.options
+  ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedAnthropicConnectionSchema.options,
+  ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedVenafiConnectionSchema.options,
+  ...SanitizedExternalInfisicalConnectionSchema.options,
+  ...SanitizedNetScalerConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -250,11 +277,17 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
+  AzureDnsConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
-  OpenRouterConnectionListItemSchema
+  OpenRouterConnectionListItemSchema,
+  AzureEntraIdConnectionListItemSchema,
+  VenafiConnectionListItemSchema,
+  ExternalInfisicalConnectionListItemSchema,
+  NetScalerConnectionListItemSchema,
+  AnthropicConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

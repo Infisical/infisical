@@ -25,6 +25,7 @@ import {
   expandSecretRotation,
   getNextUtcRotationInterval,
   getSecretRotationRotateSecretJobOptions,
+  getWebhookSanitizedErrorMessage,
   listSecretRotationOptions,
   parseRotationErrorMessage,
   throwOnImmutableParameterUpdate
@@ -60,7 +61,7 @@ import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
-import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -83,10 +84,14 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-token-rotation-fns";
+import { hpIloRotationFactory } from "./hp-ilo-rotation/hp-ilo-rotation-fns";
+import { HpIloRotationMethod } from "./hp-ilo-rotation/hp-ilo-rotation-schemas";
+import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rotation/hp-ilo-rotation-types";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
@@ -105,10 +110,11 @@ import {
   TWindowsLocalAccountRotationGeneratedCredentials
 } from "./windows-local-account-rotation/windows-local-account-rotation-types";
 
-type TLocalAccountRotation = TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation;
+type TLocalAccountRotation = TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
 type TLocalAccountRotationGeneratedCredentials =
   | TUnixLinuxLocalAccountRotationGeneratedCredentials
-  | TWindowsLocalAccountRotationGeneratedCredentials;
+  | TWindowsLocalAccountRotationGeneratedCredentials
+  | THpIloRotationGeneratedCredentials;
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
@@ -130,7 +136,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  queueService: Pick<TQueueServiceFactory, "queuePg">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
@@ -163,7 +169,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.UnixLinuxLocalAccount]: unixLinuxLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -193,13 +200,19 @@ export const secretRotationV2ServiceFactory = ({
     const appCfg = getConfig();
     if (!appCfg.isSmtpConfigured) return; // comment out if testing email sending
 
-    await queueService.queuePg(
+    const { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } = secretRotation;
+
+    await queueService.queue(
+      QueueName.SecretRotationV2,
       QueueJobs.SecretRotationV2SendNotification,
-      { secretRotation },
+      { secretRotation: { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } },
       {
-        jobId: `secret-rotation-v2-notification-${secretRotation.id}`,
-        retryLimit: 5,
-        retryBackoff: true
+        jobId: `secret-rotation-v2-notifications-${secretRotation.id}`,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 1000
+        }
       }
     );
   };
@@ -212,7 +225,7 @@ export const secretRotationV2ServiceFactory = ({
   }: {
     secretKeys: string[];
     folderId: string;
-    tx: Knex;
+    tx?: Knex;
     secretPath: string;
   }) => {
     if (new Set(secretKeys).size !== secretKeys.length) {
@@ -229,7 +242,7 @@ export const secretRotationV2ServiceFactory = ({
         [`${TableName.SecretV2}.folderId` as "folderId"]: folderId,
         [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
       },
-      { tx }
+      tx ? { tx } : undefined
     );
 
     if (conflictingSecrets.length) {
@@ -518,8 +531,8 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service
     );
 
-    // even though we have a db constraint we want to check before any rotation of credentials is attempted
-    // to prevent creation failure after external credentials have been modified
+    // Perform ALL validation checks BEFORE rotating credentials on the external system.
+    // Check 1: Ensure no rotation with the same name exists at this path
     const conflictingRotation = await secretRotationV2DAL.findOne({
       name: payload.name,
       folderId: folder.id
@@ -529,6 +542,14 @@ export const secretRotationV2ServiceFactory = ({
       throw new BadRequestError({
         message: `A Secret Rotation with the name "${payload.name}" already exists at the secret path "${secretPath}"`
       });
+
+    // Check 2: Ensure no secrets with the mapped names already exist at this path
+    // We do this check outside the transaction to fail fast before any credential rotation
+    await $throwOnConflictingSecrets({
+      secretPath,
+      secretKeys: Object.values(secretsMapping),
+      folderId: folder.id
+    });
 
     try {
       const currentTime = new Date();
@@ -544,6 +565,7 @@ export const secretRotationV2ServiceFactory = ({
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
 
+          // We repeat the check here to handle race conditions
           await $throwOnConflictingSecrets({
             secretPath,
             secretKeys: Object.values(secretsMapping),
@@ -768,7 +790,8 @@ export const secretRotationV2ServiceFactory = ({
 
       // queue for rotation if adjusted time falls before next cron
       if (nextRotationAt && nextRotationAt.getTime() < getNextUtcRotationInterval().getTime()) {
-        await queueService.queuePg(
+        await queueService.queue(
+          QueueName.SecretRotationV2RotateSecrets,
           QueueJobs.SecretRotationV2RotateSecrets,
           { rotationId, queuedAt: new Date(), isManualRotation: true },
           getSecretRotationRotateSecretJobOptions(updatedSecretRotation)
@@ -901,6 +924,44 @@ export const secretRotationV2ServiceFactory = ({
     }
 
     return expandSecretRotation(secretRotation, kmsService);
+  };
+
+  const triggerFailedWebhook = async (
+    projectId: string,
+    environment: { slug: string; name: string; id: string },
+    error: unknown,
+    folder: { id: string; path: string },
+    secretRotation: TSecretRotationV2Raw,
+    isManualRotation: boolean
+  ) => {
+    const webhookErrorMessage = getWebhookSanitizedErrorMessage(error);
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.SecretRotationFailed,
+        payload: {
+          projectId,
+          environment: environment.slug,
+          secretPath: folder.path,
+          rotationName: secretRotation.name,
+          triggeredManually: isManualRotation,
+          errorMessage: webhookErrorMessage
+        }
+      },
+      {
+        jobId: `secret-rotation-webhook-${secretRotation.id}-${Date.now()}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        }
+      }
+    );
   };
 
   const rotateGeneratedCredentials = async (
@@ -1077,6 +1138,10 @@ export const secretRotationV2ServiceFactory = ({
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
 
+      if (isManualRotation) {
+        await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
+      }
+
       if (isFinalAttempt) {
         const { encryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -1097,6 +1162,7 @@ export const secretRotationV2ServiceFactory = ({
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);
+          await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
         }
       }
 
@@ -1427,7 +1493,13 @@ export const secretRotationV2ServiceFactory = ({
     {
       rotationId,
       type
-    }: { rotationId: string; type: SecretRotation.UnixLinuxLocalAccount | SecretRotation.WindowsLocalAccount },
+    }: {
+      rotationId: string;
+      type:
+        | SecretRotation.UnixLinuxLocalAccount
+        | SecretRotation.WindowsLocalAccount
+        | SecretRotation.HpIloLocalAccount;
+    },
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -1447,10 +1519,11 @@ export const secretRotationV2ServiceFactory = ({
 
     if (
       secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
-      secretRotation.type !== SecretRotation.WindowsLocalAccount
+      secretRotation.type !== SecretRotation.WindowsLocalAccount &&
+      secretRotation.type !== SecretRotation.HpIloLocalAccount
     )
       throw new BadRequestError({
-        message: `Reconcile operation is only supported for Unix/Linux Local Account and Windows Local Account rotations`
+        message: `Reconcile operation is only supported for Unix/Linux Local Account, Windows Local Account, and HP iLO Local Account rotations`
       });
 
     const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
@@ -1472,20 +1545,24 @@ export const secretRotationV2ServiceFactory = ({
 
     const localAccountParams = parameters as TLocalAccountRotation["parameters"];
 
-    const loginAsTargetMethod =
-      type === SecretRotation.UnixLinuxLocalAccount
-        ? UnixLinuxLocalAccountRotationMethod.LoginAsTarget
-        : WindowsLocalAccountRotationMethod.LoginAsTarget;
+    let loginAsTargetMethod;
+    let loginAsRootMethod;
 
-    const loginAsRootMethod =
-      type === SecretRotation.UnixLinuxLocalAccount
-        ? UnixLinuxLocalAccountRotationMethod.LoginAsRoot
-        : WindowsLocalAccountRotationMethod.LoginAsRoot;
+    if (type === SecretRotation.UnixLinuxLocalAccount) {
+      loginAsTargetMethod = UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
+      loginAsRootMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot;
+    } else if (type === SecretRotation.WindowsLocalAccount) {
+      loginAsTargetMethod = WindowsLocalAccountRotationMethod.LoginAsTarget;
+      loginAsRootMethod = WindowsLocalAccountRotationMethod.LoginAsRoot;
+    } else {
+      loginAsTargetMethod = HpIloRotationMethod.LoginAsTarget;
+      loginAsRootMethod = HpIloRotationMethod.LoginAsRoot;
+    }
 
     // Only allow reconcile for login-as-target mode
     if (localAccountParams.rotationMethod !== loginAsTargetMethod) {
       throw new BadRequestError({
-        message: `Reconcile operation is only supported for login-as-target mode Unix/Linux Local Account and Windows Local Account rotations`
+        message: `Reconcile operation is only supported for login-as-target mode Unix/Linux Local Account, Windows Local Account, and HP iLO Local Account rotations`
       });
     }
 

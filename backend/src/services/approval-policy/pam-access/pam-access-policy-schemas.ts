@@ -14,10 +14,12 @@ import {
 
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  accountPath: z.string()
+  resourceName: z.string().optional(),
+  accountName: z.string().optional()
 });
 
-const accountPathGlob = z.string().refine(
+// Conditions
+const resourceNameGlob = z.string().refine(
   (el) => {
     try {
       picomatch.parse([el]);
@@ -26,27 +28,44 @@ const accountPathGlob = z.string().refine(
       return false;
     }
   },
-  { message: "Invalid glob pattern" }
+  { message: "Invalid glob pattern for resource name" }
 );
 
-// Conditions
+const accountNameGlob = z.string().refine(
+  (el) => {
+    try {
+      picomatch.parse([el]);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Invalid glob pattern for account name" }
+);
+
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    accountPaths: accountPathGlob.array()
+    resourceNames: resourceNameGlob.array().optional(),
+    accountNames: accountNameGlob.array().optional()
   })
   .array();
 
 const MutatePamAccessPolicyConditionsSchema = z
   .object({
-    accountPaths: accountPathGlob
-      .refine((el) => el.startsWith("/"), {
-        message: "Path must start with /"
-      })
-      .refine((el) => !el.endsWith("/"), {
-        message: "Path cannot end with /"
-      })
-      .array()
+    resourceNames: resourceNameGlob.array().optional(),
+    accountNames: accountNameGlob.array().optional()
   })
+  .refine(
+    (data) => {
+      // At least one condition type must be provided
+      const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
+      const hasAccountNames = data.accountNames && data.accountNames.length > 0;
+      return hasResourceNames || hasAccountNames;
+    },
+    {
+      message: "At least one condition type must be provided (resourceNames or accountNames)"
+    }
+  )
   .array();
 
 const DurationSchema = z.string().refine(
@@ -67,22 +86,31 @@ export const PamAccessPolicyConstraintsSchema = z.object({
   })
 });
 
-// Request Data
+// Request Data - Base schema for stored data (used by grants, etc.)
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountPath: accountPathGlob,
-  accessDuration: DurationSchema
+  accessDuration: DurationSchema,
+  resourceName: resourceNameGlob.optional(),
+  accountName: accountNameGlob.optional()
 });
 
-const CreatePamAccessPolicyRequestDataSchema = z.object({
-  accountPath: accountPathGlob
-    .refine((el) => el.startsWith("/"), {
-      message: "Path must start with /"
-    })
-    .refine((el) => !el.endsWith("/"), {
-      message: "Path cannot end with /"
-    }),
-  accessDuration: DurationSchema
-});
+// Schema with validation for creating requests
+const CreatePamAccessPolicyRequestDataSchema = z
+  .object({
+    accessDuration: DurationSchema,
+    resourceName: resourceNameGlob.optional(),
+    accountName: accountNameGlob.optional()
+  })
+  .refine(
+    (data) => {
+      // At least one identifier must be provided
+      const hasResourceName = Boolean(data.resourceName);
+      const hasAccountName = Boolean(data.accountName);
+      return hasResourceName || hasAccountName;
+    },
+    {
+      message: "At least one identifier must be provided (resourceName or accountName)"
+    }
+  );
 
 // Policy
 export const PamAccessPolicySchema = BaseApprovalPolicySchema.extend({

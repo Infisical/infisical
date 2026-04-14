@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
@@ -36,11 +36,6 @@ export const SettingsPage = () => {
           </Link>
         </PageHeader>
         <Tabs orientation="vertical" defaultValue="tab-project-general">
-          <TabList>
-            <Tab variant="project" value="tab-project-general">
-              General
-            </Tab>
-          </TabList>
           <TabPanel value="tab-project-general">
             <ProjectGeneralTab />
           </TabPanel>

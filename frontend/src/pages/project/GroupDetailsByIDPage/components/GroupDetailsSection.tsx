@@ -72,9 +72,9 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
               >
                 {(isAllowed) => (
                   <GroupRoles
-                    popperContentProps={{ side: "right" }}
                     roles={groupMembership.roles}
                     groupId={groupMembership.group.id}
+                    groupName={groupMembership.group.name}
                     disableEdit={!isAllowed}
                   />
                 )}

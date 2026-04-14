@@ -6,15 +6,17 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface SecretRequestCompletedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   name?: string;
-  respondentUsername: string;
+  senderUsername?: string;
   secretRequestUrl: string;
+  isPasswordProtected?: boolean;
 }
 
 export const SecretRequestCompletedTemplate = ({
   name,
   siteUrl,
-  respondentUsername,
-  secretRequestUrl
+  senderUsername,
+  secretRequestUrl,
+  isPasswordProtected
 }: SecretRequestCompletedTemplateProps) => {
   return (
     <BaseEmailWrapper title="Shared Secret" preview="A secret has been shared with you." siteUrl={siteUrl}>
@@ -23,7 +25,7 @@ export const SecretRequestCompletedTemplate = ({
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] text-center pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          {respondentUsername ? <strong>{respondentUsername}</strong> : "Someone"} shared a secret{" "}
+          {senderUsername ? <strong>{senderUsername}</strong> : "Someone"} shared a secret{" "}
           {name && (
             <>
               <strong>{name}</strong>{" "}
@@ -31,6 +33,11 @@ export const SecretRequestCompletedTemplate = ({
           )}{" "}
           with you.
         </Text>
+        {isPasswordProtected && (
+          <Text className="text-[13px] text-gray-500">
+            This secret is password protected. You will need the password provided by the sender to view it.
+          </Text>
+        )}
       </Section>
       <Section className="text-center">
         <BaseButton href={secretRequestUrl}>View Secret</BaseButton>
@@ -42,7 +49,7 @@ export const SecretRequestCompletedTemplate = ({
 export default SecretRequestCompletedTemplate;
 
 SecretRequestCompletedTemplate.PreviewProps = {
-  respondentUsername: "Gracie",
+  senderUsername: "Gracie",
   siteUrl: "https://infisical.com",
   secretRequestUrl: "https://infisical.com",
   name: "API_TOKEN"

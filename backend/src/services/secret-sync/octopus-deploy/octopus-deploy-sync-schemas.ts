@@ -75,6 +75,7 @@ export const OctopusDeploySyncListItemSchema = z
     name: z.literal("Octopus Deploy"),
     connection: z.literal(AppConnection.OctopusDeploy),
     destination: z.literal(SecretSync.OctopusDeploy),
-    canImportSecrets: z.literal(false)
+    canImportSecrets: z.literal(false),
+    canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OctopusDeploy] }));

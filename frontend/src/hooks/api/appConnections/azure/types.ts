@@ -13,3 +13,9 @@ export interface AzureDevOpsProject {
 export interface AzureDevOpsProjectsResponse {
   projects: AzureDevOpsProject[];
 }
+
+export type TAzureScimServicePrincipal = {
+  id: string;
+  displayName: string;
+  appId: string;
+};

@@ -7,6 +7,9 @@ export type TAzureKeyVaultSync = TRootSecretSync & {
   destinationConfig: {
     vaultBaseUrl: string;
   };
+  syncOptions: TRootSecretSync["syncOptions"] & {
+    disableCertificateImport?: boolean;
+  };
   connection: {
     app: AppConnection.AzureKeyVault;
     name: string;

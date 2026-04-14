@@ -45,21 +45,45 @@ export const PolicyDetailsStep = () => {
 
       <Controller
         control={control}
-        name="conditions.0.accountPaths"
-        render={({ field: pathField, fieldState: { error } }) => (
+        name="conditions.0.resourceNames"
+        render={({ field: resourceField, fieldState: { error } }) => (
           <FormControl
-            isRequired
-            label="Account Paths"
+            className="mb-0"
+            label="Resource Names"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Policy matches any of these comma-separated account paths"
+            helperText="Comma-separated list of resource names this policy applies to. Glob patterns supported: * matches any characters except / (e.g., prod-* matches prod-db), ** matches across nested levels (e.g., prod/** matches prod/db/main)."
           >
             <Input
-              value={pathField.value.join(",")}
+              value={resourceField.value?.join(",") ?? ""}
               onChange={(e) => {
-                pathField.onChange(e.target.value.split(",").map((path) => path.trim()));
+                const { value } = e.target;
+                resourceField.onChange(value ? value.split(",").map((name) => name.trim()) : []);
               }}
-              placeholder="e.g., /admin/**, /users/john, /**"
+              placeholder="e.g., prod-*, staging-db, *"
+            />
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="conditions.0.accountNames"
+        render={({ field: accountField, fieldState: { error } }) => (
+          <FormControl
+            className="mb-0"
+            label="Account Names"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            helperText="Supports glob patterns. Use * to match within a single level (e.g., admin-* matches admin-ro but not admin/ro). Use ** to match across all depths (e.g., admin/** matches admin/ro/dev)."
+          >
+            <Input
+              value={accountField.value?.join(",") ?? ""}
+              onChange={(e) => {
+                const { value } = e.target;
+                accountField.onChange(value ? value.split(",").map((name) => name.trim()) : []);
+              }}
+              placeholder="e.g., admin-*, readonly, *"
             />
           </FormControl>
         )}

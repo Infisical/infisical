@@ -1,10 +1,10 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -15,6 +15,11 @@ import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab"
 export const SettingsPage = () => {
   const { t } = useTranslation();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { selectedTab } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/settings"
+  });
+
+  const activeTab = selectedTab || "general";
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -38,19 +43,9 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" defaultValue="tab-project-general">
-          <TabList>
-            <Tab variant="project" value="tab-project-general">
-              General
-            </Tab>
-            <Tab variant="project" value="tab-project-secret-scanning">
-              Scanning Settings
-            </Tab>
-          </TabList>
-          <TabPanel value="tab-project-general">
-            <ProjectGeneralTab />
-          </TabPanel>
-          <TabPanel value="tab-project-secret-scanning">
+        <div>
+          {activeTab === "general" && <ProjectGeneralTab />}
+          {activeTab === "scanning-settings" && (
             <ProjectPermissionCan
               I={ProjectPermissionSecretScanningConfigActions.Read}
               a={ProjectPermissionSub.SecretScanningConfigs}
@@ -58,8 +53,8 @@ export const SettingsPage = () => {
             >
               <ProjectScanningConfigTab />
             </ProjectPermissionCan>
-          </TabPanel>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );

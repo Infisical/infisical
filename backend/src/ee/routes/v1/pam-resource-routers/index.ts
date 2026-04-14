@@ -1,4 +1,9 @@
 import {
+  CreateActiveDirectoryResourceSchema,
+  SanitizedActiveDirectoryResourceSchema,
+  UpdateActiveDirectoryResourceSchema
+} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import {
   CreateAwsIamResourceSchema,
   SanitizedAwsIamResourceSchema,
   UpdateAwsIamResourceSchema
@@ -8,6 +13,16 @@ import {
   SanitizedKubernetesResourceSchema,
   UpdateKubernetesResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
+  CreateMongoDBResourceSchema,
+  SanitizedMongoDBResourceSchema,
+  UpdateMongoDBResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
+  CreateMsSQLResourceSchema,
+  MsSQLResourceSchema,
+  UpdateMsSQLResourceSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
 import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
@@ -29,8 +44,14 @@ import {
   SanitizedSSHResourceSchema,
   UpdateSSHResourceSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  CreateWindowsResourceSchema,
+  SanitizedWindowsResourceSchema,
+  UpdateWindowsResourceSchema
+} from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 
 import {
+  registerActiveDirectoryRelatedResourcesEndpoint,
   registerPamResourceEndpoints,
   registerSshCaPublicKeyEndpoint,
   registerSshCaSetupEndpoint
@@ -53,6 +74,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: MySQLResourceSchema,
       createResourceSchema: CreateMySQLResourceSchema,
       updateResourceSchema: UpdateMySQLResourceSchema
+    });
+  },
+  [PamResource.MsSQL]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MsSQL,
+      resourceResponseSchema: MsSQLResourceSchema,
+      createResourceSchema: CreateMsSQLResourceSchema,
+      updateResourceSchema: UpdateMsSQLResourceSchema
     });
   },
   [PamResource.SSH]: async (server: FastifyZodProvider) => {
@@ -92,5 +122,33 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       createResourceSchema: CreateRedisResourceSchema,
       updateResourceSchema: UpdateRedisResourceSchema
     });
+  },
+  [PamResource.MongoDB]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MongoDB,
+      resourceResponseSchema: SanitizedMongoDBResourceSchema,
+      createResourceSchema: CreateMongoDBResourceSchema,
+      updateResourceSchema: UpdateMongoDBResourceSchema
+    });
+  },
+  [PamResource.Windows]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Windows,
+      resourceResponseSchema: SanitizedWindowsResourceSchema,
+      createResourceSchema: CreateWindowsResourceSchema,
+      updateResourceSchema: UpdateWindowsResourceSchema
+    });
+  },
+  [PamResource.ActiveDirectory]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.ActiveDirectory,
+      resourceResponseSchema: SanitizedActiveDirectoryResourceSchema,
+      createResourceSchema: CreateActiveDirectoryResourceSchema,
+      updateResourceSchema: UpdateActiveDirectoryResourceSchema
+    });
+    registerActiveDirectoryRelatedResourcesEndpoint(server);
   }
 };

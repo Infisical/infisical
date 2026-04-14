@@ -194,6 +194,7 @@ export const useAddUsersToOrg = () => {
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
       });
+      queryClient.invalidateQueries({ queryKey: ["available-users"] });
     }
   });
 };
@@ -338,7 +339,7 @@ export const clearSession = (keepQueryClient?: boolean) => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   if (!keepQueryClient) {
-    qc.invalidateQueries();
+    qc.clear();
   }
 };
 

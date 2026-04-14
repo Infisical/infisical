@@ -6,9 +6,10 @@ type Props = {
   account?: TPamAccount;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onDeleted?: () => void;
 };
 
-export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
+export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account, onDeleted }: Props) => {
   const deletePamAccount = useDeletePamAccount();
 
   if (!account) return null;
@@ -31,6 +32,7 @@ export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     });
 
     onOpenChange(false);
+    if (onDeleted) onDeleted();
   };
 
   return (

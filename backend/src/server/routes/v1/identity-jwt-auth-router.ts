@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-import { IdentityJwtAuthsSchema } from "@app/db/schemas";
+import { IdentityAuthMethod, IdentityJwtAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
+import { UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { JwtConfigurationType } from "@app/services/identity-jwt-auth/identity-jwt-auth-types";
 import {
@@ -14,6 +17,7 @@ import {
   validateJwtBoundClaimsField
 } from "@app/services/identity-jwt-auth/identity-jwt-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const IdentityJwtAuthResponseSchema = IdentityJwtAuthsSchema.omit({
   encryptedJwksCaCert: true,
@@ -114,27 +118,73 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityJwtAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityJwtAuth.login(req.body);
+      try {
+        const { identityJwtAuth, accessToken, identityAccessToken, identity } =
+          await server.services.identityJwtAuth.login(req.body);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_JWT_AUTH,
-          metadata: {
-            identityId: identityJwtAuth.identityId,
-            identityAccessTokenId: identityAccessToken.id,
-            identityJwtAuthId: identityJwtAuth.id
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_JWT_AUTH,
+            metadata: {
+              identityId: identityJwtAuth.identityId,
+              identityAccessTokenId: identityAccessToken.id,
+              identityJwtAuthId: identityJwtAuth.id
+            }
           }
+        });
+
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${identityJwtAuth.identityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: identityJwtAuth.identityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.JWT_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${identityJwtAuth.identityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityJwtAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_JWT_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
         }
-      });
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityJwtAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL
-      };
+        throw error;
+      }
     }
   });
 
@@ -201,6 +251,21 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityJwtAuth.orgId,
+          properties: {
+            identityId: identityJwtAuth.identityId,
+            orgId: identityJwtAuth.orgId,
+            authMethod: IdentityAuthMethod.JWT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityJwtAuth.identityId}]`);
+        });
 
       return {
         identityJwtAuth
@@ -270,6 +335,21 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityJwtAuth.orgId,
+          properties: {
+            identityId: identityJwtAuth.identityId,
+            orgId: identityJwtAuth.orgId,
+            authMethod: IdentityAuthMethod.JWT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityJwtAuth.identityId}]`);
+        });
 
       return { identityJwtAuth };
     }
@@ -373,6 +453,21 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: identityJwtAuth.orgId,
+          properties: {
+            identityId: identityJwtAuth.identityId,
+            orgId: identityJwtAuth.orgId,
+            authMethod: IdentityAuthMethod.JWT_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityJwtAuth.identityId}]`);
+        });
 
       return { identityJwtAuth };
     }

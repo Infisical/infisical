@@ -53,17 +53,21 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { getAllSecretReferences as getAllSecretReferencesV2Bridge } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete as fnSecretV2BridgeBulkDelete,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllSecretReferences as getAllSecretReferencesV2Bridge
+  fnUpdateMovedSecretReferences,
+  fnUpdateSecretLinkedReferences
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -72,7 +76,11 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission
 } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
@@ -83,10 +91,12 @@ import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-requ
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
   ApprovalStatus,
+  InternalMetadataType,
   RequestState,
   TApprovalRequestCountDTO,
   TGenerateSecretApprovalRequestDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
+  TInternalMetadata,
   TListApprovalsDTO,
   TMergeSecretApprovalRequestDTO,
   TReviewRequestDTO,
@@ -134,6 +144,11 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "deleteMany"
     | "find"
     | "invalidateSecretCacheByProjectId"
+    | "updateById"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceSecretKey"
+    | "updateSecretReferenceEnvAndPath"
+    | "findOne"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -144,6 +159,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -177,7 +193,8 @@ export const secretApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   folderCommitService,
-  notificationService
+  notificationService,
+  telemetryService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -189,7 +206,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -198,7 +215,16 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // If user has the permission, count all requests; otherwise count only their requests
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId);
     return count;
   };
 
@@ -217,7 +243,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -225,6 +251,16 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // If user has the permission, don't filter by userId (they see all requests)
+    // Otherwise, filter to only show requests where they are committer or approver
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -234,7 +270,7 @@ export const secretApprovalRequestServiceFactory = ({
         committer,
         environment,
         status,
-        userId: actorId,
+        userId: userIdFilter,
         limit,
         offset,
         search
@@ -246,7 +282,7 @@ export const secretApprovalRequestServiceFactory = ({
       committer,
       environment,
       status,
-      userId: actorId,
+      userId: userIdFilter,
       limit,
       offset,
       search
@@ -279,7 +315,17 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // Check if user has SecretApprovalRequest.Read permission
+    // Secret values are controlled by underlying secret.ReadValue permissions
+    const canReadApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // User can view details if they have Read permission, are admin, committer, or approver
     if (
+      !canReadApprovalRequests &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
@@ -318,9 +364,10 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretMetadata: (
-          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[] | null
-        )?.map((meta) => ({
+        secretMetadata: (Array.isArray(el.secretMetadata)
+          ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+          : []
+        ).map((meta) => ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
           value: meta.encryptedValue
@@ -628,6 +675,7 @@ export const secretApprovalRequestServiceFactory = ({
       const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
+
       if (!secretApprovalSecrets) {
         throw new NotFoundError({ message: `No secrets found in secret change request with ID '${approvalId}'` });
       }
@@ -688,30 +736,33 @@ export const secretApprovalRequestServiceFactory = ({
                 type: actor
               },
               orgId: actorOrgId,
-              inputSecrets: secretCreationCommits.map((el) => ({
-                tagIds: el?.tags.map(({ id }) => id),
-                version: 1,
-                encryptedComment: el.encryptedComment,
-                encryptedValue: el.encryptedValue,
-                skipMultilineEncoding: el.skipMultilineEncoding,
-                key: el.key,
-                secretMetadata: (
-                  el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                )?.map((meta) => ({
-                  key: meta.key,
-                  [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
-                    ? Buffer.from(meta.encryptedValue, "base64")
-                    : meta.value || ""
-                })),
-                references: el.encryptedValue
-                  ? getAllSecretReferencesV2Bridge(
-                      secretManagerDecryptor({
-                        cipherTextBlob: el.encryptedValue
-                      }).toString()
-                    ).nestedReferences
-                  : [],
-                type: SecretType.Shared
-              })),
+              inputSecrets: secretCreationCommits.map((el) => {
+                return {
+                  tagIds: el?.tags.map(({ id }) => id),
+                  version: 1,
+                  encryptedComment: el.encryptedComment,
+                  encryptedValue: el.encryptedValue,
+                  skipMultilineEncoding: el.skipMultilineEncoding,
+                  key: el.key,
+                  secretMetadata: (Array.isArray(el.secretMetadata)
+                    ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+                    : []
+                  ).map((meta) => ({
+                    key: meta.key,
+                    [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
+                      ? Buffer.from(meta.encryptedValue, "base64")
+                      : meta.value || ""
+                  })),
+                  references: el.encryptedValue
+                    ? getAllSecretReferencesV2Bridge(
+                        secretManagerDecryptor({
+                          cipherTextBlob: el.encryptedValue
+                        }).toString()
+                      ).nestedReferences
+                    : [],
+                  type: SecretType.Shared
+                };
+              }),
               resourceMetadataDAL,
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
@@ -720,6 +771,59 @@ export const secretApprovalRequestServiceFactory = ({
               folderCommitService
             })
           : [];
+
+        // case: move secrets. update references to point to the new location based on metadata source environment and path
+        const moveSecretCommits = secretCreationCommits.filter(
+          (el) => (el.internalMetadata as TInternalMetadata)?.type === InternalMetadataType.MoveSecret
+        );
+
+        if (moveSecretCommits.length > 0 && newSecrets.length > 0) {
+          const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+          const destinationSecretPath = folderPaths?.[0]?.path || "/";
+
+          const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+
+          const createdSecretsByKey = new Map(newSecrets.map((s) => [s.key, s]));
+
+          for await (const moveCommit of moveSecretCommits) {
+            const internalMeta = moveCommit.internalMetadata as TInternalMetadata;
+            const createdSecret = createdSecretsByKey.get(moveCommit.key);
+
+            // eslint-disable-next-line no-continue
+            if (!createdSecret || internalMeta.type !== InternalMetadataType.MoveSecret) continue;
+
+            const { source } = internalMeta.payload;
+
+            const sourceFolder = await folderDAL.findBySecretPath(projectId, source.environment, source.secretPath, tx);
+            // eslint-disable-next-line no-continue
+            if (!sourceFolder) continue;
+
+            await fnUpdateMovedSecretReferences({
+              orgId: actorOrgId,
+              projectId,
+              sourceEnvironment: source.environment,
+              sourceSecretPath: source.secretPath,
+              sourceFolderId: sourceFolder.id,
+              destinationEnvironment: environment,
+              destinationSecretPath,
+              destinationFolderId: folderId,
+              secretKey: moveCommit.key,
+              secretId: createdSecret.id,
+              secretDAL: secretV2BridgeDAL,
+              secretVersionDAL: secretVersionV2BridgeDAL,
+              folderCommitService,
+              secretQueueService,
+              folderDAL,
+              encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
+              decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+              tx
+            });
+          }
+        }
+
         const updatedSecrets = secretUpdationCommits.length
           ? await fnSecretV2BridgeBulkUpdate({
               folderId,
@@ -752,9 +856,10 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
-                    secretMetadata: (
-                      el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                    )?.map((meta) => ({
+                    secretMetadata: (Array.isArray(el.secretMetadata)
+                      ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
+                      : []
+                    ).map((meta) => ({
                       key: meta.key,
                       [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
                         ? Buffer.from(meta.encryptedValue, "base64")
@@ -772,6 +877,45 @@ export const secretApprovalRequestServiceFactory = ({
               folderCommitService
             })
           : [];
+
+        // update the ref's for any secret key renames
+        const secretKeyRenames = secretUpdationCommits.filter((el) => el.secret && el.key !== el.secret.key);
+
+        if (secretKeyRenames.length > 0) {
+          // get folder path for reference updates
+          const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+          const secretPath = folderPaths?.[0]?.path || "/";
+
+          const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+
+          for await (const rename of secretKeyRenames) {
+            // eslint-disable-next-line no-continue
+            if (!rename.secret || !rename.secretId) continue;
+
+            await fnUpdateSecretLinkedReferences({
+              orgId: actorOrgId,
+              projectId,
+              environment,
+              secretPath,
+              folderId,
+              oldSecretKey: rename.secret.key,
+              newSecretKey: rename.key,
+              secretId: rename.secretId,
+              secretDAL: secretV2BridgeDAL,
+              secretVersionDAL: secretVersionV2BridgeDAL,
+              folderCommitService,
+              secretQueueService,
+              folderDAL,
+              encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
+              decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+              tx
+            });
+          }
+        }
+
         const deletedSecret = secretDeletionCommits.length
           ? await fnSecretV2BridgeBulkDelete({
               projectId,
@@ -786,6 +930,7 @@ export const secretApprovalRequestServiceFactory = ({
               secretVersionDAL: secretVersionV2BridgeDAL
             })
           : [];
+
         const updatedSecretApproval = await secretApprovalRequestDAL.updateById(
           secretApprovalRequest.id,
           {
@@ -1045,9 +1190,9 @@ export const secretApprovalRequestServiceFactory = ({
       events
     });
 
-    if (isSoftEnforcement) {
+    if (isSoftEnforcement && !hasMinApproval) {
       const cfg = getConfig();
-      const env = await projectEnvDAL.findOne({ id: policy.envId });
+      const env = await projectEnvDAL.findOne({ slug: environment, projectId });
       const requestedByUser = await userDAL.findOne({ id: actorId });
       const approverUsers = await userDAL.find({
         $in: {
@@ -1477,14 +1622,15 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
-    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     const user = await userDAL.findById(actorId);
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
+    const project = await projectDAL.findById(projectId);
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,
@@ -1495,6 +1641,7 @@ export const secretApprovalRequestServiceFactory = ({
             environment: env.name,
             secretPath,
             projectId,
+            projectName: project.name,
             requestId: secretApprovalRequest.id,
             secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))],
             approvalUrl
@@ -1518,6 +1665,22 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       notificationService
     });
+
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
 
     return secretApprovalRequest;
   };
@@ -1779,12 +1942,19 @@ export const secretApprovalRequestServiceFactory = ({
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, deletedSecretIds);
       commits.push(
         ...deletedSecrets.map(({ secretKey }) => {
-          const secretId = secretsGroupedByKey[secretKey][0].id;
+          const secret = secretsGroupedByKey[secretKey][0];
+          const secretId = secret.id;
           const { metadata, ...el } = latestSecretVersions[secretId];
           return {
             op: SecretOperations.Delete as const,
             ...el,
-            secretMetadata: JSON.stringify(metadata || []),
+            secretMetadata: JSON.stringify(
+              (secret.secretMetadata || []).map((meta) => ({
+                key: meta.key,
+                value: meta.value || undefined,
+                encryptedValue: meta.encryptedValue?.toString("base64") || undefined
+              }))
+            ),
             key: secretKey,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id
@@ -1885,12 +2055,12 @@ export const secretApprovalRequestServiceFactory = ({
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
     const user = await userDAL.findById(actorId);
-    const env = await projectEnvDAL.findOne({ id: policy.envId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
     await triggerWorkflowIntegrationNotification({
       input: {
@@ -1902,6 +2072,7 @@ export const secretApprovalRequestServiceFactory = ({
             environment: env.name,
             secretPath,
             projectId,
+            projectName: project.name,
             requestId: secretApprovalRequest.id,
             secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
             approvalUrl
@@ -1925,6 +2096,23 @@ export const secretApprovalRequestServiceFactory = ({
       projectId,
       notificationService
     });
+
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user.username ?? user.email ?? actorId,
+        organizationId: actorOrgId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: policy.id,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: commits.length
+        }
+      })
+      .catch(() => {});
+
     return secretApprovalRequest;
   };
 

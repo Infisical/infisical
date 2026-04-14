@@ -34,7 +34,7 @@ export type TApprovalCreateSecretV2Bridge = {
   reminderNote?: string | null;
   reminderRepeatDays?: number | null;
   secretReminderRecipients?: string[] | null;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   metadata?: Record<string, string>;
   secretMetadata?: ResourceMetadataWithEncryptionDTO;
   tagIds?: string[];
@@ -99,3 +99,19 @@ export type TListApprovalsDTO = {
 export type TSecretApprovalDetailsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum InternalMetadataType {
+  MoveSecret = "move-secret"
+}
+
+export type TInternalMetadataMoveSecret = {
+  type: InternalMetadataType.MoveSecret;
+  payload: {
+    source: {
+      environment: string;
+      secretPath: string;
+    };
+  };
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret;

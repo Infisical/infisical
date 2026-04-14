@@ -32,13 +32,18 @@ import {
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
-import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
+import {
+  EnrollmentType,
+  IssuerType,
+  TCertificateProfile
+} from "@app/hooks/api/certificateProfiles";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
   onRevealProfileAcmeEabSecret: (profile: TCertificateProfile) => void;
+  onViewScepDetails: (profile: TCertificateProfile) => void;
   onDeleteProfile: (profile: TCertificateProfile) => void;
 }
 
@@ -46,9 +51,11 @@ export const ProfileRow = ({
   profile,
   onEditProfile,
   onRevealProfileAcmeEabSecret,
+  onViewScepDetails,
   onDeleteProfile
 }: Props) => {
-  const { data: caData } = useGetInternalCaById(profile.caId ?? "");
+  const isInternalCa = !profile.certificateAuthority?.isExternal;
+  const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
@@ -74,7 +81,8 @@ export const ProfileRow = ({
     const config = {
       api: { variant: "ghost" as const, label: "API" },
       est: { variant: "ghost" as const, label: "EST" },
-      acme: { variant: "ghost" as const, label: "ACME" }
+      acme: { variant: "ghost" as const, label: "ACME" },
+      scep: { variant: "ghost" as const, label: "SCEP" }
     } as const;
 
     const configKey = Object.keys(config).includes(enrollmentType)
@@ -148,7 +156,7 @@ export const ProfileRow = ({
                 )
               }
             </ProjectPermissionCan>
-            {profile.enrollmentType === "acme" && (
+            {profile.enrollmentType === EnrollmentType.ACME && (
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret}
                 a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
@@ -168,7 +176,27 @@ export const ProfileRow = ({
                 }
               </ProjectPermissionCan>
             )}
-            {profile.enrollmentType === "api" && (
+            {profile.enrollmentType === EnrollmentType.SCEP && (
+              <ProjectPermissionCan
+                I={ProjectPermissionCertificateProfileActions.Read}
+                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
+              >
+                {(isAllowed) =>
+                  isAllowed && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewScepDetails(profile);
+                      }}
+                      icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
+                    >
+                      View SCEP Details
+                    </DropdownMenuItem>
+                  )
+                }
+              </ProjectPermissionCan>
+            )}
+            {profile.enrollmentType === EnrollmentType.API && (
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateProfileActions.IssueCert}
                 a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}

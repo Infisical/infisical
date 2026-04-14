@@ -6,6 +6,7 @@ import { PopoverContentProps, PopoverProps } from "@radix-ui/react-popover";
 import { format, setHours, setMinutes } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
+import { cn } from "@app/components/v3/utils";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 
 import { Button } from "../Button";
@@ -120,10 +121,29 @@ export const DatePicker = ({
               today: "text-primary border-primary",
               selected: " text-mineshaft-100 bg-mineshaft-500",
               root: `text-mineshaft-300  ${defaultClassNames}`,
-              [UI.DayButton]: "p-3 rounded-sm hover:text-mineshaft-100",
+              [UI.DayButton]:
+                "p-3 w-full cursor-pointer text-center  rounded-sm hover:text-mineshaft-100",
               [UI.Weekday]: "px-3 pt-3",
               [UI.Chevron]: "fill-mineshaft-300/70 hover:fill-mineshaft-300",
-              disabled: "text-mineshaft-400 pointer-events-none"
+              disabled: "text-mineshaft-400 pointer-events-none",
+              nav: cn(
+                "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between",
+                defaultClassNames.nav
+              ),
+              months: cn("flex gap-4 flex-col md:flex-row relative", defaultClassNames.months),
+              month: cn("flex flex-col w-full gap-4", defaultClassNames.month),
+              button_previous: cn(
+                "aria-disabled:opacity-50 p-0 cursor-pointer select-none",
+                defaultClassNames.button_previous
+              ),
+              button_next: cn(
+                "aria-disabled:opacity-50 p-0 cursor-pointer select-none",
+                defaultClassNames.button_next
+              ),
+              month_caption: cn(
+                "flex items-center justify-center w-full ",
+                defaultClassNames.month_caption
+              )
             }}
           />
         </div>

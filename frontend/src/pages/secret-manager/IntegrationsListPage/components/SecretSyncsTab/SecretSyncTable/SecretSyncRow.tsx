@@ -1,7 +1,6 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import {
   faBan,
-  faCalendarCheck,
   faCheck,
   faCopy,
   faDownload,
@@ -11,12 +10,10 @@ import {
   faRotate,
   faToggleOff,
   faToggleOn,
-  faTrash,
-  faXmark
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { AlertTriangleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -103,20 +100,6 @@ export const SecretSyncRow = ({
     return () => clearTimeout(timer);
   }, [isIdCopied]);
 
-  const failureMessage = useMemo(() => {
-    if (syncStatus === SecretSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [syncStatus, lastSyncMessage]);
-
   const destinationDetails = SECRET_SYNC_MAP[destination];
 
   const permissionSubject = getSecretSyncPermissionSubject(secretSync);
@@ -180,47 +163,11 @@ export const SecretSyncRow = ({
       <Td>
         <div className="flex items-center gap-1">
           {syncStatus && (
-            <Tooltip
-              position="left"
-              className="max-w-sm"
-              content={
-                [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(syncStatus) ? (
-                  <div className="flex flex-col gap-2 py-1 whitespace-normal">
-                    {lastSyncedAt && (
-                      <div>
-                        <div
-                          className={`mb-2 flex self-start ${syncStatus === SecretSyncStatus.Failed ? "text-yellow" : "text-green"}`}
-                        >
-                          <FontAwesomeIcon
-                            icon={faCalendarCheck}
-                            className="ml-1 pt-0.5 pr-1.5 text-sm"
-                          />
-                          <div className="text-xs">Last Synced</div>
-                        </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
-                          {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-                        </div>
-                      </div>
-                    )}
-                    {failureMessage && (
-                      <div>
-                        <div className="mb-2 flex self-start text-red">
-                          <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
-                          <div className="text-xs">Failure Reason</div>
-                        </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
-                          {failureMessage}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : undefined
-              }
-            >
-              <div>
-                <SecretSyncStatusBadge status={syncStatus} />
-              </div>
-            </Tooltip>
+            <SecretSyncStatusBadge
+              status={syncStatus}
+              lastSyncedAt={lastSyncedAt}
+              lastSyncMessage={lastSyncMessage}
+            />
           )}
           {!isAutoSyncEnabled && (
             <Tooltip
@@ -324,36 +271,38 @@ export const SecretSyncRow = ({
                   )}
                 </ProjectPermissionCan>
               )}
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faEraser} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTriggerRemoveSecrets(secretSync);
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Remove secrets synced by Infisical from this ${destinationName} destination.`}
+              {syncOption?.canRemoveSecretsOnDeletion && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionSecretSyncActions.RemoveSecrets}
+                  a={permissionSubject}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon icon={faEraser} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTriggerRemoveSecrets(secretSync);
+                      }}
+                      isDisabled={!isAllowed}
                     >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span>Remove Secrets</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+                      <Tooltip
+                        position="left"
+                        sideOffset={42}
+                        content={`Remove secrets synced by Infisical from this ${destinationName} destination.`}
+                      >
+                        <div className="flex h-full w-full items-center justify-between gap-1">
+                          <span>Remove Secrets</span>
+                          <FontAwesomeIcon
+                            className="text-bunker-300"
+                            size="sm"
+                            icon={faInfoCircle}
+                          />
+                        </div>
+                      </Tooltip>
+                    </DropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              )}
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Edit}
                 a={permissionSubject}

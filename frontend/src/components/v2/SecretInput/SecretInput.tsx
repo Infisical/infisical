@@ -22,7 +22,7 @@ const syntaxHighlight = (
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
     return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
-  if (isImport && !content) return "IMPORTED";
+  if (isImport && !content) return "EMPTY";
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";

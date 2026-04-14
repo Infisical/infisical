@@ -10,10 +10,12 @@ import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars"
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.AlphaNumeric,
@@ -103,6 +105,23 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretCreated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecretCfg.type,
+            projectId: dynamicSecretCfg.projectId,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            defaultTTL: `${ms(dynamicSecretCfg.defaultTTL) / 1000}s`,
+            maxTTL: dynamicSecretCfg.maxTTL ? `${ms(dynamicSecretCfg.maxTTL) / 1000}s` : null,
+            hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -253,6 +272,21 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         name: req.params.name,
         ...req.body
       });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretDeleted,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            provider: dynamicSecretCfg.type,
+            projectId: dynamicSecretCfg.projectId,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            isForced: req.body.isForced
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -436,6 +470,137 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       });
 
       return { leases };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/ssh-ca-setup/:dynamicSecretId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getSshDynamicSecretCaSetup",
+      description: "Get SSH dynamic secret CA setup script for configuring the target server to trust the CA",
+      params: z.object({
+        dynamicSecretId: z.string().uuid()
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, reply) => {
+      const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
+        dynamicSecretId: req.params.dynamicSecretId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      const setupScript = `#!/bin/bash
+set -e
+
+CA_PUBLIC_KEY="${caPublicKey}"
+CA_FILE="/etc/ssh/infisical_ca.pub"
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+echo "==> Infisical SSH CA Setup"
+echo ""
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run as root (use sudo)"
+    exit 1
+fi
+
+echo "==> Writing CA public key to \${CA_FILE}..."
+echo "\${CA_PUBLIC_KEY}" > "\${CA_FILE}"
+chmod 644 "\${CA_FILE}"
+echo "    Done."
+
+if grep -q "^TrustedUserCAKeys" "\${SSHD_CONFIG}"; then
+    EXISTING_CA_FILE=$(grep "^TrustedUserCAKeys" "\${SSHD_CONFIG}" | awk '{print $2}')
+    if [ "\${EXISTING_CA_FILE}" = "\${CA_FILE}" ]; then
+        echo "==> TrustedUserCAKeys already configured for \${CA_FILE}"
+    else
+        echo "Warning: TrustedUserCAKeys is already set to \${EXISTING_CA_FILE}"
+        echo "         You may need to manually update sshd_config to use \${CA_FILE}"
+        echo "         or combine multiple CA keys into a single file."
+    fi
+else
+    echo "==> Adding TrustedUserCAKeys to \${SSHD_CONFIG}..."
+    echo "" >> "\${SSHD_CONFIG}"
+    echo "# Infisical SSH CA - Added by setup script" >> "\${SSHD_CONFIG}"
+    echo "TrustedUserCAKeys \${CA_FILE}" >> "\${SSHD_CONFIG}"
+    echo "    Done."
+fi
+
+echo "==> Validating SSH configuration..."
+if sshd -t; then
+    echo "    Configuration is valid."
+else
+    echo "Error: SSH configuration is invalid. Please check \${SSHD_CONFIG}"
+    exit 1
+fi
+
+echo "==> Restarting SSH service..."
+if command -v systemctl &> /dev/null; then
+    if systemctl cat sshd.service &>/dev/null; then
+        systemctl restart sshd
+    elif systemctl cat ssh.service &>/dev/null; then
+        systemctl restart ssh
+    else
+        echo "Warning: Could not find SSH service. Please restart it manually."
+    fi
+elif command -v service &> /dev/null; then
+    service sshd restart 2>/dev/null || service ssh restart
+else
+    echo "Warning: Could not detect init system. Please restart sshd manually."
+fi
+echo "    Done."
+
+echo ""
+echo "==> Setup complete!"
+echo ""
+echo "Your SSH server is now configured to trust certificates signed by the Infisical CA."
+echo ""
+`;
+
+      void reply.header("Content-Type", "text/plain; charset=utf-8");
+      return setupScript;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/ssh-ca-public-key/:dynamicSecretId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getSshDynamicSecretCaPublicKey",
+      description: "Get SSH dynamic secret CA public key",
+      params: z.object({
+        dynamicSecretId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          caPublicKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
+        dynamicSecretId: req.params.dynamicSecretId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { caPublicKey };
     }
   });
 

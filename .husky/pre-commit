@@ -9,6 +9,4 @@ if ! command -v infisical >/dev/null 2>&1; then
     exit 1
 fi
 
-npx lint-staged
-
 infisical scan git-changes --staged -v

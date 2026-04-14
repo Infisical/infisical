@@ -30,6 +30,8 @@ export enum TableName {
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
+  PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
+  PkiScepTransaction = "pki_scep_transactions",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",
@@ -103,6 +105,7 @@ export enum TableName {
   IdentityJwtAuth = "identity_jwt_auths",
   IdentityLdapAuth = "identity_ldap_auths",
   IdentityTlsCertAuth = "identity_tls_cert_auths",
+  IdentitySpiffeAuth = "identity_spiffe_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -173,6 +176,7 @@ export enum TableName {
   SlackIntegrations = "slack_integrations",
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
+  AppConnectionCredentialRotation = "app_connection_credential_rotations",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",
   CertificateSync = "certificate_syncs",
@@ -223,6 +227,15 @@ export enum TableName {
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
+  PamSessionEventBatch = "pam_session_event_batches",
+  PamDiscoverySource = "pam_discovery_sources",
+  PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoverySourceResource = "pam_discovery_source_resources",
+  PamDiscoverySourceAccount = "pam_discovery_source_accounts",
+  PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
+  PamAccountDependency = "pam_account_dependencies",
+  PamResourceRotationRule = "pam_resource_rotation_rules",
+  PamResourceFavorite = "pam_resource_favorites",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
 
@@ -232,6 +245,16 @@ export enum TableName {
   PkiAcmeOrderAuth = "pki_acme_order_auths",
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
+
+  // PKI Discovery
+  PkiDiscoveryConfig = "pki_discovery_configs",
+  PkiCertificateInstallation = "pki_certificate_installations",
+  PkiDiscoveryInstallation = "pki_discovery_installations",
+  PkiCertificateInstallationCert = "pki_certificate_installation_certs",
+  PkiDiscoveryScanHistory = "pki_discovery_scan_history",
+
+  // PKI Cleanup
+  CertificateCleanupConfig = "certificate_cleanup_configs",
 
   // AI
   AiMcpServer = "ai_mcp_servers",
@@ -250,7 +273,17 @@ export enum TableName {
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
-  ApprovalRequestGrants = "approval_request_grants"
+  ApprovalRequestGrants = "approval_request_grants",
+
+  // Code Signing
+  PkiSigners = "pki_signers",
+  PkiSigningOperations = "pki_signing_operations",
+
+  // Deprecated - Not used anymore now that Redis is persistent
+  DeprecatedDurableQueueJobs = "queue_jobs",
+
+  CaSigningConfig = "ca_signing_configs",
+  SecretValidationRule = "secret_validation_rules"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -334,7 +367,8 @@ export enum IdentityAuthMethod {
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth",
-  LDAP_AUTH = "ldap-auth"
+  LDAP_AUTH = "ldap-auth",
+  SPIFFE_AUTH = "spiffe-auth"
 }
 
 export enum ProjectType {
@@ -382,7 +416,6 @@ export enum SortDirection {
 
 export enum AccessScope {
   Organization = "organization",
-  Namespace = "namespace",
   Project = "project"
 }
 
@@ -390,11 +423,6 @@ export type AccessScopeData =
   | {
       scope: AccessScope.Organization;
       orgId: string;
-    }
-  | {
-      scope: AccessScope.Namespace;
-      orgId: string;
-      namespaceId: string;
     }
   | {
       scope: AccessScope.Project;

@@ -2,7 +2,10 @@ export enum PkiSync {
   AzureKeyVault = "azure-key-vault",
   AwsCertificateManager = "aws-certificate-manager",
   AwsSecretsManager = "aws-secrets-manager",
-  Chef = "chef"
+  AwsElasticLoadBalancer = "aws-elastic-load-balancer",
+  Chef = "chef",
+  CloudflareCustomCertificate = "cloudflare-custom-certificate",
+  NetScaler = "netscaler"
 }
 
 export enum PkiSyncStatus {

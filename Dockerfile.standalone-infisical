@@ -3,7 +3,7 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:20.20.0-trixie-slim AS base
+FROM node:22.22.0-trixie-slim AS base
 
 # Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
 RUN npm install -g npm@10.9.0
@@ -110,7 +110,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules
+RUN rm -rf ./node_modules ./bdd ./e2e-test
 RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
@@ -137,6 +137,7 @@ RUN apt-get update && apt-get install -y \
     libc-dev \
     freetds-dev \
     wget \
+    perl \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
@@ -169,6 +170,19 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install smbclient for Windows SMB operations
 RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
+
+# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+# Installed to /opt/openssl-pqc so it does not conflict with the system OpenSSL.
+WORKDIR /tmp/openssl-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-build
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
@@ -221,7 +235,7 @@ ENV HTTPS_ENABLED false
 ENV NODE_ENV production
 ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
-ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 
 WORKDIR /backend

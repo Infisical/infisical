@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,8 +28,9 @@ type Props = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  isOverride?: boolean;
   onClose?: () => void;
+  isBatchMode?: boolean;
+  onTagsChange?: (tags: { id: string; slug: string }[]) => void;
 };
 
 export const SecretTagForm = ({
@@ -36,8 +38,9 @@ export const SecretTagForm = ({
   secretKey,
   environment,
   secretPath,
-  isOverride,
-  onClose
+  onClose,
+  isBatchMode,
+  onTagsChange
 }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
@@ -61,6 +64,7 @@ export const SecretTagForm = ({
     control,
     setValue,
     getValues,
+    watch,
     formState: { isDirty }
   } = useForm<TFormSchema>({
     defaultValues: {
@@ -84,13 +88,35 @@ export const SecretTagForm = ({
     });
   };
 
+  // In batch mode, debounce tag changes to parent form
+  const watchedTags = watch("tags");
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!isBatchMode) return () => {};
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      onTagsChange?.(watchedTags.map((t) => ({ id: t.value, slug: t.label })));
+    }, 500);
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [isBatchMode, watchedTags, onTagsChange]);
+
   const onSubmit = async (data: TFormSchema) => {
     const result = await updateSecretV3({
       environment,
       projectId,
       secretPath,
       secretKey,
-      type: isOverride ? SecretType.Personal : SecretType.Shared,
+      type: SecretType.Shared,
       tagIds: data.tags.map((tag) => tag.value)
     });
 
@@ -107,6 +133,52 @@ export const SecretTagForm = ({
     }
     onClose?.();
   };
+
+  if (isBatchMode) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Tags</p>
+        <Controller
+          name="tags"
+          control={control}
+          render={({ field }) => (
+            <CreatableSelect
+              menuPlacement="top"
+              isMulti
+              noOptionsMessage={({ inputValue }) =>
+                inputValue && !slugSchema().safeParse(inputValue)
+                  ? "Tag must be slug-friendly"
+                  : "No tags match search"
+              }
+              isDisabled={!canEditSecret}
+              isLoading={isTagsLoading}
+              placeholder="Select or create tags..."
+              options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
+              value={field.value}
+              onChange={(newValue) => field.onChange(newValue)}
+              onCreateOption={handleCreateTag}
+              isValidNewOption={(inputValue) =>
+                !canAddTags
+                  ? false
+                  : slugSchema().safeParse(inputValue).success &&
+                    !projectTags?.map((tag) => tag.slug).includes(inputValue)
+              }
+            />
+          )}
+        />
+        {!canEditSecret && (
+          <p className="text-xs text-muted">
+            You do not have permission to edit tags on this secret.
+          </p>
+        )}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="xs" type="button" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">

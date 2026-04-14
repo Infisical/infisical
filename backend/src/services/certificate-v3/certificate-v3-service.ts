@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
@@ -38,12 +39,18 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  createDistinguishedName,
+  parseDistinguishedName
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -52,6 +59,8 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertPolicyState,
+  mapExtendedKeyUsageToLegacy,
+  mapKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
@@ -87,7 +96,13 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
-import { resolveEffectiveTtl } from "./certificate-v3-fns";
+import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import {
+  copyMetadataFromCertificate,
+  insertMetadataForCertificate,
+  insertMetadataForCertificateRequest
+} from "../resource-metadata/resource-metadata-fns";
+import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TDisableRenewalConfigDTO,
@@ -97,6 +112,7 @@ import {
   TRenewalConfigResponse,
   TRenewCertificateDTO,
   TSignCertificateFromProfileDTO,
+  TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
 
@@ -118,7 +134,7 @@ type TCertificateV3ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -137,6 +153,8 @@ type TCertificateV3ServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -199,6 +217,15 @@ const validateProfileAndPermissions = async ({
     return profile;
   }
 
+  if (actor === ActorType.SCEP_ACCOUNT && requiredEnrollmentType === EnrollmentType.SCEP) {
+    if (actorId !== profile.id) {
+      throw new ForbiddenRequestError({
+        message: "SCEP profile mismatch"
+      });
+    }
+    return profile;
+  }
+
   const { permission } = await permissionService.getProjectPermission({
     actor,
     actorId,
@@ -249,7 +276,7 @@ const validateRenewalEligibility = (
 
   const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
   const isInternalCa = caType === CaType.INTERNAL;
-  const isConnectedExternalCa = caType === CaType.ACME || caType === CaType.AZURE_AD_CS;
+  const isConnectedExternalCa = caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!isInternalCa && !isConnectedExternalCa) {
@@ -340,10 +367,6 @@ const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsag
   }
 
   return raw.map((u) => normalize(u)).filter((u): u is CertExtendedKeyUsageType => u !== null);
-};
-
-const convertEnumsToStringArray = <T extends string>(enumArray: T[]): string[] => {
-  return enumArray.map((item) => item as string);
 };
 
 const createSelfSignedCertificateRecord = async ({
@@ -621,7 +644,9 @@ export const certificateV3ServiceFactory = ({
   certificateRequestDAL,
   userDAL,
   identityDAL,
-  approvalPolicyService
+  approvalPolicyService,
+  resourceMetadataDAL,
+  pkiAlertV2Queue
 }: TCertificateV3ServiceFactoryDep) => {
   /**
    * Resolves requester name and email based on actor type
@@ -666,6 +691,7 @@ export const certificateV3ServiceFactory = ({
   const issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
+    metadata,
     actor,
     actorId,
     actorAuthMethod,
@@ -682,7 +708,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
@@ -697,9 +723,10 @@ export const certificateV3ServiceFactory = ({
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
+      const withDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
       const mappedCertificateRequestForValidation = mapEnumsForValidation({
-        ...certificateRequest,
-        subjectAlternativeNames: certificateRequest.altNames
+        ...withDefaults,
+        subjectAlternativeNames: withDefaults.altNames
       });
 
       const policy = await certificatePolicyService.getPolicyById({
@@ -730,12 +757,15 @@ export const certificateV3ServiceFactory = ({
 
       const resolvedTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl || undefined,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        // (resource_metadata references the partitioned certificate_requests table via [id, createdAt]).
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -757,10 +787,21 @@ export const certificateV3ServiceFactory = ({
             locality: certificateRequest.locality || null,
             basicConstraints: certificateRequest.basicConstraints
               ? JSON.stringify(certificateRequest.basicConstraints)
-              : null
-          },
+              : null,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
+
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
 
         const requestData: TCertRequestRequestData = {
           profileId,
@@ -838,9 +879,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation({
-      ...certificateRequest,
-      subjectAlternativeNames: certificateRequest.altNames
+      ...certificateRequestWithDefaults,
+      subjectAlternativeNames: certificateRequestWithDefaults.altNames
     });
 
     const policy = await certificatePolicyService.getPolicyById({
@@ -866,8 +908,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const effectiveSignatureAlgorithm = certificateRequest.signatureAlgorithm as CertSignatureAlgorithm | undefined;
-    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm as CertKeyAlgorithm | undefined;
+    const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
+      | CertSignatureAlgorithm
+      | undefined;
+    const effectiveKeyAlgorithm = certificateRequestWithDefaults.keyAlgorithm as CertKeyAlgorithm | undefined;
 
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
@@ -881,9 +925,9 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
+    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequest.altNames },
+      { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
       policy?.sans
     );
 
@@ -892,7 +936,7 @@ export const certificateV3ServiceFactory = ({
     if (issuerType === IssuerType.SELF_SIGNED) {
       const resolvedTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl || undefined,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
@@ -942,6 +986,22 @@ export const certificateV3ServiceFactory = ({
           state: certificateRequest.state,
           locality: certificateRequest.locality
         });
+
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificate(resourceMetadataDAL, {
+            metadata,
+            certificateId: processResult.certificateData.id,
+            orgId: actorOrgId,
+            tx
+          });
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
@@ -1044,25 +1104,25 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
-        pathLength: certificateRequest.basicConstraints?.pathLength,
+        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
         ttl: resolveEffectiveTtl({
           requestTtl: certificateRequest.validity.ttl,
-          profileDefaultTtlDays: profile.defaultTtlDays,
+          profileDefaultTtlDays: profile.defaults?.ttlDays,
           policyMaxValidity: policy?.validity?.max,
           flowDefaultTtl: ""
         }),
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
         notAfter: normalizeDateForApi(certificateRequest.notAfter),
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
-        organization: certificateRequest.organization,
-        organizationalUnit: certificateRequest.organizationalUnit,
-        country: certificateRequest.country,
-        state: certificateRequest.state,
-        locality: certificateRequest.locality,
+        organization: certificateRequestWithDefaults.organization,
+        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+        country: certificateRequestWithDefaults.country,
+        state: certificateRequestWithDefaults.state,
+        locality: certificateRequestWithDefaults.locality,
         tx
       };
 
@@ -1078,7 +1138,7 @@ export const certificateV3ServiceFactory = ({
       }
       const effectiveTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
@@ -1124,6 +1184,22 @@ export const certificateV3ServiceFactory = ({
         locality: certificateRequest.locality
       });
 
+      if (metadata && metadata.length > 0) {
+        await insertMetadataForCertificate(resourceMetadataDAL, {
+          metadata,
+          certificateId: certResult.certificateId,
+          orgId: actorOrgId,
+          tx
+        });
+        await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+          metadata,
+          certificateRequestId: certRequestResult.id,
+          certificateRequestCreatedAt: certRequestResult.createdAt,
+          orgId: actorOrgId,
+          tx
+        });
+      }
+
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
@@ -1148,6 +1224,16 @@ export const certificateV3ServiceFactory = ({
     );
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
+
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: cert.id,
+        projectId: profile.projectId,
+        eventType: PkiAlertEventType.ISSUANCE
+      });
+    } catch {
+      logger.debug("Failed to queue PKI issuance alert event");
+    }
 
     return {
       status: CertificateRequestStatus.ISSUED,
@@ -1175,6 +1261,7 @@ export const certificateV3ServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     enrollmentType,
+    metadata,
     removeRootsFromChain,
     basicConstraints
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
@@ -1188,7 +1275,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     if (!profile.caId) {
@@ -1217,7 +1304,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found for this profile" });
     }
 
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
+    const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
+    const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
@@ -1276,6 +1364,8 @@ export const certificateV3ServiceFactory = ({
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -1294,10 +1384,21 @@ export const certificateV3ServiceFactory = ({
             ttl: validity.ttl,
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null
-          },
+            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
+
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
 
         const requestData: TCertRequestRequestData = {
           profileId,
@@ -1391,10 +1492,22 @@ export const certificateV3ServiceFactory = ({
 
     const effectiveTtl = resolveEffectiveTtl({
       requestTtl: validity.ttl,
-      profileDefaultTtlDays: profile.defaultTtlDays,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
       policyMaxValidity: policy?.validity?.max,
       flowDefaultTtl: ""
     });
+
+    const csrSubjectParsed = parseDistinguishedName(new x509.Pkcs10CertificateRequest(csr).subject);
+    const mergedSubject = {
+      ...csrSubjectParsed,
+      commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
+      organization: csrSubjectParsed.organization ?? certificateRequest.organization,
+      ou: csrSubjectParsed.ou ?? certificateRequest.organizationalUnit,
+      country: csrSubjectParsed.country ?? certificateRequest.country,
+      province: csrSubjectParsed.province ?? certificateRequest.state,
+      locality: csrSubjectParsed.locality ?? certificateRequest.locality
+    };
+    const subjectOverride = createDistinguishedName(mergedSubject);
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
@@ -1402,12 +1515,19 @@ export const certificateV3ServiceFactory = ({
           isInternal: true,
           caId: ca.id,
           csr,
+          subjectOverride,
           basicConstraints: caBasicConstraints,
           pathLength: effectiveBasicConstraints?.pathLength,
           ttl: effectiveTtl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
           notAfter: normalizeDateForApi(notAfter),
+          keyUsages: certificateRequest.keyUsages
+            ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
+            : undefined,
+          extendedKeyUsages: certificateRequest.extendedKeyUsages
+            ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
+            : undefined,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
           isFromProfile: true,
@@ -1456,6 +1576,22 @@ export const certificateV3ServiceFactory = ({
           enrollmentType: EnrollmentType.API
         });
 
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificate(resourceMetadataDAL, {
+            metadata,
+            certificateId: certResult.certificateId,
+            orgId: actorOrgId,
+            tx
+          });
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequestResult.id,
+            certificateRequestCreatedAt: certRequestResult.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
+
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
       });
 
@@ -1463,6 +1599,16 @@ export const certificateV3ServiceFactory = ({
     let certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
     if (removeRootsFromChain) {
       certificateChainString = removeRootCaFromChain(certificateChainString);
+    }
+
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: cert.id,
+        projectId: profile.projectId,
+        eventType: PkiAlertEventType.ISSUANCE
+      });
+    } catch {
+      logger.debug("Failed to queue PKI issuance alert event");
     }
 
     return {
@@ -1482,6 +1628,7 @@ export const certificateV3ServiceFactory = ({
   const orderCertificateFromProfile = async ({
     profileId,
     certificateOrder,
+    metadata,
     actor,
     actorId,
     actorAuthMethod,
@@ -1497,7 +1644,7 @@ export const certificateV3ServiceFactory = ({
       acmeAccountDAL,
       permissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT
+      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT
     });
 
     let certificateRequest: TCertificateRequest;
@@ -1505,7 +1652,8 @@ export const certificateV3ServiceFactory = ({
     let extractedSignatureAlgorithm: string | undefined;
 
     if (certificateOrder.csr) {
-      certificateRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
+      const csrRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
+      certificateRequest = applyProfileDefaults(csrRequest, profile.defaults);
       const algorithms = extractAlgorithmsFromCSR(certificateOrder.csr);
       extractedKeyAlgorithm = algorithms.keyAlgorithm;
       extractedSignatureAlgorithm = algorithms.signatureAlgorithm;
@@ -1515,7 +1663,7 @@ export const certificateV3ServiceFactory = ({
         certificateRequest.notAfter = certificateOrder.notAfter;
       }
     } else {
-      certificateRequest = {
+      const rawRequest: TCertificateRequest = {
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
@@ -1524,8 +1672,14 @@ export const certificateV3ServiceFactory = ({
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
-        keyAlgorithm: certificateOrder.keyAlgorithm
+        keyAlgorithm: certificateOrder.keyAlgorithm,
+        organization: certificateOrder.organization,
+        organizationalUnit: certificateOrder.organizationalUnit,
+        country: certificateOrder.country,
+        state: certificateOrder.state,
+        locality: certificateOrder.locality
       };
+      certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
     // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
@@ -1573,6 +1727,8 @@ export const certificateV3ServiceFactory = ({
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
+        // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
+        const certRequestCreatedAt = new Date();
         const certRequest = await certificateRequestDAL.create(
           {
             projectId: profile.projectId,
@@ -1580,20 +1736,34 @@ export const certificateV3ServiceFactory = ({
             csr: certificateOrder.csr || null,
             commonName: certificateOrder.commonName || null,
             altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,
-            keyUsages: certificateOrder.keyUsages ? convertEnumsToStringArray(certificateOrder.keyUsages) : null,
-            extendedKeyUsages: certificateOrder.extendedKeyUsages
-              ? convertEnumsToStringArray(certificateOrder.extendedKeyUsages)
-              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || null,
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || null,
             notBefore: certificateOrder.notBefore || null,
             notAfter: certificateOrder.notAfter || null,
             keyAlgorithm: certificateOrder.keyAlgorithm || null,
             signatureAlgorithm: certificateOrder.signatureAlgorithm || null,
             ttl: certificateOrder.validity?.ttl || null,
             metadata: certificateOrder.template ? JSON.stringify({ template: certificateOrder.template }) : null,
-            status: CertificateRequestStatus.PENDING_APPROVAL
-          },
+            organization: certificateRequest.organization || null,
+            organizationalUnit: certificateRequest.organizationalUnit || null,
+            country: certificateRequest.country || null,
+            state: certificateRequest.state || null,
+            locality: certificateRequest.locality || null,
+            status: CertificateRequestStatus.PENDING_APPROVAL,
+            createdAt: certRequestCreatedAt
+          } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
         );
+
+        if (metadata && metadata.length > 0) {
+          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+            metadata,
+            certificateRequestId: certRequest.id,
+            certificateRequestCreatedAt: certRequest.createdAt,
+            orgId: actorOrgId,
+            tx
+          });
+        }
 
         const requestData: TCertRequestRequestData = {
           profileId,
@@ -1683,7 +1853,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS) {
+    if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA) {
       const orderId = randomUUID();
 
       const certRequest = await certificateRequestService.createCertificateRequest({
@@ -1695,10 +1865,8 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         profileId: profile.id,
         commonName: certificateOrder.commonName || "",
-        keyUsages: certificateOrder.keyUsages ? convertEnumsToStringArray(certificateOrder.keyUsages) : [],
-        extendedKeyUsages: certificateOrder.extendedKeyUsages
-          ? convertEnumsToStringArray(certificateOrder.extendedKeyUsages)
-          : [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || [],
         keyAlgorithm: certificateOrder.keyAlgorithm || "",
         signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
         altNames: certificateOrder.altNames,
@@ -1706,8 +1874,22 @@ export const certificateV3ServiceFactory = ({
         notAfter: certificateOrder.notAfter,
         status: CertificateRequestStatus.PENDING,
         ttl: certificateOrder.validity?.ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
+
+      if (metadata && metadata.length > 0) {
+        await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+          metadata,
+          certificateRequestId: certRequest.id,
+          certificateRequestCreatedAt: certRequest.createdAt,
+          orgId: actorOrgId
+        });
+      }
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: orderId,
@@ -1717,13 +1899,17 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
         keyAlgorithm: certificateRequest.keyAlgorithm || "",
         commonName: certificateRequest.commonName || "",
-        altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value) || [],
-        keyUsages: certificateRequest.keyUsages ? convertEnumsToStringArray(certificateRequest.keyUsages) : [],
-        extendedKeyUsages: certificateRequest.extendedKeyUsages
-          ? convertEnumsToStringArray(certificateRequest.extendedKeyUsages)
-          : [],
+        altNames:
+          certificateRequest.subjectAlternativeNames?.map((san) => ({ type: san.type, value: san.value })) || [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         certificateRequestId: certRequest.id,
-        csr: certificateOrder.csr
+        csr: certificateOrder.csr,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       return {
@@ -1995,7 +2181,7 @@ export const certificateV3ServiceFactory = ({
             throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
           }
           newCert = foundCert;
-        } else if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS) {
+        } else if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA) {
           // External CA renewal - mark for async processing outside transaction
           return {
             isExternalCA: true,
@@ -2107,6 +2293,16 @@ export const certificateV3ServiceFactory = ({
         enrollmentType: EnrollmentType.API
       });
 
+      // Copy metadata from original cert to new cert and cert request
+      await copyMetadataFromCertificate(resourceMetadataDAL, {
+        sourceCertificateId: originalCert.id,
+        targetCertificateId: newCert.id,
+        targetCertificateRequestId: certRequestResult.id,
+        targetCertificateRequestCreatedAt: certRequestResult.createdAt,
+        orgId: actorOrgId,
+        tx
+      });
+
       return {
         certificate,
         certificateChain,
@@ -2153,17 +2349,30 @@ export const certificateV3ServiceFactory = ({
 
       certificateRequestId = certificateRequest.id;
 
+      // Copy metadata from original cert to new cert request
+      await copyMetadataFromCertificate(resourceMetadataDAL, {
+        sourceCertificateId: originalCert.id,
+        targetCertificateRequestId: certificateRequest.id,
+        targetCertificateRequestCreatedAt: certificateRequest.createdAt,
+        orgId: actorOrgId
+      });
+
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: renewalOrderId,
         profileId: profile?.id || "",
         caId: ca.id,
         commonName: originalCert.commonName || "",
-        altNames: altNamesArray,
+        altNames: structuredAltNames,
         ttl,
         signatureAlgorithm: originalSignatureAlgorithm,
         keyAlgorithm: originalKeyAlgorithm,
-        keyUsages: convertEnumsToStringArray(parseKeyUsages(originalCert.keyUsages)),
-        extendedKeyUsages: convertEnumsToStringArray(parseExtendedKeyUsages(originalCert.extendedKeyUsages)),
+        keyUsages: parseKeyUsages(originalCert.keyUsages).map(mapKeyUsageToLegacy),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages).map(mapExtendedKeyUsageToLegacy),
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined,
         isRenewal: true,
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id
@@ -2198,6 +2407,17 @@ export const certificateV3ServiceFactory = ({
     if (removeRootsFromChain) {
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
+
+    try {
+      await pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId: renewalResult.newCert.id,
+        projectId: renewalResult.originalCert.projectId,
+        eventType: PkiAlertEventType.RENEWAL
+      });
+    } catch {
+      logger.debug("Failed to queue PKI renewal alert event");
+    }
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: renewalResult.certificate,
@@ -2234,12 +2454,16 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
-        serialNumber: certificate.serialNumber
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -2347,12 +2571,16 @@ export const certificateV3ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
       subject(ProjectPermissionSub.Certificates, {
         commonName: certificate.commonName,
-        altNames: certificate.altNames ?? undefined,
-        serialNumber: certificate.serialNumber
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: certMetadata
       })
     );
 
@@ -2389,12 +2617,78 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
+  const updateCertificate = async ({
+    certificateId,
+    metadata,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateCertificateDTO) => {
+    const certificate = await certificateDAL.findById(certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: certificate.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    const currentMetadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
+    const currentMetadata = currentMetadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Edit,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata: currentMetadata
+      })
+    );
+
+    if (metadata) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Edit,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: certificate.commonName,
+          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+          serialNumber: certificate.serialNumber,
+          metadata
+        })
+      );
+    }
+
+    let updatedMetadata: Array<{ key: string; value: string }> = [];
+
+    if (metadata) {
+      await certificateDAL.transaction(async (tx) => {
+        await resourceMetadataDAL.delete({ certificateId }, tx);
+        await insertMetadataForCertificate(resourceMetadataDAL, {
+          metadata,
+          certificateId,
+          orgId: actorOrgId,
+          tx
+        });
+      });
+      updatedMetadata = metadata;
+    }
+
+    return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
+  };
+
   return {
     issueCertificateFromProfile,
     signCertificateFromProfile,
     orderCertificateFromProfile,
     renewCertificate,
     updateRenewalConfig,
-    disableRenewalConfig
+    disableRenewalConfig,
+    updateCertificate
   };
 };

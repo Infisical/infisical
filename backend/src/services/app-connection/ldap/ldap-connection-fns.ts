@@ -1,4 +1,6 @@
-import ldap from "ldapjs";
+import { isIP } from "node:net";
+
+import ldap from "@infisical/ldapjs";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -15,6 +17,62 @@ import { TLdapConnectionConfig } from "./ldap-connection-types";
 
 const LDAP_TIMEOUT = 15_000;
 
+/**
+ * Extracts the domain from the DC components of a Distinguished Name.
+ * e.g. "dc=us,dc=test,dc=com" → "us.test.com"
+ */
+export const extractDomainFromDN = (dn: string): string | null => {
+  if (!dn) return null;
+
+  const dcComponents = dn
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.toLowerCase().startsWith("dc="))
+    .map((part) => part.substring(3).toLowerCase());
+
+  return dcComponents.length > 0 ? dcComponents.join(".") : null;
+};
+
+/**
+ * Extracts the hostname from an LDAP referral URL.
+ * e.g. "ldap://dc2.americas.test.com:389/CN=user,DC=americas,DC=test,DC=com" → "dc2.americas.test.com"
+ */
+export const extractHostFromReferralUrl = (referralUrl: string): string | null => {
+  try {
+    const url = new URL(referralUrl);
+    return url.hostname || null;
+  } catch {
+    return null;
+  }
+};
+
+export type LdapReferralError = Error & {
+  dn: string;
+  code: number;
+  referrals: string[];
+  referralSource?: "search" | "modify";
+};
+
+/**
+ * Checks if an error is an LDAP Referral (code 10) without requiring `dn` to be populated.
+ * Useful for search referrals where ldapjs sets `dn` to null.
+ */
+export const isLdapReferral = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  const ldapErr = err as Error & { name?: string; code?: number };
+  return ldapErr.name === "ReferralError" && ldapErr.code === 10;
+};
+
+/**
+ * Type guard for a fully-formed LDAP Referral: code 10 with `dn` (string) and `referrals` (array).
+ * `referrals` carries the actual target URLs from the LDAPResult, which is the primary source for determining the chase target.
+ */
+export const isLdapReferralError = (err: unknown): err is LdapReferralError => {
+  if (!isLdapReferral(err)) return false;
+  const ldapErr = err as Error & { dn?: unknown; code?: unknown; referrals?: unknown };
+  return typeof ldapErr.dn === "string" && typeof ldapErr.code === "number" && Array.isArray(ldapErr.referrals);
+};
+
 const parseLdapUrl = (url: string): { protocol: string; host: string; port: number } => {
   const urlObj = new URL(url);
   const isSSL = urlObj.protocol === "ldaps:";
@@ -29,6 +87,60 @@ const parseLdapUrl = (url: string): { protocol: string; host: string; port: numb
 
 const constructLdapUrl = (protocol: string, host: string, port: number): string => {
   return `${protocol}://${host}:${port}`;
+};
+
+/**
+ * Normalizes an LDAP URL to always include an explicit port.
+ * e.g. "ldaps://dc1.test.com" → "ldaps://dc1.test.com:636"
+ */
+export const normalizeLdapUrl = (url: string): string => {
+  const { protocol, host, port } = parseLdapUrl(url);
+  return constructLdapUrl(protocol, host, port);
+};
+
+/**
+ * Extracts the root domain (last two labels) from a hostname.
+ * e.g. "dc1.test.com" → "test.com", "americas.infisical.local" → "infisical.local"
+ * Returns null for IPs or single-label hostnames where a suffix check isn't meaningful.
+ */
+const getRootDomain = (hostname: string): string | null => {
+  const parts = hostname.split(".");
+  if (parts.length < 2) return null;
+  if (isIP(hostname) !== 0) return null;
+  return parts.slice(-2).join(".").toLowerCase();
+};
+
+/**
+ * Constructs a new LDAP URL targeting a different domain/host,
+ * preserving the protocol and port from the original URL.
+ *
+ * Validates that the target domain shares the same root domain as the original
+ * host to prevent credential forwarding to attacker-controlled servers via
+ * a crafted referral response.
+ */
+export const buildReferralUrl = (originalUrl: string, targetDomain: string): string => {
+  const { protocol, host, port } = parseLdapUrl(originalUrl);
+
+  if (isIP(targetDomain) !== 0) {
+    throw new Error(
+      `Referral target '${targetDomain}' is an IP address — legitimate AD referrals use FQDNs. Refusing to forward credentials`
+    );
+  }
+
+  const originalRoot = getRootDomain(host);
+  const targetRoot = getRootDomain(targetDomain);
+
+  if (!originalRoot) {
+    throw new Error(
+      `Cannot validate referral domain boundary — original LDAP URL '${host}' is not a FQDN. Refusing to forward credentials to '${targetDomain}'`
+    );
+  } else if (!targetRoot || originalRoot !== targetRoot) {
+    throw new Error(
+      `Referral domain '${targetDomain}' is outside the trust boundary of '${host}' — refusing to forward credentials`
+    );
+  }
+
+  return constructLdapUrl(protocol, targetDomain, port);
 };
 
 const setupLdapClientHandlers = <T>(

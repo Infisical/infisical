@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
-import AWS from "aws-sdk";
+import KMS from "aws-sdk/clients/kms.js";
 
 import {
   ActionProjectType,
@@ -20,6 +20,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/er
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission, TProjectPermission } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -177,6 +178,10 @@ export const integrationAuthServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
 
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
+
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -295,6 +300,10 @@ export const integrationAuthServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -453,6 +462,10 @@ export const integrationAuthServiceFactory = ({
 
     const { projectId } = integrationAuth;
     const integration = newIntegration || integrationAuth.integration;
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
+    }
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -1046,7 +1059,7 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessId, accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const kms = new AWS.KMS({
+    const kms = new KMS({
       region,
       credentials: {
         accessKeyId: String(accessId),

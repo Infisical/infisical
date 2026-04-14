@@ -10,6 +10,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
   [AppConnection.AzureDevOps]: "Azure DevOps",
   [AppConnection.AzureADCS]: "Azure ADCS",
+  [AppConnection.AzureDNS]: "Azure DNS",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
   [AppConnection.TerraformCloud]: "Terraform Cloud",
@@ -50,7 +51,12 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Dbt]: "DBT",
   [AppConnection.SMB]: "SMB",
   [AppConnection.OpenRouter]: "OpenRouter",
-  [AppConnection.CircleCI]: "CircleCI"
+  [AppConnection.CircleCI]: "CircleCI",
+  [AppConnection.AzureEntraId]: "Azure Entra ID",
+  [AppConnection.Venafi]: "Venafi TLS Protect Cloud",
+  [AppConnection.ExternalInfisical]: "Infisical",
+  [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.Anthropic]: "Anthropic"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -63,6 +69,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
   [AppConnection.AzureDevOps]: AppConnectionPlanType.Regular,
   [AppConnection.AzureADCS]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureDNS]: AppConnectionPlanType.Regular,
   [AppConnection.Databricks]: AppConnectionPlanType.Regular,
   [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
   [AppConnection.TerraformCloud]: AppConnectionPlanType.Regular,
@@ -103,5 +110,10 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Dbt]: AppConnectionPlanType.Regular,
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
-  [AppConnection.CircleCI]: AppConnectionPlanType.Regular
+  [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureEntraId]: AppConnectionPlanType.Regular,
+  [AppConnection.Venafi]: AppConnectionPlanType.Regular,
+  [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
+  [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.Anthropic]: AppConnectionPlanType.Regular
 };

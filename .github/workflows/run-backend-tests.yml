@@ -14,10 +14,8 @@ jobs:
   check-be-pr:
     name: Run integration test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
-
-
       - name: Free up disk space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -25,7 +23,7 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           docker system prune -af
-          
+
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - uses: KengoTODA/actions-setup-docker-compose@v1
@@ -33,10 +31,10 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 20
+      - name: 🔧 Setup Node 22
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: Install dependencies
@@ -56,6 +54,7 @@ jobs:
           E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
           E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
           E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
+          E2E_TEST_ORACLE_DB_19_DATABASE: ${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           AUTH_SECRET: something-random
@@ -63,4 +62,3 @@ jobs:
       - name: cleanup
         run: |
           docker compose -f "docker-compose.dev.yml" down
-

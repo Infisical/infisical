@@ -50,8 +50,9 @@ export type ApprovalRequestStep = {
 };
 
 export type PamAccessRequestData = {
-  accountPath: string;
   accessDuration: string;
+  resourceName?: string;
+  accountName?: string;
 };
 
 export type CertRequestRequestData = {
@@ -81,6 +82,16 @@ export type CertRequestRequestData = {
   certificateRequestId: string;
 };
 
+export type CodeSigningRequestData = {
+  signerId: string;
+  approvalPolicyId: string;
+  signerName: string;
+  justification?: string;
+  requestedWindowStart?: string;
+  requestedWindowEnd?: string;
+  requestedSignings?: number;
+};
+
 export type TApprovalRequest = {
   id: string;
   projectId: string;
@@ -94,7 +105,7 @@ export type TApprovalRequest = {
   expiresAt?: string | null;
   requestData: {
     version: number;
-    requestData: PamAccessRequestData | CertRequestRequestData;
+    requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
   createdAt: string;
@@ -106,7 +117,7 @@ export type TCreateApprovalRequestDTO = {
   projectId: string;
   justification?: string | null;
   requestDuration?: string | null;
-  requestData: PamAccessRequestData | CertRequestRequestData;
+  requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
 };
 
 export type TGetApprovalRequestByIdDTO = {

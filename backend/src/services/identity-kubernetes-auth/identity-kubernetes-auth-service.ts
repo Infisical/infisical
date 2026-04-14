@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
+import picomatch from "picomatch";
 import RE2 from "re2";
 
 import {
@@ -41,6 +42,7 @@ import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from 
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -85,7 +87,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -153,7 +155,6 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     const callbackResult = await withGatewayProxy(
       async (port, httpsAgent) => {
@@ -168,15 +169,7 @@ export const identityKubernetesAuthServiceFactory = ({
         protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
         targetHost: inputs.targetHost,
         targetPort: inputs.targetPort,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        },
+        relayDetails,
         // only needed for TCP protocol, because the gateway as reviewer will use the pod's CA cert for auth directly
         ...(!inputs.reviewTokenThroughGateway
           ? {
@@ -266,7 +259,10 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    if (!identity)
+      throw new UnauthorizedError({
+        message: "Identity not found"
+      });
 
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
@@ -493,13 +489,28 @@ export const identityKubernetesAuthServiceFactory = ({
       }
 
       if ("error" in data.status)
-        throw new UnauthorizedError({ message: data.status.error, name: "KubernetesTokenReviewError" });
+        throw new UnauthorizedError({
+          message: data.status.error,
+          name: "KubernetesTokenReviewError",
+          detail: {
+            reasonCode: "token_review_error",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
 
       // check the response to determine if the token is valid
       if (!(data.status && data.status.authenticated))
         throw new UnauthorizedError({
           message: "Kubernetes token not authenticated",
-          name: "KubernetesTokenReviewError"
+          name: "KubernetesTokenReviewError",
+          detail: {
+            reasonCode: "token_not_authenticated",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
 
       const { namespace: targetNamespace, name: targetName } = extractK8sUsername(data.status.user.username);
@@ -510,11 +521,17 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNamespaceAllowed = identityKubernetesAuth.allowedNamespaces
           .split(",")
           .map((namespace) => namespace.trim())
-          .some((namespace) => namespace === targetNamespace);
+          .some((namespace) => namespace === targetNamespace || picomatch.isMatch(targetNamespace, namespace));
 
         if (!isNamespaceAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s namespace not allowed."
+            message: "Access denied: K8s namespace not allowed.",
+            detail: {
+              reasonCode: "namespace_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -524,11 +541,17 @@ export const identityKubernetesAuthServiceFactory = ({
         const isNameAllowed = identityKubernetesAuth.allowedNames
           .split(",")
           .map((name) => name.trim())
-          .some((name) => name === targetName);
+          .some((name) => name === targetName || picomatch.isMatch(targetName, name));
 
         if (!isNameAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s name not allowed."
+            message: "Access denied: K8s name not allowed.",
+            detail: {
+              reasonCode: "name_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
@@ -540,11 +563,17 @@ export const identityKubernetesAuthServiceFactory = ({
 
         if (!isAudienceAllowed)
           throw new UnauthorizedError({
-            message: "Access denied: K8s audience not allowed."
+            message: "Access denied: K8s audience not allowed.",
+            detail: {
+              reasonCode: "audience_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
           });
       }
 
-      if (organizationSlug) {
+      if (organizationSlug && org.slug !== organizationSlug) {
         if (!isSubOrgIdentity) {
           const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
@@ -552,15 +581,21 @@ export const identityKubernetesAuthServiceFactory = ({
             throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              detail: {
+                reasonCode: "sub_org_unauthorized",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
             });
           }
 
@@ -633,8 +668,8 @@ export const identityKubernetesAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.KUBERNETES_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 
@@ -648,8 +683,8 @@ export const identityKubernetesAuthServiceFactory = ({
           "infisical.organization.name": org.name,
           "infisical.identity.auth_method": AuthAttemptAuthMethod.KUBERNETES_AUTH,
           "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get("ip"),
-          "user_agent.original": requestContext.get("userAgent")
+          "client.address": requestContext.get(RequestContextKey.Ip),
+          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
 

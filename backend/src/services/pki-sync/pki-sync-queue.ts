@@ -3,10 +3,12 @@ import opentelemetry from "@opentelemetry/api";
 import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
+import { randomUUID } from "crypto";
 import handlebars from "handlebars";
 
 import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -65,6 +67,7 @@ type TPkiSyncQueueFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 type PkiSyncActionJob = Job<
@@ -96,7 +99,8 @@ export const pkiSyncQueueFactory = ({
   certificateSecretDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
-  certificateSyncDAL
+  certificateSyncDAL,
+  gatewayV2Service
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -357,6 +361,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -368,6 +373,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -379,6 +385,7 @@ export const pkiSyncQueueFactory = ({
         type: "exponential",
         delay: 3000
       },
+      jobId: randomUUID(),
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -453,7 +460,8 @@ export const pkiSyncQueueFactory = ({
         appConnectionDAL,
         kmsService,
         certificateDAL,
-        certificateSyncDAL
+        certificateSyncDAL,
+        gatewayV2Service
       });
 
       logger.info(
@@ -718,7 +726,8 @@ export const pkiSyncQueueFactory = ({
           kmsService,
           certificateSyncDAL,
           certificateDAL,
-          certificateMap
+          certificateMap,
+          gatewayV2Service
         }
       );
 

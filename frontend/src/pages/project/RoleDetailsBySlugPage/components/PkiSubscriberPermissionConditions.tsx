@@ -13,7 +13,13 @@ export const PkiSubscriberPermissionConditions = ({ position = 0, isDisabled }: 
       isDisabled={isDisabled}
       subject={ProjectPermissionSub.PkiSubscribers}
       position={position}
-      selectOptions={[{ value: "name", label: "Name" }]}
+      selectOptions={[
+        {
+          value: "name",
+          label: "Name",
+          description: "The name of the PKI subscriber"
+        }
+      ]}
     />
   );
 };

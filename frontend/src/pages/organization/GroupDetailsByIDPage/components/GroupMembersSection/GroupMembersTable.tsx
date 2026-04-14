@@ -51,9 +51,15 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMemberFromGroup", "addGroupMembers"]>,
     data?: object
   ) => void;
+  isLinkedGroup?: boolean;
 };
 
-export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props) => {
+export const GroupMembersTable = ({
+  groupId,
+  groupSlug,
+  handlePopUpOpen,
+  isLinkedGroup = false
+}: Props) => {
   const {
     search,
     setSearch,
@@ -188,12 +194,14 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                   key={`user-group-membership-${userGroupMembership.id}`}
                   user={userGroupMembership}
                   handlePopUpOpen={handlePopUpOpen}
+                  isLinkedGroup={isLinkedGroup}
                 />
               ) : (
                 <GroupMembershipIdentityRow
                   key={`identity-group-membership-${userGroupMembership.id}`}
                   identity={userGroupMembership}
                   handlePopUpOpen={handlePopUpOpen}
+                  isLinkedGroup={isLinkedGroup}
                 />
               )
             )}
@@ -210,7 +218,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                 ? "Adjust search filters to view members."
                 : "Add users or machine identities to this group."}
             </UnstableEmptyDescription>
-            {!isFiltered && (
+            {!isFiltered && !isLinkedGroup && (
               <UnstableEmptyContent>
                 <OrgPermissionCan
                   I={OrgPermissionGroupActions.Edit}

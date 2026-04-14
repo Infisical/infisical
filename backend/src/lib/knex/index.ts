@@ -23,6 +23,7 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
 
 export type TFindFilter<R extends object = object> = Partial<R> & {
   $in?: Partial<{ [k in keyof R]: R[k][] }>;
+  $notEqual?: Partial<{ [k in keyof R]: R[k] }>;
   $notNull?: Array<keyof R>;
   $search?: Partial<{ [k in keyof R]: R[k] }>;
   $complex?: TKnexDynamicOperator<R>;
@@ -30,7 +31,7 @@ export type TFindFilter<R extends object = object> = Partial<R> & {
 
 export const buildFindFilter =
   <R extends object = object>(
-    { $in, $notNull, $search, $complex, ...filter }: TFindFilter<R>,
+    { $in, $notNull, $search, $complex, $notEqual, ...filter }: TFindFilter<R>,
     tableName?: TableName,
     excludeKeys?: string[]
   ) =>
@@ -48,6 +49,14 @@ export const buildFindFilter =
       Object.entries($in).forEach(([key, val]) => {
         if (val) {
           void bd.whereIn(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
+        }
+      });
+    }
+
+    if ($notEqual) {
+      Object.entries($notEqual).forEach(([key, val]) => {
+        if (val) {
+          void bd.whereNot(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
         }
       });
     }

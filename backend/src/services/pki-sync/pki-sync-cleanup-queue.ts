@@ -1,6 +1,6 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
@@ -58,33 +58,23 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.PkiSyncCleanup,
-      QueueJobs.PkiSyncCleanup,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.PkiSyncCleanup // just a job id
-    );
-
-    await queueService.startPg<QueueName.PkiSyncCleanup>(
-      QueueJobs.PkiSyncCleanup,
-      async () => {
-        try {
-          logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
-          await syncExpiredCertificatesForPkiSyncs();
-          logger.info(`${QueueName.PkiSyncCleanup}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.PkiSyncCleanup}: PKI sync cleanup failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 120
+    queueService.start(QueueName.PkiSyncCleanup, async () => {
+      try {
+        logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
+        await syncExpiredCertificatesForPkiSyncs();
+        logger.info(`${QueueName.PkiSyncCleanup}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.PkiSyncCleanup}: PKI sync cleanup failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(QueueJobs.PkiSyncCleanup, "0 0 * * *", undefined, { tz: "UTC" });
+    await queueService.upsertJobScheduler(
+      QueueName.PkiSyncCleanup,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.PkiSyncCleanup}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.PkiSyncCleanup }
+    );
   };
 
   return {

@@ -1,42 +1,374 @@
+import type WebSocket from "ws";
 import { z } from "zod";
 
-import { PamFoldersSchema } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamAccountDependenciesSchema } from "@app/db/schemas";
+import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
-import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
-import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
-import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import {
+  ActiveDirectoryAccountCredentialsSchema,
+  SanitizedActiveDirectoryAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import {
+  AwsIamAccountCredentialsSchema,
+  SanitizedAwsIamAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
+  KubernetesAccountCredentialsSchema,
+  SanitizedKubernetesAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
+  MongoDBAccountCredentialsSchema,
+  SanitizedMongoDBAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
+  MsSQLAccountCredentialsSchema,
+  SanitizedMsSQLAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
+import {
+  MySQLAccountCredentialsSchema,
+  SanitizedMySQLAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
-import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
-import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
-import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  PostgresAccountCredentialsSchema,
+  SanitizedPostgresAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import {
+  RedisAccountCredentialsSchema,
+  SanitizedRedisAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
+import {
+  SanitizedSSHAccountWithResourceSchema,
+  SSHAccountCredentialsSchema
+} from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  SanitizedWindowsAccountWithResourceSchema,
+  WindowsAccountCredentialsSchema
+} from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const SanitizedAccountSchema = z.union([
-  SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
-  SanitizedPostgresAccountWithResourceSchema,
-  SanitizedMySQLAccountWithResourceSchema,
-  SanitizedRedisAccountWithResourceSchema,
-  SanitizedKubernetesAccountWithResourceSchema,
-  SanitizedAwsIamAccountWithResourceSchema
-]);
+const SanitizedAccountSchema = z
+  .discriminatedUnion("resourceType", [
+    SanitizedKubernetesAccountWithResourceSchema,
+    SanitizedSSHAccountWithResourceSchema,
+    SanitizedPostgresAccountWithResourceSchema,
+    SanitizedMySQLAccountWithResourceSchema,
+    SanitizedMsSQLAccountWithResourceSchema,
+    SanitizedMongoDBAccountWithResourceSchema,
+    SanitizedRedisAccountWithResourceSchema,
+    SanitizedAwsIamAccountWithResourceSchema,
+    SanitizedWindowsAccountWithResourceSchema,
+    SanitizedActiveDirectoryAccountWithResourceSchema
+  ])
+  .and(
+    z.object({
+      credentialsConfigured: z.boolean(),
+      dependencyCount: z.number().default(0)
+    })
+  );
 
 const ListPamAccountsResponseSchema = z.object({
   accounts: SanitizedAccountSchema.array(),
-  folders: PamFoldersSchema.array(),
-  totalCount: z.number().default(0),
-  folderId: z.string().optional(),
-  folderPaths: z.record(z.string(), z.string())
+  totalCount: z.number().default(0)
 });
 
+const AccountCredentialsBaseSchema = z.object({
+  accountId: z.string().uuid(),
+  accountName: z.string(),
+  resourceName: z.string(),
+  projectId: z.string().uuid()
+});
+
+const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Postgres),
+    credentials: PostgresAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MySQL),
+    credentials: MySQLAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MsSQL),
+    credentials: MsSQLAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MongoDB),
+    credentials: MongoDBAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.SSH),
+    credentials: SSHAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Redis),
+    credentials: RedisAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Kubernetes),
+    credentials: KubernetesAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.AwsIam),
+    credentials: AwsIamAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.Windows),
+    credentials: WindowsAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.ActiveDirectory),
+    credentials: ActiveDirectoryAccountCredentialsSchema
+  })
+]);
+
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:accountId/dependencies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account dependencies",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependencies: PamAccountDependenciesSchema.extend({
+            resourceName: z.string().nullable().optional(),
+            lastSyncMessage: z.string().nullable().optional()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscoverySource.getAccountDependencies({
+        accountId: req.params.accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependencies };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Update a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      body: z.object({
+        isRotationSyncEnabled: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          dependency: PamAccountDependenciesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.updateAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        isRotationSyncEnabled: req.body.isRotationSyncEnabled,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accountId/dependencies/:dependencyId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Delete a PAM account dependency",
+      params: z.object({
+        accountId: z.string().uuid(),
+        dependencyId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          dependency: z.object({
+            id: z.string().uuid()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const dependency = await server.services.pamDiscoverySource.deleteAccountDependency({
+        accountId: req.params.accountId,
+        dependencyId: req.params.dependencyId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { dependency };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "triggerPamAccountRotation",
+      description: "Manually trigger credential rotation for a PAM account",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          account: SanitizedAccountSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const account = await server.services.pamAccount.triggerManualRotation(req.params.accountId, req.permission);
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: account.resourceType,
+            projectId: account.projectId
+          }
+        })
+        .catch(() => {});
+
+      return { account: account as z.infer<typeof SanitizedAccountSchema> };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account by ID",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: SanitizedAccountSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { accountId } = req.params;
+
+      const account = await server.services.pamAccount.getById({
+        accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: account.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_GET,
+          metadata: {
+            accountId: account.id,
+            accountName: account.name
+          }
+        }
+      });
+
+      return account as z.infer<typeof SanitizedAccountSchema>;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/credentials",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "View full (unsanitized) PAM account credentials",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      body: z.object({
+        mfaSessionId: z.string().optional()
+      }),
+      response: {
+        200: AccountCredentialsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pamAccount.viewCredentials({
+        accountId: req.params.accountId,
+        mfaSessionId: req.body.mfaSessionId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_READ_CREDENTIALS,
+          metadata: {
+            accountId: result.accountId,
+            accountName: result.accountName,
+            resourceId: result.resourceId,
+            resourceType: result.resourceType
+          }
+        }
+      });
+
+      return result as z.infer<typeof AccountCredentialsResponseSchema>;
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/",
@@ -47,7 +379,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       description: "List PAM accounts",
       querystring: z.object({
         projectId: z.string().uuid(),
-        accountPath: z.string().trim().default("/").transform(removeTrailingSlash),
         accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(100),
@@ -70,16 +401,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } =
-        req.query;
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } = req.query;
 
-      const { accounts, folders, totalCount, folderId, folderPaths } = await server.services.pamAccount.list({
+      const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId,
-        accountPath,
         accountView,
         limit,
         offset,
@@ -96,13 +425,79 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_ACCOUNT_LIST,
           metadata: {
-            accountCount: accounts.length,
-            folderCount: folders.length
+            accountCount: accounts.length
           }
         }
       });
 
-      return { accounts, folders, totalCount, folderId, folderPaths } as z.infer<typeof ListPamAccountsResponseSchema>;
+      return { accounts, totalCount } as z.infer<typeof ListPamAccountsResponseSchema>;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Search PAM accounts",
+      body: z.object({
+        projectId: z.string().uuid(),
+        accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
+        offset: z.number().min(0).default(0),
+        limit: z.number().min(1).max(100).default(100),
+        orderBy: z.nativeEnum(PamAccountOrderBy).default(PamAccountOrderBy.Name),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
+        search: z.string().trim().optional(),
+        filterResourceIds: z.array(z.string().uuid()).optional(),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .optional()
+      }),
+      response: {
+        200: ListPamAccountsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds, metadata } =
+        req.body;
+
+      const { accounts, totalCount } = await server.services.pamAccount.list({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        accountView,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection,
+        filterResourceIds,
+        metadataFilter: metadata
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_LIST,
+          metadata: {
+            accountCount: accounts.length
+          }
+        }
+      });
+
+      return { accounts, totalCount } as z.infer<typeof ListPamAccountsResponseSchema>;
     }
   });
 
@@ -115,7 +510,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Access PAM account",
       body: z.object({
-        accountPath: z.string().trim(),
+        resourceName: z.string().trim(),
+        accountName: z.string().trim(),
         projectId: z.string().uuid(),
         mfaSessionId: z.string().optional(),
         duration: z
@@ -136,9 +532,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
+          // Gateway-based resources (Postgres, MySQL, MsSQL, Redis, SSH)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MongoDB) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
@@ -165,7 +563,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp,
           actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
           actorUserAgent: req.auditLogInfo.userAgent ?? "",
-          accountPath: req.body.accountPath,
+          resourceName: req.body.resourceName,
+          accountName: req.body.accountName,
           projectId: req.body.projectId,
           duration: req.body.duration,
           mfaSessionId: req.body.mfaSessionId
@@ -181,14 +580,172 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
             accountId: response.account.id,
-            accountPath: req.body.accountPath,
+            resourceName: req.body.resourceName,
             accountName: response.account.name,
             duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined
           }
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountAccessed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            resourceType: response.resourceType,
+            projectId: req.body.projectId,
+            duration: req.body.duration
+          }
+        })
+        .catch(() => {});
+
       return response;
+    }
+  });
+
+  // Web access ticket endpoint
+  server.route({
+    method: "POST",
+    url: "/:accountId/web-access-ticket",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Issue a one-time ticket for WebSocket web access",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional()
+      }),
+      response: {
+        200: z.object({ ticket: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      // Narrows TypeScript type so req.auth.user is available below (verifyAuth hook already enforces JWT)
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web access requires JWT authentication" });
+      }
+
+      const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
+        accountId: req.params.accountId,
+        projectId: req.body.projectId,
+        orgId: req.permission.orgId,
+        actor: req.permission,
+        actorEmail: req.auth.user.email ?? "",
+        actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        auditLogInfo: req.auditLogInfo,
+        mfaSessionId: req.body.mfaSessionId
+      });
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamWebAccessStarted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId
+          }
+        })
+        .catch(() => {});
+
+      return { ticket };
+    }
+  });
+
+  // WebSocket endpoint for web access (ticket-based auth)
+  server.route({
+    method: "GET",
+    url: "/:accountId/web-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "WebSocket endpoint for browser-based web access to PAM accounts",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      querystring: z.object({
+        ticket: z.string()
+      }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    wsHandler: async (connection: WebSocket, req) => {
+      try {
+        const ticketValue = req.query.ticket;
+        const separatorIndex = ticketValue.indexOf(":");
+        if (separatorIndex === -1) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const userId = ticketValue.slice(0, separatorIndex);
+        const tokenCode = ticketValue.slice(separatorIndex + 1);
+
+        const tokenRecord = await server.services.authToken.validateTokenForUser({
+          type: TokenType.TOKEN_PAM_WS_TICKET,
+          userId,
+          code: tokenCode
+        });
+
+        if (!tokenRecord?.payload) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const payload = z
+          .object({
+            accountId: z.string(),
+            projectId: z.string(),
+            orgId: z.string(),
+            resourceName: z.string(),
+            accountName: z.string(),
+            actorEmail: z.string(),
+            actorName: z.string(),
+            auditLogInfo: z.object({
+              ipAddress: z.string().optional(),
+              userAgent: z.string().optional(),
+              userAgentType: z.nativeEnum(UserAgentType).optional(),
+              actor: z.object({
+                type: z.nativeEnum(ActorType),
+                metadata: z.record(z.unknown())
+              })
+            })
+          })
+          .parse(JSON.parse(tokenRecord.payload));
+
+        if (payload.accountId !== req.params.accountId) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        await server.services.pamWebAccess.handleWebSocketConnection({
+          socket: connection,
+          accountId: payload.accountId,
+          projectId: payload.projectId,
+          orgId: payload.orgId,
+          resourceName: payload.resourceName,
+          accountName: payload.accountName,
+          actorEmail: payload.actorEmail,
+          actorName: payload.actorName,
+          auditLogInfo: payload.auditLogInfo as AuditLogInfo,
+          userId,
+          actorIp: req.realIp ?? "",
+          actorUserAgent: req.headers["user-agent"] ?? ""
+        });
+      } catch (err) {
+        logger.error(err, "WebSocket ticket validation failed");
+        connection.close(4001, "Invalid or expired ticket");
+      }
+    },
+    handler: async () => {
+      return { message: "WebSocket upgrade required" };
     }
   });
 };

@@ -10,6 +10,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertStatus } from "./certificate-types";
 
@@ -55,7 +56,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     status,
     profileIds,
     fromDate,
-    toDate
+    toDate,
+    metadataFilter,
+    extendedKeyUsage
   }: {
     projectId: string;
     friendlyName?: string;
@@ -65,6 +68,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileIds?: string[];
     fromDate?: Date;
     toDate?: Date;
+    metadataFilter?: Array<{ key: string; value?: string }>;
+    extendedKeyUsage?: string;
   }) => {
     try {
       interface CountResult {
@@ -139,6 +144,17 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (profileIds) {
         query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
+      }
+
+      if (extendedKeyUsage) {
+        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
+        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
+          extendedKeyUsage
+        ]);
       }
 
       const count = await query.count("*").first();
@@ -350,6 +366,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         profileIds?: string[];
         fromDate?: Date;
         toDate?: Date;
+        metadataFilter?: Array<{ key: string; value?: string }>;
+        extendedKeyUsage?: string;
       }
     >,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
@@ -362,7 +380,18 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"));
 
-      const { friendlyName, commonName, search, status, profileIds, fromDate, toDate, ...regularFilters } = filter;
+      const {
+        friendlyName,
+        commonName,
+        search,
+        status,
+        profileIds,
+        fromDate,
+        toDate,
+        metadataFilter,
+        extendedKeyUsage,
+        ...regularFilters
+      } = filter;
 
       Object.entries(regularFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -432,6 +461,17 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       if (profileIds) {
         query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      }
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
+      }
+
+      if (extendedKeyUsage) {
+        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
+        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
+          extendedKeyUsage
+        ]);
       }
 
       if (permissionFilters) {

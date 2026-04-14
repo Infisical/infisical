@@ -84,7 +84,6 @@ export const KubernetesProvider = ({
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     const callbackResult = await withGatewayProxy(
       async (port, httpsAgent) => {
@@ -97,18 +96,9 @@ export const KubernetesProvider = ({
         return res;
       },
       {
+        relayDetails,
         protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
         targetHost: inputs.targetHost,
-        targetPort: inputs.targetPort,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        },
         // we always pass this, because its needed for both tcp and http protocol
         httpsAgent: inputs.httpsAgent
       }

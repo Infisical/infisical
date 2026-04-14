@@ -4,12 +4,15 @@ import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connecti
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
+import { registerAzureDnsConnectionRouter } from "./azure-dns-connection-router";
+import { registerAzureEntraIdConnectionRouter } from "./azure-entra-id-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
@@ -20,6 +23,7 @@ import { registerDatabricksConnectionRouter } from "./databricks-connection-rout
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
+import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -34,6 +38,7 @@ import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
+import { registerNetScalerConnectionRouter } from "./netscaler-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
@@ -47,6 +52,7 @@ import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
@@ -64,6 +70,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
     [AppConnection.AzureADCS]: registerAzureADCSConnectionRouter,
+    [AppConnection.AzureDNS]: registerAzureDnsConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
@@ -104,5 +111,10 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
-    [AppConnection.CircleCI]: registerCircleCIConnectionRouter
+    [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
+    [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
+    [AppConnection.Venafi]: registerVenafiConnectionRouter,
+    [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
+    [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.Anthropic]: registerAnthropicConnectionRouter
   };

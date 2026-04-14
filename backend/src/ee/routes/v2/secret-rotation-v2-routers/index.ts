@@ -5,6 +5,7 @@ import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-ro
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
+import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerMongoDBCredentialsRotationRouter } from "./mongodb-credentials-rotation-router";
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
@@ -38,5 +39,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter,
   [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
-  [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter
+  [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
+  [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter
 };

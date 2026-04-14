@@ -169,6 +169,53 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const updateSyncMetadata = async (
+    pkiSyncId: string,
+    certificateId: string,
+    metadata: Record<string, unknown> | null,
+    tx?: Knex
+  ): Promise<TCertificateSyncs | undefined> => {
+    try {
+      const docs = await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId, certificateId })
+        .update({ syncMetadata: metadata ? JSON.stringify(metadata) : null })
+        .returning("*");
+
+      return docs[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSyncMetadata" });
+    }
+  };
+
+  /**
+   * Removes a specific flag/key from the syncMetadata JSONB column for all certificate_sync records
+   * belonging to a given pkiSyncId.
+   *
+   * This is used, for example, to clear the "isDefault" flag from all certificates when the default
+   * certificate is changed or cleared.
+   *
+   * The SQL logic:
+   * 1. Filters records where syncMetadata is not null and contains the specified flag
+   * 2. Removes the flag from the JSONB object using the `-` operator
+   * 3. If removing the flag results in an empty object `{}`, sets the column to NULL instead
+   */
+  const clearSyncMetadataFlag = async (pkiSyncId: string, flag: string, tx?: Knex): Promise<void> => {
+    try {
+      await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId })
+        .whereNotNull("syncMetadata")
+        .whereRaw(`"syncMetadata" \\? ?`, [flag])
+        .update({
+          syncMetadata: db.raw(`CASE WHEN "syncMetadata" - ? = '{}'::jsonb THEN NULL ELSE "syncMetadata" - ? END`, [
+            flag,
+            flag
+          ])
+        });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ClearSyncMetadataFlag" });
+    }
+  };
+
   const findWithDetails = async (
     options: {
       filter?: CertificateSyncFindFilter;
@@ -226,6 +273,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.PkiSync).as("pkiSyncName"),
           db.ref("destination").withSchema(TableName.PkiSync).as("pkiSyncDestination")
         )
+        .orderByRaw(
+          `CASE WHEN "${TableName.CertificateSync}"."syncMetadata"->>'isDefault' = 'true' THEN 0 ELSE 1 END ASC`
+        )
         .orderBy(`${TableName.CertificateSync}.createdAt`, "desc");
 
       if (offset !== undefined) {
@@ -267,6 +317,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     removeAllCertificatesFromSync,
     updateSyncStatus,
     bulkUpdateSyncStatus,
+    updateSyncMetadata,
+    clearSyncMetadataFlag,
     findWithDetails
   };
 };

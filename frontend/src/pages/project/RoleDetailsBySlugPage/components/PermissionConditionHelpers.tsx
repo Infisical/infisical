@@ -1,6 +1,9 @@
 import { GlobPermissionInfo } from "@app/components/permissions";
-import { SelectItem } from "@app/components/v2";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import { SelectItem } from "@app/components/v3";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 export const getConditionOperatorHelperInfo = (type: PermissionConditionOperators) => {
   switch (type) {
@@ -10,6 +13,8 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
       return "Value should not equal specified value.";
     case PermissionConditionOperators.$IN:
       return "List of comma-separated values that match a given value.";
+    case PermissionConditionOperators.$ALL:
+      return "List of comma-separated values that must all be present.";
     case PermissionConditionOperators.$GLOB:
       return <GlobPermissionInfo />;
     default:
@@ -17,13 +22,35 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
   }
 };
 
-// scott: we may need to pass the subject in the future to further refine returned items
-export const renderOperatorSelectItems = (type: string) => {
+export const renderOperatorSelectItems = (type: string, subject?: string) => {
   switch (type) {
     case "secretTags":
-      return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$ALL}>Contains All</SelectItem>
+        </>
+      );
+    case "metadataKey":
+    case "metadataValue":
+      if (subject === ProjectPermissionSub.Certificates) {
+        return (
+          <>
+            <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+            <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+          </>
+        );
+      }
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
     case "identityId":
     case "connectionId":
+    case "role":
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
@@ -33,6 +60,7 @@ export const renderOperatorSelectItems = (type: string) => {
       );
     case "hostname":
     case "name":
+    case "resourceType":
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>

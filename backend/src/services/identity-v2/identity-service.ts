@@ -49,9 +49,7 @@ export const identityV2ServiceFactory = ({
 
   const scopeFactory = {
     [AccessScope.Organization]: orgFactory,
-    [AccessScope.Project]: projectFactory,
-    // namespace will get stripped off
-    [AccessScope.Namespace]: orgFactory
+    [AccessScope.Project]: projectFactory
   };
 
   const createIdentity = async (dto: TCreateIdentityV2DTO) => {
@@ -204,6 +202,9 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+    if (existingIdentity.hasDeleteProtection) {
+      throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
+    }
 
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
 

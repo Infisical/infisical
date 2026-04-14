@@ -1,0 +1,81 @@
+---
+title: "PostgreSQL Web Access"
+sidebarTitle: "PostgreSQL"
+description: "Browse, query, and edit PostgreSQL databases directly from your browser."
+---
+
+![PostgreSQL Web Access](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+
+PostgreSQL web access provides a unified interface for interacting with your database directly from the browser. It combines visual table browsing and editing with an integrated SQL query runner, all in one interface.
+
+## Connecting
+
+<Steps>
+  <Step title="Navigate to Account">
+    Go to the **Resources** tab in your PAM project, open the PostgreSQL resource, and find the account you want to access. Click the **Connect** button next to the account.
+
+    ![Account Connect Button](/images/pam/product-reference/web-access/pg-account-connect-button.png)
+
+    Alternatively, if you are on the account page, click the **Access** button.
+
+    ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
+  </Step>
+
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to launch the web access interface in a new tab.
+
+    ![Connect in Browser](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
+  </Step>
+</Steps>
+
+Once connected, you get a spreadsheet-like interface for your database where you can:
+
+- Browse tables and explore their data
+- Filter and sort to quickly find what you need
+- Edit data directly — add, update, or delete rows
+
+![PostgreSQL Web Access Interface](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+
+## SQL Queries
+
+The SQL query runner lets you run arbitrary SQL against your database without leaving the browser.
+
+![SQL Query Runner](/images/pam/product-reference/web-access/pg-sql-query-runner.png)
+
+### Usage
+
+Click the **+** button in the tab bar to open a new query tab. Each tab has its own SQL editor and results panel.
+
+Write your query in the editor and run it by clicking **Run** or pressing `Cmd+Enter` (Mac) / `Ctrl+Enter` (Windows/Linux). Results are displayed in a table below the editor with column types, primary key, and foreign key indicators.
+
+You can open multiple query tabs at once. Tabs are independent: each has its own SQL content and results.
+
+#### Multi-statement queries
+
+If you run multiple statements at once, the results of the last statement are shown, the same behaviour as `psql`.
+
+#### Mutation queries
+
+`INSERT`, `UPDATE`, and `DELETE` statements display the number of affected rows instead of a result table.
+
+## Limits
+
+In addition to the [common session limits](/documentation/platform/pam/product-reference/web-access/overview#session-limits), the following PostgreSQL-specific limits apply:
+
+| Setting | Value |
+|---------|-------|
+| **Statement timeout** | 30 seconds per query |
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Can I edit data for all tables?">
+        Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
+    </Accordion>
+    <Accordion title="Does the SQL query runner support transactions?">
+        Yes. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` to manage transactions. An active transaction is shared across all query tabs — changes made in one tab are visible in others until you commit or roll back. The toolbar will show a **Transaction open** indicator while a transaction is in progress.
+    </Accordion>
+    <Accordion title="Can I run only part of a query?">
+        Yes. Select any portion of the SQL in the editor and click **Run Selection** (or press <kbd>⌘ Enter</kbd> / <kbd>Ctrl Enter</kbd>) to execute only the selected text.
+    </Accordion>
+</AccordionGroup>

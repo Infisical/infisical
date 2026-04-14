@@ -13,6 +13,7 @@ import { IncomingMessage } from "http";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
+import { IdentityAuthMethod } from "@app/db/schemas";
 import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
@@ -22,11 +23,13 @@ import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { AllowedFieldsSchema } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -166,48 +169,93 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req, res) => {
-      const { identityId, username } = req.body;
+      try {
+        const { identityId, username } = req.body;
 
-      // Load LDAP config and attach to request for passport strategy
-      const { ldapConfig } = await server.services.identityLdapAuth.getLdapConfig(identityId);
-      req.ldapConfig = {
-        ...ldapConfig,
-        isActive: true,
-        groupSearchBase: "",
-        uniqueUserAttribute: "",
-        groupSearchFilter: ""
-      };
+        // Load LDAP config and attach to request for passport strategy
+        const { ldapConfig } = await server.services.identityLdapAuth.getLdapConfig(identityId);
+        req.ldapConfig = {
+          ...ldapConfig,
+          isActive: true,
+          groupSearchBase: "",
+          uniqueUserAttribute: "",
+          groupSearchFilter: ""
+        };
 
-      // Authenticate with passport, wrapped in lockout protection
-      const { identityId: authIdentityId, user } = await server.services.identityLdapAuth.withLdapLockout(
-        { identityId, username },
-        () => authenticateWithPassport(req, res)
-      );
+        // Authenticate with passport, wrapped in lockout protection
+        const { identityId: authIdentityId, user } = await server.services.identityLdapAuth.withLdapLockout(
+          { identityId, username },
+          () => authenticateWithPassport(req, res)
+        );
 
-      const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
-        identityId: authIdentityId,
-        organizationSlug: req.body.organizationSlug
-      });
+        const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
+          identityId: authIdentityId,
+          organizationSlug: req.body.organizationSlug
+        });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: identity.orgId,
-        event: {
-          type: EventType.LOGIN_IDENTITY_LDAP_AUTH,
-          metadata: {
-            identityId: authIdentityId,
-            ldapEmail: user.mail,
-            ldapUsername: user.uid
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: identity.orgId,
+          event: {
+            type: EventType.LOGIN_IDENTITY_LDAP_AUTH,
+            metadata: {
+              identityId: authIdentityId,
+              ldapEmail: user.mail,
+              ldapUsername: user.uid
+            }
           }
-        }
-      });
+        });
 
-      return {
-        accessToken,
-        tokenType: "Bearer" as const,
-        expiresIn: identityLdapAuth.accessTokenTTL,
-        accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL
-      };
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.MachineIdentityLogin,
+            distinctId: `identity-${authIdentityId}`,
+            organizationId: identity.orgId,
+            properties: {
+              identityId: authIdentityId,
+              orgId: identity.orgId,
+              authMethod: IdentityAuthMethod.LDAP_AUTH
+            }
+          })
+          .catch((error) => {
+            logger.error(error, `Failed to send telemetry event [identityId=${authIdentityId}]`);
+          });
+
+        return {
+          accessToken,
+          tokenType: "Bearer" as const,
+          expiresIn: identityLdapAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL
+        };
+      } catch (error) {
+        if (
+          error instanceof UnauthorizedError &&
+          error.detail?.orgId &&
+          error.detail?.identityId &&
+          error.detail?.identityName
+        ) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: {
+              type: ActorType.IDENTITY,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                name: error.detail.identityName as string
+              }
+            },
+            orgId: error.detail.orgId as string,
+            event: {
+              type: EventType.LOGIN_IDENTITY_LDAP_AUTH_FAILED,
+              metadata: {
+                identityId: error.detail.identityId as string,
+                reasonCode: error.detail.reasonCode as string,
+                message: error.message
+              }
+            }
+          });
+        }
+        throw error;
+      }
     }
   });
 
@@ -399,6 +447,21 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityLdapAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.LDAP_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
+
       return { identityLdapAuth };
     }
   });
@@ -521,6 +584,21 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityLdapAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.LDAP_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
+
       return { identityLdapAuth };
     }
   });
@@ -633,6 +711,21 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            identityId: identityLdapAuth.identityId,
+            orgId: req.permission.orgId,
+            authMethod: IdentityAuthMethod.LDAP_AUTH
+          }
+        })
+        .catch((error) => {
+          logger.error(error, `Failed to send telemetry event [identityId=${identityLdapAuth.identityId}]`);
+        });
 
       return { identityLdapAuth };
     }

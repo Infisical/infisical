@@ -21,6 +21,10 @@ import {
   AzureAppConfigurationSyncSchema
 } from "@app/services/secret-sync/azure-app-configuration";
 import { AzureDevOpsSyncListItemSchema, AzureDevOpsSyncSchema } from "@app/services/secret-sync/azure-devops";
+import {
+  AzureEntraIdScimSyncListItemSchema,
+  AzureEntraIdScimSyncSchema
+} from "@app/services/secret-sync/azure-entra-id-scim";
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
 import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/secret-sync/bitbucket";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
@@ -39,6 +43,10 @@ import {
   DigitalOceanAppPlatformSyncListItemSchema,
   DigitalOceanAppPlatformSyncSchema
 } from "@app/services/secret-sync/digital-ocean-app-platform";
+import {
+  ExternalInfisicalSyncListItemSchema,
+  ExternalInfisicalSyncSchema
+} from "@app/services/secret-sync/external-infisical";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
@@ -94,7 +102,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   LaravelForgeSyncSchema,
   ChefSyncSchema,
   OctopusDeploySyncSchema,
-  CircleCISyncSchema
+  CircleCISyncSchema,
+  AzureEntraIdScimSyncSchema,
+  ExternalInfisicalSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -132,7 +142,9 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   LaravelForgeSyncListItemSchema,
   ChefSyncListItemSchema,
   OctopusDeploySyncListItemSchema,
-  CircleCISyncListItemSchema
+  CircleCISyncListItemSchema,
+  AzureEntraIdScimSyncListItemSchema,
+  ExternalInfisicalSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

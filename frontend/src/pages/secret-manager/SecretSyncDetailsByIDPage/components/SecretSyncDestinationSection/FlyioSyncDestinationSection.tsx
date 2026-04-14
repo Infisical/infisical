@@ -10,5 +10,5 @@ export const FlyioSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { appId }
   } = secretSync;
 
-  return <GenericFieldLabel label="App ID">{appId}</GenericFieldLabel>;
+  return <GenericFieldLabel label="App">{appId}</GenericFieldLabel>;
 };

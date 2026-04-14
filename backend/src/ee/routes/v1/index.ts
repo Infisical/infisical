@@ -29,12 +29,17 @@ import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
+import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
+import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
+import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
+import { registerPkiDiscoveryRouter } from "./pki-discovery-router";
+import { registerPkiInstallationRouter } from "./pki-installation-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
@@ -113,6 +118,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
+      await pkiRouter.register(registerPkiDiscoveryRouter, { prefix: "/discovery-jobs" });
+      await pkiRouter.register(registerPkiInstallationRouter, { prefix: "/installations" });
     },
     { prefix: "/cert-manager" }
   );
@@ -195,6 +202,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+      await pamRouter.register(
+        async (pamDiscoveryRouter) => {
+          await pamDiscoveryRouter.register(registerPamDiscoveryRouter);
+
+          // Discovery-type-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_DISCOVERY_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamDiscoveryRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/discovery-sources" }
+      );
 
       await pamRouter.register(
         async (pamAccountRouter) => {
@@ -213,6 +233,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(
         async (pamResourceRouter) => {
           await pamResourceRouter.register(registerPamResourceRouter);
+          await pamResourceRouter.register(registerPamResourceRotationRulesRouter);
 
           // Provider-specific endpoints
           await Promise.all(

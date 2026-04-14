@@ -13,7 +13,8 @@ import { PamResource } from "../../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPamResourceInternalMetadata
 } from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
 
@@ -104,7 +105,8 @@ const makeSqlConnection = (
               //          (like being able to do an auth handshake regardless pass or not)
               if (
                 connectOnly &&
-                error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`
+                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+                  error.message === `role "${TEST_CONNECTION_USERNAME}" does not exist`)
               ) {
                 return;
               }
@@ -178,6 +180,65 @@ const makeSqlConnection = (
         close: async () => {}
       };
     }
+    case PamResource.MsSQL: {
+      // For MSSQL through a gateway proxy:
+      // - TCP connects to localhost:proxyPort, gateway forwards to real server
+      // - TLS certificate is issued for the real hostname, not localhost
+      // - The tedious driver doesn't support custom checkServerIdentity
+      // - We must use serverName option to tell tedious to validate against the real host
+      const mssqlOptions = sslEnabled
+        ? {
+            encrypt: true,
+            trustServerCertificate: !sslRejectUnauthorized,
+            cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
+            // serverName tells tedious to use this hostname for TLS SNI and certificate validation
+            // instead of the server/host value used for the TCP connection
+            serverName: host
+          }
+        : { encrypt: false };
+
+      const client = knex({
+        client: "mssql",
+        connection: {
+          server: "localhost",
+          port: proxyPort,
+          user: actualUsername,
+          password: actualPassword,
+          database: connectionDetails.database,
+          requestTimeout: EXTERNAL_REQUEST_TIMEOUT,
+          // mssqlOptions is passed to tedious driver
+          // ref: https://github.com/knex/knex/blob/b6507a7129d2b9fafebf5f831494431e64c6a8a0/lib/dialects/mssql/index.js#L66
+          options: mssqlOptions
+        }
+      });
+      return {
+        validate: async (connectOnly) => {
+          try {
+            await client.raw(SIMPLE_QUERY);
+          } catch (error) {
+            if (error instanceof Error) {
+              // Check for authentication failure - MSSQL returns error code 18456 for login failures
+              if (
+                connectOnly &&
+                (error.message.includes("Login failed for user") || error.message.includes("ELOGIN"))
+              ) {
+                return;
+              }
+            }
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        rotateCredentials: async () => {
+          // Password rotation for MSSQL is not supported yet
+          throw new BadRequestError({
+            message: "Unsupported operation"
+          });
+        },
+        close: () => client.destroy()
+      };
+    }
     default:
       throw new BadRequestError({
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
@@ -230,12 +291,11 @@ export const executeWithGateway = async <T>(
   );
 };
 
-export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetails, TSqlAccountCredentials> = (
-  resourceType,
-  connectionDetails,
-  gatewayId,
-  gatewayV2Service
-) => {
+export const sqlResourceFactory: TPamResourceFactory<
+  TSqlResourceConnectionDetails,
+  TSqlAccountCredentials,
+  TPamResourceInternalMetadata
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {
       throw new BadRequestError({ message: "Gateway ID is required" });
@@ -284,7 +344,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     } catch (error) {
       // TODO: extract these logic into each SQL connection
       if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${credentials.username}"`) {
+        if (
+          error.message === `password authentication failed for user "${credentials.username}"` ||
+          error.message === `role "${credentials.username}" does not exist`
+        ) {
           throw new BadRequestError({
             message: "Account credentials invalid: Username or password incorrect"
           });
@@ -326,7 +389,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
       );
     } catch (error) {
       if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${rotationAccountCredentials.username}"`) {
+        if (
+          error.message === `password authentication failed for user "${rotationAccountCredentials.username}"` ||
+          error.message === `role "${rotationAccountCredentials.username}" does not exist`
+        ) {
           throw new BadRequestError({
             message: "Management credentials invalid: Username or password incorrect"
           });

@@ -1,6 +1,7 @@
 /* eslint-disable import/extensions */
 import path from "node:path";
 
+import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -11,6 +12,7 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
+import websocket from "@fastify/websocket";
 import fastify, { FastifyInstance, FastifyRequest } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
@@ -20,6 +22,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -44,6 +48,7 @@ type TMain = {
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   redis: Redis | Cluster;
+  clickhouse: ClickHouseClient | null;
   envConfig: TEnvConfig;
   superAdminDAL: TSuperAdminDALFactory;
   hsmService: THsmServiceFactory;
@@ -59,6 +64,7 @@ export const main = async ({
   queue,
   keyStore,
   redis,
+  clickhouse,
   envConfig,
   superAdminDAL,
   hsmService,
@@ -71,7 +77,7 @@ export const main = async ({
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
     trustProxy: true,
 
-    connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
+    connectionTimeout: 100_000,
     ignoreTrailingSlash: true,
     pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();
@@ -145,6 +151,9 @@ export const main = async ({
 
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
+    await server.register(websocket, {
+      options: { maxPayload: 64 * 1024 } // 64 KB
+    });
     await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers
@@ -161,7 +170,8 @@ export const main = async ({
         reqId: req.id,
         log: req.log.child({ reqId: req.id }),
         ip: req.realIp,
-        userAgent: req.headers["user-agent"]
+        userAgent: req.headers["user-agent"],
+        [RequestContextKey.Memoizer]: new RequestMemoizer()
       })
     });
 
@@ -171,6 +181,7 @@ export const main = async ({
       db,
       auditLogDb,
       keyStore,
+      clickhouse,
       hsmService,
       envConfig,
       superAdminDAL,

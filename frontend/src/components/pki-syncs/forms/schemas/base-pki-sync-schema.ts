@@ -51,7 +51,7 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
       .string()
       .trim()
       .min(1, "Name is required")
-      .max(255, "Name must be less than 255 characters"),
+      .max(256, "Name must be less than 256 characters"),
     description: z.string().optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     subscriberId: z.string().nullable().optional(),

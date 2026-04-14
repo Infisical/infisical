@@ -6,5 +6,6 @@ export const AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Azure App Configuration",
   destination: SecretSync.AzureAppConfiguration,
   connection: AppConnection.AzureAppConfiguration,
+  canRemoveSecretsOnDeletion: true,
   canImportSecrets: true
 };

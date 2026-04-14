@@ -7,6 +7,14 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionSsoActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  BypassSsoEnforcement = "bypass-sso-enforcement"
+}
+
 export enum OrgPermissionBillingActions {
   Read = "read",
   ManageBilling = "manage-billing"
@@ -79,7 +87,8 @@ export enum OrgPermissionAppConnectionActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Connect = "connect"
+  Connect = "connect",
+  RotateCredentials = "rotate-credentials"
 }
 
 export enum OrgPermissionAuditLogsActions {
@@ -87,8 +96,7 @@ export enum OrgPermissionAuditLogsActions {
 }
 
 export enum OrgPermissionKmipActions {
-  Proxy = "proxy",
-  Setup = "setup"
+  Proxy = "proxy"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -115,7 +123,10 @@ export enum OrgPermissionGroupActions {
 
 export enum OrgPermissionSubOrgActions {
   Create = "create",
-  DirectAccess = "direct-access"
+  Edit = "edit",
+  Delete = "delete",
+  DirectAccess = "direct-access",
+  LinkGroup = "link-group"
 }
 
 export type AppConnectionSubjectFields = {
@@ -133,7 +144,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
-  | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionSsoActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]

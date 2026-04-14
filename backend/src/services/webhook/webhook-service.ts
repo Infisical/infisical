@@ -4,6 +4,7 @@ import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -64,6 +65,7 @@ export const webhookServiceFactory = ({
         message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
       });
 
+    await blockLocalAndPrivateIpAddresses(webhookUrl);
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId

@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { faAnglesRight, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FolderInputIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -15,16 +14,21 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
+import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import {
   SecretType,
   SecretV3RawSanitized,
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
-import { MoveSecretsModal } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
-import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
+import {
+  BulkDeleteDialog,
+  MoveSecretsModal
+} from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -41,6 +45,7 @@ type Props = {
   importedBy?: ProjectSecretsImportedBy[] | null;
   usedBySecretSyncs?: UsedBySecretSyncs[];
   secretsToDeleteKeys: string[];
+  visibleEnvs: ProjectEnv[];
 };
 
 export const SelectionPanel = ({
@@ -49,7 +54,8 @@ export const SelectionPanel = ({
   selectedEntries,
   importedBy,
   secretsToDeleteKeys,
-  usedBySecretSyncs = []
+  usedBySecretSyncs = [],
+  visibleEnvs
 }: Props) => {
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
@@ -69,7 +75,7 @@ export const SelectionPanel = ({
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { mutateAsync: deleteFolder } = useDeleteFolder();
+  const { mutateAsync: createCommit } = useCreateCommit();
 
   const isMultiSelectActive = selectedCount > 0;
 
@@ -94,12 +100,12 @@ export const SelectionPanel = ({
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets and folders across environments?";
+      return "Do you want to delete the selected secrets and folders across the following environments?";
     }
     if (selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets across environments?";
+      return "Do you want to delete the selected secrets across the following environments?";
     }
-    return "Do you want to delete the selected folders across environments?";
+    return "Do you want to delete the selected folders across the following environments?";
   };
 
   const getDeleteModalSubTitle = () => {
@@ -114,6 +120,10 @@ export const SelectionPanel = ({
 
   const handleBulkDelete = async () => {
     let processedEntries = 0;
+    let hasApprovalRequest = false;
+    let hasDirectDelete = false;
+    const hasFolders = selectedFolderCount > 0;
+    const hasSecrets = selectedKeysCount > 0;
 
     const promises = userAvailableEnvs.map(async (env) => {
       // additional check: ensure that bulk delete is only executed on envs that user has access to
@@ -124,20 +134,32 @@ export const SelectionPanel = ({
           subject(ProjectPermissionSub.SecretFolders, { environment: env.slug, secretPath })
         )
       ) {
-        await Promise.all(
-          Object.values(selectedEntries.folder).map(async (folderRecord) => {
-            const folder = folderRecord[env.slug];
-            if (folder) {
-              processedEntries += 1;
-              await deleteFolder({
-                folderId: folder?.id,
-                path: secretPath,
-                environment: env.slug,
-                projectId
-              });
-            }
-          })
-        );
+        const folderDeletes = Object.values(selectedEntries.folder)
+          .map((folderRecord) => folderRecord[env.slug])
+          .filter((folder): folder is TSecretFolder => Boolean(folder))
+          .map((folder) => ({
+            id: folder.id,
+            timestamp: Date.now(),
+            resourceType: "folder" as const,
+            type: PendingAction.Delete as const,
+            folderName: folder.name,
+            folderPath: secretPath
+          }));
+
+        if (folderDeletes.length > 0) {
+          processedEntries += folderDeletes.length;
+          hasDirectDelete = true;
+          await createCommit({
+            projectId,
+            environment: env.slug,
+            secretPath,
+            pendingChanges: {
+              secrets: [],
+              folders: folderDeletes
+            },
+            message: `Deleted ${folderDeletes.length} folder${folderDeletes.length === 1 ? "" : "s"}`
+          });
+        }
       }
 
       const secretsToDelete = Object.values(selectedEntries.secret).reduce(
@@ -170,12 +192,18 @@ export const SelectionPanel = ({
 
       if (secretsToDelete.length > 0) {
         processedEntries += secretsToDelete.length;
-        await deleteBatchSecretV3({
+        const result = await deleteBatchSecretV3({
           secretPath,
           projectId,
           environment: env.slug,
           secrets: secretsToDelete
         });
+
+        if (result && "approval" in result) {
+          hasApprovalRequest = true;
+        } else {
+          hasDirectDelete = true;
+        }
       }
 
       return {
@@ -186,6 +214,13 @@ export const SelectionPanel = ({
     const results = await Promise.allSettled(promises);
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
+
+    let resourceLabel = "secrets";
+    if (hasFolders && hasSecrets) {
+      resourceLabel = "secrets and folders";
+    } else if (hasFolders) {
+      resourceLabel = "folders";
+    }
 
     const failedEnvs = userAvailableEnvs
       .filter(
@@ -204,10 +239,22 @@ export const SelectionPanel = ({
     } else if (areAllEntriesDeleted) {
       handlePopUpClose("bulkDeleteEntries");
       resetSelectedEntries();
-      createNotification({
-        type: "success",
-        text: "Successfully deleted selected secrets and folders"
-      });
+      if (hasDirectDelete && hasApprovalRequest) {
+        createNotification({
+          type: "info",
+          text: `Some ${resourceLabel} were deleted and an approval request was generated for protected environments`
+        });
+      } else if (hasApprovalRequest) {
+        createNotification({
+          type: "info",
+          text: `An approval request has been generated for the selected ${resourceLabel}`
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: `Successfully deleted selected ${resourceLabel}`
+        });
+      }
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
@@ -216,7 +263,7 @@ export const SelectionPanel = ({
     } else {
       createNotification({
         type: "error",
-        text: "Failed to delete selected secrets and folders"
+        text: `Failed to delete selected ${resourceLabel}`
       });
     }
   };
@@ -231,45 +278,44 @@ export const SelectionPanel = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
           <div className="mr-2 text-sm">{selectedCount} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
             onClick={resetSelectedEntries}
           >
             Unselect All
           </button>
           {isRotatedSecretSelected && (
-            <span className="text-sm text-mineshaft-400">
+            <span className="text-xs text-accent">
               Rotated Secrets will not be affected by action.
             </span>
           )}
           {shouldShowDelete && (
             <>
-              <Tooltip content={areFoldersSelected ? "Moving folders is not supported" : undefined}>
-                <div>
+              <Tooltip open={areFoldersSelected ? undefined : false}>
+                <TooltipTrigger>
                   <Button
                     isDisabled={areFoldersSelected}
-                    variant="outline_bg"
-                    colorSchema="primary"
-                    leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
-                    className="ml-4"
+                    variant="project"
+                    className="ml-2"
                     onClick={() => handlePopUpOpen("bulkMoveSecrets")}
                     size="xs"
                   >
+                    <FolderInputIcon />
                     Move
                   </Button>
-                </div>
+                </TooltipTrigger>
+                <TooltipContent>Moving folders is not supported</TooltipContent>
               </Tooltip>
               <Button
-                variant="outline_bg"
-                colorSchema="danger"
-                leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4"
+                variant="danger"
+                className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteEntries")}
                 size="xs"
               >
+                <TrashIcon />
                 Delete
               </Button>
             </>
@@ -280,29 +326,24 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkMoveSecrets.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}
         environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
         projectId={projectId}
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         onComplete={resetSelectedEntries}
       />
-      <DeleteActionModal
+      <BulkDeleteDialog
         isOpen={popUp.bulkDeleteEntries.isOpen}
-        deleteKey="delete"
+        onOpenChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         title={getDeleteModalTitle()}
         subTitle={getDeleteModalSubTitle()}
-        onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
-        formContent={
-          ((usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
-            (importedBy && importedBy.some((element) => element.folders.length > 0))) && (
-            <CollapsibleSecretImports
-              importedBy={importedBy || []}
-              secretsToDelete={secretsToDeleteKeys}
-              usedBySecretSyncs={usedBySecretSyncsFiltered}
-            />
-          )
-        }
+        selectedEntries={selectedEntries}
+        visibleEnvs={visibleEnvs}
+        importedBy={importedBy}
+        secretsToDeleteKeys={secretsToDeleteKeys}
+        usedBySecretSyncsFiltered={usedBySecretSyncsFiltered}
       />
     </>
   );

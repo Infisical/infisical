@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -50,7 +50,7 @@ export const assumePrivilegeServiceFactory = ({
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionIdentityActions.AssumePrivileges,
-        ProjectPermissionSub.Identity
+        subject(ProjectPermissionSub.Identity, { identityId: targetActorId })
       );
     }
 

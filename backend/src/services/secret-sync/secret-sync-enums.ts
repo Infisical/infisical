@@ -33,7 +33,9 @@ export enum SecretSync {
   LaravelForge = "laravel-forge",
   Chef = "chef",
   OctopusDeploy = "octopus-deploy",
-  CircleCI = "circleci"
+  CircleCI = "circleci",
+  AzureEntraIdScim = "azure-entra-id-scim",
+  ExternalInfisical = "external-infisical"
 }
 
 export enum SecretSyncInitialSyncBehavior {

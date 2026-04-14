@@ -25,6 +25,9 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -32,7 +35,14 @@ import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
+import {
+  orgAdminPermissions,
+  orgMemberPermissions,
+  orgNoAccessPermissions,
+  OrgPermissionSet,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
+} from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
 import {
@@ -61,7 +71,8 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
           throw new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` });
       }
     })
-    .reduce((prev, curr) => prev.concat(curr), []);
+    .reduce((prev, curr) => prev.concat(curr), [])
+    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
 };
@@ -94,9 +105,47 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
           });
       }
     })
-    .reduce((prev, curr) => prev.concat(curr), []);
+    .reduce((prev, curr) => prev.concat(curr), [])
+    .sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
 
   return rules;
+};
+
+type MembershipWithRoles = {
+  roles?: Array<{
+    role: string;
+    permissions?: unknown;
+    isTemporary?: boolean;
+    temporaryAccessEndTime?: Date | null;
+  }>;
+  additionalPrivileges?: Array<{
+    permissions?: unknown;
+    isTemporary?: boolean;
+    temporaryAccessEndTime?: Date | null;
+  }>;
+};
+
+const flattenActiveRolesFromMemberships = <T extends string>(
+  memberships: MembershipWithRoles[],
+  customRoleValue: T
+): { role: string; permissions?: unknown }[] => {
+  const filterTemporary = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
+    items: U[]
+  ): U[] =>
+    items.filter(
+      ({ isTemporary, temporaryAccessEndTime }) =>
+        !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+    );
+  return memberships.flatMap((membership) => {
+    const activeRoles = filterTemporary(membership?.roles ?? []).map(({ role, permissions }) => ({
+      role,
+      permissions
+    }));
+    const activeAdditionalPrivileges = filterTemporary(membership?.additionalPrivileges ?? []).map(
+      ({ permissions }) => ({ role: customRoleValue, permissions })
+    );
+    return activeRoles.concat(activeAdditionalPrivileges);
+  });
 };
 
 type TPermissionServiceFactoryDep = {
@@ -197,63 +246,69 @@ export const permissionServiceFactory = ({
     }
 
     if (orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "You are not allowed to access organization resource" });
+      throw new ForbiddenRequestError({
+        message: `Your token is scoped to organization with ID ${actorOrgId}, but this resource belongs to a different organization.`
+      });
     }
 
-    const permissionData = await permissionDAL.getPermission({
-      scopeData: {
-        scope: AccessScope.Organization,
-        orgId
-      },
+    // Request-scoped memoization: deduplicates org permission checks within the same request
+    const memoKey = requestMemoKeys.orgPermission({
+      orgId,
+      actor,
       actorId,
-      actorType: actor
-    });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
-
-    const rootOrgId = permissionData?.[0]?.rootOrgId;
-    const isChild = Boolean(rootOrgId);
-    if (scope === OrganizationActionScope.ParentOrganization && isChild) {
-      throw new ForbiddenRequestError({ message: `Child organization cannot do this operation` });
-    } else if (scope === OrganizationActionScope.ChildOrganization && !isChild) {
-      throw new ForbiddenRequestError({ message: `Parent organization cannot do this operation` });
-    }
-
-    const permissionFromRoles = permissionData.flatMap((membership) => {
-      const activeRoles = membership?.roles
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ role, permissions }) => ({ role, permissions }));
-      const activeAdditionalPrivileges = membership?.additionalPrivileges
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ permissions }) => ({ role: OrgMembershipRole.Custom, permissions }));
-      return activeRoles.concat(activeAdditionalPrivileges);
-    });
-
-    const hasRole = (role: string) =>
-      permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
-
-    validateOrgSSO(
       actorAuthMethod,
-      permissionData?.[0].orgAuthEnforced,
-      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-      hasRole(OrgMembershipRole.Admin)
-    );
-
-    const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
-      conditionsMatcher
+      scope
     });
+    return requestMemoize(memoKey, async () => {
+      const permissionData = await permissionDAL.getPermission({
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId
+        },
+        actorId,
+        actorType: actor
+      });
+      if (!permissionData?.length)
+        throw new ForbiddenRequestError({
+          message: `You are not a member of this organization with ID ${actorOrgId}. Please assign this ${actor} to the organization with the appropriate permissions, then try again.`
+        });
 
-    return {
-      permission,
-      memberships: permissionData,
-      hasRole
-    };
+      const rootOrgId = permissionData?.[0]?.rootOrgId;
+      const isChild = Boolean(rootOrgId);
+      if (scope === OrganizationActionScope.ParentOrganization && isChild) {
+        throw new ForbiddenRequestError({ message: `Child organization cannot do this operation` });
+      } else if (scope === OrganizationActionScope.ChildOrganization && !isChild) {
+        throw new ForbiddenRequestError({ message: `Parent organization cannot do this operation` });
+      }
+
+      const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, OrgMembershipRole.Custom);
+
+      const hasRole = (role: string) =>
+        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+
+      const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
+        conditionsMatcher
+      });
+
+      const canBypassSso = permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+
+      // SSO enforcement applies only to users
+      if (actor === ActorType.USER) {
+        validateOrgSSO(
+          actorAuthMethod,
+          permissionData?.[0].orgAuthEnforced,
+          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          canBypassSso
+        );
+      }
+
+      return {
+        permission,
+        memberships: permissionData,
+        hasRole
+      };
+    });
   };
 
   const $checkProjectEnforcement = (projectDetails: TProjects) => {
@@ -280,7 +335,7 @@ export const permissionServiceFactory = ({
 
     if (serviceToken.projectId !== projectId) {
       throw new ForbiddenRequestError({
-        name: `Service token not a part of the specified project with ID ${projectId}`
+        message: `Service token not a part of the specified project with ID ${projectId}`
       });
     }
 
@@ -325,7 +380,7 @@ export const permissionServiceFactory = ({
       });
     }
 
-    const assumedPrivilegeDetailsCtx = requestContext.get("assumedPrivilegeDetails");
+    const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
     if (
       assumedPrivilegeDetailsCtx &&
       actor === ActorType.USER &&
@@ -343,115 +398,176 @@ export const permissionServiceFactory = ({
       });
     }
 
-    const projectDetails = await projectDAL.findById(projectId);
-    if (!projectDetails) {
-      throw new NotFoundError({ message: `Project with ${projectId} not found` });
-    }
+    const projectPermissionActor: ActorType.USER | ActorType.IDENTITY =
+      actor === ActorType.USER ? ActorType.USER : ActorType.IDENTITY;
 
-    requestContext.set("projectDetails", {
-      id: projectDetails.id,
-      name: projectDetails.name,
-      slug: projectDetails.slug
-    });
-
-    if (projectDetails.orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "This project does not belong to your selected organization." });
-    }
-
-    if (actionProjectType !== ActionProjectType.Any && actionProjectType !== projectDetails.type) {
-      throw new BadRequestError({
-        message: `The project is of type ${projectDetails.type}. Operations of type ${actionProjectType} are not allowed.`
-      });
-    }
-
-    const permissionData = await permissionDAL.getPermission({
-      scopeData: {
-        scope: AccessScope.Project,
-        orgId: projectDetails.orgId,
-        projectId
-      },
+    // Request-scoped full-function memoization: identical permission checks within the same request
+    const memoKey = requestMemoKeys.projectPermission({
+      projectId,
+      actor,
       actorId,
-      actorType: actor
-    });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this project" });
-
-    const permissionFromRoles = permissionData.flatMap((membership) => {
-      const activeRoles = membership?.roles
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ role, permissions }) => ({ role, permissions }));
-      const activeAdditionalPrivileges = membership?.additionalPrivileges
-        .filter(
-          ({ isTemporary, temporaryAccessEndTime }) =>
-            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
-        )
-        .map(({ permissions }) => ({ role: ProjectMembershipRole.Custom, permissions }));
-      return activeRoles.concat(activeAdditionalPrivileges);
-    });
-
-    const hasRole = (role: string) =>
-      permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
-
-    validateOrgSSO(
       actorAuthMethod,
-      permissionData?.[0].orgAuthEnforced,
-      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-      hasRole(ProjectMembershipRole.Admin)
-    );
+      actionProjectType,
+      actorOrgId
+    });
+    const memoizer = requestContext.get(RequestContextKey.Memoizer);
 
-    const rules = buildProjectPermissionRules(permissionFromRoles);
-    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
-    const unescapedMetadata = objectify(
-      permissionData?.[0]?.metadata,
-      (i) => i.key,
-      (i) => i.value
-    );
-    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
-    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata });
-
-    let username = "";
-    if (actor === ActorType.USER) {
-      const userDetails = await userDAL.findById(actorId);
-      username = userDetails?.username;
-    } else {
-      const identityDetails = await identityDAL.findById(actorId);
-      username = identityDetails?.name;
-    }
-
-    const unescapedIdentityAuthInfo = requestContext.get("identityAuthInfo");
-    const identityAuthInfo =
-      unescapedIdentityAuthInfo?.identityId === actorId && unescapedIdentityAuthInfo
-        ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
-        : {};
-
-    const interpolateRules = templatedRules(
-      {
-        identity: {
-          id: actorId,
-          username,
-          metadata: metadataKeyValuePair,
-          auth: identityAuthInfo
-        }
-      },
-      { data: false }
-    );
-
-    const permission = createMongoAbility<ProjectPermissionSet>(
-      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
-      {
-        conditionsMatcher
-      }
-    );
-
-    return {
-      permission,
-      memberships: permissionData,
-      hasRole,
-      hasProjectEnforcement: $checkProjectEnforcement(projectDetails)
+    type TProjectPermissionMemoPayload = {
+      result: Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;
+      projectDetailsCtx: { id: string; name: string; slug: string };
+      identityPermissionMetadataCtx: Record<string, unknown>;
     };
+
+    const loadProjectPermission = async (): Promise<TProjectPermissionMemoPayload> => {
+      // DAL-level memoization: deduplicates projectDAL.findById across services
+      // (permission service, getBotKey, KMS) within the same request.
+      const projectDetails = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
+      if (!projectDetails) {
+        throw new NotFoundError({ message: `Project with ${projectId} not found` });
+      }
+
+      const projectDetailsCtx = {
+        id: projectDetails.id,
+        name: projectDetails.name,
+        slug: projectDetails.slug
+      };
+
+      if (projectDetails.orgId !== actorOrgId) {
+        throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
+      }
+
+      if (actionProjectType !== ActionProjectType.Any && actionProjectType !== projectDetails.type) {
+        throw new BadRequestError({
+          message: `The project is of type ${projectDetails.type}. Operations of type ${actionProjectType} are not allowed.`
+        });
+      }
+
+      const permissionData = await permissionDAL.getPermission({
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: projectDetails.orgId,
+          projectId
+        },
+        actorId,
+        actorType: projectPermissionActor
+      });
+      if (!permissionData?.length)
+        throw new ForbiddenRequestError({
+          message: `You are not a member of this project with ID ${projectId}. Please assign this ${projectPermissionActor} to the project with the appropriate permissions, then try again.`
+        });
+
+      const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
+
+      const hasRole = (role: string) =>
+        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+
+      // SSO enforcement applies only to users; use org-level bypass criteria (Org Admin or BypassSsoEnforcement permission)
+      // When project is in sub-org, use root org for bypass check (SSO enforced at root; user's bypass permission is in root org)
+      if (actor === ActorType.USER) {
+        let canBypassSso = false;
+        const enforceSsoAndBypassEnabled =
+          permissionData?.[0].orgAuthEnforced ||
+          (permissionData?.[0].orgGoogleSsoAuthEnforced && permissionData?.[0].bypassOrgAuthEnabled);
+
+        if (enforceSsoAndBypassEnabled) {
+          const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
+          const orgPermissionData = await permissionDAL.getPermission({
+            scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
+            actorId,
+            actorType: ActorType.USER
+          });
+          if (orgPermissionData?.length) {
+            const orgPermissionFromRoles = flattenActiveRolesFromMemberships(
+              orgPermissionData,
+              OrgMembershipRole.Custom
+            );
+            const orgPermission = createMongoAbility<OrgPermissionSet>(
+              buildOrgPermissionRules(orgPermissionFromRoles),
+              {
+                conditionsMatcher
+              }
+            );
+            canBypassSso = orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+          }
+        }
+        validateOrgSSO(
+          actorAuthMethod,
+          permissionData?.[0].orgAuthEnforced,
+          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          canBypassSso
+        );
+      }
+
+      const rules = buildProjectPermissionRules(permissionFromRoles);
+      const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+      const unescapedMetadata = objectify(
+        permissionData?.[0]?.metadata,
+        (i) => i.key,
+        (i) => i.value
+      );
+      const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
+      const identityPermissionMetadataCtx = { metadata: unescapedMetadata };
+
+      let username = "";
+      if (actor === ActorType.USER) {
+        const userDetails = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
+          userDAL.findById(actorId)
+        );
+        username = userDetails?.username;
+      } else {
+        const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+          identityDAL.findById(actorId)
+        );
+        username = identityDetails?.name;
+      }
+
+      const unescapedIdentityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+      const identityAuthInfo =
+        unescapedIdentityAuthInfo?.identityId === actorId && unescapedIdentityAuthInfo
+          ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
+          : {};
+
+      const interpolateRules = templatedRules(
+        {
+          identity: {
+            id: actorId,
+            username,
+            metadata: metadataKeyValuePair,
+            auth: identityAuthInfo
+          }
+        },
+        { data: false }
+      );
+
+      const permission = createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        {
+          conditionsMatcher
+        }
+      );
+
+      const result = {
+        permission,
+        memberships: permissionData,
+        hasRole,
+        hasProjectEnforcement: $checkProjectEnforcement(projectDetails)
+      };
+
+      return {
+        result,
+        projectDetailsCtx,
+        identityPermissionMetadataCtx
+      };
+    };
+
+    const payload = memoizer ? await memoizer.getOrSet(memoKey, loadProjectPermission) : await loadProjectPermission();
+
+    requestContext.set(RequestContextKey.ProjectDetails, payload.projectDetailsCtx);
+    requestContext.set(RequestContextKey.IdentityPermissionMetadata, payload.identityPermissionMetadataCtx);
+    return payload.result;
   };
 
   const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
@@ -496,6 +612,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: userProjectPermission.userId,
+        membershipId: userProjectPermission.id,
         name: userProjectPermission.username
       };
     });
@@ -541,6 +658,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: identityProjectPermission.identityId,
+        membershipId: identityProjectPermission.id,
         name: identityProjectPermission.username
       };
     });
@@ -558,6 +676,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: groupProjectPermission.groupId,
+        membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username
       };
     });
@@ -665,7 +784,8 @@ export const permissionServiceFactory = ({
           {
             conditionsMatcher
           }
-        )
+        ),
+        role: { name: el.name, slug: el.name }
       };
     });
   };

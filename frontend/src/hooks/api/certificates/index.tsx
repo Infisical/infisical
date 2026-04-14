@@ -1,11 +1,12 @@
 export { certKeyAlgorithmToNameMap, certSignatureAlgorithmToNameMap } from "./constants";
-export { CertificateRequestStatus, CertKeyAlgorithm, CertStatus } from "./enums";
+export { CertificateRequestStatus, CertKeyAlgorithm, CertSource, CertStatus } from "./enums";
 export {
   useDeleteCert,
   useDownloadCertPkcs12,
   useImportCertificate,
   useRenewCertificate,
   useRevokeCert,
+  useUpdateCertificate,
   useUpdateRenewalConfig
 } from "./mutations";
 export {
@@ -22,5 +23,6 @@ export type {
   TCertificateRequestDetails,
   TCertificateRequestListItem,
   TListCertificateRequestsParams,
-  TListCertificateRequestsResponse
+  TListCertificateRequestsResponse,
+  TUpdateCertificateDTO
 } from "./types";

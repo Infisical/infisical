@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowRight,
   faCheck,
@@ -8,44 +7,25 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, IconButton } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
-import { TSharedSecretResponse } from "@app/hooks/api/secretSharing";
+import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 import { SecretShareInfo } from "./SecretShareInfo";
 
 type Props = {
-  secret: TSharedSecretResponse;
-  secretKey: string | null;
+  secret: TAccessSharedSecretResponse;
   brandingTheme?: BrandingTheme;
 };
 
-export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props) => {
+export const SecretContainer = ({ secret, brandingTheme }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
 
-  const decryptedSecret = useMemo(() => {
-    if (secret.secretValue) {
-      return secret.secretValue;
-    }
-
-    if (secret && secret.encryptedValue && key) {
-      const res = decryptSymmetric({
-        ciphertext: secret.encryptedValue,
-        iv: secret.iv,
-        tag: secret.tag,
-        key
-      });
-      return res;
-    }
-    return "";
-  }, [secret, key]);
-
-  const hiddenSecret = decryptedSecret ? "*".repeat(decryptedSecret.length) : "";
+  const hiddenSecret = "*".repeat(secret.secretValue.length);
 
   const panelStyle = brandingTheme
     ? {
@@ -81,7 +61,7 @@ export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props
         style={secretDisplayStyle}
       >
         <p className="break-all whitespace-pre-wrap">
-          {isVisible ? decryptedSecret : hiddenSecret}
+          {isVisible ? secret.secretValue : hiddenSecret}
         </p>
         <div className="flex">
           <IconButton
@@ -89,7 +69,7 @@ export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props
             colorSchema="secondary"
             className="group relative size-9 hover:opacity-70"
             onClick={() => {
-              navigator.clipboard.writeText(decryptedSecret);
+              navigator.clipboard.writeText(secret.secretValue);
               setCopyTextSecret("Copied");
             }}
             style={iconButtonStyle}

@@ -8,7 +8,10 @@ export enum CertKeyAlgorithm {
   RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
-  ECDSA_P384 = "EC_secp384r1"
+  ECDSA_P384 = "EC_secp384r1",
+  ML_DSA_44 = "ML-DSA-44",
+  ML_DSA_65 = "ML-DSA-65",
+  ML_DSA_87 = "ML-DSA-87"
 }
 
 export enum CrlReason {
@@ -43,6 +46,12 @@ export enum CertExtendedKeyUsage {
   EMAIL_PROTECTION = "email_protection",
   TIMESTAMPING = "time_stamping",
   OCSP_SIGNING = "ocsp_signing"
+}
+
+export enum CertSource {
+  Issued = "issued",
+  Discovered = "discovered",
+  Imported = "imported"
 }
 
 export enum CertificateRequestStatus {

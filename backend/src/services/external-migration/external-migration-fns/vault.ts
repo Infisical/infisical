@@ -9,12 +9,7 @@ import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { InfisicalImportData, VaultMappingType } from "../external-migration-types";
-
-enum KvVersion {
-  V1 = "1",
-  V2 = "2"
-}
+import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
 type VaultData = {
   namespace: string;
@@ -33,7 +28,6 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     const callbackResult = await withGatewayProxy(
       async (port, httpsAgent) => {
@@ -44,15 +38,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         protocol: GatewayProxyProtocol.Http,
         targetHost: inputs.targetHost,
         targetPort: inputs.targetPort,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        }
+        relayDetails
       }
     );
 

@@ -45,7 +45,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                     <Tab title="Secret Sync">
                         ```hcl
                         path "demo_mount/data/*" {
-                          capabilities = [ "create", "read", "update" ]
+                          capabilities = [ "create", "read", "update", "delete" ]
                         }
 
                         path "sys/mounts" {

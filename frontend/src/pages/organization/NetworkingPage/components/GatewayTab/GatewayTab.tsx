@@ -4,6 +4,7 @@ import {
   faDoorClosed,
   faEdit,
   faEllipsisV,
+  faHeartPulse,
   faInfoCircle,
   faMagnifyingGlass,
   faPlus,
@@ -45,20 +46,27 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
+import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
-const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+const GatewayHealthStatus = ({
+  heartbeat,
+  lastHealthCheckStatus
+}: {
+  heartbeat?: string;
+  lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
+}) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = heartbeatDate && heartbeatDate >= oneHourAgo;
+  const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
+
   const tooltipContent = heartbeatDate
-    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
-    : "No heartbeat data available";
+    ? `Last health check: ${heartbeatDate.toLocaleString()}`
+    : "No health check data available";
 
   return (
     <Tooltip content={tooltipContent}>
@@ -69,19 +77,68 @@ const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   );
 };
 
+type GatewayConnectedCellProps = {
+  isV1: boolean;
+  connectedResourcesCount: number;
+  onClick: () => void;
+};
+
+const GatewayConnectedCell = ({
+  isV1,
+  connectedResourcesCount,
+  onClick
+}: GatewayConnectedCellProps) => {
+  if (isV1 || connectedResourcesCount === 0) {
+    return <span className="text-mineshaft-400">—</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex cursor-pointer items-center gap-1.5 text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
+    >
+      <span>
+        {connectedResourcesCount} resource{connectedResourcesCount !== 1 ? "s" : ""}
+      </span>
+    </button>
+  );
+};
+
 export const GatewayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
+    const [selectedGateway, setSelectedGateway] = useState<{
+      id: string;
+      name: string;
+    } | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails"
+      "editDetails",
+      "connectedResources"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
+    const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
+
+    const handleTriggerHealthCheck = async (id: string) => {
+      try {
+        await triggerGatewayV2Heartbeat.mutateAsync(id);
+        createNotification({
+          type: "success",
+          text: "Health check successful - gateway is healthy"
+        });
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Health check failed - gateway is unreachable"
+        });
+      }
+    };
 
     const handleDeleteGateway = async () => {
       const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
@@ -135,7 +192,8 @@ export const GatewayTab = withPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Th className="w-1/2">Name</Th>
+                  <Th className="w-1/3">Name</Th>
+                  <Th>Connected</Th>
                   <Th>
                     Health Check
                     <Tooltip
@@ -151,7 +209,7 @@ export const GatewayTab = withPermission(
               </THead>
               <TBody>
                 {isGatewaysLoading && (
-                  <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
+                  <TableSkeleton innerKey="gateway-table" columns={5} key="gateway-table" />
                 )}
                 {filteredGateway?.map((el) => (
                   <Tr key={el.id}>
@@ -164,7 +222,24 @@ export const GatewayTab = withPermission(
                       </div>
                     </Td>
                     <Td>
-                      <GatewayHealthStatus heartbeat={el.heartbeat} />
+                      <GatewayConnectedCell
+                        isV1={el.isV1}
+                        connectedResourcesCount={
+                          "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                        }
+                        onClick={() => {
+                          setSelectedGateway({ id: el.id, name: el.name });
+                          handlePopUpOpen("connectedResources");
+                        }}
+                      />
+                    </Td>
+                    <Td>
+                      <GatewayHealthStatus
+                        heartbeat={el.heartbeat}
+                        lastHealthCheckStatus={
+                          "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
+                        }
+                      />
                     </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
@@ -186,6 +261,14 @@ export const GatewayTab = withPermission(
                             >
                               Copy ID
                             </DropdownMenuItem>
+                            {!el.isV1 && (
+                              <DropdownMenuItem
+                                icon={<FontAwesomeIcon icon={faHeartPulse} />}
+                                onClick={() => handleTriggerHealthCheck(el.id)}
+                              >
+                                Trigger Health Check
+                              </DropdownMenuItem>
+                            )}
                             {el.isV1 && (
                               <OrgPermissionCan
                                 I={OrgGatewayPermissionActions.EditGateways}
@@ -259,6 +342,17 @@ export const GatewayTab = withPermission(
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
+            {selectedGateway && (
+              <GatewayConnectedResourcesDrawer
+                isOpen={popUp.connectedResources.isOpen}
+                onOpenChange={(isOpen) => {
+                  handlePopUpToggle("connectedResources", isOpen);
+                  if (!isOpen) setSelectedGateway(null);
+                }}
+                gatewayId={selectedGateway.id}
+                gatewayName={selectedGateway.name}
+              />
+            )}
           </TableContainer>
         </div>
       </div>

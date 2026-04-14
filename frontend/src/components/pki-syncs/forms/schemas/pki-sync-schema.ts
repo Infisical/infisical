@@ -5,6 +5,10 @@ import {
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
 } from "./aws-certificate-manager-pki-sync-destination-schema";
 import {
+  AwsElasticLoadBalancerPkiSyncDestinationSchema,
+  UpdateAwsElasticLoadBalancerPkiSyncDestinationSchema
+} from "./aws-elastic-load-balancer-pki-sync-destination-schema";
+import {
   AwsSecretsManagerPkiSyncDestinationSchema,
   UpdateAwsSecretsManagerPkiSyncDestinationSchema
 } from "./aws-secrets-manager-pki-sync-destination-schema";
@@ -16,19 +20,33 @@ import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
 } from "./chef-pki-sync-destination-schema";
+import {
+  CloudflareCustomCertificatePkiSyncDestinationSchema,
+  UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
+} from "./cloudflare-custom-certificate-pki-sync-destination-schema";
+import {
+  NetScalerPkiSyncDestinationSchema,
+  UpdateNetScalerPkiSyncDestinationSchema
+} from "./netscaler-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
   AwsCertificateManagerPkiSyncDestinationSchema,
+  AwsElasticLoadBalancerPkiSyncDestinationSchema,
   AwsSecretsManagerPkiSyncDestinationSchema,
-  ChefPkiSyncDestinationSchema
+  ChefPkiSyncDestinationSchema,
+  CloudflareCustomCertificatePkiSyncDestinationSchema,
+  NetScalerPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAzureKeyVaultPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema,
+  UpdateAwsElasticLoadBalancerPkiSyncDestinationSchema,
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
-  UpdateChefPkiSyncDestinationSchema
+  UpdateChefPkiSyncDestinationSchema,
+  UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
+  UpdateNetScalerPkiSyncDestinationSchema
 ]);
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema;

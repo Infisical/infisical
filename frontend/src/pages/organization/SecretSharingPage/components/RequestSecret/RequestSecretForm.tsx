@@ -21,13 +21,13 @@ const schema = z.object({
 });
 
 const expiresInOptions = [
-  { label: "5 min", value: 5 * 60 * 1000 },
-  { label: "30 min", value: 30 * 60 * 1000 },
-  { label: "1 hour", value: 60 * 60 * 1000 },
-  { label: "1 day", value: 24 * 60 * 60 * 1000 },
-  { label: "7 days", value: 7 * 24 * 60 * 60 * 1000 },
-  { label: "14 days", value: 14 * 24 * 60 * 60 * 1000 },
-  { label: "30 days", value: 30 * 24 * 60 * 60 * 1000 }
+  { label: "5 min", value: "5m" },
+  { label: "30 min", value: "30m" },
+  { label: "1 hour", value: "1h" },
+  { label: "1 day", value: "1d" },
+  { label: "7 days", value: "7d" },
+  { label: "14 days", value: "14d" },
+  { label: "30 days", value: "30d" }
 ];
 
 export type FormData = z.infer<typeof schema>;
@@ -50,16 +50,17 @@ export const RequestSecretForm = () => {
     handleSubmit,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: {
+      expiresIn: "7d"
+    }
   });
 
   const onFormSubmit = async ({ name, accessType, expiresIn }: FormData) => {
-    const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
-
     const { id } = await createSecretRequest({
       name,
       accessType,
-      expiresAt
+      expiresIn
     });
 
     const link = new URL(`${window.location.origin}/secret-request/secret/${id}`);

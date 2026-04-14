@@ -8,6 +8,7 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -130,6 +131,19 @@ export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
     server.decorateRequest("auth", null);
     server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
+
+    // Hoisted outside onRequest hook to avoid per-request function allocation on this hot path
+    const fireIdentifyForUser = (user: TUsers) => {
+      const distinctId = user.username ?? user.email ?? "";
+      if (distinctId) {
+        void server.services.telemetry.identifyUser(distinctId, {
+          email: user.email ?? undefined,
+          username: user.username,
+          userId: user.id
+        });
+      }
+    };
+
     server.addHook("onRequest", async (req) => {
       const appCfg = getConfig();
 
@@ -137,7 +151,7 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
+      if (req.url.includes(".well-known/est") || req.url.includes("/scep/") || req.url.includes("/api/v3/auth/")) {
         return;
       }
 
@@ -168,9 +182,9 @@ export const injectIdentity = fp(
         case AuthMode.JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set("orgId", orgId);
-          requestContext.set("orgName", orgName);
-          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -184,14 +198,15 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+          fireIdentifyForUser(user);
           break;
         }
         case AuthMode.MCP_JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set("orgId", orgId);
-          requestContext.set("orgName", orgName);
-          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.OrgId, orgId);
+          requestContext.set(RequestContextKey.OrgName, orgName);
+          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.MCP_JWT,
             user,
@@ -205,13 +220,14 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token
           };
+          fireIdentifyForUser(user);
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
           const serverCfg = await getServerCfg();
-          requestContext.set("orgId", identity.orgId);
-          requestContext.set("orgName", identity.orgName);
+          requestContext.set(RequestContextKey.OrgId, identity.orgId);
+          requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
             actor,
@@ -240,12 +256,23 @@ export const injectIdentity = fp(
             identityAuthInfo.aws = token?.identityAuth?.aws;
           }
 
-          requestContext.set("identityAuthInfo", identityAuthInfo);
+          requestContext.set(RequestContextKey.IdentityAuthInfo, identityAuthInfo);
+
+          // Fire-and-forget: enrich PostHog person record for this machine identity
+          void server.services.telemetry
+            .identifyIdentity(identity.identityId, {
+              name: identity.identityName,
+              authMethod: identity.authMethod
+            })
+            .catch((error) => {
+              req.log.error(error, `Failed to enrich PostHog identity [identityId=${identity.identityId}]`);
+            });
+
           break;
         }
         case AuthMode.SERVICE_TOKEN: {
           const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
-          requestContext.set("orgId", serviceToken.orgId);
+          requestContext.set(RequestContextKey.OrgId, serviceToken.orgId);
 
           req.auth = {
             orgId: serviceToken.orgId,
@@ -267,7 +294,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.SCIM_TOKEN: {
           const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
-          requestContext.set("orgId", orgId);
+          requestContext.set(RequestContextKey.OrgId, orgId);
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,

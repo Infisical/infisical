@@ -27,6 +27,12 @@ import {
   TOnePassConnectionInput,
   TValidateOnePassConnectionCredentialsSchema
 } from "./1password";
+import {
+  TAnthropicConnection,
+  TAnthropicConnectionConfig,
+  TAnthropicConnectionInput,
+  TValidateAnthropicConnectionCredentialsSchema
+} from "./anthropic";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -64,6 +70,18 @@ import {
   TAzureDevOpsConnectionInput,
   TValidateAzureDevOpsConnectionCredentialsSchema
 } from "./azure-devops/azure-devops-types";
+import {
+  TAzureDnsConnection,
+  TAzureDnsConnectionConfig,
+  TAzureDnsConnectionInput,
+  TValidateAzureDnsConnectionCredentialsSchema
+} from "./azure-dns/azure-dns-connection-types";
+import {
+  TAzureEntraIdConnection,
+  TAzureEntraIdConnectionConfig,
+  TAzureEntraIdConnectionInput,
+  TValidateAzureEntraIdConnectionCredentialsSchema
+} from "./azure-entra-id/azure-entra-id-connection-types";
 import {
   TAzureKeyVaultConnection,
   TAzureKeyVaultConnectionConfig,
@@ -124,6 +142,12 @@ import {
   TDNSMadeEasyConnectionInput,
   TValidateDNSMadeEasyConnectionCredentialsSchema
 } from "./dns-made-easy/dns-made-easy-connection-types";
+import {
+  TExternalInfisicalConnection,
+  TExternalInfisicalConnectionConfig,
+  TExternalInfisicalConnectionInput,
+  TValidateExternalInfisicalConnectionCredentialsSchema
+} from "./external-infisical";
 import {
   TFlyioConnection,
   TFlyioConnectionConfig,
@@ -198,6 +222,12 @@ import {
   TNetlifyConnectionInput,
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
+import {
+  TNetScalerConnection,
+  TNetScalerConnectionConfig,
+  TNetScalerConnectionInput,
+  TValidateNetScalerConnectionCredentialsSchema
+} from "./netscaler";
 import {
   TNorthflankConnection,
   TNorthflankConnectionConfig,
@@ -276,6 +306,12 @@ import {
   TValidateTerraformCloudConnectionCredentialsSchema
 } from "./terraform-cloud";
 import {
+  TValidateVenafiConnectionCredentialsSchema,
+  TVenafiConnection,
+  TVenafiConnectionConfig,
+  TVenafiConnectionInput
+} from "./venafi";
+import {
   TValidateVercelConnectionCredentialsSchema,
   TVercelConnection,
   TVercelConnectionConfig,
@@ -328,6 +364,7 @@ export type TAppConnection = { id: string } & (
   | TCloudflareConnection
   | TBitbucketConnection
   | TDNSMadeEasyConnection
+  | TAzureDnsConnection
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
@@ -345,9 +382,18 @@ export type TAppConnection = { id: string } & (
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
+  | TAzureEntraIdConnection
+  | TVenafiConnection
+  | TExternalInfisicalConnection
+  | TNetScalerConnection
+  | TAnthropicConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
+
+export type TAppConnectionRawWithMetadata = Awaited<
+  ReturnType<TAppConnectionDALFactory["findWithProjectDetails"]>
+>[number];
 
 export type TSqlConnection = TPostgresConnection | TMsSqlConnection | TMySqlConnection | TOracleDBConnection;
 
@@ -385,6 +431,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TDNSMadeEasyConnectionInput
+  | TAzureDnsConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
   | TChecklyConnectionInput
@@ -402,6 +449,11 @@ export type TAppConnectionInput = { id: string } & (
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
+  | TAzureEntraIdConnectionInput
+  | TVenafiConnectionInput
+  | TExternalInfisicalConnectionInput
+  | TNetScalerConnectionInput
+  | TAnthropicConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -412,11 +464,26 @@ export type TSqlConnectionInput =
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials" | "gatewayId" | "projectId"
+  | "credentials"
+  | "method"
+  | "name"
+  | "app"
+  | "description"
+  | "isPlatformManagedCredentials"
+  | "gatewayId"
+  | "projectId"
+  | "rotation"
+  | "isAutoRotationEnabled"
 >;
 
-export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId">> & {
+export type TUpdateAppConnectionDTO = Partial<
+  Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId" | "rotation">
+> & {
   connectionId: string;
+  rotation?: {
+    rotationInterval?: number;
+    rotateAtUtc?: { hours: number; minutes: number };
+  };
 };
 
 export type TGetAppConnectionByNameDTO = {
@@ -460,6 +527,7 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TDNSMadeEasyConnectionConfig
+  | TAzureDnsConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
@@ -476,7 +544,12 @@ export type TAppConnectionConfig =
   | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
-  | TCircleCIConnectionConfig;
+  | TCircleCIConnectionConfig
+  | TAzureEntraIdConnectionConfig
+  | TVenafiConnectionConfig
+  | TExternalInfisicalConnectionConfig
+  | TNetScalerConnectionConfig
+  | TAnthropicConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -512,6 +585,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateDNSMadeEasyConnectionCredentialsSchema
+  | TValidateAzureDnsConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
@@ -528,7 +602,12 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
-  | TValidateCircleCIConnectionCredentialsSchema;
+  | TValidateCircleCIConnectionCredentialsSchema
+  | TValidateAzureEntraIdConnectionCredentialsSchema
+  | TValidateVenafiConnectionCredentialsSchema
+  | TValidateExternalInfisicalConnectionCredentialsSchema
+  | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateAnthropicConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
@@ -538,6 +617,17 @@ export type TListAwsConnectionKmsKeys = {
 
 export type TListAwsConnectionIamUsers = {
   connectionId: string;
+};
+
+export type TListAwsConnectionLoadBalancers = {
+  connectionId: string;
+  region: AWSRegion;
+};
+
+export type TListAwsConnectionListeners = {
+  connectionId: string;
+  region: AWSRegion;
+  loadBalancerArn: string;
 };
 
 export type TAppConnectionCredentialsValidator = (
@@ -555,5 +645,6 @@ export type TAppConnectionTransitionCredentialsToPlatform = (
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsCredentialRotation?: boolean;
   supportsGateways?: boolean;
 };

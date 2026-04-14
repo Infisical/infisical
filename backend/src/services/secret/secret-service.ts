@@ -12,6 +12,8 @@ import {
   SecretsSchema,
   SecretType
 } from "@app/db/schemas";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -35,9 +37,12 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
+  TGetSecretReferencesDTO,
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
@@ -52,8 +57,10 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   conditionallyHideSecretValue,
@@ -89,6 +96,7 @@ import {
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
+  TRedactSecretVersionValueDTO,
   TStartSecretsV2MigrationDTO,
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
@@ -131,6 +139,10 @@ type TSecretServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -154,7 +166,11 @@ export const secretServiceFactory = ({
   secretV2BridgeService,
   secretApprovalRequestService,
   licenseService,
-  reminderService
+  reminderService,
+  secretVersionV2DAL,
+  secretV2BridgeDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -1190,7 +1206,7 @@ export const secretServiceFactory = ({
     ...v2Params
   }: Pick<
     TGetSecretsRawDTO,
-    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search"
+    "projectId" | "path" | "actor" | "actorId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
   > & { environments: string[]; isInternal?: boolean }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -1223,7 +1239,7 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     environments,
     ...params
-  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "tagSlugs"> & {
+  }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive"> & {
     environments: string[];
     isInternal?: boolean;
   }) => {
@@ -1261,8 +1277,21 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.getSecretReferenceTree(dto);
   };
 
+  const getSecretReferenceDependencyTree = async (dto: TGetSecretReferencesDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+
+    if (!shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message: "Project version does not support secret references",
+        name: "SecretReferencesNotSupported"
+      });
+    }
+
+    return secretV2BridgeService.getSecretReferenceDependencyTree(dto);
+  };
+
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
-    const { environment, secretPath, secretName, projectId } = dto;
+    const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
@@ -1330,15 +1359,27 @@ export const secretServiceFactory = ({
       };
     };
 
-    const usersWithAccess = userPermissions.map(attachAllowedActions).filter((user) => user.allowedActions.length > 0);
-    const identitiesWithAccess = identityPermissions
-      .map(attachAllowedActions)
-      .filter((identity) => identity.allowedActions.length > 0);
-    const groupsWithAccess = groupPermissions
-      .map(attachAllowedActions)
-      .filter((group) => group.allowedActions.length > 0);
+    const hasAccess = (entity: { allowedActions: string[] }) => entity.allowedActions.length > 0;
+    const filterFn = includeAllEntities ? () => true : hasAccess;
 
-    return { users: usersWithAccess, identities: identitiesWithAccess, groups: groupsWithAccess };
+    const users = userPermissions.map(attachAllowedActions).filter(filterFn);
+    const identities = identityPermissions.map(attachAllowedActions).filter(filterFn);
+    const groupsWithActions = groupPermissions.map(attachAllowedActions).filter(filterFn);
+
+    // Fetch group member user IDs and identity IDs
+    const groupIds = groupsWithActions.map((g) => g.id);
+    const [userGroupMemberships, identityGroupMemberships] = await Promise.all([
+      groupIds.length > 0 ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : [],
+      groupIds.length > 0 ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
+    ]);
+
+    const groups = groupsWithActions.map((group) => ({
+      ...group,
+      userIds: userGroupMemberships.filter((m) => m.groupId === group.id).map((m) => m.userId),
+      identityIds: identityGroupMemberships.filter((m) => m.groupId === group.id).map((m) => m.identityId)
+    }));
+
+    return { users, identities, groups };
   };
 
   const getAccessibleSecrets = async ({
@@ -1383,20 +1424,27 @@ export const secretServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
+    personalOverridesBehavior,
+    secretImportReferencesBehavior,
     viewSecretValue,
     environment,
     includeImports,
     expandSecretReferences,
+    expandPersonalOverrides,
     recursive,
     tagSlugs = [],
     throwOnMissingReadValuePermission = true,
+    ifNoneMatch,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { secrets, imports } = await secretV2BridgeService.getSecrets({
+      const result = await secretV2BridgeService.getSecrets({
         projectId,
         expandSecretReferences,
+        personalOverridesBehavior,
+        expandPersonalOverrides,
+        secretImportReferencesBehavior,
         actorId,
         actor,
         actorOrgId,
@@ -1408,10 +1456,15 @@ export const secretServiceFactory = ({
         actorAuthMethod,
         includeImports,
         tagSlugs,
+        ifNoneMatch,
         ...paramsV2
       });
 
-      return { secrets, imports };
+      if (result.notModified) {
+        return { notModified: true, etag: result.etag, secrets: [], imports: [] };
+      }
+
+      return { secrets: result.secrets, imports: result.imports, etag: result.etag };
     }
 
     if (!botKey)
@@ -1565,6 +1618,7 @@ export const secretServiceFactory = ({
     viewSecretValue,
     projectId,
     expandSecretReferences,
+    expandPersonalOverrides,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1586,6 +1640,7 @@ export const secretServiceFactory = ({
         actorId,
         version,
         expandSecretReferences,
+        expandPersonalOverrides,
         type,
         secretName
       });
@@ -1656,7 +1711,9 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (project.enforceCapitalization) {
       if (secretName !== secretName.toUpperCase()) {
         throw new BadRequestError({
@@ -1836,7 +1893,9 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (project.enforceCapitalization) {
       if (newSecretName && newSecretName !== newSecretName.toUpperCase()) {
         throw new BadRequestError({
@@ -2130,7 +2189,9 @@ export const secretServiceFactory = ({
         : undefined;
 
     if (shouldUseSecretV2Bridge) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
@@ -2293,7 +2354,9 @@ export const secretServiceFactory = ({
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())
@@ -2588,7 +2651,10 @@ export const secretServiceFactory = ({
         if ((err as Error).message === "BadRequest: Failed to find secret") {
           return null;
         }
+
+        logger.error(err);
       });
+
     if (secretVersionV2) return secretVersionV2;
 
     const secret = await secretDAL.findById(secretId);
@@ -2643,16 +2709,22 @@ export const secretServiceFactory = ({
         }
       );
 
-      return decryptSecretRaw(
-        {
-          secretValueHidden,
-          ...el,
-          workspace: folder.projectId,
-          environment: folder.environment.envSlug,
-          secretPath: folderWithPath.path
-        },
-        botKey
-      );
+      return {
+        ...decryptSecretRaw(
+          {
+            secretValueHidden,
+            ...el,
+            workspace: folder.projectId,
+            environment: folder.environment.envSlug,
+            secretPath: folderWithPath.path
+          },
+          botKey
+        ),
+        redactedByActor: null,
+        isRedacted: false,
+        redactedAt: null,
+        redactedByUserId: null
+      };
     });
   };
 
@@ -2785,6 +2857,7 @@ export const secretServiceFactory = ({
       environmentSlug: environment,
       excludeReplication: true
     });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
 
     return {
       ...updatedSecret[0],
@@ -2895,6 +2968,7 @@ export const secretServiceFactory = ({
       environmentSlug: environment,
       excludeReplication: true
     });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
 
     return {
       ...updatedSecret[0],
@@ -3045,6 +3119,7 @@ export const secretServiceFactory = ({
 
     const sourceSecrets = await secretDAL.findManySecretsWithTags({
       type: SecretType.Shared,
+      folderId: sourceFolder.id,
       secretIds
     });
 
@@ -3501,8 +3576,36 @@ export const secretServiceFactory = ({
       skipMultilineEncoding: v.skipMultilineEncoding,
       tags: v.tags?.map((tag) => tag.slug),
       metadata: v.secretMetadata,
-      secretValue: v.secretValue
+      secretValue: v.secretValue,
+      isRedacted: v.isRedacted,
+      redactedAt: v.redactedAt,
+      redactedByUserId: v.redactedByUserId
     }));
+  };
+
+  const redactSecretVersionValue = async (dto: TRedactSecretVersionValueDTO) => {
+    const { versionId, ...rest } = dto;
+
+    const version = await secretVersionV2DAL.findOne({ id: versionId });
+
+    if (!version) {
+      throw new NotFoundError({ message: `Secret version with ID '${versionId}' not found` });
+    }
+
+    const project = await projectDAL.findById(version.projectId);
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${version.projectId}' not found` });
+    }
+
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(project.id);
+    if (!shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message: "Project version not supported",
+        name: "UnsupportedProjectVersionError"
+      });
+    }
+
+    return secretV2BridgeService.redactSecretVersionValue({ versionId, ...rest });
   };
 
   return {
@@ -3537,6 +3640,8 @@ export const secretServiceFactory = ({
     getSecretByIdRaw,
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
-    getChangeVersions
+    getChangeVersions,
+    redactSecretVersionValue,
+    getSecretReferenceDependencyTree
   };
 };

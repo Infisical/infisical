@@ -213,9 +213,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .refine(
+            (val) =>
+              characterValidator([
+                CharacterType.AlphaNumeric,
+                CharacterType.Hyphen,
+                CharacterType.Period,
+                CharacterType.At
+              ])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, -, ., @ are allowed."
+            }
+          )
           .optional()
           .describe(GROUPS.LIST_USERS.search),
         filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
@@ -326,9 +335,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .refine(
+            (val) =>
+              characterValidator([
+                CharacterType.AlphaNumeric,
+                CharacterType.Hyphen,
+                CharacterType.Period,
+                CharacterType.At
+              ])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, -, ., @ are allowed."
+            }
+          )
           .optional()
           .describe(GROUPS.LIST_MEMBERS.search),
         orderBy: z

@@ -12,7 +12,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
@@ -36,7 +36,7 @@ type TUserServiceFactoryDep = {
     | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "find">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "find" | "findEffectiveOrgMembership" | "findEffectiveOrgMemberships">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -401,31 +401,41 @@ export const userServiceFactory = ({
   };
 
   const getUserProjectFavorites = async (userId: string, orgId: string) => {
-    const orgMembership = await membershipUserDAL.findOne({
-      scope: AccessScope.Organization,
-      actorUserId: userId,
-      scopeOrgId: orgId
+    const orgMemberships = await orgDAL.findEffectiveOrgMemberships({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId
     });
 
-    if (!orgMembership) {
+    if (!orgMemberships.length) {
       throw new ForbiddenRequestError({
         message: "User does not belong in the organization."
       });
     }
 
-    return { projectFavorites: orgMembership.projectFavorites || [] };
+    // Project favorites are stored on the user's direct membership row; group-only members have no favorites
+    const directMembership = orgMemberships.find((m) => m.actorUserId === userId);
+    const projectFavorites = directMembership?.projectFavorites ?? [];
+    return { projectFavorites };
   };
 
   const updateUserProjectFavorites = async (userId: string, orgId: string, projectIds: string[]) => {
-    const orgMembership = await membershipUserDAL.findOne({
-      scope: AccessScope.Organization,
-      actorUserId: userId,
-      scopeOrgId: orgId
+    const orgMemberships = await orgDAL.findEffectiveOrgMemberships({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId
     });
 
-    if (!orgMembership) {
+    if (!orgMemberships.length) {
       throw new ForbiddenRequestError({
         message: "User does not belong in the organization."
+      });
+    }
+
+    const directMembership = orgMemberships.find((m) => m.actorUserId === userId);
+    if (!directMembership) {
+      throw new ForbiddenRequestError({
+        message: "Project favorites can only be updated when you have direct membership in the organization."
       });
     }
 
@@ -442,7 +452,7 @@ export const userServiceFactory = ({
       (projectMembership) => projectMembership.scopeProjectId as string
     );
 
-    const updatedOrgMembership = await membershipUserDAL.updateById(orgMembership.id, {
+    const updatedOrgMembership = await membershipUserDAL.updateById(directMembership.id, {
       projectFavorites: memberProjectFavorites
     });
 

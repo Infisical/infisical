@@ -75,6 +75,69 @@ export const registerServeUI = async (
       }
     }
 
+    if (appCfg.isCloud) {
+      const GTM_ID = "GTM-WL5C7MWT";
+
+      const gtmHeadSnippet = `<!-- Google Tag Manager -->\n<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':\nnew Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],\nj=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=\n'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);\n})(window,document,'script','dataLayer','${GTM_ID}');</script>\n<!-- End Google Tag Manager -->`;
+
+      const gtmBodySnippet = `<!-- Google Tag Manager (noscript) -->\n<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${GTM_ID}"\nheight="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>\n<!-- End Google Tag Manager (noscript) -->`;
+
+      // Insert GTM script right before </head>
+      indexHtml = indexHtml.replace("</head>", `${gtmHeadSnippet}\n</head>`);
+
+      // Insert GTM noscript right after <body>
+      indexHtml = indexHtml.replace("<body>", `<body>\n${gtmBodySnippet}`);
+    }
+
+    // Inject GTM/analytics CSP domains only for Infisical Cloud deployments
+    if (appCfg.isCloud) {
+      const cloudCspExtensions: Record<string, string[]> = {
+        "script-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://googleads.g.doubleclick.net",
+          "https://www.googleadservices.com",
+          "https://www.google.com",
+          "https://js.hs-scripts.com",
+          "https://js.hsforms.net",
+          "https://js.hs-banner.com",
+          "https://js.hs-analytics.net",
+          "https://js.usemessages.com",
+          "https://js.hscollectedforms.net"
+        ],
+        "frame-src": [
+          "https://www.googletagmanager.com",
+          "https://bid.g.doubleclick.net",
+          "https://td.doubleclick.net"
+        ],
+        "connect-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://region1.google-analytics.com",
+          "https://analytics.google.com",
+          "https://stats.g.doubleclick.net",
+          "https://googleads.g.doubleclick.net",
+          "https://*.hubspot.com",
+          "https://forms.hubspot.com",
+          "https://api.hubapi.com"
+        ],
+        "img-src": [
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://www.google.com",
+          "https://googleads.g.doubleclick.net",
+          "https://www.googleadservices.com",
+          "https://track.hubspot.com",
+          "https://forms.hubspot.com"
+        ]
+      };
+
+      for (const [directive, domains] of Object.entries(cloudCspExtensions)) {
+        const regex = new RE2(`(${directive}\\s+[^;]+)(;)`, "g");
+        indexHtml = indexHtml.replace(regex, `$1 ${domains.join(" ")}$2`);
+      }
+    }
+
     await server.register(staticServe, {
       root: frontendPath,
       wildcard: false,

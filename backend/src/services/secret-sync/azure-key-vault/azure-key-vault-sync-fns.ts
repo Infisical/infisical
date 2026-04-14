@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
+import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -16,8 +16,14 @@ type TAzureKeyVaultSyncFactoryDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
+const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
+
 export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultSyncFactoryDeps) => {
-  const $getAzureKeyVaultSecrets = async (accessToken: string, vaultBaseUrl: string) => {
+  const $getAzureKeyVaultSecrets = async (
+    accessToken: string,
+    vaultBaseUrl: string,
+    { disableCertificateImport = false }: { disableCertificateImport?: boolean } = {}
+  ) => {
     const paginateAzureKeyVaultSecrets = async () => {
       let result: GetAzureKeyVaultSecret[] = [];
 
@@ -39,10 +45,18 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets();
 
-    const enabledAzureKeyVaultSecrets = getAzureKeyVaultSecrets.filter((secret) => secret.attributes.enabled);
+    // certificate-backed secrets have a contentType of application/x-pkcs12 or application/x-pem-file;
+    // filter them out at the list stage if the option is enabled (avoids fetching their values too)
+    const visibleSecrets = disableCertificateImport
+      ? getAzureKeyVaultSecrets.filter(
+          (secret) => !AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES.includes(secret.contentType ?? "")
+        )
+      : getAzureKeyVaultSecrets;
+
+    const enabledAzureKeyVaultSecrets = visibleSecrets.filter((secret) => secret.attributes.enabled);
 
     // disabled keys to skip sending updates to
-    const disabledAzureKeyVaultSecretKeys = getAzureKeyVaultSecrets
+    const disabledAzureKeyVaultSecretKeys = visibleSecrets
       .filter(({ attributes }) => !attributes.enabled)
       .map((getAzureKeyVaultSecret) => {
         return getAzureKeyVaultSecret.id.substring(getAzureKeyVaultSecret.id.lastIndexOf("/") + 1);
@@ -90,7 +104,8 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
-      secretSync.destinationConfig.vaultBaseUrl
+      secretSync.destinationConfig.vaultBaseUrl,
+      { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
     const setSecrets: {
@@ -210,7 +225,8 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
-      secretSync.destinationConfig.vaultBaseUrl
+      secretSync.destinationConfig.vaultBaseUrl,
+      { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
     for await (const [key] of Object.entries(vaultSecrets)) {
@@ -233,7 +249,8 @@ export const azureKeyVaultSyncFactory = ({ kmsService, appConnectionDAL }: TAzur
 
     const { vaultSecrets, disabledAzureKeyVaultSecretKeys } = await $getAzureKeyVaultSecrets(
       accessToken,
-      secretSync.destinationConfig.vaultBaseUrl
+      secretSync.destinationConfig.vaultBaseUrl,
+      { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
     const secretMap: TSecretMap = {};

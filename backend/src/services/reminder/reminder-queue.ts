@@ -2,7 +2,7 @@
 import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -149,19 +149,20 @@ export const dailyReminderQueueServiceFactory = ({
 
   // we do a repeat cron job in utc timezone at 12 Midnight each day
   const startDailyRemindersJob = async () => {
-    // clear previous job
+    // Remove legacy repeatable job
     await queueService.stopRepeatableJob(
       QueueName.DailyReminders,
       QueueJobs.DailyReminders,
       { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyReminders // just a job id
+      QueueName.DailyReminders
     );
 
-    await queueService.queue(QueueName.DailyReminders, QueueJobs.DailyReminders, undefined, {
-      delay: 5000,
-      jobId: QueueName.DailyReminders,
-      repeat: { pattern: "0 0 * * *", utc: true }
-    });
+    await queueService.upsertJobScheduler(
+      QueueName.DailyReminders,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.DailyReminders}`,
+      { pattern: "0 0 * * *" },
+      { name: QueueJobs.DailyReminders, opts: { delay: 5000 } }
+    );
   };
 
   // TODO: remove once all the old reminders in queues are migrated

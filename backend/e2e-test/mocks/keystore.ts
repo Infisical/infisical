@@ -7,6 +7,7 @@ import { Lock } from "@app/lib/red-lock";
 
 export const mockKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
+  const hashStore: Record<string, Record<string, string>> = {};
 
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
@@ -21,8 +22,14 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       store[key] = value;
       return "OK";
     },
+    setItemWithExpiryNX: async (key, _expiryInSeconds, value) => {
+      if (store[key] !== undefined) return null;
+      store[key] = value;
+      return "OK";
+    },
     deleteItem: async (key) => {
       delete store[key];
+      delete hashStore[key];
       return 1;
     },
     deleteItems: async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }) => {
@@ -61,6 +68,14 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       if (typeof value === "number") {
         return Number(value);
       }
+    },
+    hashSet: async (key, field, value) => {
+      if (!hashStore[key]) hashStore[key] = {};
+      hashStore[key][field] = value;
+      return 1;
+    },
+    hashGet: async (key, field) => {
+      return hashStore[key]?.[field] ?? null;
     },
     pgIncrementBy: async () => {
       return 1;
@@ -134,6 +149,10 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         list = JSON.parse(existing) as string[];
       }
       return list.length;
-    }
+    },
+    streamAdd: async () => null,
+    streamRange: async () => [],
+    streamTrim: async () => 0,
+    streamCollect: async () => ({ entries: [], lastId: null })
   };
 };

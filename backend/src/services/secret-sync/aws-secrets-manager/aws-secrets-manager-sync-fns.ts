@@ -15,21 +15,21 @@ import {
   UpdateSecretCommand,
   UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
-import { AWSError } from "aws-sdk";
+import type { AWSError } from "aws-sdk";
 import {
   CreateSecretResponse,
   DescribeSecretResponse,
   SecretListEntry,
   SecretValueEntry,
   Tag
-} from "aws-sdk/clients/secretsmanager";
+} from "aws-sdk/clients/secretsmanager.js";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { getKeyWithSchema, matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
@@ -50,7 +50,7 @@ const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCre
     region: config.region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials: config.credentials!
+    credentials: config.credentials
   });
 
   return secretsManagerClient;
@@ -314,7 +314,11 @@ const processTags = ({
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    secretMap: TSecretMap,
+    unmodifiedSecretMap: TSecretMap // ie not schematized
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);
@@ -328,6 +332,10 @@ export const AwsSecretsManagerSyncFns = {
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
     const keyId = syncOptions.keyId ?? "alias/aws/secretsmanager";
+
+    const createdSecretKeys: string[] = [];
+    const updatedSecretKeys: string[] = [];
+    const deletedSecretKeys: string[] = [];
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const entry of Object.entries(secretMap)) {
@@ -348,6 +356,7 @@ export const AwsSecretsManagerSyncFns = {
                 SecretString: value,
                 KmsKeyId: keyId
               });
+              updatedSecretKeys.push(key);
             } catch (error) {
               throw new SecretSyncError({
                 error,
@@ -362,6 +371,7 @@ export const AwsSecretsManagerSyncFns = {
               SecretString: value,
               KmsKeyId: keyId
             });
+            createdSecretKeys.push(key);
           } catch (error) {
             throw new SecretSyncError({
               error,
@@ -407,7 +417,7 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
 
-      if (syncOptions.disableSecretDeletion) return;
+      if (syncOptions.disableSecretDeletion) return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
@@ -416,6 +426,7 @@ export const AwsSecretsManagerSyncFns = {
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
             await deleteSecret(client, secretKey);
+            deletedSecretKeys.push(secretKey);
           } catch (error) {
             throw new SecretSyncError({
               error,
@@ -428,54 +439,68 @@ export const AwsSecretsManagerSyncFns = {
       // Many-To-One Mapping
 
       const secretValue = JSON.stringify(
-        Object.fromEntries(Object.entries(secretMap).map(([key, secretData]) => [key, secretData.value]))
+        Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
       );
 
-      if (awsSecretsRecord[destinationConfig.secretName]) {
+      const secretName = getKeyWithSchema({
+        key: destinationConfig.secretName,
+        environment: environment!.slug, // wouldn't be sync if undefined
+        schema: syncOptions.keySchema
+      });
+
+      const secretExists = Boolean(awsSecretsRecord[secretName]);
+      const hasValueChanged = awsValuesRecord[secretName]?.SecretString !== secretValue;
+      const hasKmsKeyChanged = keyId !== awsDescriptionsRecord[secretName]?.KmsKeyId;
+
+      if (secretExists && (hasValueChanged || hasKmsKeyChanged)) {
         await updateSecret(client, {
-          SecretId: destinationConfig.secretName,
+          SecretId: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
-      } else {
+        updatedSecretKeys.push(secretName);
+      } else if (!secretExists) {
         await createSecret(client, {
-          Name: destinationConfig.secretName,
+          Name: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
+        createdSecretKeys.push(secretName);
       }
 
       if (syncOptions.tags !== undefined) {
         const { tagsToAdd, tagKeysToRemove } = processTags({
           syncTagsRecord,
           awsTagsRecord: Object.fromEntries(
-            awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+            awsDescriptionsRecord[secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
           )
         });
 
         if (tagsToAdd.length) {
           try {
-            await addTags(client, destinationConfig.secretName, tagsToAdd);
+            await addTags(client, secretName, tagsToAdd);
           } catch (error) {
             throw new SecretSyncError({
               error,
-              secretKey: destinationConfig.secretName
+              secretKey: secretName
             });
           }
         }
 
         if (tagKeysToRemove.length) {
           try {
-            await removeTags(client, destinationConfig.secretName, tagKeysToRemove);
+            await removeTags(client, secretName, tagKeysToRemove);
           } catch (error) {
             throw new SecretSyncError({
               error,
-              secretKey: destinationConfig.secretName
+              secretKey: secretName
             });
           }
         }
       }
     }
+
+    return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
     const client = await getSecretsManagerClient(secretSync);
@@ -487,7 +512,7 @@ export const AwsSecretsManagerSyncFns = {
     );
     const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, environment, syncOptions } = secretSync;
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       return Object.fromEntries(
@@ -499,7 +524,13 @@ export const AwsSecretsManagerSyncFns = {
 
     // Many-To-One Mapping
 
-    const secretValueEntry = awsValuesRecord[destinationConfig.secretName];
+    const secretName = getKeyWithSchema({
+      key: destinationConfig.secretName,
+      environment: environment!.slug, // wouldn't be sync if undefined
+      schema: syncOptions.keySchema
+    });
+
+    const secretValueEntry = awsValuesRecord[secretName];
 
     if (!secretValueEntry) return {};
 
@@ -539,7 +570,13 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
     } else {
-      await deleteSecret(client, destinationConfig.secretName);
+      const secretName = getKeyWithSchema({
+        key: destinationConfig.secretName,
+        environment: environment!.slug, // wouldn't be sync if undefined
+        schema: syncOptions.keySchema
+      });
+
+      await deleteSecret(client, secretName);
     }
   }
 };

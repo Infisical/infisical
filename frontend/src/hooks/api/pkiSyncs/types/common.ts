@@ -77,4 +77,8 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  syncMetadata?: {
+    isDefault?: boolean;
+    [key: string]: unknown;
+  } | null;
 };

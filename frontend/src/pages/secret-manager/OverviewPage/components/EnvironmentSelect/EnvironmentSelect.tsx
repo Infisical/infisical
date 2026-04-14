@@ -1,6 +1,9 @@
 import { SetStateAction, useState } from "react";
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Command,
@@ -12,27 +15,57 @@ import {
   CommandSeparator,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useSubscription
+} from "@app/context";
+import { usePopUp } from "@app/hooks";
+import { projectKeys } from "@app/hooks/api";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
 type Props = {
   selectedEnvs: ProjectEnv[];
   setSelectedEnvs: (value: SetStateAction<ProjectEnv[]>) => void;
+  isDisabled?: boolean;
 };
 
-export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
+export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
   const {
-    currentProject: { environments: projectEnvs }
+    currentProject: { environments: projectEnvs, id: projectId }
   } = useProject();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "createEnvironment",
+    "upgradePlan"
+  ] as const);
+  const queryClient = useQueryClient();
+
+  const isMoreEnvironmentsAllowed =
+    subscription?.environmentLimit && projectEnvs
+      ? projectEnvs.length < subscription.environmentLimit
+      : true;
+
+  const handleAddEnvironment = () => {
+    if (isMoreEnvironmentsAllowed) {
+      handlePopUpOpen("createEnvironment");
+    } else {
+      handlePopUpOpen("upgradePlan");
+    }
+  };
 
   let label: string;
-
-  const [inputValue, setInputValue] = useState("");
 
   if (selectedEnvs.length === 1) {
     label = selectedEnvs[0].name;
@@ -60,26 +93,45 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
 
   return (
     <>
-      {/* TODO: update env modal UI and figure out what's breaking with add */}
-      {/* <AddEnvironmentModal onOpenChange={setIsModalOpen} isOpen={isModalOpen} /> */}
+      <AddEnvironmentModal
+        isOpen={popUp.createEnvironment.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("createEnvironment", open)}
+        onComplete={async (newEnv) => {
+          await queryClient.refetchQueries({
+            queryKey: projectKeys.getProjectById(projectId)
+          });
+          setSelectedEnvs([newEnv]);
+        }}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
+        text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
+      />
       <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={isOpen}
-            className="w-[200px] justify-between"
-          >
-            <span className="truncate">{label}</span>
-            <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[200px] p-0">
+        <Tooltip open={isDisabled ? undefined : false}>
+          <TooltipTrigger>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={isOpen}
+                disabled={isDisabled}
+                className="w-[180px] justify-between"
+              >
+                <span className="truncate">{label}</span>
+                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
+        </Tooltip>
+        <PopoverContent align="start" className="w-[180px] p-0">
           <Command>
             <CommandInput
               value={inputValue}
               onValueChange={setInputValue}
-              placeholder="Filter environments..."
+              placeholder="Filter environments"
             />
             <CommandList>
               <CommandEmpty>No environment found.</CommandEmpty>
@@ -89,7 +141,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                     <CommandItem forceMount keywords={[]} onSelect={handleSelectAll}>
                       <CheckIcon
                         className={cn(
-                          "mr-2 h-4 w-4",
+                          "h-4 w-4",
                           !selectedEnvs.length ? "opacity-100" : "opacity-0"
                         )}
                       />
@@ -110,7 +162,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                   >
                     <CheckIcon
                       className={cn(
-                        "mr-2 h-4 w-4 shrink-0",
+                        "h-4 w-4 shrink-0",
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
@@ -119,6 +171,25 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                 ))}
               </CommandGroup>
             </CommandList>
+            <CommandSeparator alwaysRender />
+            <CommandGroup forceMount>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={ProjectPermissionSub.Environments}
+              >
+                {(isAllowed) => (
+                  <CommandItem
+                    forceMount
+                    keywords={[]}
+                    disabled={!isAllowed}
+                    onSelect={handleAddEnvironment}
+                  >
+                    <PlusIcon className="h-4 w-4 shrink-0" />
+                    <span>Add Environment</span>
+                  </CommandItem>
+                )}
+              </ProjectPermissionCan>
+            </CommandGroup>
           </Command>
         </PopoverContent>
       </Popover>

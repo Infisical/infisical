@@ -9,11 +9,11 @@ The SMB Connection allows Infisical to connect to Windows servers using the SMB 
 
 You will need the following information to establish an SMB connection:
 
-- **Host** - The hostname or IP address of the Windows server
+- **Host** - The hostname or IP address of the Windows server where the local accounts to be managed reside. This must be a member server or standalone machine, not a Domain Controller.
 - **Port** - The SMB port (default is 445)
-- **Username** - A Windows administrator account with permissions to manage local accounts
+- **Username** - A Windows administrator account with permissions to manage local accounts on the target machine
 - **Password** - The password for the administrator account
-- **Domain** (optional) - The Windows domain name for domain-joined servers
+- **Domain** (optional) - The Windows domain name if using domain credentials to authenticate. When provided, Infisical authenticates as a domain user (e.g., `MYDOMAIN\Administrator`) to manage local accounts on the target machine. This allows domain administrators to rotate local account passwords on domain-joined member servers.
 
 ### Windows Server Requirements
 

@@ -337,7 +337,13 @@ export const authSignupServiceFactory = ({
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken, organizationId };
+    return {
+      user: updateduser.info,
+      accessToken,
+      refreshToken,
+      organizationId,
+      authMethod: authMethod || AuthMethod.EMAIL
+    };
   };
 
   /*
@@ -460,7 +466,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
-    return { user: updateduser.info, accessToken, refreshToken };
+    return { user: updateduser.info, accessToken, refreshToken, organizationId: orgMembership.scopeOrgId };
   };
 
   return {

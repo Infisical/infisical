@@ -17,6 +17,7 @@ import type { TCertificatePolicyDALFactory } from "../certificate-policy/certifi
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
+import type { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
 import type { TKmsServiceFactory } from "../kms/kms-service";
 import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
@@ -100,6 +101,7 @@ describe("CertificateProfileService", () => {
     apiConfigId: "api-config-123",
     estConfigId: null,
     externalConfigs: null,
+    defaults: null,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -164,6 +166,17 @@ describe("CertificateProfileService", () => {
     update: vi.fn(),
     delete: vi.fn()
   } as unknown as TAcmeEnrollmentConfigDALFactory;
+
+  const mockScepEnrollmentConfigDAL = {
+    create: vi.fn().mockResolvedValue({ id: "scep-config-123" }),
+    findById: vi.fn(),
+    updateById: vi.fn(),
+    transaction: vi.fn(),
+    find: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  } as unknown as TScepEnrollmentConfigDALFactory;
 
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
@@ -231,6 +244,14 @@ describe("CertificateProfileService", () => {
     findOne: vi.fn()
   } as unknown as Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
 
+  const mockResourceMetadataDAL = {
+    find: vi.fn().mockResolvedValue([])
+  };
+
+  const mockCertificatePolicyService = {
+    validateRequestAgainstPolicy: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] })
+  };
+
   beforeEach(() => {
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
@@ -245,16 +266,19 @@ describe("CertificateProfileService", () => {
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
+      certificatePolicyService: mockCertificatePolicyService,
       apiEnrollmentConfigDAL: mockApiEnrollmentConfigDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       acmeEnrollmentConfigDAL: mockAcmeEnrollmentConfigDAL,
+      scepEnrollmentConfigDAL: mockScepEnrollmentConfigDAL,
       certificateBodyDAL: mockCertificateBodyDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
-      projectDAL: mockProjectDAL
+      projectDAL: mockProjectDAL,
+      resourceMetadataDAL: mockResourceMetadataDAL
     });
   });
 
@@ -311,6 +335,7 @@ describe("CertificateProfileService", () => {
           apiConfigId: "api-config-123",
           estConfigId: null,
           acmeConfigId: null,
+          scepConfigId: null,
           projectId: "project-123"
         },
         undefined

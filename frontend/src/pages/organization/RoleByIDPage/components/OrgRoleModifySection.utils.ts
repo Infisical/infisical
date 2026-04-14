@@ -12,6 +12,7 @@ import {
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
@@ -45,14 +46,14 @@ const appConnectionsPermissionSchema = z
     [OrgPermissionAppConnectionActions.Edit]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Create]: z.boolean().optional(),
     [OrgPermissionAppConnectionActions.Delete]: z.boolean().optional(),
-    [OrgPermissionAppConnectionActions.Connect]: z.boolean().optional()
+    [OrgPermissionAppConnectionActions.Connect]: z.boolean().optional(),
+    [OrgPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
   })
   .optional();
 
 const kmipPermissionSchema = z
   .object({
-    [OrgPermissionKmipActions.Proxy]: z.boolean().optional(),
-    [OrgPermissionKmipActions.Setup]: z.boolean().optional()
+    [OrgPermissionKmipActions.Proxy]: z.boolean().optional()
   })
   .optional();
 
@@ -127,7 +128,20 @@ const secretSharingPermissionSchema = z
 const subOrganizationPermissionSchema = z
   .object({
     [OrgPermissionSubOrgActions.Create]: z.boolean().optional(),
-    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional()
+    [OrgPermissionSubOrgActions.Edit]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.Delete]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.LinkGroup]: z.boolean().optional()
+  })
+  .optional();
+
+const ssoPermissionSchema = z
+  .object({
+    [OrgPermissionSsoActions.Read]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Create]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Edit]: z.boolean().optional(),
+    [OrgPermissionSsoActions.Delete]: z.boolean().optional(),
+    [OrgPermissionSsoActions.BypassSsoEnforcement]: z.boolean().optional()
   })
   .optional();
 
@@ -153,7 +167,7 @@ export const formSchema = z.object({
       "service-account": generalPermissionSchema,
       "incident-contact": generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
-      sso: generalPermissionSchema,
+      sso: ssoPermissionSchema,
       scim: generalPermissionSchema,
       [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
       ldap: generalPermissionSchema,

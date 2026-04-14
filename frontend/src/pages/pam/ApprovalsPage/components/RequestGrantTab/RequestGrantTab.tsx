@@ -57,6 +57,7 @@ import { useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   approvalGrantQuery,
   ApprovalGrantStatus,
+  PamAccessGrantAttributes,
   useRevokeApprovalGrant
 } from "@app/hooks/api/approvalGrants";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -119,9 +120,12 @@ export const RequestGrantTab = () => {
     if (search) {
       filtered = filtered.filter((grant) => {
         if (grant.type !== ApprovalPolicyType.PamAccess) return false;
+        const attrs = grant.attributes as PamAccessGrantAttributes;
+        const searchLower = search.toLowerCase();
         return (
-          grant.attributes.accountPath.toLowerCase().includes(search.toLowerCase()) ||
-          grant.id.toLowerCase().includes(search.toLowerCase())
+          attrs.resourceName?.toLowerCase().includes(searchLower) ||
+          attrs.accountName?.toLowerCase().includes(searchLower) ||
+          grant.id.toLowerCase().includes(searchLower)
         );
       });
     }
@@ -273,7 +277,8 @@ export const RequestGrantTab = () => {
             <THead>
               <Tr>
                 <Th>User</Th>
-                <Th>Account Path</Th>
+                <Th>Resource</Th>
+                <Th>Account</Th>
                 <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
@@ -282,10 +287,11 @@ export const RequestGrantTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isGrantsLoading && <TableSkeleton columns={7} innerKey="access-grants" />}
+              {isGrantsLoading && <TableSkeleton columns={8} innerKey="access-grants" />}
               {!isGrantsLoading &&
                 paginatedGrants.map((grant) => {
                   if (grant.type !== ApprovalPolicyType.PamAccess) return null;
+                  const attrs = grant.attributes as PamAccessGrantAttributes;
                   const isActive = grant.status === ApprovalGrantStatus.Active;
 
                   return (
@@ -294,12 +300,17 @@ export const RequestGrantTab = () => {
                         {grant.granteeUserId ? getGrantedUser(grant.granteeUserId) : "Unknown"}
                       </Td>
                       <Td>
-                        <div>{grant.attributes.accountPath}</div>
+                        <span className="text-sm text-mineshaft-200">
+                          {attrs.resourceName || "-"}
+                        </span>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">
-                          {grant.attributes.accessDuration}
+                          {attrs.accountName || "-"}
                         </span>
+                      </Td>
+                      <Td>
+                        <span className="text-sm text-mineshaft-200">{attrs.accessDuration}</span>
                       </Td>
                       <Td>
                         <Badge

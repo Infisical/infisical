@@ -150,6 +150,8 @@ export type TListProjectCertsDTO = {
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;
+  metadataFilter?: Array<{ key: string; value?: string }>;
+  extendedKeyUsage?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectAlertsDTO = TProjectPermission;
