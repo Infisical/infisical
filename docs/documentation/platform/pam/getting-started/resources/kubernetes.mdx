@@ -356,6 +356,11 @@ Once your resource and accounts are configured, users can request access through
 ## FAQ
 
 <AccordionGroup>
+  <Accordion title="Which auth method should I use?">
+    - Use **Gateway** if your Gateway is deployed as a pod inside the Kubernetes cluster. No tokens to create or manage — just enter a service account name and namespace.
+    - Use **Service Account Token** if your Gateway runs outside the cluster (e.g., on a separate VM) and only has network access to the Kubernetes API. You'll need to create a service account token and paste it into Infisical.
+  </Accordion>
+
   <Accordion title="Do I still need to enter a Kubernetes API URL when using Gateway auth?">
     Yes. The resource URL is still required even when using Gateway auth. For in-cluster gateways, enter `https://kubernetes.default.svc.cluster.local`. The Gateway auto-discovers the actual Kubernetes API address from its pod environment variables, so this URL isn't used for the connection itself — but the field is still required when creating the resource.
   </Accordion>
