@@ -49,8 +49,8 @@ To keep cached data fresh, the proxy runs two background processes. The first pe
 The Infisical Proxy is available through the Infisical CLI. Please refer to the [CLI installation documentation](/cli/overview) for more information on how to install the Infisical CLI.
 
 ## Quick Start
-
 Start the proxy with minimal configuration:
+
 ```bash
 infisical proxy start \
   --domain=https://app.infisical.com \
@@ -63,6 +63,31 @@ Then configure your application to use `http://localhost:8081` as the Infisical 
 <Warning>
   For production deployments, it is strongly recommended to enable TLS by providing `--tls-cert-file` and `--tls-key-file`, and setting `--tls-enabled` to `true`.
 </Warning>
+
+<Accordion title="Using event subscriptions">
+  <Note>
+    Event Subscriptions is a paid feature that is available under the Enterprise license.
+    Please contact [sales@infisical.com](mailto:sales@infisical.com).
+  </Note>
+
+  To enable event subscriptions with a minimal configuration, you need to provide the client ID and client secret for the machine identity used to authenticate the Event Subscription connection to Infisical.
+  You can create a machine identity in the [Infisical Dashboard](https://app.infisical.com/settings/machine-identities) or using the [Infisical CLI](/cli/commands/machine-identity).
+  Once you have the client ID and client secret, you can start the proxy with the following command:
+
+  ```bash
+  infisical proxy start \
+    --domain=https://app.infisical.com \
+    --listen-address=localhost:8081 \
+    --tls-enabled=false \
+    --enable-event-subscriptions \
+    --client-id=<your-client-id> \
+    --client-secret=<your-client-secret>
+  ```
+
+  Then configure your application to use `http://localhost:8081` as the Infisical host instead of `https://app.infisical.com`.
+
+  For more information on event subscriptions, refer to the [Cache refreshing via Event Subscriptions](#cache-refreshing-via-event-subscriptions) section.
+</Accordion>
 
 
 ## Configuration
@@ -106,19 +131,19 @@ Then configure your application to use `http://localhost:8081` as the Infisical 
 </ParamField>
 
 <ParamField query="--enable-event-subscriptions" type="boolean" default={false}>
-  Enables real-time cache refresh via [Server-Sent Events (SSE)](/documentation/platform/event-subscriptions). When enabled, the proxy subscribes to secret mutation events from Infisical and automatically re-fetches affected cache entries when changes occur. Requires `--client-id` and `--client-secret` to be provided.
+  Enables real-time cache refresh via [Event Subscriptions](/documentation/platform/event-subscriptions). When enabled, the proxy subscribes to secret mutation events from Infisical and automatically re-fetches affected cache entries when changes occur. Requires `--client-id` and `--client-secret` to be provided.
 </ParamField>
 
 <ParamField query="--client-id" type="string" optional>
-  The Universal Auth client ID for the machine identity used to authenticate the SSE connection to Infisical. Required when `--enable-event-subscriptions` is `true`.
+  The Universal Auth client ID for the machine identity used to authenticate the SSE connection to Infisical. Required when `--enable-event-subscriptions` is `true`. Note that you can also set the client ID via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
 </ParamField>
 
 <ParamField query="--client-secret" type="string" optional>
-  The Universal Auth client secret for the machine identity. Required when `--enable-event-subscriptions` is `true`.
+  The Universal Auth client secret for the machine identity. Required when `--enable-event-subscriptions` is `true`. Note that you can also set the client secret via the environment variable `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 </ParamField>
 
 <ParamField query="--polling-fallback-interval" type="duration" default="10m">
- How often to poll for secret changes when SSE is unavailable. Defaults to `10m`. Supports duration formats like `60s|5m|1h|1d|1w|1y`.
+ How often to poll for secret changes when event subscriptions are unavailable. Defaults to `10m`. Supports duration formats like `60s|5m|1h|1d|1w|1y`.
 </ParamField>
 # Caching Behavior
 
@@ -164,10 +189,14 @@ Successful responses update the cached data with fresh values. Entries that retu
 **When the proxy is configured with the `optimistic` eviction strategy**:
 If Infisical is unreachable during the refresh cycle (network errors or `5xx` responses), the proxy keeps cached entries intact rather than evicting them. This ensures that your applications remain operational even if Infisical is temporarily unavailable.
 
-#### Event-Based Cache Refresh (SSE)
+#### Cache refreshing via Event Subscriptions
 
+<Note>
+   Event Subscriptions is a paid feature that is available under the Enterprise license.
+   Please contact [sales@infisical.com](mailto:sales@infisical.com).
+</Note>
 
-When `--enable-event-subscriptions` is enabled, the proxy opens a [Server-Sent Events (SSE)](/documentation/platform/event-subscriptions) connection to Infisical's Events API. This allows the proxy to receive real-time notifications when secrets change and immediately re-fetch the affected secrets to update its cache, rather than waiting for the next polling interval.
+When `--enable-event-subscriptions` is enabled, the proxy opens a long-lived [Event Subscription](/documentation/platform/event-subscriptions) connection to Infisical's Events API using Sever-sent events (SSE). This allows the proxy to receive real-time notifications when secrets change and immediately re-fetch the affected secrets to update its cache, rather than waiting for the next polling interval.
 
 The proxy subscribes to the following events:
 
@@ -255,24 +284,6 @@ const client = new InfisicalSDK({
 from infisical_sdk import InfisicalSDKClient
 client = InfisicalSDKClient(host="http://localhost:8081") # Proxy address instead of Infisical
 ```
-
-### Using the Proxy with Event Subscriptions (SSE)
-
-Enable real-time cache refresh by providing your machine identity credentials:
-
-```bash
-infisical proxy start \
-  --domain=https://app.infisical.com \
-  --listen-address=localhost:8081 \
-  --tls-enabled=false \
-  --enable-event-subscriptions \
-  --client-id=<your-client-id> \
-  --client-secret=<your-client-secret>
-```
-
-<Note>
-  Ensure the machine identity has the **Secret Events** permission on all projects you intend to access through the proxy. See [Event Subscriptions](/documentation/platform/event-subscriptions#permissions-setup) for setup instructions.
-</Note>
 
 ### Direct API Calls
 
