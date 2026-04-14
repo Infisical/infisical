@@ -8,16 +8,16 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 ## Deployment Methods
 
-Infisical supports two methods for deploying gateways. Choose the one that fits your workflow:
+Infisical supports two methods for deploying gateways:
 
-- **Enrollment Token (Recommended):** Create the gateway from the Infisical UI and run a single CLI command on the target machine. No machine identity setup required.
+- **Enrollment Token (Recommended):** The simplest way to deploy a gateway. Create it from the Infisical UI and run a single CLI command on the target machine.
 - **Machine Identity:** Provision a machine identity in advance and use its credentials to authenticate the gateway. Useful for automated/programmatic deployments.
 
 ---
 
 ## Method 1: Enrollment Token
 
-The enrollment token method lets you create and deploy a gateway without provisioning a machine identity. You create the gateway in the Infisical UI, which gives you a one-time CLI command to run on the target machine.
+The recommended way to deploy a gateway. Create the gateway in the Infisical UI, which gives you a one-time CLI command to run on the target machine.
 
 <Steps>
   <Step title="Set Up a Relay Server">
@@ -71,19 +71,6 @@ The enrollment token method lets you create and deploy a gateway without provisi
     3. **Test connectivity** by creating a resource that uses the gateway to access a private service.
   </Step>
 </Steps>
-
-### Gateway Lifecycle States
-
-After creating a gateway, it will transition through the following states in the UI:
-
-| State | Description |
-| --- | --- |
-| **Pending** | Enrollment token created, waiting for the CLI command to be run. |
-| **Expired** | Enrollment token expired before being used. Use **Re-enroll** to generate a new one. |
-| **Unregistered** | Gateway enrolled but has not connected yet (e.g., waiting for first heartbeat). |
-| **Healthy** | Gateway is connected and responding to health checks. |
-| **Unreachable** | Gateway was previously connected but the last health check failed. |
-| **Re-enrolling** | A re-enrollment token has been created. The existing gateway continues running until the new machine enrolls. |
 
 ### Re-enrollment
 
@@ -327,9 +314,8 @@ If the gateway cannot connect to the relay:
 <Accordion title="How do I troubleshoot authentication failures?">
 If you encounter authentication failures:
 
-1. Verify machine identity credentials are correct
-2. Check token expiration and renewal
-3. Ensure authentication method is properly configured
+- **Enrollment token flow:** Ensure the enrollment token has not expired or already been used. If the gateway was re-enrolled, the old machine's credentials are no longer valid.
+- **Machine identity flow:** Verify credentials are correct, check token expiration, and ensure the authentication method is properly configured.
 </Accordion>
 
 <Accordion title="Where can I find gateway logs?">
@@ -346,8 +332,21 @@ Check gateway logs for detailed error information:
 - **Local installation:** Logs appear in the terminal where you started the gateway
 </Accordion>
 
-<Accordion title="Where is the gateway configuration file stored?">
-For systemd-based installations, the gateway's configuration file is stored at `/etc/infisical/gateway.conf`. You may reference or inspect this file for troubleshooting advanced configuration issues.
+<Accordion title="What happens if my enrollment token expires?">
+Enrollment tokens expire after 1 hour. If the token expires before you run the CLI command, the gateway will show as "Expired" in the UI. Click the context menu (three dots) next to it and select **Re-enroll** to generate a new token.
+</Accordion>
+
+<Accordion title="How do I move a gateway to a different machine?">
+Click the context menu next to the gateway and select **Re-enroll**. This generates a new enrollment token you can use on the new machine. The existing gateway continues running until the new machine enrolls, so there is no downtime during the migration.
+</Accordion>
+
+<Accordion title="Where are gateway credentials stored?">
+When using the enrollment token flow, the gateway's access token and domain are saved locally:
+
+- **Running as root/sudo:** `/etc/infisical/gateway.conf`
+- **Running as a regular user:** `~/.infisical/gateway.conf`
+
+For systemd-based installations, the configuration is always at `/etc/infisical/gateway.conf`. The file is created with restricted permissions (0600) so only the owner can read it.
 </Accordion>
 
 <Accordion title="What happens if there is a network interruption?">
