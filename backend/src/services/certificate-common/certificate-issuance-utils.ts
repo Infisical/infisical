@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CertKeyAlgorithm, CertKeyType, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
@@ -132,6 +133,11 @@ export const validateAlgorithmCompatibility = (
 
   const compatibleAlgorithms =
     template.algorithms?.signature?.filter((sigAlg: string) => {
+      // PQC: key algorithm = signature algorithm, so require exact match
+      if (sigAlg.startsWith("ML-DSA") || sigAlg.startsWith("SLH-DSA")) {
+        return sigAlg === caKeyAlgorithm;
+      }
+
       const parts = sigAlg.split("-");
       if (parts.length === 0) {
         return false;
@@ -289,8 +295,23 @@ export const generateSelfSignedCertificate = async ({
     policy?.sans
   );
 
+  if (isPqcAlgorithm(effectiveKeyAlgorithm) && certificateRequest.keyUsages?.length) {
+    const invalidForPqc = [
+      CertKeyUsageType.KEY_ENCIPHERMENT,
+      CertKeyUsageType.KEY_AGREEMENT,
+      CertKeyUsageType.DATA_ENCIPHERMENT
+    ];
+    const requested = certificateRequest.keyUsages.filter((ku) => invalidForPqc.includes(ku));
+    if (requested.length > 0) {
+      throw new BadRequestError({
+        message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+      });
+    }
+  }
+
   const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
-  const keyPair = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
+  const keyGenCrypto = isPqcAlgorithm(effectiveKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
+  const keyPair = await keyGenCrypto.subtle.generateKey(keyGenAlg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
 
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
@@ -371,8 +392,13 @@ export const generateSelfSignedCertificate = async ({
   });
 
   const certificatePem = cert.toString("pem");
-  const privateKeyObj = crypto.nativeCrypto.KeyObject.from(keyPair.privateKey);
-  const privateKeyPem = privateKeyObj.export({ format: "pem", type: "pkcs8" }) as string;
+  let privateKeyPem: string;
+  if (isPqcCryptoKey(keyPair.privateKey)) {
+    privateKeyPem = await exportPqcKeyToPem(keyPair.privateKey);
+  } else {
+    const privateKeyObj = crypto.nativeCrypto.KeyObject.from(keyPair.privateKey);
+    privateKeyPem = privateKeyObj.export({ format: "pem", type: "pkcs8" }) as string;
+  }
 
   return {
     certificate: Buffer.from(certificatePem),
