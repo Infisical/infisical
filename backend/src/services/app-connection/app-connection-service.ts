@@ -220,8 +220,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
-  [AppConnection.PowerDNS]: ValidatePowerDNSConnectionCredentialsSchema
-  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema
+  [AppConnection.PowerDNS]: ValidatePowerDNSConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema
 };
