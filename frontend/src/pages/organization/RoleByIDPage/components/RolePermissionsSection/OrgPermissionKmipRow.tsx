@@ -12,9 +12,7 @@ import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
-import {
-  useOrgPermissionActions
-} from "./OrgPermissionRowComponents";
+import { useOrgPermissionActions } from "./OrgPermissionRowComponents";
 
 type Props = {
   isEditable: boolean;

@@ -36,112 +36,52 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "User Management",
     formName: "member",
-    description: "Manage organization member access and role assignments",
-    actionDescriptions: {
-      read: "View organization members and their roles",
-      create: "Invite new users to join the organization",
-      edit: "Modify member roles and access settings",
-      delete: "Remove members from the organization"
-    }
+    description: "Manage organization member access and role assignments"
   },
   {
     title: "Role Management",
     formName: "role",
-    description: "Define and configure custom organization-level permission roles",
-    actionDescriptions: {
-      read: "View organization roles and their permissions",
-      create: "Create new custom organization roles",
-      edit: "Update role permissions and settings",
-      delete: "Delete organization roles"
-    }
+    description: "Define and configure custom organization-level permission roles"
   },
   {
     title: "Incident Contacts",
     formName: "incident-contact",
-    description: "Manage contacts notified during security incidents",
-    actionDescriptions: {
-      read: "View contacts notified during security incidents",
-      create: "Add new contacts for incident notifications",
-      edit: "Update existing contact information",
-      delete: "Remove contacts from incident notifications"
-    }
+    description: "Manage contacts notified during security incidents"
   },
   {
     title: "Organization Profile",
     formName: "settings",
-    description: "Configure organization-wide settings and preferences",
-    actionDescriptions: {
-      read: "View organization settings and configuration",
-      create: "Configure new organization settings",
-      edit: "Update organization profile and settings",
-      delete: "Remove organization configuration entries"
-    }
+    description: "Configure organization-wide settings and preferences"
   },
   {
     title: "Secret Scanning",
     formName: "secret-scanning",
-    description: "Configure automated scanning for leaked secrets",
-    actionDescriptions: {
-      read: "View detected leaked secret risks",
-      create: "Connect new secret scanning integrations",
-      edit: "Update the status of detected risks",
-      delete: "Disconnect secret scanning integrations"
-    }
+    description: "Configure automated scanning for leaked secrets"
   },
   {
     title: "LDAP",
     formName: "ldap",
-    description: "Configure LDAP directory integration for authentication",
-    actionDescriptions: {
-      read: "View LDAP directory configuration",
-      create: "Configure LDAP integration",
-      edit: "Update LDAP settings",
-      delete: "Remove LDAP configuration"
-    }
+    description: "Configure LDAP directory integration for authentication"
   },
   {
     title: "SCIM",
     formName: "scim",
-    description: "Manage SCIM provisioning for automated user lifecycle management",
-    actionDescriptions: {
-      read: "View SCIM provisioning configuration",
-      create: "Set up SCIM provisioning",
-      edit: "Update SCIM settings",
-      delete: "Remove SCIM configuration"
-    }
+    description: "Manage SCIM provisioning for automated user lifecycle management"
   },
   {
     title: "GitHub Organization Sync",
     formName: OrgPermissionSubjects.GithubOrgSync,
-    description: "Sync GitHub organization teams with Infisical groups",
-    actionDescriptions: {
-      read: "View GitHub organization sync configuration",
-      create: "Set up GitHub organization team sync",
-      edit: "Update sync configuration",
-      delete: "Remove GitHub organization sync"
-    }
+    description: "Sync GitHub organization teams with Infisical groups"
   },
   {
     title: "External KMS",
     formName: OrgPermissionSubjects.Kms,
-    description: "Configure external key management systems for encryption",
-    actionDescriptions: {
-      read: "View external KMS configuration",
-      create: "Configure external key management systems",
-      edit: "Update KMS settings",
-      delete: "Remove external KMS configuration"
-    }
+    description: "Configure external key management systems for encryption"
   },
   {
     title: "Project Templates",
     formName: OrgPermissionSubjects.ProjectTemplates,
-    description: "Manage reusable templates applied when creating new projects",
-    actionDescriptions: {
-      read: "View and apply templates when creating projects",
-      create: "Create new project templates",
-      edit: "Update existing project templates",
-      delete: "Delete project templates"
-    }
+    description: "Manage reusable templates applied when creating new projects"
   }
 ] as const;
 
@@ -239,7 +179,6 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 title={permission.title}
                 formName={permission.formName}
                 description={permission.description}
-                actionDescriptions={permission.actionDescriptions}
                 control={control}
                 setValue={setValue}
                 key={`org-role-${roleId}-permission-${permission.formName}`}
