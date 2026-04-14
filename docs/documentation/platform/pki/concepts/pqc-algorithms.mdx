@@ -62,6 +62,4 @@ You can create a Certificate Authority with a PQC key algorithm through the Infi
 When using PQC algorithms, keep the following constraints in mind:
 
 - **Signature-only**: PQC algorithms are digital signature algorithms. Key usages like `keyEncipherment`, `keyAgreement`, and `dataEncipherment` are not valid for PQC certificates. Requesting these usages will return an error.
-- **No PKCS#12 export**: PQC certificates cannot be exported in PKCS#12 (.p12/.pfx) format. Use PEM format instead.
 - **Larger keys and signatures**: PQC keys and signatures are significantly larger than RSA/ECDSA equivalents. Plan for increased certificate sizes in bandwidth-constrained environments.
-- **OpenSSL 3.5+ required**: PQC operations require OpenSSL 3.5 or later. Infisical ships with a dedicated PQC-capable OpenSSL installation for these operations.
