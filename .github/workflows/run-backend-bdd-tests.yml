@@ -36,6 +36,7 @@ jobs:
         with:
           version: "2.14.2"
       - name: 🔧 Setup Node 22
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -55,7 +56,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/node_modules
-          key: backend-node-modules-${{ hashFiles('backend/package-lock.json') }}
+          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('backend/package-lock.json') }}
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci

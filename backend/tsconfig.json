@@ -23,7 +23,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "incremental": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
     "baseUrl": ".",
     "paths": {
       "@app/*": ["./src/*"],

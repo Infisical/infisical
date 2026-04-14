@@ -19,6 +19,7 @@ jobs:
       - name: ☁️ Checkout source
         uses: actions/checkout@v4
       - name: 🔧 Setup Node 22
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -27,19 +28,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: frontend/node_modules
-          key: frontend-node-modules-${{ hashFiles('frontend/package-lock.json') }}
-      - name: 📦 Cache tsbuildinfo
-        uses: actions/cache@v4
-        with:
-          path: frontend/node_modules/.tmp/tsconfig.app.tsbuildinfo
-          key: frontend-tsbuildinfo-${{ github.ref }}-${{ github.sha }}
-          restore-keys: |
-            frontend-tsbuildinfo-${{ github.ref }}-
-            frontend-tsbuildinfo-
+          key: frontend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: 📦 Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: frontend
+      - name: 📦 Cache tsbuildinfo
+        uses: actions/cache@v4
+        with:
+          path: frontend/.cache/tsconfig.app.tsbuildinfo
+          key: frontend-tsbuildinfo-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            frontend-tsbuildinfo-${{ github.ref }}-
+            frontend-tsbuildinfo-
       - name: 🏗️ Run Type check
         run: npm run type:check
         working-directory: frontend
@@ -53,6 +54,7 @@ jobs:
       - name: ☁️ Checkout source
         uses: actions/checkout@v4
       - name: 🔧 Setup Node 22
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -61,7 +63,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: frontend/node_modules
-          key: frontend-node-modules-${{ hashFiles('frontend/package-lock.json') }}
+          key: frontend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: 📦 Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
