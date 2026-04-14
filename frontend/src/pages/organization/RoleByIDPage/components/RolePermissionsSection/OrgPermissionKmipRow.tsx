@@ -8,7 +8,10 @@ import {
   UnstableAccordionItem,
   UnstableAccordionTrigger
 } from "@app/components/v3";
-import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
@@ -38,7 +41,7 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.proxy) {
+    if (rule?.[OrgPermissionKmipActions.Proxy]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -58,7 +61,7 @@ export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) =
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.kmip", { proxy: false }, { shouldDirty: true });
+      setValue("permissions.kmip", { [OrgPermissionKmipActions.Proxy]: false }, { shouldDirty: true });
     }
   };
 

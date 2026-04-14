@@ -44,8 +44,8 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
-    if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
+    if (isCustom) return Permission.Custom;
 
     return Permission.Custom;
   }, [rule, isCustom]);
