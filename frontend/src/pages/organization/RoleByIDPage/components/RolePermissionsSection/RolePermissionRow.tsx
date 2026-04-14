@@ -16,8 +16,6 @@ import { useOrgPermissionActions } from "./OrgPermissionRowComponents";
 
 type Props = {
   isEditable: boolean;
-  title: string;
-  description?: string;
   formName: keyof Omit<
     Exclude<TFormSchema["permissions"], undefined>,
     | "project"
@@ -47,7 +45,7 @@ enum Permission {
   Custom = "custom"
 }
 
-export const RolePermissionRow = ({ isEditable, title, description, formName, control, setValue }: Props) => {
+export const RolePermissionRow = ({ isEditable, formName, control, setValue }: Props) => {
   const [isCustom, setIsCustom] = useToggle();
 
   const permissionActions = ORG_PERMISSION_OBJECT[formName].actions;
@@ -117,8 +115,8 @@ export const RolePermissionRow = ({ isEditable, title, description, formName, co
       <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
         <div className="flex flex-1 items-center gap-2 text-left">
           <div className="flex grow flex-col">
-            <span className="select-none text-base">{title}</span>
-            {description && <span className="text-sm text-muted">{description}</span>}
+            <span className="select-none text-base">{ORG_PERMISSION_OBJECT[formName].title}</span>
+            <span className="text-sm text-muted">{ORG_PERMISSION_OBJECT[formName].description}</span>
           </div>
           <div role="none" onClick={(e) => e.stopPropagation()}>
             <Select

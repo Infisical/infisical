@@ -32,57 +32,17 @@ import { OrgPermissionSubOrgRow } from "./OrgPermissionSubOrgRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
-const SIMPLE_PERMISSION_OPTIONS = [
-  {
-    title: "User Management",
-    formName: "member",
-    description: "Manage organization member access and role assignments"
-  },
-  {
-    title: "Role Management",
-    formName: "role",
-    description: "Define and configure custom organization-level permission roles"
-  },
-  {
-    title: "Incident Contacts",
-    formName: "incident-contact",
-    description: "Manage contacts notified during security incidents"
-  },
-  {
-    title: "Organization Profile",
-    formName: "settings",
-    description: "Configure organization-wide settings and preferences"
-  },
-  {
-    title: "Secret Scanning",
-    formName: "secret-scanning",
-    description: "Configure automated scanning for leaked secrets"
-  },
-  {
-    title: "LDAP",
-    formName: "ldap",
-    description: "Configure LDAP directory integration for authentication"
-  },
-  {
-    title: "SCIM",
-    formName: "scim",
-    description: "Manage SCIM provisioning for automated user lifecycle management"
-  },
-  {
-    title: "GitHub Organization Sync",
-    formName: OrgPermissionSubjects.GithubOrgSync,
-    description: "Sync GitHub organization teams with Infisical groups"
-  },
-  {
-    title: "External KMS",
-    formName: OrgPermissionSubjects.Kms,
-    description: "Configure external key management systems for encryption"
-  },
-  {
-    title: "Project Templates",
-    formName: OrgPermissionSubjects.ProjectTemplates,
-    description: "Manage reusable templates applied when creating new projects"
-  }
+const SIMPLE_PERMISSION_SUBJECTS = [
+  OrgPermissionSubjects.Member,
+  OrgPermissionSubjects.Role,
+  OrgPermissionSubjects.IncidentAccount,
+  OrgPermissionSubjects.Settings,
+  OrgPermissionSubjects.SecretScanning,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.Kms,
+  OrgPermissionSubjects.ProjectTemplates
 ] as const;
 
 type Props = {
@@ -169,22 +129,17 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       </div>
       <div className="px-4 py-4">
         <UnstableAccordion type="multiple">
-          {SIMPLE_PERMISSION_OPTIONS.filter((el) =>
-            isRootOrganization
-              ? true
-              : !INVALID_SUBORG_PERMISSIONS.includes(el.formName as OrgPermissionSubjects)
-          ).map((permission) => {
-            return (
-              <RolePermissionRow
-                title={permission.title}
-                formName={permission.formName}
-                description={permission.description}
-                control={control}
-                setValue={setValue}
-                key={`org-role-${roleId}-permission-${permission.formName}`}
-                isEditable={isCustomRole}
-              );
-          })}
+          {SIMPLE_PERMISSION_SUBJECTS.filter((subject) =>
+            isRootOrganization ? true : !INVALID_SUBORG_PERMISSIONS.includes(subject)
+          ).map((subject) => (
+            <RolePermissionRow
+              formName={subject}
+              control={control}
+              setValue={setValue}
+              key={`org-role-${roleId}-permission-${subject}`}
+              isEditable={isCustomRole}
+            />
+          ))}
           {isRootOrganization && (
             <OrgPermissionSsoRow control={control} setValue={setValue} isEditable={isCustomRole} />
           )}
