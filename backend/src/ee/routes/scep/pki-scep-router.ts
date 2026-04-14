@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -140,6 +141,20 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      void server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED,
+          metadata: {
+            profileId,
+            profileSlug: result.profileSlug,
+            expiresAt: result.expiresAt,
+            clientIp: clientIp || "unknown"
+          }
+        }
       });
 
       void res.header("Content-Type", "text/plain");

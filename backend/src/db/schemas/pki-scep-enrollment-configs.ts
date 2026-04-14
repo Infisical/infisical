@@ -17,11 +17,11 @@ export const PkiScepEnrollmentConfigsSchema = z.object({
   hashedChallengePassword: z.string().nullable().optional(),
   includeCaCertInResponse: z.boolean().default(true),
   allowCertBasedRenewal: z.boolean().default(true),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   challengeType: z.string().default("static"),
   dynamicChallengeExpiryMinutes: z.number().default(60),
-  dynamicChallengeMaxPending: z.number().default(100),
-  createdAt: z.date(),
-  updatedAt: z.date()
+  dynamicChallengeMaxPending: z.number().default(100)
 });
 
 export type TPkiScepEnrollmentConfigs = z.infer<typeof PkiScepEnrollmentConfigsSchema>;

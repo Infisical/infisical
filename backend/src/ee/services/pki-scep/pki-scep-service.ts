@@ -907,13 +907,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const pendingCount = await scepDynamicChallengeDAL.countPending(scepConfig.id);
-    if (pendingCount >= scepConfig.dynamicChallengeMaxPending) {
-      throw new BadRequestError({
-        message: `Maximum number of pending challenges (${scepConfig.dynamicChallengeMaxPending}) reached. Wait for existing challenges to expire or be used.`
-      });
-    }
-
     const challengePlaintext = randomBytes(32).toString("hex");
 
     const appCfg = getConfig();
@@ -922,30 +915,33 @@ export const pkiScepServiceFactory = ({
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + scepConfig.dynamicChallengeExpiryMinutes);
 
-    await scepDynamicChallengeDAL.create({
-      scepConfigId: scepConfig.id,
-      hashedChallenge,
-      expiresAt,
-      clientIp: clientIp || null
+    await scepDynamicChallengeDAL.transaction(async (tx) => {
+      const pendingCount = await scepDynamicChallengeDAL.countPending(scepConfig.id, tx);
+      if (pendingCount >= scepConfig.dynamicChallengeMaxPending) {
+        throw new BadRequestError({
+          message: `Maximum number of pending challenges (${scepConfig.dynamicChallengeMaxPending}) reached. Wait for existing challenges to expire or be used.`
+        });
+      }
+
+      await scepDynamicChallengeDAL.create(
+        {
+          scepConfigId: scepConfig.id,
+          hashedChallenge,
+          expiresAt,
+          clientIp: clientIp || null
+        },
+        tx
+      );
     });
 
     void scepDynamicChallengeDAL.pruneExpired(scepConfig.id);
 
-    void auditLogService.createAuditLog({
+    return {
+      challenge: challengePlaintext,
       projectId: profile.projectId,
-      actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: profile.id } },
-      event: {
-        type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED,
-        metadata: {
-          profileId: profile.id,
-          profileSlug: profile.slug,
-          expiresAt: expiresAt.toISOString(),
-          clientIp: clientIp || "unknown"
-        }
-      }
-    });
-
-    return { challenge: challengePlaintext };
+      profileSlug: profile.slug,
+      expiresAt: expiresAt.toISOString()
+    };
   };
 
   return {

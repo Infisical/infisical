@@ -12,7 +12,7 @@ export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
 
   const findUnusedByConfigId = async (scepConfigId: string, tx?: Knex) => {
     try {
-      const results = await (tx || db.replicaNode())(TableName.PkiScepDynamicChallenge)
+      const results = await (tx || db)(TableName.PkiScepDynamicChallenge)
         .where({ scepConfigId })
         .whereNull("usedAt")
         .where("expiresAt", ">", new Date());
@@ -25,7 +25,7 @@ export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
 
   const countPending = async (scepConfigId: string, tx?: Knex) => {
     try {
-      const result = await (tx || db.replicaNode())(TableName.PkiScepDynamicChallenge)
+      const result = await (tx || db)(TableName.PkiScepDynamicChallenge)
         .where({ scepConfigId })
         .whereNull("usedAt")
         .where("expiresAt", ">", new Date())
