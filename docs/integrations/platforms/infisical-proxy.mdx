@@ -107,10 +107,6 @@ Then configure your application to use `http://localhost:8081` as the Infisical 
 
 <ParamField query="--enable-event-subscriptions" type="boolean" default={false}>
   Enables real-time cache refresh via [Server-Sent Events (SSE)](/documentation/platform/event-subscriptions). When enabled, the proxy subscribes to secret mutation events from Infisical and automatically re-fetches affected cache entries when changes occur. Requires `--client-id` and `--client-secret` to be provided.
-
-  <Note>
-    Event Subscriptions is a premium feature available under the Enterprise license. Please contact [sales@infisical.com](mailto:sales@infisical.com) for access.
-  </Note>
 </ParamField>
 
 <ParamField query="--client-id" type="string" optional>
@@ -121,6 +117,9 @@ Then configure your application to use `http://localhost:8081` as the Infisical 
   The Universal Auth client secret for the machine identity. Required when `--enable-event-subscriptions` is `true`.
 </ParamField>
 
+<ParamField query="--polling-fallback-interval" type="duration" default="10m">
+ How often to poll for secret changes when SSE is unavailable. Defaults to `10m`. Supports duration formats like `60s|5m|1h|1d|1w|1y`.
+</ParamField>
 # Caching Behavior
 
 ### What Gets Cached
@@ -167,9 +166,6 @@ If Infisical is unreachable during the refresh cycle (network errors or `5xx` re
 
 #### Event-Based Cache Refresh (SSE)
 
-<Note>
-  Event Subscriptions is a premium feature available under the Enterprise license. Please contact [sales@infisical.com](mailto:sales@infisical.com) for access.
-</Note>
 
 When `--enable-event-subscriptions` is enabled, the proxy opens a [Server-Sent Events (SSE)](/documentation/platform/event-subscriptions) connection to Infisical's Events API. This allows the proxy to receive real-time notifications when secrets change and immediately re-fetch the affected secrets to update its cache, rather than waiting for the next polling interval.
 
