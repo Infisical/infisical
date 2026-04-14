@@ -1,21 +1,40 @@
 import { useEffect, useMemo } from "react";
 import { Control, UseFormSetValue, useWatch } from "react-hook-form";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Select, SelectItem, Td, Tr } from "@app/components/v2";
-import { PermissionActionSelect } from "@app/components/v3";
+import { Select, SelectItem } from "@app/components/v2";
+import {
+  PermissionActionSelect,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger
+} from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "../OrgRoleModifySection.utils";
 
 const PERMISSIONS = [
-  { action: OrgPermissionActions.Read, label: "View", description: undefined as string | undefined },
-  { action: OrgPermissionActions.Create, label: "Create", description: undefined as string | undefined },
-  { action: OrgPermissionActions.Edit, label: "Modify", description: undefined as string | undefined },
-  { action: OrgPermissionActions.Delete, label: "Remove", description: undefined as string | undefined }
+  {
+    action: OrgPermissionActions.Read,
+    label: "View",
+    description: undefined as string | undefined
+  },
+  {
+    action: OrgPermissionActions.Create,
+    label: "Create",
+    description: undefined as string | undefined
+  },
+  {
+    action: OrgPermissionActions.Edit,
+    label: "Modify",
+    description: undefined as string | undefined
+  },
+  {
+    action: OrgPermissionActions.Delete,
+    label: "Remove",
+    description: undefined as string | undefined
+  }
 ] as const;
 
 const SECRET_SCANNING_PERMISSIONS = [
@@ -101,7 +120,6 @@ export const RolePermissionRow = ({
   control,
   setValue
 }: Props) => {
-  const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
   const rule = useWatch({
@@ -146,16 +164,8 @@ export const RolePermissionRow = ({
     else setIsCustom.off();
   }, [selectedPermissionCategory]);
 
-  useEffect(() => {
-    const isRowCustom = selectedPermissionCategory === Permission.Custom;
-    if (isRowCustom) {
-      setIsRowExpanded.on();
-    }
-  }, []);
-
   const handlePermissionChange = (val: Permission) => {
     if (val === Permission.Custom) {
-      setIsRowExpanded.on();
       setIsCustom.on();
       return;
     }
@@ -225,54 +235,48 @@ export const RolePermissionRow = ({
   };
 
   return (
-    <>
-      <Tr
-        className="min-h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-        onClick={() => setIsRowExpanded.toggle()}
-      >
-        <Td className="w-4">
-          <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
-        </Td>
-        <Td className="w-full select-none">
-          <p>{title}</p>
-          {description && <p className="text-xs text-mineshaft-400">{description}</p>}
-        </Td>
-        <Td>
-          <Select
-            value={selectedPermissionCategory}
-            className="h-8 w-40 bg-mineshaft-700"
-            dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
-            onValueChange={handlePermissionChange}
-            isDisabled={!isEditable}
-            position="popper"
-          >
-            <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
-            <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
-            <SelectItem value={Permission.Custom}>
-              {selectedPermissionCategory === Permission.Custom
-                ? `Custom (${selectedCount})`
-                : "Custom"}
-            </SelectItem>
-          </Select>
-        </Td>
-      </Tr>
-      {isRowExpanded && (
-        <Tr>
-          <Td colSpan={3} className="bg-mineshaft-800 px-6 py-4">
-            <PermissionActionSelect
-              value={selectedActions}
-              onChange={handleActionsChange}
-              options={actionOptions}
-              placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+    <UnstableAccordionItem value={formName}>
+      <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
+        <div className="flex flex-1 items-center gap-2 text-left">
+          <div className="flex grow flex-col">
+            <span className="text-base select-none">{title}</span>
+            {description && <span className="text-sm text-muted">{description}</span>}
+          </div>
+          <div role="none" onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={selectedPermissionCategory}
+              className="h-8 w-40 bg-mineshaft-700"
+              dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
+              onValueChange={handlePermissionChange}
               isDisabled={!isEditable}
-              isClearable={isEditable}
-              className="w-full"
-              menuPosition="fixed"
-            />
-          </Td>
-        </Tr>
-      )}
-    </>
+              position="popper"
+            >
+              <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+              <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
+              <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
+              <SelectItem value={Permission.Custom}>
+                {selectedPermissionCategory === Permission.Custom
+                  ? `Custom (${selectedCount})`
+                  : "Custom"}
+              </SelectItem>
+            </Select>
+          </div>
+        </div>
+      </UnstableAccordionTrigger>
+      <UnstableAccordionContent className="!p-0">
+        <div className="bg-mineshaft-800 px-6 py-4">
+          <PermissionActionSelect
+            value={selectedActions}
+            onChange={handleActionsChange}
+            options={actionOptions}
+            placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+            isDisabled={!isEditable}
+            isClearable={isEditable}
+            className="w-full"
+            menuPosition="fixed"
+          />
+        </div>
+      </UnstableAccordionContent>
+    </UnstableAccordionItem>
   );
 };

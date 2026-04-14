@@ -237,100 +237,248 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     title: "User Management",
     description: "Manage organization member access and role assignments",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View all members", description: "View organization members and their roles" },
-      { value: OrgPermissionActions.Create, label: "Invite members", description: "Invite new users to join the organization" },
-      { value: OrgPermissionActions.Edit, label: "Edit members", description: "Modify member roles and access settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove members", description: "Remove members from the organization" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View all members",
+        description: "View organization members and their roles"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Invite members",
+        description: "Invite new users to join the organization"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Edit members",
+        description: "Modify member roles and access settings"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove members",
+        description: "Remove members from the organization"
+      }
     ]
   },
   [OrgPermissionSubjects.Role]: {
     title: "Role Management",
     description: "Define and configure custom organization-level permission roles",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View organization roles and their permissions" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Create new custom organization roles" },
-      { value: OrgPermissionActions.Edit, label: "Modify", description: "Update role permissions and settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Delete organization roles" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View organization roles and their permissions"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Create new custom organization roles"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Modify",
+        description: "Update role permissions and settings"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Delete organization roles"
+      }
     ]
   },
   [OrgPermissionSubjects.IncidentAccount]: {
     title: "Incident Contacts",
     description: "Manage contacts notified during security incidents",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View contacts", description: "View contacts notified during security incidents" },
-      { value: OrgPermissionActions.Create, label: "Add new contacts", description: "Add new contacts for incident notifications" },
-      { value: OrgPermissionActions.Edit, label: "Edit contacts", description: "Update existing contact information" },
-      { value: OrgPermissionActions.Delete, label: "Remove contacts", description: "Remove contacts from incident notifications" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View contacts",
+        description: "View contacts notified during security incidents"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Add new contacts",
+        description: "Add new contacts for incident notifications"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Edit contacts",
+        description: "Update existing contact information"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove contacts",
+        description: "Remove contacts from incident notifications"
+      }
     ]
   },
   [OrgPermissionSubjects.Settings]: {
     title: "Organization Profile",
     description: "Configure organization-wide settings and preferences",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View organization settings and configuration" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Configure new organization settings" },
-      { value: OrgPermissionActions.Edit, label: "Modify", description: "Update organization profile and settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Remove organization configuration entries" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View organization settings and configuration"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Configure new organization settings"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Modify",
+        description: "Update organization profile and settings"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Remove organization configuration entries"
+      }
     ]
   },
   [OrgPermissionSubjects.SecretScanning]: {
     title: "Secret Scanning",
     description: "Configure automated scanning for leaked secrets",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View risks", description: "View detected leaked secret risks" },
-      { value: OrgPermissionActions.Create, label: "Add integrations", description: "Connect new secret scanning integrations" },
-      { value: OrgPermissionActions.Edit, label: "Edit risk status", description: "Update the status of detected risks" },
-      { value: OrgPermissionActions.Delete, label: "Remove integrations", description: "Disconnect secret scanning integrations" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View risks",
+        description: "View detected leaked secret risks"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Add integrations",
+        description: "Connect new secret scanning integrations"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Edit risk status",
+        description: "Update the status of detected risks"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove integrations",
+        description: "Disconnect secret scanning integrations"
+      }
     ]
   },
   [OrgPermissionSubjects.Ldap]: {
     title: "LDAP",
     description: "Configure LDAP directory integration for authentication",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View LDAP directory configuration" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Configure LDAP integration" },
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View LDAP directory configuration"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Configure LDAP integration"
+      },
       { value: OrgPermissionActions.Edit, label: "Modify", description: "Update LDAP settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Remove LDAP configuration" }
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Remove LDAP configuration"
+      }
     ]
   },
   [OrgPermissionSubjects.Scim]: {
     title: "SCIM",
     description: "Manage SCIM provisioning for automated user lifecycle management",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View SCIM provisioning configuration" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Set up SCIM provisioning" },
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View SCIM provisioning configuration"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Set up SCIM provisioning"
+      },
       { value: OrgPermissionActions.Edit, label: "Modify", description: "Update SCIM settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Remove SCIM configuration" }
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Remove SCIM configuration"
+      }
     ]
   },
   [OrgPermissionSubjects.GithubOrgSync]: {
     title: "GitHub Organization Sync",
     description: "Sync GitHub organization teams with Infisical groups",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View GitHub organization sync configuration" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Set up GitHub organization team sync" },
-      { value: OrgPermissionActions.Edit, label: "Modify", description: "Update sync configuration" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Remove GitHub organization sync" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View GitHub organization sync configuration"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Set up GitHub organization team sync"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Modify",
+        description: "Update sync configuration"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Remove GitHub organization sync"
+      }
     ]
   },
   [OrgPermissionSubjects.Kms]: {
     title: "External KMS",
     description: "Configure external key management systems for encryption",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View", description: "View external KMS configuration" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Configure external key management systems" },
+      {
+        value: OrgPermissionActions.Read,
+        label: "View",
+        description: "View external KMS configuration"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Configure external key management systems"
+      },
       { value: OrgPermissionActions.Edit, label: "Modify", description: "Update KMS settings" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Remove external KMS configuration" }
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Remove external KMS configuration"
+      }
     ]
   },
   [OrgPermissionSubjects.ProjectTemplates]: {
     title: "Project Templates",
     description: "Manage reusable templates applied when creating new projects",
     actions: [
-      { value: OrgPermissionActions.Read, label: "View & Apply", description: "View and apply templates when creating projects" },
-      { value: OrgPermissionActions.Create, label: "Create", description: "Create new project templates" },
-      { value: OrgPermissionActions.Edit, label: "Modify", description: "Update existing project templates" },
-      { value: OrgPermissionActions.Delete, label: "Remove", description: "Delete project templates" }
+      {
+        value: OrgPermissionActions.Read,
+        label: "View & Apply",
+        description: "View and apply templates when creating projects"
+      },
+      {
+        value: OrgPermissionActions.Create,
+        label: "Create",
+        description: "Create new project templates"
+      },
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Modify",
+        description: "Update existing project templates"
+      },
+      {
+        value: OrgPermissionActions.Delete,
+        label: "Remove",
+        description: "Delete project templates"
+      }
     ]
   },
   [OrgPermissionSubjects.Sso]: {
@@ -338,9 +486,21 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     description: "Configure and enforce single sign-on authentication for the organization",
     actions: [
       { value: OrgPermissionSsoActions.Read, label: "View", description: "View SSO configuration" },
-      { value: OrgPermissionSsoActions.Create, label: "Create", description: "Set up new SSO providers" },
-      { value: OrgPermissionSsoActions.Edit, label: "Modify", description: "Update SSO configuration" },
-      { value: OrgPermissionSsoActions.Delete, label: "Remove", description: "Remove SSO providers" },
+      {
+        value: OrgPermissionSsoActions.Create,
+        label: "Create",
+        description: "Set up new SSO providers"
+      },
+      {
+        value: OrgPermissionSsoActions.Edit,
+        label: "Modify",
+        description: "Update SSO configuration"
+      },
+      {
+        value: OrgPermissionSsoActions.Delete,
+        label: "Remove",
+        description: "Remove SSO providers"
+      },
       {
         value: OrgPermissionSsoActions.BypassSsoEnforcement,
         label: "Bypass SSO Enforcement",
@@ -394,24 +554,48 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Create Token",
         description: "Generate access tokens for machine identities"
       },
-      { value: OrgPermissionIdentityActions.GetToken, label: "Get Token", description: "View existing access tokens" },
-      { value: OrgPermissionIdentityActions.DeleteToken, label: "Delete Token", description: "Revoke access tokens" }
+      {
+        value: OrgPermissionIdentityActions.GetToken,
+        label: "Get Token",
+        description: "View existing access tokens"
+      },
+      {
+        value: OrgPermissionIdentityActions.DeleteToken,
+        label: "Delete Token",
+        description: "Revoke access tokens"
+      }
     ]
   },
   [OrgPermissionSubjects.Groups]: {
     title: "Group Management",
     description: "Organize users into groups for bulk permission management",
     actions: [
-      { value: OrgPermissionGroupActions.Read, label: "Read Groups", description: "View groups and their members" },
-      { value: OrgPermissionGroupActions.Create, label: "Create Groups", description: "Create new user groups" },
+      {
+        value: OrgPermissionGroupActions.Read,
+        label: "Read Groups",
+        description: "View groups and their members"
+      },
+      {
+        value: OrgPermissionGroupActions.Create,
+        label: "Create Groups",
+        description: "Create new user groups"
+      },
       {
         value: OrgPermissionGroupActions.Edit,
         label: "Edit Groups",
         description: "Update group membership and settings"
       },
-      { value: OrgPermissionGroupActions.Delete, label: "Delete Groups", description: "Delete groups" },
+      {
+        value: OrgPermissionGroupActions.Delete,
+        label: "Delete Groups",
+        description: "Delete groups"
+      },
       { value: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges" },
-      { value: OrgPermissionGroupActions.AddMembers, label: "Add Members", description: "Add users to a group" },
+      {
+        value: OrgPermissionGroupActions.AddMembers,
+        label: "Add Members",
+        description: "Add users to a group"
+      },
       {
         value: OrgPermissionGroupActions.RemoveMembers,
         label: "Remove Members",
@@ -423,7 +607,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     title: "App Connections",
     description: "Manage connections to external platforms and services",
     actions: [
-      { value: OrgPermissionAppConnectionActions.Read, label: "Read", description: "View configured app connections" },
+      {
+        value: OrgPermissionAppConnectionActions.Read,
+        label: "Read",
+        description: "View configured app connections"
+      },
       {
         value: OrgPermissionAppConnectionActions.Create,
         label: "Create",
@@ -434,7 +622,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Modify",
         description: "Modify app connection settings"
       },
-      { value: OrgPermissionAppConnectionActions.Delete, label: "Remove", description: "Remove app connections" },
+      {
+        value: OrgPermissionAppConnectionActions.Delete,
+        label: "Remove",
+        description: "Remove app connections"
+      },
       {
         value: OrgPermissionAppConnectionActions.Connect,
         label: "Connect",
@@ -466,7 +658,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Edit Gateways",
         description: "Update gateway configuration"
       },
-      { value: OrgGatewayPermissionActions.DeleteGateways, label: "Delete Gateways", description: "Remove gateways" },
+      {
+        value: OrgGatewayPermissionActions.DeleteGateways,
+        label: "Delete Gateways",
+        description: "Remove gateways"
+      },
       {
         value: OrgGatewayPermissionActions.AttachGateways,
         label: "Attach Gateways",
@@ -493,7 +689,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Edit Relays",
         description: "Update relay server configuration"
       },
-      { value: OrgRelayPermissionActions.DeleteRelays, label: "Delete Relays", description: "Remove relay servers" }
+      {
+        value: OrgRelayPermissionActions.DeleteRelays,
+        label: "Delete Relays",
+        description: "Remove relay servers"
+      }
     ]
   },
   [OrgPermissionSubjects.Billing]: {
@@ -601,8 +801,16 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Create",
         description: "Create new sub-organizations"
       },
-      { value: OrgPermissionSubOrgActions.Edit, label: "Edit", description: "Update sub-organization settings" },
-      { value: OrgPermissionSubOrgActions.Delete, label: "Delete", description: "Remove sub-organizations" },
+      {
+        value: OrgPermissionSubOrgActions.Edit,
+        label: "Edit",
+        description: "Update sub-organization settings"
+      },
+      {
+        value: OrgPermissionSubOrgActions.Delete,
+        label: "Delete",
+        description: "Remove sub-organizations"
+      },
       {
         value: OrgPermissionSubOrgActions.DirectAccess,
         label: "Direct Access",

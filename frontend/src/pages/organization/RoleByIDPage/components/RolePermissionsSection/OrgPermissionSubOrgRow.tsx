@@ -1,12 +1,18 @@
 import { useEffect, useMemo } from "react";
 import { Control, UseFormSetValue } from "react-hook-form";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Select, SelectItem, Td, Tr } from "@app/components/v2";
-import { FilterableSelect } from "@app/components/v3";
+import { Select, SelectItem } from "@app/components/v2";
+import {
+  FilterableSelect,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger
+} from "@app/components/v3";
+import {
+  OrgPermissionSubjects,
+  OrgPermissionSubOrgActions
+} from "@app/context/OrgPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
@@ -29,7 +35,6 @@ enum Permission {
 }
 
 export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props) => {
-  const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
@@ -43,7 +48,8 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions.length;
+    const totalActions =
+      ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
@@ -59,7 +65,6 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
 
   const handlePermissionChange = (val: Permission) => {
     if (val === Permission.Custom) {
-      setIsRowExpanded.on();
       setIsCustom.on();
       return;
     }
@@ -109,61 +114,57 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
   };
 
   return (
-    <>
-      <Tr
-        className="min-h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-        onClick={() => setIsRowExpanded.toggle()}
-      >
-        <Td className="w-4">
-          <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
-        </Td>
-        <Td className="w-full select-none">
-          <p>{ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].title}</p>
-          <p className="text-xs text-mineshaft-400">
-            {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].description}
-          </p>
-        </Td>
-        <Td>
-          <Select
-            value={selectedPermissionCategory}
-            className="h-8 w-40 bg-mineshaft-700"
-            dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
-            onValueChange={handlePermissionChange}
-            isDisabled={!isEditable}
-            position="popper"
-          >
-            <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
-            <SelectItem value={Permission.Custom}>
-              {selectedPermissionCategory === Permission.Custom
-                ? `Custom (${selectedCount})`
-                : "Custom"}
-            </SelectItem>
-          </Select>
-        </Td>
-      </Tr>
-      {isRowExpanded && (
-        <Tr>
-          <Td colSpan={3} className="bg-mineshaft-800 px-6 py-4">
-            <FilterableSelect
-              isMulti
-              value={selectedActions}
-              onChange={handleActionsChange}
-              options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions}
-              placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+    <UnstableAccordionItem value={OrgPermissionSubjects.SubOrganization}>
+      <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
+        <div className="flex flex-1 items-center gap-2 text-left">
+          <div className="flex grow flex-col">
+            <span className="text-base select-none">
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].title}
+            </span>
+            <span className="text-sm text-muted">
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].description}
+            </span>
+          </div>
+          <div role="none" onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={selectedPermissionCategory}
+              className="h-8 w-40 bg-mineshaft-700"
+              dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
+              onValueChange={handlePermissionChange}
               isDisabled={!isEditable}
-              isClearable={isEditable}
-              className="w-full"
-              menuPosition="fixed"
-              components={{
-                Option: OptionWithDescription,
-                MultiValueRemove,
-                MultiValue: MultiValueWithTooltip
-              }}
-            />
-          </Td>
-        </Tr>
-      )}
-    </>
+              position="popper"
+            >
+              <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+              <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
+              <SelectItem value={Permission.Custom}>
+                {selectedPermissionCategory === Permission.Custom
+                  ? `Custom (${selectedCount})`
+                  : "Custom"}
+              </SelectItem>
+            </Select>
+          </div>
+        </div>
+      </UnstableAccordionTrigger>
+      <UnstableAccordionContent className="!p-0">
+        <div className="bg-mineshaft-800 px-6 py-4">
+          <FilterableSelect
+            isMulti
+            value={selectedActions}
+            onChange={handleActionsChange}
+            options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SubOrganization].actions}
+            placeholder={isEditable ? "Select actions..." : "No actions allowed"}
+            isDisabled={!isEditable}
+            isClearable={isEditable}
+            className="w-full"
+            menuPosition="fixed"
+            components={{
+              Option: OptionWithDescription,
+              MultiValueRemove,
+              MultiValue: MultiValueWithTooltip
+            }}
+          />
+        </div>
+      </UnstableAccordionContent>
+    </UnstableAccordionItem>
   );
 };

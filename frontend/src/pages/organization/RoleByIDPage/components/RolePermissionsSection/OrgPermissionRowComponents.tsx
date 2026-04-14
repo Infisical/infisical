@@ -5,9 +5,7 @@ import { CheckIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
-
-import { TOrgPermissionAction } from "../OrgRoleModifySection.utils";
+import { TFormSchema, TOrgPermissionAction } from "../OrgRoleModifySection.utils";
 
 export const useOrgPermissionActions = ({
   control,

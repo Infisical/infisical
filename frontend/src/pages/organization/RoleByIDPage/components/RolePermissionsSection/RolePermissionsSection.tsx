@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Table, TableContainer, TBody } from "@app/components/v2";
+import { Button } from "@app/components/v2";
+import { UnstableAccordion } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { OrgPermissionAppConnectionRow } from "@app/pages/organization/RoleByIDPage/components/RolePermissionsSection/OrgPermissionAppConnectionRow";
@@ -227,111 +228,81 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
         )}
       </div>
       <div className="px-4 py-4">
-        <TableContainer>
-          <Table>
-            <TBody>
-              {SIMPLE_PERMISSION_OPTIONS.filter((el) =>
-                isRootOrganization
-                  ? true
-                  : !INVALID_SUBORG_PERMISSIONS.includes(el.formName as OrgPermissionSubjects)
-              ).map((permission) => {
-                return (
-                  <RolePermissionRow
-                    title={permission.title}
-                    formName={permission.formName}
-                    description={permission.description}
-                    actionDescriptions={permission.actionDescriptions}
-                    control={control}
-                    setValue={setValue}
-                    key={`org-role-${roleId}-permission-${permission.formName}`}
-                    isEditable={isCustomRole}
-                  />
-                );
-              })}
-              {isRootOrganization && (
-                <OrgPermissionSsoRow
-                  control={control}
-                  setValue={setValue}
-                  isEditable={isCustomRole}
-                />
-              )}
-              <OrgPermissionAuditLogsRow
+        <UnstableAccordion type="multiple">
+          {SIMPLE_PERMISSION_OPTIONS.filter((el) =>
+            isRootOrganization
+              ? true
+              : !INVALID_SUBORG_PERMISSIONS.includes(el.formName as OrgPermissionSubjects)
+          ).map((permission) => {
+            return (
+              <RolePermissionRow
+                title={permission.title}
+                formName={permission.formName}
+                description={permission.description}
+                actionDescriptions={permission.actionDescriptions}
                 control={control}
                 setValue={setValue}
+                key={`org-role-${roleId}-permission-${permission.formName}`}
                 isEditable={isCustomRole}
-              />
-              <OrgPermissionIdentityRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionGroupRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionAppConnectionRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgGatewayPermissionRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgRelayPermissionRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              {isRootOrganization && (
-                <OrgPermissionBillingRow
-                  control={control}
-                  setValue={setValue}
-                  isEditable={isCustomRole}
-                />
-              )}
-              <OrgPermissionEmailDomainRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionSecretShareRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgRoleWorkspaceRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionAdminConsoleRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionMachineIdentityAuthTemplateRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              <OrgPermissionKmipRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
-              {isRootOrganization && (
-                <OrgPermissionSubOrgRow
-                  control={control}
-                  setValue={setValue}
-                  isEditable={isCustomRole}
-                />
-              )}
-            </TBody>
-          </Table>
-        </TableContainer>
+              );
+          })}
+          {isRootOrganization && (
+            <OrgPermissionSsoRow control={control} setValue={setValue} isEditable={isCustomRole} />
+          )}
+          <OrgPermissionAuditLogsRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgPermissionIdentityRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgPermissionGroupRow control={control} setValue={setValue} isEditable={isCustomRole} />
+          <OrgPermissionAppConnectionRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgGatewayPermissionRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgRelayPermissionRow control={control} setValue={setValue} isEditable={isCustomRole} />
+          {isRootOrganization && (
+            <OrgPermissionBillingRow
+              control={control}
+              setValue={setValue}
+              isEditable={isCustomRole}
+            />
+          )}
+          <OrgPermissionSecretShareRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgRoleWorkspaceRow control={control} setValue={setValue} isEditable={isCustomRole} />
+          <OrgPermissionAdminConsoleRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgPermissionMachineIdentityAuthTemplateRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
+          <OrgPermissionKmipRow control={control} setValue={setValue} isEditable={isCustomRole} />
+          {isRootOrganization && (
+            <OrgPermissionSubOrgRow
+              control={control}
+              setValue={setValue}
+              isEditable={isCustomRole}
+            />
+          )}
+        </UnstableAccordion>
       </div>
     </form>
   );
