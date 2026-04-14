@@ -87,14 +87,12 @@ RUN npm i -g tsconfig-paths
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN npm run build
 
-# Production stage
-FROM base AS backend-runner
-
-ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+# Production dependencies (runs in parallel with backend-build)
+FROM base AS backend-prod-deps
 
 WORKDIR /app
 
-# Install all required dependencies for runtime
+# Install build tools needed to compile native modules during npm ci
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -106,39 +104,48 @@ RUN apt-get update && apt-get install -y \
     freetds-dev \
     && rm -rf /var/lib/apt/lists/*
 
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+
+# Production stage
+FROM base AS backend-runner
+
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
+WORKDIR /app
+
+# Only runtime libraries needed — no compilation happens here
+RUN apt-get update && apt-get install -y \
+    unixodbc \
+    freetds-bin \
+    && rm -rf /var/lib/apt/lists/*
+
 # Configure ODBC
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules ./bdd ./e2e-test
-RUN npm ci --omit=dev
+COPY --from=backend-prod-deps /app/node_modules ./node_modules
 
 RUN mkdir frontend-build
 
 # Production stage
 FROM base AS production
 
+# Only runtime dependencies — no compilation happens in this stage
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    autoconf \
-    automake \
-    libtool \
-    libssl-dev \
     ca-certificates \
     bash \
     curl \
     git \
-    python3 \
-    make \
-    g++ \
     unixodbc \
     freetds-bin \
-    unixodbc-dev \
-    libc-dev \
-    freetds-dev \
     wget \
     perl \
     openssh-client \
+    libaio1t64 \
+    unzip \
+    smbclient \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Oracle Instant Client for OracleDB mTLS wallet support
@@ -147,7 +154,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
         ORACLE_ZIP="instantclient-basic-linux.x64-23.26.0.0.0.zip" && \
         ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
         EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
-        apt-get update && apt-get install -y libaio1t64 unzip && \
         ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 && \
         wget -q "$ORACLE_URL" && \
         echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
@@ -157,7 +163,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
         ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
         ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
         EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
-        apt-get update && apt-get install -y libaio1t64 unzip && \
         ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1 && \
         wget -q "$ORACLE_URL" && \
         echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
@@ -165,11 +170,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
         rm "$ORACLE_ZIP"; \
     fi && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
-    ldconfig && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install smbclient for Windows SMB operations
-RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
+    ldconfig
 
 # Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
 # Installed to /opt/openssl-pqc so it does not conflict with the system OpenSSL.
@@ -199,12 +200,10 @@ RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs non-root-user
 
 # Give non-root-user permission to update SSL certs
-RUN chown -R non-root-user /etc/ssl/certs
-RUN chown non-root-user /etc/ssl/certs/ca-certificates.crt
-RUN chmod -R u+rwx /etc/ssl/certs
-RUN chmod u+rw /etc/ssl/certs/ca-certificates.crt
-RUN chown non-root-user /usr/sbin/update-ca-certificates
-RUN chmod u+rx /usr/sbin/update-ca-certificates
+RUN chown -R non-root-user /etc/ssl/certs \
+    && chmod -R u+rwx /etc/ssl/certs \
+    && chown non-root-user /usr/sbin/update-ca-certificates \
+    && chmod u+rx /usr/sbin/update-ca-certificates
 
 ## set pre baked keys
 ARG POSTHOG_API_KEY
