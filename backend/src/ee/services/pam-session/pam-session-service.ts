@@ -173,8 +173,12 @@ export const pamSessionServiceFactory = ({
       );
     }
 
-    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
-      throw new ForbiddenRequestError({ message: "Identity does not have access to update logs for this session" });
+    const authorized =
+      actor.type === ActorType.GATEWAY
+        ? !session.gatewayId || session.gatewayId === actor.id
+        : !session.gatewayIdentityId || session.gatewayIdentityId === actor.id;
+    if (!authorized) {
+      throw new ForbiddenRequestError({ message: "Gateway does not have access to update logs for this session" });
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -219,8 +223,7 @@ export const pamSessionServiceFactory = ({
         throw new ForbiddenRequestError({ message: "Identity does not have access to end this session" });
       }
     } else if (actor.type === ActorType.GATEWAY) {
-      // Enrollment-flow gateways authenticate directly; JWT proves org membership.
-      if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
+      if (session.gatewayId && session.gatewayId !== actor.id) {
         throw new ForbiddenRequestError({ message: "Gateway does not have access to end this session" });
       }
     } else if (actor.type === ActorType.USER) {
@@ -409,8 +412,12 @@ export const pamSessionServiceFactory = ({
       );
     }
 
-    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
-      throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });
+    const authorized =
+      actor.type === ActorType.GATEWAY
+        ? !session.gatewayId || session.gatewayId === actor.id
+        : !session.gatewayIdentityId || session.gatewayIdentityId === actor.id;
+    if (!authorized) {
+      throw new ForbiddenRequestError({ message: "Gateway does not have access to upload events for this session" });
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
