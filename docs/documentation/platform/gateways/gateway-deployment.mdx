@@ -341,12 +341,16 @@ Click the context menu next to the gateway and select **Re-enroll**. This genera
 </Accordion>
 
 <Accordion title="Where are gateway credentials stored?">
-When using the enrollment token flow, the gateway's access token and domain are saved locally:
+When using the enrollment token flow, each gateway's access token and domain are saved to a config file scoped by gateway name:
 
-- **Running as root/sudo:** `/etc/infisical/gateway.conf`
-- **Running as a regular user:** `~/.infisical/gateway.conf`
+- **Running as root/sudo:** `/etc/infisical/gateways/<name>.conf`
+- **Running as a regular user:** `~/.infisical/gateways/<name>.conf`
 
-For systemd-based installations, the configuration is always at `/etc/infisical/gateway.conf`. The file is created with restricted permissions (0600) so only the owner can read it.
+This allows multiple gateways to run on the same machine without conflicting. For systemd-based installations, the configuration is at `/etc/infisical/gateway.conf`. All config files are created with restricted permissions (0600) so only the owner can read them.
+</Accordion>
+
+<Accordion title="Can I run multiple gateways on the same machine?">
+Yes. Each gateway stores its credentials in a separate config file scoped by name (e.g., `~/.infisical/gateways/my-gateway.conf`). You can enroll and start multiple gateways in separate terminal sessions using different names.
 </Accordion>
 
 <Accordion title="What happens if there is a network interruption?">
