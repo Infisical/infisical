@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Control, UseFormSetValue, useWatch } from "react-hook-form";
+import { Control, UseFormSetValue } from "react-hook-form";
 import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -11,7 +11,8 @@ import { TFormSchema } from "../OrgRoleModifySection.utils";
 import {
   MultiValueRemove,
   MultiValueWithTooltip,
-  OptionWithDescription
+  OptionWithDescription,
+  useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
 
 type Props = {
@@ -33,25 +34,16 @@ const PERMISSION_ACTIONS = [
   }
 ] as const;
 
-const actionOptions = PERMISSION_ACTIONS.map(({ action, label, description }) => ({
-  value: action as string,
-  label,
-  description
-}));
-
 export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
   const [isCustom, setIsCustom] = useToggle();
 
-  const rule = useWatch({
+  const { rule, actionOptions, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
-    name: "permissions.organization-admin-console"
+    setValue,
+    formPath: "permissions.organization-admin-console",
+    permissionActions: PERMISSION_ACTIONS
   });
-
-  const selectedActions = useMemo(
-    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value as keyof typeof rule])),
-    [rule]
-  );
 
   const selectedCount = selectedActions.length;
 
@@ -90,17 +82,6 @@ export const OrgPermissionAdminConsoleRow = ({ isEditable, control, setValue }: 
         { shouldDirty: true }
       );
     }
-  };
-
-  const handleActionsChange = (newValue: unknown) => {
-    const selected = Array.isArray(newValue) ? newValue : [];
-    const updated = Object.fromEntries(
-      PERMISSION_ACTIONS.map(({ action }) => [
-        action,
-        selected.some((s: { value: string }) => s.value === action)
-      ])
-    );
-    setValue("permissions.organization-admin-console", updated as any, { shouldDirty: true });
   };
 
   return (

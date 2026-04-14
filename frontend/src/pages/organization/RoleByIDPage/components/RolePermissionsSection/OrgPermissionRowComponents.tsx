@@ -1,7 +1,61 @@
+import { useMemo } from "react";
+import { Control, UseFormSetValue, useWatch } from "react-hook-form";
 import { components, MultiValueProps, MultiValueRemoveProps, OptionProps } from "react-select";
 import { CheckIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+
+import { TFormSchema } from "../OrgRoleModifySection.utils";
+
+type PermissionActionDef = {
+  action: string;
+  label: string;
+  description?: string;
+};
+
+export const useOrgPermissionActions = ({
+  control,
+  setValue,
+  formPath,
+  permissionActions
+}: {
+  control: Control<TFormSchema>;
+  setValue: UseFormSetValue<TFormSchema>;
+  formPath: string;
+  permissionActions: readonly PermissionActionDef[];
+}) => {
+  const actionOptions = useMemo(
+    () =>
+      permissionActions.map(({ action, label, description }) => ({
+        value: action,
+        label,
+        description
+      })),
+    [permissionActions]
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rule = useWatch({ control, name: formPath as any });
+
+  const selectedActions = useMemo(
+    () => actionOptions.filter((opt) => Boolean(rule?.[opt.value])),
+    [rule, actionOptions]
+  );
+
+  const handleActionsChange = (newValue: unknown) => {
+    const selected = Array.isArray(newValue) ? newValue : [];
+    const updated = Object.fromEntries(
+      permissionActions.map(({ action }) => [
+        action,
+        selected.some((s: { value: string }) => s.value === action)
+      ])
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setValue(formPath as any, updated as any, { shouldDirty: true });
+  };
+
+  return { rule, actionOptions, selectedActions, handleActionsChange };
+};
 
 export type OrgPermissionActionOption = {
   label: string;
