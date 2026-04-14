@@ -92,6 +92,7 @@
                 "group": "Audit Logs",
                 "pages": [
                   "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
                   "documentation/platform/audit-log-streams/audit-log-streams",
                   "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
                 ]
@@ -105,6 +106,7 @@
                     "group": "Connections",
                     "pages": [
                       "integrations/app-connections/1password",
+                      "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
@@ -506,6 +508,7 @@
                       "documentation/platform/dynamic-secrets/sap-ase",
                       "documentation/platform/dynamic-secrets/sap-hana",
                       "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/ssh",
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
@@ -802,7 +805,8 @@
                   "documentation/platform/pki/integration-guides/nginx-certbot",
                   "documentation/platform/pki/integration-guides/apache-certbot",
                   "documentation/platform/pki/integration-guides/tomcat-certbot",
-                  "documentation/platform/pki/integration-guides/jboss-certbot"
+                  "documentation/platform/pki/integration-guides/jboss-certbot",
+                  "documentation/platform/pki/integration-guides/jamf-pro-scep"
                 ]
               },
               {
@@ -865,6 +869,7 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mongodb",
                           "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
                           "documentation/platform/pam/getting-started/resources/postgresql",
@@ -892,7 +897,9 @@
                   "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/ai-session-insights",
                   "documentation/platform/pam/product-reference/credential-rotation",
+                  "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
                     "pages": [
@@ -3478,8 +3485,8 @@
             "href": "https://infisical.com/sla"
           },
           {
-            "label": "Team Email",
-            "href": "mailto:team@infisical.com"
+            "label": "Support Email",
+            "href": "mailto:support@infisical.com"
           },
           {
             "label": "Sales",
@@ -3495,7 +3502,7 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE",
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
       "apiHost": "https://p.infisical.com"
     },
     "koala": {

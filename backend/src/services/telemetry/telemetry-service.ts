@@ -8,6 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -209,7 +210,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (!postHog) return;
 
     // Resolve org name: prefer explicit value, fall back to request context
-    const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+    const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
       const eventKey = createTelemetryEventKey(event.event, event.distinctId);
