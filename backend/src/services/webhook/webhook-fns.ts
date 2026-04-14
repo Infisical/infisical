@@ -53,7 +53,8 @@ export const triggerWebhookRequest = async (
   const req = await request.post(url, payload, {
     headers,
     timeout: WEBHOOK_TRIGGER_TIMEOUT,
-    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT),
+    maxRedirects: 0
   });
 
   return req;

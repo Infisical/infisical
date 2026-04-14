@@ -28,7 +28,11 @@ export const PamSessionsSchema = z.object({
   endedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  accessMethod: z.string().nullable().optional()
+  accessMethod: z.string().nullable().optional(),
+  resourceId: z.string().uuid().nullable().optional(),
+  encryptedAiInsights: zodBuffer.nullable().optional(),
+  aiInsightsStatus: z.string().nullable().optional(),
+  aiInsightsError: z.string().nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;
