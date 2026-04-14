@@ -61,10 +61,14 @@ const KubernetesAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
               value={value || KubernetesAuthMethod.ServiceAccountToken}
               onValueChange={(newAuthMethod) => {
                 onChange(newAuthMethod);
-                // Clear credentials from other auth methods
-                setValue("credentials.serviceAccountToken" as never, undefined as never, {
-                  shouldDirty: true
-                });
+                // Clear credentials from other auth methods, restoring sentinel in update mode
+                setValue(
+                  "credentials.serviceAccountToken" as never,
+                  (newAuthMethod === KubernetesAuthMethod.ServiceAccountToken && isUpdate
+                    ? UNCHANGED_PASSWORD_SENTINEL
+                    : undefined) as never,
+                  { shouldDirty: true }
+                );
                 setValue("credentials.namespace" as never, undefined as never, {
                   shouldDirty: true
                 });

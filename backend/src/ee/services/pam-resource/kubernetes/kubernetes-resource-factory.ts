@@ -219,66 +219,71 @@ export const kubernetesResourceFactory: TPamResourceFactory<
     if (authMethod === KubernetesAuthMethod.GatewayKubernetesAuth) {
       // Validate gateway auth by performing an impersonated SelfSubjectReview through the gateway.
       // The gateway's use-k8s-sa handler injects its own pod token and discovers the K8s API.
-      // We add Impersonate-User/Group headers which pass through untouched.
+      // We add Impersonate-User header which passes through untouched.
       // This validates both that the SA exists and the gateway can impersonate it.
       try {
         await validateWithGatewayHttp({ gatewayId }, gatewayV2Service, async (baseUrl) => {
           const impersonateUser = `system:serviceaccount:${credentials.namespace}:${credentials.serviceAccountName}`;
-          await axios.post(
-            `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
-            {
-              apiVersion: "authentication.k8s.io/v1",
-              kind: "SelfSubjectReview"
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount,
-                "Impersonate-User": impersonateUser,
-                "Impersonate-Group": ["system:serviceaccounts", `system:serviceaccounts:${credentials.namespace}`]
+          try {
+            await axios.post(
+              `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
+              {
+                apiVersion: "authentication.k8s.io/v1",
+                kind: "SelfSubjectReview"
               },
-              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-              timeout: EXTERNAL_REQUEST_TIMEOUT
-            }
-          );
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount,
+                  "Impersonate-User": impersonateUser
+                },
+                signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+                timeout: EXTERNAL_REQUEST_TIMEOUT
+              }
+            );
 
-          logger.info(
-            `[Kubernetes Resource Factory] Gateway K8s auth validation successful [namespace=${credentials.namespace}] [sa=${credentials.serviceAccountName}]`
-          );
+            logger.info(
+              `[Kubernetes Resource Factory] Gateway K8s auth validation successful [namespace=${credentials.namespace}] [sa=${credentials.serviceAccountName}]`
+            );
+          } catch (error) {
+            if (error instanceof AxiosError) {
+              const errorMessage =
+                (error.response?.data as { message?: string })?.message ||
+                error.response?.statusText ||
+                error.message;
+
+              if (errorMessage?.includes("failed to read k8s sa auth token")) {
+                throw new BadRequestError({
+                  message:
+                    "Gateway is not running inside a Kubernetes cluster. Gateway auth requires the gateway to be deployed as a pod."
+                });
+              }
+              if (error.response?.status === 403) {
+                if (errorMessage?.includes("impersonate")) {
+                  throw new BadRequestError({
+                    message: `Gateway service account lacks impersonation permissions for service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}". Ensure the gateway's ClusterRole includes the impersonate verb for this service account.`
+                  });
+                }
+                throw new BadRequestError({
+                  message: `Unable to impersonate service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}": ${errorMessage}`
+                });
+              }
+              if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
+                throw new BadRequestError({
+                  message: "Unable to reach the Kubernetes API server through the gateway."
+                });
+              }
+              throw new BadRequestError({
+                message: `Unable to validate gateway auth credentials: ${errorMessage}`
+              });
+            }
+            throw error;
+          }
         });
         return credentials;
       } catch (error) {
         if (error instanceof BadRequestError) {
           throw error;
-        }
-        if (error instanceof AxiosError) {
-          const errorMessage =
-            (error.response?.data as { message?: string })?.message || error.response?.statusText || error.message;
-
-          if (errorMessage?.includes("failed to read k8s sa auth token")) {
-            throw new BadRequestError({
-              message:
-                "Gateway is not running inside a Kubernetes cluster. Gateway auth requires the gateway to be deployed as a pod."
-            });
-          }
-          if (error.response?.status === 403) {
-            if (errorMessage?.includes("impersonate")) {
-              throw new BadRequestError({
-                message: `Gateway service account lacks impersonation permissions for service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}". Ensure the gateway's ClusterRole includes the impersonate verb for this service account.`
-              });
-            }
-            throw new BadRequestError({
-              message: `Unable to impersonate service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}": ${errorMessage}`
-            });
-          }
-          if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
-            throw new BadRequestError({
-              message: "Unable to reach the Kubernetes API server through the gateway."
-            });
-          }
-          throw new BadRequestError({
-            message: `Unable to validate gateway auth credentials: ${errorMessage}`
-          });
         }
         throw new BadRequestError({
           message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
@@ -319,13 +324,8 @@ export const kubernetesResourceFactory: TPamResourceFactory<
       }
     }
 
-    // Gateway auth has no sensitive fields — namespace and serviceAccountName are identifiers, not secrets
-    if (
-      updatedAccountCredentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth &&
-      currentCredentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth
-    ) {
-      return updatedAccountCredentials;
-    }
+    // Gateway auth has no sensitive fields (namespace and serviceAccountName are identifiers, not secrets),
+    // so no sentinel handling is needed — fall through to return as-is.
 
     return updatedAccountCredentials;
   };
