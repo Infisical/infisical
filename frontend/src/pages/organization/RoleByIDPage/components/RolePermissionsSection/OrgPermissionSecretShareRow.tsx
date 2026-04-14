@@ -3,7 +3,7 @@ import { Control, UseFormSetValue } from "react-hook-form";
 
 import { Select, SelectItem } from "@app/components/v2";
 import {
-  FilterableSelect,
+  PermissionActionSelect,
   UnstableAccordionContent,
   UnstableAccordionItem,
   UnstableAccordionTrigger
@@ -16,9 +16,6 @@ import { useToggle } from "@app/hooks";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import {
-  MultiValueRemove,
-  MultiValueWithTooltip,
-  OptionWithDescription,
   useOrgPermissionActions
 } from "./OrgPermissionRowComponents";
 
@@ -107,8 +104,7 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
       </UnstableAccordionTrigger>
       <UnstableAccordionContent className="!p-0">
         <div className="bg-mineshaft-800 px-6 py-4">
-          <FilterableSelect
-            isMulti
+          <PermissionActionSelect
             value={selectedActions}
             onChange={handleActionsChange}
             options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.SecretShare].actions}
@@ -117,11 +113,6 @@ export const OrgPermissionSecretShareRow = ({ isEditable, control, setValue }: P
             isClearable={isEditable}
             className="w-full"
             menuPosition="fixed"
-            components={{
-              Option: OptionWithDescription,
-              MultiValueRemove,
-              MultiValue: MultiValueWithTooltip
-            }}
           />
         </div>
       </UnstableAccordionContent>
