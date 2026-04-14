@@ -9,10 +9,12 @@ import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   TGetAccessLocationsDTO,
@@ -30,6 +32,7 @@ type TInsightsServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  userDAL: Pick<TUserDALFactory, "find">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -67,7 +70,8 @@ export const insightsServiceFactory = ({
   reminderDAL,
   folderDAL,
   secretV2BridgeDAL,
-  projectBotService
+  projectBotService,
+  userDAL
 }: TInsightsServiceFactoryDep) => {
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
     const rawReminders = await reminderDAL.findByProjectAndDateRange({ projectId, startDate, endDate });
@@ -142,6 +146,24 @@ export const insightsServiceFactory = ({
       endDate: endDate.toISOString()
     });
 
+    // Resolve user display names from userIds in audit log metadata
+    const userIds = [
+      ...new Set(
+        rows
+          .filter((r) => r.actor === ActorType.USER)
+          .map((r) => (r.actorMetadata as Record<string, string> | null)?.userId)
+          .filter(Boolean) as string[]
+      )
+    ];
+    const userNameMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const users = await userDAL.find({ $in: { id: userIds } });
+      users.forEach((u) => {
+        const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+        if (displayName) userNameMap.set(u.id, displayName);
+      });
+    }
+
     // Pre-populate the last 7 days
     const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
     for (let i = 6; i >= 0; i -= 1) {
@@ -156,7 +178,15 @@ export const insightsServiceFactory = ({
       if (!actorMap) return;
 
       const actorMeta = row.actorMetadata as Record<string, string> | null;
-      const actorName = actorMeta?.email || actorMeta?.name || actorMeta?.identityId || actorMeta?.userId || "Unknown";
+      let actorName: string;
+      if (row.actor === ActorType.USER && actorMeta?.userId) {
+        actorName =
+          userNameMap.get(actorMeta.userId) || actorMeta.email || actorMeta.username || "Unknown";
+      } else if (row.actor === ActorType.USER) {
+        actorName = actorMeta?.email || actorMeta?.username || "Unknown";
+      } else {
+        actorName = actorMeta?.name || actorMeta?.identityId || "Unknown";
+      }
       const actorKey = `${row.actor}:${actorName}`;
 
       const existing = actorMap.get(actorKey);
