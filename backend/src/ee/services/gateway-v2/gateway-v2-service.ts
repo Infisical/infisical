@@ -3,7 +3,7 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TableName, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -1308,14 +1308,19 @@ export const gatewayV2ServiceFactory = ({
       if (!relay) throw new NotFoundError({ message: "No relay available for auto-selection" });
     }
 
-    // Single-use check inside a transaction — re-read to guard against races
-    await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
-      const locked = await gatewayEnrollmentTokenDAL.findOne({ id: tokenRecord.id }, tx);
-      if (!locked || locked.usedAt) {
-        throw new BadRequestError({ message: "Enrollment token has already been used" });
-      }
-      await gatewayEnrollmentTokenDAL.updateById(tokenRecord.id, { usedAt: new Date() }, tx);
+    // Atomic single-use consumption: only marks the token as used if usedAt is still null.
+    // The WHERE usedAt IS NULL ensures concurrent requests can't both succeed.
+    const consumed = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
+      const rows = await tx(TableName.GatewayEnrollmentTokens)
+        .where({ id: tokenRecord.id })
+        .whereNull("usedAt")
+        .update({ usedAt: new Date() })
+        .returning("*");
+      return rows.length > 0;
     });
+    if (!consumed) {
+      throw new BadRequestError({ message: "Enrollment token has already been used" });
+    }
 
     const orgCAs = await $getOrgCAs(orgId);
 
