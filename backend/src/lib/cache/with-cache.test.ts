@@ -215,6 +215,123 @@ describe("withCache", () => {
     );
   });
 
+  it("should compute TTL from fetcher result when ttlSeconds is a function", async () => {
+    mockKeyStore.getItem.mockResolvedValue(null);
+    const data = { expiresInSeconds: 42 };
+    const fetcher = vi.fn().mockResolvedValue(data);
+    const ttlFn = vi.fn((result: typeof data) => result.expiresInSeconds);
+
+    await withCache({
+      keyStore: mockKeyStore,
+      key: "dynamic-ttl-key",
+      ttlSeconds: ttlFn,
+      fetcher
+    });
+
+    expect(ttlFn).toHaveBeenCalledWith(data);
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("dynamic-ttl-key", 42, JSON.stringify(data));
+  });
+
+  it("should not call TTL function on cache hit", async () => {
+    const data = { cached: true };
+    mockKeyStore.getItem.mockResolvedValue(JSON.stringify(data));
+    const fetcher = vi.fn();
+    const ttlFn = vi.fn(() => 100);
+
+    await withCache({
+      keyStore: mockKeyStore,
+      key: "hit-dynamic-ttl-key",
+      ttlSeconds: ttlFn,
+      fetcher
+    });
+
+    expect(ttlFn).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("should call reviver on cache hit to mutate parsed value", async () => {
+    const cached = { date: "2026-04-13T00:00:00.000Z", value: 10 };
+    mockKeyStore.getItem.mockResolvedValue(JSON.stringify(cached));
+    const fetcher = vi.fn();
+    const reviver = vi.fn((parsed: { date: string | Date; value: number }) => {
+      // eslint-disable-next-line no-param-reassign
+      parsed.date = new Date(parsed.date as string);
+    });
+
+    const result = await withCache<{ date: string | Date; value: number }>({
+      keyStore: mockKeyStore,
+      key: "reviver-key",
+      ttlSeconds: 60,
+      fetcher,
+      reviver
+    });
+
+    expect(reviver).toHaveBeenCalledOnce();
+    expect(result.date).toBeInstanceOf(Date);
+    expect((result.date as Date).toISOString()).toBe("2026-04-13T00:00:00.000Z");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("should use reviver's return value when it returns a new object", async () => {
+    const cached = { value: 1 };
+    mockKeyStore.getItem.mockResolvedValue(JSON.stringify(cached));
+    const fetcher = vi.fn();
+    const reviver = vi.fn((parsed: { value: number }) => ({ value: parsed.value * 2 }));
+
+    const result = await withCache<{ value: number }>({
+      keyStore: mockKeyStore,
+      key: "reviver-return-key",
+      ttlSeconds: 60,
+      fetcher,
+      reviver
+    });
+
+    expect(result.value).toBe(2);
+  });
+
+  it("should not call reviver on cache miss", async () => {
+    mockKeyStore.getItem.mockResolvedValue(null);
+    const fetcher = vi.fn().mockResolvedValue({ fresh: true });
+    const reviver = vi.fn();
+
+    await withCache({
+      keyStore: mockKeyStore,
+      key: "miss-reviver-key",
+      ttlSeconds: 60,
+      fetcher,
+      reviver
+    });
+
+    expect(reviver).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("should fall back to fetcher when reviver throws", async () => {
+    const { logger } = await import("@app/lib/logger");
+    const cached = { value: 1 };
+    const fresh = { value: 99 };
+    mockKeyStore.getItem.mockResolvedValue(JSON.stringify(cached));
+    const fetcher = vi.fn().mockResolvedValue(fresh);
+    const reviver = vi.fn(() => {
+      throw new Error("reviver boom");
+    });
+
+    const result = await withCache({
+      keyStore: mockKeyStore,
+      key: "reviver-throws-key",
+      ttlSeconds: 60,
+      fetcher,
+      reviver
+    });
+
+    expect(result).toEqual(fresh);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "reviver-throws-key" }),
+      expect.stringContaining("cache parse failed")
+    );
+  });
+
   it("should log warnings on cache read and write failures", async () => {
     const { logger } = await import("@app/lib/logger");
 
@@ -238,5 +355,296 @@ describe("withCache", () => {
       expect.objectContaining({ key: "log-test-key" }),
       expect.stringContaining("cache write failed")
     );
+  });
+});
+
+describe("withCacheFingerprint", () => {
+  let mockKeyStore: {
+    getItem: ReturnType<typeof vi.fn>;
+    setItemWithExpiry: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    mockKeyStore = {
+      getItem: vi.fn(),
+      setItemWithExpiry: vi.fn().mockResolvedValue("OK")
+    };
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return cached data on marker and data hit (0 DB reads)", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const payload = { id: "user-123", permissions: ["read", "write"] };
+    const cachedData = { fingerprint: "fp-abc", payload };
+
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return "1";
+      if (key === "data-key") return JSON.stringify(cachedData);
+      return null;
+    });
+
+    const fingerprintFetcher = vi.fn();
+    const dataFetcher = vi.fn();
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(fingerprintFetcher).not.toHaveBeenCalled();
+    expect(dataFetcher).not.toHaveBeenCalled();
+    expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalled();
+  });
+
+  it("should revalidate and reset marker on marker miss + data hit + fingerprint match (1 DB read)", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const payload = { id: "user-456", permissions: ["admin"] };
+    const fingerprint = "fp-def";
+    const cachedData = { fingerprint, payload };
+
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return null; // Marker expired
+      if (key === "data-key") return JSON.stringify(cachedData);
+      return null;
+    });
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue(fingerprint);
+    const dataFetcher = vi.fn();
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(fingerprintFetcher).toHaveBeenCalledOnce();
+    expect(dataFetcher).not.toHaveBeenCalled();
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+  });
+
+  it("should full re-fetch on fingerprint mismatch (1 heavy DB read)", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const oldPayload = { id: "user-789", permissions: ["read"] };
+    const newPayload = { id: "user-789", permissions: ["read", "write"] };
+    const oldFingerprint = "fp-old";
+    const newFingerprint = "fp-new";
+    const oldCachedData = { fingerprint: oldFingerprint, payload: oldPayload };
+
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return null;
+      if (key === "data-key") return JSON.stringify(oldCachedData);
+      return null;
+    });
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue(newFingerprint);
+    const dataFetcher = vi.fn().mockResolvedValue(newPayload);
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(newPayload);
+    expect(fingerprintFetcher).toHaveBeenCalledOnce();
+    expect(dataFetcher).toHaveBeenCalledOnce();
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "data-key",
+      600,
+      JSON.stringify({ fingerprint: newFingerprint, payload: newPayload })
+    );
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+  });
+
+  it("should full re-fetch on marker miss + data miss", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const payload = { id: "new-user", permissions: ["viewer"] };
+    const fingerprint = "fp-fresh";
+
+    mockKeyStore.getItem.mockResolvedValue(null); // Both marker and data miss
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue(fingerprint);
+    const dataFetcher = vi.fn().mockResolvedValue(payload);
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(fingerprintFetcher).toHaveBeenCalledOnce();
+    expect(dataFetcher).toHaveBeenCalledOnce();
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "data-key",
+      600,
+      JSON.stringify({ fingerprint, payload })
+    );
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+  });
+
+  it("should call reviver on cache hits", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const payload = { date: "2026-04-13T00:00:00.000Z", value: 42 };
+    const cachedData = { fingerprint: "fp-date", payload };
+
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return "1";
+      if (key === "data-key") return JSON.stringify(cachedData);
+      return null;
+    });
+
+    const fingerprintFetcher = vi.fn();
+    const dataFetcher = vi.fn();
+    const reviver = vi.fn((parsed: { date: string | Date; value: number }) => {
+      // eslint-disable-next-line no-param-reassign
+      parsed.date = new Date(parsed.date as string);
+    });
+
+    const result = await withCacheFingerprint<{ date: string | Date; value: number }>({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher,
+      reviver
+    });
+
+    expect(reviver).toHaveBeenCalledOnce();
+    expect(result.date).toBeInstanceOf(Date);
+    expect((result.date as Date).toISOString()).toBe("2026-04-13T00:00:00.000Z");
+  });
+
+  it("should gracefully handle Redis read failures", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const { logger } = await import("@app/lib/logger");
+    const payload = { id: "fallback-user" };
+    const fingerprint = "fp-fallback";
+
+    mockKeyStore.getItem.mockRejectedValue(new Error("Redis connection lost"));
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue(fingerprint);
+    const dataFetcher = vi.fn().mockResolvedValue(payload);
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(fingerprintFetcher).toHaveBeenCalledOnce();
+    expect(dataFetcher).toHaveBeenCalledOnce();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "marker-key" }),
+      expect.stringContaining("marker read failed")
+    );
+  });
+
+  it("should bypass cache and call dataFetcher directly on fingerprint fetch failure", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const { logger } = await import("@app/lib/logger");
+    const payload = { id: "rescue-user" };
+
+    mockKeyStore.getItem.mockResolvedValue(null);
+
+    const fingerprintFetcher = vi.fn().mockRejectedValue(new Error("DB timeout"));
+    const dataFetcher = vi.fn().mockResolvedValue(payload);
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(dataFetcher).toHaveBeenCalledOnce();
+    expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }) as unknown as Record<string, unknown>,
+      expect.stringContaining("fingerprint fetch failed")
+    );
+  });
+
+  it("should not block on Redis write failures", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const { logger } = await import("@app/lib/logger");
+    const payload = { id: "write-fail-user" };
+    const fingerprint = "fp-write";
+
+    mockKeyStore.getItem.mockResolvedValue(null);
+    mockKeyStore.setItemWithExpiry.mockRejectedValue(new Error("Redis write timeout"));
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue(fingerprint);
+    const dataFetcher = vi.fn().mockResolvedValue(payload);
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 10,
+      dataTtlSeconds: 600,
+      fingerprintFetcher,
+      dataFetcher
+    });
+
+    expect(result).toEqual(payload);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "data-key" }),
+      expect.stringContaining("data write failed")
+    );
+  });
+
+  it("should propagate dataFetcher errors", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+
+    mockKeyStore.getItem.mockResolvedValue(null);
+
+    const fingerprintFetcher = vi.fn().mockResolvedValue("fp-error");
+    const dataFetcher = vi.fn().mockRejectedValue(new Error("Database query failed"));
+
+    await expect(
+      withCacheFingerprint({
+        keyStore: mockKeyStore,
+        dataKey: "data-key",
+        markerKey: "marker-key",
+        markerTtlSeconds: 10,
+        dataTtlSeconds: 600,
+        fingerprintFetcher,
+        dataFetcher
+      })
+    ).rejects.toThrow("Database query failed");
   });
 });

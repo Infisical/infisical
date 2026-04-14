@@ -33,7 +33,7 @@ import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-a
 
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
@@ -758,8 +758,6 @@ export const accessApprovalRequestServiceFactory = ({
             { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
             tx
           );
-
-          await permissionService.invalidateProjectPermissionCache(accessApprovalRequest.projectId, tx);
         }
       }
 
