@@ -52,9 +52,10 @@ sequenceDiagram
 
     User->>CLI: Request Kubernetes access
     CLI->>Infisical: Authenticate & request session
-    Infisical-->>CLI: SA name + namespace & Gateway info
+    Infisical-->>CLI: Session credentials & Gateway info
     CLI->>CLI: Start local proxy
     CLI->>Gateway: Establish secure tunnel
+    Gateway->>Infisical: Fetch session credentials (SA name + namespace)
     User->>CLI: kubectl commands
     CLI->>Gateway: Proxy kubectl requests
     Gateway->>K8s: Forward with own token + Impersonate-User header
@@ -123,7 +124,7 @@ The PAM Resource represents the connection between Infisical and your Kubernetes
     6. Configure SSL verification options if needed
 
     <Note>
-      **SSL Verification**: You may need to disable SSL verification if your Kubernetes API server uses a self-signed certificate or if the certificate's hostname doesn't match the URL you're using to access it. When using Gateway auth, the Gateway automatically uses the in-cluster CA certificate.
+      **SSL Verification**: You may need to disable SSL verification if your Kubernetes API server uses a self-signed certificate or an in-cluster CA. For Gateway auth with `https://kubernetes.default.svc.cluster.local`, disable SSL verification here — the Gateway will use strict TLS with the in-cluster CA certificate during sessions.
     </Note>
   </Step>
 </Steps>
@@ -207,6 +208,10 @@ Choose one of the two authentication methods below based on your setup.
 
   <Tab title="Gateway (Impersonation)">
     Use this method when the Gateway is deployed **inside the Kubernetes cluster** as a pod. No tokens need to be created or stored — the Gateway uses its own pod identity to impersonate target service accounts.
+
+    <Info>
+      When creating the resource in the step above, use `https://kubernetes.default.svc.cluster.local` as the URL and **disable SSL verification**. The Gateway handles TLS with the correct in-cluster CA automatically during sessions.
+    </Info>
 
     ### Set Up Impersonation Permissions
 
@@ -374,7 +379,7 @@ Once your resource and accounts are configured, users can request access through
   </Accordion>
 
   <Accordion title="Do I need to configure SSL certificates for Gateway auth?">
-    No. When using Gateway auth, the Gateway automatically uses the in-cluster CA certificate mounted at `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`. The SSL settings on the resource (certificate, verification toggle) are only used for the Service Account Token method. If the in-cluster CA certificate is missing or invalid, the session will fail rather than falling back to an insecure connection.
+    Just disable SSL verification on the resource — the Gateway handles TLS automatically during sessions using the in-cluster CA certificate mounted in its pod. If the CA certificate is missing or invalid, the session will fail rather than falling back to an insecure connection.
   </Accordion>
 
   <Accordion title="What happens if the Gateway can't impersonate a service account?">
