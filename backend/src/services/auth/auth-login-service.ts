@@ -126,6 +126,8 @@ export const authLoginServiceFactory = ({
               userAgent
             }
           })
+          // Intentionally not rethrowing: this is an informational notification and the login already
+          // succeeded. Blocking the user over a failed notification email would be worse than missing it.
           .catch((err) => logger.error(err, `Failed to send new device login email [userId=${user.id}]`));
       }
     }
@@ -748,6 +750,8 @@ export const authLoginServiceFactory = ({
             },
             template: SmtpTemplates.OrgAdminBreakglassAccess
           })
+          // Intentionally not rethrowing: this is an informational security alert and the SSO bypass
+          // already succeeded. Blocking the user over a failed alert email would be worse than missing it.
           .catch((err) =>
             logger.error(err, `Failed to send SSO bypass alert email [orgId=${organizationId}] [userId=${user.id}]`)
           );
