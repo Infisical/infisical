@@ -125,7 +125,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                       { title: "Secret Path", value: secretPath || "" },
                       { title: "Modified By", value: changedBy || "" },
                       {
-                        title: "Modified By Actor Type",
+                        title: "Actor Type",
                         value: changedByActorType?.toString() || "Unknown Actor Type"
                       }
                     ]
