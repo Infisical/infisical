@@ -153,7 +153,11 @@ export const AccessApprovalRequest = ({
   };
 
   const isRequestExpired = useCallback((request: TAccessApprovalRequest) => {
-    return request.expiresAt && new Date(request.expiresAt) < new Date();
+    return (
+      request.status === ApprovalStatus.PENDING &&
+      request.expiresAt &&
+      new Date(request.expiresAt) < new Date()
+    );
   }, []);
 
   const filteredRequests = useMemo(() => {

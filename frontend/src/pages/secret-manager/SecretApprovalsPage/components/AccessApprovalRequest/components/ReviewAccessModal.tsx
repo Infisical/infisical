@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { BanIcon, CheckIcon, HourglassIcon } from "lucide-react";
 import ms from "ms";
+import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -28,7 +29,14 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, useProject, useUser } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useListWorkspaceGroups,
@@ -44,6 +52,10 @@ import {
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
+import {
+  canModifyByGrantConditions,
+  getMemberAssignPrivilegesConditions
+} from "@app/lib/fn/permission";
 import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
@@ -112,6 +124,7 @@ export const ReviewAccessRequestModal = ({
   const { currentProject } = useProject();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
+  const { permission } = useProjectPermission();
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "editRequest",
@@ -119,6 +132,29 @@ export const ReviewAccessRequestModal = ({
   ] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+
+  const assignPrivilegesConditions = useMemo(
+    () => getMemberAssignPrivilegesConditions(permission),
+    [permission]
+  );
+
+  const canRevokeAccess = useMemo(() => {
+    const hasBasePermission = permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionSub.Member
+    );
+    if (!hasBasePermission) return false;
+
+    const targetEmail = request.user?.email;
+    if (!targetEmail) return false;
+
+    return canModifyByGrantConditions({
+      targetValue: targetEmail,
+      allowed: assignPrivilegesConditions?.emails,
+      forbidden: assignPrivilegesConditions?.forbiddenEmails,
+      isMatch: (value, pattern) => picomatch.isMatch(value, pattern, { nocase: true })
+    });
+  }, [permission, assignPrivilegesConditions, request.user?.email]);
 
   const accessDetails = {
     env: request.environmentName,
@@ -678,7 +714,7 @@ export const ReviewAccessRequestModal = ({
               </div>
             </>
           )}
-          {hasApproved && request.isApprover && (
+          {hasApproved && canRevokeAccess && (
             <div className="mt-4">
               <Button
                 isDisabled={Boolean(isLoading)}
