@@ -2349,7 +2349,8 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeDAL,
     projectBotService,
-    userDAL
+    userDAL,
+    keyStore
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({

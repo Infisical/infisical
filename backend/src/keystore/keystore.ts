@@ -103,7 +103,10 @@ export const KeyStorePrefixes = {
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
-  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const
+  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
+
+  InsightsCache: (projectId: string, endpoint: string) =>
+    `insights-cache:${projectId}:${endpoint}` as const
 };
 
 export const KeyStoreTtls = {
@@ -115,7 +118,8 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
-  TelemetryIdentifyIdentityInSeconds: 86400 // 24 hours
+  TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
+  InsightsCacheInSeconds: 300 // 5 minutes
 };
 
 type TDeleteItems = {

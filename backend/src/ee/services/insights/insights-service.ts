@@ -7,6 +7,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -33,6 +34,7 @@ type TInsightsServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findStaleByProject" | "countStaleByProject">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   userDAL: Pick<TUserDALFactory, "find">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -71,8 +73,18 @@ export const insightsServiceFactory = ({
   folderDAL,
   secretV2BridgeDAL,
   projectBotService,
-  userDAL
+  userDAL,
+  keyStore
 }: TInsightsServiceFactoryDep) => {
+  const withCache = async <T>(cacheKey: string, fn: () => Promise<T>): Promise<T> => {
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) return JSON.parse(cached) as T;
+
+    const result = await fn();
+    await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.InsightsCacheInSeconds, JSON.stringify(result));
+    return result;
+  };
+
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
     const rawReminders = await reminderDAL.findByProjectAndDateRange({ projectId, startDate, endDate });
     if (!rawReminders.length) return [];
@@ -99,116 +111,124 @@ export const insightsServiceFactory = ({
   const getCalendar = async (dto: TGetInsightsCalendarDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, dto.projectId, actorDto);
 
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
-    if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `calendar:${dto.year}-${dto.month}`);
+    return withCache(cacheKey, async () => {
+      const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+      if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
-    // Pad by 1 day on each side so events near month boundaries are captured
-    // regardless of the caller's timezone offset from UTC.
-    const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 0));
-    const endDate = new Date(Date.UTC(dto.year, dto.month, 1, 23, 59, 59, 999));
+      // Pad by 1 day on each side so events near month boundaries are captured
+      // regardless of the caller's timezone offset from UTC.
+      const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 0));
+      const endDate = new Date(Date.UTC(dto.year, dto.month, 1, 23, 59, 59, 999));
 
-    const [rotations, reminders] = await Promise.all([
-      secretRotationV2DAL.findByProjectAndDateRange({ projectId: dto.projectId, startDate, endDate }),
-      fetchReminders(dto.projectId, startDate, endDate)
-    ]);
+      const [rotations, reminders] = await Promise.all([
+        secretRotationV2DAL.findByProjectAndDateRange({ projectId: dto.projectId, startDate, endDate }),
+        fetchReminders(dto.projectId, startDate, endDate)
+      ]);
 
-    return {
-      rotations: rotations.map((r) => ({
-        id: r.id,
-        name: r.name,
-        type: r.type,
-        nextRotationAt: r.nextRotationAt ?? null,
-        environment: r.environment.slug,
-        secretPath: r.folder.path,
-        secretKeys: r.secretKeys,
-        rotationInterval: r.rotationInterval,
-        rotationStatus: r.rotationStatus,
-        isAutoRotationEnabled: r.isAutoRotationEnabled
-      })),
-      reminders
-    };
+      return {
+        rotations: rotations.map((r) => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          nextRotationAt: r.nextRotationAt ?? null,
+          environment: r.environment.slug,
+          secretPath: r.folder.path,
+          secretKeys: r.secretKeys,
+          rotationInterval: r.rotationInterval,
+          rotationStatus: r.rotationStatus,
+          isAutoRotationEnabled: r.isAutoRotationEnabled
+        })),
+        reminders
+      };
+    });
   };
 
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, dto.projectId, actorDto);
 
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const endDate = new Date(`${todayStr}T23:59:59.999Z`);
-    const startDate = new Date(`${todayStr}T00:00:00.000Z`);
-    startDate.setUTCDate(startDate.getUTCDate() - 6);
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
+    return withCache(cacheKey, async () => {
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const endDate = new Date(`${todayStr}T23:59:59.999Z`);
+      const startDate = new Date(`${todayStr}T00:00:00.000Z`);
+      startDate.setUTCDate(startDate.getUTCDate() - 6);
 
-    const rows = await auditLogDAL.countByDateAndActor({
-      orgId: actorDto.orgId,
-      projectId: dto.projectId,
-      eventTypes: VALUE_EVENT_TYPES,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString()
-    });
-
-    // Resolve user display names from userIds in audit log metadata
-    const userIds = [
-      ...new Set(
-        rows
-          .filter((r) => r.actor === ActorType.USER)
-          .map((r) => (r.actorMetadata as Record<string, string> | null)?.userId)
-          .filter(Boolean) as string[]
-      )
-    ];
-    const userNameMap = new Map<string, string>();
-    if (userIds.length > 0) {
-      const users = await userDAL.find({ $in: { id: userIds } });
-      users.forEach((u) => {
-        const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
-        if (displayName) userNameMap.set(u.id, displayName);
+      const rows = await auditLogDAL.countByDateAndActor({
+        orgId: actorDto.orgId,
+        projectId: dto.projectId,
+        eventTypes: VALUE_EVENT_TYPES,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
       });
-    }
 
-    // Pre-populate the last 7 days
-    const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
-    for (let i = 6; i >= 0; i -= 1) {
-      const d = new Date(`${todayStr}T00:00:00.000Z`);
-      d.setUTCDate(d.getUTCDate() - i);
-      dayMap.set(d.toISOString().slice(0, 10), new Map());
-    }
-
-    rows.forEach((row) => {
-      const dateKey = typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10);
-      const actorMap = dayMap.get(dateKey);
-      if (!actorMap) return;
-
-      const actorMeta = row.actorMetadata as Record<string, string> | null;
-      let actorName: string;
-      if (row.actor === ActorType.USER && actorMeta?.userId) {
-        actorName =
-          userNameMap.get(actorMeta.userId) || actorMeta.email || actorMeta.username || "Unknown";
-      } else if (row.actor === ActorType.USER) {
-        actorName = actorMeta?.email || actorMeta?.username || "Unknown";
-      } else {
-        actorName = actorMeta?.name || actorMeta?.identityId || "Unknown";
+      // Resolve user display names from userIds in audit log metadata
+      const userIds = [
+        ...new Set(
+          rows
+            .filter((r) => r.actor === ActorType.USER)
+            .map((r) => (r.actorMetadata as Record<string, string> | null)?.userId)
+            .filter(Boolean) as string[]
+        )
+      ];
+      const userNameMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const users = await userDAL.find({ $in: { id: userIds } });
+        users.forEach((u) => {
+          const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+          if (displayName) userNameMap.set(u.id, displayName);
+        });
       }
-      const actorKey = `${row.actor}:${actorName}`;
 
-      const existing = actorMap.get(actorKey);
-      if (existing) {
-        existing.count += row.count;
-      } else {
-        actorMap.set(actorKey, { name: actorName, type: row.actor, count: row.count });
+      // Pre-populate the last 7 days
+      const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
+      for (let i = 6; i >= 0; i -= 1) {
+        const d = new Date(`${todayStr}T00:00:00.000Z`);
+        d.setUTCDate(d.getUTCDate() - i);
+        dayMap.set(d.toISOString().slice(0, 10), new Map());
       }
-    });
 
-    const days = Array.from(dayMap.entries()).map(([date, actorMap]) => {
-      const actors = Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
-      const total = actors.reduce((sum, a) => sum + a.count, 0);
-      return { date, total, actors };
-    });
+      rows.forEach((row) => {
+        const dateKey = typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10);
+        const actorMap = dayMap.get(dateKey);
+        if (!actorMap) return;
 
-    return { days };
+        const actorMeta = row.actorMetadata as Record<string, string> | null;
+        let actorName: string;
+        if (row.actor === ActorType.USER && actorMeta?.userId) {
+          actorName =
+            userNameMap.get(actorMeta.userId) || actorMeta.email || actorMeta.username || "Unknown";
+        } else if (row.actor === ActorType.USER) {
+          actorName = actorMeta?.email || actorMeta?.username || "Unknown";
+        } else {
+          actorName = actorMeta?.name || actorMeta?.identityId || "Unknown";
+        }
+        const actorKey = `${row.actor}:${actorName}`;
+
+        const existing = actorMap.get(actorKey);
+        if (existing) {
+          existing.count += row.count;
+        } else {
+          actorMap.set(actorKey, { name: actorName, type: row.actor, count: row.count });
+        }
+      });
+
+      const days = Array.from(dayMap.entries()).map(([date, actorMap]) => {
+        const actors = Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
+        const total = actors.reduce((sum, a) => sum + a.count, 0);
+        return { date, total, actors };
+      });
+
+      return { days };
+    });
   };
 
   const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, dto.projectId, actorDto);
 
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
+    return withCache(cacheKey, async () => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
@@ -280,11 +300,14 @@ export const insightsServiceFactory = ({
     return {
       locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
     };
+    });
   };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, dto.projectId, actorDto);
 
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
+    return withCache(cacheKey, async () => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
@@ -353,11 +376,17 @@ export const insightsServiceFactory = ({
       .sort((a, b) => b.count - a.count);
 
     return { methods };
+    });
   };
 
   const getSummary = async (dto: TGetInsightsSummaryDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, dto.projectId, actorDto);
 
+    const cacheKey = KeyStorePrefixes.InsightsCache(
+      dto.projectId,
+      `summary:${dto.staleSecretsOffset ?? 0}:${dto.staleSecretsLimit ?? 50}`
+    );
+    return withCache(cacheKey, async () => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
     if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
@@ -434,6 +463,7 @@ export const insightsServiceFactory = ({
       staleSecrets,
       totalStaleCount
     };
+    });
   };
 
   return {

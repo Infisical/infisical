@@ -29,6 +29,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "summary", params] as const
 };
 
+const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
   options?: Omit<
@@ -50,6 +52,7 @@ export const useGetCalendarInsights = (
       );
       return data;
     },
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
@@ -75,6 +78,7 @@ export const useGetSecretAccessVolume = (
       );
       return data;
     },
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
@@ -100,6 +104,7 @@ export const useGetSecretAccessLocations = (
       );
       return data;
     },
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
@@ -125,6 +130,7 @@ export const useGetAuthMethodDistribution = (
       );
       return data;
     },
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
@@ -150,6 +156,7 @@ export const useGetInsightsSummary = (
       );
       return data;
     },
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
