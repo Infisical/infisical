@@ -4,14 +4,24 @@ description: "Run the Infisical gateway or manage its systemd service"
 ---
 
 <Tabs>
-  <Tab title="Start gateway">
+  <Tab title="Enrollment token">
     ```bash
-    sudo infisical gateway start --name=<name> --auth-method=<auth-method>
+    infisical gateway start <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
-  <Tab title="Start gateway as background daemon (Linux only)">
+  <Tab title="Machine identity">
     ```bash
-    sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name>
+    infisical gateway start <name> --auth-method=<auth-method>
+    ```
+  </Tab>
+  <Tab title="systemd (enrollment token)">
+    ```bash
+    sudo infisical gateway systemd install <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    ```
+  </Tab>
+  <Tab title="systemd (machine identity)">
+    ```bash
+    sudo infisical gateway systemd install <name> --token=<token> --domain=<domain>
     ```
   </Tab>
 </Tabs>
@@ -36,8 +46,10 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
   Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
 
 ```bash
-sudo infisical gateway start --name=<name> --auth-method=<auth-method>
+infisical gateway start <name> --enroll-method=static --token=<enrollment-token> --domain=<domain>
 ```
+
+The gateway name is provided as a positional argument. The `--name` flag is still accepted for backwards compatibility but is deprecated.
 
 <Info>
     By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--target-relay-name=<relay-name>` flag.
@@ -56,6 +68,34 @@ Once started, the gateway component will:
 The Gateway supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
+  <Accordion title="Enrollment Token (Recommended)">
+    The simplest way to deploy a gateway. Create the gateway in the Infisical UI, which generates a one-time enrollment token. The CLI enrolls and starts the gateway in a single command.
+
+      <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="enroll-method" type="string" required>
+            Must be `static` when using an enrollment token.
+          </ParamField>
+          <ParamField query="token" type="string" required>
+            The one-time enrollment token from the Infisical UI.
+          </ParamField>
+          <ParamField query="domain" type="string" required>
+            The URL of your Infisical instance.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical gateway start my-gateway --enroll-method=static --token=<enrollment-token> --domain=https://app.infisical.com
+    ```
+
+    After enrollment, the gateway saves its credentials locally. On subsequent restarts, just run:
+
+    ```bash
+      infisical gateway start my-gateway
+    ```
+
+  </Accordion>
   <Accordion title="Universal Auth">
     The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
 
@@ -74,7 +114,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      sudo infisical gateway start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --name=<name>
+      infisical gateway start <name> --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
     ```
 
   </Accordion>
@@ -98,7 +138,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      sudo infisical gateway start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --name=<name>
+      infisical gateway start <name> --auth-method=kubernetes --machine-identity-id=<machine-identity-id>
     ```
 
   </Accordion>
@@ -119,7 +159,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      sudo infisical gateway start --auth-method=azure --machine-identity-id=<machine-identity-id> --name=<name>
+      infisical gateway start <name> --auth-method=azure --machine-identity-id=<machine-identity-id>
     ```
 
   </Accordion>
@@ -140,7 +180,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      sudo infisical gateway start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --name=<name>
+      infisical gateway start <name> --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
     ```
 
   </Accordion>
@@ -162,7 +202,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      sudo infisical gateway start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --name=<name>
+      infisical gateway start <name> --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
     ```
 
   </Accordion>
@@ -181,7 +221,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
       ```bash
-        sudo infisical gateway start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --name=<name>
+        infisical gateway start <name> --auth-method=aws-iam --machine-identity-id=<machine-identity-id>
       ```
 
   </Accordion>
@@ -203,7 +243,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      sudo infisical gateway start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --name=<name>
+      infisical gateway start <name> --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
     ```
 
   </Accordion>
@@ -227,7 +267,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      sudo infisical gateway start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --name=<name>
+      infisical gateway start <name> --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
     ```
 
   </Accordion>
@@ -243,7 +283,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      sudo infisical gateway start --token=<token> --name=<name>
+      infisical gateway start <name> --token=<token>
     ```
 
   </Accordion>
@@ -259,19 +299,32 @@ The Gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    sudo infisical gateway start --target-relay-name=my-relay --name=my-gateway --token=<token>
+    infisical gateway start my-gateway --target-relay-name=my-relay --token=<token>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
   </Accordion>
 
-  <Accordion title="--name">
-    The name of the gateway instance.
+  <Accordion title="--name (deprecated)">
+    The name of the gateway instance. Deprecated in favor of the positional argument.
+
+    ```bash
+    # Preferred (positional argument)
+    infisical gateway start my-gateway --token=<token>
+
+    # Deprecated (flag)
+    infisical gateway start my-gateway --token=<token>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--enroll-method">
+    The enrollment method to use. When set to `static`, the `--token` flag is treated as a one-time enrollment token instead of a machine identity access token.
 
     ```bash
     # Example
-    sudo infisical gateway start --name=my-gateway --token=<token>
+    infisical gateway start my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
     ```
 
   </Accordion>
@@ -281,7 +334,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    sudo infisical gateway start --domain=https://app.your-domain.com --name=<name>
+    infisical gateway start <name> --domain=https://app.your-domain.com
     ```
 
   </Accordion>
@@ -289,10 +342,14 @@ The Gateway supports multiple authentication methods. Below are the available au
 </Accordion>
 
 <Accordion title="infisical gateway systemd install">
-  Install and enable the gateway as a systemd service. This command must be run with sudo on Linux.
+  Install and enable the gateway as a systemd service. This command must be run with sudo on Linux. Supports both enrollment token and machine identity authentication.
 
 ```bash
-sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name>
+# Enrollment token
+sudo infisical gateway systemd install my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
+
+# Machine identity
+sudo infisical gateway systemd install my-gateway --token=<machine-identity-token> --domain=<domain>
 ```
 
 ### Requirements
@@ -304,12 +361,22 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 ### Flags
 
   <AccordionGroup>
-  <Accordion title="--token">
-    The machine identity access token to authenticate with Infisical.
+  <Accordion title="--enroll-method">
+    The enrollment method to use. When set to `static`, the `--token` flag is treated as a one-time enrollment token.
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --token=<token> --name=<name>
+    sudo infisical gateway systemd install my-gateway --enroll-method=static --token=<enrollment-token> --domain=<domain>
+    ```
+
+  </Accordion>
+
+  <Accordion title="--token">
+    The authentication token. When `--enroll-method=static` is set, this is a one-time enrollment token. Otherwise, it is a machine identity access token.
+
+    ```bash
+    # Example
+    sudo infisical gateway systemd install my-gateway --token=<token>
     ```
 
     You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
@@ -321,16 +388,19 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --domain=https://app.your-domain.com --name=<name>
+    sudo infisical gateway systemd install my-gateway --domain=https://app.your-domain.com
     ```
 
   </Accordion>
 
-  <Accordion title="--name">
-    The name of the gateway instance.
+  <Accordion title="--name (deprecated)">
+    The name of the gateway instance. Deprecated in favor of the positional argument.
 
     ```bash
-    # Example
+    # Preferred (positional argument)
+    sudo infisical gateway systemd install my-gateway --token=<token>
+
+    # Deprecated (flag)
     sudo infisical gateway systemd install --name=my-gateway --token=<token>
     ```
 
@@ -343,7 +413,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --target-relay-name=my-relay --token=<token> --name=<name>
+    sudo infisical gateway systemd install <name> --target-relay-name=my-relay --token=<token>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).

@@ -6,9 +6,100 @@ description: "Complete guide to deploying Infisical Gateways including network c
 Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network.
 This guide covers everything you need to deploy and configure Infisical Gateways.
 
-## Deployment Steps
+## Deployment Methods
 
-To successfully deploy an Infisical Gateway for use, follow these steps in order.
+Infisical supports two methods for deploying gateways. Choose the one that fits your workflow:
+
+- **Enrollment Token (Recommended):** Create the gateway from the Infisical UI and run a single CLI command on the target machine. No machine identity setup required.
+- **Machine Identity:** Provision a machine identity in advance and use its credentials to authenticate the gateway. Useful for automated/programmatic deployments.
+
+---
+
+## Method 1: Enrollment Token
+
+The enrollment token method lets you create and deploy a gateway without provisioning a machine identity. You create the gateway in the Infisical UI, which gives you a one-time CLI command to run on the target machine.
+
+<Steps>
+  <Step title="Set Up a Relay Server">
+    Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
+    - **Managed relay (Infisical Cloud, US/EU only):** If you are using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
+    - **Self-hosted relay:** For all other cases, you must deploy your own relay server. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+  </Step>
+  <Step title="Create the Gateway in the UI">
+    1. Navigate to **Organization Settings > Networking > Gateways**.
+    2. Click **Create Gateway**.
+    3. Enter a name for your gateway and select a relay (or use "Auto Select Relay").
+    4. Choose your deployment method (CLI or systemd).
+    5. Copy the generated CLI command. The command includes a one-time enrollment token that expires in 1 hour.
+  </Step>
+  <Step title="Install the Infisical CLI">
+    Make sure the Infisical CLI is installed on the target machine. See the [CLI Installation Guide](/cli/overview) for instructions.
+  </Step>
+  <Step title="Run the CLI Command">
+    Run the command you copied from the UI on the target machine. This single command enrolls the gateway and starts it immediately.
+
+    <Tabs>
+      <Tab title="Linux Server (Production)">
+        For production deployments on Linux, install as a systemd service:
+        ```bash
+        sudo infisical gateway systemd install my-gateway \
+          --enroll-method=static \
+          --token=<enrollment-token> \
+          --domain=<your-infisical-domain>
+        sudo systemctl start infisical-gateway
+        ```
+      </Tab>
+      <Tab title="Development & Testing">
+        For development or testing, run directly in the foreground:
+        ```bash
+        infisical gateway start my-gateway \
+          --enroll-method=static \
+          --token=<enrollment-token> \
+          --domain=<your-infisical-domain>
+        ```
+      </Tab>
+    </Tabs>
+
+    <Info>
+      The enrollment token can only be used once and expires after 1 hour. If it expires, use the **Re-enroll** option in the gateway's context menu to generate a new one.
+    </Info>
+  </Step>
+  <Step title="Verify Your Gateway Deployment">
+    After deployment, verify your gateway is working:
+    1. **Check logs** for "Gateway started successfully" message.
+    2. **Verify registration** in the Infisical UI. Navigate to **Networking > Gateways** and confirm the gateway shows a "Healthy" status.
+    3. **Test connectivity** by creating a resource that uses the gateway to access a private service.
+  </Step>
+</Steps>
+
+### Gateway Lifecycle States
+
+After creating a gateway, it will transition through the following states in the UI:
+
+| State | Description |
+| --- | --- |
+| **Pending** | Enrollment token created, waiting for the CLI command to be run. |
+| **Expired** | Enrollment token expired before being used. Use **Re-enroll** to generate a new one. |
+| **Unregistered** | Gateway enrolled but has not connected yet (e.g., waiting for first heartbeat). |
+| **Healthy** | Gateway is connected and responding to health checks. |
+| **Unreachable** | Gateway was previously connected but the last health check failed. |
+| **Re-enrolling** | A re-enrollment token has been created. The existing gateway continues running until the new machine enrolls. |
+
+### Re-enrollment
+
+To move a gateway to a different machine or regenerate its credentials:
+
+1. Click the context menu (three dots) next to the gateway and select **Re-enroll**.
+2. Copy the new CLI command and run it on the new machine.
+3. The existing gateway continues running until the new machine enrolls. Once the new machine connects, the old machine's credentials are automatically revoked. This enables zero-downtime machine migrations.
+
+---
+
+## Method 2: Machine Identity
+
+The machine identity method uses pre-provisioned credentials to authenticate the gateway. This is useful for automated deployments where you manage identities programmatically.
+
+### Deployment Steps
 
 <Steps>
   <Step title="Provision a Machine Identity">
@@ -122,7 +213,7 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
       <Tab title="Linux Server (Production)">
         For production deployments on Linux servers, install the Gateway as a systemd service so that it runs securely in the background and automatically restarts on failure or system reboot:
         ```bash
-        sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name>
+        sudo infisical gateway systemd install <gateway-name> --token <your-machine-identity-token> --domain <your-infisical-domain>
         sudo systemctl start infisical-gateway
         ```
 
@@ -173,7 +264,7 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
         For development or testing environments:
 
         ```bash
-        sudo infisical gateway start --token <token> --name=<gateway-name>
+        infisical gateway start <gateway-name> --token <token>
         ```
 
         <Info>
