@@ -172,6 +172,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
               isEditable={isCustomRole}
             />
           )}
+          <OrgPermissionEmailDomainRow
+            control={control}
+            setValue={setValue}
+            isEditable={isCustomRole}
+          />
           <OrgPermissionSecretShareRow
             control={control}
             setValue={setValue}

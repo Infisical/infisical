@@ -712,6 +712,32 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.EmailDomains]: {
+    title: "Email Domains",
+    description: "Manage organization email domain verification and configuration",
+    actions: [
+      {
+        value: OrgPermissionEmailDomainActions.Read,
+        label: "View domains",
+        description: "View organization email domains"
+      },
+      {
+        value: OrgPermissionEmailDomainActions.Create,
+        label: "Add domains",
+        description: "Add new email domains to the organization"
+      },
+      {
+        value: OrgPermissionEmailDomainActions.VerifyDomain,
+        label: "Verify domains",
+        description: "Verify ownership of email domains"
+      },
+      {
+        value: OrgPermissionEmailDomainActions.Delete,
+        label: "Delete domains",
+        description: "Remove email domains from the organization"
+      }
+    ]
+  },
   [OrgPermissionSubjects.SecretShare]: {
     title: "Secret Share",
     description: "Configure settings for sharing secrets externally",
