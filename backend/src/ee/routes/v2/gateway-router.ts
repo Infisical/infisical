@@ -271,6 +271,4 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       return resources;
     }
   });
-
-  // Enrollment endpoints have moved to V3: /api/v3/gateways
 };
