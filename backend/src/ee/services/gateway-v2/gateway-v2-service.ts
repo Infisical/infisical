@@ -1330,7 +1330,7 @@ export const gatewayV2ServiceFactory = ({
     throw new BadRequestError({ message: "Invalid actor type for gateway connect" });
   };
 
-  const enrollGateway = async ({ token, relayName }: { token: string; relayName?: string }) => {
+  const enrollGateway = async ({ token }: { token: string }) => {
     const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
 
     const tokenRecord = await gatewayEnrollmentTokenDAL.findOne({ tokenHash });
@@ -1342,39 +1342,13 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: "Enrollment token has expired" });
     }
 
-    const { orgId } = tokenRecord;
-
-    // Resolve the relay before consuming the token so a missing relay doesn't burn it.
-    let relay: TRelays | undefined;
-    if (relayName) {
-      relay = await relayDAL.findOne({ orgId, name: relayName });
-      if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
-      if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
-    } else {
-      // Auto-select: prefer a healthy org-specific relay, fall back to a healthy global one
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const isHealthy = (r: TRelays) => r.heartbeat && r.heartbeat > oneHourAgo;
-
-      const orgRelays = await relayDAL.find({ orgId });
-      relay = orgRelays.find(isHealthy) ?? orgRelays[0];
-
-      if (!relay) {
-        const globalRelays = await relayDAL.find({ orgId: null });
-        relay = globalRelays.find(isHealthy) ?? globalRelays[0];
-      }
-
-      if (!relay) throw new NotFoundError({ message: "No relay available for auto-selection" });
-    }
-
     if (!tokenRecord.gatewayId) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
     }
 
-    // Fetch org CAs before the transaction to avoid holding a long DB lock during KMS calls.
-    const orgCAs = await $getOrgCAs(orgId);
+    const { orgId } = tokenRecord;
 
-    // Consume the token and update the gateway in a single transaction.
-    // If the gateway update fails, the token consumption is rolled back.
+    // Consume the token and bump tokenVersion in a single transaction.
     const gateway = await gatewayEnrollmentTokenDAL.transaction(async (tx) => {
       const rows = await tx(TableName.GatewayEnrollmentTokens)
         .where({ id: tokenRecord.id })
@@ -1389,37 +1363,28 @@ export const gatewayV2ServiceFactory = ({
       if (!existing) throw new NotFoundError({ message: `Gateway ${tokenRecord.gatewayId} not found` });
       return gatewayV2DAL.updateById(
         existing.id,
-        { $incr: { tokenVersion: 1 }, relayId: relay!.id, heartbeat: null, lastHealthCheckStatus: null },
+        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
         tx
       );
     });
 
-    try {
-      const certs = await $issueGatewayCerts({ orgId, orgCAs, relayName: relay.name, gateway });
-
-      const appCfg = getConfig();
-      const accessToken = crypto.jwt().sign(
-        {
-          gatewayId: gateway.id,
-          orgId,
-          authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN,
-          tokenVersion: gateway.tokenVersion
-        },
-        appCfg.AUTH_SECRET
-      );
-
-      return {
-        accessToken,
-        gatewayName: gateway.name,
+    const appCfg = getConfig();
+    const accessToken = crypto.jwt().sign(
+      {
+        gatewayId: gateway.id,
         orgId,
-        ...certs
-      };
-    } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({ message: "A gateway with this name already exists" });
-      }
-      throw err;
-    }
+        authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN,
+        tokenVersion: gateway.tokenVersion
+      },
+      appCfg.AUTH_SECRET
+    );
+
+    return {
+      accessToken,
+      gatewayId: gateway.id,
+      gatewayName: gateway.name,
+      orgId
+    };
   };
 
   return {

@@ -108,31 +108,18 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "enrollGatewayWithToken",
       body: z.object({
-        token: z.string().min(1),
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional()
+        token: z.string().min(1)
       }),
       response: {
         200: z.object({
           accessToken: z.string(),
-          gatewayId: z.string(),
-          relayHost: z.string(),
-          pki: z.object({
-            serverCertificate: z.string(),
-            serverPrivateKey: z.string(),
-            clientCertificateChain: z.string()
-          }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
+          gatewayId: z.string()
         })
       }
     },
     handler: async (req) => {
       const result = await server.services.gatewayV2.enrollGateway({
-        token: req.body.token,
-        relayName: req.body.relayName
+        token: req.body.token
       });
 
       await server.services.auditLog
