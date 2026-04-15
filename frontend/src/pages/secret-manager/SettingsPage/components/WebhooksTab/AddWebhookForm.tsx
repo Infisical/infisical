@@ -19,9 +19,9 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import {
-  TWebhookEventToggleKey,
   WEBHOOK_EVENT_METADATA,
   WEBHOOK_EVENTS,
+  WebhookEvent,
   WebhookType
 } from "@app/hooks/api/webhooks/types";
 
@@ -32,8 +32,10 @@ const formSchema = z
     webhookSecretKey: z.string().trim().optional().describe("Secret Key"),
     secretPath: z.string().trim().describe("Secret Path"),
     type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
-    isSecretModifiedEventEnabled: z.boolean().default(true),
-    isSecretRotationFailedEventEnabled: z.boolean().default(true)
+    enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default({
+      [WebhookEvent.SecretModified]: true,
+      [WebhookEvent.SecretRotationFailed]: true
+    })
   })
   .superRefine((data, ctx) => {
     if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
@@ -71,8 +73,10 @@ export const AddWebhookForm = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: WebhookType.GENERAL,
-      isSecretModifiedEventEnabled: true,
-      isSecretRotationFailedEventEnabled: true
+      enabledEvents: {
+        [WebhookEvent.SecretModified]: true,
+        [WebhookEvent.SecretRotationFailed]: true
+      }
     }
   });
 
@@ -140,8 +144,10 @@ export const AddWebhookForm = ({
     if (!isOpen) {
       reset({
         type: WebhookType.GENERAL,
-        isSecretModifiedEventEnabled: true,
-        isSecretRotationFailedEventEnabled: true,
+        enabledEvents: {
+          [WebhookEvent.SecretModified]: true,
+          [WebhookEvent.SecretRotationFailed]: true
+        },
         environment: environments?.[0]?.slug,
         secretPath: ""
       });
@@ -227,7 +233,7 @@ export const AddWebhookForm = ({
                 </FormControl>
               )}
             />
-            {selectedWebhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
+            {renderFormFields()}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="advanced-settings" className="data-[state=open]:border-none">
                 <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
@@ -237,30 +243,33 @@ export const AddWebhookForm = ({
                   <p className="mb-4 text-sm text-mineshaft-400">
                     Select which events will trigger this webhook
                   </p>
-                  <div className="space-y-4">
-                    {WEBHOOK_EVENTS.map((event) => {
-                      const { key, label, description } = WEBHOOK_EVENT_METADATA[event];
+                  <Controller
+                    control={control}
+                    name="enabledEvents"
+                    render={({ field: { value, onChange } }) => (
+                      <div className="space-y-4">
+                        {WEBHOOK_EVENTS.map((event) => {
+                          const { label, description } = WEBHOOK_EVENT_METADATA[event];
+                          const isChecked = value?.[event] ?? true;
 
-                      return (
-                        <Controller
-                          key={event}
-                          control={control}
-                          name={key as TWebhookEventToggleKey}
-                          render={({ field: { value, onChange } }) => (
+                          return (
                             <Checkbox
+                              key={event}
                               id={`webhook-event-${event}`}
-                              isChecked={value}
-                              onCheckedChange={(checked) => onChange(checked === true)}
+                              isChecked={isChecked}
+                              onCheckedChange={(checked) =>
+                                onChange({ ...value, [event]: checked === true })
+                              }
                               allowMultilineLabel
                             >
                               <p className="font-medium text-mineshaft-50">{label}</p>
                               <p className="text-mineshaft-400">{description}</p>
                             </Checkbox>
-                          )}
-                        />
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

@@ -9,13 +9,7 @@ export enum WebhookEvent {
   SecretRotationFailed = "secrets.rotation-failed"
 }
 
-export type TWebhookEventToggleKey = Exclude<
-  keyof TUpdateWebhookDto,
-  "webhookId" | "projectId" | "isDisabled"
->;
-
 export type TWebhookEventMetadata = {
-  key: TWebhookEventToggleKey;
   label: string;
   description: string;
 };
@@ -24,12 +18,10 @@ export const WEBHOOK_EVENTS = Object.values(WebhookEvent) as WebhookEvent[];
 
 export const WEBHOOK_EVENT_METADATA: Record<WebhookEvent, TWebhookEventMetadata> = {
   [WebhookEvent.SecretRotationFailed]: {
-    key: "isSecretRotationFailedEventEnabled",
     label: "Secret Rotation Failed",
     description: "Triggered when a secret rotation fails"
   },
   [WebhookEvent.SecretModified]: {
-    key: "isSecretModifiedEventEnabled",
     label: "Secret Modified",
     description: "Triggered when secrets are modified"
   }
@@ -50,8 +42,7 @@ export type TWebhook = {
   lastStatus: "success" | "failed";
   lastRunErrorMessage?: string;
   isDisabled: boolean;
-  isSecretModifiedEventEnabled: boolean;
-  isSecretRotationFailedEventEnabled: boolean;
+  eventsFilter: { eventName: WebhookEvent }[];
   createdAt: string;
   updatedAt: string;
 };
@@ -63,16 +54,14 @@ export type TCreateWebhookDto = {
   webhookSecretKey?: string;
   secretPath: string;
   type: WebhookType;
-  isSecretModifiedEventEnabled?: boolean;
-  isSecretRotationFailedEventEnabled?: boolean;
+  eventsFilter?: { eventName: WebhookEvent }[];
 };
 
 export type TUpdateWebhookDto = {
   webhookId: string;
   projectId: string;
   isDisabled?: boolean;
-  isSecretModifiedEventEnabled?: boolean;
-  isSecretRotationFailedEventEnabled?: boolean;
+  eventsFilter?: { eventName: WebhookEvent }[];
 };
 
 export type TDeleteWebhookDto = {

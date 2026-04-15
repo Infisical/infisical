@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { queryKeys } from "./query";
-import { TCreateWebhookDto, TDeleteWebhookDto, TTestWebhookDTO, TUpdateWebhookDto } from "./types";
+import {
+  TCreateWebhookDto,
+  TDeleteWebhookDto,
+  TTestWebhookDTO,
+  TUpdateWebhookDto,
+  WebhookEvent
+} from "./types";
 
 export const useCreateWebhook = () => {
   const queryClient = useQueryClient();
@@ -43,20 +49,15 @@ export const useUpdateWebhook = () => {
     mutationFn: async (dto) => {
       const payload: {
         isDisabled?: boolean;
-        isSecretModifiedEventEnabled?: boolean;
-        isSecretRotationFailedEventEnabled?: boolean;
+        eventsFilter?: { eventName: WebhookEvent }[];
       } = {};
 
       if (dto.isDisabled !== undefined) {
         payload.isDisabled = dto.isDisabled;
       }
 
-      if (dto.isSecretModifiedEventEnabled !== undefined) {
-        payload.isSecretModifiedEventEnabled = dto.isSecretModifiedEventEnabled;
-      }
-
-      if (dto.isSecretRotationFailedEventEnabled !== undefined) {
-        payload.isSecretRotationFailedEventEnabled = dto.isSecretRotationFailedEventEnabled;
+      if (dto.eventsFilter !== undefined) {
+        payload.eventsFilter = dto.eventsFilter;
       }
 
       const { data } = await apiRequest.patch(`/api/v1/webhooks/${dto.webhookId}`, {

@@ -8,15 +8,13 @@ export type TCreateWebhookDTO = {
   webhookUrl: string;
   webhookSecretKey?: string;
   type: string;
-  isSecretModifiedEventEnabled?: boolean;
-  isSecretRotationFailedEventEnabled?: boolean;
+  eventsFilter?: { eventName: TSubscribableWebhookEvent }[];
 } & TProjectPermission;
 
 export type TUpdateWebhookDTO = {
   id: string;
   isDisabled?: boolean;
-  isSecretModifiedEventEnabled?: boolean;
-  isSecretRotationFailedEventEnabled?: boolean;
+  eventsFilter?: { eventName: TSubscribableWebhookEvent }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TTestWebhookDTO = {
@@ -43,6 +41,10 @@ export enum WebhookEvents {
   SecretRotationFailed = "secrets.rotation-failed",
   TestEvent = "test"
 }
+
+export const SUBSCRIBABLE_WEBHOOK_EVENTS = [WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed] as const;
+
+export type TSubscribableWebhookEvent = (typeof SUBSCRIBABLE_WEBHOOK_EVENTS)[number];
 
 type TWebhookSecretModifiedEventPayload = {
   type: WebhookEvents.SecretModified;

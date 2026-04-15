@@ -38,20 +38,12 @@ export const webhookServiceFactory = ({
   projectDAL,
   kmsService
 }: TWebhookServiceFactoryDep) => {
-  const toBlockedEvents = (
-    isSecretModifiedEventEnabled?: boolean,
-    isSecretRotationFailedEventEnabled?: boolean
-  ): string[] => {
-    const blocked: string[] = [];
-    if (isSecretModifiedEventEnabled === false) blocked.push(WebhookEvents.SecretModified);
-    if (isSecretRotationFailedEventEnabled === false) blocked.push(WebhookEvents.SecretRotationFailed);
-    return blocked;
-  };
-
-  const withEventFlags = <T extends { blockedEvents?: string[] | null }>(webhook: T) => ({
+  // `eventsFilter` on the API mirrors the DB's `filteredEvents` column: both are the blocklist
+  // of events that should NOT trigger the webhook. Empty array => no events are filtered out
+  // (webhook fires on everything subscribable).
+  const withEventsFilter = <T extends { filteredEvents?: string[] | null }>(webhook: T) => ({
     ...webhook,
-    isSecretModifiedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretModified),
-    isSecretRotationFailedEventEnabled: !webhook.blockedEvents?.includes(WebhookEvents.SecretRotationFailed)
+    eventsFilter: (webhook.filteredEvents ?? []).map((eventName) => ({ eventName }))
   });
 
   const createWebhook = async ({
@@ -65,8 +57,7 @@ export const webhookServiceFactory = ({
     secretPath,
     webhookSecretKey,
     type,
-    isSecretModifiedEventEnabled,
-    isSecretRotationFailedEventEnabled
+    eventsFilter
   }: TCreateWebhookDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -89,7 +80,7 @@ export const webhookServiceFactory = ({
       projectId
     });
 
-    const blockedEvents = toBlockedEvents(isSecretModifiedEventEnabled, isSecretRotationFailedEventEnabled);
+    const filteredEvents = eventsFilter?.map((e) => e.eventName) ?? [];
 
     const insertDoc: TWebhooksInsert = {
       envId: env.id,
@@ -97,7 +88,7 @@ export const webhookServiceFactory = ({
       secretPath: secretPath || "/",
       type,
       encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob,
-      blockedEvents
+      filteredEvents
     };
 
     if (webhookSecretKey) {
@@ -105,7 +96,7 @@ export const webhookServiceFactory = ({
     }
 
     const webhook = await webhookDAL.create(insertDoc);
-    return { ...withEventFlags(webhook), projectId, environment: env };
+    return { ...withEventsFilter(webhook), projectId, environment: env };
   };
 
   const updateWebhook = async ({
@@ -115,8 +106,7 @@ export const webhookServiceFactory = ({
     actorAuthMethod,
     id,
     isDisabled,
-    isSecretModifiedEventEnabled,
-    isSecretRotationFailedEventEnabled
+    eventsFilter
   }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
@@ -131,39 +121,15 @@ export const webhookServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
-    const hasEventToggleUpdate =
-      isSecretModifiedEventEnabled !== undefined || isSecretRotationFailedEventEnabled !== undefined;
-
-    let blockedEvents: string[] | undefined;
-    if (hasEventToggleUpdate) {
-      const currentBlocked = new Set<string>(webhook.blockedEvents ?? []);
-
-      if (isSecretModifiedEventEnabled !== undefined) {
-        if (isSecretModifiedEventEnabled) {
-          currentBlocked.delete(WebhookEvents.SecretModified);
-        } else {
-          currentBlocked.add(WebhookEvents.SecretModified);
-        }
-      }
-
-      if (isSecretRotationFailedEventEnabled !== undefined) {
-        if (isSecretRotationFailedEventEnabled) {
-          currentBlocked.delete(WebhookEvents.SecretRotationFailed);
-        } else {
-          currentBlocked.add(WebhookEvents.SecretRotationFailed);
-        }
-      }
-
-      blockedEvents = Array.from(currentBlocked);
-    }
+    const filteredEvents = eventsFilter?.map((e) => e.eventName);
 
     const updateData = {
       ...(isDisabled !== undefined ? { isDisabled } : {}),
-      ...(blockedEvents !== undefined ? { blockedEvents } : {})
+      ...(filteredEvents !== undefined ? { filteredEvents } : {})
     };
 
     const updatedWebhook = await webhookDAL.updateById(id, updateData);
-    return withEventFlags({ ...webhook, ...updatedWebhook });
+    return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
   const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
@@ -181,7 +147,7 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
     const deletedWebhook = await webhookDAL.deleteById(id);
-    return withEventFlags({ ...webhook, ...deletedWebhook });
+    return withEventsFilter({ ...webhook, ...deletedWebhook });
   };
 
   const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
@@ -232,7 +198,7 @@ export const webhookServiceFactory = ({
       lastStatus: isSuccess ? "success" : "failed",
       lastRunErrorMessage: isSuccess ? null : webhookError
     });
-    return withEventFlags({ ...webhook, ...updatedWebhook });
+    return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
   const listWebhooks = async ({
@@ -263,7 +229,7 @@ export const webhookServiceFactory = ({
     return webhooks.map((w) => {
       const { url } = decryptWebhookDetails(w, (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString());
       return {
-        ...withEventFlags(w),
+        ...withEventsFilter(w),
         url
       };
     });

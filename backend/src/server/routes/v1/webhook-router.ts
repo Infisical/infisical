@@ -8,7 +8,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { WebhookType } from "@app/services/webhook/webhook-types";
+import { WebhookEvents, WebhookType } from "@app/services/webhook/webhook-types";
 
 export const sanitizedWebhookSchema = WebhooksSchema.pick({
   id: true,
@@ -27,8 +27,11 @@ export const sanitizedWebhookSchema = WebhooksSchema.pick({
     name: z.string(),
     slug: z.string()
   }),
-  isSecretModifiedEventEnabled: z.boolean(),
-  isSecretRotationFailedEventEnabled: z.boolean()
+  eventsFilter: z.array(
+    z.object({
+      eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+    })
+  )
 });
 
 export const registerWebhookRouter = async (server: FastifyZodProvider) => {
@@ -49,8 +52,13 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           webhookUrl: z.string().url().trim(),
           webhookSecretKey: z.string().trim().optional(),
           secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-          isSecretModifiedEventEnabled: z.boolean().default(true),
-          isSecretRotationFailedEventEnabled: z.boolean().default(true)
+          eventsFilter: z
+            .array(
+              z.object({
+                eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+              })
+            )
+            .optional()
         })
         .superRefine((data, ctx) => {
           if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
@@ -122,15 +130,16 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           isDisabled: z.boolean().optional(),
-          isSecretModifiedEventEnabled: z.boolean().optional(),
-          isSecretRotationFailedEventEnabled: z.boolean().optional()
+          eventsFilter: z
+            .array(
+              z.object({
+                eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+              })
+            )
+            .optional()
         })
-        .refine(({ isDisabled, isSecretModifiedEventEnabled, isSecretRotationFailedEventEnabled }) => {
-          return (
-            isDisabled !== undefined ||
-            isSecretModifiedEventEnabled !== undefined ||
-            isSecretRotationFailedEventEnabled !== undefined
-          );
+        .refine(({ isDisabled, eventsFilter }) => {
+          return isDisabled !== undefined || eventsFilter !== undefined;
         }, "At least one field is required"),
       response: {
         200: z.object({
@@ -147,8 +156,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         id: req.params.webhookId,
         isDisabled: req.body.isDisabled,
-        isSecretModifiedEventEnabled: req.body.isSecretModifiedEventEnabled,
-        isSecretRotationFailedEventEnabled: req.body.isSecretRotationFailedEventEnabled
+        eventsFilter: req.body.eventsFilter
       });
 
       await server.services.auditLog.createAuditLog({

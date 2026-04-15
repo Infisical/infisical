@@ -292,8 +292,8 @@ export const fnTriggerWebhook = async ({
   auditLogService
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
-  const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, blockedEvents }) => {
-    const isEventSubscribed = !blockedEvents || blockedEvents.length === 0 || !blockedEvents.includes(event.type);
+  const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, filteredEvents }) => {
+    const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || !filteredEvents.includes(event.type);
 
     return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
   });

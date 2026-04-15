@@ -29,7 +29,12 @@ import {
   useTestWebhook,
   useUpdateWebhook
 } from "@app/hooks/api";
-import { TWebhook, WEBHOOK_EVENT_METADATA, WEBHOOK_EVENTS } from "@app/hooks/api/webhooks/types";
+import {
+  TWebhook,
+  WEBHOOK_EVENT_METADATA,
+  WEBHOOK_EVENTS,
+  WebhookEvent
+} from "@app/hooks/api/webhooks/types";
 
 import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
 import { EditWebhookEventsModal } from "./EditWebhookEventsModal";
@@ -63,8 +68,14 @@ export const WebhooksTab = withProjectPermission(
     const { mutateAsync: deleteWebhook } = useDeleteWebhook();
 
     const handleWebhookCreate = async (data: TFormSchema) => {
+      // eventsFilter is the blocklist of events to filter OUT
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => !data.enabledEvents[event]).map(
+        (event) => ({ eventName: event })
+      );
+
       await createWebhook({
         ...data,
+        eventsFilter,
         projectId
       });
       handlePopUpClose("addWebhook");
@@ -88,15 +99,17 @@ export const WebhooksTab = withProjectPermission(
 
     const handleWebhookEventsUpdate = async (
       webhookId: string,
-      settings: {
-        isSecretModifiedEventEnabled: boolean;
-        isSecretRotationFailedEventEnabled: boolean;
-      }
+      settings: Record<WebhookEvent, boolean>
     ) => {
+      // eventsFilter is the blocklist — every unchecked event goes in.
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => !settings[event]).map((event) => ({
+        eventName: event
+      }));
+
       await updateWebhook({
         webhookId,
         projectId,
-        ...settings
+        eventsFilter
       });
       handlePopUpClose("editWebhook");
       createNotification({
@@ -195,9 +208,8 @@ export const WebhooksTab = withProjectPermission(
                       lastRunErrorMessage
                     } = webhook;
 
-                    const enabledEvents = WEBHOOK_EVENTS.filter(
-                      (event) => webhook[WEBHOOK_EVENT_METADATA[event].key] !== false
-                    );
+                    const filteredSet = new Set(webhook.eventsFilter.map((e) => e.eventName));
+                    const enabledEvents = WEBHOOK_EVENTS.filter((event) => !filteredSet.has(event));
                     const enabledEventsCount = enabledEvents.length;
                     const hasEnabledEvents = enabledEventsCount > 0;
 

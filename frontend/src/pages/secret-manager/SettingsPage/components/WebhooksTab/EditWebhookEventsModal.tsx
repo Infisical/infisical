@@ -3,12 +3,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button, Checkbox, Modal, ModalContent } from "@app/components/v2";
 import {
   TWebhook,
-  TWebhookEventToggleKey,
   WEBHOOK_EVENT_METADATA,
-  WEBHOOK_EVENTS
+  WEBHOOK_EVENTS,
+  WebhookEvent
 } from "@app/hooks/api/webhooks/types";
 
-type TWebhookEventSettings = Record<TWebhookEventToggleKey, boolean>;
+type TWebhookEventSettings = Record<WebhookEvent, boolean>;
 type Props = {
   isOpen?: boolean;
   webhook?: TWebhook;
@@ -24,8 +24,11 @@ export const EditWebhookEventsModal = ({
   onOpenChange,
   onSave
 }: Props) => {
-  const defaultSettings = useMemo(
-    () => ({ isSecretModifiedEventEnabled: true, isSecretRotationFailedEventEnabled: true }),
+  const defaultSettings = useMemo<TWebhookEventSettings>(
+    () => ({
+      [WebhookEvent.SecretModified]: true,
+      [WebhookEvent.SecretRotationFailed]: true
+    }),
     []
   );
   const [eventSettings, setEventSettings] = useState<TWebhookEventSettings>(defaultSettings);
@@ -38,19 +41,20 @@ export const EditWebhookEventsModal = ({
       return;
     }
 
+    // eventsFilter is the blocklist — an event is enabled when it is NOT in the filter.
+    const filteredEventNames = new Set(webhook.eventsFilter.map((e) => e.eventName));
     setEventSettings(
       WEBHOOK_EVENTS.reduce<TWebhookEventSettings>((acc, event) => {
-        const { key } = WEBHOOK_EVENT_METADATA[event];
-        acc[key] = webhook[key] ?? true;
+        acc[event] = !filteredEventNames.has(event);
         return acc;
       }, {} as TWebhookEventSettings)
     );
   }, [isOpen, webhook, defaultSettings]);
 
-  const handleToggle = (key: TWebhookEventToggleKey, isEnabled: boolean) => {
+  const handleToggle = (event: WebhookEvent, isEnabled: boolean) => {
     setEventSettings((curr) => ({
       ...curr,
-      [key]: isEnabled
+      [event]: isEnabled
     }));
   };
 
@@ -68,14 +72,14 @@ export const EditWebhookEventsModal = ({
         <form onSubmit={handleSave}>
           <div className="space-y-4">
             {WEBHOOK_EVENTS.map((event) => {
-              const { key, label, description } = WEBHOOK_EVENT_METADATA[event];
+              const { label, description } = WEBHOOK_EVENT_METADATA[event];
 
               return (
                 <Checkbox
                   key={event}
                   id={`webhook-event-${event}`}
-                  isChecked={eventSettings[key]}
-                  onCheckedChange={(checked) => handleToggle(key, checked === true)}
+                  isChecked={eventSettings[event]}
+                  onCheckedChange={(checked) => handleToggle(event, checked === true)}
                   allowMultilineLabel
                 >
                   <p className="font-medium text-mineshaft-50">{label}</p>
