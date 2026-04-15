@@ -52,6 +52,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES } from "../pam-account-policy/pam-account-policy-constants";
+import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
+import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
+import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
 import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -84,6 +88,7 @@ type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
+  pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceRotationRulesDAL: Pick<TPamResourceRotationRulesDALFactory, "findByResourceIds">;
   mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
@@ -116,6 +121,7 @@ export const pamAccountServiceFactory = ({
   pamResourceDAL,
   pamSessionDAL,
   pamAccountDAL,
+  pamAccountPolicyDAL,
   pamResourceRotationRulesDAL,
   mfaSessionService,
   projectDAL,
@@ -132,7 +138,17 @@ export const pamAccountServiceFactory = ({
   pamAccountDependenciesDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
-    { credentials, resourceId, name, description, folderId, requireMfa, internalMetadata, metadata }: TCreateAccountDTO,
+    {
+      credentials,
+      resourceId,
+      name,
+      description,
+      folderId,
+      requireMfa,
+      internalMetadata,
+      metadata,
+      policyId
+    }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const resource = await pamResourceDAL.findById(resourceId);
@@ -188,6 +204,13 @@ export const pamAccountServiceFactory = ({
       kmsService
     });
 
+    if (policyId) {
+      const policy = await pamAccountPolicyDAL.findById(policyId);
+      if (!policy || policy.projectId !== resource.projectId) {
+        throw new NotFoundError({ message: "Policy not found" });
+      }
+    }
+
     try {
       const { account, insertedMetadata } = await pamAccountDAL.transaction(async (tx) => {
         const newAccount = await pamAccountDAL.create(
@@ -199,7 +222,8 @@ export const pamAccountServiceFactory = ({
             description,
             folderId,
             requireMfa,
-            internalMetadata: internalMetadata ?? null
+            internalMetadata: internalMetadata ?? null,
+            policyId: policyId ?? null
           },
           tx
         );
@@ -243,7 +267,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata }: TUpdateAccountDTO,
+    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata, policyId }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const account = await pamAccountDAL.findById(accountId);
@@ -304,6 +328,16 @@ export const pamAccountServiceFactory = ({
 
     if (internalMetadata !== undefined) {
       updateDoc.internalMetadata = internalMetadata;
+    }
+
+    if (policyId !== undefined) {
+      if (policyId) {
+        const policy = await pamAccountPolicyDAL.findById(policyId);
+        if (!policy || policy.projectId !== account.projectId) {
+          throw new NotFoundError({ message: "Policy not found" });
+        }
+      }
+      updateDoc.policyId = policyId;
     }
 
     if (credentials !== undefined) {
@@ -782,6 +816,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         status: PamSessionStatus.Active, // AWS IAM sessions are immediately active
         accountId: account.id,
+        resourceId: resource.id,
         userId: actor.id,
         expiresAt,
         startedAt: new Date()
@@ -816,6 +851,7 @@ export const pamAccountServiceFactory = ({
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
       accountId: account.id,
+      resourceId: resource.id,
       userId: actor.id,
       expiresAt: new Date(Date.now() + duration)
     });
@@ -993,6 +1029,24 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
 
+    // Resolve policy rules for gateway
+    const policyRules: TPolicyRules = {};
+    if (account.policyId) {
+      const policy = await pamAccountPolicyDAL.findById(account.policyId);
+      if (policy && policy.isActive) {
+        const rules = (policy.rules ?? {}) as TPolicyRules;
+        for (const ruleType of Object.values(PamAccountPolicyRuleType)) {
+          const ruleConfig = rules[ruleType];
+          if (ruleConfig) {
+            const supported = PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES[ruleType];
+            if (supported === "all" || supported.includes(resource.resourceType as PamResource)) {
+              policyRules[ruleType] = ruleConfig;
+            }
+          }
+        }
+      }
+    }
+
     let sessionStarted = false;
 
     // Mark session as started
@@ -1048,6 +1102,7 @@ export const pamAccountServiceFactory = ({
             privateKey,
             certificate: signedPublicKey
           },
+          policyRules,
           projectId: project.id,
           account,
           sessionStarted
@@ -1060,6 +1115,7 @@ export const pamAccountServiceFactory = ({
         ...decryptedResource.connectionDetails,
         ...decryptedAccount.credentials
       },
+      policyRules,
       projectId: project.id,
       account,
       sessionStarted

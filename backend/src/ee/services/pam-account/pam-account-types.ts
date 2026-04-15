@@ -13,6 +13,7 @@ export type TCreateAccountDTO = Pick<
 > & {
   internalMetadata?: Record<string, unknown>;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
+  policyId?: string | null;
 };
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {

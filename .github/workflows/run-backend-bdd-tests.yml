@@ -35,16 +35,23 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 20
+      - name: 🔧 Setup Node 22
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install sscep (SCEP client for BDD tests)
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake libssl-dev build-essential
+          git clone https://github.com/certnanny/sscep.git /tmp/sscep-build
+          cmake -S /tmp/sscep-build -B /tmp/sscep-build/build
+          make -C /tmp/sscep-build/build -j$(nproc)
+          sudo cp /tmp/sscep-build/build/sscep /usr/local/bin/sscep
       - name: Install dependencies
         run: npm install
         working-directory: backend
@@ -72,8 +79,9 @@ jobs:
           sed -i "s#SMTP_REQUIRE_TLS=.*#SMTP_REQUIRE_TLS=#" .env
           sed -i "s#SMTP_USERNAME=.*#SMTP_USERNAME=#" .env
           sed -i "s#SMTP_PASSWORD=.*#SMTP_PASSWORD=#" .env
-          # Enable ACME feature in license for BDD tests
+          # Enable ACME and SCEP features in license for BDD tests
           sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
+          sed -i 's/pkiScep: .*/pkiScep: true,/g' backend/src/ee/services/license/license-fns.ts
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:

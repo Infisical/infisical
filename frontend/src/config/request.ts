@@ -1,9 +1,10 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import { fetchAuthToken } from "@app/hooks/api/auth/refresh";
 import {
   getAuthToken,
   getMfaTempToken,
@@ -19,21 +20,24 @@ export const apiRequest = axios.create({
 });
 
 apiRequest.interceptors.request.use((config) => {
+  // Skip auto-injection if the caller already set an Authorization header
+  if (config.headers?.Authorization) return config;
+
   const signupTempToken = getSignupTempToken();
   const mfaTempToken = getMfaTempToken();
   const token = getAuthToken();
   const providerAuthToken = SecurityClient.getProviderAuthToken();
 
   if (config.headers) {
-    if (signupTempToken) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers.Authorization = `Bearer ${signupTempToken}`;
-    } else if (mfaTempToken) {
+    if (mfaTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${mfaTempToken}`;
     } else if (token) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (signupTempToken) {
+      // eslint-disable-next-line no-param-reassign
+      config.headers.Authorization = `Bearer ${signupTempToken}`;
     } else if (providerAuthToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${providerAuthToken}`;
@@ -49,23 +53,46 @@ const resetRedirectingFlag = () => {
   isRedirecting = false;
 };
 
+let refreshPromise: Promise<string> | null = null;
+
+const isTokenExpiredError = (message: string) => {
+  const lower = message.toLowerCase();
+  return lower.includes("token expired") || lower.includes("stalesession");
+};
+
 apiRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const { response } = error;
+    const { response, config } = error;
 
-    if (response && (response.status === 401 || response.status === 403)) {
-      const currentToken = getAuthToken();
-      const isAuthenticatedRequest = Boolean(currentToken);
+    if (
+      response &&
+      response.status === 401 &&
+      isTokenExpiredError(response.data?.message || "") &&
+      getAuthToken() &&
+      !(config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry
+    ) {
+      (config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry = true;
 
-      if (isAuthenticatedRequest && !isRedirecting) {
-        // Check if the error indicates token expiration
-        const errorMessage = response.data?.message || "";
-        const isTokenExpired = errorMessage
-          .toLowerCase()
-          .includes("your token has expired. please re-authenticate.");
+      try {
+        // Deduplicate concurrent refresh attempts
+        if (!refreshPromise) {
+          refreshPromise = fetchAuthToken()
+            .then((data) => data.token)
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
 
-        if (isTokenExpired) {
+        const newToken = await refreshPromise;
+
+        // Retry the original request with the new token
+        // eslint-disable-next-line no-param-reassign
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return await apiRequest(config);
+      } catch {
+        // Refresh failed — clear session and redirect to login
+        if (!isRedirecting) {
           isRedirecting = true;
 
           try {
@@ -85,7 +112,7 @@ apiRequest.interceptors.response.use(
             sessionStorage.setItem(
               SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
               JSON.stringify({
-                expiry: formatISO(addSeconds(new Date(), 300)), // 5 minutes
+                expiry: formatISO(addSeconds(new Date(), 300)),
                 data: window.location.href
               })
             );
@@ -95,7 +122,7 @@ apiRequest.interceptors.response.use(
 
           setTimeout(() => {
             window.location.href = "/login";
-          }, 2000); // 2 seconds to read the notification
+          }, 2000);
 
           setTimeout(resetRedirectingFlag, 3000);
 

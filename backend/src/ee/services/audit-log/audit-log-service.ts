@@ -6,6 +6,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -139,7 +140,7 @@ export const auditLogServiceFactory = ({
     }
     const el = { ...data };
     if (el.actor.type === ActorType.USER || el.actor.type === ActorType.IDENTITY) {
-      const permissionMetadata = requestContext.get("identityPermissionMetadata");
+      const permissionMetadata = requestContext.get(RequestContextKey.IdentityPermissionMetadata);
       el.actor.metadata.permission = permissionMetadata;
     }
     return auditLogQueue.pushToLog(el);

@@ -24,7 +24,8 @@ import {
   PAM_RESOURCE_TYPE_MAP,
   PamResourceType,
   useDeletePamResource,
-  useGetPamResourceById
+  useGetPamResourceById,
+  useUpdatePamResource
 } from "@app/hooks/api/pam";
 
 import { PamUpdateResourceModal } from "../PamResourcesPage/components/PamUpdateResourceModal";
@@ -36,7 +37,9 @@ import {
   PamResourceMetadataSection,
   PamResourceRelatedResourcesSection,
   PamResourceRotationPolicySection,
-  PamRotationPolicyModal
+  PamResourceSessionRecordingSection,
+  PamRotationPolicyModal,
+  PamSessionRecordingModal
 } from "./components";
 
 const PageContent = () => {
@@ -69,6 +72,7 @@ const PageContent = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRotationPolicyModalOpen, setIsRotationPolicyModalOpen] = useState(false);
+  const [isSessionRecordingModalOpen, setIsSessionRecordingModalOpen] = useState(false);
 
   const { data: resource, isPending } = useGetPamResourceById(
     resourceType as PamResourceType,
@@ -79,6 +83,7 @@ const PageContent = () => {
   );
 
   const deleteResource = useDeletePamResource();
+  const updateResource = useUpdatePamResource();
 
   if (isPending) {
     return <UnstablePageLoader />;
@@ -207,6 +212,12 @@ const PageContent = () => {
             resource={resource}
             onEdit={() => setIsRotationPolicyModalOpen(true)}
           />
+          {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+            <PamResourceSessionRecordingSection
+              config={resource.sessionSummaryConfig ?? null}
+              onEdit={() => setIsSessionRecordingModalOpen(true)}
+            />
+          )}
           <PamResourceMetadataSection resource={resource} />
         </div>
 
@@ -258,6 +269,21 @@ const PageContent = () => {
         onOpenChange={setIsRotationPolicyModalOpen}
         resource={resource}
       />
+
+      {[PamResourceType.Postgres, PamResourceType.SSH].includes(resource.resourceType) && (
+        <PamSessionRecordingModal
+          isOpen={isSessionRecordingModalOpen}
+          onOpenChange={setIsSessionRecordingModalOpen}
+          config={resource.sessionSummaryConfig ?? null}
+          onSave={async (config) => {
+            await updateResource.mutateAsync({
+              resourceId: resource.id,
+              resourceType: resource.resourceType,
+              sessionSummaryConfig: config
+            });
+          }}
+        />
+      )}
     </div>
   );
 };

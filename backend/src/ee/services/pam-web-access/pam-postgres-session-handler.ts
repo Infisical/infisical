@@ -1,4 +1,6 @@
+import { parse as parseSql } from "libpg-query";
 import pg from "pg";
+import Cursor from "pg-cursor";
 
 import {
   TPostgresAccountCredentials,
@@ -35,6 +37,22 @@ export const handlePostgresSession = async (
     ctx;
   const { connectionDetails, credentials } = params;
 
+  // Type parser shared between the pg.Client and pg-cursor instances so all
+  // results — whether fetched via the simple query path or cursor — apply the
+  // same normalisation rules.
+  const pgTypes = {
+    getTypeParser: (oid: number) => {
+      // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
+      // so the Data Explorer UI displays human-readable literals.
+      if (oid === 16)
+        return (val: string | Buffer) => {
+          const raw = typeof val === "string" ? val : val.toString("utf8");
+          return raw === "t" ? "true" : "false";
+        };
+      return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
+    }
+  };
+
   const pgClient = new pg.Client({
     host: "localhost",
     port: relayPort,
@@ -44,21 +62,13 @@ export const handlePostgresSession = async (
     ssl: false,
     connectionTimeoutMillis: 30_000,
     statement_timeout: 30_000,
-    types: {
-      getTypeParser: (oid: number) => {
-        // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
-        // so the Data Explorer UI displays human-readable literals.
-        if (oid === 16)
-          return (val: string | Buffer) => {
-            const raw = typeof val === "string" ? val : val.toString("utf8");
-            return raw === "t" ? "true" : "false";
-          };
-        return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
-      }
-    }
+    types: pgTypes
   });
 
   await pgClient.connect();
+
+  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
+  const backendPid = pidRows[0]?.pid;
 
   const repl = createPamSqlRepl(pgClient);
 
@@ -80,6 +90,10 @@ export const handlePostgresSession = async (
     }
   };
 
+  // Server-side transaction state — updated after every query so the client
+  // always receives the authoritative value, including for multi-statement SQL.
+  let isInTransaction = false;
+
   // Shared error handler for correlated query messages
   const sendQueryError = async (id: string, err: unknown) => {
     const pgErr = err as { message?: string; detail?: string; hint?: string };
@@ -92,6 +106,8 @@ export const handlePostgresSession = async (
       // ROLLBACK fails if there was no active transaction — safe to ignore.
     }
 
+    isInTransaction = false;
+
     sendResponse({
       type: PostgresServerMessageType.Error,
       id,
@@ -101,13 +117,45 @@ export const handlePostgresSession = async (
     });
   };
 
+  // Cancel the currently running query via pg_cancel_backend.
+  // Runs on a separate connection so it is not blocked by the sequential queue.
+  const cancelRunningQuery = async () => {
+    if (!backendPid) return;
+    const pid = backendPid;
+    const cancelClient = new pg.Client({
+      host: "localhost",
+      port: relayPort,
+      user: credentials.username,
+      database: connectionDetails.database,
+      password: "",
+      ssl: false,
+      connectionTimeoutMillis: 5_000
+    });
+    try {
+      await cancelClient.connect();
+      await cancelClient.query("SELECT pg_cancel_backend($1)", [pid]);
+    } catch (err) {
+      logger.debug(err, "Failed to cancel backend query");
+    } finally {
+      await cancelClient.end().catch(() => {});
+    }
+  };
+
   // Sequential message processing to prevent concurrent query issues
   let processingPromise = Promise.resolve();
 
   socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
+    const message = parseClientMessage(rawData, PostgresClientMessageSchema);
+
+    // Cancel is handled immediately outside the sequential queue so it can
+    // interrupt a running query rather than waiting behind it.
+    if (message?.type === PostgresClientMessageType.Cancel) {
+      void cancelRunningQuery();
+      return;
+    }
+
     processingPromise = processingPromise
       .then(async () => {
-        const message = parseClientMessage(rawData, PostgresClientMessageSchema);
         if (!message) {
           sendMessage({
             type: TerminalServerMessageType.Output,
@@ -193,19 +241,61 @@ export const handlePostgresSession = async (
 
           case PostgresClientMessageType.Query: {
             try {
-              // Multi-statement SQL (transactions) is executed via PostgreSQL's simple query
-              // protocol, which returns only the last statement's result. For transaction-wrapped
-              // batches (BEGIN;...;COMMIT;), the result is from COMMIT (no rows/fields).
               const startTime = performance.now();
-              const result = await pgClient.query(message.sql);
+              const MAX_ROWS = 1000;
+
+              // Split the SQL into individual statements using the real PostgreSQL C parser
+              // (via libpg-query WASM). Each statement is then run through a pg-cursor with
+              // an explicit row cap — the server sends at most MAX_ROWS+1 rows at the wire
+              // level regardless of result set size, so memory usage is bounded.
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              const parsed = await parseSql(message.sql);
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
+                const location = s.stmt_location ?? 0;
+                return s.stmt_len !== undefined
+                  ? message.sql.slice(location, location + s.stmt_len)
+                  : message.sql.slice(location).trim();
+              });
+
+              let lastRows: Record<string, unknown>[] = [];
+              let lastFields: { name: string }[] = [];
+              let lastRowCount: number | null = null;
+              let lastCommand = "";
+              let lastIsTruncated = false;
+
+              for (const stmtSql of stmtTexts) {
+                const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
+                // eslint-disable-next-line no-await-in-loop
+                const stmtRows = await cursor.read(MAX_ROWS + 1);
+                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
+                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
+                // eslint-disable-next-line no-await-in-loop
+                await cursor.close();
+
+                // eslint-disable-next-line no-underscore-dangle
+                const cursorResult = cursor._result;
+                const cmd = (cursorResult.command ?? "").toUpperCase();
+                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
+                if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
+
+                lastRows = stmtRows;
+                lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
+                lastRowCount = cursorResult.rowCount;
+                lastCommand = cursorResult.command ?? "";
+                lastIsTruncated = stmtIsTruncated;
+              }
+
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
                 type: PostgresServerMessageType.QueryResult,
                 id: message.id,
-                rows: (result.rows ?? []) as Record<string, unknown>[],
-                fields: (result.fields ?? []).map((f) => ({ name: f.name })),
-                rowCount: result.rowCount,
-                command: result.command ?? "",
+                rows: lastRows,
+                fields: lastFields,
+                rowCount: lastRowCount,
+                isTruncated: lastIsTruncated,
+                transactionOpen: isInTransaction,
+                command: lastCommand,
                 executionTimeMs
               });
             } catch (err) {

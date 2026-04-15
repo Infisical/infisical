@@ -649,6 +649,7 @@ import {
   TCertificateRequestsInsert,
   TCertificateRequestsUpdate
 } from "@app/db/schemas/certificate-requests";
+import { TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate } from "@app/db/schemas/email-domains";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
@@ -674,6 +675,11 @@ import {
   TPamAccountDependenciesInsert,
   TPamAccountDependenciesUpdate
 } from "@app/db/schemas/pam-account-dependencies";
+import {
+  TPamAccountPolicies,
+  TPamAccountPoliciesInsert,
+  TPamAccountPoliciesUpdate
+} from "@app/db/schemas/pam-account-policies";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
   TPamDiscoverySourceAccounts,
@@ -1293,6 +1299,7 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesInsert,
       TDynamicSecretLeasesUpdate
     >;
+    [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
@@ -1596,6 +1603,11 @@ declare module "knex/types/tables" {
       TPamResourceFavoritesUpdate
     >;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
+      TPamAccountPolicies,
+      TPamAccountPoliciesInsert,
+      TPamAccountPoliciesUpdate
+    >;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
     [TableName.PamSessionEventBatch]: KnexOriginal.CompositeTableType<
       TPamSessionEventBatches,

@@ -14,6 +14,7 @@ import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secre
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayRouter } from "./gateway-router";
@@ -27,6 +28,7 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { registerPamAccountPolicyRouter } from "./pam-account-policy-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
@@ -67,6 +69,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerSubOrgRouter, { prefix: "/sub-organizations" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+  await server.register(registerEmailDomainRouter, { prefix: "/email-domains" });
 
   // depreciated in favour of infisical workspace
   await server.register(
@@ -202,6 +205,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+      await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
       await pamRouter.register(
         async (pamDiscoveryRouter) => {
           await pamDiscoveryRouter.register(registerPamDiscoveryRouter);

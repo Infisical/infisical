@@ -4,15 +4,17 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
@@ -23,7 +25,7 @@ type TUserServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
     | "find"
-    | "findUserByUsername"
+    | "findOne"
     | "findById"
     | "transaction"
     | "updateById"
@@ -57,29 +59,25 @@ export const userServiceFactory = ({
   userAliasDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
-    const { authType, aliasId, username, authTokenType } = crypto.jwt().decode(token) as {
-      authType: string;
-      aliasId?: string;
-      username: string;
-      authTokenType: AuthTokenType;
-    };
-    if (authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+    const config = getConfig();
 
-    // akhilmhdh: case sensitive email resolution
-    const users = await userDAL.findUserByUsername(username);
-    const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
-    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+    const { aliasId, userId, authTokenType } = crypto
+      .jwt()
+      .verify(token, config.AUTH_SECRET) as AuthModeSignUpTokenPayload;
+    if (authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ message: "Invalid token" });
+
     let { isEmailVerified } = user;
     if (aliasId) {
-      const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: aliasId });
       if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${aliasId}' not found` });
       isEmailVerified = userAlias.isEmailVerified;
     }
 
-    if (!user.email)
-      throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
-    if (isEmailVerified)
-      throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
+    if (!user.email) throw new BadRequestError({ message: "Invalid token" });
+    if (isEmailVerified) throw new BadRequestError({ name: "Invalid token" });
 
     const userToken = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
@@ -94,48 +92,6 @@ export const userServiceFactory = ({
       substitutions: {
         code: userToken
       }
-    });
-  };
-
-  const verifyEmailVerificationCode = async (username: string, code: string) => {
-    // akhilmhdh: case sensitive email resolution
-    const usersByusername = await userDAL.findUserByUsername(username);
-
-    logger.info(
-      usersByusername.map((user) => ({
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        isEmailVerified: user.isEmailVerified
-      })),
-      `Verify email users: [username=${username}]`
-    );
-
-    const user =
-      usersByusername?.length > 1 ? usersByusername.find((el) => el.username === username) : usersByusername?.[0];
-    if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
-    if (!user.email)
-      throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
-
-    const token = await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id,
-      code
-    });
-
-    if (token?.aliasId) {
-      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
-      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${token.aliasId}' not found` });
-      if (userAlias?.isEmailVerified)
-        throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
-
-      await userAliasDAL.updateById(token.aliasId, { isEmailVerified: true });
-    }
-    const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
-
-    await userDAL.updateById(user.id, {
-      isEmailVerified: true,
-      username: userEmails?.length === 1 && userEmails?.[0]?.id === user.id ? user.email.toLowerCase() : undefined
     });
   };
 
@@ -201,6 +157,8 @@ export const userServiceFactory = ({
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
     const startTime = new Date();
+    const normalizedNewEmail = sanitizeEmail(newEmail);
+    validateEmail(normalizedNewEmail);
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user)
@@ -219,8 +177,7 @@ export const userServiceFactory = ({
       }
 
       // Silently check if another user already has this email - don't send OTP if email is taken
-      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
-      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      const existingUser = await userDAL.findOne({ username: normalizedNewEmail }, tx);
       if (!existingUser) {
         // Generate 6-digit OTP
         const otpCode = await tokenService.createTokenForUser({
@@ -253,14 +210,17 @@ export const userServiceFactory = ({
     return changeEmailOTP;
   };
 
-  const updateUserEmail = async ({ userId, newEmail, otpCode }: TUpdateUserEmailDTO & { otpCode: string }) => {
+  const updateUserEmail = async ({
+    userId,
+    newEmail: unsanitizedEmail,
+    otpCode
+  }: TUpdateUserEmailDTO & { otpCode: string }) => {
+    const newEmail = sanitizeEmail(unsanitizedEmail);
+    validateEmail(newEmail);
+
     const changedUser = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
-
-      if (user.authMethods?.includes(AuthMethod.LDAP)) {
-        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
-      }
 
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
@@ -289,8 +249,7 @@ export const userServiceFactory = ({
       }
 
       // Final check if another user has this email
-      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
-      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      const existingUser = await userDAL.findOne({ username: newEmail }, tx);
       if (existingUser) {
         throw new BadRequestError({ message: "Email is no longer available", name: "UpdateUserEmail" });
       }
@@ -345,7 +304,8 @@ export const userServiceFactory = ({
 
     return {
       ...user,
-      encryptionVersion: user.encryptionVersion!
+      hashedPassword: null,
+      encryptionVersion: 2
     };
   };
 
@@ -461,9 +421,8 @@ export const userServiceFactory = ({
 
   const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
     // akhilmhdh: case sensitive email resolution
-    const usersByusername = await userDAL.findUserByUsername(username);
-    const user =
-      usersByusername?.length > 1 ? usersByusername.find((el) => el.username === username) : usersByusername?.[0];
+    const user = await userDAL.findOne({ username });
+
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
@@ -485,7 +444,6 @@ export const userServiceFactory = ({
 
   return {
     sendEmailVerificationCode,
-    verifyEmailVerificationCode,
     updateUserMfa,
     updateUserName,
     updateAuthMethods,

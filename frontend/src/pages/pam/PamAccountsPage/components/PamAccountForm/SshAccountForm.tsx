@@ -10,7 +10,11 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { SSHAuthMethod } from "@app/hooks/api/pam/types/ssh-resource";
 
 import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
@@ -245,6 +249,7 @@ export const SshAccountForm = ({ account, resourceId, onSubmit, closeSheet }: Pr
           <GenericAccountFields />
           <SshAccountFields isUpdate={isUpdate} resourceId={effectiveResourceId} />
           <RequireMfaField />
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

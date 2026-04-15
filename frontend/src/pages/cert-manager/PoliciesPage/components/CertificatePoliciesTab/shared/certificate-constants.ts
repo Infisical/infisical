@@ -198,7 +198,10 @@ export enum CertKeyAlgorithm {
   RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
-  ECDSA_P384 = "EC_secp384r1"
+  ECDSA_P384 = "EC_secp384r1",
+  ML_DSA_44 = "ML-DSA-44",
+  ML_DSA_65 = "ML-DSA-65",
+  ML_DSA_87 = "ML-DSA-87"
 }
 
 export enum CertSignatureAlgorithm {
@@ -207,7 +210,10 @@ export enum CertSignatureAlgorithm {
   RSA_SHA512 = "RSA-SHA512",
   ECDSA_SHA256 = "ECDSA-SHA256",
   ECDSA_SHA384 = "ECDSA-SHA384",
-  ECDSA_SHA512 = "ECDSA-SHA512"
+  ECDSA_SHA512 = "ECDSA-SHA512",
+  ML_DSA_44 = "ML-DSA-44",
+  ML_DSA_65 = "ML-DSA-65",
+  ML_DSA_87 = "ML-DSA-87"
 }
 
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
@@ -227,6 +233,12 @@ export const getSignatureAlgorithmDisplayName = (algorithm: CertSignatureAlgorit
       return "ECDSA with SHA-384";
     case CertSignatureAlgorithm.ECDSA_SHA512:
       return "ECDSA with SHA-512";
+    case CertSignatureAlgorithm.ML_DSA_44:
+      return "ML-DSA-44";
+    case CertSignatureAlgorithm.ML_DSA_65:
+      return "ML-DSA-65";
+    case CertSignatureAlgorithm.ML_DSA_87:
+      return "ML-DSA-87";
     default:
       return algorithm;
   }
@@ -244,6 +256,12 @@ export const getKeyAlgorithmDisplayName = (algorithm: CertKeyAlgorithm): string 
       return "ECDSA P-256";
     case CertKeyAlgorithm.ECDSA_P384:
       return "ECDSA P-384";
+    case CertKeyAlgorithm.ML_DSA_44:
+      return "ML-DSA-44";
+    case CertKeyAlgorithm.ML_DSA_65:
+      return "ML-DSA-65";
+    case CertKeyAlgorithm.ML_DSA_87:
+      return "ML-DSA-87";
     default:
       return algorithm;
   }
@@ -256,7 +274,10 @@ export const mapPolicySignatureAlgorithmToApi = (policyFormat: string): string =
     "SHA512-RSA": "RSA-SHA512",
     "SHA256-ECDSA": "ECDSA-SHA256",
     "SHA384-ECDSA": "ECDSA-SHA384",
-    "SHA512-ECDSA": "ECDSA-SHA512"
+    "SHA512-ECDSA": "ECDSA-SHA512",
+    "ML-DSA-44": "ML-DSA-44",
+    "ML-DSA-65": "ML-DSA-65",
+    "ML-DSA-87": "ML-DSA-87"
   };
   return mapping[policyFormat] || policyFormat;
 };
@@ -267,7 +288,10 @@ export const mapPolicyKeyAlgorithmToApi = (policyFormat: string): string => {
     "RSA-3072": "RSA_3072",
     "RSA-4096": "RSA_4096",
     "ECDSA-P256": "EC_prime256v1",
-    "ECDSA-P384": "EC_secp384r1"
+    "ECDSA-P384": "EC_secp384r1",
+    "ML-DSA-44": "ML-DSA-44",
+    "ML-DSA-65": "ML-DSA-65",
+    "ML-DSA-87": "ML-DSA-87"
   };
   return mapping[policyFormat] || policyFormat;
 };
@@ -294,5 +318,9 @@ export const ALGORITHM_FAMILIES = {
   RSA: {
     signature: ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"] as const,
     key: ["RSA-2048", "RSA-3072", "RSA-4096"] as const
+  },
+  ML_DSA: {
+    signature: ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"] as const,
+    key: ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"] as const
   }
 } as const;

@@ -7,7 +7,10 @@ const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRou
 
 export const ROUTE_PATHS = Object.freeze({
   Auth: {
-    LoginSSO: setRoute("/login/sso", "/_restrict-login-signup/login/sso"),
+    SelectOrgPage: setRoute(
+      "/login/select-organization",
+      "/_restrict-login-signup/login/select-organization"
+    ),
     ProviderSuccessPage: setRoute(
       "/login/provider/success",
       "/_restrict-login-signup/login/provider/success"
@@ -394,10 +397,7 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
       "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access"
     ),
-    PamDataExplorerPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer",
-      "/_authenticate/_inject-org-details/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer"
-    ),
+
     DiscoveryPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/discovery",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/discovery/"
