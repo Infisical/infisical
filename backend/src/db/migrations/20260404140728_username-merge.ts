@@ -260,7 +260,9 @@ export async function up(knex: Knex): Promise<void> {
     log(`Final step done in ${Date.now() - t}ms`);
     log(`Migration complete — total ${Date.now() - migrationStart}ms`);
   } finally {
-    await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
+    if (Number(originalTimeout)) {
+      await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
+    }
   }
 }
 
