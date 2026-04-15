@@ -21,7 +21,6 @@ export type TGatewayV2 = {
 
 export type TGatewayEnrollmentToken = {
   id: string;
-  name: string;
   ttl: number;
   expiresAt: string;
   usedAt: string | null;

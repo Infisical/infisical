@@ -15,7 +15,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      t.string("name", 64).notNullable();
       t.string("tokenHash", 128).notNullable().unique();
       t.integer("ttl").notNullable().defaultTo(3600);
       t.timestamp("expiresAt").notNullable();

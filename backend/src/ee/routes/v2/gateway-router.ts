@@ -24,8 +24,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "registerGateway",
       body: z.object({
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional(),
-        name: slugSchema({ min: 1, max: 32, field: "name" }).optional()
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
+        name: slugSchema({ min: 1, max: 32, field: "name" })
       }),
       response: {
         200: z.object({

@@ -1282,7 +1282,6 @@ export const gatewayV2ServiceFactory = ({
       return gatewayEnrollmentTokenDAL.create(
         {
           orgId: orgPermission.orgId,
-          name: gateway.name,
           tokenHash: gatewayToken.tokenHash,
           ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
           expiresAt: gatewayToken.expiresAt,
@@ -1292,7 +1291,7 @@ export const gatewayV2ServiceFactory = ({
       );
     });
 
-    return { ...record, token: gatewayToken.plainToken };
+    return { ...record, token: gatewayToken.plainToken, gatewayName: gateway.name };
   };
 
   const connectGateway = async ({
@@ -1348,7 +1347,7 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: "Enrollment token has expired" });
     }
 
-    const { orgId, name } = tokenRecord;
+    const { orgId } = tokenRecord;
 
     // Resolve the relay before consuming the token so a missing relay doesn't burn it.
     let relay: TRelays | undefined;

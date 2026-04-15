@@ -91,7 +91,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
           metadata: {
             tokenId: result.id,
-            name: result.name
+            name: result.gatewayName
           }
         }
       });
