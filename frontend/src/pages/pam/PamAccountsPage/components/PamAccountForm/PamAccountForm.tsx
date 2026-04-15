@@ -49,16 +49,18 @@ const CreateForm = ({
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const account = await createPamAccount.mutateAsync({
       ...rest,
       folderId,
       resourceId,
       resourceType,
       projectId,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully created account",
@@ -173,14 +175,16 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
       resourceType: account.resource.resourceType,
       ...rest,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully updated account",

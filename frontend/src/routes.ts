@@ -397,6 +397,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
+    route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
     route("/approvals", "pam/ApprovalsPage/route.tsx"),
     route("/approval-requests/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx"),
 
@@ -477,6 +478,10 @@ export const routes = rootRoute("root.tsx", [
     middleware("inject-org-details.tsx", [
       adminRoute,
       pamAccessRoute,
+      route(
+        "/organization/app-connections/$appConnection/oauth/callback",
+        "redirects/oauth-callback-redirect.tsx"
+      ),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [

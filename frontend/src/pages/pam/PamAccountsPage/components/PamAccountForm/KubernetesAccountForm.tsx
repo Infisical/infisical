@@ -7,7 +7,11 @@ import { Button, SheetFooter } from "@app/components/v3";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
@@ -216,6 +220,7 @@ export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) 
             isUpdate={isUpdate}
             originalAuthMethod={account?.credentials.authMethod}
           />
+          <AccountPolicyField />
           <RequireMfaField />
           <MetadataFields />
         </div>

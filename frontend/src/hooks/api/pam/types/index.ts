@@ -9,6 +9,7 @@ import {
 } from "../enums";
 import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
+import { TSessionSummaryConfig } from "./base-resource";
 import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
 import { TMongoDBAccount, TMongoDBResource } from "./mongodb-resource";
 import { TMsSQLAccount, TMsSQLResource } from "./mssql-resource";
@@ -101,10 +102,16 @@ export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
 export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
 
+export type TPamSessionAiInsights = {
+  summary: string;
+  warnings: { text: string; logIndex?: number }[];
+};
+
 export type TPamSession = {
   id: string;
   projectId: string;
   accountId?: string | null;
+  resourceId?: string | null;
   resourceType: PamResourceType;
   resourceName: string;
   accountName: string;
@@ -121,6 +128,9 @@ export type TPamSession = {
   updatedAt: string;
   logs: TPamSessionLog[];
   gatewayIdentityId?: string | null;
+  aiInsightsStatus?: string | null;
+  aiInsightsError?: string | null;
+  aiInsights?: TPamSessionAiInsights | null;
 };
 
 // Resource DTOs
@@ -143,6 +153,8 @@ export type TCreatePamResourceDTO = Pick<
   metadata?: { key: string; value: string }[];
 };
 
+export type { TSessionSummaryConfig };
+
 export type TUpdatePamResourceDTO = Partial<
   Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
 > & {
@@ -151,6 +163,7 @@ export type TUpdatePamResourceDTO = Partial<
   adServerResourceId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;
+  sessionSummaryConfig?: TSessionSummaryConfig;
 };
 
 export type TDeletePamResourceDTO = {
@@ -178,6 +191,7 @@ export type TCreatePamAccountDTO = Pick<
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
+  policyId?: string | null;
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -187,6 +201,7 @@ export type TUpdatePamAccountDTO = Partial<
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
+  policyId?: string | null;
 };
 
 export type TDeletePamAccountDTO = {
@@ -274,4 +289,48 @@ export type TPamSessionLogsPage = {
   logs: TPamSessionLog[];
   hasMore: boolean;
   batchCount: number;
+};
+
+// Account Policy types
+export enum PamAccountPolicyRuleType {
+  CommandBlocking = "command-blocking",
+  SessionLogMasking = "session-log-masking"
+}
+
+export type TPamAccountPolicyRuleConfig = {
+  patterns: string[];
+};
+
+export type TPamAccountPolicyRules = Partial<
+  Record<PamAccountPolicyRuleType, TPamAccountPolicyRuleConfig>
+>;
+
+export type TPamAccountPolicy = {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string | null;
+  rules: TPamAccountPolicyRules;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreatePamAccountPolicyDTO = {
+  projectId: string;
+  name: string;
+  description?: string;
+  rules: TPamAccountPolicyRules;
+};
+
+export type TUpdatePamAccountPolicyDTO = {
+  policyId: string;
+  name?: string;
+  description?: string | null;
+  rules?: TPamAccountPolicyRules;
+  isActive?: boolean;
+};
+
+export type TDeletePamAccountPolicyDTO = {
+  policyId: string;
 };
