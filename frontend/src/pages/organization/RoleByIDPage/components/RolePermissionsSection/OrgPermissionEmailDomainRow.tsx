@@ -112,7 +112,7 @@ export const OrgPermissionEmailDomainRow = ({ isEditable, control, setValue }: P
       <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
         <div className="flex flex-1 items-center gap-2 text-left">
           <div className="flex grow flex-col">
-            <span className="select-none text-base">
+            <span className="text-base select-none">
               {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.EmailDomains].title}
             </span>
             <span className="text-sm text-muted">
