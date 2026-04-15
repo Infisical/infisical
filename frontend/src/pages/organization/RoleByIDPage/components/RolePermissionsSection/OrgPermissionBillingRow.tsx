@@ -1,9 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { Control, UseFormSetValue } from "react-hook-form";
 
-import { Select, SelectItem } from "@app/components/v2";
 import {
   PermissionActionSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   UnstableAccordionContent,
   UnstableAccordionItem,
   UnstableAccordionTrigger
@@ -125,20 +129,25 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
           <div role="none" onClick={(e) => e.stopPropagation()}>
             <Select
               value={selectedPermissionCategory}
-              className="h-8 w-40 bg-mineshaft-700"
-              dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
               onValueChange={handlePermissionChange}
-              isDisabled={!isEditable}
-              position="popper"
+              disabled={!isEditable}
             >
-              <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-              <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
-              <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
-              <SelectItem value={Permission.Custom}>
-                {selectedPermissionCategory === Permission.Custom
-                  ? `Custom (${selectedCount})`
-                  : "Custom"}
-              </SelectItem>
+              <SelectTrigger className="h-8 w-40 bg-mineshaft-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                className="border text-left border-mineshaft-600 bg-mineshaft-800"
+              >
+                <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+                <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
+                <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
+                <SelectItem value={Permission.Custom}>
+                  {selectedPermissionCategory === Permission.Custom
+                    ? `Custom (${selectedCount})`
+                    : "Custom"}
+                </SelectItem>
+              </SelectContent>
             </Select>
           </div>
         </div>
