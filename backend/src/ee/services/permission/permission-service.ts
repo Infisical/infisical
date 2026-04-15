@@ -478,7 +478,7 @@ export const permissionServiceFactory = ({
 
       // Re-validate org and project type on cache hit (actorOrgId is not in cache key)
       if (projectDetails.orgId !== actorOrgId) {
-        throw new ForbiddenRequestError({ message: "This projec t does not belong to your selected organization." });
+        throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
       }
       if (actionProjectType !== ActionProjectType.Any && actionProjectType !== projectDetails.type) {
         throw new BadRequestError({
