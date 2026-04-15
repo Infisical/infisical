@@ -39,29 +39,22 @@ export const SaveViewModal = ({
   const handleSave = async () => {
     if (!name.trim()) return;
 
-    try {
-      const apiFilters = filtersToSearchParams(filters);
-      const result = await createView({
-        projectId,
-        name: name.trim(),
-        filters: apiFilters,
-        isShared
-      });
-      createNotification({
-        text: `View "${name}" saved successfully`,
-        type: "success"
-      });
-      setName("");
-      setIsShared(false);
-      onOpenChange(false);
-      if (onViewCreated && result?.id) {
-        onViewCreated(result.id, apiFilters);
-      }
-    } catch {
-      createNotification({
-        text: "Failed to save view",
-        type: "error"
-      });
+    const apiFilters = filtersToSearchParams(filters);
+    const result = await createView({
+      projectId,
+      name: name.trim(),
+      filters: apiFilters,
+      isShared
+    });
+    createNotification({
+      text: `View "${name}" saved successfully`,
+      type: "success"
+    });
+    setName("");
+    setIsShared(false);
+    onOpenChange(false);
+    if (onViewCreated && result?.id) {
+      onViewCreated(result.id, apiFilters);
     }
   };
 

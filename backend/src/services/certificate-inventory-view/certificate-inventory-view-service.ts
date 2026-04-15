@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../../ee/services/permission/permission-service-types";
@@ -144,9 +144,7 @@ export const certificateInventoryViewServiceFactory = ({
 
       return view;
     } catch (error) {
-      const pgError = error as { code?: string };
-      if (pgError.code === "23505") {
-        // unique constraint violation
+      if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
           message: isShared
             ? "A shared view with this name already exists in this project"
@@ -193,9 +191,7 @@ export const certificateInventoryViewServiceFactory = ({
 
       return view;
     } catch (error) {
-      const pgError = error as { code?: string };
-      if (pgError.code === "23505") {
-        // unique constraint violation
+      if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
           message: isShared
             ? "A shared view with this name already exists in this project"
