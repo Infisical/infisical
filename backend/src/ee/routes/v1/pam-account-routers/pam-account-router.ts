@@ -17,6 +17,10 @@ import {
   SanitizedKubernetesAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import {
+  MongoDBAccountCredentialsSchema,
+  SanitizedMongoDBAccountWithResourceSchema
+} from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
+import {
   MsSQLAccountCredentialsSchema,
   SanitizedMsSQLAccountWithResourceSchema
 } from "@app/ee/services/pam-resource/mssql/mssql-resource-schemas";
@@ -60,6 +64,7 @@ const SanitizedAccountSchema = z
     SanitizedPostgresAccountWithResourceSchema,
     SanitizedMySQLAccountWithResourceSchema,
     SanitizedMsSQLAccountWithResourceSchema,
+    SanitizedMongoDBAccountWithResourceSchema,
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
@@ -96,6 +101,10 @@ const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.MsSQL),
     credentials: MsSQLAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    resourceType: z.literal(PamResource.MongoDB),
+    credentials: MongoDBAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
     resourceType: z.literal(PamResource.SSH),
@@ -527,6 +536,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MsSQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MongoDB) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),

@@ -15,6 +15,10 @@ import {
   OnePassConnectionListItemSchema,
   SanitizedOnePassConnectionSchema
 } from "@app/services/app-connection/1password";
+import {
+  AnthropicConnectionListItemSchema,
+  SanitizedAnthropicConnectionSchema
+} from "@app/services/app-connection/anthropic";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -220,6 +224,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
@@ -281,7 +286,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
-  NetScalerConnectionListItemSchema
+  NetScalerConnectionListItemSchema,
+  AnthropicConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

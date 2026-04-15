@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN apk add --no-cache wget jq && \
 # Run mint dev briefly to download the web client
 RUN timeout 30 mint dev || true
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 

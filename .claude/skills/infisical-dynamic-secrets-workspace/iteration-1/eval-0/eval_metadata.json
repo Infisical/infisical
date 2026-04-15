@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "dynamic-postgres-private-vpc",
+  "prompt": "I want to set up dynamic PostgreSQL credentials with Infisical so each developer gets their own short-lived database user instead of sharing a static password. Our Postgres instance is in a private VPC on AWS. Walk me through the setup.",
+  "assertions": [
+    "Mentions need for pre-existing PostgreSQL admin user with CREATE ROLE/GRANT privileges",
+    "Correctly identifies Gateway requirement for private VPC access",
+    "Shows correct config fields (host, port, user, password, database name, TTL settings)",
+    "Mentions customizable SQL creation statements for least-privilege access",
+    "Recommends short TTLs for security",
+    "Explains lease lifecycle (generate, renew, revoke/expire)"
+  ]
+}

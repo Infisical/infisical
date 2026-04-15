@@ -29,10 +29,10 @@ jobs:
               name: Install `docker compose` for local simulations
               with:
                   version: "2.14.2"
-            - name: 🔧 Setup Node 20
+            - name: 🔧 Setup Node 22
               uses: actions/setup-node@v3
               with:
-                  node-version: "20"
+                  node-version: "22"
                   cache: "npm"
                   cache-dependency-path: backend/package-lock.json
 

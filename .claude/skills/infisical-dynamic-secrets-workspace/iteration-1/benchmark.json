@@ -1,0 +1,353 @@
+{
+  "metadata": {
+    "skill_name": "infisical-dynamic-secrets",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-04-14T14:22:25Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 54.5,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Mentions need for pre-existing PostgreSQL admin user with CREATE ROLE/GRANT privileges",
+          "passed": true,
+          "evidence": "\"Create a dedicated PostgreSQL user that Infisical will use to create/drop temporary users. This user needs: CREATE ROLE privilege, GRANT and REVOKE privileges, ALTER ROLE\""
+        },
+        {
+          "text": "Correctly identifies Gateway requirement for private VPC access",
+          "passed": true,
+          "evidence": "\"Since your database is in a private VPC, you must deploy an Infisical Gateway...For your private VPC database, the Infisical Gateway is essential\""
+        },
+        {
+          "text": "Shows correct config fields (host, port, user, password, database name, TTL settings)",
+          "passed": true,
+          "evidence": "Configuration table shows all required fields: Host, Port, Username, Password, Database Name, CA (SSL), Gateway, plus Default TTL and Max TTL"
+        },
+        {
+          "text": "Mentions customizable SQL creation statements for least-privilege access",
+          "passed": true,
+          "evidence": "\"Custom Creation Statement (Optional but Recommended)\" section with detailed examples for read-only access, full write access, and application-specific permissions using {{username}}, {{password}}, {{expiration}} templates"
+        },
+        {
+          "text": "Recommends short TTLs for security",
+          "passed": true,
+          "evidence": "\"Short TTLs for Maximum Security\" section: 'Developers working in IDE: 30m - 1h, Automated jobs/services: 1h - 2h, CI/CD pipelines: 15m - 30m'"
+        },
+        {
+          "text": "Explains lease lifecycle (generate, renew, revoke/expire)",
+          "passed": true,
+          "evidence": "\"Step 3: Generate and Use Credentials\" covers generation, Step 4 covers lease management with Renew, Revoke, and Auto-Expiration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.83,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 40.3,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends IRSA or Assume Role method (not just Access Key method)",
+          "passed": true,
+          "evidence": "\"Option A: Temporary Credentials via AssumeRole (Recommended)...Option B: Temporary Credentials via IRSA...Recommendation: Use Option A (AssumeRole)\""
+        },
+        {
+          "text": "Correctly identifies Temporary Credentials type (not IAM User type) for short-lived STS creds",
+          "passed": true,
+          "evidence": "\"AWS Credential Type: Temporary Credentials...Generates STS credentials (Access Key + Secret Key + Session Token)\""
+        },
+        {
+          "text": "Notes the 1-hour maximum TTL for AssumeRole with temporary credentials",
+          "passed": true,
+          "evidence": "\"Max TTL: 1h (AssumeRole max is 1 hour)\" and 'The maximum TTL for AssumeRole is exactly 1 hour. You cannot extend beyond this.'"
+        },
+        {
+          "text": "Shows correct IAM permissions policy needed for STS operations",
+          "passed": true,
+          "evidence": "Shows IAM policy with 'sts:GetSessionToken' and 'sts:AssumeRole' permissions"
+        },
+        {
+          "text": "Mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN env var for IRSA setup",
+          "passed": false,
+          "evidence": "Response discusses IRSA option but does not mention KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN environment variable"
+        },
+        {
+          "text": "Explains that lease returns include ACCESS_KEY, SECRET_ACCESS_KEY, and SESSION_TOKEN",
+          "passed": true,
+          "evidence": "\"Infisical will create temporary AWS credentials and display: ACCESS_KEY, SECRET_ACCESS_KEY, SESSION_TOKEN\""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 44.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Explains CA-based architecture (Infisical generates CA key pair, signs certificates)",
+          "passed": true,
+          "evidence": "\"Infisical generates a CA key pair when you create the dynamic secret...Your servers trust the CA by installing its public key in /etc/ssh/sshd_config\""
+        },
+        {
+          "text": "Shows correct config fields (allowed principals, key algorithm)",
+          "passed": true,
+          "evidence": "Configuration table shows 'Allowed Principals' (e.g., ubuntu,deploy,root) and 'Key Algorithm' (ED25519 recommended)"
+        },
+        {
+          "text": "Recommends ED25519 as the key algorithm",
+          "passed": true,
+          "evidence": "\"Key Algorithm: ED25519 (Recommended for modern servers; alternatives: RSA 2048/4096, ECDSA P-256/P-384)\""
+        },
+        {
+          "text": "Shows target host setup with TrustedUserCAKeys in sshd_config",
+          "passed": true,
+          "evidence": "\"Add TrustedUserCAKeys /etc/ssh/infisical_ca.pub to /etc/ssh/sshd_config\""
+        },
+        {
+          "text": "Correctly states certificates CANNOT be renewed (must create new lease)",
+          "passed": true,
+          "evidence": "\"Certificates Cannot Be Renewed: The TTL is baked in at signing time. Once a certificate expires, it's no longer valid. Your team must request a new lease for a fresh certificate\""
+        },
+        {
+          "text": "Shows correct SSH usage command with -i key.pem and -o CertificateFile=cert.pub",
+          "passed": true,
+          "evidence": "\"ssh -i key.pem -o CertificateFile=cert.pub <principal>@<hostname>\""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.67,
+        "passed": 4,
+        "failed": 2,
+        "total": 6,
+        "time_seconds": 30.8,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Mentions need for pre-existing PostgreSQL admin user with CREATE ROLE/GRANT privileges",
+          "passed": true,
+          "evidence": "\"Create a role template for dynamic users...CREATE ROLE infisical_admin LOGIN SUPERUSER PASSWORD...should have minimal permissions needed to create/revoke users\""
+        },
+        {
+          "text": "Correctly identifies Gateway requirement for private VPC access",
+          "passed": false,
+          "evidence": "Discusses 'Infisical in Same VPC', 'Public endpoint', 'AWS Secrets Manager Integration' but never mentions 'Infisical Gateway' specifically as the requirement for private VPC access"
+        },
+        {
+          "text": "Shows correct config fields (host, port, user, password, database name, TTL settings)",
+          "passed": true,
+          "evidence": "Step 3 shows configuration with Host, Port, Username, Password, Database, and Step 4 mentions TTL settings"
+        },
+        {
+          "text": "Mentions customizable SQL creation statements for least-privilege access",
+          "passed": false,
+          "evidence": "References 'Role Name Template' and 'Username Generation' but does not provide custom SQL creation statements with template variables like {{username}}, {{password}}, {{expiration}}"
+        },
+        {
+          "text": "Recommends short TTLs for security",
+          "passed": true,
+          "evidence": "\"Set to 1h (1 hour) for development...Consider 15m (15 minutes) for higher security\""
+        },
+        {
+          "text": "Explains lease lifecycle (generate, renew, revoke/expire)",
+          "passed": true,
+          "evidence": "\"Via Infisical Dashboard: Generate on PostgreSQL source...Step 7: Monitor and Audit...Manually test role deletion: DROP ROLE\""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 3,
+        "failed": 3,
+        "total": 6,
+        "time_seconds": 26.5,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends IRSA or Assume Role method (not just Access Key method)",
+          "passed": true,
+          "evidence": "\"Infisical server connects to your AWS account using a long-lived IAM user or role...Dynamic Secret Engine generates temporary credentials on-demand using AWS STS\""
+        },
+        {
+          "text": "Correctly identifies Temporary Credentials type (not IAM User type) for short-lived STS creds",
+          "passed": false,
+          "evidence": "Does not explicitly identify 'Temporary Credentials' as the correct type vs IAM User type. Discusses STS but doesn't clearly differentiate credential types"
+        },
+        {
+          "text": "Notes the 1-hour maximum TTL for AssumeRole with temporary credentials",
+          "passed": false,
+          "evidence": "Mentions '1-hour TTL' in configuration but does not explain this as the AssumeRole maximum limitation"
+        },
+        {
+          "text": "Shows correct IAM permissions policy needed for STS operations",
+          "passed": true,
+          "evidence": "Shows IAM policy with 'sts:AssumeRole' and creates role with STS trust relationship"
+        },
+        {
+          "text": "Mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN env var for IRSA setup",
+          "passed": false,
+          "evidence": "No mention of KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN environment variable"
+        },
+        {
+          "text": "Explains that lease returns include ACCESS_KEY, SECRET_ACCESS_KEY, and SESSION_TOKEN",
+          "passed": true,
+          "evidence": "Shows API response example: 'access_key', 'secret_key', 'session_token', 'expires_at'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.83,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 44.3,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Explains CA-based architecture (Infisical generates CA key pair, signs certificates)",
+          "passed": true,
+          "evidence": "\"Infisical Server...SSH CA (Certificate Authority)...Private Key (secured)...Public Key (distributed to servers)\""
+        },
+        {
+          "text": "Shows correct config fields (allowed principals, key algorithm)",
+          "passed": true,
+          "evidence": "Lists 'User principals' (e.g., ubuntu, ec2-user, appuser) and 'Key type: RSA 4096 or ED25519'"
+        },
+        {
+          "text": "Recommends ED25519 as the key algorithm",
+          "passed": true,
+          "evidence": "\"ED25519 is recommended for modern setups\""
+        },
+        {
+          "text": "Shows target host setup with TrustedUserCAKeys in sshd_config",
+          "passed": true,
+          "evidence": "\"Update SSH daemon config (/etc/ssh/sshd_config): TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pub\""
+        },
+        {
+          "text": "Correctly states certificates CANNOT be renewed (must create new lease)",
+          "passed": false,
+          "evidence": "Does not explicitly state that certificates cannot be renewed. Section 5 mentions 'Certificate Expired: Generate a new lease' but doesn't clearly state the non-renewable nature of certificates"
+        },
+        {
+          "text": "Shows correct SSH usage command with -i key.pem and -o CertificateFile=cert.pub",
+          "passed": true,
+          "evidence": "\"ssh -i ~/.ssh/id_ed25519 -i ~/.ssh/prod-cert.pub ubuntu@prod-1.example.com\""
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9433,
+        "stddev": 0.0981,
+        "min": 0.83,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 46.2667,
+        "stddev": 7.3664,
+        "min": 40.3,
+        "max": 54.5
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.6667,
+        "stddev": 0.165,
+        "min": 0.5,
+        "max": 0.83
+      },
+      "time_seconds": {
+        "mean": 33.8667,
+        "stddev": 9.2878,
+        "min": 26.5,
+        "max": 44.3
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.28",
+      "time_seconds": "+12.4",
+      "tokens": "+0"
+    }
+  },
+  "notes": []
+}
