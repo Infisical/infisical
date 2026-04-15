@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon, GlobeIcon, Trash2Icon, XIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import {
   Tooltip,
@@ -56,38 +57,48 @@ export const ViewsDropdown = ({
 
     if (pendingDeleteId === viewId && onDeleteView) {
       return (
-        <div className="absolute top-1/2 right-10 flex -translate-y-1/2 items-center gap-0.5">
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Confirm delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteView(viewId);
-              setPendingDeleteId(null);
-            }}
-            className="text-red-400 hover:text-red-300"
-          >
-            <CheckIcon />
-          </UnstableIconButton>
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Cancel delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPendingDeleteId(null);
-            }}
-            className="text-muted hover:text-foreground"
-          >
-            <XIcon />
-          </UnstableIconButton>
+        <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Confirm delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteView(viewId);
+                  setPendingDeleteId(null);
+                }}
+                className="text-muted hover:text-success"
+              >
+                <CheckIcon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent side="top">Confirm delete</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Cancel delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingDeleteId(null);
+                }}
+                className="text-muted"
+              >
+                <XIcon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent side="top">Cancel</TooltipContent>
+          </Tooltip>
         </div>
       );
     }
 
     return (
-      <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         {onToggleShare && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -110,18 +121,23 @@ export const ViewsDropdown = ({
           </Tooltip>
         )}
         {onDeleteView && (
-          <UnstableIconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Delete view"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPendingDeleteId(viewId);
-            }}
-            className="text-muted hover:text-red-400"
-          >
-            <Trash2Icon />
-          </UnstableIconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Delete view"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingDeleteId(viewId);
+                }}
+                className="text-muted hover:text-danger"
+              >
+                <Trash2Icon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent side="top">Delete view</TooltipContent>
+          </Tooltip>
         )}
       </div>
     );
@@ -167,7 +183,14 @@ export const ViewsDropdown = ({
                     className="group relative"
                     onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
                   >
-                    <span className="min-w-0 flex-1 truncate pr-16">{view.name}</span>
+                    <span
+                      className={twMerge(
+                        "min-w-0 flex-1 truncate",
+                        activeViewId !== view.id && "group-hover:pr-8"
+                      )}
+                    >
+                      {view.name}
+                    </span>
                     {isOwner && renderActions(view.id, true, activeViewId === view.id)}
                   </UnstableDropdownMenuRadioItem>
                 );

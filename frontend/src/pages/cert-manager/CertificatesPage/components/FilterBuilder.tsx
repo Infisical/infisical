@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { CalendarIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { AlertTriangleIcon, CalendarIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
   Button,
@@ -192,10 +192,8 @@ const FilterRow = ({
     }
   };
 
-  const empty = isRuleEmpty(rule);
-
   return (
-    <div className={`flex items-start gap-2 ${empty ? "rounded ring-1 ring-warning/30" : ""}`}>
+    <div className="flex items-start gap-2">
       <Select value={rule.field} onValueChange={handleFieldChange}>
         <SelectTrigger className="w-[180px] shrink-0">
           <SelectValue />
@@ -330,7 +328,7 @@ export const FilterBuilder = ({
         )}
         <div className="flex items-center gap-2">
           {hasEmptyRules && (
-            <span className="text-xs text-warning">Empty filters will be removed</span>
+            <span className="text-xs text-muted">Empty filters will be ignored</span>
           )}
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
