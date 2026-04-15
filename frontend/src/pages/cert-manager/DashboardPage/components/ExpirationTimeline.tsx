@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
   UnstableCard,
   UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableEmpty,
@@ -63,12 +64,14 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   const total = chartData.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <UnstableCard className="flex h-full flex-col border-none">
+    <UnstableCard className="flex min-w-[250px] flex-1 flex-col">
       <UnstableCardHeader className="pb-0">
         <UnstableCardTitle className="text-base font-semibold">
           Expiration Timeline
         </UnstableCardTitle>
-        <p className="mt-0.5 text-xs text-muted">Certificates by time to expiry</p>
+        <UnstableCardDescription className="text-xs">
+          Certificates by time to expiry
+        </UnstableCardDescription>
       </UnstableCardHeader>
       <UnstableCardContent className="flex flex-1 items-end pt-2">
         {nonZeroData.length === 0 ? (

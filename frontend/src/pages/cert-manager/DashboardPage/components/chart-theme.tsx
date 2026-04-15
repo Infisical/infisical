@@ -10,14 +10,19 @@ export const CHART_COLORS = [
 ];
 
 export const CHART_COLORS_HEX = [
-  "#63b0bd",
-  "#f1c40f",
-  "#adaeb0",
-  "#7d7f80",
-  "#707174",
-  "#2ecc71",
-  "#30b3ff",
-  "#e74c3c"
+  "#63b0bd", // teal (info)
+  "#f1c40f", // gold (warning)
+  "#6dbf8b", // sage green
+  "#c084d8", // soft purple
+  "#e8855e", // burnt orange
+  "#5b9bd5", // steel blue
+  "#e06b8f", // dusty rose
+  "#85c46c", // leaf green
+  "#d4a054", // amber
+  "#7b8ec4", // periwinkle
+  "#cb6b6b", // muted red
+  "#4fc1b0", // seafoam
+  "#b8a060" // olive gold
 ];
 
 export const TREND_COLORS = {

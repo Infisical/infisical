@@ -7,11 +7,11 @@ export type TInventoryViewFilters = {
   notBeforeTo?: Date;
   notBeforeFrom?: Date;
   enrollmentTypes?: string[];
-  keyAlgorithm?: string;
+  keyAlgorithm?: string | string[];
   keySizes?: number[];
   caIds?: string[];
   profileIds?: string[];
-  source?: string;
+  source?: string | string[];
 };
 
 export type TListInventoryViewsDTO = {
@@ -23,6 +23,7 @@ export type TCreateInventoryViewDTO = {
   name: string;
   filters: TInventoryViewFilters;
   columns?: string[];
+  isShared?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateInventoryViewDTO = {
@@ -31,6 +32,7 @@ export type TUpdateInventoryViewDTO = {
   name?: string;
   filters?: TInventoryViewFilters;
   columns?: string[];
+  isShared?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteInventoryViewDTO = {

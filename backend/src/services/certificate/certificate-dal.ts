@@ -59,13 +59,12 @@ export const certificateDALFactory = (db: TDbClient) => {
     toDate?: Date;
     metadataFilter?: Array<{ key: string; value?: string }>;
     extendedKeyUsage?: string;
-    keyAlgorithm?: string;
+    keyAlgorithm?: string | string[];
     signatureAlgorithm?: string;
-    keySize?: number;
     keySizes?: number[];
     caIds?: string[];
     enrollmentTypes?: string[];
-    source?: string;
+    source?: string | string[];
     notAfterFrom?: Date;
     notAfterTo?: Date;
     notBeforeFrom?: Date;
@@ -152,16 +151,15 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
 
     if (filters.keyAlgorithm) {
-      q = q.andWhere(`${TableName.Certificate}.keyAlgorithm`, filters.keyAlgorithm);
+      if (Array.isArray(filters.keyAlgorithm)) {
+        q = q.whereIn(`${TableName.Certificate}.keyAlgorithm`, filters.keyAlgorithm);
+      } else {
+        q = q.andWhere(`${TableName.Certificate}.keyAlgorithm`, filters.keyAlgorithm);
+      }
     }
 
     if (filters.signatureAlgorithm) {
       q = q.andWhere(`${TableName.Certificate}.signatureAlgorithm`, filters.signatureAlgorithm);
-    }
-
-    if (filters.keySize) {
-      const algorithms = keySizeToAlgorithms(filters.keySize);
-      q = q.whereIn(`${TableName.Certificate}.keyAlgorithm`, algorithms);
     }
 
     if (filters.keySizes && filters.keySizes.length > 0) {
@@ -178,13 +176,18 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
 
     if (filters.source) {
-      if (filters.source === "issued") {
-        q = q.andWhere((qb: Knex.QueryBuilder) => {
-          void qb.where(`${TableName.Certificate}.source`, "issued").orWhereNull(`${TableName.Certificate}.source`);
-        });
-      } else {
-        q = q.andWhere(`${TableName.Certificate}.source`, filters.source);
-      }
+      const sources = Array.isArray(filters.source) ? filters.source : [filters.source];
+      const includesIssued = sources.includes("issued");
+      const otherSources = sources.filter((s) => s !== "issued");
+
+      q = q.andWhere((qb: Knex.QueryBuilder) => {
+        if (otherSources.length > 0) {
+          void qb.whereIn(`${TableName.Certificate}.source`, otherSources);
+        }
+        if (includesIssued) {
+          void qb.orWhere(`${TableName.Certificate}.source`, "issued").orWhereNull(`${TableName.Certificate}.source`);
+        }
+      });
     }
 
     if (filters.notAfterFrom) {
@@ -309,7 +312,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const findActiveCertificatesForSync = async (
-    filter: Partial<Omit<TCertificates, "status"> & TInventoryFilterParams>,
+    filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
     options?: { limit?: number; offset?: number },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
@@ -448,7 +451,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const findWithPrivateKeyInfo = async (
-    filter: Partial<Omit<TCertificates, "status"> & TInventoryFilterParams>,
+    filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<TCertificateWithInventoryFields[]> => {
@@ -484,7 +487,6 @@ export const certificateDALFactory = (db: TDbClient) => {
         extendedKeyUsage,
         keyAlgorithm,
         signatureAlgorithm,
-        keySize,
         keySizes,
         caIds,
         enrollmentTypes,
@@ -516,7 +518,6 @@ export const certificateDALFactory = (db: TDbClient) => {
           extendedKeyUsage,
           keyAlgorithm,
           signatureAlgorithm,
-          keySize,
           keySizes,
           caIds,
           enrollmentTypes,
@@ -813,17 +814,16 @@ export const certificateDALFactory = (db: TDbClient) => {
       const truncUnit = useDaily ? "day" : "month";
       const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
 
+      const periodExpr = (col: string) =>
+        db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."${col}"), ?) as period`, [truncUnit, dateFormat]);
+
       const issued = await db
         .replicaNode()(TableName.Certificate)
         .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
         .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(
-          db.raw(
-            `to_char(date_trunc('${truncUnit}', "${TableName.Certificate}"."notBefore"), '${dateFormat}') as period`
-          )
-        )
+        .select(periodExpr("notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -835,11 +835,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
         .where(`${TableName.Certificate}.notAfter`, "<=", now)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
-        .select(
-          db.raw(
-            `to_char(date_trunc('${truncUnit}', "${TableName.Certificate}"."notAfter"), '${dateFormat}') as period`
-          )
-        )
+        .select(periodExpr("notAfter"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -851,11 +847,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
         .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
         .where(`${TableName.Certificate}.revokedAt`, "<=", now)
-        .select(
-          db.raw(
-            `to_char(date_trunc('${truncUnit}', "${TableName.Certificate}"."revokedAt"), '${dateFormat}') as period`
-          )
-        )
+        .select(periodExpr("revokedAt"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
@@ -867,11 +859,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
         .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
         .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .select(
-          db.raw(
-            `to_char(date_trunc('${truncUnit}', "${TableName.Certificate}"."notBefore"), '${dateFormat}') as period`
-          )
-        )
+        .select(periodExpr("notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");

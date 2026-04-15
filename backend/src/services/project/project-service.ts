@@ -47,6 +47,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -122,7 +123,7 @@ import {
   TUpgradeProjectDTO
 } from "./project-types";
 
-const DASHBOARD_CACHE_TTL = 300;
+const DASHBOARD_CACHE_TTL = 600;
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -1220,7 +1221,6 @@ export const projectServiceFactory = ({
     extendedKeyUsage,
     keyAlgorithm,
     signatureAlgorithm,
-    keySize,
     keySizes,
     caIds,
     enrollmentTypes,
@@ -1269,7 +1269,6 @@ export const projectServiceFactory = ({
       ...(extendedKeyUsage && { extendedKeyUsage }),
       ...(keyAlgorithm && { keyAlgorithm }),
       ...(signatureAlgorithm && { signatureAlgorithm }),
-      ...(keySize && { keySize }),
       ...(keySizes && keySizes.length > 0 && { keySizes }),
       ...(caIds && { caIds }),
       ...(enrollmentTypes && { enrollmentTypes }),
@@ -1320,13 +1319,12 @@ export const projectServiceFactory = ({
       ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
       ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
       ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
-      ...(regularFilters.keyAlgorithm && { keyAlgorithm: String(regularFilters.keyAlgorithm) }),
+      ...(regularFilters.keyAlgorithm && { keyAlgorithm: regularFilters.keyAlgorithm }),
       ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
-      ...(regularFilters.keySize && { keySize: regularFilters.keySize }),
       ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
       ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
       ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
-      ...(regularFilters.source && { source: String(regularFilters.source) }),
+      ...(regularFilters.source && { source: regularFilters.source }),
       ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
       ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
       ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
@@ -1367,7 +1365,7 @@ export const projectServiceFactory = ({
       try {
         return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getDashboardStats>>;
       } catch {
-        // stale entry — recompute
+        logger.error(`Malformed dashboard stats cache entry [projectId=${projectId}]`);
       }
     }
 
@@ -1410,7 +1408,7 @@ export const projectServiceFactory = ({
       try {
         return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getActivityTrend>>;
       } catch {
-        // stale entry — recompute
+        logger.error(`Malformed activity trend cache entry [projectId=${projectId}] [range=${range}]`);
       }
     }
 

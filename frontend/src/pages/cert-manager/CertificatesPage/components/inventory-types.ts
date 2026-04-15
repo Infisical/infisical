@@ -60,8 +60,8 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
   {
     key: "keyAlgorithm",
     label: "Algorithm",
-    operators: [{ value: "is", label: "is" }],
-    valueType: "select",
+    operators: [{ value: "in", label: "in" }],
+    valueType: "multi-select",
     options: [
       { value: "RSA_2048", label: "RSA-2048" },
       { value: "RSA_3072", label: "RSA-3072" },
@@ -88,8 +88,8 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
   {
     key: "source",
     label: "Source",
-    operators: [{ value: "is", label: "is" }],
-    valueType: "select",
+    operators: [{ value: "in", label: "in" }],
+    valueType: "multi-select",
     options: [
       { value: "issued", label: "Managed" },
       { value: "discovered", label: "Discovered" },
@@ -142,12 +142,16 @@ export const filtersToSearchParams = (rules: FilterRule[]): TInventoryViewFilter
         }
         break;
       case "keyAlgorithm":
-        if (rule.value) {
+        if (Array.isArray(rule.value) && rule.value.length > 0) {
+          params.keyAlgorithm = rule.value;
+        } else if (rule.value) {
           params.keyAlgorithm = rule.value as string;
         }
         break;
       case "source":
-        if (rule.value) {
+        if (Array.isArray(rule.value) && rule.value.length > 0) {
+          params.source = rule.value;
+        } else if (rule.value) {
           params.source = rule.value as string;
         }
         break;

@@ -14,8 +14,11 @@ export const certificateInventoryViewDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.CertificateInventoryView)
         .where({ projectId })
         .andWhere((qb) => {
+          void qb.where({ isShared: true });
           if (userId) {
-            void qb.where({ createdByUserId: userId });
+            void qb.orWhere((inner) => {
+              void inner.where({ createdByUserId: userId, isShared: false });
+            });
           }
         })
         .orderBy("name", "asc");

@@ -95,7 +95,7 @@ const getBadge = (key: string, stats: TDashboardStats) => {
 
 export const KpiCards = ({ stats, onNavigate }: Props) => {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+    <div className="flex flex-wrap gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const count = stats.totals[card.key];
@@ -103,7 +103,7 @@ export const KpiCards = ({ stats, onNavigate }: Props) => {
         return (
           <UnstableCard
             key={card.key}
-            className="cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
+            className="min-w-[180px] flex-1 cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
             onClick={() => onNavigate(card.filters)}
           >
             <UnstableCardContent className="flex h-full flex-col p-4">

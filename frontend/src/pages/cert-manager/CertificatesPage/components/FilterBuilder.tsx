@@ -42,6 +42,11 @@ const getFieldDef = (
   return baseDef;
 };
 
+const parseLocalDate = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
 const DatePickerInput = ({
   value,
   onChange
@@ -49,7 +54,7 @@ const DatePickerInput = ({
   value: string | null;
   onChange: (val: string) => void;
 }) => {
-  const selectedDate = value ? new Date(value) : undefined;
+  const selectedDate = value ? parseLocalDate(value) : undefined;
 
   return (
     <Popover>
@@ -127,6 +132,8 @@ const FilterRow = ({
             placeholder="Select..."
             className="w-full text-sm"
             maxMenuHeight={160}
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
           />
         );
       }
@@ -273,7 +280,7 @@ export const FilterBuilder = ({
           No filters applied. Click &quot;Add filter&quot; to get started.
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="max-h-[40vh] space-y-1.5 overflow-y-auto">
           {rules.map((rule, index) => (
             <div key={rule.id}>
               {index > 0 && (

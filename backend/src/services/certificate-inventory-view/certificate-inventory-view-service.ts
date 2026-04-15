@@ -5,10 +5,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../../ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "../../ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
   TCreateInventoryViewDTO,
@@ -80,7 +77,7 @@ export const certificateInventoryViewServiceFactory = ({
 }: TCertificateInventoryViewServiceFactoryDep) => {
   const checkProjectPermission = async (
     dto: Pick<TProjectPermission, "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"> & { projectId: string },
-    action: ProjectPermissionCertificateActions = ProjectPermissionCertificateActions.Read
+    action: ProjectPermissionActions = ProjectPermissionActions.Read
   ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.actor,
@@ -91,7 +88,7 @@ export const certificateInventoryViewServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Certificates);
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.CertificateInventoryViews);
 
     return permission;
   };
@@ -99,13 +96,22 @@ export const certificateInventoryViewServiceFactory = ({
   const listViews = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TListInventoryViewsDTO) => {
     await checkProjectPermission({ projectId, actor, actorId, actorOrgId, actorAuthMethod });
 
-    const customViews = await certificateInventoryViewDAL.findByProjectId(projectId, actorId);
+    const allViews = await certificateInventoryViewDAL.findByProjectId(projectId, actorId);
+
+    const sharedViews = allViews.filter((v) => v.isShared);
+    const customViews = allViews.filter((v) => !v.isShared);
 
     return {
       systemViews: SYSTEM_VIEWS,
+      sharedViews: sharedViews.map((v) => ({
+        ...v,
+        isSystem: false as const,
+        isShared: true as const
+      })),
       customViews: customViews.map((v) => ({
         ...v,
-        isSystem: false as const
+        isSystem: false as const,
+        isShared: false as const
       }))
     };
   };
@@ -115,6 +121,7 @@ export const certificateInventoryViewServiceFactory = ({
     name,
     filters,
     columns,
+    isShared = false,
     actor,
     actorId,
     actorOrgId,
@@ -122,18 +129,32 @@ export const certificateInventoryViewServiceFactory = ({
   }: TCreateInventoryViewDTO) => {
     await checkProjectPermission(
       { projectId, actor, actorId, actorOrgId, actorAuthMethod },
-      ProjectPermissionCertificateActions.Edit
+      ProjectPermissionActions.Create
     );
 
-    const view = await certificateInventoryViewDAL.create({
-      projectId,
-      name,
-      filters: JSON.stringify(filters),
-      columns: columns ? JSON.stringify(columns) : undefined,
-      createdByUserId: actorId
-    });
+    try {
+      const view = await certificateInventoryViewDAL.create({
+        projectId,
+        name,
+        filters: JSON.stringify(filters),
+        columns: columns ? JSON.stringify(columns) : undefined,
+        createdByUserId: actorId,
+        isShared
+      });
 
-    return view;
+      return view;
+    } catch (error) {
+      const pgError = error as { code?: string };
+      if (pgError.code === "23505") {
+        // unique constraint violation
+        throw new BadRequestError({
+          message: isShared
+            ? "A shared view with this name already exists in this project"
+            : "You already have a view with this name"
+        });
+      }
+      throw error;
+    }
   };
 
   const updateView = async ({
@@ -142,6 +163,7 @@ export const certificateInventoryViewServiceFactory = ({
     name,
     filters,
     columns,
+    isShared,
     actor,
     actorId,
     actorOrgId,
@@ -149,7 +171,7 @@ export const certificateInventoryViewServiceFactory = ({
   }: TUpdateInventoryViewDTO) => {
     await checkProjectPermission(
       { projectId, actor, actorId, actorOrgId, actorAuthMethod },
-      ProjectPermissionCertificateActions.Edit
+      ProjectPermissionActions.Edit
     );
 
     const existing = await certificateInventoryViewDAL.findById(viewId);
@@ -161,13 +183,27 @@ export const certificateInventoryViewServiceFactory = ({
       throw new BadRequestError({ message: "You can only update your own views" });
     }
 
-    const view = await certificateInventoryViewDAL.updateById(viewId, {
-      ...(name !== undefined && { name }),
-      ...(filters !== undefined && { filters: JSON.stringify(filters) }),
-      ...(columns !== undefined && { columns: columns ? JSON.stringify(columns) : null })
-    });
+    try {
+      const view = await certificateInventoryViewDAL.updateById(viewId, {
+        ...(name !== undefined && { name }),
+        ...(filters !== undefined && { filters: JSON.stringify(filters) }),
+        ...(columns !== undefined && { columns: columns ? JSON.stringify(columns) : null }),
+        ...(isShared !== undefined && { isShared })
+      });
 
-    return view;
+      return view;
+    } catch (error) {
+      const pgError = error as { code?: string };
+      if (pgError.code === "23505") {
+        // unique constraint violation
+        throw new BadRequestError({
+          message: isShared
+            ? "A shared view with this name already exists in this project"
+            : "You already have a view with this name"
+        });
+      }
+      throw error;
+    }
   };
 
   const deleteView = async ({
@@ -180,7 +216,7 @@ export const certificateInventoryViewServiceFactory = ({
   }: TDeleteInventoryViewDTO) => {
     await checkProjectPermission(
       { projectId, actor, actorId, actorOrgId, actorAuthMethod },
-      ProjectPermissionCertificateActions.Edit
+      ProjectPermissionActions.Delete
     );
 
     const existing = await certificateInventoryViewDAL.findById(viewId);

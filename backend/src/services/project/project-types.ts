@@ -152,13 +152,12 @@ export type TListProjectCertsDTO = {
   toDate?: Date;
   metadataFilter?: Array<{ key: string; value?: string }>;
   extendedKeyUsage?: string;
-  keyAlgorithm?: string;
+  keyAlgorithm?: string | string[];
   signatureAlgorithm?: string;
-  keySize?: number;
   keySizes?: number[];
   caIds?: string[];
   enrollmentTypes?: string[];
-  source?: string;
+  source?: string | string[];
   notAfterFrom?: Date;
   notAfterTo?: Date;
   notBeforeFrom?: Date;

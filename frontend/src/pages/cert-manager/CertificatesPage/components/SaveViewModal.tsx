@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Switch,
   UnstableInput
 } from "@app/components/v3";
 import { useCreateCertificateInventoryView } from "@app/hooks/api/certificateInventoryViews";
@@ -32,6 +33,7 @@ export const SaveViewModal = ({
   onViewCreated
 }: Props) => {
   const [name, setName] = useState("");
+  const [isShared, setIsShared] = useState(false);
   const { mutateAsync: createView, isPending } = useCreateCertificateInventoryView();
 
   const handleSave = async () => {
@@ -42,13 +44,15 @@ export const SaveViewModal = ({
       const result = await createView({
         projectId,
         name: name.trim(),
-        filters: apiFilters
+        filters: apiFilters,
+        isShared
       });
       createNotification({
         text: `View "${name}" saved successfully`,
         type: "success"
       });
       setName("");
+      setIsShared(false);
       onOpenChange(false);
       if (onViewCreated && result?.id) {
         onViewCreated(result.id, apiFilters);
@@ -65,7 +69,10 @@ export const SaveViewModal = ({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) setName("");
+        if (!open) {
+          setName("");
+          setIsShared(false);
+        }
         onOpenChange(open);
       }}
     >
@@ -86,6 +93,11 @@ export const SaveViewModal = ({
             autoFocus
             className="mt-2"
           />
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <Switch checked={isShared} onCheckedChange={setIsShared} />
+            Share with team
+          </label>
           <DialogFooter className="mt-6">
             <DialogClose asChild>
               <Button variant="ghost">Cancel</Button>

@@ -3016,6 +3016,9 @@ interface CreateCertificateInventoryView {
   metadata: {
     viewId: string;
     name: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
   };
 }
 
@@ -3024,6 +3027,9 @@ interface UpdateCertificateInventoryView {
   metadata: {
     viewId: string;
     name?: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
   };
 }
 
@@ -3031,6 +3037,7 @@ interface DeleteCertificateInventoryView {
   type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW;
   metadata: {
     viewId: string;
+    name: string;
   };
 }
 

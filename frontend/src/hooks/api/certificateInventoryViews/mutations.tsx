@@ -14,10 +14,16 @@ export const useCreateCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, name, filters, columns }: TCreateInventoryViewDTO) => {
+    mutationFn: async ({
+      projectId,
+      name,
+      filters,
+      columns,
+      isShared
+    }: TCreateInventoryViewDTO) => {
       const { data } = await apiRequest.post<{ view: TCertificateInventoryView }>(
         `/api/v1/projects/${projectId}/certificate-inventory-views`,
-        { name, filters, columns }
+        { name, filters, columns, isShared }
       );
       return data.view;
     },
@@ -31,10 +37,17 @@ export const useUpdateCertificateInventoryView = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, viewId, name, filters, columns }: TUpdateInventoryViewDTO) => {
+    mutationFn: async ({
+      projectId,
+      viewId,
+      name,
+      filters,
+      columns,
+      isShared
+    }: TUpdateInventoryViewDTO) => {
       const { data } = await apiRequest.patch<{ view: TCertificateInventoryView }>(
         `/api/v1/projects/${projectId}/certificate-inventory-views/${viewId}`,
-        { name, filters, columns }
+        { name, filters, columns, isShared }
       );
       return data.view;
     },

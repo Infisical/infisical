@@ -24,14 +24,10 @@ const FilterChip = ({
   const isCollapsed = Array.isArray(rule.value) && rule.value.length > 1;
 
   const chip = (
-    <Badge variant="neutral" className="gap-1.5 pr-1">
-      <span>{label}</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="rounded p-0.5 text-muted transition-colors hover:text-red-400"
-      >
-        <XIcon className="size-3" />
+    <Badge variant="neutral" className="gap-1.5 pr-1" asChild>
+      <button type="button" onClick={onRemove}>
+        <span>{label}</span>
+        <XIcon className="size-3 text-muted transition-colors hover:text-red-400" />
       </button>
     </Badge>
   );
@@ -58,7 +54,7 @@ export const ActiveFilterChips = ({ rules, onRemove, onClearAll, dynamicFieldOpt
   if (rules.length === 0) return null;
 
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="mb-3 flex max-h-24 flex-wrap items-center gap-2 overflow-y-auto">
       <span className="text-xs text-muted">Active filters:</span>
       {rules.map((rule) => (
         <FilterChip
@@ -68,11 +64,11 @@ export const ActiveFilterChips = ({ rules, onRemove, onClearAll, dynamicFieldOpt
           dynamicFieldOptions={dynamicFieldOptions}
         />
       ))}
-      <button type="button" onClick={onClearAll}>
-        <Badge variant="ghost" className="cursor-pointer">
+      <Badge variant="ghost" asChild>
+        <button type="button" onClick={onClearAll}>
           Clear all
-        </Badge>
-      </button>
+        </button>
+      </Badge>
     </div>
   );
 };

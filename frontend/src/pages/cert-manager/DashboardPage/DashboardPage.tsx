@@ -75,20 +75,20 @@ export const DashboardPage = () => {
             ) : (
               <div className="flex flex-col gap-6">
                 <KpiCards stats={stats} onNavigate={navigateToInventory} />
-                <div className="grid auto-rows-[1fr] grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="flex flex-wrap gap-4">
                   <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
                   <ExpirationTimeline
                     buckets={stats.expirationBuckets}
                     onNavigate={navigateToInventory}
                   />
                 </div>
-                <ValidityReadinessSection stats={stats} />
                 <CodeSigningSection projectId={currentProject.id} />
                 <ActivityTrend
                   data={trendData?.periods || []}
                   currentRange={trendRange}
                   onRangeChange={setTrendRange}
                 />
+                <ValidityReadinessSection stats={stats} />
               </div>
             )}
           </ProjectPermissionCan>

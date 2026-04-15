@@ -36,11 +36,9 @@ export const certKeys = {
     params.sortOrder,
     params.metadataFilter
   ],
-  getDashboardStats: (projectId: string) => [{ projectId }, "cert-dashboard-stats"],
-  getActivityTrend: (projectId: string, range: string) => [
-    { projectId, range },
-    "cert-activity-trend"
-  ]
+  getDashboardStats: (projectId: string) => ["cert-dashboard-stats", { projectId }] as const,
+  getActivityTrend: (projectId: string, range: string) =>
+    ["cert-activity-trend", { projectId }, { range }] as const
 };
 
 export const useGetCert = (serialNumber: string) => {

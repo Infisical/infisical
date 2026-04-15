@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
   UnstableCard,
   UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableEmpty,
@@ -51,12 +52,12 @@ const DonutChart = ({
   };
 
   return (
-    <UnstableCard className="flex h-full flex-col border-none">
+    <UnstableCard className="flex min-w-[250px] flex-1 flex-col">
       <UnstableCardHeader className="pb-0">
-        <div>
-          <UnstableCardTitle className="text-base font-semibold">{title}</UnstableCardTitle>
-          {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
-        </div>
+        <UnstableCardTitle className="text-base font-semibold">{title}</UnstableCardTitle>
+        {subtitle && (
+          <UnstableCardDescription className="text-xs">{subtitle}</UnstableCardDescription>
+        )}
       </UnstableCardHeader>
       <UnstableCardContent className="flex flex-1 items-end pt-2">
         {nonZeroData.length === 0 ? (

@@ -1309,13 +1309,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.SEARCH_CERTIFICATES.metadata),
         extendedKeyUsage: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.extendedKeyUsage),
-        keyAlgorithm: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.keyAlgorithm),
+        keyAlgorithm: z
+          .union([z.string().trim(), z.array(z.string().trim())])
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.keyAlgorithm),
         signatureAlgorithm: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.signatureAlgorithm),
-        keySize: z.number().optional().describe(PROJECTS.SEARCH_CERTIFICATES.keySize),
         keySizes: z.array(z.number()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
         caIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
         enrollmentTypes: z.array(z.string().trim()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.enrollmentTypes),
-        source: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.source),
+        source: z
+          .union([z.string().trim(), z.array(z.string().trim())])
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.source),
         notAfterFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterFrom),
         notAfterTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterTo),
         notBeforeFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeFrom),
@@ -1368,7 +1373,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getCertificateDashboardStats",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get aggregated dashboard statistics for certificates in a project.",
@@ -1419,7 +1424,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getCertificateActivityTrend",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate lifecycle activity trend over time.",

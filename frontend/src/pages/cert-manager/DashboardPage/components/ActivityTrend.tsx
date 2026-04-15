@@ -12,6 +12,7 @@ import {
 import {
   Button,
   UnstableCard,
+  UnstableCardAction,
   UnstableCardContent,
   UnstableCardHeader,
   UnstableCardTitle,
@@ -43,20 +44,22 @@ export const ActivityTrend = ({ data, onRangeChange, currentRange }: Props) => {
   );
   return (
     <UnstableCard>
-      <UnstableCardHeader className="flex-row items-center gap-2">
-        <UnstableCardTitle className="text-sm">Certificate Activity Trend</UnstableCardTitle>
-        <div className="ml-auto flex gap-0.5 pr-5">
-          {ranges.map((r) => (
-            <Button
-              key={r.value}
-              size="xs"
-              variant={currentRange === r.value ? "neutral" : "ghost"}
-              onClick={() => onRangeChange(r.value)}
-            >
-              {r.label}
-            </Button>
-          ))}
-        </div>
+      <UnstableCardHeader>
+        <UnstableCardTitle>Certificate Activity Trend</UnstableCardTitle>
+        <UnstableCardAction>
+          <div className="flex gap-0.5">
+            {ranges.map((r) => (
+              <Button
+                key={r.value}
+                size="xs"
+                variant={currentRange === r.value ? "neutral" : "ghost"}
+                onClick={() => onRangeChange(r.value)}
+              >
+                {r.label}
+              </Button>
+            ))}
+          </div>
+        </UnstableCardAction>
       </UnstableCardHeader>
       <UnstableCardContent>
         {!hasAnyData ? (

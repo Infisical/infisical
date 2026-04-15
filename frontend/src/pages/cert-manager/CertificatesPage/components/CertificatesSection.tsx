@@ -3,7 +3,15 @@ import { ArrowRightIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
-import { Button, DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Button,
+  DocumentationLinkBadge,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -20,12 +28,13 @@ import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
+import type { FilterRule } from "./inventory-types";
 
 type CertificatesSectionProps = {
   externalFilter?: {
     search?: string;
   };
-  dashboardFilters?: import("./inventory-types").FilterRule[];
+  dashboardFilters?: FilterRule[];
 };
 
 export const CertificatesSection = ({
@@ -110,18 +119,16 @@ export const CertificatesSection = ({
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
-        <div>
-          <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
-          </div>
-          <p className="mt-1 text-sm text-muted">
-            View, filter, and manage all certificates across your project.
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <UnstableCard className="mb-6">
+      <UnstableCardHeader>
+        <UnstableCardTitle className="flex items-center gap-x-2">
+          Certificates
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+        </UnstableCardTitle>
+        <p className="text-sm text-muted">
+          View, filter, and manage all certificates across your project.
+        </p>
+        <UnstableCardAction>
           <ProjectPermissionCan
             I={ProjectPermissionCertificateActions.Import}
             a={ProjectPermissionSub.Certificates}
@@ -137,40 +144,42 @@ export const CertificatesSection = ({
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
-      </div>
-      <CertificatesTable
-        handlePopUpOpen={handlePopUpOpen}
-        externalFilter={externalFilter}
-        dashboardFilters={dashboardFilters}
-      />
-      <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateExportModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        onFormatSelected={handleCertificateExport}
-      />
-      <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateManagePkiSyncsModal
-        popUp={popUp.managePkiSyncs}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-      <DeleteActionModal
-        isOpen={popUp.deleteCertificate.isOpen}
-        title={`Are you sure you want to remove the certificate ${
-          (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-        } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
-          )
-        }
-      />
-    </div>
+        </UnstableCardAction>
+      </UnstableCardHeader>
+      <UnstableCardContent>
+        <CertificatesTable
+          handlePopUpOpen={handlePopUpOpen}
+          externalFilter={externalFilter}
+          dashboardFilters={dashboardFilters}
+        />
+        <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateExportModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          onFormatSelected={handleCertificateExport}
+        />
+        <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateManagePkiSyncsModal
+          popUp={popUp.managePkiSyncs}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+        <DeleteActionModal
+          isOpen={popUp.deleteCertificate.isOpen}
+          title={`Are you sure you want to remove the certificate ${
+            (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
+          } from the project?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          deleteKey="confirm"
+          onDeleteApproved={() =>
+            onRemoveCertificateSubmit(
+              (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
+            )
+          }
+        />
+      </UnstableCardContent>
+    </UnstableCard>
   );
 };

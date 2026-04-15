@@ -5,6 +5,7 @@ import {
   UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuLabel,
+  UnstableDropdownMenuSeparator,
   UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
@@ -29,11 +30,13 @@ export const INVENTORY_COLUMNS: ColumnDef[] = [
   { key: "source", label: "Source", defaultVisible: false }
 ];
 
-const STORAGE_KEY = "cert-inventory-columns";
+const STORAGE_KEY_PREFIX = "cert-inventory-columns";
 
-export const getDefaultVisibleColumns = (): Set<string> => {
+const getStorageKey = (projectId: string) => `${STORAGE_KEY_PREFIX}:${projectId}`;
+
+export const getDefaultVisibleColumns = (projectId: string): Set<string> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(getStorageKey(projectId));
     if (stored) {
       return new Set(JSON.parse(stored) as string[]);
     }
@@ -43,9 +46,9 @@ export const getDefaultVisibleColumns = (): Set<string> => {
   return new Set(INVENTORY_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.key));
 };
 
-export const saveVisibleColumns = (columns: Set<string>) => {
+export const saveVisibleColumns = (columns: Set<string>, projectId: string) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...columns]));
+    localStorage.setItem(getStorageKey(projectId), JSON.stringify([...columns]));
   } catch {
     // ignore
   }
@@ -54,10 +57,18 @@ export const saveVisibleColumns = (columns: Set<string>) => {
 type Props = {
   visibleColumns: Set<string>;
   onChange: (columns: Set<string>) => void;
+  projectId: string;
 };
 
-export const ColumnVisibilityToggle = ({ visibleColumns, onChange }: Props) => {
-  const hasHiddenColumns = visibleColumns.size < INVENTORY_COLUMNS.length;
+export const ColumnVisibilityToggle = ({ visibleColumns, onChange, projectId }: Props) => {
+  const allColumnKeys = INVENTORY_COLUMNS.map((c) => c.key);
+  const allVisible = visibleColumns.size === INVENTORY_COLUMNS.length;
+
+  const handleToggleAll = () => {
+    const next = allVisible ? new Set<string>() : new Set(allColumnKeys);
+    onChange(next);
+    saveVisibleColumns(next, projectId);
+  };
 
   const handleToggle = (key: string) => {
     const next = new Set(visibleColumns);
@@ -67,7 +78,7 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange }: Props) => {
       next.add(key);
     }
     onChange(next);
-    saveVisibleColumns(next);
+    saveVisibleColumns(next, projectId);
   };
 
   return (
@@ -75,7 +86,7 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange }: Props) => {
       <UnstableDropdownMenuTrigger asChild>
         <div className="relative">
           <UnstableIconButton
-            variant={hasHiddenColumns ? "project" : "outline"}
+            variant={!allVisible ? "project" : "outline"}
             size="md"
             aria-label="Toggle columns"
           >
@@ -85,11 +96,20 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange }: Props) => {
       </UnstableDropdownMenuTrigger>
       <UnstableDropdownMenuContent sideOffset={2} className="w-52" align="end">
         <UnstableDropdownMenuLabel>Columns</UnstableDropdownMenuLabel>
+        <UnstableDropdownMenuCheckboxItem
+          checked={allVisible}
+          onCheckedChange={handleToggleAll}
+          onSelect={(e) => e.preventDefault()}
+        >
+          {allVisible ? "Hide All" : "Show All"}
+        </UnstableDropdownMenuCheckboxItem>
+        <UnstableDropdownMenuSeparator />
         {INVENTORY_COLUMNS.map((col) => (
           <UnstableDropdownMenuCheckboxItem
             key={col.key}
             checked={visibleColumns.has(col.key)}
             onCheckedChange={() => handleToggle(col.key)}
+            onSelect={(e) => e.preventDefault()}
           >
             {col.label}
           </UnstableDropdownMenuCheckboxItem>

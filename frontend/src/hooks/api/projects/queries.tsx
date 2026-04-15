@@ -525,7 +525,6 @@ export const useListWorkspaceCertificates = ({
   extendedKeyUsage,
   keyAlgorithm,
   signatureAlgorithm,
-  keySize,
   keySizes,
   caIds,
   enrollmentTypes,
@@ -550,13 +549,12 @@ export const useListWorkspaceCertificates = ({
   toDate?: Date;
   metadataFilter?: Array<{ key: string; value?: string }>;
   extendedKeyUsage?: string;
-  keyAlgorithm?: string;
+  keyAlgorithm?: string | string[];
   signatureAlgorithm?: string;
-  keySize?: number;
   keySizes?: number[];
   caIds?: string[];
   enrollmentTypes?: string[];
-  source?: string;
+  source?: string | string[];
   notAfterFrom?: Date;
   notAfterTo?: Date;
   notBeforeFrom?: Date;
@@ -581,7 +579,6 @@ export const useListWorkspaceCertificates = ({
       extendedKeyUsage,
       keyAlgorithm,
       signatureAlgorithm,
-      keySize,
       keySizes,
       caIds,
       enrollmentTypes,
@@ -613,7 +610,6 @@ export const useListWorkspaceCertificates = ({
           ...(extendedKeyUsage && { extendedKeyUsage }),
           ...(keyAlgorithm && { keyAlgorithm }),
           ...(signatureAlgorithm && { signatureAlgorithm }),
-          ...(keySize && { keySize }),
           ...(keySizes && keySizes.length > 0 && { keySizes }),
           ...(caIds && caIds.length > 0 && { caIds }),
           ...(enrollmentTypes && enrollmentTypes.length > 0 && { enrollmentTypes }),

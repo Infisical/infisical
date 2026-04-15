@@ -1,13 +1,18 @@
-import { ChevronDownIcon, Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { CheckIcon, ChevronDownIcon, GlobeIcon, Trash2Icon, XIcon } from "lucide-react";
 
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuLabel,
   UnstableDropdownMenuRadioGroup,
   UnstableDropdownMenuRadioItem,
   UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuTrigger
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton
 } from "@app/components/v3";
 import { TSystemView } from "@app/hooks/api/certificateInventoryViews";
 import type {
@@ -19,25 +24,106 @@ import type {
 type Props = {
   activeViewId: string | null;
   systemViews: TSystemView[];
-  customViews: (TCertificateInventoryView & { isSystem: false })[];
+  sharedViews: (TCertificateInventoryView & { isSystem: false; isShared: true })[];
+  customViews: (TCertificateInventoryView & { isSystem: false; isShared: false })[];
+  currentUserId?: string;
   onSelectView: (viewId: string, filters: TInventoryViewFilters | TSystemViewFilters) => void;
   onDeleteView: (viewId: string) => void;
+  onToggleShare?: (viewId: string, isShared: boolean) => void;
 };
 
 export const ViewsDropdown = ({
   activeViewId,
   systemViews,
+  sharedViews,
   customViews,
+  currentUserId,
   onSelectView,
-  onDeleteView
+  onDeleteView,
+  onToggleShare
 }: Props) => {
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
   const activeView =
     systemViews.find((v) => v.id === activeViewId) ||
+    sharedViews.find((v) => v.id === activeViewId) ||
     customViews.find((v) => v.id === activeViewId);
   const label = activeView?.name || "All Certificates";
 
+  const renderActions = (viewId: string, isShared: boolean) => {
+    if (pendingDeleteId === viewId) {
+      return (
+        <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5">
+          <UnstableIconButton
+            variant="ghost"
+            size="xs"
+            aria-label="Confirm delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteView(viewId);
+              setPendingDeleteId(null);
+            }}
+            className="text-red-400 hover:text-red-300"
+          >
+            <CheckIcon />
+          </UnstableIconButton>
+          <UnstableIconButton
+            variant="ghost"
+            size="xs"
+            aria-label="Cancel delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPendingDeleteId(null);
+            }}
+            className="text-muted hover:text-foreground"
+          >
+            <XIcon />
+          </UnstableIconButton>
+        </div>
+      );
+    }
+
+    return (
+      <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        {onToggleShare && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <UnstableIconButton
+                variant="ghost"
+                size="xs"
+                aria-label={isShared ? "Make personal" : "Share with team"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleShare(viewId, !isShared);
+                }}
+                className="text-muted hover:text-foreground"
+              >
+                <GlobeIcon />
+              </UnstableIconButton>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isShared ? "Make personal" : "Share with team"}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        <UnstableIconButton
+          variant="ghost"
+          size="xs"
+          aria-label="Delete view"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPendingDeleteId(viewId);
+          }}
+          className="text-muted hover:text-red-400"
+        >
+          <Trash2Icon />
+        </UnstableIconButton>
+      </div>
+    );
+  };
+
   return (
-    <UnstableDropdownMenu>
+    <UnstableDropdownMenu onOpenChange={() => setPendingDeleteId(null)}>
       <UnstableDropdownMenuTrigger asChild>
         <button
           type="button"
@@ -62,9 +148,32 @@ export const ViewsDropdown = ({
           ))}
         </UnstableDropdownMenuRadioGroup>
 
+        {sharedViews.length > 0 && (
+          <>
+            <UnstableDropdownMenuSeparator />
+            <UnstableDropdownMenuLabel>Shared Views</UnstableDropdownMenuLabel>
+            <UnstableDropdownMenuRadioGroup value={activeViewId || ""}>
+              {sharedViews.map((view) => {
+                const isOwner = currentUserId && view.createdByUserId === currentUserId;
+                return (
+                  <UnstableDropdownMenuRadioItem
+                    key={view.id}
+                    value={view.id}
+                    className="group relative"
+                    onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
+                  >
+                    <span className="flex-1 pr-12">{view.name}</span>
+                    {isOwner && renderActions(view.id, true)}
+                  </UnstableDropdownMenuRadioItem>
+                );
+              })}
+            </UnstableDropdownMenuRadioGroup>
+          </>
+        )}
+
         <UnstableDropdownMenuSeparator />
 
-        <UnstableDropdownMenuLabel>Custom Views</UnstableDropdownMenuLabel>
+        <UnstableDropdownMenuLabel>My Views</UnstableDropdownMenuLabel>
         {customViews.length === 0 ? (
           <div className="px-2 py-2 text-center text-xs text-muted">
             No custom views saved yet.
@@ -77,20 +186,11 @@ export const ViewsDropdown = ({
               <UnstableDropdownMenuRadioItem
                 key={view.id}
                 value={view.id}
-                className="group"
+                className="group relative"
                 onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
               >
-                <span className="flex-1">{view.name}</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteView(view.id);
-                  }}
-                  className="ml-2 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400"
-                >
-                  <Trash2Icon className="size-3.5" />
-                </button>
+                <span className="flex-1 pr-12">{view.name}</span>
+                {renderActions(view.id, false)}
               </UnstableDropdownMenuRadioItem>
             ))}
           </UnstableDropdownMenuRadioGroup>

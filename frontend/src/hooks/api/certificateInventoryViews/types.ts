@@ -5,11 +5,11 @@ export type TInventoryViewFilters = {
   notBeforeTo?: string | Date;
   notBeforeFrom?: string | Date;
   enrollmentTypes?: string[];
-  keyAlgorithm?: string;
+  keyAlgorithm?: string | string[];
   keySizes?: number[];
   caIds?: string[];
   profileIds?: string[];
-  source?: string;
+  source?: string | string[];
 };
 
 export type TCertificateInventoryView = {
@@ -19,6 +19,7 @@ export type TCertificateInventoryView = {
   filters: TInventoryViewFilters;
   columns: string[] | null;
   createdByUserId: string | null;
+  isShared: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,7 +40,8 @@ export type TSystemView = {
 
 export type TListInventoryViewsResponse = {
   systemViews: TSystemView[];
-  customViews: (TCertificateInventoryView & { isSystem: false })[];
+  sharedViews: (TCertificateInventoryView & { isSystem: false; isShared: true })[];
+  customViews: (TCertificateInventoryView & { isSystem: false; isShared: false })[];
 };
 
 export type TCreateInventoryViewDTO = {
@@ -47,6 +49,7 @@ export type TCreateInventoryViewDTO = {
   name: string;
   filters: TInventoryViewFilters;
   columns?: string[];
+  isShared?: boolean;
 };
 
 export type TUpdateInventoryViewDTO = {
@@ -55,6 +58,7 @@ export type TUpdateInventoryViewDTO = {
   name?: string;
   filters?: TInventoryViewFilters;
   columns?: string[];
+  isShared?: boolean;
 };
 
 export type TDeleteInventoryViewDTO = {

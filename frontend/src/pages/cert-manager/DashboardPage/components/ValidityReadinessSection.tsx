@@ -80,7 +80,7 @@ const MandateCountdown = () => {
   );
 
   return (
-    <UnstableCard className="flex h-full flex-col border-none">
+    <UnstableCard className="flex h-full flex-col">
       <UnstableCardHeader className="pb-2">
         <UnstableCardTitle className="text-base font-semibold">
           CA/B Forum Mandate Deadlines
@@ -110,11 +110,11 @@ const MandateCountdown = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-foreground">{daysUntil}</span>
-                    <span className="text-sm text-muted">days</span>
+                    <span className="text-sm text-accent">days</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted">{phase.description}</p>
                 </div>
-                <p className="shrink-0 text-right text-xs text-muted">
+                <p className="shrink-0 text-right text-xs text-foreground/70">
                   {phase.date.toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -156,7 +156,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   if (activeCerts === 0) return null;
 
   return (
-    <UnstableCard className="flex h-full flex-col border-none">
+    <UnstableCard className="flex h-full flex-col">
       <UnstableCardHeader className="pb-0">
         <UnstableCardTitle className="text-base font-semibold">
           Projected Annual Renewals
@@ -193,9 +193,24 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
               formatter={(value) => [Number(value).toLocaleString(), "Renewals/year"]}
               cursor={{ fill: "none" }}
             />
+            <defs>
+              {data.map((entry) => (
+                <linearGradient
+                  key={`grad-bar-${entry.label}`}
+                  id={`grad-bar-${entry.label}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop offset="0%" stopColor={entry.color} stopOpacity={1} />
+                  <stop offset="100%" stopColor={entry.color} stopOpacity={0.5} />
+                </linearGradient>
+              ))}
+            </defs>
             <Bar dataKey="renewals" radius={[4, 4, 0, 0]} maxBarSize={48}>
               {data.map((entry) => (
-                <Cell key={entry.label} fill={entry.color} />
+                <Cell key={`bar-${entry.label}`} fill={`url(#grad-bar-${entry.label})`} />
               ))}
             </Bar>
           </BarChart>
@@ -225,7 +240,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
   if (total === 0) return null;
 
   return (
-    <UnstableCard className="flex h-full flex-col border-none">
+    <UnstableCard className="flex h-full flex-col">
       <UnstableCardHeader className="pb-0">
         <UnstableCardTitle className="text-base font-semibold">
           Certificates by Validity Period

@@ -57,7 +57,6 @@ export const projectKeys = {
     extendedKeyUsage,
     keyAlgorithm,
     signatureAlgorithm,
-    keySize,
     keySizes,
     caIds,
     enrollmentTypes,
@@ -82,13 +81,12 @@ export const projectKeys = {
     toDate?: Date;
     metadataFilter?: Array<{ key: string; value?: string }>;
     extendedKeyUsage?: string;
-    keyAlgorithm?: string;
+    keyAlgorithm?: string | string[];
     signatureAlgorithm?: string;
-    keySize?: number;
     keySizes?: number[];
     caIds?: string[];
     enrollmentTypes?: string[];
-    source?: string;
+    source?: string | string[];
     notAfterFrom?: Date;
     notAfterTo?: Date;
     notBeforeFrom?: Date;
@@ -113,7 +111,6 @@ export const projectKeys = {
         extendedKeyUsage,
         keyAlgorithm,
         signatureAlgorithm,
-        keySize,
         keySizes,
         caIds,
         enrollmentTypes,
