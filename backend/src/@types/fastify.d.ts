@@ -29,6 +29,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamResourceRotationRulesServiceFactory } from "@app/ee/services/pam-resource/pam-resource-rotation-rules-service";
@@ -61,6 +62,7 @@ import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-servi
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
@@ -197,6 +199,7 @@ declare module "@fastify/request-context" {
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
     assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };
+    memoizer?: RequestMemoizer;
   }
 }
 
@@ -384,6 +387,7 @@ declare module "fastify" {
       pamResource: TPamResourceServiceFactory;
       pamResourceRotationRules: TPamResourceRotationRulesServiceFactory;
       pamAccount: TPamAccountServiceFactory;
+      pamAccountPolicy: TPamAccountPolicyServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamWebAccess: TPamWebAccessServiceFactory;
       pamDiscoverySource: TPamDiscoverySourceServiceFactory;

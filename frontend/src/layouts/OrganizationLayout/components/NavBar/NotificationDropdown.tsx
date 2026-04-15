@@ -17,6 +17,7 @@ import {
   useUpdateNotification
 } from "@app/hooks/api/notifications/mutations";
 import { useGetMyNotifications } from "@app/hooks/api/notifications/queries";
+import { isCriticalNotification } from "@app/hooks/api/notifications/types";
 
 import { Notification } from "./Notification";
 
@@ -32,6 +33,13 @@ export const NotificationDropdown = () => {
     () => notifications?.filter((n) => !n.isRead).length || 0,
     [notifications]
   );
+
+  const criticalCount = useMemo(
+    () => notifications?.filter((n) => !n.isRead && isCriticalNotification(n.type)).length || 0,
+    [notifications]
+  );
+
+  const hasCritical = criticalCount > 0;
 
   return (
     <DropdownMenu modal={false}>
@@ -52,7 +60,14 @@ export const NotificationDropdown = () => {
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
-            <span className="font-medium text-white">Notifications</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-white">Notifications</span>
+              {hasCritical && (
+                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  {criticalCount > 99 ? "99+" : criticalCount} critical
+                </span>
+              )}
+            </div>
             <button
               type="button"
               className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"

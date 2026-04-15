@@ -84,9 +84,7 @@
                   "documentation/platform/access-controls/additional-privileges",
                   "documentation/platform/access-controls/temporary-access",
                   "documentation/platform/access-controls/assume-privilege",
-                  "documentation/platform/access-controls/access-requests",
                   "documentation/platform/access-controls/project-access-requests",
-                  "documentation/platform/pr-workflows",
                   "documentation/platform/groups"
                 ]
               },
@@ -94,6 +92,7 @@
                 "group": "Audit Logs",
                 "pages": [
                   "documentation/platform/audit-logs",
+                  "documentation/platform/audit-logs-clickhouse-setup",
                   "documentation/platform/audit-log-streams/audit-log-streams",
                   "documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit"
                 ]
@@ -107,6 +106,7 @@
                     "group": "Connections",
                     "pages": [
                       "integrations/app-connections/1password",
+                      "integrations/app-connections/anthropic",
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
@@ -142,6 +142,7 @@
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
+                      "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
@@ -428,7 +429,8 @@
                       "documentation/platform/secrets-mgmt/concepts/access-control",
                       "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
                       "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
-                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
+                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
+                      "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
                   {
@@ -453,6 +455,8 @@
                   "documentation/platform/secret-versioning",
                   "documentation/platform/pit-recovery",
                   "documentation/platform/secret-reference",
+                  "documentation/platform/pr-workflows",
+                  "documentation/platform/access-controls/access-requests",
                   {
                     "group": "Secret Rotation",
                     "pages": [
@@ -504,6 +508,7 @@
                       "documentation/platform/dynamic-secrets/sap-ase",
                       "documentation/platform/dynamic-secrets/sap-hana",
                       "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/ssh",
                       "documentation/platform/dynamic-secrets/totp",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
@@ -693,6 +698,7 @@
                       "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
                       "documentation/platform/pki/concepts/certificate-components",
+                      "documentation/platform/pki/concepts/pqc-algorithms",
                       "documentation/platform/pki/concepts/code-signing"
                     ]
                   },
@@ -800,7 +806,8 @@
                   "documentation/platform/pki/integration-guides/nginx-certbot",
                   "documentation/platform/pki/integration-guides/apache-certbot",
                   "documentation/platform/pki/integration-guides/tomcat-certbot",
-                  "documentation/platform/pki/integration-guides/jboss-certbot"
+                  "documentation/platform/pki/integration-guides/jboss-certbot",
+                  "documentation/platform/pki/integration-guides/jamf-pro-scep"
                 ]
               },
               {
@@ -812,7 +819,8 @@
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
                   "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate",
+                  "documentation/platform/pki/certificate-syncs/netscaler"
                 ]
               },
               {
@@ -862,6 +870,7 @@
                           "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/mongodb",
                           "documentation/platform/pam/getting-started/resources/mssql",
                           "documentation/platform/pam/getting-started/resources/mysql",
                           "documentation/platform/pam/getting-started/resources/postgresql",
@@ -887,9 +896,12 @@
                 "group": "Product Reference",
                 "pages": [
                   "documentation/platform/pam/product-reference/access-policies",
+                  "documentation/platform/pam/product-reference/account-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/ai-session-insights",
                   "documentation/platform/pam/product-reference/credential-rotation",
+                  "documentation/platform/pam/product-reference/view-credentials",
                   {
                     "group": "Web Access",
                     "pages": [
@@ -1634,6 +1646,18 @@
                       "api-reference/endpoints/app-connections/mysql/create",
                       "api-reference/endpoints/app-connections/mysql/update",
                       "api-reference/endpoints/app-connections/mysql/delete"
+                    ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/netscaler/list",
+                      "api-reference/endpoints/app-connections/netscaler/available",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-id",
+                      "api-reference/endpoints/app-connections/netscaler/get-by-name",
+                      "api-reference/endpoints/app-connections/netscaler/create",
+                      "api-reference/endpoints/app-connections/netscaler/update",
+                      "api-reference/endpoints/app-connections/netscaler/delete"
                     ]
                   },
                   {
@@ -3098,6 +3122,18 @@
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
                       "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
                     ]
+                  },
+                  {
+                    "group": "NetScaler",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/netscaler/list",
+                      "api-reference/endpoints/pki/syncs/netscaler/get-by-id",
+                      "api-reference/endpoints/pki/syncs/netscaler/create",
+                      "api-reference/endpoints/pki/syncs/netscaler/update",
+                      "api-reference/endpoints/pki/syncs/netscaler/delete",
+                      "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                    ]
                   }
                 ]
               }
@@ -3451,8 +3487,8 @@
             "href": "https://infisical.com/sla"
           },
           {
-            "label": "Team Email",
-            "href": "mailto:team@infisical.com"
+            "label": "Support Email",
+            "href": "mailto:support@infisical.com"
           },
           {
             "label": "Sales",
@@ -3468,7 +3504,8 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE"
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
+      "apiHost": "https://p.infisical.com"
     },
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"

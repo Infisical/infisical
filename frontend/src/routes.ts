@@ -399,6 +399,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
+    route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
     route("/approvals", "pam/ApprovalsPage/route.tsx"),
     route("/approval-requests/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx"),
 
@@ -414,11 +415,6 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
 const pamAccessRoute = route(
   "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
   "pam/PamAccountAccessPage/route.tsx"
-);
-
-const pamDataExplorerRoute = route(
-  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/data-explorer",
-  "pam/PamDataExplorerPage/route.tsx"
 );
 
 const organizationRoutes = route("/organizations/$orgId", [
@@ -484,7 +480,10 @@ export const routes = rootRoute("root.tsx", [
     middleware("inject-org-details.tsx", [
       adminRoute,
       pamAccessRoute,
-      pamDataExplorerRoute,
+      route(
+        "/organization/app-connections/$appConnection/oauth/callback",
+        "redirects/oauth-callback-redirect.tsx"
+      ),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [

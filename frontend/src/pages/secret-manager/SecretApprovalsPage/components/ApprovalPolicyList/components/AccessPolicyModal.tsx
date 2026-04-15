@@ -100,6 +100,7 @@ const formSchema = z
       .object({
         type: z.literal(ApproverType.User),
         id: z.string(),
+        name: z.string().optional(),
         isOrgMembershipActive: z.boolean().optional()
       })
       .array()
@@ -129,6 +130,7 @@ const formSchema = z
           .object({
             type: z.literal(ApproverType.User),
             id: z.string(),
+            name: z.string().optional(),
             isOrgMembershipActive: z.boolean().optional()
           })
           .array()
@@ -370,11 +372,12 @@ const Form = ({
     }
   };
 
-  const memberOptions = useMemo(
+  const memberOptions: Omit<Approver, "sequence" | "approvalsRequired">[] = useMemo(
     () =>
       members.map((member) => ({
         id: member.user.id,
         type: ApproverType.User,
+        name: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -555,7 +558,7 @@ const Form = ({
             defaultValue="/"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
+                tooltipText="Secret paths support glob patterns. Use * to match a single level and ** to match all nested levels. Example: /** matches all paths, /services/* matches immediate children."
                 label="Secret Path"
                 isRequired
                 isError={Boolean(error)}
@@ -678,7 +681,8 @@ const Form = ({
                             getOptionLabel={(option) => {
                               const member = members?.find((m) => m.user.id === option.id);
 
-                              if (!member) return option.id;
+                              if (!member)
+                                return ("name" in option && (option.name as string)) || option.id;
 
                               return getMemberLabel(member);
                             }}
@@ -757,7 +761,8 @@ const Form = ({
                     getOptionLabel={(option) => {
                       const member = members?.find((m) => m.user.id === option.id);
 
-                      if (!member) return option.id;
+                      if (!member)
+                        return ("name" in option && (option.name as string)) || option.id;
 
                       return getMemberLabel(member);
                     }}

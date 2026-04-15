@@ -13,6 +13,7 @@ export type TCreateAccountDTO = Pick<
 > & {
   internalMetadata?: Record<string, unknown>;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
+  policyId?: string | null;
 };
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
@@ -44,4 +45,9 @@ export type TListAccountsDTO = {
 
 export type TGetAccountByIdDTO = {
   accountId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TViewAccountCredentialsDTO = {
+  accountId: string;
+  mfaSessionId?: string;
 } & Omit<TProjectPermission, "projectId">;

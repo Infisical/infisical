@@ -1034,9 +1034,18 @@ export const secretQueueFactory = ({
               isSynced: response?.isSynced ?? true
             });
 
+            // Resolve the actor to a canonical telemetry distinct ID consistent with getTelemetryDistinctId
+            let telemetryDistinctId = `platform/${projectId}`;
+            if (isManual && actorId) {
+              const actor = await userDAL.findById(actorId);
+              if (actor) {
+                telemetryDistinctId = actor.username;
+              }
+            }
+
             await telemetryService.sendPostHogEvents({
               event: PostHogEventTypes.IntegrationSynced,
-              distinctId: `project/${projectId}`,
+              distinctId: telemetryDistinctId,
               organizationId: project.orgId,
               properties: {
                 integrationId: integration.id,

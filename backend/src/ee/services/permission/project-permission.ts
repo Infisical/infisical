@@ -254,12 +254,20 @@ export enum ProjectPermissionPamAccountActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  TriggerRotation = "trigger-rotation"
+  TriggerRotation = "trigger-rotation",
+  ReadCredentials = "read-credentials"
 }
 
 export enum ProjectPermissionPamSessionActions {
   Read = "read",
   Terminate = "terminate"
+}
+
+export enum ProjectPermissionPamAccountPolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
 }
 
 export enum ProjectPermissionPamDiscoveryActions {
@@ -346,6 +354,7 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamAccountPolicies = "pam-account-policies",
   PamDiscovery = "pam-discovery",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
@@ -515,11 +524,13 @@ export type McpEndpointSubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
+  resourceType: string;
   metadata?: { key: string; value: string }[];
 };
 
 export type PamResourceSubjectFields = {
   name: string;
+  resourceType: string;
   metadata?: { key: string; value: string }[];
 };
 
@@ -659,6 +670,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
   | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
   | [
       ProjectPermissionMcpEndpointActions,
@@ -1233,6 +1245,17 @@ const PamAccountConditionSchema = z
         })
         .partial()
     ]),
+    resourceType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
     metadata: z.object({
       [PermissionConditionOperators.$ELEMENTMATCH]: z
         .object({
@@ -1259,6 +1282,17 @@ const PamAccountConditionSchema = z
 const PamResourceConditionSchema = z
   .object({
     name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    resourceType: z.union([
       z.string(),
       z
         .object({
@@ -1638,6 +1672,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.PamSessions).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamSessionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PamAccountPolicies).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamAccountPolicyActions).describe(
       "Describe what action an entity can take."
     )
   }),

@@ -27,6 +27,12 @@ import {
   TOnePassConnectionInput,
   TValidateOnePassConnectionCredentialsSchema
 } from "./1password";
+import {
+  TAnthropicConnection,
+  TAnthropicConnectionConfig,
+  TAnthropicConnectionInput,
+  TValidateAnthropicConnectionCredentialsSchema
+} from "./anthropic";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -217,6 +223,12 @@ import {
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
 import {
+  TNetScalerConnection,
+  TNetScalerConnectionConfig,
+  TNetScalerConnectionInput,
+  TValidateNetScalerConnectionCredentialsSchema
+} from "./netscaler";
+import {
   TNorthflankConnection,
   TNorthflankConnectionConfig,
   TNorthflankConnectionInput,
@@ -373,6 +385,8 @@ export type TAppConnection = { id: string } & (
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
+  | TNetScalerConnection
+  | TAnthropicConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -438,6 +452,8 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TExternalInfisicalConnectionInput
+  | TNetScalerConnectionInput
+  | TAnthropicConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -531,7 +547,9 @@ export type TAppConnectionConfig =
   | TCircleCIConnectionConfig
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
-  | TExternalInfisicalConnectionConfig;
+  | TExternalInfisicalConnectionConfig
+  | TNetScalerConnectionConfig
+  | TAnthropicConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -587,7 +605,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
-  | TValidateExternalInfisicalConnectionCredentialsSchema;
+  | TValidateExternalInfisicalConnectionCredentialsSchema
+  | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateAnthropicConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

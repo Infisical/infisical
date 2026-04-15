@@ -257,12 +257,20 @@ export enum ProjectPermissionPamAccountActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  TriggerRotation = "trigger-rotation"
+  TriggerRotation = "trigger-rotation",
+  ReadCredentials = "read-credentials"
 }
 
 export enum ProjectPermissionPamSessionActions {
   Read = "read",
   Terminate = "terminate"
+}
+
+export enum ProjectPermissionPamAccountPolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
 }
 
 export enum ProjectPermissionPamDiscoveryActions {
@@ -427,6 +435,7 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  PamAccountPolicies = "pam-account-policies",
   PamDiscovery = "pam-discovery",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
@@ -517,6 +526,7 @@ export type CertificatePolicySubjectFields = {
 
 export type PamAccountSubjectFields = {
   resourceName: string;
+  resourceType: string;
   accountName: string;
   metadata?: { key: string; value: string }[];
 };
@@ -712,6 +722,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
   | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]

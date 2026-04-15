@@ -15,6 +15,7 @@ import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
+import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -49,6 +50,7 @@ import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
+import { NetScalerConnectionForm } from "./NetScalerConnectionForm";
 import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
@@ -262,6 +264,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Anthropic:
+        return <AnthropicConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
@@ -270,6 +274,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.NetScaler:
+        return <NetScalerConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -471,12 +477,16 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Anthropic:
+        return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
         );
+      case AppConnection.NetScaler:
+        return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

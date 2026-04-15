@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
@@ -11,8 +13,10 @@ import {
   HttpEventSchema,
   PamSessionCommandLogSchema,
   SanitizedSessionSchema,
+  SessionLogsPageSchema,
   TerminalEventSchema
 } from "@app/ee/services/pam-session/pam-session-schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,11 +27,16 @@ const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
+  MongoDBSessionCredentialsSchema,
   KubernetesSessionCredentialsSchema,
   RedisSessionCredentialsSchema
 ]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
+  server.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, (_req, body, done) => {
+    done(null, body);
+  });
+
   // Meant to be hit solely by gateway identities
   server.route({
     method: "GET",
@@ -42,13 +51,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          credentials: SessionCredentialsSchema
+          credentials: SessionCredentialsSchema,
+          policyRules: PolicyRulesResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId, account, sessionStarted } =
+      const { credentials, policyRules, projectId, account, sessionStarted } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
@@ -90,7 +100,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           .catch(() => {});
       }
 
-      return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
+      return {
+        credentials: credentials as z.infer<typeof SessionCredentialsSchema>,
+        policyRules
+      };
     }
   });
 
@@ -249,6 +262,36 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:sessionId/logs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get paginated PAM session logs",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().nonnegative().default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(20)
+      }),
+      response: {
+        200: SessionLogsPageSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.pamSession.getSessionLogs(
+        req.params.sessionId,
+        req.query.offset,
+        req.query.limit,
+        req.permission
+      );
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:sessionId",
     config: {
       rateLimit: readLimit
@@ -318,6 +361,64 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       });
 
       return response;
+    }
+  });
+
+  // Meant to be hit solely by gateway identities
+  server.route({
+    method: "POST",
+    url: "/:sessionId/event-batches",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Upload a PAM session event batch",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        startOffset: z.coerce.number().int().nonnegative()
+      }),
+      body: z.instanceof(Buffer),
+      response: {
+        200: z.object({ ok: z.literal(true) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
+      try {
+        EventBatchSchema.parse(JSON.parse(req.body.toString()));
+      } catch (e) {
+        if (e instanceof SyntaxError) throw new BadRequestError({ message: "Invalid JSON in request body" });
+        throw e;
+      }
+
+      const { projectId, wasInserted } = await server.services.pamSession.uploadEventBatch(
+        {
+          sessionId: req.params.sessionId,
+          startOffset: req.query.startOffset,
+          events: req.body
+        },
+        req.permission
+      );
+
+      if (wasInserted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD,
+            metadata: {
+              sessionId: req.params.sessionId,
+              startOffset: req.query.startOffset
+            }
+          }
+        });
+      }
+
+      return { ok: true as const };
     }
   });
 };

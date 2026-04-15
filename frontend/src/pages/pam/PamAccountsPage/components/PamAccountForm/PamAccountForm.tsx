@@ -10,6 +10,7 @@ import { DiscriminativePick } from "@app/types";
 import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
+import { MongoDBAccountForm } from "./MongoDBAccountForm";
 import { MsSQLAccountForm } from "./MsSQLAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
@@ -48,16 +49,18 @@ const CreateForm = ({
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const account = await createPamAccount.mutateAsync({
       ...rest,
       folderId,
       resourceId,
       resourceType,
       projectId,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully created account",
@@ -88,6 +91,15 @@ const CreateForm = ({
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm
+          onSubmit={onSubmit}
+          closeSheet={closeSheet}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm
           onSubmit={onSubmit}
           closeSheet={closeSheet}
           resourceId={resourceId}
@@ -163,14 +175,16 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     > & {
       internalMetadata?: Record<string, unknown>;
       metadata?: { key: string; value: string }[];
+      policyId?: string | null;
     }
   ) => {
-    const { internalMetadata, ...rest } = formData;
+    const { internalMetadata, policyId, ...rest } = formData;
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
       resourceType: account.resource.resourceType,
       ...rest,
-      internalMetadata
+      internalMetadata,
+      policyId
     });
     createNotification({
       text: "Successfully updated account",
@@ -191,6 +205,10 @@ const UpdateForm = ({ account, closeSheet }: UpdateFormProps) => {
     case PamResourceType.MsSQL:
       return (
         <MsSQLAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
+      );
+    case PamResourceType.MongoDB:
+      return (
+        <MongoDBAccountForm account={account as any} onSubmit={onSubmit} closeSheet={closeSheet} />
       );
     case PamResourceType.Redis:
       return (

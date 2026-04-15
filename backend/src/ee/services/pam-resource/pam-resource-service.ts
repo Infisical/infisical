@@ -1,9 +1,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -13,7 +15,10 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -36,6 +41,12 @@ import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam
 import { TSSHResourceInternalMetadata } from "./ssh/ssh-resource-types";
 import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
+// Extend this set as more LLM providers are added (e.g. AppConnection.OpenAI)
+const LLM_APP_CONNECTIONS = new Set<AppConnection>([AppConnection.Anthropic]);
+
+// Resource types that have AI session summary prompts defined in pam-session-summary-fns.ts
+const AI_SUMMARY_SUPPORTED_RESOURCE_TYPES = new Set<PamResource>([PamResource.Postgres, PamResource.SSH]);
+
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
@@ -47,6 +58,7 @@ type TPamResourceServiceFactoryDep = {
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -58,7 +70,8 @@ export const pamResourceServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
   const getById = async (id: string, resourceType: PamResource, actor: OrgServiceActor) => {
     const resource = await pamResourceDAL.findById(id);
@@ -79,7 +92,11 @@ export const pamResourceServiceFactory = ({
 
     const canReadResources = permission.can(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+      subject(ProjectPermissionSub.PamResources, {
+        name: resource.name,
+        resourceType: resource.resourceType,
+        metadata: resourceMetadata
+      })
     );
 
     if (!canReadResources) {
@@ -99,6 +116,7 @@ export const pamResourceServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
             accountName: account.name,
+            resourceType: resource.resourceType,
             metadata: accountMetadata[account.id] || []
           })
         );
@@ -107,7 +125,11 @@ export const pamResourceServiceFactory = ({
       if (!hasAccountAccess) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.PamResources, { name: resource.name, metadata: resourceMetadata })
+          subject(ProjectPermissionSub.PamResources, {
+            name: resource.name,
+            resourceType: resource.resourceType,
+            metadata: resourceMetadata
+          })
         );
       }
     }
@@ -150,6 +172,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.PamResources, {
         name,
+        resourceType,
         metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
@@ -241,7 +264,8 @@ export const pamResourceServiceFactory = ({
       rotationAccountCredentials,
       gatewayId,
       adServerResourceId,
-      metadata
+      metadata,
+      sessionSummaryConfig
     }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -266,6 +290,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: currentMetadata
       })
     );
@@ -276,6 +301,7 @@ export const pamResourceServiceFactory = ({
         ProjectPermissionActions.Edit,
         subject(ProjectPermissionSub.PamResources, {
           name: name ?? resource.name,
+          resourceType: resource.resourceType,
           metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
@@ -376,8 +402,75 @@ export const pamResourceServiceFactory = ({
       }
     }
 
+    if (sessionSummaryConfig !== undefined) {
+      if (sessionSummaryConfig === null) {
+        updateDoc.encryptedSessionSummaryConfig = null;
+      } else {
+        if (!AI_SUMMARY_SUPPORTED_RESOURCE_TYPES.has(resource.resourceType as PamResource)) {
+          throw new BadRequestError({
+            message: `AI session summaries are not supported for resource type '${resource.resourceType}'`
+          });
+        }
+
+        const appConnection = await appConnectionDAL.findById(sessionSummaryConfig.connectionId);
+        if (!appConnection) {
+          throw new NotFoundError({
+            message: `App connection with ID '${sessionSummaryConfig.connectionId}' not found`
+          });
+        }
+        if (appConnection.orgId !== actor.orgId) {
+          throw new BadRequestError({
+            message: "App connection does not belong to the same organization as the resource"
+          });
+        }
+        if (!LLM_APP_CONNECTIONS.has(appConnection.app as AppConnection)) {
+          throw new BadRequestError({
+            message: `App connection must be an AI provider connection, got '${appConnection.app}'`
+          });
+        }
+
+        // Check actor has Connect permission on the app connection
+        if (appConnection.projectId) {
+          const { permission: appConnectionPermission } = await permissionService.getProjectPermission({
+            actor: actor.type,
+            actorId: actor.id,
+            projectId: appConnection.projectId,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId,
+            actionProjectType: ActionProjectType.Any
+          });
+          ForbiddenError.from(appConnectionPermission).throwUnlessCan(
+            ProjectPermissionAppConnectionActions.Connect,
+            subject(ProjectPermissionSub.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
+          );
+        } else {
+          const { permission: appConnectionPermission } = await permissionService.getOrgPermission({
+            actorId: actor.id,
+            actor: actor.type,
+            orgId: appConnection.orgId,
+            actorOrgId: actor.orgId,
+            actorAuthMethod: actor.authMethod,
+            scope: OrganizationActionScope.Any
+          });
+          ForbiddenError.from(appConnectionPermission).throwUnlessCan(
+            OrgPermissionAppConnectionActions.Connect,
+            subject(OrgPermissionSubjects.AppConnections, { connectionId: sessionSummaryConfig.connectionId })
+          );
+        }
+
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: resource.projectId
+        });
+        const { cipherTextBlob } = encryptor({
+          plainText: Buffer.from(JSON.stringify(sessionSummaryConfig))
+        });
+        updateDoc.encryptedSessionSummaryConfig = cipherTextBlob;
+      }
+    }
+
     // If nothing was updated, return the fetched resource
-    if (Object.keys(updateDoc).length === 0 && metadata === undefined) {
+    if (Object.keys(updateDoc).length === 0 && metadata === undefined && sessionSummaryConfig === undefined) {
       const existingMeta = await pamResourceDAL.findMetadataByResourceIds([resourceId]);
       return {
         ...(await decryptResource(resource, resource.projectId, kmsService)),
@@ -442,6 +535,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[id] || []
       })
     );
@@ -527,6 +621,7 @@ export const pamResourceServiceFactory = ({
           ProjectPermissionActions.Read,
           subject(ProjectPermissionSub.PamResources, {
             name: resource.name,
+            resourceType: resource.resourceType,
             metadata: metadataByResourceId[resource.id] || []
           })
         )
@@ -585,6 +680,7 @@ export const pamResourceServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
             accountName: account.accountName,
+            resourceType: resource.resourceType,
             metadata: account.metadata
           })
         )
@@ -634,6 +730,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[resourceId] || []
       })
     );
@@ -710,6 +807,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[adServerResourceId] || []
       })
     );
@@ -754,6 +852,7 @@ export const pamResourceServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.PamResources, {
         name: resource.name,
+        resourceType: resource.resourceType,
         metadata: metadataByResourceId[resource.id] || []
       })
     );

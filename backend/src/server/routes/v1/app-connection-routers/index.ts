@@ -4,6 +4,7 @@ import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connecti
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
@@ -37,6 +38,7 @@ import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
+import { registerNetScalerConnectionRouter } from "./netscaler-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
@@ -112,5 +114,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
-    [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter
+    [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
+    [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.Anthropic]: registerAnthropicConnectionRouter
   };

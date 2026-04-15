@@ -338,8 +338,9 @@ export const membershipGroupServiceFactory = ({
       });
 
       if (accessApprovalPolicies.length > 0) {
+        const policyNames = accessApprovalPolicies.map((p) => p.name).join(", ");
         throw new BadRequestError({
-          message: "This group is assigned to an approval policy and cannot be deleted"
+          message: `Cannot remove group from project: group is an approver in access approval ${accessApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
       }
     }
@@ -358,8 +359,9 @@ export const membershipGroupServiceFactory = ({
         deletedAt: null
       });
       if (secretApprovalPolicies.length > 0) {
+        const policyNames = secretApprovalPolicies.map((p) => p.name).join(", ");
         throw new BadRequestError({
-          message: "This group is assigned to a secret approval policy and cannot be deleted"
+          message: `Cannot remove group from project: group is an approver in secret approval ${secretApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
       }
     }

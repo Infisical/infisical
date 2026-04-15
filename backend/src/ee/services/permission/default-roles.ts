@@ -20,6 +20,7 @@ import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamAccountPolicyActions,
   ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
@@ -392,7 +393,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPamAccountActions.Create,
       ProjectPermissionPamAccountActions.Edit,
       ProjectPermissionPamAccountActions.Delete,
-      ProjectPermissionPamAccountActions.TriggerRotation
+      ProjectPermissionPamAccountActions.TriggerRotation,
+      ProjectPermissionPamAccountActions.ReadCredentials
     ],
     ProjectPermissionSub.PamAccounts
   );
@@ -400,6 +402,16 @@ const buildAdminPermissionRules = () => {
   can(
     [ProjectPermissionPamSessionActions.Read, ProjectPermissionPamSessionActions.Terminate],
     ProjectPermissionSub.PamSessions
+  );
+
+  can(
+    [
+      ProjectPermissionPamAccountPolicyActions.Read,
+      ProjectPermissionPamAccountPolicyActions.Create,
+      ProjectPermissionPamAccountPolicyActions.Edit,
+      ProjectPermissionPamAccountPolicyActions.Delete
+    ],
+    ProjectPermissionSub.PamAccountPolicies
   );
 
   can(
@@ -691,6 +703,8 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.PamAccounts
   );
 
+  can([ProjectPermissionPamAccountPolicyActions.Read], ProjectPermissionSub.PamAccountPolicies);
+
   can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 
   can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
@@ -769,6 +783,8 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
 
   can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
+
+  can([ProjectPermissionPamAccountPolicyActions.Read], ProjectPermissionSub.PamAccountPolicies);
 
   can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 

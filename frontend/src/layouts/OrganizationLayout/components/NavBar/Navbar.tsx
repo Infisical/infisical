@@ -91,6 +91,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { VersionBadge } from "./VersionBadge";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -582,6 +583,7 @@ export const Navbar = () => {
           {getPlan(subscription)}
         </Badge>
       )}
+      <VersionBadge />
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>

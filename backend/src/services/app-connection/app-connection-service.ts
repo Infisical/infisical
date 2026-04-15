@@ -41,6 +41,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
+import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -115,6 +116,7 @@ import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
 import { netlifyConnectionService } from "./netlify/netlify-connection-service";
+import { ValidateNetScalerConnectionCredentialsSchema } from "./netscaler";
 import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
 import { northflankConnectionService } from "./northflank/northflank-connection-service";
 import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-deploy";
@@ -215,7 +217,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
-  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema
+  [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
+  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

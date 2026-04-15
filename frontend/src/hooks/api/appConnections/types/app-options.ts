@@ -232,6 +232,14 @@ export type TExternalInfisicalConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ExternalInfisical;
 };
 
+export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.NetScaler;
+};
+
+export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Anthropic;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -286,7 +294,9 @@ export type TAppConnectionOption =
   | TSmbConnectionOption
   | TAzureEntraIdConnectionOption
   | TVenafiConnectionOption
-  | TExternalInfisicalConnectionOption;
+  | TExternalInfisicalConnectionOption
+  | TNetScalerConnectionOption
+  | TAnthropicConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -343,4 +353,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
+  [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.Anthropic]: TAnthropicConnectionOption;
 };

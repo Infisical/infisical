@@ -45,6 +45,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const dbInstance = tx || db.replicaNode();
       const query = dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.projectId`, projectId);
 
       if (accountView === PamAccountView.Nested) {
@@ -84,7 +85,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         // resource
         db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
         db.ref("resourceType").withSchema(TableName.PamResource),
-        db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource)
+        db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource),
+        // policy
+        db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
       );
 
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
@@ -99,10 +102,11 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const totalCount = Number(countResult?.count || 0);
 
       const accounts = results.map(
-        // @ts-expect-error resourceName, resourceType, encryptedRotationAccountCredentials are from joined table
-        ({ resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, ...account }) => ({
+        // @ts-expect-error resourceName, resourceType, encryptedRotationAccountCredentials, policyName are from joined tables
+        ({ resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, policyName, ...account }) => ({
           ...account,
           resourceId,
+          policyName: (policyName as string) || null,
           resource: {
             id: resourceId,
             name: resourceName as string,
@@ -122,27 +126,32 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const dbInstance = tx || db.replicaNode();
       const result = await dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.id`, accountId)
         .select(selectAllTableCols(TableName.PamAccount))
         .select(
           db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
           db.ref("resourceType").withSchema(TableName.PamResource),
-          db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource)
+          db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource),
+          db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
         )
         .first();
 
       if (!result) return null;
 
-      const { resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, ...account } = result as {
-        resourceId: string;
-        resourceName: string;
-        resourceType: string;
-        encryptedRotationAccountCredentials: Buffer | null;
-      } & typeof result;
+      const { resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, policyName, ...account } =
+        result as {
+          resourceId: string;
+          resourceName: string;
+          resourceType: string;
+          encryptedRotationAccountCredentials: Buffer | null;
+          policyName: string | null;
+        } & typeof result;
 
       return {
         ...account,
         resourceId,
+        policyName: policyName || null,
         resource: {
           id: resourceId,
           name: resourceName,

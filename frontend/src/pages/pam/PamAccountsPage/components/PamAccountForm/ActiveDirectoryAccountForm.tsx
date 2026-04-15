@@ -9,7 +9,11 @@ import { PamResourceType, TActiveDirectoryAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { ActiveDirectoryAccountType } from "@app/hooks/api/pam/types/active-directory-resource";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
@@ -145,6 +149,7 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit, closeSheet }: Pr
             />
           </div>
           <RequireMfaField />
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

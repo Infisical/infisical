@@ -31,6 +31,11 @@ import {
   OnePassConnectionMethod,
   validateOnePassConnectionCredentials
 } from "./1password";
+import {
+  AnthropicConnectionMethod,
+  getAnthropicConnectionListItem,
+  validateAnthropicConnectionCredentials
+} from "./anthropic";
 import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
@@ -153,6 +158,11 @@ import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
 import {
+  getNetScalerConnectionListItem,
+  NetScalerConnectionMethod,
+  validateNetScalerConnectionCredentials
+} from "./netscaler";
+import {
   getNorthflankConnectionListItem,
   NorthflankConnectionMethod,
   validateNorthflankConnectionCredentials
@@ -221,7 +231,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
-  AppConnection.Venafi
+  AppConnection.Venafi,
+  AppConnection.NetScaler
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -276,10 +287,12 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDbtConnectionListItem(),
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
+    getAnthropicConnectionListItem(),
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
-    getExternalInfisicalConnectionListItem()
+    getExternalInfisicalConnectionListItem(),
+    getNetScalerConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -421,9 +434,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
@@ -513,11 +528,14 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case AnthropicConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
+    case NetScalerConnectionMethod.BasicAuth:
+      return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
     default:
@@ -624,10 +642,12 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
+  [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
-  [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported
+  [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
+  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

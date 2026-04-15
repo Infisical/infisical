@@ -1,4 +1,4 @@
-import ldapjs from "ldapjs";
+import ldapjs from "@infisical/ldapjs";
 
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";

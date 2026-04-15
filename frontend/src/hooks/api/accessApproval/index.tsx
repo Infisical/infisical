@@ -3,6 +3,7 @@ export {
   useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,
   useReviewAccessRequest,
+  useRevokeAccessRequest,
   useUpdateAccessApprovalPolicy
 } from "./mutation";
 export {

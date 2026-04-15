@@ -7,6 +7,7 @@ import {
   generateConsoleFederationUrl,
   TAwsIamAccountCredentials
 } from "@app/ee/services/pam-resource/aws-iam";
+import { parseMongoConnectionString } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-factory";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import {
   decryptResource,
@@ -51,6 +52,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES } from "../pam-account-policy/pam-account-policy-constants";
+import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
+import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
+import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
 import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -64,19 +69,26 @@ import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountRotationStatus } from "./pam-account-enums";
-import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
+import {
+  decryptAccount,
+  decryptAccountCredentials,
+  encryptAccountCredentials,
+  hasSensitiveCredentials
+} from "./pam-account-fns";
 import {
   TAccessAccountDTO,
   TCreateAccountDTO,
   TGetAccountByIdDTO,
   TListAccountsDTO,
-  TUpdateAccountDTO
+  TUpdateAccountDTO,
+  TViewAccountCredentialsDTO
 } from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
+  pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceRotationRulesDAL: Pick<TPamResourceRotationRulesDALFactory, "findByResourceIds">;
   mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
@@ -109,6 +121,7 @@ export const pamAccountServiceFactory = ({
   pamResourceDAL,
   pamSessionDAL,
   pamAccountDAL,
+  pamAccountPolicyDAL,
   pamResourceRotationRulesDAL,
   mfaSessionService,
   projectDAL,
@@ -125,7 +138,17 @@ export const pamAccountServiceFactory = ({
   pamAccountDependenciesDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
-    { credentials, resourceId, name, description, folderId, requireMfa, internalMetadata, metadata }: TCreateAccountDTO,
+    {
+      credentials,
+      resourceId,
+      name,
+      description,
+      folderId,
+      requireMfa,
+      internalMetadata,
+      metadata,
+      policyId
+    }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const resource = await pamResourceDAL.findById(resourceId);
@@ -145,6 +168,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: name,
+        resourceType: resource.resourceType,
         metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
@@ -180,6 +204,13 @@ export const pamAccountServiceFactory = ({
       kmsService
     });
 
+    if (policyId) {
+      const policy = await pamAccountPolicyDAL.findById(policyId);
+      if (!policy || policy.projectId !== resource.projectId) {
+        throw new NotFoundError({ message: "Policy not found" });
+      }
+    }
+
     try {
       const { account, insertedMetadata } = await pamAccountDAL.transaction(async (tx) => {
         const newAccount = await pamAccountDAL.create(
@@ -191,7 +222,8 @@ export const pamAccountServiceFactory = ({
             description,
             folderId,
             requireMfa,
-            internalMetadata: internalMetadata ?? null
+            internalMetadata: internalMetadata ?? null,
+            policyId: policyId ?? null
           },
           tx
         );
@@ -235,7 +267,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata }: TUpdateAccountDTO,
+    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata, policyId }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const account = await pamAccountDAL.findById(accountId);
@@ -262,6 +294,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
+        resourceType: resource.resourceType,
         metadata: currentMetadata
       })
     );
@@ -273,6 +306,7 @@ export const pamAccountServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: name ?? account.name,
+          resourceType: resource.resourceType,
           metadata: metadata ? metadata.map(({ key, value }) => ({ key, value: value ?? "" })) : currentMetadata
         })
       );
@@ -294,6 +328,16 @@ export const pamAccountServiceFactory = ({
 
     if (internalMetadata !== undefined) {
       updateDoc.internalMetadata = internalMetadata;
+    }
+
+    if (policyId !== undefined) {
+      if (policyId) {
+        const policy = await pamAccountPolicyDAL.findById(policyId);
+        if (!policy || policy.projectId !== account.projectId) {
+          throw new NotFoundError({ message: "Policy not found" });
+        }
+      }
+      updateDoc.policyId = policyId;
     }
 
     if (credentials !== undefined) {
@@ -427,6 +471,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
+        resourceType: resource.resourceType,
         metadata: accountMeta[id] || []
       })
     );
@@ -500,6 +545,7 @@ export const pamAccountServiceFactory = ({
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: account.resource.name,
             accountName: account.name,
+            resourceType: account.resource.resourceType,
             metadata: metadataByAccountId[account.id] || []
           })
         )
@@ -556,6 +602,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
         accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType,
         metadata: accountMetadata
       })
     );
@@ -650,6 +697,7 @@ export const pamAccountServiceFactory = ({
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
           accountName: account.name,
+          resourceType: resource.resourceType,
           metadata: accountMeta[account.id] || []
         })
       );
@@ -768,6 +816,7 @@ export const pamAccountServiceFactory = ({
         resourceType: resource.resourceType,
         status: PamSessionStatus.Active, // AWS IAM sessions are immediately active
         accountId: account.id,
+        resourceId: resource.id,
         userId: actor.id,
         expiresAt,
         startedAt: new Date()
@@ -802,6 +851,7 @@ export const pamAccountServiceFactory = ({
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
       accountId: account.id,
+      resourceId: resource.id,
       userId: actor.id,
       expiresAt: new Date(Date.now() + duration)
     });
@@ -810,22 +860,25 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
-    const { host, port } =
-      resourceType !== PamResource.Kubernetes
-        ? connectionDetails
-        : (() => {
-            const url = new URL(connectionDetails.url);
-            let portNumber: number | undefined;
-            if (url.port) {
-              portNumber = Number(url.port);
-            } else {
-              portNumber = url.protocol === "https:" ? 443 : 80;
-            }
-            return {
-              host: url.hostname,
-              port: portNumber
-            };
-          })();
+    const { host, port } = (() => {
+      if (resourceType === PamResource.Kubernetes) {
+        const url = new URL(connectionDetails.url);
+        let portNumber: number | undefined;
+        if (url.port) {
+          portNumber = Number(url.port);
+        } else {
+          portNumber = url.protocol === "https:" ? 443 : 80;
+        }
+        return { host: url.hostname, port: portNumber };
+      }
+
+      if (resourceType === PamResource.MongoDB) {
+        const parsed = parseMongoConnectionString(connectionDetails.connectionString);
+        return { host: parsed.hostname, port: parsed.port };
+      }
+
+      return connectionDetails as { host: string; port: number };
+    })();
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
@@ -851,6 +904,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
       case PamResource.MsSQL:
+      case PamResource.MongoDB:
         {
           const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
@@ -975,6 +1029,24 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
 
+    // Resolve policy rules for gateway
+    const policyRules: TPolicyRules = {};
+    if (account.policyId) {
+      const policy = await pamAccountPolicyDAL.findById(account.policyId);
+      if (policy && policy.isActive) {
+        const rules = (policy.rules ?? {}) as TPolicyRules;
+        for (const ruleType of Object.values(PamAccountPolicyRuleType)) {
+          const ruleConfig = rules[ruleType];
+          if (ruleConfig) {
+            const supported = PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES[ruleType];
+            if (supported === "all" || supported.includes(resource.resourceType as PamResource)) {
+              policyRules[ruleType] = ruleConfig;
+            }
+          }
+        }
+      }
+    }
+
     let sessionStarted = false;
 
     // Mark session as started
@@ -1030,6 +1102,7 @@ export const pamAccountServiceFactory = ({
             privateKey,
             certificate: signedPublicKey
           },
+          policyRules,
           projectId: project.id,
           account,
           sessionStarted
@@ -1042,6 +1115,7 @@ export const pamAccountServiceFactory = ({
         ...decryptedResource.connectionDetails,
         ...decryptedAccount.credentials
       },
+      policyRules,
       projectId: project.id,
       account,
       sessionStarted
@@ -1331,7 +1405,8 @@ export const pamAccountServiceFactory = ({
       ProjectPermissionPamAccountActions.TriggerRotation,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
-        accountName: accountWithResource.name
+        accountName: accountWithResource.name,
+        resourceType: accountWithResource.resource.resourceType
       })
     );
 
@@ -1371,6 +1446,113 @@ export const pamAccountServiceFactory = ({
     };
   };
 
+  const viewCredentials = async ({
+    accountId,
+    mfaSessionId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TViewAccountCredentialsDTO) => {
+    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accountWithResource.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
+    const accountMetadata = metadataByAccountId[accountWithResource.id] || [];
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.ReadCredentials,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: accountWithResource.resource.name,
+        resourceType: accountWithResource.resource.resourceType,
+        accountName: accountWithResource.name,
+        metadata: accountMetadata
+      })
+    );
+
+    // Decrypt early so we can check if there are sensitive fields before triggering MFA
+    const credentials = await decryptAccountCredentials({
+      encryptedCredentials: accountWithResource.encryptedCredentials,
+      kmsService,
+      projectId: accountWithResource.projectId
+    });
+
+    if (!hasSensitiveCredentials(accountWithResource.resource.resourceType, credentials)) {
+      throw new BadRequestError({ message: "This account has no sensitive credentials to view" });
+    }
+
+    if (!mfaSessionId && accountWithResource.requireMfa) {
+      const project = await projectDAL.findById(accountWithResource.projectId);
+      if (!project)
+        throw new NotFoundError({ message: `Project with ID '${accountWithResource.projectId}' not found` });
+
+      const actorUser = await userDAL.findById(actorId);
+      if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+
+      const org = await orgDAL.findOrgById(project.orgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
+      const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actorUser.id, accountWithResource.id, mfaMethod);
+
+      if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
+        await mfaSessionService.sendMfaCode(actorUser.id, actorUser.email);
+      }
+
+      throw new BadRequestError({
+        message: "MFA verification required to view PAM account credentials",
+        name: "SESSION_MFA_REQUIRED",
+        details: {
+          mfaSessionId: newMfaSessionId,
+          mfaMethod
+        }
+      });
+    }
+
+    if (mfaSessionId && accountWithResource.requireMfa) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
+        throw new BadRequestError({ message: "MFA session not found or expired" });
+      }
+
+      if (mfaSession.userId !== actorId) {
+        throw new BadRequestError({ message: "MFA session does not belong to current user" });
+      }
+
+      if (mfaSession.resourceId !== accountWithResource.id) {
+        throw new BadRequestError({ message: "MFA session is for a different account" });
+      }
+
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({ message: "MFA session is not active. Please complete MFA verification first." });
+      }
+
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    }
+
+    return {
+      credentials,
+      resourceType: accountWithResource.resource.resourceType,
+      accountId: accountWithResource.id,
+      accountName: accountWithResource.name,
+      resourceId: accountWithResource.resource.id,
+      resourceName: accountWithResource.resource.name,
+      projectId: accountWithResource.projectId
+    };
+  };
+
   return {
     create,
     updateById,
@@ -1378,6 +1560,7 @@ export const pamAccountServiceFactory = ({
     list,
     getById,
     access,
+    viewCredentials,
     getSessionCredentials,
     rotateAllDueAccounts,
     triggerManualRotation

@@ -60,6 +60,7 @@ export const renderOperatorSelectItems = (type: string, subject?: string) => {
       );
     case "hostname":
     case "name":
+    case "resourceType":
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
