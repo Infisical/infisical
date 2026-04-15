@@ -841,7 +841,7 @@ export const gatewayV2ServiceFactory = ({
       return await $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });
+        throw new BadRequestError({ message: "A gateway with this name already exists" });
       }
 
       throw err;
@@ -1416,7 +1416,7 @@ export const gatewayV2ServiceFactory = ({
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });
+        throw new BadRequestError({ message: "A gateway with this name already exists" });
       }
       throw err;
     }

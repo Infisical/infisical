@@ -52,7 +52,8 @@ export const gatewaysQueryKeys = {
           })),
           ...dataV2.map((g) => {
             const hasHeartbeat = !!g.heartbeat;
-            const hasToken = g.enrollmentTokenStatus === "pending" || g.enrollmentTokenStatus === "expired";
+            const hasToken =
+              g.enrollmentTokenStatus === "pending" || g.enrollmentTokenStatus === "expired";
             const isPending = hasToken && !hasHeartbeat;
             const hasReEnrollToken = g.enrollmentTokenStatus === "pending" && hasHeartbeat;
 
