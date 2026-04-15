@@ -3142,9 +3142,9 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Delete PAM accounts"
       },
       {
-        label: "View Credentials",
+        label: "Read Credentials",
         value: ProjectPermissionPamAccountActions.ReadCredentials,
-        description: "View full account credentials and connection details"
+        description: "View sensitive account credentials like passwords and private keys"
       }
     ]
   },
@@ -3488,15 +3488,21 @@ const projectManagerTemplate = (
     },
     {
       subject: ProjectPermissionSub.Groups,
-      actions: Object.values(ProjectPermissionGroupActions)
+      actions: Object.values(ProjectPermissionGroupActions).filter(
+        (a) => a !== ProjectPermissionGroupActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Member,
-      actions: Object.values(ProjectPermissionMemberActions)
+      actions: Object.values(ProjectPermissionMemberActions).filter(
+        (a) => a !== ProjectPermissionMemberActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Identity,
-      actions: Object.values(ProjectPermissionIdentityActions)
+      actions: Object.values(ProjectPermissionIdentityActions).filter(
+        (a) => a !== ProjectPermissionIdentityActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Project,

@@ -98,6 +98,31 @@ export const AddWebhookForm = ({
     </FormControl>
   );
 
+  const microsoftTeamsFormFields = (
+    <FormControl
+      label="Incoming Webhook URL"
+      isRequired
+      isError={Boolean(errors?.webhookUrl)}
+      errorText={errors?.webhookUrl?.message}
+    >
+      <Input
+        placeholder="https://<tenant>.webhook.office.com/webhookb2/..."
+        {...register("webhookUrl")}
+      />
+    </FormControl>
+  );
+
+  const renderFormFields = () => {
+    switch (selectedWebhookType) {
+      case WebhookType.SLACK:
+        return slackFormFields;
+      case WebhookType.MICROSOFT_TEAMS:
+        return microsoftTeamsFormFields;
+      default:
+        return generalFormFields;
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       reset();
@@ -130,6 +155,12 @@ export const AddWebhookForm = ({
                     </SelectItem>
                     <SelectItem value={WebhookType.SLACK} key={WebhookType.SLACK}>
                       Slack
+                    </SelectItem>
+                    <SelectItem
+                      value={WebhookType.MICROSOFT_TEAMS}
+                      key={WebhookType.MICROSOFT_TEAMS}
+                    >
+                      Microsoft Teams
                     </SelectItem>
                   </Select>
                 </FormControl>
@@ -176,7 +207,7 @@ export const AddWebhookForm = ({
                 </FormControl>
               )}
             />
-            {selectedWebhookType === WebhookType.SLACK ? slackFormFields : generalFormFields}
+            {renderFormFields()}
           </div>
           <div className="mt-8 flex items-center">
             <Button

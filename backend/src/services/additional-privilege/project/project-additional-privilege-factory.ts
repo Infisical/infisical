@@ -12,13 +12,15 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege-dal";
 import { TAdditionalPrivilegesScopeFactory } from "../additional-privilege-types";
 
 type TPermissionRule = RawRule & {
@@ -28,6 +30,7 @@ type TPermissionRule = RawRule & {
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -35,6 +38,7 @@ type TProjectAdditionalPrivilegesScopeFactoryDep = {
 
 export const newProjectAdditionalPrivilegesFactory = ({
   permissionService,
+  additionalPrivilegeDAL,
   orgDAL,
   membershipDAL,
   userDAL
@@ -466,10 +470,30 @@ export const newProjectAdditionalPrivilegesFactory = ({
         }
       }
 
+      // When permissions are omitted from the update request, fetch the existing privilege's
+      // permissions so that grant boundary validation still runs against them.
+      let permissionsToValidate = dto.data.permissions;
+      if (!permissionsToValidate && shouldUseNewPrivilegeSystem) {
+        const dbActorField = actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+        const existingPrivilege = await additionalPrivilegeDAL.findOne({
+          id: dto.selector.id,
+          [dbActorField]: actorId,
+          [scope.key]: scope.value
+        });
+        if (!existingPrivilege) {
+          throw new NotFoundError({
+            message: `Additional privilege with id ${dto.selector.id} doesn't exist`
+          });
+        }
+        if (existingPrivilege.permissions) {
+          permissionsToValidate = unpackPermissions(existingPrivilege.permissions);
+        }
+      }
+
       await $validateAdditionalPrivilegesGuard({
         actorType,
         actorId,
-        permissions: dto.data.permissions,
+        permissions: permissionsToValidate,
         permission,
         targetUserPermission,
         memberships,

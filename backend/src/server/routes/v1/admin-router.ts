@@ -22,6 +22,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -50,26 +51,62 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             encryptedGitHubAppConnectionSlug: true,
             encryptedGitHubAppConnectionId: true,
             encryptedGitHubAppConnectionPrivateKey: true,
-            encryptedEnvOverrides: true
+            encryptedEnvOverrides: true,
+            // Fields below are only returned for super admins
+            instanceId: true,
+            trustSamlEmails: true,
+            trustLdapEmails: true,
+            trustOidcEmails: true,
+            adminIdentityIds: true,
+            fipsEnabled: true
           }).extend({
-            isMigrationModeOn: z.boolean(),
+            // Super admin-only fields (omitted for non-super-admin callers)
+            instanceId: z.string().uuid().optional(),
+            trustSamlEmails: z.boolean().nullish(),
+            trustLdapEmails: z.boolean().nullish(),
+            trustOidcEmails: z.boolean().nullish(),
+            adminIdentityIds: z.string().array().nullable().optional(),
+            fipsEnabled: z.boolean().optional(),
+            isMigrationModeOn: z.boolean().optional(),
+            isSecretScanningDisabled: z.boolean().optional(),
+            kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
+            paramsFolderSecretDetectionEnabled: z.boolean().optional(),
+            isOfflineUsageReportsEnabled: z.boolean().optional(),
+            // Always returned
             defaultAuthOrgSlug: z.string().nullable(),
             defaultAuthOrgAuthEnforced: z.boolean().nullish(),
-            defaultAuthOrgAuthMethod: z.string().nullish(),
-            isSecretScanningDisabled: z.boolean(),
-            kubernetesAutoFetchServiceAccountToken: z.boolean(),
-            paramsFolderSecretDetectionEnabled: z.boolean(),
-            isOfflineUsageReportsEnabled: z.boolean()
+            defaultAuthOrgAuthMethod: z.string().nullish()
           })
         })
       }
     },
-    handler: async () => {
+    handler: async (req) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
       const licenseKeyConfig = getLicenseKeyConfig();
       const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
+      const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
+
+      if (!isSuperAdminUser) {
+        // Only return fields the frontend needs before authentication
+        return {
+          config: {
+            id: config.id,
+            initialized: config.initialized,
+            allowSignUp: config.allowSignUp,
+            allowedSignUpDomain: config.allowedSignUpDomain,
+            defaultAuthOrgId: config.defaultAuthOrgId,
+            defaultAuthOrgSlug: config.defaultAuthOrgSlug,
+            defaultAuthOrgAuthEnforced: config.defaultAuthOrgAuthEnforced,
+            defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
+            enabledLoginMethods: config.enabledLoginMethods,
+            authConsentContent: config.authConsentContent,
+            pageFrameContent: config.pageFrameContent
+          }
+        };
+      }
 
       return {
         config: {

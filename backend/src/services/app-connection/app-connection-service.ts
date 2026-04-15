@@ -41,6 +41,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
+import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -220,7 +221,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
-  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema
+  [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

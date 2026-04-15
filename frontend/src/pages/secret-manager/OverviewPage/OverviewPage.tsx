@@ -219,6 +219,7 @@ import {
   SecretImportTableRow,
   SecretNoAccessTableRow,
   SecretRotationTableRow,
+  SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
 
@@ -2601,6 +2602,9 @@ const OverviewPageContent = () => {
                           : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                       </TooltipContent>
                     </Tooltip>
+                    <SecretSyncStatusBadgeOverview
+                      environmentSlugs={visibleEnvs.map((e) => e.slug)}
+                    />
                   </div>
                 )}
                 <SecretDropzone
@@ -2618,7 +2622,12 @@ const OverviewPageContent = () => {
                   <UnstableTable ref={tableRef} className="border-separate border-spacing-0">
                     <UnstableTableHeader>
                       <UnstableTableRow className="h-10">
-                        <UnstableTableHead className="sticky left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container">
+                        <UnstableTableHead
+                          className={twMerge(
+                            !isSingleEnvView && "sticky",
+                            "left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container"
+                          )}
+                        >
                           <Checkbox
                             variant="project"
                             isDisabled={totalCount === 0 || hasPendingBatchChanges}
@@ -2629,7 +2638,10 @@ const OverviewPageContent = () => {
                           />
                         </UnstableTableHead>
                         <UnstableTableHead
-                          className="sticky left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
+                          className={twMerge(
+                            !isSingleEnvView && "sticky",
+                            "left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
+                          )}
                           onClick={() =>
                             setOrderDirection((prev) =>
                               prev === OrderByDirection.ASC
@@ -2838,6 +2850,9 @@ const OverviewPageContent = () => {
                                       : "Click to enable batch edit mode. Changes will be grouped into a single commit."}
                                   </TooltipContent>
                                 </Tooltip>
+                                <SecretSyncStatusBadgeOverview
+                                  environmentSlugs={visibleEnvs.map((e) => e.slug)}
+                                />
                               </div>
                             </div>
                           </UnstableTableHead>
@@ -2848,10 +2863,20 @@ const OverviewPageContent = () => {
                       {isOverviewLoading || isPlaceholderData ? (
                         Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                           <UnstableTableRow className="group" key={`loading-row-${index + 1}`}>
-                            <UnstableTableCell className="sticky left-0 z-10 bg-container group-hover:bg-container-hover">
+                            <UnstableTableCell
+                              className={twMerge(
+                                !isSingleEnvView && "sticky",
+                                "left-0 z-10 bg-container group-hover:bg-container-hover"
+                              )}
+                            >
                               <Skeleton className="h-4 w-full" />
                             </UnstableTableCell>
-                            <UnstableTableCell className="sticky left-10 z-10 border-r bg-container group-hover:bg-container-hover">
+                            <UnstableTableCell
+                              className={twMerge(
+                                !isSingleEnvView && "sticky",
+                                "left-10 z-10 border-r bg-container group-hover:bg-container-hover"
+                              )}
+                            >
                               <Skeleton className="h-4 w-full" />
                             </UnstableTableCell>
                             {visibleEnvs.map((env) => {

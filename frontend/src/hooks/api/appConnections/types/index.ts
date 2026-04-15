@@ -1,5 +1,6 @@
 import { AppConnection } from "../enums";
 import { TOnePassConnection } from "./1password-connection";
+import { TAnthropicConnection } from "./anthropic-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
@@ -164,6 +165,7 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
+  | TAnthropicConnection
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection

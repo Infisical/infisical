@@ -4,6 +4,7 @@ import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connecti
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
+import { registerAnthropicConnectionRouter } from "./anthropic-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
@@ -116,5 +117,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
-    [AppConnection.NetScaler]: registerNetScalerConnectionRouter
+    [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.Anthropic]: registerAnthropicConnectionRouter
   };

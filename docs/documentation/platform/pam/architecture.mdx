@@ -57,7 +57,7 @@ A key feature of the Gateway is its ability to act as a "middleman" for all sess
 
 - **Interception**: Because the Gateway sits between the secure tunnel and the target resource, it intercepts all data flowing through the connection.
 - **Logging**: This traffic is logged as part of [Session Recording](/documentation/platform/pam/product-reference/session-recording). The Gateway temporarily stores encrypted session logs locally.
-- **Upload**: Once the session concludes, the logs are securely uploaded to the Infisical platform for storage and review.
+- **Upload**: Every 10 seconds, the Gateway incrementally uploads new session events to the Infisical platform, enabling near real-time monitoring. The upload offset is persisted locally so that uploads resume correctly if the Gateway restarts mid-session.
 
 ## Security Architecture
 

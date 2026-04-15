@@ -21,6 +21,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { authRateLimit } from "@app/server/config/rateLimiter";
@@ -100,8 +101,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.organization.name": orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -113,8 +114,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.user.email": email,
                 "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
             cb(error as Error, false);
@@ -187,8 +188,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.organization.name": orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -199,8 +200,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.user.email": email,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
             logger.error(err);
@@ -266,8 +267,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.organization.name": orgName,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
                 "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 
@@ -278,8 +279,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 "infisical.user.email": email,
                 "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
                 "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-                "client.address": requestContext.get("ip"),
-                "user_agent.original": requestContext.get("userAgent")
+                "client.address": requestContext.get(RequestContextKey.Ip),
+                "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
               });
             }
 

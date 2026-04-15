@@ -6,6 +6,7 @@ import { TCertificateTemplates, TPkiSubscribers } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -111,17 +112,21 @@ export const InternalCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const caKeyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
+    const alg = keyAlgorithmToAlgCfg(caKeyAlgorithm);
+    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
+    const leafKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+
+    // eslint-disable-next-line no-bitwise
+    const csrKeyUsages = isPqcAlgorithm(caKeyAlgorithm)
+      ? x509.KeyUsageFlags.digitalSignature
+      : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${subscriber.commonName}`,
       keys: leafKeys,
       signingAlgorithm: alg,
-      extensions: [
-        // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment)
-      ],
+      extensions: [new x509.KeyUsagesExtension(csrKeyUsages)],
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
 
@@ -151,6 +156,15 @@ export const InternalCertificateAuthorityFns = ({
     ];
 
     const selectedKeyUsages = subscriber.keyUsages as CertKeyUsage[];
+    if (isPqcAlgorithm(caKeyAlgorithm)) {
+      const invalidForPqc = [CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT, CertKeyUsage.DATA_ENCIPHERMENT];
+      const requested = selectedKeyUsages.filter((ku) => invalidForPqc.includes(ku));
+      if (requested.length > 0) {
+        throw new BadRequestError({
+          message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+        });
+      }
+    }
     // eslint-disable-next-line no-bitwise
     const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
     if (keyUsagesBitValue) {
@@ -193,8 +207,13 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+    let skLeaf: string;
+    if (isPqcCryptoKey(leafKeys.privateKey)) {
+      skLeaf = await exportPqcKeyToPem(leafKeys.privateKey);
+    } else {
+      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+      skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+    }
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -341,17 +360,21 @@ export const InternalCertificateAuthorityFns = ({
       }
     });
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const caKeyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
+    const alg = keyAlgorithmToAlgCfg(caKeyAlgorithm);
+    const cryptoEngine = isPqcAlgorithm(caKeyAlgorithm) ? getPqcCrypto() : crypto.nativeCrypto;
+    const leafKeys = await cryptoEngine.subtle.generateKey(alg as RsaHashedKeyGenParams, true, ["sign", "verify"]);
+
+    // eslint-disable-next-line no-bitwise
+    const templateCsrKeyUsages = isPqcAlgorithm(caKeyAlgorithm)
+      ? x509.KeyUsageFlags.digitalSignature
+      : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
       keys: leafKeys,
       signingAlgorithm: alg,
-      extensions: [
-        // eslint-disable-next-line no-bitwise
-        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment)
-      ],
+      extensions: [new x509.KeyUsagesExtension(templateCsrKeyUsages)],
       attributes: [new x509.ChallengePasswordAttribute("password")]
     });
 
@@ -397,6 +420,16 @@ export const InternalCertificateAuthorityFns = ({
         });
       }
       selectedKeyUsages = keyUsages;
+    }
+
+    if (isPqcAlgorithm(caKeyAlgorithm)) {
+      const invalidForPqc = [CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT, CertKeyUsage.DATA_ENCIPHERMENT];
+      const requested = selectedKeyUsages.filter((ku) => invalidForPqc.includes(ku));
+      if (requested.length > 0) {
+        throw new BadRequestError({
+          message: `Key usages ${requested.join(", ")} are not valid for PQC signature-only algorithms`
+        });
+      }
     }
 
     const keyUsagesBitValue = selectedKeyUsages.reduce((accum, keyUsage) => accum | x509.KeyUsageFlags[keyUsage], 0);
@@ -457,8 +490,13 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+    let skLeaf: string;
+    if (isPqcCryptoKey(leafKeys.privateKey)) {
+      skLeaf = await exportPqcKeyToPem(leafKeys.privateKey);
+    } else {
+      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+      skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+    }
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId

@@ -6,13 +6,9 @@ description: "Browse, query, and edit PostgreSQL databases directly from your br
 
 ![PostgreSQL Web Access](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
 
-PostgreSQL web access provides two modes for interacting with your database directly from the browser: the **Data Explorer** for visual browsing and editing, and the **SQL Terminal** for running ad-hoc queries.
+PostgreSQL web access provides a unified interface for interacting with your database directly from the browser. It combines visual table browsing and editing with an integrated SQL query runner, all in one interface.
 
-## Data Explorer
-
-The Data Explorer is a visual interface for browsing and editing PostgreSQL tables. It provides schema and table navigation, filtering, sorting, inline editing, and full CRUD operations — all without writing SQL.
-
-### Connecting
+## Connecting
 
 <Steps>
   <Step title="Navigate to Account">
@@ -25,10 +21,10 @@ The Data Explorer is a visual interface for browsing and editing PostgreSQL tabl
     ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
   </Step>
 
-  <Step title="Open Data Explorer">
-    In the connect modal, click **Open Data Explorer** to launch the Data Explorer in a new tab.
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to launch the web access interface in a new tab.
 
-    ![Open Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
+    ![Connect in Browser](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
   </Step>
 </Steps>
 
@@ -38,65 +34,29 @@ Once connected, you get a spreadsheet-like interface for your database where you
 - Filter and sort to quickly find what you need
 - Edit data directly — add, update, or delete rows
 
-![Data Explorer](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
+![PostgreSQL Web Access Interface](/images/pam/product-reference/web-access/pg-data-explorer-overview.png)
 
-## SQL Terminal
+## SQL Queries
 
-The SQL terminal provides a `psql`-like experience in your browser. It is designed for ad-hoc usage — quick queries, debugging, and administrative tasks.
+The SQL query runner lets you run arbitrary SQL against your database without leaving the browser.
 
-### Connecting
-
-<Steps>
-  <Step title="Navigate to Account">
-    Go to the **Resources** tab in your PAM project, open the PostgreSQL resource, and find the account you want to access. Click the **Connect** button next to the account.
-
-    ![Account Connect Button](/images/pam/product-reference/web-access/pg-account-connect-button.png)
-
-    Alternatively, if you are on the account page, click the **Access** button.
-
-    ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
-  </Step>
-
-  <Step title="Open Console">
-    In the connect modal, click **Open Console** to launch the SQL terminal in a new tab.
-
-    ![Connect Button](/images/pam/product-reference/web-access/pg-data-explorer-connect-button.png)
-  </Step>
-
-  <Step title="End Session">
-    Click the **Disconnect** button from the web access terminal status bar or type `\q`, `quit`, or `exit`. You can reconnect from the same page.
-  </Step>
-</Steps>
-
-![Web Access Terminal](/images/pam/product-reference/web-access/pg-web-access-terminal.png)
+![SQL Query Runner](/images/pam/product-reference/web-access/pg-sql-query-runner.png)
 
 ### Usage
 
-Once connected, you'll see a `=>` prompt. Type SQL queries as you would in `psql`:
+Click the **+** button in the tab bar to open a new query tab. Each tab has its own SQL editor and results panel.
 
-```sql
-=> SELECT * FROM users LIMIT 5;
- id | name       | email
-----+------------+---------------------
-  1 | Alice      | alice@example.com
-  2 | Bob        | bob@example.com
-(2 rows)
-```
+Write your query in the editor and run it by clicking **Run** or pressing `Cmd+Enter` (Mac) / `Ctrl+Enter` (Windows/Linux). Results are displayed in a table below the editor with column types, primary key, and foreign key indicators.
 
-#### Transactions
+You can open multiple query tabs at once. Tabs are independent: each has its own SQL content and results.
 
-Transactions are fully supported. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` as you would in `psql`:
+#### Multi-statement queries
 
-```sql
-=> BEGIN;
-BEGIN
-=> UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-UPDATE 1
-=> UPDATE accounts SET balance = balance + 100 WHERE id = 2;
-UPDATE 1
-=> COMMIT;
-COMMIT
-```
+If you run multiple statements at once, the results of the last statement are shown, the same behaviour as `psql`.
+
+#### Mutation queries
+
+`INSERT`, `UPDATE`, and `DELETE` statements display the number of affected rows instead of a result table.
 
 ## Limits
 
@@ -109,10 +69,13 @@ In addition to the [common session limits](/documentation/platform/pam/product-r
 ## FAQ
 
 <AccordionGroup>
-    <Accordion title="Is the SQL terminal an actual psql session?">
-        No. The SQL terminal is not a `psql` client. It is a custom SQL REPL that connects directly to PostgreSQL and provides a `psql`-like experience, including familiar prompts and tabular output formatting. Backslash commands like `\dt` or `\d` are not supported.
-    </Accordion>
-    <Accordion title="Can I edit data in the Data Explorer for all tables?">
+    <Accordion title="Can I edit data for all tables?">
         Editing is only available for tables that have a primary key defined. Tables without a primary key, as well as views, are displayed in read-only mode.
+    </Accordion>
+    <Accordion title="Does the SQL query runner support transactions?">
+        Yes. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` to manage transactions. An active transaction is shared across all query tabs — changes made in one tab are visible in others until you commit or roll back. The toolbar will show a **Transaction open** indicator while a transaction is in progress.
+    </Accordion>
+    <Accordion title="Can I run only part of a query?">
+        Yes. Select any portion of the SQL in the editor and click **Run Selection** (or press <kbd>⌘ Enter</kbd> / <kbd>Ctrl Enter</kbd>) to execute only the selected text.
     </Accordion>
 </AccordionGroup>

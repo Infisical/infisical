@@ -28,7 +28,7 @@ import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TProjectPermission } from "@app/lib/types";
+import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -117,6 +117,13 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
+  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
+    clickHouseConfigured: boolean;
+    auditLogGenerationDisabled: boolean;
+    auditLogStorageDisabled: boolean;
+    auditLogRowCount: number;
+  }>;
+  checkPostgresAuditLogVolumeMigrationAlert: () => Promise<void>;
 };
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
@@ -596,6 +603,7 @@ export enum EventType {
   PAM_SESSION_TERMINATE = "pam-session-terminate",
   PAM_SESSION_GET = "pam-session-get",
   PAM_SESSION_LIST = "pam-session-list",
+  PAM_SESSION_EVENT_BATCH_UPLOAD = "pam-session-event-batch-upload",
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
@@ -643,6 +651,10 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
+  ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
+  ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -4752,6 +4764,14 @@ interface PamSessionListEvent {
   };
 }
 
+interface PamSessionEventBatchUploadEvent {
+  type: EventType.PAM_SESSION_EVENT_BATCH_UPLOAD;
+  metadata: {
+    sessionId: string;
+    startOffset: number;
+  };
+}
+
 interface PamFolderCreateEvent {
   type: EventType.PAM_FOLDER_CREATE;
   metadata: {
@@ -5269,6 +5289,46 @@ interface ApprovalRequestGrantRevokeEvent {
     policyType: string;
     grantId: string;
     revocationReason?: string;
+  };
+}
+
+interface AccessApprovalRequestCreateEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    isTemporary: boolean;
+    temporaryRange?: string;
+    permissions: unknown;
+    note?: string;
+  };
+}
+
+interface AccessApprovalRequestReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    reviewStatus: string;
+  };
+}
+
+interface AccessApprovalRequestRevokeEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    policyId: string;
+  };
+}
+
+interface AccessApprovalRequestUpdateEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_UPDATE;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    temporaryRange: string;
+    editNote: string;
   };
 }
 
@@ -6194,6 +6254,7 @@ export type Event =
   | PamSessionTerminateEvent
   | PamSessionGetEvent
   | PamSessionListEvent
+  | PamSessionEventBatchUploadEvent
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
@@ -6253,6 +6314,10 @@ export type Event =
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
+  | AccessApprovalRequestCreateEvent
+  | AccessApprovalRequestReviewEvent
+  | AccessApprovalRequestRevokeEvent
+  | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
   | CreateAcmeOrderEvent

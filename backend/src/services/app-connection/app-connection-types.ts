@@ -27,6 +27,12 @@ import {
   TOnePassConnectionInput,
   TValidateOnePassConnectionCredentialsSchema
 } from "./1password";
+import {
+  TAnthropicConnection,
+  TAnthropicConnectionConfig,
+  TAnthropicConnectionInput,
+  TValidateAnthropicConnectionCredentialsSchema
+} from "./anthropic";
 import { AWSRegion } from "./app-connection-enums";
 import {
   TAuth0Connection,
@@ -387,6 +393,7 @@ export type TAppConnection = { id: string } & (
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TAnthropicConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -454,6 +461,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TAnthropicConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -549,7 +557,8 @@ export type TAppConnectionConfig =
   | TVenafiConnectionConfig
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
-  | TNetScalerConnectionConfig;
+  | TNetScalerConnectionConfig
+  | TAnthropicConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -607,7 +616,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
-  | TValidateNetScalerConnectionCredentialsSchema;
+  | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateAnthropicConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
