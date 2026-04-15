@@ -752,7 +752,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_PROFILE]: "profileId",
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
-  [ActorType.SCEP_ACCOUNT]: "profileId"
+  [ActorType.SCEP_ACCOUNT]: "profileId",
+  [ActorType.GATEWAY]: "gatewayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
