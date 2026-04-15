@@ -216,8 +216,22 @@ export function DateRangeFilter({
 
   const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
 
-  const isApplyDisabled =
-    mode === DateRangeFilterType.Fixed ? !pendingRange?.from || !pendingRange?.to : false;
+  const isInvalidFixedRange = useMemo(() => {
+    if (mode !== DateRangeFilterType.Fixed || !pendingRange?.from || !pendingRange?.to) return false;
+    const start = combineDateAndTime(pendingRange.from, startTime);
+    const end = combineDateAndTime(pendingRange.to, endTime);
+    return start >= end;
+  }, [mode, pendingRange, startTime, endTime]);
+
+  const isApplyDisabled = useMemo(() => {
+    if (mode === DateRangeFilterType.Fixed) {
+      if (!pendingRange?.from || !pendingRange?.to) return true;
+      return isInvalidFixedRange;
+    }
+    const lastVal =
+      customDuration && customUnit ? `${customDuration}${customUnit}` : selectedLastValue;
+    return !isValidLastValue(lastVal);
+  }, [mode, pendingRange, isInvalidFixedRange, customDuration, customUnit, selectedLastValue]);
 
   const activeLastValue = customDuration && customUnit ? "" : selectedLastValue;
   const accentStyles = ACCENT_STYLES[accent];
@@ -387,25 +401,30 @@ export function DateRangeFilter({
                   />
 
                   {/* Time inputs */}
-                  <div className="flex items-end gap-4 border-t border-border pt-2">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs">Start Time</span>
-                      <UnstableInput
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
-                      />
+                  <div className="flex flex-col gap-2 border-t border-border pt-2">
+                    <div className="flex items-end gap-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-muted-foreground text-xs">Start Time</span>
+                        <UnstableInput
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-muted-foreground text-xs">End Time</span>
+                        <UnstableInput
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground text-xs">End Time</span>
-                      <UnstableInput
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
-                      />
-                    </div>
+                    {isInvalidFixedRange && (
+                      <p className="text-xs text-red-400">Start date must be before end date.</p>
+                    )}
                   </div>
                 </div>
               )}
