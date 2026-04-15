@@ -318,6 +318,8 @@
             "group": "Self-host Infisical",
             "pages": [
               "self-hosting/overview",
+              "self-hosting/guides/postgresql",
+              "self-hosting/guides/redis",
               {
                 "group": "Installation methods",
                 "pages": [

@@ -55,14 +55,14 @@ Recommended resource allocation based on deployment size. You may require more r
 
 Redis is utilized for session management and background tasks in Infisical.
 
-<Info>
-**Active-passive** setup is recommended for Redis. **Active-active** setup for Redis has not been tested.
-</Info>
+<Warning>
+Redis **active-active geo-replication** is not supported. For multi-region deployments, refer to the [replication guide](/self-hosting/guides/replication) which uses independent Redis instances per region.
+</Warning>
 
 Redis requirements:
 
 - Use Redis versions 6.x or 7.x. We advise upgrading to at least Redis 6.2.
-- Redis Cluster mode is currently not supported; use Redis Standalone, with or without High Availability (HA).
+- Supported modes: Standalone, Sentinel (HA), and Cluster.
 - Redis storage needs are minimal: a setup with 2 vCPU, 4 GB RAM, and 30GB SSD will be sufficient for small deployments.
 - Set cache eviction policy to `noeviction`.
 

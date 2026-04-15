@@ -7,9 +7,22 @@ description: "Learn how to self-host Infisical on your own infrastructure."
 Self-hosting Infisical lets you retain data on your own infrastructure and network. Many organizations choose self-hosting for benefits in compliance and flexibility.
 
 - Compliance: Deploying Infisical in your own environment helps meet strict regulatory requirements (e.g. SOC 2, HIPAA, FIPS 140-3) by aligning with your existing security controls. All data remains under your governance, and Infisical’s architecture supports compliance needs through strong encryption and access controls.
-- Flexibility: You have complete control over deployment topology and integrations. Infisical can run in diverse environments. From air-gapped bare-metal servers to Kubernetes clusters or cloud VMs, this flexibility lets you tailor networking, security, and performance configurations to fit your organization’s needs.
+- Flexibility: You have complete control over deployment topology and integrations. Infisical can run in diverse environments, from air-gapped bare-metal servers to Kubernetes clusters or cloud VMs, letting you tailor networking, security, and performance configurations to fit your organization’s needs.
 
 
+
+## Architecture Overview
+
+Infisical requires two core infrastructure components alongside the stateless application servers:
+
+- **[PostgreSQL](/self-hosting/guides/postgresql)** — The sole source of truth for all persistent data including secrets, users, projects, audit logs, and configurations.
+- **[Redis](/self-hosting/guides/redis)** — Caching layer and persistent job queue for background processing, session management, and async tasks.
+
+The application servers are stateless and scale horizontally. See the dedicated [PostgreSQL](/self-hosting/guides/postgresql) and [Redis](/self-hosting/guides/redis) pages for supported modes, data loss implications, and operational recommendations.
+
+For hardware sizing, see [hardware requirements](/self-hosting/configuration/requirements). For multi-region deployments, see the [replication guide](/self-hosting/guides/replication).
+
+## Deployment Options
 
 Choose from a number of deployment options listed below to get started.
 
