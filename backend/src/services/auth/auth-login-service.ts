@@ -37,7 +37,7 @@ import { TNotificationServiceFactory } from "../notification/notification-servic
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
-import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
@@ -114,17 +114,21 @@ export const authLoginServiceFactory = ({
       ]);
 
       if (user.email) {
-        await smtpService.sendMail({
-          template: SmtpTemplates.NewDeviceJoin,
-          subjectLine: "Successful login from new device",
-          recipients: [user.email],
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toString(),
-            ip,
-            userAgent
-          }
-        });
+        await smtpService
+          .sendMail({
+            template: SmtpTemplates.NewDeviceJoin,
+            subjectLine: "Successful login from new device",
+            recipients: [user.email],
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toString(),
+              ip,
+              userAgent
+            }
+          })
+          // Intentionally not rethrowing: this is an informational notification and the login already
+          // succeeded. Blocking the user over a failed notification email would be worse than missing it.
+          .catch((err) => logger.error(err, `Failed to send new device login email [userId=${user.id}]`));
       }
     }
   };
@@ -139,14 +143,16 @@ export const authLoginServiceFactory = ({
       userId
     });
 
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical MFA code",
-      recipients: [email],
-      substitutions: {
-        code
-      }
-    });
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.EmailMfa,
+        subjectLine: "Infisical MFA code",
+        recipients: [email],
+        substitutions: {
+          code
+        }
+      })
+      .catch((err) => throwIfSmtpError(err, `Failed to send MFA code email [userId=${userId}]`));
   };
 
   /*
@@ -730,19 +736,25 @@ export const authLoginServiceFactory = ({
             }))
         );
 
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
-            orgId: organizationId
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
+        await smtpService
+          .sendMail({
+            recipients: adminEmails,
+            subjectLine: "Security Alert: SSO Bypass",
+            substitutions: {
+              email: user.email,
+              timestamp: new Date().toISOString(),
+              ip: ipAddress,
+              userAgent,
+              siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
+              orgId: organizationId
+            },
+            template: SmtpTemplates.OrgAdminBreakglassAccess
+          })
+          // Intentionally not rethrowing: this is an informational security alert and the SSO bypass
+          // already succeeded. Blocking the user over a failed alert email would be worse than missing it.
+          .catch((err) =>
+            logger.error(err, `Failed to send SSO bypass alert email [orgId=${organizationId}] [userId=${user.id}]`)
+          );
       }
     }
 

@@ -110,6 +110,10 @@ export const PasswordStep = ({
       }
       // case: no orgs found, so we navigate the user to create an org
       else {
+        createNotification({
+          text: "Successfully logged in",
+          type: "success"
+        });
         await navigateUserToOrg({ navigate });
       }
     } catch (err: any) {
@@ -122,6 +126,12 @@ export const PasswordStep = ({
           text: err.response.data.message,
           type: "error"
         });
+        return;
+      }
+
+      // React Query's global MutationCache.onError already shows the SmtpError toast.
+      // Return early so we don't also show the misleading "check your password" message.
+      if (err.response.data.error === "SmtpError") {
         return;
       }
 
@@ -225,13 +235,13 @@ export const PasswordStep = ({
         if (loginAttempt && loginAttempt.success) {
           // case: login was successful
           setIsLoading(false);
-          createNotification({
-            text: "Successfully logged in",
-            type: "success"
-          });
 
           // case: organization ID is present from the provider auth token -- navigate directly to the org
           if (organizationId) {
+            createNotification({
+              text: "Successfully logged in",
+              type: "success"
+            });
             await navigateUserToOrg({ navigate, organizationId });
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
@@ -242,6 +252,10 @@ export const PasswordStep = ({
             if (userOrgs.length > 0) {
               navigateToSelectOrganization(undefined, isAdminLogin);
             } else {
+              createNotification({
+                text: "Successfully logged in",
+                type: "success"
+              });
               await navigateUserToOrg({ navigate });
             }
           }
@@ -262,6 +276,12 @@ export const PasswordStep = ({
 
       if (err.response.data.error === "Captcha Required") {
         setShouldShowCaptcha(true);
+        return;
+      }
+
+      // React Query's global MutationCache.onError already shows the SmtpError toast.
+      // Return early so we don't also show the misleading "check your password" message.
+      if (err.response.data.error === "SmtpError") {
         return;
       }
 

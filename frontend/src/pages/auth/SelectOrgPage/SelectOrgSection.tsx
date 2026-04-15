@@ -168,6 +168,11 @@ export const SelectOrganizationSection = () => {
           await handleLogout();
           return;
         }
+        // React Query already shows a bad request toast; just log out silently.
+        if (error?.response?.data?.error === "SmtpError") {
+          await handleLogout();
+          return;
+        }
         throw error;
       } finally {
         setIsInitialOrgCheckLoading(false);
@@ -214,6 +219,10 @@ export const SelectOrganizationSection = () => {
         });
         navigate({ to: "/cli-redirect" });
       } else {
+        createNotification({
+          text: "Successfully logged in",
+          type: "success"
+        });
         navigateUserToOrg({ navigate, organizationId: organization.id });
       }
     },
