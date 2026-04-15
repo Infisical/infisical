@@ -1223,11 +1223,6 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const existingGateway = await gatewayV2DAL.find({ orgId, name });
-    if (existingGateway.length > 0) {
-      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
-    }
-
     try {
       const gateway = await gatewayV2DAL.create({ orgId, name });
       return gateway;
