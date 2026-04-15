@@ -130,7 +130,6 @@ export type TAddIdentitiesToGroup = {
   identityDAL: Pick<TIdentityDALFactory, "transaction">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
 };
 
 export type TRemoveUsersFromGroupByUserIds = {

@@ -115,8 +115,10 @@ export const withCacheFingerprint = async <T>({
   dataFetcher,
   reviver
 }: TWithCacheFingerprintOpts<T>): Promise<T> => {
-  const markerValue = await cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed");
-  const cachedDataStr = await cacheGet(keyStore, dataKey, "withCacheFingerprint: data read failed");
+  const [markerValue, cachedDataStr] = await Promise.all([
+    cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed"),
+    cacheGet(keyStore, dataKey, "withCacheFingerprint: data read failed")
+  ]);
 
   // Marker + data hit: return cached data directly (fast path, 0 DB reads)
   if (markerValue !== null && cachedDataStr !== null) {

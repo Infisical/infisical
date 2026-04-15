@@ -299,19 +299,19 @@ export const permissionServiceFactory = ({
 
   const reviveCachedPermissionDates = (
     memberships: {
-      roles?: { temporaryAccessEndTime?: unknown }[];
-      additionalPrivileges?: { temporaryAccessEndTime?: unknown }[];
+      roles?: { temporaryAccessEndTime?: string | Date | null }[];
+      additionalPrivileges?: { temporaryAccessEndTime?: string | Date | null }[];
     }[]
   ) => {
     for (const membership of memberships) {
       for (const role of membership.roles ?? []) {
         if (role.temporaryAccessEndTime) {
-          role.temporaryAccessEndTime = new Date(role.temporaryAccessEndTime as string);
+          role.temporaryAccessEndTime = new Date(role.temporaryAccessEndTime);
         }
       }
       for (const priv of membership.additionalPrivileges ?? []) {
         if (priv.temporaryAccessEndTime) {
-          priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime as string);
+          priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime);
         }
       }
     }
@@ -407,6 +407,10 @@ export const permissionServiceFactory = ({
     let actor = inputActor;
     let actorId = inputActorId;
 
+    if (!actorOrgId) {
+      throw new BadRequestError({ message: "Organization context is required for project permission checks" });
+    }
+
     if (actor === ActorType.SERVICE) {
       return getServiceTokenProjectPermission({
         serviceTokenId: actorId,
@@ -463,7 +467,7 @@ export const permissionServiceFactory = ({
         fingerprintFetcher: () =>
           permissionDAL.getPermissionFingerprint({
             projectId,
-            orgId: actorOrgId || "",
+            orgId: actorOrgId,
             actorId,
             actorType: narrowedActor
           }),
@@ -476,7 +480,6 @@ export const permissionServiceFactory = ({
 
       const { permissionData, projectDetails, username, canBypassSso } = cached;
 
-      // Re-validate org and project type on cache hit (actorOrgId is not in cache key)
       if (projectDetails.orgId !== actorOrgId) {
         throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
       }
