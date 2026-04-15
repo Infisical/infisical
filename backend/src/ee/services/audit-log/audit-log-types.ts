@@ -737,9 +737,7 @@ export enum EventType {
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
-  GATEWAY_ENROLLMENT_TOKEN_DELETE = "gateway-enrollment-token-delete",
-  GATEWAY_ENROLL = "gateway-enroll",
-  GATEWAY_RE_ENROLL = "gateway-re-enroll"
+  GATEWAY_ENROLL = "gateway-enroll"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -5799,24 +5797,8 @@ interface GatewayEnrollmentTokenCreateEvent {
   };
 }
 
-interface GatewayEnrollmentTokenDeleteEvent {
-  type: EventType.GATEWAY_ENROLLMENT_TOKEN_DELETE;
-  metadata: {
-    tokenId: string;
-    name: string;
-  };
-}
-
 interface GatewayEnrollEvent {
   type: EventType.GATEWAY_ENROLL;
-  metadata: {
-    gatewayId: string;
-    name: string;
-  };
-}
-
-interface GatewayReEnrollEvent {
-  type: EventType.GATEWAY_RE_ENROLL;
   metadata: {
     gatewayId: string;
     name: string;
@@ -6347,6 +6329,4 @@ export type Event =
   | SecretValidationRuleDeleteEvent
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
-  | GatewayEnrollmentTokenDeleteEvent
-  | GatewayEnrollEvent
-  | GatewayReEnrollEvent;
+  | GatewayEnrollEvent;
