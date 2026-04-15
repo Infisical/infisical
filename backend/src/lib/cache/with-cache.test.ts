@@ -593,7 +593,7 @@ describe("withCacheFingerprint", () => {
     expect(dataFetcher).toHaveBeenCalledOnce();
     expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }) as unknown as Record<string, unknown>,
+      expect.objectContaining({ err: expect.any(Error) as Error }) as unknown as Record<string, unknown>,
       expect.stringContaining("fingerprint fetch failed")
     );
   });
