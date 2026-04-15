@@ -66,8 +66,8 @@ export const RolePermissionRow = ({ isEditable, formName, control, setValue }: P
 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (isCustom) return Permission.Custom;
     if (score === 1 && rule?.[OrgPermissionActions.Read]) return Permission.ReadOnly;
+    if (isCustom) return Permission.Custom;
 
     return Permission.Custom;
   }, [rule, isCustom, permissionActions]);

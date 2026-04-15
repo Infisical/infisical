@@ -30,7 +30,7 @@ enum Permission {
 }
 
 export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props) => {
-  const [isCustom, setIsCustom] = useToggle();
+  const [, setIsCustom] = useToggle();
 
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
@@ -49,9 +49,8 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
 
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (isCustom) return Permission.Custom;
     return Permission.Custom;
-  }, [rule, isCustom]);
+  }, [rule]);
 
   useEffect(() => {
     if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();

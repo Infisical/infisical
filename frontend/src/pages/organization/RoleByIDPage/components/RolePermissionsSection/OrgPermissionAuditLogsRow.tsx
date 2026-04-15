@@ -29,7 +29,7 @@ enum Permission {
 }
 
 export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Props) => {
-  const [isCustom, setIsCustom] = useToggle();
+  const [, setIsCustom] = useToggle();
 
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
@@ -45,10 +45,8 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (score === 0) return Permission.NoAccess;
-    if (isCustom) return Permission.Custom;
-
     return Permission.Custom;
-  }, [rule, isCustom]);
+  }, [rule]);
 
   useEffect(() => {
     if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
