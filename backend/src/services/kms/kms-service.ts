@@ -750,7 +750,11 @@ export const kmsServiceFactory = ({
   const $getBasicEncryptionKey = () => {
     const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
 
-    const isBase64 = !!envConfig.ENCRYPTION_KEY;
+    const isBase64 =
+      !!envConfig.ENCRYPTION_KEY ||
+      (!!envConfig.ROOT_ENCRYPTION_KEY &&
+        envConfig.ROOT_ENCRYPTION_KEY.length % 4 === 0 &&
+        /^[A-Za-z0-9+/]+={0,2}$/.test(envConfig.ROOT_ENCRYPTION_KEY));
     if (!encryptionKey)
       throw new BadRequestError({
         message:
