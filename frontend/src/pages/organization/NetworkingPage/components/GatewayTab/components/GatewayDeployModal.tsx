@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
 import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -254,11 +254,7 @@ const Content = () => {
 export const GatewayDeployModal = ({ isOpen, onOpenChange }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Create Gateway"
-        bodyClassName="overflow-visible"
-      >
+      <ModalContent className="max-w-2xl" title="Create Gateway" bodyClassName="overflow-visible">
         <Content />
       </ModalContent>
     </Modal>

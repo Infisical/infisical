@@ -1401,7 +1401,6 @@ export const gatewayV2ServiceFactory = ({
     });
 
     try {
-
       const certs = await $issueGatewayCerts({ orgId, orgCAs, relayName: relay.name, gateway });
 
       const appCfg = getConfig();
