@@ -14,9 +14,9 @@ export const CertificateInventoryViewsSchema = z.object({
   filters: z.unknown(),
   columns: z.unknown().nullable().optional(),
   createdByUserId: z.string().uuid().nullable().optional(),
-  isShared: z.boolean().default(false),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isShared: z.boolean().default(false)
 });
 
 export type TCertificateInventoryViews = z.infer<typeof CertificateInventoryViewsSchema>;
