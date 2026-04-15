@@ -175,7 +175,7 @@ const RulePatterns = ({
                 render={({ field }) => (
                   <UnstableInput
                     {...field}
-                    placeholder="Regex pattern, e.g. rm\\s+-rf"
+                    placeholder={"Regex pattern, e.g. rm\\s+-rf"}
                     className="flex-1 font-mono text-xs"
                     isError={!!patternError}
                   />
