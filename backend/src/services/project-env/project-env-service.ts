@@ -135,7 +135,8 @@ export const projectEnvServiceFactory = ({
     actorAuthMethod,
     name,
     id,
-    position
+    position,
+    allowSecretExport
   }: TUpdateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -197,7 +198,7 @@ export const projectEnvServiceFactory = ({
             await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
           }
         }
-        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position, allowSecretExport }, tx);
       });
 
       await keyStore.setItemWithExpiry(
@@ -274,6 +275,15 @@ export const projectEnvServiceFactory = ({
     }
   };
 
+  // This is intentionally a simple lookup without a CASL Environments:Read check.
+  // It is only called from the v4 secret-router AFTER getSecretsRaw has already
+  // verified that the caller has project-level access and Secrets:Read permission.
+  // Adding an Environments:Read gate here would break users with custom roles that
+  // grant Secrets:Read but not Environments:Read.
+  const getEnvironmentsByProjectId = async (projectId: string) => {
+    return projectEnvDAL.find({ projectId });
+  };
+
   const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
     const environment = await projectEnvDAL.findById(id);
 
@@ -301,6 +311,7 @@ export const projectEnvServiceFactory = ({
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
-    getEnvironmentById
+    getEnvironmentById,
+    getEnvironmentsByProjectId
   };
 };

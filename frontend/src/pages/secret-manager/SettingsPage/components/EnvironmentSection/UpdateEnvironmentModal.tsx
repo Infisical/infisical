@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormControl, Input, Modal, ModalContent, Switch } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -17,7 +17,8 @@ type Props = {
 
 const schema = z.object({
   name: z.string(),
-  slug: slugSchema({ min: 1, max: 64 })
+  slug: slugSchema({ min: 1, max: 64 }),
+  allowSecretExport: z.boolean().default(true)
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -32,13 +33,14 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
 
   const oldEnvId = (popUp?.updateEnv?.data as { id: string })?.id;
 
-  const onFormSubmit = async ({ name, slug }: FormData) => {
+  const onFormSubmit = async ({ name, slug, allowSecretExport }: FormData) => {
     if (!currentProject?.id) return;
 
     await mutateAsync({
       projectId: currentProject.id,
       name,
       slug,
+      allowSecretExport,
       id: oldEnvId
     });
 
@@ -87,6 +89,28 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
               >
                 <Input {...field} />
               </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="allowSecretExport"
+            render={({ field }) => (
+              <div className="mt-4 flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-mineshaft-100">
+                    Allow Secret Export
+                  </span>
+                  <span className="text-xs text-mineshaft-400">
+                    When disabled, users cannot download or export secrets as .env files from this
+                    environment.
+                  </span>
+                </div>
+                <Switch
+                  id="allow-secret-export"
+                  isChecked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </div>
             )}
           />
           <div className="mt-8 flex items-center">

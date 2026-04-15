@@ -63,7 +63,8 @@ export const fetchProjectSecrets = async ({
   secretPath,
   includeImports,
   expandSecretReferences,
-  viewSecretValue
+  viewSecretValue,
+  purpose
 }: TGetProjectSecretsKey) => {
   const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v4/secrets", {
     params: {
@@ -72,7 +73,8 @@ export const fetchProjectSecrets = async ({
       secretPath,
       viewSecretValue,
       expandSecretReferences,
-      include_imports: includeImports
+      include_imports: includeImports,
+      purpose
     }
   });
 

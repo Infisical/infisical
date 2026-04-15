@@ -327,11 +327,12 @@ export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, UpdateEnvironmentDTO>({
-    mutationFn: ({ projectId, id, name, slug, position }) => {
+    mutationFn: ({ projectId, id, name, slug, position, allowSecretExport }) => {
       return apiRequest.patch(`/api/v1/projects/${projectId}/environments/${id}`, {
         name,
         slug,
-        position
+        position,
+        allowSecretExport
       });
     },
     onSuccess: () => {

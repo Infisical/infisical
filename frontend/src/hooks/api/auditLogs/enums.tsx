@@ -372,5 +372,9 @@ export enum EventType {
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
-  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
+  // Secret Export
+  EXPORT_SECRETS = "export-secrets",
+  EXPORT_SECRETS_BLOCKED = "export-secrets-blocked"
 }
