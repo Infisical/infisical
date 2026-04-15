@@ -110,6 +110,7 @@ function toTimeString(date: Date): string {
 }
 
 function isValidLastValue(val: string): boolean {
+  if (!val) return false;
   const parsed = ms(val);
   return typeof parsed === "number" && parsed > 0;
 }
