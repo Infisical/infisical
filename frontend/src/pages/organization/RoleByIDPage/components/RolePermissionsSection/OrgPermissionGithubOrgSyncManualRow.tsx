@@ -17,7 +17,10 @@ import {
   UnstableAccordionTrigger,
   UnstableIconButton
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import { useOrgPermissionActions } from "./OrgPermissionRowComponents";
