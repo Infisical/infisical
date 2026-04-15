@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { AlertTriangleIcon, CalendarIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CalendarIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
   Button,

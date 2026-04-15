@@ -217,7 +217,14 @@ export const ViewsDropdown = ({
                 className="group relative"
                 onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
               >
-                <span className="min-w-0 flex-1 truncate pr-16">{view.name}</span>
+                <span
+                  className={twMerge(
+                    "min-w-0 flex-1 truncate",
+                    activeViewId !== view.id && "group-hover:pr-8"
+                  )}
+                >
+                  {view.name}
+                </span>
                 {renderActions(view.id, false, activeViewId === view.id)}
               </UnstableDropdownMenuRadioItem>
             ))}
