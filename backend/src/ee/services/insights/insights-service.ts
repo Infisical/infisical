@@ -4,9 +4,9 @@ import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
@@ -208,8 +208,7 @@ export const insightsServiceFactory = ({
         const actorMeta = row.actorMetadata as Record<string, string> | null;
         let actorName: string;
         if (row.actor === ActorType.USER && actorMeta?.userId) {
-          actorName =
-            userNameMap.get(actorMeta.userId) || actorMeta.email || actorMeta.username || "Unknown";
+          actorName = userNameMap.get(actorMeta.userId) || actorMeta.email || actorMeta.username || "Unknown";
         } else if (row.actor === ActorType.USER) {
           actorName = actorMeta?.email || actorMeta?.username || "Unknown";
         } else {
@@ -240,77 +239,77 @@ export const insightsServiceFactory = ({
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
     return withCache(cacheKey, async () => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setUTCDate(startDate.getUTCDate() - dto.days);
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-    const ipRows = await auditLogDAL.countByIpAddress({
-      orgId: actorDto.orgId,
-      projectId: dto.projectId,
-      eventTypes: VALUE_EVENT_TYPES,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString()
-    });
+      const ipRows = await auditLogDAL.countByIpAddress({
+        orgId: actorDto.orgId,
+        projectId: dto.projectId,
+        eventTypes: VALUE_EVENT_TYPES,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
 
-    const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
+      const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
 
-    const isPrivateIp = (ip: string) =>
-      ip === "127.0.0.1" ||
-      ip === "::1" ||
-      ip === "::ffff:127.0.0.1" ||
-      ip.startsWith("10.") ||
-      ip.startsWith("172.16.") ||
-      ip.startsWith("172.17.") ||
-      ip.startsWith("172.18.") ||
-      ip.startsWith("172.19.") ||
-      ip.startsWith("172.20.") ||
-      ip.startsWith("172.21.") ||
-      ip.startsWith("172.22.") ||
-      ip.startsWith("172.23.") ||
-      ip.startsWith("172.24.") ||
-      ip.startsWith("172.25.") ||
-      ip.startsWith("172.26.") ||
-      ip.startsWith("172.27.") ||
-      ip.startsWith("172.28.") ||
-      ip.startsWith("172.29.") ||
-      ip.startsWith("172.30.") ||
-      ip.startsWith("172.31.") ||
-      ip.startsWith("192.168.");
+      const isPrivateIp = (ip: string) =>
+        ip === "127.0.0.1" ||
+        ip === "::1" ||
+        ip === "::ffff:127.0.0.1" ||
+        ip.startsWith("10.") ||
+        ip.startsWith("172.16.") ||
+        ip.startsWith("172.17.") ||
+        ip.startsWith("172.18.") ||
+        ip.startsWith("172.19.") ||
+        ip.startsWith("172.20.") ||
+        ip.startsWith("172.21.") ||
+        ip.startsWith("172.22.") ||
+        ip.startsWith("172.23.") ||
+        ip.startsWith("172.24.") ||
+        ip.startsWith("172.25.") ||
+        ip.startsWith("172.26.") ||
+        ip.startsWith("172.27.") ||
+        ip.startsWith("172.28.") ||
+        ip.startsWith("172.29.") ||
+        ip.startsWith("172.30.") ||
+        ip.startsWith("172.31.") ||
+        ip.startsWith("192.168.");
 
-    ipRows.forEach(({ ipAddress: ip, count }) => {
-      if (isPrivateIp(ip)) {
-        const key = "Local Network:LOCAL";
+      ipRows.forEach(({ ipAddress: ip, count }) => {
+        if (isPrivateIp(ip)) {
+          const key = "Local Network:LOCAL";
+          const existing = locationMap.get(key);
+          if (existing) {
+            existing.count += count;
+          } else {
+            locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
+          }
+          return;
+        }
+
+        const geo = geoip.lookup(ip);
+        if (!geo || !geo.ll) return;
+
+        const city = geo.city || geo.region || "";
+        const key = `${city}:${geo.country}`;
         const existing = locationMap.get(key);
         if (existing) {
           existing.count += count;
         } else {
-          locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
+          locationMap.set(key, {
+            lat: geo.ll[0],
+            lng: geo.ll[1],
+            city,
+            country: geo.country,
+            count
+          });
         }
-        return;
-      }
+      });
 
-      const geo = geoip.lookup(ip);
-      if (!geo || !geo.ll) return;
-
-      const city = geo.city || geo.region || "";
-      const key = `${city}:${geo.country}`;
-      const existing = locationMap.get(key);
-      if (existing) {
-        existing.count += count;
-      } else {
-        locationMap.set(key, {
-          lat: geo.ll[0],
-          lng: geo.ll[1],
-          city,
-          country: geo.country,
-          count
-        });
-      }
-    });
-
-    return {
-      locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
-    };
+      return {
+        locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
+      };
     });
   };
 
@@ -319,74 +318,74 @@ export const insightsServiceFactory = ({
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
     return withCache(cacheKey, async () => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setUTCDate(startDate.getUTCDate() - dto.days);
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-    const authRows = await auditLogDAL.countByAuthMethod({
-      orgId: actorDto.orgId,
-      projectId: dto.projectId,
-      eventTypes: VALUE_EVENT_TYPES,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString()
-    });
+      const authRows = await auditLogDAL.countByAuthMethod({
+        orgId: actorDto.orgId,
+        projectId: dto.projectId,
+        eventTypes: VALUE_EVENT_TYPES,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
 
-    const methodCounts = new Map<string, number>();
+      const methodCounts = new Map<string, number>();
 
-    const authMethodLabels: Record<string, string> = {
-      email: "Email",
-      google: "Google",
-      github: "GitHub",
-      gitlab: "GitLab",
-      "okta-saml": "Okta SAML",
-      "azure-saml": "Azure SAML",
-      "jumpcloud-saml": "JumpCloud SAML",
-      "google-saml": "Google SAML",
-      "keycloak-saml": "Keycloak SAML",
-      ldap: "LDAP",
-      oidc: "OIDC"
-    };
+      const authMethodLabels: Record<string, string> = {
+        email: "Email",
+        google: "Google",
+        github: "GitHub",
+        gitlab: "GitLab",
+        "okta-saml": "Okta SAML",
+        "azure-saml": "Azure SAML",
+        "jumpcloud-saml": "JumpCloud SAML",
+        "google-saml": "Google SAML",
+        "keycloak-saml": "Keycloak SAML",
+        ldap: "LDAP",
+        oidc: "OIDC"
+      };
 
-    const identityAuthMethodLabels: Record<IdentityAuthMethod, string> = {
-      [IdentityAuthMethod.UNIVERSAL_AUTH]: "Universal Auth",
-      [IdentityAuthMethod.TOKEN_AUTH]: "Token Auth",
-      [IdentityAuthMethod.KUBERNETES_AUTH]: "Kubernetes",
-      [IdentityAuthMethod.GCP_AUTH]: "GCP Auth",
-      [IdentityAuthMethod.AWS_AUTH]: "AWS Auth",
-      [IdentityAuthMethod.AZURE_AUTH]: "Azure Auth",
-      [IdentityAuthMethod.OIDC_AUTH]: "OIDC",
-      [IdentityAuthMethod.JWT_AUTH]: "JWT Auth",
-      [IdentityAuthMethod.LDAP_AUTH]: "LDAP Auth",
-      [IdentityAuthMethod.ALICLOUD_AUTH]: "AliCloud Auth",
-      [IdentityAuthMethod.TLS_CERT_AUTH]: "TLS Certificate",
-      [IdentityAuthMethod.OCI_AUTH]: "OCI Auth",
-      [IdentityAuthMethod.SPIFFE_AUTH]: "SPIFFE Auth"
-    };
+      const identityAuthMethodLabels: Record<IdentityAuthMethod, string> = {
+        [IdentityAuthMethod.UNIVERSAL_AUTH]: "Universal Auth",
+        [IdentityAuthMethod.TOKEN_AUTH]: "Token Auth",
+        [IdentityAuthMethod.KUBERNETES_AUTH]: "Kubernetes",
+        [IdentityAuthMethod.GCP_AUTH]: "GCP Auth",
+        [IdentityAuthMethod.AWS_AUTH]: "AWS Auth",
+        [IdentityAuthMethod.AZURE_AUTH]: "Azure Auth",
+        [IdentityAuthMethod.OIDC_AUTH]: "OIDC",
+        [IdentityAuthMethod.JWT_AUTH]: "JWT Auth",
+        [IdentityAuthMethod.LDAP_AUTH]: "LDAP Auth",
+        [IdentityAuthMethod.ALICLOUD_AUTH]: "AliCloud Auth",
+        [IdentityAuthMethod.TLS_CERT_AUTH]: "TLS Certificate",
+        [IdentityAuthMethod.OCI_AUTH]: "OCI Auth",
+        [IdentityAuthMethod.SPIFFE_AUTH]: "SPIFFE Auth"
+      };
 
-    authRows.forEach((row) => {
-      const actorMeta = row.actorMetadata as Record<string, unknown> | null;
-      let method = "Unknown";
+      authRows.forEach((row) => {
+        const actorMeta = row.actorMetadata as Record<string, unknown> | null;
+        let method = "Unknown";
 
-      if (row.actor === "user") {
-        const raw = (actorMeta?.authMethod as string) || "Unknown";
-        method = authMethodLabels[raw] || raw;
-      } else if (row.actor === "identity") {
-        const identityAuth = actorMeta?.authMethod as IdentityAuthMethod | undefined;
-        method = identityAuth ? identityAuthMethodLabels[identityAuth] || identityAuth : "Unknown";
-      } else if (row.actor === "service") {
-        method = "Service Token";
-      } else {
-        method = row.actor;
-      }
+        if (row.actor === "user") {
+          const raw = (actorMeta?.authMethod as string) || "Unknown";
+          method = authMethodLabels[raw] || raw;
+        } else if (row.actor === "identity") {
+          const identityAuth = actorMeta?.authMethod as IdentityAuthMethod | undefined;
+          method = identityAuth ? identityAuthMethodLabels[identityAuth] || identityAuth : "Unknown";
+        } else if (row.actor === "service") {
+          method = "Service Token";
+        } else {
+          method = row.actor;
+        }
 
-      methodCounts.set(method, (methodCounts.get(method) || 0) + (row.count || 0));
-    });
+        methodCounts.set(method, (methodCounts.get(method) || 0) + (row.count || 0));
+      });
 
-    const methods = Array.from(methodCounts.entries())
-      .map(([method, count]) => ({ method, count }))
-      .sort((a, b) => b.count - a.count);
+      const methods = Array.from(methodCounts.entries())
+        .map(([method, count]) => ({ method, count }))
+        .sort((a, b) => b.count - a.count);
 
-    return { methods };
+      return { methods };
     });
   };
 
@@ -398,82 +397,82 @@ export const insightsServiceFactory = ({
       `summary:${dto.staleSecretsOffset ?? 0}:${dto.staleSecretsLimit ?? 50}`
     );
     return withCache(cacheKey, async () => {
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
-    if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
+      const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+      if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
-    const now = new Date();
-    const in7Days = new Date(now);
-    in7Days.setDate(now.getDate() + 7);
-    const lookback90Days = new Date(now);
-    lookback90Days.setDate(now.getDate() - 90);
-    const staleThreshold = lookback90Days;
+      const now = new Date();
+      const in7Days = new Date(now);
+      in7Days.setDate(now.getDate() + 7);
+      const lookback90Days = new Date(now);
+      lookback90Days.setDate(now.getDate() - 90);
+      const staleThreshold = lookback90Days;
 
-    // Fetch upcoming rotations (by date range) and all failed rotations (no date filter) in parallel
-    // Use 90-day lookback to capture overdue items without unbounded historical queries
-    const [upcomingRotationsRaw, allProjectRotations, reminders] = await Promise.all([
-      secretRotationV2DAL.findByProjectAndDateRange({
-        projectId: dto.projectId,
-        startDate: lookback90Days,
-        endDate: in7Days
-      }),
-      secretRotationV2DAL.findByProject(dto.projectId),
-      fetchReminders(dto.projectId, lookback90Days, in7Days)
-    ]);
+      // Fetch upcoming rotations (by date range) and all failed rotations (no date filter) in parallel
+      // Use 90-day lookback to capture overdue items without unbounded historical queries
+      const [upcomingRotationsRaw, allProjectRotations, reminders] = await Promise.all([
+        secretRotationV2DAL.findByProjectAndDateRange({
+          projectId: dto.projectId,
+          startDate: lookback90Days,
+          endDate: in7Days
+        }),
+        secretRotationV2DAL.findByProject(dto.projectId),
+        fetchReminders(dto.projectId, lookback90Days, in7Days)
+      ]);
 
-    const mapRotation = (r: (typeof allProjectRotations)[number]) => ({
-      name: r.name,
-      environment: r.environment.slug,
-      secretPath: r.folder.path,
-      nextRotationAt: r.nextRotationAt ?? null,
-      rotationStatus: r.rotationStatus
-    });
+      const mapRotation = (r: (typeof allProjectRotations)[number]) => ({
+        name: r.name,
+        environment: r.environment.slug,
+        secretPath: r.folder.path,
+        nextRotationAt: r.nextRotationAt ?? null,
+        rotationStatus: r.rotationStatus
+      });
 
-    const mapReminder = (r: (typeof reminders)[number]) => ({
-      secretKey: r.secretKey,
-      environment: r.environment,
-      secretPath: r.secretPath,
-      nextReminderDate: r.nextReminderDate
-    });
+      const mapReminder = (r: (typeof reminders)[number]) => ({
+        secretKey: r.secretKey,
+        environment: r.environment,
+        secretPath: r.secretPath,
+        nextReminderDate: r.nextReminderDate
+      });
 
-    const upcomingRotations = upcomingRotationsRaw.map(mapRotation);
+      const upcomingRotations = upcomingRotationsRaw.map(mapRotation);
 
-    const failedRotations = allProjectRotations.filter((r) => r.rotationStatus === "failed").map(mapRotation);
-    const upcomingReminders = reminders.filter((r) => new Date(r.nextReminderDate) >= now).map(mapReminder);
-    const overdueReminders = reminders.filter((r) => new Date(r.nextReminderDate) < now).map(mapReminder);
+      const failedRotations = allProjectRotations.filter((r) => r.rotationStatus === "failed").map(mapRotation);
+      const upcomingReminders = reminders.filter((r) => new Date(r.nextReminderDate) >= now).map(mapReminder);
+      const overdueReminders = reminders.filter((r) => new Date(r.nextReminderDate) < now).map(mapReminder);
 
-    const [rawStaleSecrets, totalStaleCount] = await Promise.all([
-      secretV2BridgeDAL.findStaleByProject(dto.projectId, staleThreshold, {
-        offset: dto.staleSecretsOffset ?? 0,
-        limit: dto.staleSecretsLimit ?? 50
-      }),
-      secretV2BridgeDAL.countStaleByProject(dto.projectId, staleThreshold)
-    ]);
+      const [rawStaleSecrets, totalStaleCount] = await Promise.all([
+        secretV2BridgeDAL.findStaleByProject(dto.projectId, staleThreshold, {
+          offset: dto.staleSecretsOffset ?? 0,
+          limit: dto.staleSecretsLimit ?? 50
+        }),
+        secretV2BridgeDAL.countStaleByProject(dto.projectId, staleThreshold)
+      ]);
 
-    // Resolve folder paths for stale secrets
-    const staleFolderIds = [...new Set(rawStaleSecrets.map((s) => s.folderId))];
-    const staleFolders = staleFolderIds.length
-      ? await folderDAL.findSecretPathByFolderIds(dto.projectId, staleFolderIds)
-      : [];
-    const staleFolderMap: Record<string, string> = {};
-    staleFolders.forEach((f) => {
-      if (f) staleFolderMap[f.id] = f.path;
-    });
+      // Resolve folder paths for stale secrets
+      const staleFolderIds = [...new Set(rawStaleSecrets.map((s) => s.folderId))];
+      const staleFolders = staleFolderIds.length
+        ? await folderDAL.findSecretPathByFolderIds(dto.projectId, staleFolderIds)
+        : [];
+      const staleFolderMap: Record<string, string> = {};
+      staleFolders.forEach((f) => {
+        if (f) staleFolderMap[f.id] = f.path;
+      });
 
-    const staleSecrets = rawStaleSecrets.map((s) => ({
-      key: s.key,
-      environment: s.environment,
-      secretPath: staleFolderMap[s.folderId] ?? "/",
-      updatedAt: s.updatedAt
-    }));
+      const staleSecrets = rawStaleSecrets.map((s) => ({
+        key: s.key,
+        environment: s.environment,
+        secretPath: staleFolderMap[s.folderId] ?? "/",
+        updatedAt: s.updatedAt
+      }));
 
-    return {
-      upcomingRotations,
-      failedRotations,
-      upcomingReminders,
-      overdueReminders,
-      staleSecrets,
-      totalStaleCount
-    };
+      return {
+        upcomingRotations,
+        failedRotations,
+        upcomingReminders,
+        overdueReminders,
+        staleSecrets,
+        totalStaleCount
+      };
     });
   };
 

@@ -105,8 +105,7 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
-  InsightsCache: (projectId: string, endpoint: string) =>
-    `insights-cache:${projectId}:${endpoint}` as const
+  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
 };
 
 export const KeyStoreTtls = {
