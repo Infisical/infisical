@@ -18,35 +18,47 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TPamSessionAiSummaryServiceFactory } from "./pam-session-ai-summary-queue";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
-import { decryptSession } from "./pam-session-fns";
-import { TUpdateSessionLogsDTO } from "./pam-session-types";
+import { TPamSessionEventBatchDALFactory } from "./pam-session-event-batch-dal";
+import { decryptBatches, decryptSession, decryptSessionCommandLogs } from "./pam-session-fns";
+import { TUpdateSessionLogsDTO, TUploadEventBatchDTO } from "./pam-session-types";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
+  pamSessionEventBatchDAL: TPamSessionEventBatchDALFactory;
   projectDAL: TProjectDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  pamSessionAiSummaryService: Pick<TPamSessionAiSummaryServiceFactory, "queueAiSummary">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
 
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
+  pamSessionEventBatchDAL,
   projectDAL,
   userDAL,
   permissionService,
   kmsService,
-  gatewayV2Service
+  gatewayV2Service,
+  pamSessionAiSummaryService
 }: TPamSessionServiceFactoryDep) => {
   // Helper to check and update expired sessions when viewing session details (redundancy for scheduled job)
   // Only applies to non-gateway sessions (e.g., AWS IAM) - gateway sessions are managed by the gateway
   // This is intentionally only called in getById (session details view), not in list
   const checkAndExpireSessionIfNeeded = async <
-    T extends { id: string; status: string; expiresAt: Date | null; gatewayIdentityId?: string | null }
+    T extends {
+      id: string;
+      status: string;
+      expiresAt: Date | null;
+      gatewayIdentityId?: string | null;
+      projectId?: string | null;
+    }
   >(
     session: T
   ): Promise<T> => {
@@ -59,13 +71,24 @@ export const pamSessionServiceFactory = ({
     const isExpired = session.expiresAt && new Date(session.expiresAt) <= new Date();
 
     if (isActive && isExpired) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const updatedSession = await pamSessionDAL.updateById(session.id, {
-        status: PamSessionStatus.Ended,
-        endedAt: new Date()
-      });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      return { ...session, ...updatedSession };
+      const updated = await pamSessionDAL.expireSessionById(session.id);
+      if (updated > 0) {
+        const { projectId } = session;
+        if (projectId) {
+          void (async () => {
+            try {
+              await pamSessionAiSummaryService.queueAiSummary(session.id, projectId);
+            } catch (err) {
+              logger.error(
+                { sessionId: session.id, err },
+                `Failed to queue AI summary for inline-expired session [sessionId=${session.id}]`
+              );
+            }
+          })();
+        }
+        return { ...session, status: PamSessionStatus.Ended, endedAt: new Date() } as T;
+      }
+      return session;
     }
 
     return session;
@@ -209,6 +232,15 @@ export const pamSessionServiceFactory = ({
       return { session, projectId: project.id, alreadyEnded: true };
     }
 
+    // Fire-and-forget AI summarization
+    void (async () => {
+      try {
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+      } catch (err) {
+        logger.error({ sessionId, err }, `Failed to queue AI summary for ended session [sessionId=${sessionId}]`);
+      }
+    })();
+
     return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
@@ -238,6 +270,15 @@ export const pamSessionServiceFactory = ({
     if (!updatedSession) {
       return { session, projectId: project.id, alreadyEnded: true };
     }
+
+    // Fire-and-forget AI summarization
+    void (async () => {
+      try {
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+      } catch (err) {
+        logger.error({ sessionId, err }, `Failed to queue AI summary for terminated session [sessionId=${sessionId}]`);
+      }
+    })();
 
     // Fire-and-forget ALPN cancellation for gateway sessions
     if (session.gatewayId) {
@@ -288,5 +329,91 @@ export const pamSessionServiceFactory = ({
     return { session: updatedSession, projectId: project.id, alreadyEnded: false };
   };
 
-  return { getById, list, updateLogsById, endSessionById, terminateSessionById };
+  const getSessionLogs = async (sessionId: string, offset: number, limit: number, actor: OrgServiceActor) => {
+    const sessionFromDb = await pamSessionDAL.findById(sessionId);
+    if (!sessionFromDb) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: sessionFromDb.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamSessionActions.Read,
+      ProjectPermissionSub.PamSessions
+    );
+
+    // Fetch one extra to determine whether another page exists
+    const batches = await pamSessionEventBatchDAL.findBySessionIdPaginated(sessionId, {
+      offset,
+      limit: limit + 1
+    });
+
+    if (batches.length > 0 || offset > 0) {
+      // Batch-based session
+      const hasMore = batches.length > limit;
+      const pageBatches = hasMore ? batches.slice(0, limit) : batches;
+      const logs = pageBatches.length > 0 ? await decryptBatches(pageBatches, sessionFromDb.projectId, kmsService) : [];
+      return { logs, hasMore, batchCount: pageBatches.length };
+    }
+
+    // Legacy blob-based session — bounded by Fastify body limit on upload
+    if (sessionFromDb.encryptedLogsBlob) {
+      const logs = await decryptSessionCommandLogs({
+        projectId: sessionFromDb.projectId,
+        encryptedLogs: sessionFromDb.encryptedLogsBlob,
+        kmsService
+      });
+      return { logs, hasMore: false, batchCount: 0 };
+    }
+
+    return { logs: [], hasMore: false, batchCount: 0 };
+  };
+
+  const uploadEventBatch = async ({ sessionId, startOffset, events }: TUploadEventBatchDTO, actor: OrgServiceActor) => {
+    if (actor.type !== ActorType.IDENTITY) {
+      throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
+    }
+
+    const session = await pamSessionDAL.findById(sessionId);
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const project = await projectDAL.findById(session.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "Identity does not have access to upload events for this session" });
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: session.projectId
+    });
+
+    const { cipherTextBlob } = encryptor({ plainText: events });
+
+    const { wasInserted } = await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
+
+    return { projectId: project.id, wasInserted };
+  };
+
+  return { getById, list, getSessionLogs, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };
 };

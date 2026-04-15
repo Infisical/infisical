@@ -2,31 +2,27 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 
-import { useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamResourceType, useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { useWebAccessSession } from "./useWebAccessSession";
 
-const PageContent = () => {
-  const params = useParams({
-    strict: false
-  }) as {
-    accountId?: string;
-    projectId?: string;
-    orgId?: string;
-    resourceType?: string;
-    resourceId?: string;
-  };
-
-  const { accountId, projectId, orgId } = params;
-
+const TerminalContent = ({
+  accountId,
+  projectId,
+  orgId
+}: {
+  accountId: string;
+  projectId: string;
+  orgId: string;
+}) => {
   const { data: account, isPending } = useGetPamAccountById(accountId);
-
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
-    accountId: accountId!,
-    projectId: projectId!,
-    orgId: orgId!,
+    accountId,
+    projectId,
+    orgId,
     resourceName: account?.resource.name ?? "",
     accountName: account?.name ?? "",
     resourceType: account?.resource.resourceType ?? "",
@@ -109,6 +105,35 @@ const PageContent = () => {
       </div>
     </div>
   );
+};
+
+const PageContent = () => {
+  const params = useParams({
+    strict: false
+  }) as {
+    accountId?: string;
+    projectId?: string;
+    orgId?: string;
+    resourceType?: string;
+    resourceId?: string;
+  };
+
+  const { accountId, projectId, orgId } = params;
+  const { data: account, isPending } = useGetPamAccountById(accountId);
+
+  if (isPending) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
+        Loading...
+      </div>
+    );
+  }
+
+  if (account?.resource.resourceType === PamResourceType.Postgres) {
+    return <PamDataExplorerPage />;
+  }
+
+  return <TerminalContent accountId={accountId!} projectId={projectId!} orgId={orgId!} />;
 };
 
 export const PamAccountAccessPage = () => {

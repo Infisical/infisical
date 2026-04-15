@@ -13,7 +13,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
-import { BanIcon, CheckIcon, ClipboardCheckIcon, LucideIcon, TimerIcon } from "lucide-react";
+import {
+  BanIcon,
+  CheckIcon,
+  ClipboardCheckIcon,
+  LucideIcon,
+  ShieldBanIcon,
+  TimerIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -146,7 +153,11 @@ export const AccessApprovalRequest = ({
   };
 
   const isRequestExpired = useCallback((request: TAccessApprovalRequest) => {
-    return request.expiresAt && new Date(request.expiresAt) < new Date();
+    return (
+      request.status === ApprovalStatus.PENDING &&
+      request.expiresAt &&
+      new Date(request.expiresAt) < new Date()
+    );
   }, []);
 
   const filteredRequests = useMemo(() => {
@@ -157,6 +168,7 @@ export const AccessApprovalRequest = ({
         (request) =>
           !request.policy.deletedAt &&
           !request.isApproved &&
+          request.status !== ApprovalStatus.REVOKED &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
           !isRequestExpired(request)
       );
@@ -165,6 +177,7 @@ export const AccessApprovalRequest = ({
         (request) =>
           request.policy.deletedAt ||
           request.isApproved ||
+          request.status === ApprovalStatus.REVOKED ||
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
           isRequestExpired(request)
       );
@@ -223,6 +236,8 @@ export const AccessApprovalRequest = ({
         icon: null
       };
 
+      const isRevoked = request.status === ApprovalStatus.REVOKED;
+
       const isAccessExpired =
         request.privilege &&
         request.isApproved &&
@@ -231,6 +246,7 @@ export const AccessApprovalRequest = ({
       const hasRequestExpired =
         !isAccepted &&
         !isRejectedByAnyone &&
+        !isRevoked &&
         request.expiresAt &&
         new Date(request.expiresAt) < new Date();
 
@@ -240,6 +256,15 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: TimerIcon,
           tooltipContent: `Expired ${format(request.expiresAt!, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isRevoked)
+        displayData = {
+          label: "Revoked",
+          type: "danger",
+          icon: ShieldBanIcon,
+          tooltipContent: request.revokedAt
+            ? `Revoked ${format(request.revokedAt, "M/d/yyyy h:mm aa")}`
+            : undefined
         };
       else if (isAccessExpired)
         displayData = {
@@ -296,18 +321,21 @@ export const AccessApprovalRequest = ({
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
       const details = generateRequestDetails(request);
-      if (membersGroupById?.[request.requestedByUserId].user || details.isRequestedByCurrentUser) {
-        setSelectedRequest({
-          ...request,
-          user:
-            details.isRequestedByCurrentUser || !membersGroupById?.[request.requestedByUserId].user
-              ? user
-              : membersGroupById?.[request.requestedByUserId].user,
-          isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-          isSelfApproveAllowed: details.isSelfApproveAllowed,
-          isApprover: details.isApprover
-        });
-      }
+      const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+
+      setSelectedRequest({
+        ...request,
+        user: details.isRequestedByCurrentUser
+          ? user
+          : memberUser || {
+              firstName: request.requestedByUser?.firstName,
+              lastName: request.requestedByUser?.lastName,
+              email: request.requestedByUser?.email
+            },
+        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+        isSelfApproveAllowed: details.isSelfApproveAllowed,
+        isApprover: details.isApprover
+      });
 
       handlePopUpOpen("reviewRequest");
     },
@@ -520,15 +548,18 @@ export const AccessApprovalRequest = ({
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="text-xs leading-3 text-gray-500">
-                          {membersGroupById?.[request.requestedByUserId]?.user && (
-                            <>
-                              Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
-                              ago by{" "}
-                              {membersGroupById?.[request.requestedByUserId]?.user?.firstName}{" "}
-                              {membersGroupById?.[request.requestedByUserId]?.user?.lastName} (
-                              {membersGroupById?.[request.requestedByUserId]?.user?.email}){" "}
-                            </>
-                          )}
+                          {(() => {
+                            const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+                            const requester = memberUser || request.requestedByUser;
+                            if (!requester) return null;
+                            return (
+                              <>
+                                Requested {formatDistance(new Date(request.createdAt), new Date())}{" "}
+                                ago by {requester.firstName} {requester.lastName} ({requester.email}
+                                ){" "}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -558,11 +589,11 @@ export const AccessApprovalRequest = ({
                             </Badge>
                           </Tooltip>
                         )}
-                      <div className="flex w-32 justify-end">
+                      <div className="flex shrink-0 justify-end">
                         <Tooltip content={details.displayData.tooltipContent}>
                           <Badge variant={details.displayData.type}>
                             {StatusIcon && <StatusIcon />}
-                            {details.displayData.label}
+                            <span className="whitespace-nowrap">{details.displayData.label}</span>
                           </Badge>
                         </Tooltip>
                       </div>

@@ -98,6 +98,10 @@ export default {
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type
+      globalThis.testSmtp = smtp;
+      // @ts-expect-error type
+      globalThis.testDb = db;
+      // @ts-expect-error type
       globalThis.testQueue = queue;
       // @ts-expect-error type
       globalThis.testSuperAdminDAL = superAdminDAL;

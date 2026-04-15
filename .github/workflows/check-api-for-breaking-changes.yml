@@ -15,10 +15,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
-      # - name: Setup Node 20
+      # - name: Setup Node 22
       #   uses: actions/setup-node@v3
       #   with:
-      #     node-version: "20"
+      #     node-version: "22"
       # uncomment this when testing locally using nektos/act
       - uses: KengoTODA/actions-setup-docker-compose@v1
         if: ${{ env.ACT }}

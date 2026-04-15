@@ -8,6 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -60,6 +61,33 @@ const getBucketForDistinctId = (distinctId: string): string => {
 export const createTelemetryEventKey = (event: string, distinctId: string): string => {
   const bucketId = getBucketForDistinctId(distinctId);
   return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
+};
+
+export enum DeploymentType {
+  USCloud = "us-cloud",
+  EUCloud = "eu-cloud",
+  Dedicated = "dedicated",
+  SelfHosted = "self-hosted"
+}
+
+/**
+ * Computes the deployment type based on the instance type and environment configuration.
+ * - US Cloud: instanceType is Cloud and INTERNAL_REGION is "us" (or unset, defaults to US)
+ * - EU Cloud: instanceType is Cloud and INTERNAL_REGION is "eu"
+ * - Dedicated: INFISICAL_CLOUD is true but instanceType is not Cloud (uses self-hosted license keys)
+ * - Self-Hosted: everything else
+ */
+const getDeploymentType = (
+  instanceType: InstanceType,
+  appConfig: { INFISICAL_CLOUD: boolean; INTERNAL_REGION?: string }
+) => {
+  if (instanceType === InstanceType.Cloud) {
+    return appConfig.INTERNAL_REGION === "eu" ? DeploymentType.EUCloud : DeploymentType.USCloud;
+  }
+  if (appConfig.INFISICAL_CLOUD) {
+    return DeploymentType.Dedicated;
+  }
+  return DeploymentType.SelfHosted;
 };
 
 export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
@@ -160,6 +188,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     const instanceType = licenseService.getInstanceType();
     properties.is_cloud = instanceType === InstanceType.Cloud;
+    properties.instance_type = instanceType;
+    properties.deployment_type = getDeploymentType(instanceType, appCfg);
+    if (appCfg.INTERNAL_REGION) {
+      properties.region = appCfg.INTERNAL_REGION;
+    }
 
     try {
       const org = await orgDAL.findOrgById(orgId);
@@ -209,7 +242,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (!postHog) return;
 
     // Resolve org name: prefer explicit value, fall back to request context
-    const resolvedOrgName = event.organizationName ?? requestContext.get("orgName");
+    const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
       const eventKey = createTelemetryEventKey(event.event, event.distinctId);

@@ -1,80 +1,57 @@
-import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
-import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { getMinExpiresIn } from "@app/lib/fn";
-import { isDisposableEmail } from "@app/lib/validator";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { UserEncryption } from "../user/user-types";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
-import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
-import { AuthMethod, AuthTokenType } from "./auth-type";
+import { extractBearerToken } from "./auth-fns";
+import { TAuthLoginFactory } from "./auth-login-service";
+import { CompleteAccountType, TCompleteAccountDTO } from "./auth-signup-type";
+import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
-  userGroupMembershipDAL: Pick<
-    TUserGroupMembershipDALFactory,
-    | "find"
-    | "transaction"
-    | "insertMany"
-    | "deletePendingUserGroupMembershipsByUserIds"
-    | "findUserGroupMembershipsInProject"
-  >;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById" | "findById">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "updateById">;
   orgService: Pick<TOrgServiceFactory, "createOrganization" | "findOrganizationById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
-  membershipGroupDAL: TMembershipGroupDALFactory;
+  loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
 };
+
+const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
   authDAL,
   userDAL,
-  userGroupMembershipDAL,
-  projectKeyDAL,
-  projectDAL,
-  projectBotDAL,
+  userAliasDAL,
   tokenService,
   smtpService,
   orgService,
   orgDAL,
-  membershipGroupDAL,
-  licenseService
+  loginService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
-    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
     const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new Error("Provided a disposable email");
     }
 
     // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
-    let user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
+    let user = await userDAL.findOne({ username: sanitizedEmail });
     if (user && user.isAccepted) {
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
@@ -91,6 +68,7 @@ export const authSignupServiceFactory = ({
       });
       return;
     }
+
     if (!user) {
       user = await userDAL.create({
         authMethods: [AuthMethod.EMAIL],
@@ -117,25 +95,35 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const sanitizedEmail = email.trim().toLowerCase();
-    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
-    const user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
-    if (!user || (user && user.isAccepted)) {
-      // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
-      throw new Error("Failed to send verification code for complete account");
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
+    const user = await userDAL.findOne({ username: sanitizedEmail });
+
+    // Always call validateTokenForUser so the response time includes
+    // the bcrypt cost regardless of whether the user exists.
+    // Use a dummy userId when there's no valid user.
+    const shouldReject = !user || user.isAccepted;
+
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_CONFIRMATION,
+        userId: shouldReject ? DUMMY_USER_ID : user.id,
+        code
+      });
+    } catch {
+      // If we were going to reject anyway, throw the generic message.
+      // If the user was valid but the token failed, same generic message.
+      throw new Error("Invalid or expired verification request");
     }
 
-    const appCfg = getConfig();
-    await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_CONFIRMATION,
-      userId: user.id,
-      code
-    });
+    // Reject *after* the constant-time token validation work.
+    if (shouldReject) {
+      throw new Error("Invalid or expired verification request");
+    }
 
     await userDAL.updateById(user.id, { isEmailVerified: true });
 
-    // generate jwt token this is a temporary token
+    const appCfg = getConfig();
     const jwtToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
@@ -148,331 +136,166 @@ export const authSignupServiceFactory = ({
     return { user, token: jwtToken };
   };
 
-  const completeEmailAccountSignup = async ({
-    email,
-    password,
-    firstName,
-    lastName,
-    providerAuthToken,
-    organizationName,
-    // attributionSource,
-    ip,
-    userAgent,
-    authorization,
-    useDefaultOrg
-  }: TCompleteAccountSignupDTO) => {
-    const sanitizedEmail = email.trim().toLowerCase();
+  /*
+   * Unified account completion for both email signup and SSO/OAuth alias verification.
+   *
+   * Shared: signup token validation, user lookup, org creation if no membership, session token issuance.
+   *
+   * Email: sets password + user profile, creates user account.
+   * Alias: verifies email code against alias, marks alias + user flags as verified.
+   */
+  const completeAccount = async (dto: TCompleteAccountDTO) => {
     const appCfg = getConfig();
-    const serverCfg = await getServerCfg();
 
-    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
-    const user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
-    if (!user || (user && user.isAccepted)) {
-      throw new BadRequestError({ message: "Failed to complete account for complete user" });
+    // Step 1: Extract and validate the signup token
+    const tokenValue = extractBearerToken(dto.authorization);
+    const decodedToken = crypto.jwt().verify(tokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
+
+    if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
+      throw new UnauthorizedError({ message: "Invalid token" });
     }
 
-    let organizationId: string | null = null;
-    let authMethod: AuthMethod | null = null;
-    if (providerAuthToken) {
-      const { orgId, authMethod: userAuthMethod } = validateProviderAuthToken(providerAuthToken, user.username);
-      authMethod = userAuthMethod;
-      organizationId = orgId;
-    } else {
-      // disallow signup if disabled. we are not doing this for providerAuthToken because we allow signups via saml or sso
-      if (!serverCfg.allowSignUp) {
-        throw new ForbiddenRequestError({
-          message: "Signup's are disabled"
-        });
+    // Step 2: Find the user
+    let user = await userDAL.findById(decodedToken.userId);
+
+    // Step 3: Type-specific validation and user updates
+    // All branches perform their expensive work (bcrypt hash / token validation) before
+    // checking rejection conditions, so the response time is constant regardless of
+    // whether the request is valid. This prevents timing-based user/alias enumeration.
+    let authMethod: AuthMethod;
+    let organizationId: string | undefined;
+    if (dto.type === CompleteAccountType.Email) {
+      // Determine rejection before hashing, but don't throw yet
+      const shouldReject = !user || user.isAccepted;
+
+      // Always hash the password so bcrypt cost is incurred regardless of validity
+      const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
+
+      if (shouldReject) {
+        throw new BadRequestError({ message: "Invalid token" });
       }
-      validateSignUpAuthorization(authorization, user.id);
-    }
 
-    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    const updateduser = await authDAL.transaction(async (tx) => {
-      const duplicateUsers = await userDAL.find(
-        {
-          email: user.email || sanitizedEmail,
-          isAccepted: false
-        },
-        { tx }
-      );
-      const nonAcceptedDuplicateUserIds = duplicateUsers
-        .filter((duplicateUser) => duplicateUser.id !== user.id)
-        .map((duplicateUser) => duplicateUser.id);
-      if (nonAcceptedDuplicateUserIds.length > 0) {
-        await userDAL.delete(
-          {
-            $in: {
-              id: nonAcceptedDuplicateUserIds
-            }
-          },
+      const updatedUser = await authDAL.transaction(async (tx) => {
+        const us = await userDAL.updateById(
+          user.id,
+          { firstName: dto.firstName, lastName: dto.lastName, isAccepted: true, hashedPassword },
           tx
         );
+
+        // Step 4: Check org membership — create org if self-signup with no existing membership
+        const existingMemberships = await orgDAL.findMembership(
+          {
+            actorUserId: user.id,
+            scope: AccessScope.Organization
+          },
+          { tx }
+        );
+        const isInvitedUser = existingMemberships.length > 0;
+        if (!isInvitedUser && dto.organizationName) {
+          const org = await orgService.createOrganization(
+            {
+              userId: user.id,
+              userEmail: user.email ?? user.username,
+              orgName: dto.organizationName
+            },
+            tx
+          );
+
+          organizationId = org.id;
+        }
+
+        return { ...us, hashedPassword: null };
+      });
+      user = updatedUser;
+      authMethod = AuthMethod.EMAIL;
+    } else {
+      // Alias verification
+      const userAlias =
+        decodedToken.aliasId && user?.id
+          ? await userAliasDAL.findOne({
+              id: decodedToken.aliasId,
+              userId: user?.id
+            })
+          : null;
+
+      // Determine rejection before token validation, but don't throw yet
+      const shouldReject = !user || !decodedToken.aliasId || !userAlias;
+
+      // Always validate the verification code so the bcrypt cost is incurred
+      // Use dummy userId when rejecting so the work is still performed
+      try {
+        await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_VERIFICATION,
+          userId: shouldReject ? DUMMY_USER_ID : user.id,
+          code: dto.code
+        });
+      } catch {
+        throw new BadRequestError({ message: "Invalid token" });
       }
 
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
-      if (!us) throw new Error("User not found");
+      if (shouldReject) {
+        throw new BadRequestError({ message: "Invalid token" });
+      }
 
-      const userEncKey = await userDAL.upsertUserEncryptionKey(
-        us.id,
-        {
-          encryptionVersion: UserEncryption.V2,
-          hashedPassword
-        },
-        tx
-      );
+      // Update user-level verification flags based on auth method
+      const userUpdates: Record<string, boolean> = { isEmailVerified: true };
+      if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+        userUpdates.isGoogleVerified = true;
+      } else if (decodedToken.authMethod === AuthMethod.GITHUB) {
+        userUpdates.isGitHubVerified = true;
+      } else if (decodedToken.authMethod === AuthMethod.GITLAB) {
+        userUpdates.isGitLabVerified = true;
+      }
+      if (!user.isAccepted) {
+        userUpdates.isAccepted = true;
+      }
 
-      // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
-      if (
-        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod as AuthMethod)) &&
-        organizationId
-      ) {
-        const [pendingOrgMembership] = await orgDAL.findMembership({
-          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
-          status: OrgMembershipStatus.Invited,
-          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: organizationId,
-          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-        });
+      user = await userDAL.transaction(async (tx) => {
+        // Mark alias as verified
+        await userAliasDAL.updateById(userAlias.id, { isEmailVerified: true }, tx);
 
-        if (pendingOrgMembership) {
-          await orgDAL.updateMembershipById(
-            pendingOrgMembership.id,
+        if (userAlias?.orgId) {
+          await orgDAL.updateMembership(
+            {
+              actorUserId: user.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: userAlias.orgId
+            },
             {
               status: OrgMembershipStatus.Accepted
             },
             tx
           );
         }
-      }
 
-      return { info: us, key: userEncKey };
-    });
-
-    if (!organizationId) {
-      let orgId = "";
-      if (useDefaultOrg && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-        const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
-        if (!defaultOrg) throw new BadRequestError({ message: "Failed to find default organization" });
-        orgId = defaultOrg.id;
-      } else {
-        if (!organizationName) throw new BadRequestError({ message: "Organization name is required" });
-        const newOrganization = await orgService.createOrganization({
-          userId: user.id,
-          userEmail: user.email ?? user.username,
-          orgName: organizationName
-        });
-
-        if (!newOrganization) throw new Error("Failed to create organization");
-        orgId = newOrganization.id;
-      }
-
-      organizationId = orgId;
-    }
-
-    const updatedMembersips = await orgDAL.updateMembership(
-      { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited, scope: AccessScope.Organization },
-      { actorUserId: user.id, status: OrgMembershipStatus.Accepted }
-    );
-    const uniqueOrgId = [...new Set(updatedMembersips.map(({ scopeOrgId }) => scopeOrgId))];
-    await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
-
-    await convertPendingGroupAdditionsToGroupMemberships({
-      userIds: [user.id],
-      userDAL,
-      userGroupMembershipDAL,
-      projectKeyDAL,
-      membershipGroupDAL,
-      projectDAL,
-      projectBotDAL
-    });
-
-    let tokenSessionExpiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
-    let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
-
-    if (organizationId) {
-      const org = await orgService.findOrganizationById({
-        userId: user.id,
-        orgId: organizationId,
-        actorAuthMethod: authMethod,
-        actorOrgId: organizationId,
-        rootOrgId: organizationId
+        const el = await userDAL.updateById(user.id, userUpdates, tx);
+        return el;
       });
-      if (org && org.userTokenExpiration) {
-        tokenSessionExpiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
-        refreshTokenExpiresIn = org.userTokenExpiration;
-      }
+
+      authMethod = decodedToken.authMethod;
     }
 
-    const tokenSession = await tokenService.getUserTokenSession({
-      userAgent,
-      ip,
-      userId: updateduser.info.id
+    // Step 5: Issue session tokens
+    const tokens = await loginService.generateUserTokens({
+      userId: user.id,
+      ip: dto.ip,
+      userAgent: dto.userAgent,
+      authMethod,
+      organizationId
     });
-    if (!tokenSession) throw new Error("Failed to create token");
-
-    const accessToken = crypto.jwt().sign(
-      {
-        authMethod: authMethod || AuthMethod.EMAIL,
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: updateduser.info.id,
-        tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion,
-        organizationId
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: tokenSessionExpiresIn }
-    );
-
-    const refreshToken = crypto.jwt().sign(
-      {
-        authMethod: authMethod || AuthMethod.EMAIL,
-        authTokenType: AuthTokenType.REFRESH_TOKEN,
-        userId: updateduser.info.id,
-        tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion,
-        organizationId
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: refreshTokenExpiresIn }
-    );
 
     return {
-      user: updateduser.info,
-      accessToken,
-      refreshToken,
-      organizationId,
-      authMethod: authMethod || AuthMethod.EMAIL
+      user,
+      accessToken: tokens.access,
+      refreshToken: tokens.refresh,
+      authMethod,
+      organizationId
     };
-  };
-
-  /*
-   * User signup flow when they are invited to join the org
-   * */
-  const completeAccountInvite = async ({
-    email,
-    ip,
-    password,
-    firstName,
-    userAgent,
-    lastName,
-    authorization
-  }: TCompleteAccountInviteDTO) => {
-    const sanitizedEmail = email.trim().toLowerCase();
-    const usersByUsername = await userDAL.findUserByUsername(sanitizedEmail);
-    const user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
-    if (!user || (user && user.isAccepted)) {
-      throw new Error("Failed to complete account for complete user");
-    }
-
-    validateSignUpAuthorization(authorization, user.id);
-
-    const [orgMembership] = await orgDAL.findMembership({
-      inviteEmail: sanitizedEmail,
-      status: OrgMembershipStatus.Invited
-    });
-    if (!orgMembership)
-      throw new NotFoundError({
-        message: "Failed to find invitation for email",
-        name: "complete account invite"
-      });
-
-    const appCfg = getConfig();
-    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    const updateduser = await authDAL.transaction(async (tx) => {
-      const duplicateUsers = await userDAL.find(
-        {
-          email: user.email || sanitizedEmail,
-          isAccepted: false
-        },
-        { tx }
-      );
-      const nonAcceptedDuplicateUserIds = duplicateUsers
-        .filter((duplicateUser) => duplicateUser.id !== user.id)
-        .map((duplicateUser) => duplicateUser.id);
-      if (nonAcceptedDuplicateUserIds.length > 0) {
-        await userDAL.delete(
-          {
-            $in: {
-              id: nonAcceptedDuplicateUserIds
-            }
-          },
-          tx
-        );
-      }
-
-      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
-      if (!us) throw new Error("User not found");
-      const userEncKey = await userDAL.upsertUserEncryptionKey(
-        us.id,
-        {
-          encryptionVersion: 2,
-          hashedPassword
-        },
-        tx
-      );
-
-      const updatedMembersips = await orgDAL.updateMembership(
-        { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited, scope: AccessScope.Organization },
-        { actorUserId: us.id, status: OrgMembershipStatus.Accepted },
-        tx
-      );
-      const uniqueOrgId = [...new Set(updatedMembersips.map(({ scopeOrgId }) => scopeOrgId))];
-      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId, tx)));
-
-      await convertPendingGroupAdditionsToGroupMemberships({
-        userIds: [user.id],
-        userDAL,
-        userGroupMembershipDAL,
-        projectKeyDAL,
-        projectDAL,
-        projectBotDAL,
-        membershipGroupDAL,
-        tx
-      });
-
-      return { info: us, key: userEncKey };
-    });
-
-    const tokenSession = await tokenService.getUserTokenSession({
-      userAgent,
-      ip,
-      userId: updateduser.info.id
-    });
-    if (!tokenSession) throw new Error("Failed to create token");
-
-    const accessToken = crypto.jwt().sign(
-      {
-        authMethod: AuthMethod.EMAIL,
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: updateduser.info.id,
-        tokenVersionId: tokenSession.id,
-        accessVersion: tokenSession.accessVersion
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
-    );
-
-    const refreshToken = crypto.jwt().sign(
-      {
-        authMethod: AuthMethod.EMAIL,
-        authTokenType: AuthTokenType.REFRESH_TOKEN,
-        userId: updateduser.info.id,
-        tokenVersionId: tokenSession.id,
-        refreshVersion: tokenSession.refreshVersion
-      },
-      appCfg.AUTH_SECRET,
-      { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
-    );
-
-    return { user: updateduser.info, accessToken, refreshToken, organizationId: orgMembership.scopeOrgId };
   };
 
   return {
     beginEmailSignupProcess,
     verifyEmailSignup,
-    completeEmailAccountSignup,
-    completeAccountInvite
+    completeAccount
   };
 };

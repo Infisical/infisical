@@ -16,6 +16,7 @@ export const PgSqlLock = {
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
   SanitizedSchemaGeneration: 2026,
+  EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
@@ -68,18 +69,10 @@ export const KeyStorePrefixes = {
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
 
-  ProjectPermission: (
-    projectId: string,
-    version: number,
-    actorType: string,
-    actorId: string,
-    actionProjectType: string
-  ) => `project-permission:${projectId}:${version}:${actorType}:${actorId}:${actionProjectType}` as const,
-  ProjectPermissionDalVersion: (projectId: string) => `project-permission:${projectId}:dal-version` as const,
-  UserProjectPermissionPattern: (userId: string) => `project-permission:*:*:USER:${userId}:*` as const,
-  IdentityProjectPermissionPattern: (identityId: string) => `project-permission:*:*:IDENTITY:${identityId}:*` as const,
-  GroupMemberProjectPermissionPattern: (projectId: string, groupId: string) =>
-    `group-member-project-permission:${projectId}:${groupId}:*` as const,
+  ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
+    `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
+  ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
+    `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
@@ -105,6 +98,8 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
+  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
 };
 
@@ -112,12 +107,13 @@ export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
-  ProjectPermissionCacheInSeconds: 300, // 5 minutes
-  ProjectPermissionDalVersionTtl: "15m", // Project permission DAL version TTL
+  ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
+  ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
+  RefreshTokenGraceInSeconds: 30,
   InsightsCacheInSeconds: 300 // 5 minutes
 };
 

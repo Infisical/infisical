@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
+import { getAuthToken } from "../reactQuery";
 import { TOrgRole } from "../roles/types";
 import { IntegrationAuth } from "../types";
 import {
@@ -22,11 +23,7 @@ import {
   UpdateOrgDTO
 } from "./types";
 
-export type TOrgWithSubOrgs = {
-  id: string;
-  name: string;
-  slug: string;
-  createdAt: string;
+export type TOrgWithSubOrgs = Organization & {
   userJoinedAt?: string | null;
   subOrganizations: { id: string; name: string; slug: string; userJoinedAt?: string | null }[];
 };
@@ -74,17 +71,25 @@ export const useGetOrganizations = () => {
   });
 };
 
+export const fetchOrganizationsWithSubOrgs = async () => {
+  // prioritize auth token
+  const authToken = getAuthToken();
+
+  const {
+    data: { organizations }
+  } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
+    "/api/v1/organization/accessible-with-sub-orgs",
+    {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+    }
+  );
+  return organizations;
+};
+
 export const useGetOrganizationsWithSubOrgs = () => {
   return useQuery({
     queryKey: organizationKeys.getUserOrganizationsWithSubOrgs,
-    queryFn: async () => {
-      const {
-        data: { organizations }
-      } = await apiRequest.get<{ organizations: TOrgWithSubOrgs[] }>(
-        "/api/v1/organization/accessible-with-sub-orgs"
-      );
-      return organizations;
-    }
+    queryFn: fetchOrganizationsWithSubOrgs
   });
 };
 

@@ -9,8 +9,11 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import {
   getConfig,
   getOriginalConfig,
@@ -22,7 +25,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { isDisposableEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -53,6 +56,9 @@ import {
   EnvOverrides,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
+  TAdminCreateEmailDomainDTO,
+  TAdminDeleteEmailDomainDTO,
+  TAdminGetEmailDomainsDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
@@ -73,6 +79,7 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
@@ -131,6 +138,7 @@ export const superAdminServiceFactory = ({
   identityDAL,
   orgDAL,
   userAliasDAL,
+  emailDomainDAL,
   authService,
   orgService,
   keyStore,
@@ -150,26 +158,25 @@ export const superAdminServiceFactory = ({
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
     getServerCfg = async () => {
-      const config = await keyStore.getItem(ADMIN_CONFIG_KEY);
-
-      // missing in keystore means fetch from db
-      if (!config) {
-        const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-        if (!serverCfg) {
-          throw new NotFoundError({ message: "Admin config not found" });
+      const serverCfg = await withCache({
+        keyStore,
+        key: ADMIN_CONFIG_KEY,
+        ttlSeconds: ADMIN_CONFIG_KEY_EXP,
+        fetcher: async () => {
+          const cfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+          if (!cfg) {
+            throw new NotFoundError({ message: "Admin config not found" });
+          }
+          return cfg;
         }
+      });
 
-        await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(serverCfg)); // insert it back to keystore
-        return serverCfg;
-      }
-
-      const keyStoreServerCfg = JSON.parse(config) as TSuperAdmin & { defaultAuthOrgSlug: string | null };
+      // Normalize dates — on cache hit they arrive as ISO strings from JSON.parse,
+      // on miss they are already Date objects. new Date() handles both.
       return {
-        ...keyStoreServerCfg,
-        // this is to allow admin router to work
-        createdAt: new Date(keyStoreServerCfg.createdAt),
-        updatedAt: new Date(keyStoreServerCfg.updatedAt)
+        ...serverCfg,
+        createdAt: new Date(serverCfg.createdAt),
+        updatedAt: new Date(serverCfg.updatedAt)
       };
     };
 
@@ -455,7 +462,11 @@ export const superAdminServiceFactory = ({
 
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
-    await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    try {
+      await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+    } catch (err) {
+      logger.warn({ key: ADMIN_CONFIG_KEY, err }, `updateServerCfg: cache write failed [key=${ADMIN_CONFIG_KEY}]`);
+    }
 
     if (gitHubAppConnectionSettingsUpdated) {
       await $syncAdminIntegrationConfig();
@@ -506,20 +517,13 @@ export const superAdminServiceFactory = ({
           isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL],
-          isEmailVerified: true
-        },
-        tx
-      );
-      const userEnc = await userDAL.createUserEncryption(
-        {
-          encryptionVersion: 2,
-          userId: newUser.id,
+          isEmailVerified: true,
           hashedPassword
         },
         tx
       );
 
-      return { user: newUser, enc: userEnc };
+      return { user: { ...newUser, hashedPassword: null } };
     });
 
     const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
@@ -532,7 +536,7 @@ export const superAdminServiceFactory = ({
 
     await updateServerCfg({ initialized: true }, userInfo.user.id);
     const token = await authService.generateUserTokens({
-      user: userInfo.user,
+      userId: userInfo.user.id,
       authMethod: AuthMethod.EMAIL,
       ip,
       userAgent,
@@ -767,7 +771,7 @@ export const superAdminServiceFactory = ({
   ) => {
     const appCfg = getConfig();
 
-    const inviteAdminEmails = [...new Set(emails)];
+    const inviteAdminEmails = [...new Set(emails)].map((el) => sanitizeEmail(el));
 
     if (!appCfg.isDevelopmentMode && appCfg.isCloud)
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
@@ -779,6 +783,21 @@ export const superAdminServiceFactory = ({
     if (isEmailInvalid) {
       throw new BadRequestError({
         message: "Disposable emails are not allowed",
+        name: "InviteUser"
+      });
+    }
+
+    const invalidEmailFormats = inviteAdminEmails.filter((email) => {
+      try {
+        validateEmail(email);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    if (invalidEmailFormats.length > 0) {
+      throw new BadRequestError({
+        message: `Invalid email formats: ${invalidEmailFormats.join(", ")}`,
         name: "InviteUser"
       });
     }
@@ -795,30 +814,19 @@ export const superAdminServiceFactory = ({
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
       for await (const inviteeEmail of inviteAdminEmails) {
-        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
-        let inviteeUser =
-          usersByUsername?.length > 1
-            ? usersByUsername.find((el) => el.username === inviteeEmail)
-            : usersByUsername?.[0];
-
+        let inviteeUser = await userDAL.findOne({ username: inviteeEmail }, tx);
         // if the user doesn't exist we create the user with the email
         if (!inviteeUser) {
-          // TODO(carlos): will be removed once the function receives usernames instead of emails
-          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
-          if (usersByEmail?.length === 1) {
-            [inviteeUser] = usersByEmail;
-          } else {
-            inviteeUser = await userDAL.create(
-              {
-                isAccepted: false,
-                email: inviteeEmail,
-                username: inviteeEmail,
-                authMethods: [AuthMethod.EMAIL],
-                isGhost: false
-              },
-              tx
-            );
-          }
+          inviteeUser = await userDAL.create(
+            {
+              isAccepted: false,
+              email: inviteeEmail,
+              username: inviteeEmail,
+              authMethods: [AuthMethod.EMAIL],
+              isGhost: false
+            },
+            tx
+          );
         }
 
         const inviteeUserId = inviteeUser?.id;
@@ -1181,6 +1189,69 @@ export const superAdminServiceFactory = ({
     return job;
   };
 
+  const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {
+    return emailDomainDAL.findByFilter({ offset, limit, searchTerm });
+  };
+
+  const createEmailDomain = async ({ orgId, domain }: TAdminCreateEmailDomainDTO) => {
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+    const config = getConfig();
+    if (!config.isCloud) {
+      const plan = licenseService.onPremFeatures;
+      const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+      if (!canEmailDomainVerification) {
+        throw new BadRequestError({
+          message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
+        });
+      }
+    }
+
+    const emailDomain = await emailDomainDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.EmailDomainCreationLock()]);
+
+      // Check if any org (including this one) already has this domain verified
+      const platformExisting = await emailDomainDAL.findOne(
+        { domain: domain.toLowerCase(), status: EmailDomainStatus.Verified },
+        tx
+      );
+      if (platformExisting) {
+        return { error: "This domain is already verified by an organization.", data: null } as const;
+      }
+
+      const data = await emailDomainDAL.create(
+        {
+          orgId,
+          domain: domain.toLowerCase(),
+          verificationMethod: "admin",
+          verificationCode: crypto.randomBytes(16).toString("hex"),
+          verificationRecordName: `_infisical-verification.${domain.toLowerCase()}`,
+          status: "verified",
+          verifiedAt: new Date(),
+          codeExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        },
+        tx
+      );
+
+      return { error: undefined, data } as const;
+    });
+
+    if (emailDomain.error) {
+      throw new BadRequestError({ message: emailDomain.error });
+    }
+
+    return emailDomain.data;
+  };
+
+  const deleteEmailDomain = async ({ emailDomainId }: TAdminDeleteEmailDomainDTO) => {
+    const emailDomain = await emailDomainDAL.findById(emailDomainId);
+    if (!emailDomain) throw new NotFoundError({ message: `Email domain with ID '${emailDomainId}' not found` });
+
+    await emailDomainDAL.deleteById(emailDomainId);
+    return emailDomain;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -1207,6 +1278,9 @@ export const superAdminServiceFactory = ({
     deleteUsers,
     createOrganization,
     joinOrganization,
-    resendOrgInvite
+    resendOrgInvite,
+    getEmailDomains,
+    createEmailDomain,
+    deleteEmailDomain
   };
 };

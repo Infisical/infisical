@@ -3,10 +3,12 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  AdminGetEmailDomainsFilters,
   AdminGetIdentitiesFilters,
   AdminGetOrganizationsFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
+  TGetEmailDomainsResponse,
   TGetEnvOverrides,
   TGetIdentitiesResponse,
   TGetInvalidatingCacheStatus,
@@ -19,7 +21,8 @@ import {
 export const adminStandaloneKeys = {
   getUsers: "get-users",
   getOrganizations: "get-organizations",
-  getIdentities: "get-identities"
+  getIdentities: "get-identities",
+  getEmailDomains: "get-email-domains"
 };
 
 export const adminQueryKeys = {
@@ -33,7 +36,9 @@ export const adminQueryKeys = {
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
   getInvalidateCache: () => ["admin-invalidate-cache"] as const,
   getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
-  getEnvOverrides: () => ["env-overrides"] as const
+  getEnvOverrides: () => ["env-overrides"] as const,
+  getEmailDomains: (filters: AdminGetEmailDomainsFilters) =>
+    [adminStandaloneKeys.getEmailDomains, { filters }] as const
 };
 
 export const fetchServerConfig = async () => {
@@ -164,5 +169,19 @@ export const useGetEnvOverrides = () => {
       const { data } = await apiRequest.get<TGetEnvOverrides>("/api/v1/admin/env-overrides");
       return data;
     }
+  });
+};
+
+export const useAdminGetEmailDomains = (filters: AdminGetEmailDomainsFilters) => {
+  return useQuery({
+    queryKey: adminQueryKeys.getEmailDomains(filters),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetEmailDomainsResponse>(
+        "/api/v1/admin/email-domain-management/domains",
+        { params: { ...filters } }
+      );
+      return { emailDomains: data.emailDomains, totalCount: data.total };
+    },
+    placeholderData: (previousData) => previousData
   });
 };

@@ -28,6 +28,7 @@ export const LoginLdapPage = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const passedOrgSlug = queryParams.get("organizationSlug");
   const passedUsername = queryParams.get("username");
+  const callbackPort = queryParams.get("callback_port");
 
   const lastLoginSlug =
     lastLogin?.method === LoginMethod.LDAP && lastLogin.orgSlug ? lastLogin.orgSlug : "";
@@ -44,7 +45,8 @@ export const LoginLdapPage = () => {
       const { nextUrl } = await loginLDAPRedirect({
         organizationSlug,
         username,
-        password
+        password,
+        callbackPort: callbackPort ? Number(callbackPort) : undefined
       });
 
       if (!nextUrl) {
