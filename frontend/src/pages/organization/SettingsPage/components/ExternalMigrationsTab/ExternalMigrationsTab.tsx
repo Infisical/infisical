@@ -26,10 +26,9 @@ export const ExternalMigrationsTab = () => {
             <DocumentationLinkBadge href={EXTERNAL_MIGRATIONS_DOCS_HREF} />
           </div>
           <p className="mt-1 mb-6 text-sm text-muted">
-            Connect <span className="text-foreground/90">HashiCorp Vault</span> or{" "}
-            <span className="text-foreground/90">Doppler</span> to enable migration features across
-            Infisical: import KV secrets (and from Vault, policies, Kubernetes-related resources,
-            and more) directly from the UI.
+            Connect HashiCorp Vault or Doppler to enable migration features across Infisical: import
+            KV secrets (and from Vault, policies, Kubernetes-related resources, and more) directly
+            from the UI.
           </p>
         </div>
         <InPlatformMigrationSection />
@@ -56,7 +55,7 @@ export const ExternalMigrationsTab = () => {
           </div>
 
           <Button
-            variant="project"
+            variant="org"
             type="button"
             className="gap-1.5"
             onClick={() => {

@@ -63,16 +63,18 @@ export const SelectInPlatformMigrationProviderModal = ({
                 }}
                 className="group flex flex-col items-center rounded-md border border-border bg-container p-4 text-left duration-200 hover:bg-foreground/5"
               >
-                <img
-                  src={`/images/integrations/${imageFileName}`}
-                  style={{ width: size, height: size }}
-                  className="mt-1 object-contain"
-                  alt=""
-                />
+                <div className="flex h-12 items-center justify-center">
+                  <img
+                    src={`/images/integrations/${imageFileName}`}
+                    style={{ width: size, height: size }}
+                    className="object-contain"
+                    alt=""
+                  />
+                </div>
                 <span className="mt-3 text-center text-sm font-medium text-foreground group-hover:text-foreground">
                   {name}
                 </span>
-                <span className="mt-2 text-center text-xs leading-snug text-muted">
+                <span className="mt-2 flex-1 text-center text-xs leading-snug text-muted">
                   {description}
                 </span>
               </button>

@@ -369,7 +369,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
   [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
-  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule",
+
+  // External Migration
+  [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
+  [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

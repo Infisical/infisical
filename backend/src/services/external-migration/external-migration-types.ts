@@ -125,7 +125,7 @@ export enum ExternalPlatforms {
   Doppler = "Doppler"
 }
 
-export enum VaultImportStatus {
+export enum ExternalMigrationImportStatus {
   Imported = "imported",
   ApprovalRequired = "approval-required"
 }

@@ -87,7 +87,10 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { useGetExternalMigrationConfigs, useImportVaultSecrets } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationImportStatus,
+  ExternalMigrationProviders
+} from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -676,7 +679,7 @@ export const ActionBar = ({
       vaultSecretPath: vaultPath
     });
 
-    if (result.status === VaultImportStatus.ApprovalRequired) {
+    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
         text: "Secret change request created successfully. Awaiting approval."

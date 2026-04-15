@@ -247,7 +247,7 @@ export const InPlatformMigrationSection = () => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Configurations</h3>
         <Button
-          variant="project"
+          variant="org"
           type="button"
           className="gap-1.5"
           onClick={() => setIsProviderPickerOpen(true)}
@@ -258,22 +258,6 @@ export const InPlatformMigrationSection = () => {
       </div>
 
       {renderTable()}
-
-      <p className="mt-4 text-xs text-mineshaft-400">
-        Manage credentials in{" "}
-        <Link
-          to="/organizations/$orgId/app-connections"
-          params={{ orgId: currentOrg.id }}
-          className="text-primary underline hover:text-primary-300"
-        >
-          App Connections
-        </Link>
-        . Use{" "}
-        <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.HCVault].name}</span>{" "}
-        or{" "}
-        <span className="text-mineshaft-300">{APP_CONNECTION_MAP[AppConnection.Doppler].name}</span>{" "}
-        connection types as needed.
-      </p>
 
       <SelectInPlatformMigrationProviderModal
         isOpen={isProviderPickerOpen}

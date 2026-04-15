@@ -53,6 +53,7 @@ import {
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
 import { ExternalMigrationConfigVaultConfigSchema, ExternalMigrationProviders } from "./external-migration-schemas";
 import {
+  ExternalMigrationImportStatus,
   ExternalPlatforms,
   TCreateExternalMigrationDTO,
   TDeleteExternalMigrationDTO,
@@ -60,8 +61,7 @@ import {
   TImportDopplerSecretsDTO,
   TImportEnvKeyDataDTO,
   TImportVaultDataDTO,
-  TUpdateExternalMigrationDTO,
-  VaultImportStatus
+  TUpdateExternalMigrationDTO
 } from "./external-migration-types";
 
 type TExternalMigrationServiceFactoryDep = {
@@ -668,10 +668,10 @@ export const externalMigrationServiceFactory = ({
           }
         });
 
-        return { status: VaultImportStatus.ApprovalRequired };
+        return { status: ExternalMigrationImportStatus.ApprovalRequired };
       }
 
-      return { status: VaultImportStatus.Imported };
+      return { status: ExternalMigrationImportStatus.Imported };
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to import Vault secrets. ${error instanceof Error ? error.message : "Unknown error"}`
@@ -869,7 +869,7 @@ export const externalMigrationServiceFactory = ({
           }
         });
 
-        return { status: VaultImportStatus.ApprovalRequired, imported: 0 };
+        return { status: ExternalMigrationImportStatus.ApprovalRequired, imported: 0 };
       }
     } catch (error) {
       throw new BadRequestError({
@@ -877,7 +877,7 @@ export const externalMigrationServiceFactory = ({
       });
     }
 
-    return { status: VaultImportStatus.Imported, imported: Object.keys(dopplerSecrets).length };
+    return { status: ExternalMigrationImportStatus.Imported, imported: Object.keys(dopplerSecrets).length };
   };
 
   return {

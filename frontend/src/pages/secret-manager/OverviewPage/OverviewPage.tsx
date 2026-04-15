@@ -146,7 +146,10 @@ import {
   useImportDopplerSecrets,
   useImportVaultSecrets
 } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationImportStatus,
+  ExternalMigrationProviders
+} from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -840,7 +843,7 @@ const OverviewPageContent = () => {
       vaultSecretPath: vaultPath
     });
 
-    if (result.status === VaultImportStatus.ApprovalRequired) {
+    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
         text: "Secret change request created successfully. Awaiting approval."

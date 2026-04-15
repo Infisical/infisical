@@ -64,7 +64,7 @@ export type TImportDopplerSecretsDTO = {
   targetSecretPath: string;
 };
 
-export enum VaultImportStatus {
+export enum ExternalMigrationImportStatus {
   Imported = "imported",
   ApprovalRequired = "approval-required"
 }

@@ -7,13 +7,13 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { projectKeys } from "../projects";
 import { externalMigrationQueryKeys } from "./queries";
 import {
+  ExternalMigrationImportStatus,
   TCreateExternalMigrationConfigDTO,
   TDeleteExternalMigrationConfigDTO,
   TExternalMigrationConfig,
   TImportDopplerSecretsDTO,
   TImportVaultSecretsDTO,
-  TUpdateExternalMigrationConfigDTO,
-  VaultImportStatus
+  TUpdateExternalMigrationConfigDTO
 } from "./types";
 
 export const useImportEnvKey = () => {
@@ -81,9 +81,9 @@ export const useImportVault = () => {
 export const useImportVaultSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ status: VaultImportStatus }, object, TImportVaultSecretsDTO>({
+  return useMutation<{ status: ExternalMigrationImportStatus }, object, TImportVaultSecretsDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post<{ status: VaultImportStatus }>(
+      const { data } = await apiRequest.post<{ status: ExternalMigrationImportStatus }>(
         "/api/v3/external-migration/vault/import-secrets",
         dto
       );

@@ -210,7 +210,7 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="project" isPending={isPending} isDisabled={isPending}>
+            <Button type="submit" variant="org" isPending={isPending} isDisabled={isPending}>
               {isEdit ? "Update" : "Create"}
             </Button>
           </DialogFooter>

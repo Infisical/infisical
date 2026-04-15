@@ -1,6 +1,7 @@
 import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -9,7 +10,10 @@ import {
   ExternalMigrationConfigSchema,
   ExternalMigrationProviders
 } from "@app/services/external-migration/external-migration-schemas";
-import { VaultImportStatus, VaultMappingType } from "@app/services/external-migration/external-migration-types";
+import {
+  ExternalMigrationImportStatus,
+  VaultMappingType
+} from "@app/services/external-migration/external-migration-types";
 
 const MB25_IN_BYTES = 26214400;
 
@@ -193,6 +197,19 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission
       });
 
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.EXTERNAL_MIGRATION_CREATE,
+          metadata: {
+            configId: config.id,
+            provider: req.params.provider,
+            connectionId: req.body.connectionId
+          }
+        }
+      });
+
       return { config };
     }
   });
@@ -235,6 +252,19 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission
       });
 
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.EXTERNAL_MIGRATION_UPDATE,
+          metadata: {
+            configId: req.params.id,
+            provider: req.params.provider,
+            connectionId: req.body.connectionId
+          }
+        }
+      });
+
       return { config };
     }
   });
@@ -269,6 +299,18 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const config = await server.services.migration.deleteExternalMigration({
         id: req.params.id,
         actor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.EXTERNAL_MIGRATION_DELETE,
+          metadata: {
+            configId: req.params.id,
+            provider: req.params.provider
+          }
+        }
       });
 
       return { config };
@@ -402,7 +444,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          status: z.nativeEnum(VaultImportStatus)
+          status: z.nativeEnum(ExternalMigrationImportStatus)
         })
       }
     },
