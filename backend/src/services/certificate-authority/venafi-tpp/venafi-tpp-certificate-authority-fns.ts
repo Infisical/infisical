@@ -131,8 +131,10 @@ const parseSanToVenafiFormat = (san: string): { Type: number; Name: string } | n
     const value = san.substring(colonIdx + 1);
     switch (prefix) {
       case "dns":
+      case "dns_name":
         return { Type: VENAFI_SAN_TYPE_DNS, Name: value };
       case "ip":
+      case "ip_address":
         return { Type: VENAFI_SAN_TYPE_IP, Name: value };
       case "email":
         return { Type: VENAFI_SAN_TYPE_EMAIL, Name: value };
@@ -703,11 +705,15 @@ export const VenafiTppCertificateAuthorityFns = ({
             const value = name.substring(colonIdx + 1);
             switch (prefix) {
               case "ip":
+              case "ip_address":
                 return { type: "ip" as TAltNameType, value };
               case "email":
                 return { type: "email" as TAltNameType, value };
               case "uri":
                 return { type: "url" as TAltNameType, value };
+              case "dns":
+              case "dns_name":
+                return { type: "dns" as TAltNameType, value };
               default:
                 return { type: "dns" as TAltNameType, value: name };
             }
@@ -922,7 +928,10 @@ export const VenafiTppCertificateAuthorityFns = ({
         if (profileId && validity?.ttl && certificateProfileDAL) {
           const profile = await certificateProfileDAL.findById(profileId, tx);
           if (profile) {
-            const finalRenewBeforeDays = calculateFinalRenewBeforeDays(undefined, validity.ttl);
+            const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+              profile as { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } },
+              validity.ttl
+            );
             if (finalRenewBeforeDays !== undefined) {
               await certificateDAL.updateById(cert.id, { renewBeforeDays: finalRenewBeforeDays }, tx);
             }

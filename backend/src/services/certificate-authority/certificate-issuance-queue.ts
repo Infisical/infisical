@@ -490,9 +490,7 @@ export const certificateIssuanceQueueFactory = ({
           caId,
           profileId,
           commonName: commonName || "",
-          altNames: (altNames || []).map((san: { type: string; value: string }) =>
-            san.type ? `${san.type}:${san.value}` : san.value
-          ),
+          altNames: altNames?.map((san) => san.value) || [],
           keyUsages: keyUsages as CertKeyUsage[],
           extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           validity: { ttl },
