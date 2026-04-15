@@ -1,0 +1,63 @@
+---
+title: "Venafi TPP Connection"
+description: "Learn how to configure a Venafi Trust Protection Platform (TPP) Connection for Infisical."
+---
+
+Connect Infisical to a self-hosted Venafi Trust Protection Platform (TPP) instance to use it as an external CA for certificate issuance and management.
+
+## Prerequisites
+
+- A self-hosted [Venafi Trust Protection Platform](https://venafi.com/) instance (on-premises or private cloud)
+- An API Integration registered in your TPP instance with OAuth enabled
+- A TPP user account with `certificate:manage,discover,revoke` and `configuration` scope privileges
+- Network connectivity from Infisical to the TPP server (or an Infisical Gateway for airgapped environments)
+
+<Note>
+  To register an API Integration in Venafi TPP, navigate to **API** > **API Integrations** in the TPP web console
+  and create a new integration with a Client ID. This Client ID is required when setting up the connection in Infisical.
+</Note>
+
+## Connection Setup
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** tab on the **Organization Settings** page.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Venafi TPP** option from the connection options modal.
+    ![Select Venafi TPP Connection](/images/app-connections/venafi-tpp/venafi-tpp-select-connection.png)
+  </Step>
+  <Step title="Configure Connection Details">
+    Configure the following fields:
+
+    - **Name**: A friendly name for this connection (e.g., "Production TPP")
+    - **Method**: The authentication method. Currently only **Username & Password** is supported.
+    - **Gateway** *(optional)*: Select an Infisical Gateway if your TPP instance is in an airgapped network without direct internet access.
+    - **TPP URL**: The HTTPS URL of your Venafi TPP instance (e.g., `https://tpp.example.com`). Must use HTTPS.
+    - **Client ID**: The OAuth Client ID from your TPP API Integration.
+    - **Username**: The TPP user account. Supports formats: `DOMAIN\username`, `username@domain.com`, or local usernames.
+    - **Password**: The password for the TPP user account.
+
+    Click **Connect to Venafi TPP** to validate your credentials and create the connection.
+
+    ![Venafi TPP Connection Form](/images/app-connections/venafi-tpp/venafi-tpp-app-connection-form.png)
+
+    <Note>
+      Infisical validates the credentials by authenticating with the TPP OAuth endpoint during connection creation.
+      If validation fails, verify that:
+      - The TPP URL is correct and reachable
+      - The Client ID matches an API Integration registered in TPP
+      - The username and password are correct
+      - The API Integration has the required scopes enabled
+    </Note>
+  </Step>
+  <Step title="Connection Created">
+    Your **Venafi TPP Connection** is now available for use as an external CA in your Infisical certificate management projects.
+    ![Venafi TPP Connection Created](/images/app-connections/venafi-tpp/venafi-tpp-app-connection-created.png)
+  </Step>
+</Steps>
+
+## Gateway Support
+
+For Venafi TPP instances running in airgapped or isolated networks, you can route the connection through an [Infisical Gateway](/documentation/platform/gateways/overview). Select the appropriate gateway when creating the connection to enable Infisical to reach your TPP server through a secure tunnel.

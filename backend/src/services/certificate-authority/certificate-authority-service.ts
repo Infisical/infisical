@@ -57,6 +57,14 @@ import {
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal-certificate-authority-service";
 import { TCreateInternalCertificateAuthorityDTO } from "./internal/internal-certificate-authority-types";
+import {
+  castDbEntryToVenafiTppCertificateAuthority,
+  VenafiTppCertificateAuthorityFns
+} from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
+import {
+  TCreateVenafiTppCertificateAuthorityDTO,
+  TUpdateVenafiTppCertificateAuthorityDTO
+} from "./venafi-tpp/venafi-tpp-certificate-authority-types";
 
 type TCertificateAuthorityServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
@@ -138,6 +146,19 @@ export const certificateAuthorityServiceFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
+    certificateProfileDAL
+  });
+
+  const venafiTppFns = VenafiTppCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
     certificateProfileDAL
   });
 
@@ -227,6 +248,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.VENAFI_TPP) {
+      return venafiTppFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateVenafiTppCertificateAuthorityDTO["configuration"],
+        status,
+        actor
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -287,6 +318,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.VENAFI_TPP) {
+      return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -356,6 +391,10 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.VENAFI_TPP) {
+      return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -416,6 +455,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
+    if (type === CaType.VENAFI_TPP) {
+      return venafiTppFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -507,6 +550,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.VENAFI_TPP) {
+      return venafiTppFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateVenafiTppCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -568,6 +621,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.VENAFI_TPP) {
+      return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -662,6 +719,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.VENAFI_TPP) {
+      return venafiTppFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateVenafiTppCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -729,6 +796,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.VENAFI_TPP) {
+      return castDbEntryToVenafiTppCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });

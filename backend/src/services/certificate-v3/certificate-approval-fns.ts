@@ -438,7 +438,12 @@ export const certificateApprovalServiceFactory = (
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    if (caType !== CaType.ACME && caType !== CaType.AZURE_AD_CS && caType !== CaType.AWS_PCA) {
+    if (
+      caType !== CaType.ACME &&
+      caType !== CaType.AZURE_AD_CS &&
+      caType !== CaType.AWS_PCA &&
+      caType !== CaType.VENAFI_TPP
+    ) {
       return null;
     }
 
