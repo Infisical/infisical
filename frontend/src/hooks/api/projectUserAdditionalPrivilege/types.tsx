@@ -11,6 +11,9 @@ export type TProjectUserPrivilege = {
   createdAt: Date;
   updatedAt: Date;
   permissions?: TProjectPermission[];
+  isLinkedToAccessApproval?: boolean;
+  accessApprovalRequestId?: string | null;
+  policyApproverUserIds?: string[];
 } & (
   | {
       isTemporary: true;

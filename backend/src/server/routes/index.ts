@@ -86,6 +86,8 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountPolicyDALFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-dal";
+import { pamAccountPolicyServiceFactory } from "@app/ee/services/pam-account-policy/pam-account-policy-service";
 import { pamAccountDependenciesDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependencies-dal";
 import { pamDiscoveryQueueFactory } from "@app/ee/services/pam-discovery/pam-discovery-queue";
 import { pamDiscoverySourceAccountsDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-accounts-dal";
@@ -1206,6 +1208,10 @@ export const registerRoutes = async (
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
+    accessApprovalPolicyApproverDAL,
+    accessApprovalPolicyDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
+    secretApprovalPolicyDAL,
     membershipRoleDAL
   });
 
@@ -2810,6 +2816,7 @@ export const registerRoutes = async (
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamResourceFavoriteDAL = pamResourceFavoriteDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
+  const pamAccountPolicyDAL = pamAccountPolicyDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventBatchDAL = pamSessionEventBatchDALFactory(db);
   const pamDiscoveryRunDAL = pamDiscoveryRunDALFactory(db);
@@ -2870,8 +2877,14 @@ export const registerRoutes = async (
     pamSessionAiSummaryService
   });
 
+  const pamAccountPolicyService = pamAccountPolicyServiceFactory({
+    pamAccountPolicyDAL,
+    permissionService
+  });
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
+    pamAccountPolicyDAL,
     pamResourceRotationRulesDAL,
     gatewayV2Service,
     kmsService,
@@ -3191,6 +3204,7 @@ export const registerRoutes = async (
     pamResource: pamResourceService,
     pamResourceRotationRules: pamResourceRotationRulesService,
     pamAccount: pamAccountService,
+    pamAccountPolicy: pamAccountPolicyService,
     pamSession: pamSessionService,
     pamWebAccess: pamWebAccessService,
     pamDiscoverySource: pamDiscoverySourceService,

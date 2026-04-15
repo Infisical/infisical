@@ -3,7 +3,8 @@ import { TProjectPermission } from "@app/lib/types";
 export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
-  REJECTED = "rejected"
+  REJECTED = "rejected",
+  REVOKED = "revoked"
 }
 
 export type TVerifyPermission = {
@@ -28,6 +29,10 @@ export type TCreateAccessApprovalRequestDTO = {
   isTemporary: boolean;
   temporaryRange?: string;
   note?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRevokeAccessRequestDTO = {
+  requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalRequestDTO = {
@@ -79,6 +84,7 @@ export interface TAccessApprovalRequestServiceFactory {
       privilegeDeletedAt?: Date | null | undefined;
       expiresAt?: Date | null | undefined;
     };
+    projectId: string;
   }>;
   listApprovalRequests: (arg: TListApprovalRequestsDTO) => Promise<{
     requests: {
@@ -123,6 +129,20 @@ export interface TAccessApprovalRequestServiceFactory {
         lastName: string | null | undefined;
         username: string;
       };
+      approvedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
+      revokedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
       privilege: {
         membershipId: string;
         userId: string;
@@ -183,11 +203,33 @@ export interface TAccessApprovalRequestServiceFactory {
     createdAt: Date;
     updatedAt: Date;
     projectId: string;
+    policyId: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {
       pendingCount: number;
       finalizedCount: number;
     };
+  }>;
+  revokeAccessRequest: (arg: TRevokeAccessRequestDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      requestedBy?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      privilegeDeletedAt?: Date | null | undefined;
+      expiresAt?: Date | null | undefined;
+      revokedAt?: Date | null | undefined;
+      revokedByUserId?: string | null | undefined;
+    };
+    projectId: string;
   }>;
 }
