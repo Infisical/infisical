@@ -16,6 +16,7 @@ import {
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
   TListWebhookDTO,
+  TSubscribableWebhookEvent,
   TTestWebhookDTO,
   TUpdateWebhookDTO,
   WebhookEvents
@@ -43,7 +44,9 @@ export const webhookServiceFactory = ({
   // (webhook fires on everything subscribable).
   const withEventsFilter = <T extends { filteredEvents?: string[] | null }>(webhook: T) => ({
     ...webhook,
-    eventsFilter: (webhook.filteredEvents ?? []).map((eventName) => ({ eventName }))
+    eventsFilter: (webhook.filteredEvents ?? []).map((eventName) => ({
+      eventName: eventName as TSubscribableWebhookEvent
+    }))
   });
 
   const createWebhook = async ({
