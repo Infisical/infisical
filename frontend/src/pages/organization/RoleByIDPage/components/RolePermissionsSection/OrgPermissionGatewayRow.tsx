@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Control, UseFormSetValue } from "react-hook-form";
+import { TrashIcon } from "lucide-react";
 
 import {
   PermissionActionSelect,
@@ -8,9 +9,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableAccordionContent,
   UnstableAccordionItem,
-  UnstableAccordionTrigger
+  UnstableAccordionTrigger,
+  UnstableIconButton
 } from "@app/components/v3";
 import {
   OrgGatewayPermissionActions,
@@ -25,6 +30,7 @@ type Props = {
   isEditable: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
+  onDelete?: () => void;
 };
 
 enum Permission {
@@ -34,7 +40,7 @@ enum Permission {
   Custom = "custom"
 }
 
-export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props) => {
+export const OrgGatewayPermissionRow = ({ isEditable, control, setValue, onDelete }: Props) => {
   const [isCustom, setIsCustom] = useToggle();
 
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
@@ -128,7 +134,7 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
               {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Gateway].description}
             </span>
           </div>
-          <div role="none" onClick={(e) => e.stopPropagation()}>
+          <div role="none" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Select
               value={selectedPermissionCategory}
               onValueChange={handlePermissionChange}
@@ -151,6 +157,21 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
                 </SelectItem>
               </SelectContent>
             </Select>
+            {isEditable && onDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UnstableIconButton
+                    type="button"
+                    variant="danger"
+                    aria-label="Remove policy"
+                    onClick={onDelete}
+                  >
+                    <TrashIcon className="size-4" />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent side="top">Remove Policy</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </UnstableAccordionTrigger>

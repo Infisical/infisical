@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Control, UseFormSetValue } from "react-hook-form";
+import { TrashIcon } from "lucide-react";
 
 import {
   PermissionActionSelect,
@@ -8,9 +9,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableAccordionContent,
   UnstableAccordionItem,
-  UnstableAccordionTrigger
+  UnstableAccordionTrigger,
+  UnstableIconButton
 } from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
@@ -24,6 +29,7 @@ type Props = {
   isEditable: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
+  onDelete?: () => void;
 };
 
 enum Permission {
@@ -31,7 +37,7 @@ enum Permission {
   Custom = "custom"
 }
 
-export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Props) => {
+export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue, onDelete }: Props) => {
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
@@ -78,7 +84,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
               {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AuditLogs].description}
             </span>
           </div>
-          <div role="none" onClick={(e) => e.stopPropagation()}>
+          <div role="none" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Select
               value={selectedPermissionCategory}
               onValueChange={handlePermissionChange}
@@ -99,6 +105,21 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
                 </SelectItem>
               </SelectContent>
             </Select>
+            {isEditable && onDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UnstableIconButton
+                    type="button"
+                    variant="danger"
+                    aria-label="Remove policy"
+                    onClick={onDelete}
+                  >
+                    <TrashIcon className="size-4" />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent side="top">Remove Policy</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </UnstableAccordionTrigger>

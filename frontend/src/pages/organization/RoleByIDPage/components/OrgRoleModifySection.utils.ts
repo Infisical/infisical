@@ -854,6 +854,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
 export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   const permissions: TPermission[] = [];
   Object.entries(formVal || {}).forEach(([rule, actions]) => {
+    if (!actions) return;
     Object.entries(actions).forEach(([action, isAllowed]) => {
       if (isAllowed) {
         permissions.push({ subject: rule, action });
