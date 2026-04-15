@@ -30,6 +30,7 @@ import { OrgPermissionEmailDomainRow } from "./OrgPermissionEmailDomainRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
+import { OrgPermissionGithubOrgSyncManualRow } from "./OrgPermissionGithubOrgSyncManualRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
 import { OrgRelayPermissionRow } from "./OrgPermissionRelayRow";
@@ -48,7 +49,6 @@ const SIMPLE_PERMISSION_SUBJECTS = [
   OrgPermissionSubjects.Ldap,
   OrgPermissionSubjects.Scim,
   OrgPermissionSubjects.GithubOrgSync,
-  OrgPermissionSubjects.GithubOrgSyncManual,
   OrgPermissionSubjects.Kms,
   OrgPermissionSubjects.ProjectTemplates
 ] as const;
@@ -181,6 +181,19 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                     onDelete={isCustomRole ? () => handleDeletePermission(subject) : undefined}
                   />
                 ))}
+              {isRootOrganization &&
+                permissions?.[OrgPermissionSubjects.GithubOrgSyncManual] !== undefined && (
+                  <OrgPermissionGithubOrgSyncManualRow
+                    control={control}
+                    setValue={setValue}
+                    isEditable={isCustomRole}
+                    onDelete={
+                      isCustomRole
+                        ? () => handleDeletePermission(OrgPermissionSubjects.GithubOrgSyncManual)
+                        : undefined
+                    }
+                  />
+                )}
               {isRootOrganization && permissions?.[OrgPermissionSubjects.Sso] !== undefined && (
                 <OrgPermissionSsoRow
                   control={control}
