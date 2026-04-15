@@ -136,7 +136,7 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
               </SelectTrigger>
               <SelectContent
                 position="popper"
-                className="border text-left border-mineshaft-600 bg-mineshaft-800"
+                className="border border-mineshaft-600 bg-mineshaft-800 text-left"
               >
                 <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
                 <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
