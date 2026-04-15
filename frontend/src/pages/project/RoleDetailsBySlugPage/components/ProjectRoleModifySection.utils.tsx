@@ -3488,15 +3488,21 @@ const projectManagerTemplate = (
     },
     {
       subject: ProjectPermissionSub.Groups,
-      actions: Object.values(ProjectPermissionGroupActions)
+      actions: Object.values(ProjectPermissionGroupActions).filter(
+        (a) => a !== ProjectPermissionGroupActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Member,
-      actions: Object.values(ProjectPermissionMemberActions)
+      actions: Object.values(ProjectPermissionMemberActions).filter(
+        (a) => a !== ProjectPermissionMemberActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Identity,
-      actions: Object.values(ProjectPermissionIdentityActions)
+      actions: Object.values(ProjectPermissionIdentityActions).filter(
+        (a) => a !== ProjectPermissionIdentityActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Project,

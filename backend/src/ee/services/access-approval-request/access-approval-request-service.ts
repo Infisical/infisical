@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
@@ -26,13 +27,14 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -473,7 +475,7 @@ export const accessApprovalRequestServiceFactory = ({
       return approvalRequest;
     });
 
-    return { request: approval };
+    return { request: approval, projectId: accessApprovalRequest.projectId };
   };
 
   const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({
@@ -755,7 +757,12 @@ export const accessApprovalRequestServiceFactory = ({
           }
           await accessApprovalRequestDAL.updateById(
             accessApprovalRequest.id,
-            { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
+            {
+              privilegeId: privilegeIdToSet,
+              status: ApprovalStatus.APPROVED,
+              approvedAt: new Date(),
+              approvedByUserId: actorId
+            },
             tx
           );
 
@@ -816,7 +823,75 @@ export const accessApprovalRequestServiceFactory = ({
       return reviewForThisActorProcessing;
     });
 
-    return { ...reviewStatus, projectId: accessApprovalRequest.projectId };
+    return { ...reviewStatus, projectId: accessApprovalRequest.projectId, policyId: accessApprovalRequest.policyId };
+  };
+
+  const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
+    if (!accessApprovalRequest)
+      throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const targetUser = await userDAL.findById(accessApprovalRequest.requestedByUserId);
+    if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
+
+    const memberSubject = subject(ProjectPermissionSub.Member, {
+      userEmail: targetUser.email ?? undefined
+    });
+
+    const canAssignAdditionalPrivileges = permission.can(
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      memberSubject
+    );
+    const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
+    const isApprover = accessApprovalRequest.policy.approvers.some((approver) => approver.userId === actorId);
+
+    if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to revoke additional privileges for this user"
+      });
+    }
+
+    if (accessApprovalRequest.status !== ApprovalStatus.APPROVED) {
+      throw new BadRequestError({ message: "Only approved requests can be revoked" });
+    }
+
+    const updatedRequest = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const result = await accessApprovalRequestDAL.updateById(
+        requestId,
+        {
+          status: ApprovalStatus.REVOKED,
+          revokedAt: new Date(),
+          revokedByUserId: actorId,
+          privilegeId: null
+        },
+        tx
+      );
+
+      if (accessApprovalRequest.privilegeId) {
+        await additionalPrivilegeDAL.deleteById(accessApprovalRequest.privilegeId, tx);
+      }
+
+      await permissionService.invalidateProjectPermissionCache(accessApprovalRequest.projectId, tx);
+
+      return result;
+    });
+
+    return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
   };
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
@@ -849,6 +924,7 @@ export const accessApprovalRequestServiceFactory = ({
     updateAccessApprovalRequest,
     listApprovalRequests,
     reviewAccessRequest,
+    revokeAccessRequest,
     getCount
   };
 };
