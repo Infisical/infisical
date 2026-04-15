@@ -72,13 +72,13 @@
     "ts-node": {
       "diff": "^4.0.4"
     },
-    "hono": ">=4.12.12",
-    "@hono/node-server": ">=1.19.13",
+    "hono": "^4.12.12",
+    "@hono/node-server": "^1.19.13",
     "vite": "^7.3.2",
     "@xmldom/xmldom": "^0.8.12",
-    "lodash": ">=4.18.0",
-    "tar": ">=7.5.11",
-    "flatted": ">=3.4.2"
+    "lodash": "^4.18.0",
+    "tar": "^7.5.11",
+    "flatted": "^3.4.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.18.10",
