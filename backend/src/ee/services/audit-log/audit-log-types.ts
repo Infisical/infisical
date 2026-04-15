@@ -615,6 +615,11 @@ export enum EventType {
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_ACCOUNT_POLICY_CREATE = "pam-account-policy-create",
+  PAM_ACCOUNT_POLICY_UPDATE = "pam-account-policy-update",
+  PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
+  PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
+  PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
   PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
@@ -4882,6 +4887,49 @@ interface PamAccountCredentialRotationFailedEvent {
   };
 }
 
+interface PamAccountPolicyCreateEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_CREATE;
+  metadata: {
+    projectId: string;
+    name: string;
+    description?: string;
+  };
+}
+
+interface PamAccountPolicyUpdateEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_UPDATE;
+  metadata: {
+    policyId: string;
+    projectId: string;
+    name?: string;
+    isActive?: boolean;
+  };
+}
+
+interface PamAccountPolicyDeleteEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_DELETE;
+  metadata: {
+    policyId: string;
+    projectId: string;
+    name: string;
+  };
+}
+
+interface PamAccountPolicyListEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_LIST;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface PamAccountPolicyGetEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_GET;
+  metadata: {
+    policyId: string;
+    projectId: string;
+  };
+}
+
 interface PamAccountReadCredentialsEvent {
   type: EventType.PAM_ACCOUNT_READ_CREDENTIALS;
   metadata: {
@@ -6236,6 +6284,11 @@ export type Event =
   | PamAccountDeleteEvent
   | PamAccountCredentialRotationEvent
   | PamAccountCredentialRotationFailedEvent
+  | PamAccountPolicyCreateEvent
+  | PamAccountPolicyUpdateEvent
+  | PamAccountPolicyDeleteEvent
+  | PamAccountPolicyListEvent
+  | PamAccountPolicyGetEvent
   | PamAccountReadCredentialsEvent
   | PamResourceListEvent
   | PamResourceGetEvent

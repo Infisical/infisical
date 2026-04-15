@@ -191,6 +191,7 @@ export type TCreatePamAccountDTO = Pick<
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
+  policyId?: string | null;
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -200,6 +201,7 @@ export type TUpdatePamAccountDTO = Partial<
   resourceType: PamResourceType;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
+  policyId?: string | null;
 };
 
 export type TDeletePamAccountDTO = {
@@ -287,4 +289,48 @@ export type TPamSessionLogsPage = {
   logs: TPamSessionLog[];
   hasMore: boolean;
   batchCount: number;
+};
+
+// Account Policy types
+export enum PamAccountPolicyRuleType {
+  CommandBlocking = "command-blocking",
+  SessionLogMasking = "session-log-masking"
+}
+
+export type TPamAccountPolicyRuleConfig = {
+  patterns: string[];
+};
+
+export type TPamAccountPolicyRules = Partial<
+  Record<PamAccountPolicyRuleType, TPamAccountPolicyRuleConfig>
+>;
+
+export type TPamAccountPolicy = {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string | null;
+  rules: TPamAccountPolicyRules;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreatePamAccountPolicyDTO = {
+  projectId: string;
+  name: string;
+  description?: string;
+  rules: TPamAccountPolicyRules;
+};
+
+export type TUpdatePamAccountPolicyDTO = {
+  policyId: string;
+  name?: string;
+  description?: string | null;
+  rules?: TPamAccountPolicyRules;
+  isActive?: boolean;
+};
+
+export type TDeletePamAccountPolicyDTO = {
+  policyId: string;
 };
