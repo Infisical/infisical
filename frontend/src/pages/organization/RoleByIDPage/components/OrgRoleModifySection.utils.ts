@@ -182,6 +182,9 @@ export const formSchema = z.object({
       sso: ssoPermissionSchema,
       scim: generalPermissionSchema,
       [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
+      [OrgPermissionSubjects.GithubOrgSyncManual]: z
+        .object({ edit: z.boolean().optional() })
+        .optional(),
       ldap: generalPermissionSchema,
       billing: billingPermissionSchema,
       identity: identityPermissionSchema,
@@ -430,6 +433,17 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionActions.Delete,
         label: "Remove",
         description: "Remove GitHub organization sync"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.GithubOrgSyncManual]: {
+    title: "GitHub Organization Sync (Manual)",
+    description: "Manually trigger GitHub organization sync",
+    actions: [
+      {
+        value: OrgPermissionActions.Edit,
+        label: "Trigger",
+        description: "Manually trigger a GitHub organization sync"
       }
     ]
   },

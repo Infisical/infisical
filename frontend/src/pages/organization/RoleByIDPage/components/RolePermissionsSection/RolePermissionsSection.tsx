@@ -48,6 +48,7 @@ const SIMPLE_PERMISSION_SUBJECTS = [
   OrgPermissionSubjects.Ldap,
   OrgPermissionSubjects.Scim,
   OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
   OrgPermissionSubjects.Kms,
   OrgPermissionSubjects.ProjectTemplates
 ] as const;
