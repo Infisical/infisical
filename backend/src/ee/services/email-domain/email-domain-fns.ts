@@ -28,7 +28,8 @@ export const verifyEmailDomainOwnership = async ({
 
   if (!verifiedDomain) {
     throw new BadRequestError({
-      message: "Your organization does not have a verified domain for this email address"
+      message:
+        "The email you attempted to login in with is not a part of the accepted domains of the selected organization. Please consult with your organization admin for further assistance."
     });
   }
 };

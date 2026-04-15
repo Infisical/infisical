@@ -42,13 +42,31 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
 import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
 import { ScimEvent, TScimGroup, TScimServiceFactory } from "./scim-types";
+
+const verifyEmailDomainOwnership = async (args: {
+  email: string;
+  orgId: string;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+}) => {
+  try {
+    await verifyEmailDomainOwnershipValidate(args);
+  } catch (error) {
+    if (error instanceof BadRequestError) {
+      throw new ScimRequestError({
+        detail: error.message,
+        status: 403
+      });
+    }
+    throw error;
+  }
+};
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById" | "findExpiringTokens" | "update">;
