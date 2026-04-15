@@ -4,24 +4,14 @@ description: "Run the Infisical gateway or manage its systemd service"
 ---
 
 <Tabs>
-  <Tab title="Enrollment token">
+  <Tab title="CLI">
     ```bash
     infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
     ```
   </Tab>
-  <Tab title="Machine identity">
-    ```bash
-    infisical gateway start <name> --auth-method=<auth-method>
-    ```
-  </Tab>
-  <Tab title="systemd (enrollment token)">
+  <Tab title="systemd">
     ```bash
     sudo infisical gateway systemd install <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
-    ```
-  </Tab>
-  <Tab title="systemd (machine identity)">
-    ```bash
-    sudo infisical gateway systemd install <name> --token=<token> --domain=<domain>
     ```
   </Tab>
 </Tabs>
@@ -63,13 +53,11 @@ Once started, the gateway component will:
 - Automatically reconnect if the connection is lost
 - Provide access to private resources within your network
 
-### Authentication
+### Flags
 
-The Gateway supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
-
-<AccordionGroup>
-  <Accordion title="Enrollment Token (Recommended)">
-    The simplest way to deploy a gateway. Create the gateway in the Infisical UI, which generates a one-time enrollment token. The CLI enrolls and starts the gateway in a single command.
+  <AccordionGroup>
+  <Accordion title="--enroll-method">
+    The enrollment method to use. Currently only `token` is supported. Additional authentication methods will be available in the future.
 
       <ParamField query="Flags">
       <Expandable title="properties">
@@ -92,202 +80,7 @@ The Gateway supports multiple authentication methods. Below are the available au
     After enrollment, the gateway saves its credentials locally. You can safely re-run the same command to restart the gateway. It will detect the token has already been used and skip enrollment automatically.
 
   </Accordion>
-  <Accordion title="Universal Auth">
-    The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
 
-      <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="client-id" type="string" required>
-          Your machine identity client ID.
-          </ParamField>
-          <ParamField query="client-secret" type="string" required>
-          Your machine identity client secret.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `universal-auth` when using Universal Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway start <name> --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
-    ```
-
-  </Accordion>
-  <Accordion title="Native Kubernetes">
-    The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
-
-      <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-          Your machine identity ID.
-          </ParamField>
-          <ParamField query="service-account-token-path" type="string" optional>
-            Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `kubernetes` when using Native Kubernetes.
-          </ParamField>
-      </Expandable>
-
-    </ParamField>
-
-
-    ```bash
-      infisical gateway start <name> --auth-method=kubernetes --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Native Azure">
-    The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `azure` when using Native Azure.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-
-    ```bash
-      infisical gateway start <name> --auth-method=azure --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Native GCP ID Token">
-    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `gcp-id-token` when using Native GCP ID Token.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-
-    ```bash
-      infisical gateway start <name> --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="GCP IAM">
-    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-          Your machine identity ID.
-          </ParamField>
-          <ParamField query="service-account-key-file-path" type="string" required>
-            Path to your GCP service account key file _(Must be in JSON format!)_
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `gcp-iam` when using GCP IAM.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway start <name> --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
-    ```
-
-  </Accordion>
-  <Accordion title="Native AWS IAM">
-    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `aws-iam` when using Native AWS IAM.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-      ```bash
-        infisical gateway start <name> --auth-method=aws-iam --machine-identity-id=<machine-identity-id>
-      ```
-
-  </Accordion>
-  <Accordion title="OIDC Auth">
-    The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="jwt" type="string" required>
-            The OIDC JWT from the identity provider.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `oidc-auth` when using OIDC Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway start <name> --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
-    ```
-
-  </Accordion>
-
-  <Accordion title="JWT Auth">
-    The JWT Auth method is used to authenticate with Infisical via a JWT token.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="jwt" type="string" required>
-            The JWT token to use for authentication.
-          </ParamField>
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `jwt-auth` when using JWT Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-    ```bash
-      infisical gateway start <name> --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Token Auth">
-    You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="token" type="string" required>
-            The machine identity access token to use for authentication.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway start <name> --token=<token>
-    ```
-
-  </Accordion>
-</AccordionGroup>
-
-### Other Flags
-
-  <AccordionGroup>
   <Accordion title="--target-relay-name">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
@@ -295,22 +88,10 @@ The Gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    infisical gateway start my-gateway --target-relay-name=my-relay --token=<token>
+    infisical gateway start my-gateway --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
-
-  </Accordion>
-
-
-
-  <Accordion title="--enroll-method">
-    The enrollment method to use. When set to `token`, the `--token` flag is treated as a one-time enrollment token instead of a machine identity access token.
-
-    ```bash
-    # Example
-    infisical gateway start my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
-    ```
 
   </Accordion>
 
@@ -319,7 +100,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    infisical gateway start <name> --domain=https://app.your-domain.com
+    infisical gateway start <name> --domain=https://app.your-domain.com --enroll-method=token --token=<token>
     ```
 
   </Accordion>
@@ -327,14 +108,10 @@ The Gateway supports multiple authentication methods. Below are the available au
 </Accordion>
 
 <Accordion title="infisical gateway systemd install">
-  Install and enable the gateway as a systemd service. This command must be run with sudo on Linux. Supports both enrollment token and machine identity authentication.
+  Install and enable the gateway as a systemd service. This command must be run with sudo on Linux.
 
 ```bash
-# Enrollment token
 sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<enrollment-token> --domain=<domain>
-
-# Machine identity
-sudo infisical gateway systemd install my-gateway --token=<machine-identity-token> --domain=<domain>
 ```
 
 ### Requirements
@@ -347,7 +124,7 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    The enrollment method to use. When set to `token`, the `--token` flag is treated as a one-time enrollment token.
+    The enrollment method to use. Currently only `token` is supported.
 
     ```bash
     # Example
@@ -357,14 +134,12 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
   </Accordion>
 
   <Accordion title="--token">
-    The authentication token. When `--enroll-method=token` is set, this is a one-time enrollment token. Otherwise, it is a machine identity access token.
+    The one-time enrollment token from the Infisical UI.
 
     ```bash
     # Example
-    sudo infisical gateway systemd install my-gateway --token=<token>
+    sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<token> --domain=<domain>
     ```
-
-    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
 
   </Accordion>
 
@@ -373,7 +148,7 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
 
     ```bash
     # Example
-    sudo infisical gateway systemd install my-gateway --domain=https://app.your-domain.com
+    sudo infisical gateway systemd install my-gateway --enroll-method=token --token=<token> --domain=https://app.your-domain.com
     ```
 
   </Accordion>
@@ -385,7 +160,7 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
 
     ```bash
     # Example
-    sudo infisical gateway systemd install <name> --target-relay-name=my-relay --token=<token>
+    sudo infisical gateway systemd install my-gateway --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
@@ -439,204 +214,6 @@ Run the legacy Infisical gateway in the foreground. The gateway will connect to 
 infisical gateway --domain=<domain> --auth-method=<auth-method>
 ```
 
-### Authentication
-
-The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
-
-<AccordionGroup>
-  <Accordion title="Universal Auth">
-    The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
-
-      <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="client-id" type="string" required>
-          Your machine identity client ID.
-          </ParamField>
-          <ParamField query="client-secret" type="string" required>
-          Your machine identity client secret.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `universal-auth` when using Universal Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
-    ```
-
-  </Accordion>
-  <Accordion title="Native Kubernetes">
-    The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
-
-      <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-          Your machine identity ID.
-          </ParamField>
-          <ParamField query="service-account-token-path" type="string" optional>
-            Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `kubernetes` when using Native Kubernetes.
-          </ParamField>
-      </Expandable>
-
-    </ParamField>
-
-
-    ```bash
-      infisical gateway --auth-method=kubernetes --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Native Azure">
-    The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `azure` when using Native Azure.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-
-    ```bash
-      infisical gateway --auth-method=azure --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Native GCP ID Token">
-    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `gcp-id-token` when using Native GCP ID Token.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-
-    ```bash
-      infisical gateway --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="GCP IAM">
-    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-          Your machine identity ID.
-          </ParamField>
-          <ParamField query="service-account-key-file-path" type="string" required>
-            Path to your GCP service account key file _(Must be in JSON format!)_
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `gcp-iam` when using GCP IAM.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path>
-    ```
-
-  </Accordion>
-  <Accordion title="Native AWS IAM">
-    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `aws-iam` when using Native AWS IAM.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-      ```bash
-        infisical gateway --auth-method=aws-iam --machine-identity-id=<machine-identity-id>
-      ```
-
-  </Accordion>
-  <Accordion title="OIDC Auth">
-    The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="jwt" type="string" required>
-            The OIDC JWT from the identity provider.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `oidc-auth` when using OIDC Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
-    ```
-
-  </Accordion>
-
-  <Accordion title="JWT Auth">
-    The JWT Auth method is used to authenticate with Infisical via a JWT token.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="jwt" type="string" required>
-            The JWT token to use for authentication.
-          </ParamField>
-          <ParamField query="machine-identity-id" type="string" required>
-            Your machine identity ID.
-          </ParamField>
-          <ParamField query="auth-method" type="string" required>
-            The authentication method to use. Must be `jwt-auth` when using JWT Auth.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-
-    ```bash
-      infisical gateway --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
-    ```
-
-  </Accordion>
-  <Accordion title="Token Auth">
-    You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
-
-    <ParamField query="Flags">
-      <Expandable title="properties">
-          <ParamField query="token" type="string" required>
-            The machine identity access token to use for authentication.
-          </ParamField>
-      </Expandable>
-    </ParamField>
-
-    ```bash
-      infisical gateway --token=<token>
-    ```
-
-  </Accordion>
-</AccordionGroup>
-
 ### Other Flags
 
   <AccordionGroup>
@@ -674,32 +251,6 @@ sudo infisical gateway install --token=<token> --domain=<domain>
 - Must be run with root/sudo privileges
 - Requires systemd
 
-### Flags
-
-  <AccordionGroup>
-  <Accordion title="--token">
-    The machine identity access token to authenticate with Infisical.
-
-    ```bash
-    # Example
-    sudo infisical gateway install --token=<token>
-    ```
-
-    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
-
-  </Accordion>
-
-  <Accordion title="--domain">
-    Domain of your self-hosted Infisical instance.
-
-    ```bash
-    # Example
-    sudo infisical gateway install --domain=https://app.your-domain.com
-    ```
-
-  </Accordion>
-  </AccordionGroup>
-
 ### Service Details
 
 The systemd service is installed with secure defaults:
@@ -736,5 +287,8 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
+  </Accordion>
+  <Accordion title="Will additional authentication methods be supported?">
+      Yes. Additional gateway authentication methods are planned for future releases.
   </Accordion>
 </AccordionGroup>
