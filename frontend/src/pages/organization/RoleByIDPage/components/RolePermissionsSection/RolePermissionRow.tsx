@@ -42,6 +42,7 @@ type Props = {
     | "app-connections"
     | "identity"
     | "groups"
+    | "service-account"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
