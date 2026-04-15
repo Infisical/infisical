@@ -326,7 +326,7 @@ export const FilterBuilder = ({
             Save as View...
           </Button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {hasEmptyRules && (
             <span className="text-xs text-muted">Empty filters will be ignored</span>
           )}
