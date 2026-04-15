@@ -46,7 +46,7 @@ import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
   groupDAL: Pick<
@@ -78,10 +78,7 @@ type TGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getOrgPermissionByRoles" | "invalidateProjectPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
@@ -905,10 +902,10 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const usersWithUsername = await userDAL.findUserByUsername(username);
+    const user = await userDAL.findOne({
+      username
+    });
     // akhilmhdh: case sensitive email resolution
-    const user =
-      usersWithUsername?.length > 1 ? usersWithUsername.find((el) => el.username === username) : usersWithUsername?.[0];
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await addUsersToGroupByUserIds({
@@ -1074,10 +1071,7 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const usersWithUsername = await userDAL.findUserByUsername(username);
-    // akhilmhdh: case sensitive email resolution
-    const user =
-      usersWithUsername?.length > 1 ? usersWithUsername.find((el) => el.username === username) : usersWithUsername?.[0];
+    const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await removeUsersFromGroupByUserIds({
@@ -1169,7 +1163,8 @@ export const groupServiceFactory = ({
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
-      identityGroupMembershipDAL
+      identityGroupMembershipDAL,
+      membershipGroupDAL
     });
 
     await cleanUpSubOrgProjectMemberships({

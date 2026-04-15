@@ -26,6 +26,7 @@ import {
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -41,24 +42,24 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { UserEncryption } from "../user/user-types";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
+import { enforceUserLockStatus, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
   TOauthLoginDTO,
-  TOauthTokenExchangeDTO,
+  TProcessProviderCallbackDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import {
   ActorType,
   AuthMethod,
-  AuthModeJwtTokenPayload,
   AuthModeMfaJwtTokenPayload,
   AuthTokenType,
-  MfaMethod
+  MfaMethod,
+  ProviderAuthResult,
+  TProviderAuthCallback
 } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
@@ -150,6 +151,63 @@ export const authLoginServiceFactory = ({
   };
 
   /*
+   * Private
+   * Determines the required MFA method based on org enforcement vs user preference.
+   */
+  const getRequiredMfaMethod = (
+    org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
+    user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
+  ): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
+    const isOrgMfaEnforced = Boolean(org.enforceMfa);
+    const isUserMfaEnabled = Boolean(user.isMfaEnabled);
+    const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
+
+    const requiredMfaMethod = isOrgMfaEnforced
+      ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
+      : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
+
+    return { isMfaRequired, requiredMfaMethod };
+  };
+
+  /*
+   * Private
+   * Issues an MFA challenge: generates an MFA JWT token and sends the email code if needed.
+   */
+  const issueMfaChallenge = async ({
+    userId,
+    email,
+    authMethod,
+    organizationId,
+    requiredMfaMethod
+  }: {
+    userId: string;
+    email?: string | null;
+    authMethod: AuthMethod;
+    organizationId?: string;
+    requiredMfaMethod: MfaMethod;
+  }) => {
+    const appCfg = getConfig();
+
+    const mfaToken = crypto.jwt().sign(
+      {
+        authMethod,
+        authTokenType: AuthTokenType.MFA_TOKEN,
+        userId,
+        organizationId,
+        email
+      },
+      appCfg.AUTH_SECRET,
+      { expiresIn: appCfg.JWT_MFA_LIFETIME }
+    );
+
+    if (requiredMfaMethod === MfaMethod.EMAIL && email) {
+      await sendUserMfaCode({ userId, email });
+    }
+
+    return mfaToken;
+  };
+
+  /*
    * Generate the auth and refresh token.
    * Shared by mfa verification, login verification with mfa disabled, and select organization.
    * Note: device tracking (updateUserDeviceSession) is intentionally NOT called here —
@@ -157,7 +215,7 @@ export const authLoginServiceFactory = ({
    */
   const generateUserTokens = async (
     {
-      user,
+      userId,
       ip,
       userAgent,
       organizationId,
@@ -166,7 +224,7 @@ export const authLoginServiceFactory = ({
       isMfaVerified,
       mfaMethod
     }: {
-      user: TUsers;
+      userId: string;
       ip: string;
       userAgent: string;
       organizationId?: string;
@@ -182,7 +240,7 @@ export const authLoginServiceFactory = ({
       {
         userAgent,
         ip,
-        userId: user.id
+        userId
       },
       tx
     );
@@ -195,7 +253,7 @@ export const authLoginServiceFactory = ({
       const org = await orgDAL.findById(organizationId);
       if (org) {
         await membershipUserDAL.update(
-          { actorUserId: user.id, scopeOrgId: org.id, scope: AccessScope.Organization },
+          { actorUserId: userId, scopeOrgId: org.id, scope: AccessScope.Organization },
           { lastLoginAuthMethod: authMethod, lastLoginTime: new Date() }
         );
         if (org.userTokenExpiration) {
@@ -209,7 +267,7 @@ export const authLoginServiceFactory = ({
       {
         authMethod,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: user.id,
+        userId,
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
         organizationId,
@@ -225,7 +283,7 @@ export const authLoginServiceFactory = ({
       {
         authMethod,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
-        userId: user.id,
+        userId,
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
         organizationId,
@@ -238,6 +296,62 @@ export const authLoginServiceFactory = ({
     );
 
     return { access: accessToken, refresh: refreshToken };
+  };
+
+  const processProviderCallback = async ({
+    user,
+    authMethod,
+    isEmailVerified,
+    aliasId,
+    ip,
+    userAgent,
+    organizationId,
+    callbackPort
+  }: TProcessProviderCallbackDTO): Promise<TProviderAuthCallback> => {
+    const appCfg = getConfig();
+
+    if (!user.isAccepted || !isEmailVerified) {
+      const signupToken = crypto.jwt().sign(
+        {
+          authTokenType: AuthTokenType.SIGNUP_TOKEN,
+          userId: user.id,
+          authMethod,
+          isEmailVerified,
+          aliasId,
+          organizationId,
+          callbackPort,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        },
+        appCfg.AUTH_SECRET,
+        { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
+      );
+
+      return { result: ProviderAuthResult.SIGNUP_REQUIRED, signupToken, callbackPort } as const;
+    }
+
+    // let them select the org and do the mfa
+    const tokens = await generateUserTokens({
+      userId: user.id,
+      ip,
+      userAgent,
+      authMethod
+    });
+
+    if (organizationId) {
+      await membershipUserDAL.update(
+        {
+          actorUserId: user.id,
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization,
+          status: OrgMembershipStatus.Invited
+        },
+        { status: OrgMembershipStatus.Accepted }
+      );
+    }
+
+    return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
   };
 
   /*
@@ -280,7 +394,8 @@ export const authLoginServiceFactory = ({
     }
 
     if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-      validateProviderAuthToken(providerAuthToken as string, email);
+      // Deprecated: provider token validation removed. This path is only reachable from legacy SRP clients.
+      if (!providerAuthToken) throw new UnauthorizedError();
     }
 
     const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
@@ -300,7 +415,6 @@ export const authLoginServiceFactory = ({
     clientProof,
     ip,
     userAgent,
-    providerAuthToken,
     captchaToken,
     password
   }: TLoginClientProofDTO) => {
@@ -314,8 +428,10 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
 
-    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
-    await verifyCaptcha(user, captchaToken);
+    // Deprecated SRP path: default to email auth. Provider token exchange is no longer supported.
+    const authMethod = AuthMethod.EMAIL;
+    const organizationId: string | undefined = undefined;
+    await verifyCaptcha(user.consecutiveFailedPasswordAttempts, captchaToken);
 
     if (!userEnc.salt || !userEnc.verifier) {
       throw new BadRequestError({ message: "Salt or verifier not found" });
@@ -380,10 +496,7 @@ export const authLoginServiceFactory = ({
     }
 
     const token = await generateUserTokens({
-      user: {
-        ...userEnc,
-        id: userEnc.userId
-      },
+      userId: userEnc.userId,
       ip,
       userAgent,
       authMethod,
@@ -394,55 +507,38 @@ export const authLoginServiceFactory = ({
   };
 
   const login = async ({
-    email,
+    email: unsanitizedEmail,
     password,
     ip,
     userAgent,
-    providerAuthToken,
     captchaToken
   }: {
     email: string;
     password: string;
     ip: string;
     userAgent: string;
-    providerAuthToken?: string;
     captchaToken?: string;
   }) => {
     const appCfg = getConfig();
+    const email = sanitizeEmail(unsanitizedEmail);
 
     try {
-      const usersByUsername = await userDAL.findUserEncKeyByUsername({
-        username: email
-      });
-      const userEnc =
-        usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
-
-      if (!userEnc) throw new BadRequestError({ message: "User not found" });
-
-      if (userEnc.encryptionVersion !== UserEncryption.V2) {
-        throw new BadRequestError({
-          message: "Legacy encryption scheme not supported",
-          name: "LegacyEncryptionScheme"
-        });
+      const user = await userDAL.findOne({ username: email });
+      if (!user) {
+        logger.error(`Failed to find user for email ${email}`);
+        throw new BadRequestError({ message: "Invalid credentials" });
       }
 
-      if (!userEnc.hashedPassword) {
-        if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
-          throw new BadRequestError({
-            message: "Legacy encryption scheme not supported",
-            name: "LegacyEncryptionScheme"
-          });
-        }
-
-        throw new BadRequestError({ message: "No password found" });
+      if (!user.authMethods?.includes(AuthMethod.EMAIL) || !user.hashedPassword || !user.isEmailVerified) {
+        logger.error(`User doesn't have email auth enabled ${email}`);
+        throw new BadRequestError({ message: "Invalid credentials" });
       }
 
-      const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
-      await verifyCaptcha(userEnc, captchaToken);
+      await verifyCaptcha(user.consecutiveFailedPasswordAttempts, captchaToken);
 
-      if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
+      if (!(await crypto.hashing().compareHash(password, user.hashedPassword))) {
         await userDAL.update(
-          { id: userEnc.userId },
+          { id: user.id },
           {
             $incr: {
               consecutiveFailedPasswordAttempts: 1
@@ -450,53 +546,27 @@ export const authLoginServiceFactory = ({
           }
         );
 
-        throw new BadRequestError({ message: "Invalid username or email" });
+        throw new BadRequestError({ message: "Invalid credentials" });
       }
 
+      await userDAL.updateById(user.id, {
+        consecutiveFailedPasswordAttempts: 0
+      });
       const token = await generateUserTokens({
-        user: {
-          ...userEnc,
-          id: userEnc.userId
-        },
+        userId: user.id,
         ip,
         userAgent,
-        authMethod,
-        organizationId
+        authMethod: AuthMethod.EMAIL
       });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
-          "infisical.organization.id": organizationId,
           "infisical.user.email": email,
-          "infisical.user.id": userEnc.userId,
+          "infisical.user.id": user.id,
           "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
           "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
           "client.address": ip,
           "user_agent.original": userAgent
-        });
-      }
-
-      if (organizationId) {
-        await auditLogService.createAuditLog({
-          orgId: organizationId,
-          ipAddress: ip,
-          userAgent,
-          userAgentType: getUserAgentType(userAgent),
-          actor: {
-            type: ActorType.USER,
-            metadata: {
-              email: userEnc.email,
-              userId: userEnc.userId,
-              username: userEnc.username,
-              authMethod
-            }
-          },
-          event: {
-            type: EventType.USER_LOGIN,
-            metadata: {
-              organizationId
-            }
-          }
         });
       }
 
@@ -505,7 +575,7 @@ export const authLoginServiceFactory = ({
           accessToken: token.access,
           refreshToken: token.refresh
         },
-        user: userEnc
+        user
       } as const;
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -522,286 +592,6 @@ export const authLoginServiceFactory = ({
     }
   };
 
-  const selectOrganization = async ({
-    userAgent,
-    authJwtToken,
-    ipAddress,
-    organizationId
-  }: {
-    userAgent: string | undefined;
-    authJwtToken: string | undefined;
-    ipAddress: string;
-    organizationId: string;
-  }) => {
-    const cfg = getConfig();
-
-    if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
-    if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
-
-    // eslint-disable-next-line no-param-reassign
-    authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
-
-    // The decoded JWT token, which contains the auth method.
-    const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
-    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
-
-    const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
-    if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
-
-    // Check user membership in the sub-organization (direct or via group)
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.USER,
-      actorId: user.id,
-      orgId: organizationId,
-      status: OrgMembershipStatus.Accepted
-    });
-
-    if (!orgMembership) {
-      throw new ForbiddenRequestError({
-        message: `User does not have access to the organization with ID ${organizationId}`
-      });
-    }
-
-    const selectedOrg = await orgDAL.findById(organizationId);
-    if (!selectedOrg) {
-      throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
-    }
-
-    const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
-
-    let rootOrg = selectedOrg;
-
-    if (isSubOrganization) {
-      if (!selectedOrg.rootOrgId) {
-        throw new BadRequestError({
-          message: "Invalid sub-organization"
-        });
-      }
-
-      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
-      if (!rootOrg) {
-        throw new BadRequestError({
-          message: "Invalid sub-organization"
-        });
-      }
-
-      // Check user membership in the root organization
-      const rootOrgMembership = await membershipUserDAL.findOne({
-        actorUserId: user.id,
-        scopeOrgId: selectedOrg.rootOrgId,
-        scope: AccessScope.Organization,
-        status: OrgMembershipStatus.Accepted
-      });
-
-      if (!rootOrgMembership) {
-        throw new ForbiddenRequestError({
-          message: "User does not have access to the root organization"
-        });
-      }
-    }
-
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: user.id,
-      orgId: rootOrg.id,
-      actorAuthMethod: decodedToken.authMethod,
-      actorOrgId: rootOrg.id,
-      scope: OrganizationActionScope.Any
-    });
-    const canBypassSso =
-      rootOrg.bypassOrgAuthEnabled &&
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-
-    if (
-      rootOrg.authEnforced &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      !canBypassSso
-    ) {
-      throw new BadRequestError({
-        message: "Login with the auth method required by your organization."
-      });
-    }
-
-    if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
-      if (!canBypassSso) {
-        throw new ForbiddenRequestError({
-          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
-          error: "GoogleSsoEnforced"
-        });
-      }
-    }
-
-    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
-      await orgDAL.updateById(rootOrg.id, {
-        googleSsoAuthLastUsed: new Date()
-      });
-    }
-
-    const shouldCheckMfa = rootOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = rootOrg.enforceMfa ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
-    const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
-    const mfaMethod = orgMfaMethod ?? userMfaMethod;
-
-    if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-
-      const mfaToken = crypto.jwt().sign(
-        {
-          authMethod: decodedToken.authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: user.id
-        },
-        cfg.AUTH_SECRET,
-        {
-          expiresIn: cfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      if (mfaMethod === MfaMethod.EMAIL && user.email) {
-        await sendUserMfaCode({
-          userId: user.id,
-          email: user.email
-        });
-      }
-
-      return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
-    }
-
-    await updateUserDeviceSession(user as TUsers, ipAddress, userAgent);
-
-    const tokens = await generateUserTokens({
-      authMethod: decodedToken.authMethod,
-      user,
-      userAgent,
-      ip: ipAddress,
-      organizationId: isSubOrganization ? rootOrg.id : organizationId,
-      subOrganizationId: isSubOrganization ? organizationId : undefined,
-      isMfaVerified: decodedToken.isMfaVerified,
-      mfaMethod: decodedToken.mfaMethod
-    });
-
-    // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
-    const isAuthEnforcedBypass =
-      rootOrg.authEnforced &&
-      rootOrg.bypassOrgAuthEnabled &&
-      !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE;
-    const isGoogleSsoEnforcedBypass =
-      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && decodedToken.authMethod !== AuthMethod.GOOGLE;
-    if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username
-          }
-        },
-        event: {
-          type: EventType.ORG_ADMIN_BYPASS_SSO,
-          metadata: {}
-        }
-      });
-
-      // Notify all admins via email (besides the actor)
-      const orgAdmins = await orgDAL.findOrgMembersByRole(organizationId, OrgMembershipRole.Admin);
-      const adminEmails = orgAdmins
-        .filter((admin) => admin.user.id !== user.id)
-        .map((admin) => admin.user.email)
-        .filter(Boolean) as string[];
-
-      if (adminEmails.length > 0) {
-        await notificationService.createUserNotifications(
-          orgAdmins
-            .filter((admin) => admin.user.id !== user.id)
-            .map((admin) => ({
-              userId: admin.user.id,
-              orgId: organizationId,
-              type: NotificationType.ADMIN_SSO_BYPASS,
-              title: "Security Alert: SSO Bypass",
-              body: `The organization member **${user.email}** has bypassed enforced SSO login.`
-            }))
-        );
-
-        await smtpService.sendMail({
-          recipients: adminEmails,
-          subjectLine: "Security Alert: SSO Bypass",
-          substitutions: {
-            email: user.email,
-            timestamp: new Date().toISOString(),
-            ip: ipAddress,
-            userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
-            orgId: organizationId
-          },
-          template: SmtpTemplates.OrgAdminBreakglassAccess
-        });
-      }
-    }
-
-    // Create audit log for organization selection
-    if (isSubOrganization) {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
-          }
-        },
-        event: {
-          type: EventType.SELECT_SUB_ORGANIZATION,
-          metadata: {
-            organizationId,
-            organizationName: selectedOrg.name,
-            rootOrganizationId: selectedOrg.rootOrgId || ""
-          }
-        }
-      });
-    } else {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: user.email,
-            userId: user.id,
-            username: user.username,
-            authMethod: decodedToken.authMethod
-          }
-        },
-        event: {
-          type: EventType.SELECT_ORGANIZATION,
-          metadata: {
-            organizationId,
-            organizationName: selectedOrg.name
-          }
-        }
-      });
-    }
-    return {
-      ...tokens,
-      user,
-      isMfaEnabled: false
-    };
-  };
-
   /*
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
@@ -810,6 +600,7 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userId);
     if (!user || !user.email) return;
     enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
     await sendUserMfaCode({
       userId: user.id,
       email: user.email
@@ -968,7 +759,7 @@ export const authLoginServiceFactory = ({
 
     const decodedToken = crypto.jwt().verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
 
-    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
+    const userEnc = await userDAL.findById(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
     // reset lock states
@@ -978,10 +769,7 @@ export const authLoginServiceFactory = ({
     });
 
     const token = await generateUserTokens({
-      user: {
-        ...userEnc,
-        id: userEnc.userId
-      },
+      userId: user.id,
       ip,
       userAgent,
       organizationId: orgId,
@@ -990,7 +778,7 @@ export const authLoginServiceFactory = ({
       mfaMethod
     });
 
-    return { token, user: userEnc };
+    return { token, user: { ...userEnc, hashedPassword: null } };
   };
   /*
    * OAuth2 login for google,github, and other oauth2 provider
@@ -1015,22 +803,25 @@ export const authLoginServiceFactory = ({
     authMethod,
     callbackPort,
     orgSlug,
-    providerUserId
+    providerUserId,
+    ip,
+    userAgent
   }: TOauthLoginDTO) => {
     const aliasType = authMethodToAliasType(authMethod);
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
     let isNewAlias = false;
-    const existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
+    let existingAlias = await userAliasDAL.findOne({ externalId: providerUserId, aliasType });
     if (existingAlias) {
       user = await userDAL.findById(existingAlias.userId);
     }
 
     // Step 2: Fall back to email lookup for existing users without an alias yet
     if (!user) {
-      const usersByUsername = await userDAL.findUserByUsername(email);
-      user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+      user = await userDAL.findOne({ username: sanitizedEmail });
       if (user) {
         isNewAlias = true;
       }
@@ -1105,9 +896,10 @@ export const authLoginServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
           {
-            username: email.trim().toLowerCase(),
-            email: email.trim().toLowerCase(),
-            isEmailVerified: true,
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            isEmailVerified: false,
+            isAccepted: false,
             firstName,
             lastName,
             authMethods: [authMethod],
@@ -1124,11 +916,10 @@ export const authLoginServiceFactory = ({
             });
           }
           orgId = defaultOrg.id;
-          const existingMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.USER,
-            actorId: newUser.id,
-            orgId,
-            acceptAnyStatus: true
+          const existingMembership = await membershipUserDAL.findOne({
+            actorUserId: newUser.id,
+            scopeOrgId: orgId,
+            scope: AccessScope.Organization
           });
 
           if (!existingMembership) {
@@ -1137,7 +928,7 @@ export const authLoginServiceFactory = ({
             const membership = await membershipUserDAL.create(
               {
                 actorUserId: newUser.id,
-                inviteEmail: email,
+                inviteEmail: sanitizedEmail,
                 scopeOrgId: orgId,
                 scope: AccessScope.Organization,
                 status: OrgMembershipStatus.Accepted,
@@ -1156,14 +947,14 @@ export const authLoginServiceFactory = ({
           }
         }
 
-        await userAliasDAL.create(
+        existingAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
             aliasType,
             externalId: providerUserId,
-            emails: [email],
+            emails: [sanitizedEmail],
             orgId: orgId || null,
-            isEmailVerified: true
+            isEmailVerified: false
           },
           tx
         );
@@ -1177,20 +968,13 @@ export const authLoginServiceFactory = ({
         // if user is signing up with SSO after invitation, their names should be set based on their SSO profile
         user = await userDAL.updateById(user.id, {
           authMethods: [...(user.authMethods || []), authMethod],
-          firstName: !user.isAccepted ? firstName : undefined,
-          lastName: !user.isAccepted ? lastName : undefined
+          firstName,
+          lastName
         });
       }
 
-      // Sync email/username if the provider email has changed (user found by alias)
-      const normalizedProviderEmail = email.trim().toLowerCase();
-      if (existingAlias && user.email !== normalizedProviderEmail) {
-        const conflictingUsers = await userDAL.findUserByUsername(normalizedProviderEmail);
-        const conflictingUser =
-          conflictingUsers?.length > 1
-            ? conflictingUsers.find((el) => el.username === normalizedProviderEmail)
-            : conflictingUsers?.[0];
-
+      if (existingAlias && user.email !== sanitizedEmail) {
+        const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
             message:
@@ -1203,8 +987,12 @@ export const authLoginServiceFactory = ({
           const updatedUser = await userDAL.updateById(
             user!.id,
             {
-              username: normalizedProviderEmail,
-              email: normalizedProviderEmail
+              username: sanitizedEmail,
+              email: sanitizedEmail,
+              // reverify email verification status on login
+              isGitHubVerified: authMethod !== AuthMethod.GITHUB && user?.isGitHubVerified,
+              isGoogleVerified: authMethod !== AuthMethod.GOOGLE && user?.isGoogleVerified,
+              isGitLabVerified: authMethod !== AuthMethod.GITLAB && user?.isGitLabVerified
             },
             tx
           );
@@ -1212,7 +1000,7 @@ export const authLoginServiceFactory = ({
           await userAliasDAL.updateById(
             existingAlias.id,
             {
-              emails: [normalizedProviderEmail]
+              emails: [sanitizedEmail]
             },
             tx
           );
@@ -1241,17 +1029,27 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    // Use user-level provider verification flags
+    let isAliasVerified = false;
+    if (authMethod === AuthMethod.GOOGLE) {
+      isAliasVerified = Boolean(user.isGoogleVerified);
+    } else if (authMethod === AuthMethod.GITHUB) {
+      isAliasVerified = Boolean(user.isGitHubVerified);
+    } else if (authMethod === AuthMethod.GITLAB) {
+      isAliasVerified = Boolean(user.isGitLabVerified);
+    }
     // Self-healing backfill: create alias for existing users found by email fallback
+    let aliasId = existingAlias?.id;
     if (isNewAlias) {
       try {
-        await userAliasDAL.create({
+        const newAlias = await userAliasDAL.create({
           userId: user.id,
           aliasType,
           externalId: providerUserId,
-          emails: [email],
-          orgId: orgId || null,
-          isEmailVerified: true
+          emails: [sanitizedEmail],
+          isEmailVerified: isAliasVerified
         });
+        aliasId = newAlias.id;
       } catch (err) {
         // Swallow duplicate key errors from the unique index (race condition: concurrent login already created the alias)
         if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
@@ -1262,152 +1060,36 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const isUserCompleted = user.isAccepted;
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
+    // Send verification email for OAuth providers that haven't verified the user's email
+    if (!isAliasVerified && user.email && aliasId) {
+      const verificationCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
         userId: user.id,
+        aliasId
+      });
 
-        ...(orgId && orgSlug && orgName !== undefined
-          ? {
-              organizationId: orgId,
-              organizationName: orgName,
-              organizationSlug: orgSlug
-            }
-          : {}),
-
-        username: user.username,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        hasExchangedPrivateKey: true,
-        authMethod,
-        isUserCompleted,
-        ...(callbackPort
-          ? {
-              callbackPort
-            }
-          : {})
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
-    return { isUserCompleted, providerAuthToken, user, orgId, orgName };
-  };
-
-  /**
-   * Handles OAuth2 token exchange for user login with private key handoff.
-   *
-   * The process involves exchanging a provider's authorization token for an Infisical access token.
-   * The provider token is returned to the client, who then sends it back to obtain the Infisical access token.
-   *
-   * This approach is used instead of directly sending the access token for the following reasons:
-   * 1. To facilitate easier logic changes from SRP OAuth to simple OAuth.
-   * 2. To avoid attaching the access token to the URL, which could be logged. The provider token has a very short lifespan, reducing security risks.
-   */
-  const oauth2TokenExchange = async ({ userAgent, ip, providerAuthToken, email }: TOauthTokenExchangeDTO) => {
-    const appCfg = getConfig();
-    const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
-
-    const { authMethod, userName } = decodedProviderToken;
-    if (!userName) throw new BadRequestError({ message: "Missing user name" });
-    const organizationId =
-      (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
-      decodedProviderToken.orgId
-        ? decodedProviderToken.orgId
-        : undefined;
-
-    // akhilmhdh: case sensitive email resolution
-    const usersByUsername = await userDAL.findUserEncKeyByUsername({
-      username: email
-    });
-    const userEnc =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
-
-    if (!userEnc) throw new BadRequestError({ message: "User encryption not found" });
-
-    // Check MFA before issuing tokens — mirrors the logic in selectOrganization
-    const user = await userDAL.findById(userEnc.userId);
-    const org = organizationId ? await orgDAL.findById(organizationId) : null;
-    // for now check mfa in this state when your token is org scoped. If not we will do it in select org step
-    const shouldCheckMfa = org?.enforceMfa || user?.isMfaEnabled;
-
-    if (shouldCheckMfa && organizationId) {
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-
-      const orgMfaMethod = org?.enforceMfa ? (org.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
-      const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
-      const mfaMethod = orgMfaMethod ?? userMfaMethod;
-
-      const mfaToken = crypto.jwt().sign(
-        {
-          authMethod,
-          authTokenType: AuthTokenType.MFA_TOKEN,
-          userId: userEnc.userId,
-          organizationId
-        },
-        appCfg.AUTH_SECRET,
-        {
-          expiresIn: appCfg.JWT_MFA_LIFETIME
-        }
-      );
-
-      if (mfaMethod === MfaMethod.EMAIL && userEnc.email) {
-        await sendUserMfaCode({
-          userId: userEnc.userId,
-          email: userEnc.email
-        });
-      }
-
-      return {
-        token: { access: mfaToken, refresh: "" },
-        isMfaEnabled: true,
-        mfaMethod,
-        user: userEnc,
-        decodedProviderToken
-      } as const;
-    }
-
-    const token = await generateUserTokens({
-      user: { ...userEnc, id: userEnc.userId },
-      ip,
-      userAgent,
-      authMethod,
-      organizationId
-    });
-
-    if (organizationId) {
-      await auditLogService.createAuditLog({
-        orgId: organizationId,
-        ipAddress: ip,
-        userAgent,
-        userAgentType: getUserAgentType(userAgent),
-        actor: {
-          type: ActorType.USER,
-          metadata: {
-            email: userEnc.email,
-            userId: userEnc.userId,
-            username: userEnc.username,
-            authMethod: decodedProviderToken.authMethod
-          }
-        },
-        event: {
-          type: EventType.USER_LOGIN,
-          metadata: {
-            organizationId,
-            ...(isAuthMethodSaml(decodedProviderToken.authMethod) && {
-              authProvider: decodedProviderToken.authMethod
-            })
-          }
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [user.email],
+        substitutions: {
+          code: verificationCode
         }
       });
     }
 
-    return { token, isMfaEnabled: false, user: userEnc, decodedProviderToken } as const;
+    const callbackResult = await processProviderCallback({
+      user,
+      authMethod,
+      isEmailVerified: isAliasVerified,
+      aliasId,
+      ip,
+      userAgent,
+      organizationId: orgId || undefined,
+      callbackPort
+    });
+
+    return { ...callbackResult, user: { ...user, hashedPassword: null }, orgId, orgName };
   };
 
   /*
@@ -1418,16 +1100,288 @@ export const authLoginServiceFactory = ({
     await tokenService.clearTokenSessionById(userId, sessionId);
   };
 
+  const selectOrganization = async ({
+    userAgent,
+    ipAddress,
+    organizationId,
+    userId,
+    userAuthMethod,
+    actorOrgId,
+    isMfaVerified,
+    mfaMethod
+  }: {
+    userAgent: string | undefined;
+    ipAddress: string;
+    organizationId: string;
+    userId: string;
+    userAuthMethod: AuthMethod;
+    actorOrgId?: string;
+    isMfaVerified?: boolean;
+    mfaMethod?: MfaMethod;
+  }) => {
+    const cfg = getConfig();
+    if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
+
+    const user = await userDAL.findById(userId);
+    if (!user || !user.isAccepted)
+      throw new BadRequestError({ message: "User not found", name: "Find user from token" });
+
+    // Check user membership in the organization (accept any status — promotion happens after auth)
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: user.id,
+      orgId: organizationId,
+      acceptAnyStatus: true
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({
+        message: `User does not have access to the organization with ID ${organizationId}`
+      });
+    }
+
+    const selectedOrg = await orgDAL.findById(organizationId);
+    if (!selectedOrg) {
+      throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
+    }
+
+    const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
+
+    let rootOrg = selectedOrg;
+
+    if (isSubOrganization) {
+      if (!selectedOrg.rootOrgId) {
+        throw new BadRequestError({
+          message: "Invalid sub-organization"
+        });
+      }
+
+      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
+      if (!rootOrg) {
+        throw new BadRequestError({
+          message: "Invalid sub-organization"
+        });
+      }
+
+      // Check user membership in the root organization (accept any status — promotion happens after auth)
+      const rootOrgMembership = await membershipUserDAL.findOne({
+        actorUserId: user.id,
+        scopeOrgId: selectedOrg.rootOrgId,
+        scope: AccessScope.Organization
+      });
+
+      if (!rootOrgMembership) {
+        throw new ForbiddenRequestError({
+          message: "User does not have access to the root organization"
+        });
+      }
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: user.id,
+      orgId: rootOrg.id,
+      actorAuthMethod: userAuthMethod,
+      actorOrgId: rootOrg.id,
+      scope: OrganizationActionScope.Any
+    });
+    const canBypassSso =
+      rootOrg.bypassOrgAuthEnabled &&
+      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+
+    if (
+      rootOrg.authEnforced &&
+      !isAuthMethodSaml(userAuthMethod) &&
+      userAuthMethod !== AuthMethod.OIDC &&
+      userAuthMethod !== AuthMethod.LDAP &&
+      !canBypassSso
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
+      });
+    }
+
+    if (rootOrg.googleSsoAuthEnforced && userAuthMethod !== AuthMethod.GOOGLE) {
+      if (!canBypassSso) {
+        throw new ForbiddenRequestError({
+          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
+          error: "GoogleSsoEnforced"
+        });
+      }
+    }
+
+    if (userAuthMethod === AuthMethod.GOOGLE) {
+      await orgDAL.updateById(rootOrg.id, {
+        googleSsoAuthLastUsed: new Date()
+      });
+    }
+
+    if (!isSubOrganization && orgMembership.status !== OrgMembershipStatus.Accepted) {
+      // Promote any Invited memberships to Accepted now that the user has authenticated into this org
+      await membershipUserDAL.update(
+        {
+          actorUserId: user.id,
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization
+        },
+        { status: OrgMembershipStatus.Accepted }
+      );
+    }
+
+    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
+    // Check if organization has changed
+    const hasOrganizationChanged = actorOrgId ? actorOrgId !== rootOrg.id : false;
+    // Check if MFA method has changed
+    const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
+    // Trigger MFA if required and either not verified or something changed
+    const shouldTriggerMfa = isMfaRequired && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
+
+    if (shouldTriggerMfa) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const mfaToken = await issueMfaChallenge({
+        userId: user.id,
+        email: user.email,
+        authMethod: userAuthMethod,
+        requiredMfaMethod,
+        organizationId: rootOrg.id
+      });
+
+      return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
+    }
+
+    await updateUserDeviceSession(user, ipAddress, userAgent);
+
+    const tokens = await generateUserTokens({
+      authMethod: userAuthMethod,
+      userId: user.id,
+      userAgent,
+      ip: ipAddress,
+      organizationId: isSubOrganization ? rootOrg.id : organizationId,
+      subOrganizationId: isSubOrganization ? organizationId : undefined,
+      isMfaVerified,
+      mfaMethod
+    });
+
+    // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
+    const isAuthEnforcedBypass =
+      rootOrg.authEnforced &&
+      rootOrg.bypassOrgAuthEnabled &&
+      !isAuthMethodSaml(userAuthMethod) &&
+      userAuthMethod !== AuthMethod.OIDC &&
+      userAuthMethod !== AuthMethod.LDAP &&
+      userAuthMethod !== AuthMethod.GOOGLE;
+
+    const isGoogleSsoEnforcedBypass =
+      rootOrg.googleSsoAuthEnforced && rootOrg.bypassOrgAuthEnabled && userAuthMethod !== AuthMethod.GOOGLE;
+    if (isAuthEnforcedBypass || isGoogleSsoEnforcedBypass) {
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username
+          }
+        },
+        event: {
+          type: EventType.ORG_ADMIN_BYPASS_SSO,
+          metadata: {}
+        }
+      });
+
+      // Notify all admins via email (besides the actor)
+      const orgAdmins = await orgDAL.findOrgMembersByRole(organizationId, OrgMembershipRole.Admin);
+      const adminEmails = orgAdmins
+        .filter((admin) => admin.user.id !== user.id)
+        .map((admin) => admin.user.email)
+        .filter(Boolean) as string[];
+
+      if (adminEmails.length > 0) {
+        await notificationService.createUserNotifications(
+          orgAdmins
+            .filter((admin) => admin.user.id !== user.id)
+            .map((admin) => ({
+              userId: admin.user.id,
+              orgId: organizationId,
+              type: NotificationType.ADMIN_SSO_BYPASS,
+              title: "Security Alert: SSO Bypass",
+              body: `The organization member **${user.email}** has bypassed enforced SSO login.`
+            }))
+        );
+
+        await smtpService.sendMail({
+          recipients: adminEmails,
+          subjectLine: "Security Alert: SSO Bypass",
+          substitutions: {
+            email: user.email,
+            timestamp: new Date().toISOString(),
+            ip: ipAddress,
+            userAgent,
+            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
+            orgId: organizationId
+          },
+          template: SmtpTemplates.OrgAdminBreakglassAccess
+        });
+      }
+    }
+
+    // Create audit log for organization selection
+    await auditLogService.createAuditLog({
+      orgId: organizationId,
+      ipAddress,
+      userAgent,
+      userAgentType: getUserAgentType(userAgent),
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          email: user.email,
+          userId: user.id,
+          username: user.username,
+          authMethod: userAuthMethod as string
+        }
+      },
+      event: isSubOrganization
+        ? {
+            type: EventType.SELECT_SUB_ORGANIZATION,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name,
+              rootOrganizationId: selectedOrg.rootOrgId || ""
+            }
+          }
+        : {
+            type: EventType.SELECT_ORGANIZATION,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name
+            }
+          }
+    });
+
+    return {
+      ...tokens,
+      user,
+      isMfaEnabled: false
+    };
+  };
+
   return {
-    loginGenServerPublicKey,
-    loginExchangeClientProof,
+    login,
     logout,
     oauth2Login,
-    oauth2TokenExchange,
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,
     generateUserTokens,
-    login
+    processProviderCallback,
+
+    // deprecated completely
+    loginGenServerPublicKey,
+    loginExchangeClientProof
   };
 };

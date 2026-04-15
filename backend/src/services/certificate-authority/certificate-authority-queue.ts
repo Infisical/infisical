@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { getPqcCrypto, isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -232,14 +233,19 @@ export const certificateAuthorityQueueFactory = ({
           const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
           const privateKey = await kmsDecryptor({ cipherTextBlob: caSecret.encryptedPrivateKey });
 
-          const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-          const sk = await crypto.nativeCrypto.subtle.importKey(
-            "pkcs8",
-            skObj.export({ format: "der", type: "pkcs8" }),
-            alg,
-            true,
-            ["sign"]
-          );
+          let sk: CryptoKey;
+          if (isPqcAlgorithm(internalCa.keyAlgorithm)) {
+            sk = await getPqcCrypto().subtle.importKey("pkcs8", privateKey, alg, true, ["sign"]);
+          } else {
+            const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+            sk = await crypto.nativeCrypto.subtle.importKey(
+              "pkcs8",
+              skObj.export({ format: "der", type: "pkcs8" }),
+              alg,
+              true,
+              ["sign"]
+            );
+          }
 
           const revokedCerts = await certificateDAL.find({
             caId: internalCa.caId,

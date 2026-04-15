@@ -9,7 +9,11 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 
+import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
+import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
+import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
+import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
@@ -32,10 +36,7 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -46,6 +47,10 @@ type TProjectMembershipServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
+  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
+  secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -64,10 +69,56 @@ export const projectMembershipServiceFactory = ({
   secretReminderRecipientsDAL,
   notificationService,
   additionalPrivilegeDAL,
+  accessApprovalPolicyApproverDAL,
+  accessApprovalPolicyDAL,
+  secretApprovalPolicyApproverDAL,
+  secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
   membershipRoleDAL
 }: TProjectMembershipServiceFactoryDep) => {
+  const checkUserApproverPolicies = async (
+    userIds: string[],
+    projectId: string,
+    actionLabel = "Cannot remove user from project"
+  ) => {
+    const accessApprovers = await accessApprovalPolicyApproverDAL.find({
+      $in: { approverUserId: userIds }
+    });
+    if (accessApprovers.length > 0) {
+      const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
+      const policies = await accessApprovalPolicyDAL.find({
+        $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
+        projectId,
+        deletedAt: null
+      });
+      if (policies.length > 0) {
+        const policyNames = policies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+    }
+
+    const secretApprovers = await secretApprovalPolicyApproverDAL.find({
+      $in: { approverUserId: userIds }
+    });
+    if (secretApprovers.length > 0) {
+      const policyIds = [...new Set(secretApprovers.map((a) => a.policyId))];
+      const policies = await secretApprovalPolicyDAL.find({
+        $in: { [`${TableName.SecretApprovalPolicy}.id` as "id"]: policyIds },
+        projectId,
+        deletedAt: null
+      });
+      if (policies.length > 0) {
+        const policyNames = policies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `${actionLabel}: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+    }
+  };
+
   const getProjectMemberships = async ({
     actorId,
     actor,
@@ -214,8 +265,6 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
     if (sendEmails) {
       await notificationService.createUserNotifications(
         orgMembershipUsernames.map((member) => ({
@@ -288,6 +337,11 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
+    await checkUserApproverPolicies(
+      projectMembers.map((m) => m.user.id),
+      projectId
+    );
+
     const userIdsToExcludeFromProjectKeyRemoval = new Set(
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
@@ -341,8 +395,6 @@ export const projectMembershipServiceFactory = ({
       return deletedMemberships;
     });
 
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
     return memberships;
   };
 
@@ -378,6 +430,12 @@ export const projectMembershipServiceFactory = ({
         message: "You cannot leave the project as you are the only admin. Promote another user to admin before leaving."
       });
     }
+
+    await checkUserApproverPolicies(
+      [actorId],
+      project.id,
+      "Cannot leave project. Please ask a project admin to remove you from the following policies first"
+    );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
       await additionalPrivilegeDAL.delete(

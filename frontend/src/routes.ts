@@ -397,6 +397,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
+    route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
     route("/approvals", "pam/ApprovalsPage/route.tsx"),
     route("/approval-requests/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx"),
 
@@ -451,7 +452,6 @@ export const routes = rootRoute("root.tsx", [
       index("auth/LoginPage/route.tsx"),
       route("/admin", "auth/AdminLoginPage/route.tsx"),
       route("/select-organization", "auth/SelectOrgPage/route.tsx"),
-      route("/sso", "auth/LoginSsoPage/route.tsx"),
       route("/ldap", "auth/LoginLdapPage/route.tsx"),
       route("/provider/success", "auth/ProviderSuccessPage/route.tsx"),
       route("/provider/error", "auth/ProviderErrorPage/route.tsx")

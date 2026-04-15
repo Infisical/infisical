@@ -15,6 +15,7 @@ import {
   AuthMode,
   AuthModeJwtTokenPayload,
   AuthTokenType,
+  MfaMethod,
   TGatewayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
@@ -32,6 +33,7 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
+      mfaMethod?: MfaMethod;
       token: AuthModeJwtTokenPayload;
     }
   | {
@@ -174,7 +176,11 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url.includes(".well-known/est") || req.url.includes("/scep/") || req.url.includes("/api/v3/auth/")) {
+      if (
+        req.url.includes(".well-known/est") ||
+        req.url.includes("/scep/") ||
+        (req.url.includes("/api/v3/auth/") && !req.url.includes("/api/v3/auth/select-organization"))
+      ) {
         return;
       }
 
@@ -224,7 +230,8 @@ export const injectIdentity = fp(
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
-            token
+            token,
+            mfaMethod: token.mfaMethod
           };
           fireIdentifyForUser(user);
           break;

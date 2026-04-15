@@ -44,7 +44,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
         const appCfg = getConfig();
         void res.setCookie("infisical-project-assume-privileges", payload.assumePrivilegesToken, {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
           maxAge: 3600 // 1 hour in seconds
@@ -96,7 +96,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
         const appCfg = getConfig();
         void res.setCookie("infisical-project-assume-privileges", "", {
           httpOnly: true,
-          path: "/",
+          path: "/api",
           sameSite: "strict",
           secure: appCfg.HTTPS_ENABLED,
           expires: new Date(0)

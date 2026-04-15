@@ -82,6 +82,7 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
   }).extend({
     rotationCredentialsConfigured: z.boolean()
   }),
+  policyName: z.string().nullable().optional(),
   lastRotationMessage: z.string().nullable().optional(),
   rotationStatus: z.string().nullable().optional()
 });
@@ -92,12 +93,14 @@ export const BaseCreatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }),
   description: z.string().max(512).nullable().optional(),
   requireMfa: z.boolean().optional().default(false),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  policyId: z.string().uuid().nullable().optional()
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
   description: z.string().max(512).nullable().optional(),
   requireMfa: z.boolean().optional(),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  policyId: z.string().uuid().nullable().optional()
 });

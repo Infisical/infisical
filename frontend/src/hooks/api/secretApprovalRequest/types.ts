@@ -5,7 +5,8 @@ import { WsTag } from "../tags/types";
 export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
-  REJECTED = "rejected"
+  REJECTED = "rejected",
+  REVOKED = "revoked"
 }
 
 export enum CommitType {

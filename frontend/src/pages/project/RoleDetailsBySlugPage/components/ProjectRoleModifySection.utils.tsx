@@ -25,6 +25,7 @@ import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamAccountPolicyActions,
   ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
@@ -243,6 +244,13 @@ const PamAccountPolicyActionSchema = z.object({
 const PamSessionPolicyActionSchema = z.object({
   [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
+});
+
+const PamAccountPolicyPolicyActionSchema = z.object({
+  [ProjectPermissionPamAccountPolicyActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Delete]: z.boolean().optional()
 });
 
 const PamDiscoveryPolicyActionSchema = z.object({
@@ -798,6 +806,9 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamAccountPolicies]: PamAccountPolicyPolicyActionSchema.array().default(
+        []
+      ),
       [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -1802,6 +1813,20 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
       if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
+    }
+
+    if (subject === ProjectPermissionSub.PamAccountPolicies) {
+      const canRead = action.includes(ProjectPermissionPamAccountPolicyActions.Read);
+      const canCreate = action.includes(ProjectPermissionPamAccountPolicyActions.Create);
+      const canDelete = action.includes(ProjectPermissionPamAccountPolicyActions.Delete);
+      const canEdit = action.includes(ProjectPermissionPamAccountPolicyActions.Edit);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Edit] = true;
     }
 
     if (subject === ProjectPermissionSub.PamDiscovery) {
@@ -3164,6 +3189,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PamAccountPolicies]: {
+    title: "Account Policies",
+    description: "Manage behavioral rules for PAM accounts",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionPamAccountPolicyActions.Read,
+        description: "View PAM account policies"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPamAccountPolicyActions.Create,
+        description: "Create PAM account policies"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPamAccountPolicyActions.Edit,
+        description: "Update PAM account policies"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPamAccountPolicyActions.Delete,
+        description: "Delete PAM account policies"
+      }
+    ]
+  },
   [ProjectPermissionSub.PamDiscovery]: {
     title: "Discovery",
     description: "Manage privileged access discovery",
@@ -3372,6 +3423,7 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamResources]: enabled,
   [ProjectPermissionSub.PamAccounts]: enabled,
   [ProjectPermissionSub.PamSessions]: enabled,
+  [ProjectPermissionSub.PamAccountPolicies]: enabled,
   [ProjectPermissionSub.PamDiscovery]: enabled
 });
 
@@ -3488,15 +3540,21 @@ const projectManagerTemplate = (
     },
     {
       subject: ProjectPermissionSub.Groups,
-      actions: Object.values(ProjectPermissionGroupActions)
+      actions: Object.values(ProjectPermissionGroupActions).filter(
+        (a) => a !== ProjectPermissionGroupActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Member,
-      actions: Object.values(ProjectPermissionMemberActions)
+      actions: Object.values(ProjectPermissionMemberActions).filter(
+        (a) => a !== ProjectPermissionMemberActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Identity,
-      actions: Object.values(ProjectPermissionIdentityActions)
+      actions: Object.values(ProjectPermissionIdentityActions).filter(
+        (a) => a !== ProjectPermissionIdentityActions.GrantPrivileges
+      )
     },
     {
       subject: ProjectPermissionSub.Project,

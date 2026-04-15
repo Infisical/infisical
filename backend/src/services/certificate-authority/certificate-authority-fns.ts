@@ -2,6 +2,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -154,6 +155,37 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
         namedCurve: "P-384",
         hash: "SHA-384"
       };
+    // PQC: hash/namedCurve set to satisfy the TypeScript union return type; only `name` is used
+    case CertKeyAlgorithm.ML_DSA_44:
+      return { name: "ML-DSA-44", hash: "ML-DSA-44", namedCurve: "ML-DSA-44" };
+    case CertKeyAlgorithm.ML_DSA_65:
+      return { name: "ML-DSA-65", hash: "ML-DSA-65", namedCurve: "ML-DSA-65" };
+    case CertKeyAlgorithm.ML_DSA_87:
+      return { name: "ML-DSA-87", hash: "ML-DSA-87", namedCurve: "ML-DSA-87" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_128F:
+      return { name: "SLH-DSA-SHA2-128f", hash: "SLH-DSA-SHA2-128f", namedCurve: "SLH-DSA-SHA2-128f" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_128S:
+      return { name: "SLH-DSA-SHA2-128s", hash: "SLH-DSA-SHA2-128s", namedCurve: "SLH-DSA-SHA2-128s" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_192F:
+      return { name: "SLH-DSA-SHA2-192f", hash: "SLH-DSA-SHA2-192f", namedCurve: "SLH-DSA-SHA2-192f" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_192S:
+      return { name: "SLH-DSA-SHA2-192s", hash: "SLH-DSA-SHA2-192s", namedCurve: "SLH-DSA-SHA2-192s" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_256F:
+      return { name: "SLH-DSA-SHA2-256f", hash: "SLH-DSA-SHA2-256f", namedCurve: "SLH-DSA-SHA2-256f" };
+    case CertKeyAlgorithm.SLH_DSA_SHA2_256S:
+      return { name: "SLH-DSA-SHA2-256s", hash: "SLH-DSA-SHA2-256s", namedCurve: "SLH-DSA-SHA2-256s" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_128F:
+      return { name: "SLH-DSA-SHAKE-128f", hash: "SLH-DSA-SHAKE-128f", namedCurve: "SLH-DSA-SHAKE-128f" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_128S:
+      return { name: "SLH-DSA-SHAKE-128s", hash: "SLH-DSA-SHAKE-128s", namedCurve: "SLH-DSA-SHAKE-128s" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_192F:
+      return { name: "SLH-DSA-SHAKE-192f", hash: "SLH-DSA-SHAKE-192f", namedCurve: "SLH-DSA-SHAKE-192f" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_192S:
+      return { name: "SLH-DSA-SHAKE-192s", hash: "SLH-DSA-SHAKE-192s", namedCurve: "SLH-DSA-SHAKE-192s" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_256F:
+      return { name: "SLH-DSA-SHAKE-256f", hash: "SLH-DSA-SHAKE-256f", namedCurve: "SLH-DSA-SHAKE-256f" };
+    case CertKeyAlgorithm.SLH_DSA_SHAKE_256S:
+      return { name: "SLH-DSA-SHAKE-256s", hash: "SLH-DSA-SHAKE-256s", namedCurve: "SLH-DSA-SHAKE-256s" };
     default: {
       // RSA_2048
       return {
@@ -167,7 +199,10 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
 };
 
 export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm | string) => {
-  // Parse signature algorithm like "RSA-SHA256", "ECDSA-SHA256" etc.
+  if (signatureAlgorithm.startsWith("ML-DSA-") || signatureAlgorithm.startsWith("SLH-DSA-")) {
+    return { name: signatureAlgorithm, hash: signatureAlgorithm, namedCurve: signatureAlgorithm };
+  }
+
   if (!signatureAlgorithm || typeof signatureAlgorithm !== "string" || !signatureAlgorithm.includes("-")) {
     throw new Error(`Invalid signature algorithm format: ${signatureAlgorithm}`);
   }
@@ -268,7 +303,23 @@ export const getCaCredentials = async ({
   });
 
   const alg = signatureAlgorithm || keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+
+  if (isPqcAlgorithm(ca.internalCa.keyAlgorithm)) {
+    const caKeyAlg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+    const pqcCrypto = getPqcCrypto();
+    const caPrivateKey = await pqcCrypto.subtle.importKey("pkcs8", decryptedPrivateKey, caKeyAlg, true, ["sign"]);
+    const { raw: pubKeyRaw, spkiDer } = await derivePublicKeyFromSecret(
+      ca.internalCa.keyAlgorithm,
+      (caPrivateKey as InstanceType<typeof PqcCryptoKey>).rawKey
+    );
+    const caPublicKey = new PqcCryptoKey(pubKeyRaw, ca.internalCa.keyAlgorithm, "public", ["verify"], spkiDer);
+
+    return { caSecret, caPrivateKey, caPublicKey };
+  }
+
   const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
+  const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
+
   const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",
     skObj.export({ format: "der", type: "pkcs8" }),
@@ -277,7 +328,6 @@ export const getCaCredentials = async ({
     ["sign"]
   );
 
-  const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
   const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
     "spki",
     pkObj.export({ format: "der", type: "spki" }),
@@ -401,7 +451,8 @@ export const rebuildCaCrl = async ({
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
 
-  const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+  const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
+  const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -417,14 +468,19 @@ export const rebuildCaCrl = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-  const sk = await crypto.nativeCrypto.subtle.importKey(
-    "pkcs8",
-    skObj.export({ format: "der", type: "pkcs8" }),
-    alg,
-    true,
-    ["sign"]
-  );
+  let sk: CryptoKey;
+  if (isPqcAlgorithm(keyAlgorithm)) {
+    sk = await getPqcCrypto().subtle.importKey("pkcs8", privateKey, alg, true, ["sign"]);
+  } else {
+    const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+    sk = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      skObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
+  }
 
   const revokedCerts = await certificateDAL.find({
     caId: ca.id,

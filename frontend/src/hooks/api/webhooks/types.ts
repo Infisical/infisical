@@ -1,6 +1,7 @@
 export enum WebhookType {
   GENERAL = "general",
-  SLACK = "slack"
+  SLACK = "slack",
+  MICROSOFT_TEAMS = "microsoft-teams"
 }
 
 export type TWebhook = {

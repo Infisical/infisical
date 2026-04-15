@@ -269,7 +269,8 @@
                       "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
-                  }
+                  },
+                  "documentation/platform/email-domain"
                 ]
               },
               {
@@ -698,6 +699,7 @@
                       "documentation/platform/pki/concepts/certificate-mgmt",
                       "documentation/platform/pki/concepts/certificate-lifecycle",
                       "documentation/platform/pki/concepts/certificate-components",
+                      "documentation/platform/pki/concepts/pqc-algorithms",
                       "documentation/platform/pki/concepts/code-signing"
                     ]
                   },
@@ -895,6 +897,7 @@
                 "group": "Product Reference",
                 "pages": [
                   "documentation/platform/pam/product-reference/access-policies",
+                  "documentation/platform/pam/product-reference/account-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/ai-session-insights",
@@ -3485,8 +3488,8 @@
             "href": "https://infisical.com/sla"
           },
           {
-            "label": "Team Email",
-            "href": "mailto:team@infisical.com"
+            "label": "Support Email",
+            "href": "mailto:support@infisical.com"
           },
           {
             "label": "Sales",

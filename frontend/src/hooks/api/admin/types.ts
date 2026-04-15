@@ -117,6 +117,34 @@ export type AdminGetIdentitiesFilters = {
   searchTerm?: string;
 };
 
+export type AdminEmailDomain = {
+  id: string;
+  orgId: string;
+  domain: string;
+  verificationMethod: string;
+  status: string;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  orgName: string | null;
+};
+
+export type AdminGetEmailDomainsFilters = {
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
+};
+
+export type TGetEmailDomainsResponse = {
+  emailDomains: AdminEmailDomain[];
+  total: number;
+};
+
+export type TAdminCreateEmailDomainDTO = {
+  orgId: string;
+  domain: string;
+};
+
 export type AdminIntegrationsConfig = {
   slack: {
     clientId: string;

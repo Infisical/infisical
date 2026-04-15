@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName, TMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sqlNestRelationships } from "@app/lib/knex";
 
@@ -132,11 +132,6 @@ export const groupProjectDALFactory = (db: TDbClient) => {
       .where(`${TableName.Membership}.scopeProjectId`, projectId)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-      .join<TUserEncryptionKeys>(
-        TableName.UserEncryptionKey,
-        `${TableName.UserEncryptionKey}.userId`,
-        `${TableName.Users}.id`
-      )
       .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
       .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
       .leftJoin<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
@@ -150,7 +145,6 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         db.ref("isGhost").withSchema(TableName.Users),
         db.ref("username").withSchema(TableName.Users),
         db.ref("email").withSchema(TableName.Users),
-        db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
         db.ref("firstName").withSchema(TableName.Users),
         db.ref("lastName").withSchema(TableName.Users),
         db.ref("id").withSchema(TableName.Users).as("userId"),
@@ -176,7 +170,6 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         firstName,
         username,
         lastName,
-        publicKey,
         isGhost,
         id,
         userId,
@@ -198,7 +191,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           firstName,
           lastName,
           id: userId,
-          publicKey,
+          publicKey: "",
           isGhost,
           isOrgMembershipActive: isActive ?? true
         },
