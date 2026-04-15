@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
-import geoip from "geoip-lite";
 
+// import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -19,7 +19,7 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
-  TGetAccessLocationsDTO,
+  // TGetAccessLocationsDTO,
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
@@ -234,84 +234,84 @@ export const insightsServiceFactory = ({
     });
   };
 
-  const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  // const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
+  //   await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
-    return withCache(cacheKey, async () => {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setUTCDate(startDate.getUTCDate() - dto.days);
+  //   const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
+  //   return withCache(cacheKey, async () => {
+  //     const endDate = new Date();
+  //     const startDate = new Date();
+  //     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-      const ipRows = await auditLogDAL.countByIpAddress({
-        orgId: actorDto.orgId,
-        projectId: dto.projectId,
-        eventTypes: VALUE_EVENT_TYPES,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
-      });
+  //     const ipRows = await auditLogDAL.countByIpAddress({
+  //       orgId: actorDto.orgId,
+  //       projectId: dto.projectId,
+  //       eventTypes: VALUE_EVENT_TYPES,
+  //       startDate: startDate.toISOString(),
+  //       endDate: endDate.toISOString()
+  //     });
 
-      const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
+  //     const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
 
-      const isPrivateIp = (ip: string) =>
-        ip === "127.0.0.1" ||
-        ip === "::1" ||
-        ip === "::ffff:127.0.0.1" ||
-        ip.startsWith("10.") ||
-        ip.startsWith("172.16.") ||
-        ip.startsWith("172.17.") ||
-        ip.startsWith("172.18.") ||
-        ip.startsWith("172.19.") ||
-        ip.startsWith("172.20.") ||
-        ip.startsWith("172.21.") ||
-        ip.startsWith("172.22.") ||
-        ip.startsWith("172.23.") ||
-        ip.startsWith("172.24.") ||
-        ip.startsWith("172.25.") ||
-        ip.startsWith("172.26.") ||
-        ip.startsWith("172.27.") ||
-        ip.startsWith("172.28.") ||
-        ip.startsWith("172.29.") ||
-        ip.startsWith("172.30.") ||
-        ip.startsWith("172.31.") ||
-        ip.startsWith("192.168.");
+  //     const isPrivateIp = (ip: string) =>
+  //       ip === "127.0.0.1" ||
+  //       ip === "::1" ||
+  //       ip === "::ffff:127.0.0.1" ||
+  //       ip.startsWith("10.") ||
+  //       ip.startsWith("172.16.") ||
+  //       ip.startsWith("172.17.") ||
+  //       ip.startsWith("172.18.") ||
+  //       ip.startsWith("172.19.") ||
+  //       ip.startsWith("172.20.") ||
+  //       ip.startsWith("172.21.") ||
+  //       ip.startsWith("172.22.") ||
+  //       ip.startsWith("172.23.") ||
+  //       ip.startsWith("172.24.") ||
+  //       ip.startsWith("172.25.") ||
+  //       ip.startsWith("172.26.") ||
+  //       ip.startsWith("172.27.") ||
+  //       ip.startsWith("172.28.") ||
+  //       ip.startsWith("172.29.") ||
+  //       ip.startsWith("172.30.") ||
+  //       ip.startsWith("172.31.") ||
+  //       ip.startsWith("192.168.");
 
-      ipRows.forEach(({ ipAddress: ip, count }) => {
-        if (isPrivateIp(ip)) {
-          const key = "Local Network:LOCAL";
-          const existing = locationMap.get(key);
-          if (existing) {
-            existing.count += count;
-          } else {
-            locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
-          }
-          return;
-        }
+  //     ipRows.forEach(({ ipAddress: ip, count }) => {
+  //       if (isPrivateIp(ip)) {
+  //         const key = "Local Network:LOCAL";
+  //         const existing = locationMap.get(key);
+  //         if (existing) {
+  //           existing.count += count;
+  //         } else {
+  //           locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
+  //         }
+  //         return;
+  //       }
 
-        const geo = geoip.lookup(ip);
-        if (!geo || !geo.ll) return;
+  //       const geo = geoip.lookup(ip);
+  //       if (!geo || !geo.ll) return;
 
-        const city = geo.city || geo.region || "";
-        const key = `${city}:${geo.country}`;
-        const existing = locationMap.get(key);
-        if (existing) {
-          existing.count += count;
-        } else {
-          locationMap.set(key, {
-            lat: geo.ll[0],
-            lng: geo.ll[1],
-            city,
-            country: geo.country,
-            count
-          });
-        }
-      });
+  //       const city = geo.city || geo.region || "";
+  //       const key = `${city}:${geo.country}`;
+  //       const existing = locationMap.get(key);
+  //       if (existing) {
+  //         existing.count += count;
+  //       } else {
+  //         locationMap.set(key, {
+  //           lat: geo.ll[0],
+  //           lng: geo.ll[1],
+  //           city,
+  //           country: geo.country,
+  //           count
+  //         });
+  //       }
+  //     });
 
-      return {
-        locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
-      };
-    });
-  };
+  //     return {
+  //       locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
+  //     };
+  //   });
+  // };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
@@ -479,7 +479,7 @@ export const insightsServiceFactory = ({
   return {
     getCalendar,
     getAccessVolume,
-    getAccessLocations,
+    // getAccessLocations,
     getAuthMethodDistribution,
     getSummary
   };

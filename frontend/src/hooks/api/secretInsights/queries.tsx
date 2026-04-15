@@ -9,8 +9,8 @@ import {
   TGetCalendarInsightsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
-  TGetSecretAccessLocationsDTO,
-  TGetSecretAccessLocationsResponse,
+  // TGetSecretAccessLocationsDTO,
+  // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse
 } from "./types";
@@ -21,8 +21,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "calendar-events", params] as const,
   accessVolume: (params: TGetSecretAccessVolumeDTO) =>
     [...secretInsightsKeys.all(), "access-volume", params] as const,
-  accessLocations: (params: TGetSecretAccessLocationsDTO) =>
-    [...secretInsightsKeys.all(), "access-locations", params] as const,
+  // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
+  //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
     [...secretInsightsKeys.all(), "auth-method-distribution", params] as const,
   summary: (params: TGetInsightsSummaryDTO) =>
@@ -83,31 +83,31 @@ export const useGetSecretAccessVolume = (
   });
 };
 
-export const useGetSecretAccessLocations = (
-  params: TGetSecretAccessLocationsDTO,
-  options?: Omit<
-    UseQueryOptions<
-      TGetSecretAccessLocationsResponse,
-      unknown,
-      TGetSecretAccessLocationsResponse,
-      ReturnType<typeof secretInsightsKeys.accessLocations>
-    >,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery({
-    queryKey: secretInsightsKeys.accessLocations(params),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TGetSecretAccessLocationsResponse>(
-        "/api/v1/insights/secrets/access-locations",
-        { params }
-      );
-      return data;
-    },
-    staleTime: INSIGHTS_STALE_TIME,
-    ...options
-  });
-};
+// export const useGetSecretAccessLocations = (
+//   params: TGetSecretAccessLocationsDTO,
+//   options?: Omit<
+//     UseQueryOptions<
+//       TGetSecretAccessLocationsResponse,
+//       unknown,
+//       TGetSecretAccessLocationsResponse,
+//       ReturnType<typeof secretInsightsKeys.accessLocations>
+//     >,
+//     "queryKey" | "queryFn"
+//   >
+// ) => {
+//   return useQuery({
+//     queryKey: secretInsightsKeys.accessLocations(params),
+//     queryFn: async () => {
+//       const { data } = await apiRequest.get<TGetSecretAccessLocationsResponse>(
+//         "/api/v1/insights/secrets/access-locations",
+//         { params }
+//       );
+//       return data;
+//     },
+//     staleTime: INSIGHTS_STALE_TIME,
+//     ...options
+//   });
+// };
 
 export const useGetAuthMethodDistribution = (
   params: TGetAuthMethodDistributionDTO,

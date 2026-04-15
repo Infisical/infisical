@@ -2,7 +2,7 @@ export {
   useGetAuthMethodDistribution,
   useGetCalendarInsights,
   useGetInsightsSummary,
-  useGetSecretAccessLocations,
+  // useGetSecretAccessLocations,
   useGetSecretAccessVolume
 } from "./queries";
 export type {

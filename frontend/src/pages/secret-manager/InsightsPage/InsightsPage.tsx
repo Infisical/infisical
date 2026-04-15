@@ -16,8 +16,7 @@ import {
   AuthMethodChart,
   CalendarCard,
   InsightsSummaryCards,
-  SecretAccessChart,
-  WorldMap
+  SecretAccessChart
 } from "./components";
 
 export const InsightsPage = withProjectPermission(
@@ -44,7 +43,7 @@ export const InsightsPage = withProjectPermission(
         <InsightsSummaryCards />
         <div className="flex flex-col gap-6 xl:flex-row">
           <div className="mt-6 flex flex-[1.3] flex-col gap-6">
-            <WorldMap />
+            {/* <WorldMap /> */}
             <CalendarCard />
           </div>
           <div className="flex flex-1 flex-col gap-6 xl:mt-6">

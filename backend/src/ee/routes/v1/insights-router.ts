@@ -99,38 +99,38 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  server.route({
-    method: "GET",
-    url: "/secrets/access-locations",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "getInsightsAccessLocations",
-      description: "Get geographic locations of secret access based on audit log IP addresses",
-      security: [{ bearerAuth: [] }],
-      querystring: z.object({
-        projectId: z.string().trim(),
-        days: z.coerce.number().min(1).max(90).default(30)
-      }),
-      response: {
-        200: z.object({
-          locations: z.array(
-            z.object({ lat: z.number(), lng: z.number(), city: z.string(), country: z.string(), count: z.number() })
-          )
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { projectId, days } = req.query;
-      const result = await server.services.insights.getAccessLocations({ projectId, days }, req.permission);
-      await server.services.auditLog.createAuditLog({
-        projectId,
-        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS, metadata: { projectId, days } },
-        ...req.auditLogInfo
-      });
-      return result;
-    }
-  });
+  // server.route({
+  //   method: "GET",
+  //   url: "/secrets/access-locations",
+  //   config: { rateLimit: readLimit },
+  //   schema: {
+  //     operationId: "getInsightsAccessLocations",
+  //     description: "Get geographic locations of secret access based on audit log IP addresses",
+  //     security: [{ bearerAuth: [] }],
+  //     querystring: z.object({
+  //       projectId: z.string().trim(),
+  //       days: z.coerce.number().min(1).max(90).default(30)
+  //     }),
+  //     response: {
+  //       200: z.object({
+  //         locations: z.array(
+  //           z.object({ lat: z.number(), lng: z.number(), city: z.string(), country: z.string(), count: z.number() })
+  //         )
+  //       })
+  //     }
+  //   },
+  //   onRequest: verifyAuth([AuthMode.JWT]),
+  //   handler: async (req) => {
+  //     const { projectId, days } = req.query;
+  //     const result = await server.services.insights.getAccessLocations({ projectId, days }, req.permission);
+  //     await server.services.auditLog.createAuditLog({
+  //       projectId,
+  //       event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS, metadata: { projectId, days } },
+  //       ...req.auditLogInfo
+  //     });
+  //     return result;
+  //   }
+  // });
 
   server.route({
     method: "GET",
