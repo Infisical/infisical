@@ -48,20 +48,18 @@ export const gatewaysQueryKeys = {
             ...g,
             isV1: true as const,
             isPending: false as const,
-            isExpired: false as const,
             hasReEnrollToken: false as const
           })),
           ...dataV2.map((g) => {
             const hasHeartbeat = !!g.heartbeat;
-            const isPending = g.enrollmentTokenStatus === "pending" && !hasHeartbeat;
+            const hasToken = g.enrollmentTokenStatus === "pending" || g.enrollmentTokenStatus === "expired";
+            const isPending = hasToken && !hasHeartbeat;
             const hasReEnrollToken = g.enrollmentTokenStatus === "pending" && hasHeartbeat;
-            const isExpired = g.enrollmentTokenStatus === "expired" && !hasHeartbeat;
 
             return {
               ...g,
               isV1: false as const,
               isPending,
-              isExpired,
               hasReEnrollToken
             };
           })
