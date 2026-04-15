@@ -11,3 +11,9 @@ declare global {
     dataLayer?: Record<string, unknown>[];
   }
 }
+
+declare module "react-code-input" {
+  interface ReactCodeInputProps {
+    autoComplete?: string;
+  }
+}

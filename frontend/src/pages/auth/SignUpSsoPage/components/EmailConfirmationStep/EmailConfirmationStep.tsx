@@ -1,6 +1,6 @@
 // confirm email
 // if same email exists, then trigger fn to merge automatically
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -105,6 +105,13 @@ export const EmailConfirmationStep = ({
     setCode("");
   };
 
+  useEffect(() => {
+    if (code.length === 6) {
+      checkCode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
   const resendCode = async () => {
     const queryParams = new URLSearchParams(window.location.search);
     const token = queryParams.get("token");
@@ -134,6 +141,7 @@ export const EmailConfirmationStep = ({
           type="text"
           fields={6}
           onChange={setCode}
+          autoComplete="one-time-code"
           {...props}
           className="mt-6 mb-2"
         />
@@ -145,6 +153,7 @@ export const EmailConfirmationStep = ({
           type="text"
           fields={6}
           onChange={setCode}
+          autoComplete="one-time-code"
           {...propsPhone}
           className="mt-2 mb-2"
         />
