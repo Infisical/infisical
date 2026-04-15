@@ -64,7 +64,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   const total = chartData.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <UnstableCard className="flex min-w-[250px] flex-1 flex-col">
+    <UnstableCard className="flex h-auto min-w-[250px] flex-1 flex-col">
       <UnstableCardHeader className="pb-0">
         <UnstableCardTitle className="text-base font-semibold">
           Expiration Timeline
@@ -73,7 +73,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
           Certificates by time to expiry
         </UnstableCardDescription>
       </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 items-end pt-2">
+      <UnstableCardContent className="flex flex-1 items-center pt-2">
         {nonZeroData.length === 0 ? (
           <UnstableEmpty className="h-[200px]">
             <UnstableEmptyHeader>
