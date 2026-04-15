@@ -217,7 +217,8 @@ export function DateRangeFilter({
   const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
 
   const isInvalidFixedRange = useMemo(() => {
-    if (mode !== DateRangeFilterType.Fixed || !pendingRange?.from || !pendingRange?.to) return false;
+    if (mode !== DateRangeFilterType.Fixed || !pendingRange?.from || !pendingRange?.to)
+      return false;
     const start = combineDateAndTime(pendingRange.from, startTime);
     const end = combineDateAndTime(pendingRange.to, endTime);
     return start >= end;
