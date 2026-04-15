@@ -7,7 +7,7 @@ import ms from "ms";
 import { cn } from "@app/components/v3/utils";
 
 import { Button } from "../Button";
-import { Calendar } from "../Calendar";
+import { Calendar, CalendarDayButton } from "../Calendar";
 import { UnstableInput } from "../Input";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
@@ -61,6 +61,8 @@ const ACCENT_STYLES: Record<
     selectedBadge: string;
     selectedChip: string;
     switchChecked: string;
+    applyButton: string;
+    calendarMiddle: string;
   }
 > = {
   primary: {
@@ -69,7 +71,9 @@ const ACCENT_STYLES: Record<
     selectedBadge: "rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary",
     selectedChip: "border-primary/40 bg-primary/10 text-foreground",
     switchChecked:
-      "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:border-primary/30 data-[state=checked]:hover:bg-primary/15"
+      "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:border-primary/30 data-[state=checked]:hover:bg-primary/15",
+    applyButton: "border-primary/25 bg-primary/10 hover:bg-primary/15 hover:border-primary/30",
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]"
   },
   secondary: {
     selectedBorderBg: "border-org bg-org/10",
@@ -77,7 +81,9 @@ const ACCENT_STYLES: Record<
     selectedBadge: "rounded-sm bg-org/10 px-1.5 py-0.5 text-[11px] font-medium text-org",
     selectedChip: "border-org/40 bg-org/10 text-foreground",
     switchChecked:
-      "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:hover:border-org/30 data-[state=checked]:hover:bg-org/15"
+      "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:hover:border-org/30 data-[state=checked]:hover:bg-org/15",
+    applyButton: "border-org/25 bg-org/10 hover:bg-org/15 hover:border-org/30",
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]"
   }
 };
 
@@ -274,7 +280,7 @@ export function DateRangeFilter({
         )}
       </PopoverTrigger>
 
-      <PopoverContent align="end" sideOffset={8} className="w-auto min-w-80 overflow-hidden p-0">
+      <PopoverContent align="end" sideOffset={8} className="w-auto min-w-[30rem] overflow-hidden p-0">
         <div className="flex flex-col">
           {/* Body */}
           <div className="flex">
@@ -323,7 +329,7 @@ export function DateRangeFilter({
                             "group rounded-md border px-3 py-2 text-left transition-all",
                             activeLastValue === val
                               ? accentStyles.selectedCard
-                              : "border-border bg-background hover:border-foreground/25 hover:bg-foreground/5"
+                              : "border-border hover:border-foreground/25 hover:bg-foreground/5"
                           )}
                         >
                           <span
@@ -359,7 +365,7 @@ export function DateRangeFilter({
                         type="text"
                         inputMode="numeric"
                         placeholder="Amount"
-                        className="h-8 w-24 text-xs"
+                        className="h-8 flex-1 text-xs"
                         value={customDuration}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -370,7 +376,7 @@ export function DateRangeFilter({
                         }}
                       />
                       <Select value={customUnit} onValueChange={setCustomUnit}>
-                        <SelectTrigger size="sm" className="h-8 w-32 text-xs">
+                        <SelectTrigger size="sm" className="!h-8 flex-1 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -383,7 +389,7 @@ export function DateRangeFilter({
                       </Select>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-3">
                       {selectedCustomUnit?.values.map((val) => {
                         const isActive = customDuration === String(val);
                         return (
@@ -424,6 +430,18 @@ export function DateRangeFilter({
                     startMonth={addMonths(today, -120)}
                     endMonth={today}
                     className="p-0"
+                    classNames={{
+                      range_start:
+                        "rounded-l-(--cell-radius) bg-muted/[12%] relative after:bg-muted/[12%] after:absolute after:inset-y-0 after:w-4 after:right-0 z-0 isolate",
+                      range_end:
+                        "rounded-r-(--cell-radius) bg-muted/[12%] relative after:bg-muted/[12%] after:absolute after:inset-y-0 after:w-4 after:left-0 z-0 isolate",
+                      range_middle: "rounded-none"
+                    }}
+                    components={{
+                      DayButton: (props) => (
+                        <CalendarDayButton {...props} className={accentStyles.calendarMiddle} />
+                      )
+                    }}
                   />
 
                   {/* Time inputs */}
@@ -500,6 +518,7 @@ export function DateRangeFilter({
                 size="sm"
                 isDisabled={isApplyDisabled}
                 onClick={handleApply}
+                className={!isApplyDisabled ? accentStyles.applyButton : undefined}
               >
                 Apply
               </Button>
