@@ -3,6 +3,9 @@ import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
+  DateRangeFilter,
+  type DateRangeFilterResult,
+  type DateRangeFilterValue,
   DocumentationLinkBadge,
   UnstableAlert,
   UnstableAlertDescription
@@ -27,15 +30,9 @@ import {
   AuditSearchFilter,
   logFilterToAppliedFilters
 } from "./AuditSearchFilter";
-import { LogsDateFilter } from "./LogsDateFilter";
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
-import {
-  AuditLogDateFilterType,
-  Presets,
-  TAuditLogDateFilterFormData,
-  TAuditLogFilterFormData
-} from "./types";
+import { Presets, TAuditLogFilterFormData } from "./types";
 
 type Props = {
   presets?: Presets;
@@ -70,8 +67,6 @@ const LogsSectionComponent = ({
     actor: presets?.actorId,
     eventMetadata: presets?.eventMetadata
   });
-  const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
-
   const [searchFilters, setSearchFilters] = useState<AppliedFilter[]>(() =>
     logFilterToAppliedFilters({
       eventType: presets?.eventType,
@@ -81,20 +76,22 @@ const LogsSectionComponent = ({
 
   const searchDerived = useMemo(() => appliedFiltersToLogFilter(searchFilters), [searchFilters]);
 
-  const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>(
+  const defaultDateValue: DateRangeFilterValue =
     presets?.endDate || presets?.startDate
       ? {
-          type: AuditLogDateFilterType.Absolute,
-          startDate: presets?.startDate || new Date(Number(new Date()) - ms("1h")),
+          type: "fixed",
+          startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
           endDate: presets?.endDate || new Date()
         }
-      : {
-          startDate: new Date(Number(new Date()) - ms("1h")),
-          endDate: new Date(),
-          type: AuditLogDateFilterType.Relative,
-          relativeModeValue: "1h"
-        }
-  );
+      : { type: "last", value: "1h" };
+  const [dateRange, setDateRange] = useState<DateRangeFilterResult>({
+    startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
+    endDate: presets?.endDate || new Date(),
+    isUtc: false
+  });
+
+  const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
+  const dateRangeAccent = project ? "primary" : "secondary";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -142,11 +139,10 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <LogsDateFilter
-                filter={dateFilter}
-                setFilter={setDateFilter}
-                timezone={timezone}
-                setTimezone={setTimezone}
+              <DateRangeFilter
+                defaultValue={defaultDateValue}
+                onChange={setDateRange}
+                accent={dateRangeAccent}
               />
             )}
           </div>
@@ -180,8 +176,8 @@ const LogsSectionComponent = ({
               environment: searchDerived.environment || logFilter?.environment?.slug,
               secretPath: searchDerived.secretPath,
               secretKey: searchDerived.secretKey,
-              startDate: dateFilter?.startDate,
-              endDate: dateFilter?.endDate,
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
               limit: 15
             }}
             timezone={timezone}
@@ -229,11 +225,10 @@ const LogsSectionComponent = ({
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <LogsDateFilter
-            filter={dateFilter}
-            setFilter={setDateFilter}
-            timezone={timezone}
-            setTimezone={setTimezone}
+          <DateRangeFilter
+            defaultValue={defaultDateValue}
+            onChange={setDateRange}
+            accent={dateRangeAccent}
           />
         )}
         {showFilters && (
@@ -251,8 +246,8 @@ const LogsSectionComponent = ({
           limit: 15,
           eventType: logFilter?.eventType,
           userAgentType: logFilter?.userAgentType,
-          startDate: dateFilter?.startDate,
-          endDate: dateFilter?.endDate,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
           environment: logFilter?.environment?.slug,
           actor: logFilter?.actor
         }}
