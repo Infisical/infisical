@@ -181,8 +181,8 @@ export const formSchema = z.object({
       "secret-scanning": generalPermissionSchema,
       sso: ssoPermissionSchema,
       scim: generalPermissionSchema,
-      [OrgPermissionSubjects.GithubOrgSync]: generalPermissionSchema,
-      [OrgPermissionSubjects.GithubOrgSyncManual]: z
+      "github-org-sync": generalPermissionSchema,
+      "github-org-sync-manual": z
         .object({ edit: z.boolean().optional() })
         .optional(),
       ldap: generalPermissionSchema,
