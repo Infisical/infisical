@@ -185,7 +185,6 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => {
-                  console.log("val", val === HerokuConnectionMethod.OAuth);
                   onChange(val);
                   if (val === HerokuConnectionMethod.OAuth) {
                     setValue("credentials.code", "custom");

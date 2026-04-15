@@ -740,7 +740,12 @@ export enum EventType {
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
-  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
+  // Email Domains
+  CREATE_EMAIL_DOMAIN = "create-email-domain",
+  VERIFY_EMAIL_DOMAIN = "verify-email-domain",
+  DELETE_EMAIL_DOMAIN = "delete-email-domain"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -5856,6 +5861,30 @@ interface SecretValidationRuleDeleteEvent {
   };
 }
 
+interface CreateEmailDomainEvent {
+  type: EventType.CREATE_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
+interface VerifyEmailDomainEvent {
+  type: EventType.VERIFY_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
+interface DeleteEmailDomainEvent {
+  type: EventType.DELETE_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6386,4 +6415,7 @@ export type Event =
   | ScepRenewalEvent
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
-  | SecretValidationRuleDeleteEvent;
+  | SecretValidationRuleDeleteEvent
+  | CreateEmailDomainEvent
+  | VerifyEmailDomainEvent
+  | DeleteEmailDomainEvent;

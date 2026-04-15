@@ -20,6 +20,7 @@ export * from "./certificates";
 export * from "./certificateTemplates";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
+export * from "./emailDomains";
 export * from "./gateways";
 export * from "./githubOrgSyncConfig";
 export * from "./groups";

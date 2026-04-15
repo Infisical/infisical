@@ -15,14 +15,21 @@ export enum AuthMethod {
 export enum AuthTokenType {
   ACCESS_TOKEN = "accessToken",
   REFRESH_TOKEN = "refreshToken",
-  SIGNUP_TOKEN = "signupToken", // TODO: remove in favor of claim
-  MFA_TOKEN = "mfaToken", // TODO: remove in favor of claim
-  PROVIDER_TOKEN = "providerToken", // TODO: remove in favor of claim
+  SIGNUP_TOKEN = "signupToken",
+  MFA_TOKEN = "mfaToken",
   API_KEY = "apiKey",
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken"
+}
+
+// Result state from processProviderCallback — determines what the route handler should do
+export enum ProviderAuthResult {
+  // User is fully authenticated — set refresh cookie and redirect to app
+  SESSION = "session",
+  // User account is incomplete (new user or unverified alias) — issue signup token
+  SIGNUP_REQUIRED = "signup_required"
 }
 
 export enum AuthMode {
@@ -86,17 +93,18 @@ export type AuthModeRefreshJwtTokenPayload = {
   mfaMethod?: MfaMethod;
 };
 
-export type AuthModeProviderJwtTokenPayload = {
-  authTokenType: AuthTokenType.PROVIDER_TOKEN;
-  username: string;
-  authMethod: AuthMethod;
-  email: string;
-  organizationId?: string;
-};
-
-export type AuthModeProviderSignUpTokenPayload = {
+export type AuthModeSignUpTokenPayload = {
   authTokenType: AuthTokenType.SIGNUP_TOKEN;
   userId: string;
+  authMethod: AuthMethod;
+  isEmailVerified: boolean;
+  aliasId?: string;
+  organizationId?: string;
+  callbackPort?: string;
+  // User profile fields for the frontend signup page
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 export enum MfaMethod {
@@ -104,3 +112,18 @@ export enum MfaMethod {
   TOTP = "totp",
   WEBAUTHN = "webauthn"
 }
+
+export type TProviderAuthCallback =
+  | {
+      result: ProviderAuthResult.SIGNUP_REQUIRED;
+      signupToken: string;
+      callbackPort?: number;
+    }
+  | {
+      result: ProviderAuthResult.SESSION;
+      tokens: {
+        access: string;
+        refresh: string;
+      };
+      callbackPort?: number;
+    };

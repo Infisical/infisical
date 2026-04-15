@@ -76,6 +76,7 @@ type Props = {
     | "machine-identity-auth-template"
     | "sub-organization"
     | "sso"
+    | "email-domains"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
@@ -200,7 +201,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
                     control={control}
                     render={({ field }) => (
                       <Checkbox
-                        isChecked={field.value}
+                        isChecked={Boolean(field.value)}
                         onCheckedChange={(e) => {
                           if (!isEditable) {
                             createNotification({

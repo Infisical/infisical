@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, SecretType, UsersSchema } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
@@ -18,6 +18,7 @@ import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
   SanitizedTagSchema,
+  SanitizedUserSchema,
   secretRawSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -697,7 +698,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               isEmpty: z.boolean(),
               secretReminderRecipients: z
                 .object({
-                  user: UsersSchema.pick({ id: true, email: true, username: true }),
+                  user: SanitizedUserSchema.pick({ id: true, email: true, username: true }),
                   id: z.string()
                 })
                 .array(),

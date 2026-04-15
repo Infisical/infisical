@@ -10,6 +10,7 @@ import { Authenticator } from "@fastify/passport";
 import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
 import { MultiSamlStrategy } from "@node-saml/passport-saml";
+import { AuthenticateOptions } from "@node-saml/passport-saml/lib/types";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -21,10 +22,11 @@ import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, ProviderAuthResult, TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TSAMLConfig = {
@@ -52,11 +54,16 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         getSamlOptions: async (req, done) => {
           try {
-            const { samlConfigId, orgSlug } = req.params;
+            const { samlConfigId, domain, orgSlug } = req.params;
 
             let ssoLookupDetails: TGetSamlCfgDTO;
 
-            if (orgSlug) {
+            if (domain) {
+              ssoLookupDetails = {
+                type: "domain",
+                domain
+              };
+            } else if (orgSlug) {
               ssoLookupDetails = {
                 type: "orgSlug",
                 orgSlug
@@ -153,23 +160,36 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             })
             .filter((el) => el.key && !["email", "firstName", "lastName"].includes(el.key));
 
-          const { isUserCompleted, providerAuthToken, user, organization } = await server.services.saml.samlLogin({
+          let callbackPort: number | undefined;
+          try {
+            const relayStatePayload =
+              typeof req?.body === "object" ? (req.body as { RelayState?: string })?.RelayState : undefined;
+            if (relayStatePayload && Buffer.byteLength(relayStatePayload) <= 1024) {
+              callbackPort = Number(JSON.parse(relayStatePayload)?.callbackPort);
+            }
+          } catch (err) {
+            logger.error(err, "Relay state parsing failed");
+          }
+
+          const loginResult = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email: email.toLowerCase(),
             firstName,
             lastName: lastName as string,
-            relayState: (req.body as { RelayState?: string }).RelayState,
+            callbackPort: callbackPort || undefined,
             authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider,
             orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId,
+            ip: requestContext.get("ip") || "",
+            userAgent: requestContext.get("userAgent") || "",
             metadata: userMetadata
           });
 
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
               "infisical.user.email": email.toLowerCase(),
-              "infisical.user.id": user.id,
-              "infisical.organization.id": organization.id,
-              "infisical.organization.name": organization.name,
+              "infisical.user.id": loginResult.userId,
+              "infisical.organization.id": loginResult.orgId,
+              "infisical.organization.name": loginResult.orgName,
               "infisical.auth.method": AuthAttemptAuthMethod.SAML,
               "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
               "client.address": requestContext.get(RequestContextKey.Ip),
@@ -177,7 +197,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             });
           }
 
-          cb(null, { isUserCompleted, providerAuthToken });
+          cb(null, loginResult);
         } catch (error) {
           if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
             authAttemptCounter.add(1, {
@@ -196,6 +216,35 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       () => {}
     )
   );
+
+  server.route({
+    url: "/redirect/saml2/organizations/domain/:domain",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        domain: z.string().trim()
+      }),
+      querystring: z.object({
+        callback_port: z.string().optional()
+      })
+    },
+    preValidation: (req, res) =>
+      (
+        passport.authenticate("saml", {
+          failureRedirect: "/",
+          additionalParams: {
+            RelayState: JSON.stringify({
+              spInitiated: true,
+              callbackPort: req.query.callback_port ?? ""
+            })
+          }
+        } as AuthenticateOptions) as any
+      )(req, res),
+    handler: () => {}
+  });
 
   server.route({
     url: "/redirect/saml2/organizations/:orgSlug",
@@ -221,7 +270,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               callbackPort: req.query.callback_port ?? ""
             })
           }
-        } as any) as any
+        } as AuthenticateOptions) as any
       )(req, res),
     handler: () => {}
   });
@@ -250,7 +299,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               callbackPort: req.query.callback_port ?? ""
             })
           }
-        } as any) as any
+        } as AuthenticateOptions) as any
       )(req, res),
     handler: () => {}
   });
@@ -275,18 +324,34 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         if (err) {
           throw new BadRequestError({ message: `Saml authentication failed. ${err?.message}`, error: err });
         }
-        req.passportUser = user as { isUserCompleted: boolean; providerAuthToken: string };
+        req.passportUser = user as TProviderAuthCallback;
       }
     ) as any, // this is due to zod type difference
     handler: (req, res) => {
-      if (req.passportUser.isUserCompleted) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-        );
+      const passportResult = req.passportUser;
+      const cbPort = passportResult.callbackPort;
+
+      if (passportResult.result === ProviderAuthResult.SESSION) {
+        void res.setCookie("jid", passportResult.tokens.refresh, {
+          httpOnly: true,
+          path: "/api",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+        addAuthOriginDomainCookie(res);
+        const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
+        if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(sessionUrl.toString());
       }
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
+
+      if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+        const signupUrl = new URL("/signup/sso", appCfg.SITE_URL);
+        signupUrl.searchParams.set("token", passportResult.signupToken);
+        if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(signupUrl.toString());
+      }
+
+      throw new BadRequestError({ message: "Unexpected auth result" });
     }
   });
 

@@ -10,6 +10,7 @@ import {
   HardDrive,
   Key,
   Lock,
+  Mail,
   Plug,
   Shield,
   ShieldCheck,
@@ -48,7 +49,8 @@ const RESOURCE_OVERVIEW_SUBMENU: AdminSubmenu = {
   items: [
     { label: "Organizations", icon: Building, tab: "organizations" },
     { label: "Users", icon: User, tab: "users" },
-    { label: "Machine Identities", icon: HardDrive, tab: "identities" }
+    { label: "Machine Identities", icon: HardDrive, tab: "identities" },
+    { label: "Email Domains", icon: Mail, tab: "emailDomains" }
   ]
 };
 

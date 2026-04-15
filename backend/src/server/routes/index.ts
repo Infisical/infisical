@@ -50,6 +50,8 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
@@ -614,6 +616,7 @@ export const registerRoutes = async (
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
+  const emailDomainDAL = emailDomainDALFactory(db);
 
   const sshCertificateDAL = sshCertificateDALFactory(db);
   const sshCertificateBodyDAL = sshCertificateBodyDALFactory(db);
@@ -713,7 +716,7 @@ export const registerRoutes = async (
     projectEnvDAL
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -851,25 +854,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL
   });
 
-  const samlService = samlConfigServiceFactory({
-    identityMetadataDAL,
-    permissionService,
-    orgDAL,
-    userDAL,
-    userAliasDAL,
-    samlConfigDAL,
-    groupDAL,
-    userGroupMembershipDAL,
-    projectDAL,
-    projectBotDAL,
-    projectKeyDAL,
-    licenseService,
-    tokenService,
-    smtpService,
-    kmsService,
-    membershipRoleDAL,
-    membershipGroupDAL
-  });
+  // samlService is created after loginService (below) due to dependency on processProviderCallback
   const groupService = groupServiceFactory({
     identityDAL,
     membershipDAL,
@@ -946,7 +931,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     membershipUserDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    emailDomainDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -961,25 +947,7 @@ export const registerRoutes = async (
     membershipGroupDAL
   });
 
-  const ldapService = ldapConfigServiceFactory({
-    ldapConfigDAL,
-    ldapGroupMapDAL,
-    orgDAL,
-    groupDAL,
-    projectKeyDAL,
-    projectDAL,
-    projectBotDAL,
-    userGroupMembershipDAL,
-    userDAL,
-    userAliasDAL,
-    permissionService,
-    licenseService,
-    tokenService,
-    smtpService,
-    kmsService,
-    membershipGroupDAL,
-    membershipRoleDAL
-  });
+  // ldapService is created after loginService (below) due to dependency on processProviderCallback
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
@@ -1037,6 +1005,50 @@ export const registerRoutes = async (
     membershipUserDAL,
     keyStore,
     permissionService
+  });
+
+  const samlService = samlConfigServiceFactory({
+    identityMetadataDAL,
+    permissionService,
+    orgDAL,
+    userDAL,
+    userAliasDAL,
+    samlConfigDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    projectDAL,
+    projectBotDAL,
+    projectKeyDAL,
+    licenseService,
+    tokenService,
+    smtpService,
+    kmsService,
+    membershipRoleDAL,
+    membershipGroupDAL,
+    loginService,
+    emailDomainDAL
+  });
+
+  const ldapService = ldapConfigServiceFactory({
+    ldapConfigDAL,
+    ldapGroupMapDAL,
+    orgDAL,
+    groupDAL,
+    projectKeyDAL,
+    projectDAL,
+    projectBotDAL,
+    userGroupMembershipDAL,
+    userDAL,
+    userAliasDAL,
+    permissionService,
+    licenseService,
+    tokenService,
+    smtpService,
+    kmsService,
+    membershipGroupDAL,
+    membershipRoleDAL,
+    loginService,
+    emailDomainDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1108,14 +1120,10 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    userGroupMembershipDAL,
-    projectKeyDAL,
-    projectDAL,
-    projectBotDAL,
+    userAliasDAL,
     orgDAL,
     orgService,
-    licenseService,
-    membershipGroupDAL
+    loginService
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -1130,6 +1138,7 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     userAliasDAL,
+    emailDomainDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     authService: loginService,
@@ -2151,6 +2160,12 @@ export const registerRoutes = async (
     identityDAL
   });
 
+  const emailDomainService = emailDomainServiceFactory({
+    emailDomainDAL,
+    permissionService,
+    licenseService
+  });
+
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
@@ -2214,7 +2229,9 @@ export const registerRoutes = async (
     groupDAL,
     auditLogService,
     membershipGroupDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    loginService,
+    emailDomainDAL
   });
 
   const userEngagementService = userEngagementServiceFactory({
@@ -3112,6 +3129,7 @@ export const registerRoutes = async (
     secretRotation: secretRotationService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
+    emailDomain: emailDomainService,
     snapshot: snapshotService,
     saml: samlService,
     ldap: ldapService,
@@ -3208,6 +3226,12 @@ export const registerRoutes = async (
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });
+
+  // Expose services globally for e2e tests (only available inside the encapsulated plugin context)
+  if (process.env.NODE_ENV === "test") {
+    // @ts-expect-error type - expose for e2e test access
+    globalThis.testServices = server.services;
+  }
 
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
