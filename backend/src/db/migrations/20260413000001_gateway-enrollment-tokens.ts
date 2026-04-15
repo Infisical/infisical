@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   // Make identityId nullable and add tokenVersion to support enrollment-token-based gateways
   await knex.schema.alterTable(TableName.GatewayV2, (t) => {
     t.uuid("identityId").nullable().alter();
-    t.integer("tokenVersion").notNullable().defaultTo(1);
+    t.integer("tokenVersion").notNullable().defaultTo(0);
   });
 
   if (!(await knex.schema.hasTable(TableName.GatewayEnrollmentTokens))) {

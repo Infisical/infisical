@@ -1408,7 +1408,7 @@ export const gatewayV2ServiceFactory = ({
           gatewayId: gateway.id,
           orgId,
           authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN,
-          tokenVersion: gateway.tokenVersion ?? 1
+          tokenVersion: gateway.tokenVersion
         },
         appCfg.AUTH_SECRET
       );
