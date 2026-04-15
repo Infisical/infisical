@@ -104,7 +104,8 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/o
 # ? App setup
 
 # Install smbclient for Windows SMB operations
-RUN apt-get update && apt-get install -y smbclient
+# Install smbclient and bash (required by setup script)
+RUN apt-get update && apt-get install -y smbclient bash && rm -rf /var/lib/apt/lists/*
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
