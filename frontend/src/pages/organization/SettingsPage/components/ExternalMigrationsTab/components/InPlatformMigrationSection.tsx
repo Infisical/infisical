@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -23,8 +22,6 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   getInPlatformMigrationProviderMeta,
   TInPlatformMigrationApp
@@ -68,7 +65,6 @@ export const InPlatformMigrationSection = () => {
     ExternalMigrationProviders.Doppler
   );
 
-  const { currentOrg } = useOrganization();
   const { data: appConnections = [] } = useListAppConnections();
 
   const { mutateAsync: deleteConfig } = useDeleteExternalMigrationConfig();
