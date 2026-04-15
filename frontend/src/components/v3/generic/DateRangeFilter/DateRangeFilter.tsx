@@ -231,7 +231,9 @@ export function DateRangeFilter({
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
           <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-          <span className="max-w-72 truncate">{formatTriggerLabel(appliedValue, appliedIsUtc)}</span>
+          <span className="max-w-72 truncate">
+            {formatTriggerLabel(appliedValue, appliedIsUtc)}
+          </span>
         </Button>
       </PopoverTrigger>
 
