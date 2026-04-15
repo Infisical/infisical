@@ -1212,7 +1212,10 @@ export const superAdminServiceFactory = ({
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.EmailDomainCreationLock()]);
 
       // Check if any org (including this one) already has this domain verified
-      const platformExisting = await emailDomainDAL.findOne({ domain, status: EmailDomainStatus.Verified }, tx);
+      const platformExisting = await emailDomainDAL.findOne(
+        { domain: domain.toLowerCase(), status: EmailDomainStatus.Verified },
+        tx
+      );
       if (platformExisting) {
         return { error: "This domain is already verified by an organization.", data: null } as const;
       }

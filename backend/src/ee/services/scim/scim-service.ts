@@ -563,7 +563,7 @@ export const scimServiceFactory = ({
 
     return buildScimUser({
       orgMembershipId: createdOrgMembership.id,
-      username: email,
+      username: externalId ?? email,
       firstName: createdUser.firstName,
       lastName: createdUser.lastName,
       email: createdUser.email ?? "",
