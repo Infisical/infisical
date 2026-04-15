@@ -6,6 +6,7 @@ import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
@@ -27,6 +28,7 @@ import {
 
 type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
@@ -50,9 +52,17 @@ const VALUE_EVENT_TYPES = [
 
 const checkInsightsPermission = async (
   permissionService: TInsightsServiceFactoryDep["permissionService"],
+  licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
   actor: OrgServiceActor
 ) => {
+  const plan = await licenseService.getPlan(actor.orgId);
+  if (!plan.secretAccessInsights) {
+    throw new BadRequestError({
+      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
+    });
+  }
+
   const { permission } = await permissionService.getProjectPermission({
     actor: actor.type,
     actorId: actor.id,
@@ -67,6 +77,7 @@ const checkInsightsPermission = async (
 
 export const insightsServiceFactory = ({
   permissionService,
+  licenseService,
   auditLogDAL,
   secretRotationV2DAL,
   reminderDAL,
@@ -109,7 +120,7 @@ export const insightsServiceFactory = ({
   };
 
   const getCalendar = async (dto: TGetInsightsCalendarDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `calendar:${dto.year}-${dto.month}`);
     return withCache(cacheKey, async () => {
@@ -145,7 +156,7 @@ export const insightsServiceFactory = ({
   };
 
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
     return withCache(cacheKey, async () => {
@@ -225,7 +236,7 @@ export const insightsServiceFactory = ({
   };
 
   const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
     return withCache(cacheKey, async () => {
@@ -304,7 +315,7 @@ export const insightsServiceFactory = ({
   };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
     return withCache(cacheKey, async () => {
@@ -380,7 +391,7 @@ export const insightsServiceFactory = ({
   };
 
   const getSummary = async (dto: TGetInsightsSummaryDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, dto.projectId, actorDto);
+    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(
       dto.projectId,

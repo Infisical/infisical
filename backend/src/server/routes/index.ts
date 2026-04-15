@@ -2343,6 +2343,7 @@ export const registerRoutes = async (
 
   const insightsService = insightsServiceFactory({
     permissionService,
+    licenseService,
     auditLogDAL,
     secretRotationV2DAL,
     reminderDAL,
