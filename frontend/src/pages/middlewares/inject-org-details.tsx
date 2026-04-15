@@ -26,13 +26,15 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
 
       if (urlOrgId !== currentTokenOrgId) {
         try {
-          const { token, isMfaEnabled } = await selectOrganization({ organizationId: urlOrgId });
+          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
+            organizationId: urlOrgId
+          });
 
           if (isMfaEnabled) {
             sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
             throw redirect({
               to: "/login/select-organization",
-              search: { org_id: urlOrgId, mfa_pending: true }
+              search: { org_id: urlOrgId, mfa_method: mfaMethod }
             });
           }
 

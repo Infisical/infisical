@@ -753,7 +753,7 @@ export const orgServiceFactory = ({
       const user = await userDAL.findById(userId, tx);
       const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
         {
-          user,
+          userId: user.id,
           authMethod: decodedToken.authMethod,
           ip: ipAddress,
           userAgent: userAgentHeader,
@@ -945,9 +945,7 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const usersByUsername = await userDAL.findUserByUsername(email);
-    const user =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+    const user = await userDAL.findOne({ username: email });
     if (!user) {
       throw new NotFoundError({ message: "User not found" });
     }
@@ -992,14 +990,9 @@ export const orgServiceFactory = ({
       isEmailVerified: true
     });
 
+    // If user already completed signup, they'll be promoted to Accepted
+    // when they authenticate via selectOrganization or processProviderCallback
     if (user.isAccepted) {
-      // this means user has already completed signup process
-      // isAccepted is set true when keys are exchanged
-      await orgDAL.updateMembershipById(orgMembership.id, {
-        scopeOrgId: orgId,
-        status: OrgMembershipStatus.Accepted
-      });
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return { user };
     }
 

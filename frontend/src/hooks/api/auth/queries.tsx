@@ -6,13 +6,12 @@ import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
-import { setAuthToken } from "../reactQuery";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
+// Re-export from refresh.ts to maintain backwards compatibility
+// The actual implementation lives in refresh.ts to avoid circular imports with request.ts
+import { fetchAuthToken } from "./refresh";
 import {
-  CompleteAccountDTO,
   CompleteAccountSignupDTO,
-  GetAuthTokenAPI,
-  GetBackupEncryptedPrivateKeyDTO,
   Login1DTO,
   Login1Res,
   Login2DTO,
@@ -23,7 +22,6 @@ import {
   LoginV3Res,
   MfaMethod,
   OauthTokenExchangeRes,
-  ResetPasswordDTO,
   ResetPasswordV2DTO,
   ResetUserPasswordV2DTO,
   SendMfaTokenDTO,
@@ -103,9 +101,11 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
-      });
+      // Invalidate the auth token cache so the authenticate middleware
+      // re-calls fetchAuthToken (which reads the new in-memory token with orgId)
+      queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects });
     }
   });
 };
@@ -141,13 +141,14 @@ export const useOauthTokenExchange = () => {
 };
 
 export const completeAccountSignup = async (details: CompleteAccountSignupDTO) => {
-  const { data } = await apiRequest.post("/api/v3/signup/complete-account/signup", details);
+  const { data } = await apiRequest.post("/api/v3/signup/complete-account", details);
   return data;
 };
 
-export const completeAccountSignupInvite = async (details: CompleteAccountDTO) => {
-  const { data } = await apiRequest.post("/api/v3/signup/complete-account/invite", details);
-  return data;
+export const useCompleteAccountSignup = () => {
+  return useMutation({
+    mutationFn: completeAccountSignup
+  });
 };
 
 export const useSendMfaToken = () => {
@@ -226,46 +227,6 @@ export const useVerifySignupEmailVerificationCode = () => {
   });
 };
 
-export const getBackupEncryptedPrivateKey = async ({
-  verificationToken
-}: GetBackupEncryptedPrivateKeyDTO) => {
-  const { data } = await apiRequest.get("/api/v1/password/backup-private-key", {
-    headers: {
-      Authorization: `Bearer ${verificationToken}`
-    }
-  });
-
-  return data.backupPrivateKey;
-};
-
-export const useResetPassword = () => {
-  return useMutation({
-    mutationFn: async (details: ResetPasswordDTO) => {
-      const { data } = await apiRequest.post(
-        "/api/v1/password/password-reset",
-        {
-          protectedKey: details.protectedKey,
-          protectedKeyIV: details.protectedKeyIV,
-          protectedKeyTag: details.protectedKeyTag,
-          encryptedPrivateKey: details.encryptedPrivateKey,
-          encryptedPrivateKeyIV: details.encryptedPrivateKeyIV,
-          encryptedPrivateKeyTag: details.encryptedPrivateKeyTag,
-          salt: details.salt,
-          verifier: details.verifier,
-          password: details.password
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${details.verificationToken}`
-          }
-        }
-      );
-
-      return data;
-    }
-  });
-};
-
 export const useResetPasswordV2 = () => {
   return useMutation({
     mutationFn: async (details: ResetPasswordV2DTO) => {
@@ -286,15 +247,7 @@ export const useResetUserPasswordV2 = () => {
   });
 };
 
-// Refresh token is set as cookie when logged in
-// Using that we fetch the auth bearer token needed for auth calls
-export const fetchAuthToken = async () => {
-  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
-    withCredentials: true
-  });
-  setAuthToken(data.token);
-  return data;
-};
+export { fetchAuthToken };
 
 export const useGetAuthToken = () =>
   useQuery({

@@ -107,6 +107,17 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   })
 );
 
+export const SanitizedUserSchema = UsersSchema.pick({
+  username: true,
+  email: true,
+  isEmailVerified: true,
+  firstName: true,
+  lastName: true,
+  id: true
+}).extend({
+  publicKey: z.string().nullable().optional()
+});
+
 export const sanitizedServiceTokenUserSchema = UsersSchema.pick({
   authMethods: true,
   id: true,

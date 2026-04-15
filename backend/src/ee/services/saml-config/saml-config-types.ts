@@ -1,5 +1,6 @@
-import { TOrganizations, TSamlConfigs, TUsers } from "@app/db/schemas";
+import { TSamlConfigs } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
+import { TProviderAuthResult } from "@app/services/auth/auth-login-type";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export enum SamlProviders {
@@ -40,6 +41,10 @@ export type TGetSamlCfgDTO =
       actorOrgId: string;
     }
   | {
+      type: "domain";
+      domain: string;
+    }
+  | {
       type: "orgSlug";
       orgSlug: string;
     }
@@ -55,8 +60,10 @@ export type TSamlLoginDTO = {
   lastName?: string;
   authProvider: string;
   orgId: string;
+  ip: string;
+  userAgent: string;
   // saml thingy
-  relayState?: string;
+  callbackPort?: number;
   metadata?: { key: string; value: string }[];
 };
 
@@ -75,10 +82,5 @@ export type TSamlConfigServiceFactory = {
     lastUsed: Date | null | undefined;
     enableGroupSync?: boolean;
   }>;
-  samlLogin: (arg: TSamlLoginDTO) => Promise<{
-    isUserCompleted: boolean;
-    providerAuthToken: string;
-    user: TUsers;
-    organization: TOrganizations;
-  }>;
+  samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
 };

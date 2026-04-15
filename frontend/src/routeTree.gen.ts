@@ -31,7 +31,6 @@ import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/public/ViewSharedSecretByIDPage/route'
 import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
-import { Route as authLoginSsoPageRouteImport } from './pages/auth/LoginSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
@@ -533,12 +532,6 @@ const authSignUpSsoPageRouteRoute = authSignUpSsoPageRouteImport.update({
   id: '/sso',
   path: '/sso',
   getParentRoute: () => RestrictLoginSignupSignupRoute,
-} as any)
-
-const authLoginSsoPageRouteRoute = authLoginSsoPageRouteImport.update({
-  id: '/sso',
-  path: '/sso',
-  getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
 
 const authSelectOrgPageRouteRoute = authSelectOrgPageRouteImport.update({
@@ -2711,13 +2704,6 @@ declare module '@tanstack/react-router' {
       path: '/select-organization'
       fullPath: '/login/select-organization'
       preLoaderRoute: typeof authSelectOrgPageRouteImport
-      parentRoute: typeof RestrictLoginSignupLoginImport
-    }
-    '/_restrict-login-signup/login/sso': {
-      id: '/_restrict-login-signup/login/sso'
-      path: '/sso'
-      fullPath: '/login/sso'
-      preLoaderRoute: typeof authLoginSsoPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
     }
     '/_restrict-login-signup/signup/sso': {
@@ -5733,7 +5719,6 @@ interface RestrictLoginSignupLoginRouteChildren {
   authAdminLoginPageRouteRoute: typeof authAdminLoginPageRouteRoute
   authLoginLdapPageRouteRoute: typeof authLoginLdapPageRouteRoute
   authSelectOrgPageRouteRoute: typeof authSelectOrgPageRouteRoute
-  authLoginSsoPageRouteRoute: typeof authLoginSsoPageRouteRoute
   authProviderErrorPageRouteRoute: typeof authProviderErrorPageRouteRoute
   authProviderSuccessPageRouteRoute: typeof authProviderSuccessPageRouteRoute
 }
@@ -5744,7 +5729,6 @@ const RestrictLoginSignupLoginRouteChildren: RestrictLoginSignupLoginRouteChildr
     authAdminLoginPageRouteRoute: authAdminLoginPageRouteRoute,
     authLoginLdapPageRouteRoute: authLoginLdapPageRouteRoute,
     authSelectOrgPageRouteRoute: authSelectOrgPageRouteRoute,
-    authLoginSsoPageRouteRoute: authLoginSsoPageRouteRoute,
     authProviderErrorPageRouteRoute: authProviderErrorPageRouteRoute,
     authProviderSuccessPageRouteRoute: authProviderSuccessPageRouteRoute,
   }
@@ -5824,7 +5808,6 @@ export interface FileRoutesByFullPath {
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
-  '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
@@ -6098,7 +6081,6 @@ export interface FileRoutesByTo {
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
-  '/login/sso': typeof authLoginSsoPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
@@ -6357,7 +6339,6 @@ export interface FileRoutesById {
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
-  '/_restrict-login-signup/login/sso': typeof authLoginSsoPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
@@ -6645,7 +6626,6 @@ export interface FileRouteTypes {
     | '/login/admin'
     | '/login/ldap'
     | '/login/select-organization'
-    | '/login/sso'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
@@ -6918,7 +6898,6 @@ export interface FileRouteTypes {
     | '/login/admin'
     | '/login/ldap'
     | '/login/select-organization'
-    | '/login/sso'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
@@ -7175,7 +7154,6 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/login/admin'
     | '/_restrict-login-signup/login/ldap'
     | '/_restrict-login-signup/login/select-organization'
-    | '/_restrict-login-signup/login/sso'
     | '/_restrict-login-signup/signup/sso'
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
@@ -7568,7 +7546,6 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/login/admin",
         "/_restrict-login-signup/login/ldap",
         "/_restrict-login-signup/login/select-organization",
-        "/_restrict-login-signup/login/sso",
         "/_restrict-login-signup/login/provider/error",
         "/_restrict-login-signup/login/provider/success"
       ]
@@ -7615,10 +7592,6 @@ export const routeTree = rootRoute
     },
     "/_restrict-login-signup/login/select-organization": {
       "filePath": "auth/SelectOrgPage/route.tsx",
-      "parent": "/_restrict-login-signup/login"
-    },
-    "/_restrict-login-signup/login/sso": {
-      "filePath": "auth/LoginSsoPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/signup/sso": {

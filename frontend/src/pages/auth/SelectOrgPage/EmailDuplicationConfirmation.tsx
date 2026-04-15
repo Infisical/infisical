@@ -24,7 +24,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
   const removeDuplicateEmails = useRemoveMyDuplicateAccounts();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const logout = useLogoutUser(true);
+  const logout = useLogoutUser();
   const { popUp, handlePopUpToggle } = usePopUp(["removeDuplicateConfirm"] as const);
   const handleLogout = useCallback(async () => {
     try {

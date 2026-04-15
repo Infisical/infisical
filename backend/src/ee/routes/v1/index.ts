@@ -14,6 +14,7 @@ import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secre
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayRouter } from "./gateway-router";
@@ -68,6 +69,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerSubOrgRouter, { prefix: "/sub-organizations" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+  await server.register(registerEmailDomainRouter, { prefix: "/email-domains" });
 
   // depreciated in favour of infisical workspace
   await server.register(

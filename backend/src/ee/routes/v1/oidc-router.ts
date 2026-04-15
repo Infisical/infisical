@@ -15,11 +15,13 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
@@ -74,24 +76,35 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        orgSlug: z.string().trim(),
+        domain: z.string().trim().optional(),
+        orgSlug: z.string().trim().optional(),
         callbackPort: z.string().trim().optional()
       })
     },
     preValidation: [
       async (req, res) => {
-        const { orgSlug, callbackPort } = req.query;
+        const { domain, orgSlug, callbackPort } = req.query;
+
+        const identifier = domain || orgSlug;
+        if (!identifier) {
+          throw new BadRequestError({ message: "Missing domain or orgSlug query parameter" });
+        }
 
         // ensure fresh session state per login attempt
         await req.session.regenerate();
 
-        req.session.set<any>("oidcOrgSlug", orgSlug);
+        req.session.set<any>("oidcIdentifier", identifier);
+        req.session.set<any>("oidcIdentifierType", domain ? "domain" : "orgSlug");
 
         if (callbackPort) {
           req.session.set<any>("callbackPort", callbackPort);
         }
 
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(orgSlug, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(
+          identifier,
+          domain ? "domain" : "orgSlug",
+          callbackPort
+        );
         return (
           passport.authenticate(oidcStrategy as Strategy, {
             scope: "profile email openid"
@@ -108,9 +121,14 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     preValidation: [
       async (req, res) => {
-        const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
+        const oidcIdentifier = req.session.get<any>("oidcIdentifier");
+        const oidcIdentifierType = req.session.get<any>("oidcIdentifierType") || "domain";
         const callbackPort = req.session.get<any>("callbackPort");
-        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
+        const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(
+          oidcIdentifier,
+          oidcIdentifierType,
+          callbackPort
+        );
 
         return (
           passport.authenticate(oidcStrategy as Strategy, {
@@ -123,17 +141,30 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     ],
     handler: async (req, res) => {
       await req.session.destroy();
+      const passportResult = req.passportUser;
+      const cbPort = passportResult.callbackPort;
 
-      if (req.passportUser.isUserCompleted) {
-        return res.redirect(
-          `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-        );
+      if (passportResult.result === ProviderAuthResult.SESSION) {
+        void res.setCookie("jid", passportResult.tokens.refresh, {
+          httpOnly: true,
+          path: "/api",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+        addAuthOriginDomainCookie(res);
+        const sessionUrl = new URL("/login/select-organization", appCfg.SITE_URL);
+        if (cbPort) sessionUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(sessionUrl.toString());
       }
 
-      // signup
-      return res.redirect(
-        `${appCfg.SITE_URL}/signup/sso?token=${encodeURIComponent(req.passportUser.providerAuthToken)}`
-      );
+      if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
+        const signupUrl = new URL("/signup/sso", appCfg.SITE_URL);
+        signupUrl.searchParams.set("token", passportResult.signupToken);
+        if (cbPort) signupUrl.searchParams.set("callback_port", String(cbPort));
+        return res.redirect(signupUrl.toString());
+      }
+
+      throw new Error("Unexpected auth result");
     }
   });
 

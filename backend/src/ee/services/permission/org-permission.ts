@@ -110,6 +110,13 @@ export enum OrgPermissionBillingActions {
   ManageBilling = "manage-billing"
 }
 
+export enum OrgPermissionEmailDomainActions {
+  Read = "read",
+  Create = "create",
+  VerifyDomain = "verify-domain",
+  Delete = "delete"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
@@ -136,7 +143,8 @@ export enum OrgPermissionSubjects {
   Gateway = "gateway",
   Relay = "relay",
   SecretShare = "secret-share",
-  SubOrganization = "sub-organization"
+  SubOrganization = "sub-organization",
+  EmailDomains = "email-domains"
 }
 
 export type AppConnectionSubjectFields = {
@@ -175,7 +183,8 @@ export type OrgPermissionSet =
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
-  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -326,6 +335,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionRelayActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -471,6 +486,11 @@ const buildAdminPermission = () => {
   );
 
   can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
+
+  can(OrgPermissionEmailDomainActions.Read, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionEmailDomainActions.Create, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionEmailDomainActions.VerifyDomain, OrgPermissionSubjects.EmailDomains);
+  can(OrgPermissionEmailDomainActions.Delete, OrgPermissionSubjects.EmailDomains);
 
   return rules;
 };
