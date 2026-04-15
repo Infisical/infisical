@@ -49,7 +49,7 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
 infisical gateway start <name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
 ```
 
-The gateway name is provided as a positional argument. The `--name` flag is still accepted for backwards compatibility but is deprecated.
+The gateway name is provided as a positional argument.
 
 <Info>
     By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--target-relay-name=<relay-name>` flag.
@@ -302,18 +302,7 @@ The Gateway supports multiple authentication methods. Below are the available au
 
   </Accordion>
 
-  <Accordion title="--name (deprecated)">
-    The name of the gateway instance. Deprecated in favor of the positional argument.
 
-    ```bash
-    # Preferred (positional argument)
-    infisical gateway start my-gateway --token=<token>
-
-    # Deprecated (flag)
-    infisical gateway start my-gateway --token=<token>
-    ```
-
-  </Accordion>
 
   <Accordion title="--enroll-method">
     The enrollment method to use. When set to `token`, the `--token` flag is treated as a one-time enrollment token instead of a machine identity access token.
@@ -385,19 +374,6 @@ sudo infisical gateway systemd install my-gateway --token=<machine-identity-toke
     ```bash
     # Example
     sudo infisical gateway systemd install my-gateway --domain=https://app.your-domain.com
-    ```
-
-  </Accordion>
-
-  <Accordion title="--name (deprecated)">
-    The name of the gateway instance. Deprecated in favor of the positional argument.
-
-    ```bash
-    # Preferred (positional argument)
-    sudo infisical gateway systemd install my-gateway --token=<token>
-
-    # Deprecated (flag)
-    sudo infisical gateway systemd install --name=my-gateway --token=<token>
     ```
 
   </Accordion>
