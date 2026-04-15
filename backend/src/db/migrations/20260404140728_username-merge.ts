@@ -186,7 +186,7 @@ export async function up(knex: Knex): Promise<void> {
     log(`Phase 3: reassigning FKs across ${userFkReferences.length} tables for ${allMergeLoserIds.length} losers...`);
     t = Date.now();
     let tablesProcessed = 0;
-    for (const ref of userFkReferences) {
+    for (const ref of allMergeLoserIds.length > 0 ? userFkReferences : []) {
       const refStart = Date.now();
       const caseClauses = allMergeLoserIds
         .map((loserId) => `WHEN '${loserId}'::uuid THEN '${loserToWinner.get(loserId)!}'::uuid`)
