@@ -64,8 +64,10 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange, projectId }: 
   const allColumnKeys = INVENTORY_COLUMNS.map((c) => c.key);
   const allVisible = visibleColumns.size === INVENTORY_COLUMNS.length;
 
+  const MIN_COLUMN = "sanCn";
+
   const handleToggleAll = () => {
-    const next = allVisible ? new Set<string>() : new Set(allColumnKeys);
+    const next = allVisible ? new Set<string>([MIN_COLUMN]) : new Set(allColumnKeys);
     onChange(next);
     saveVisibleColumns(next, projectId);
   };
@@ -73,6 +75,7 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange, projectId }: 
   const handleToggle = (key: string) => {
     const next = new Set(visibleColumns);
     if (next.has(key)) {
+      if (next.size <= 1) return;
       next.delete(key);
     } else {
       next.add(key);

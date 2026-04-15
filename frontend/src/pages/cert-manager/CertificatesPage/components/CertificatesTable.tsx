@@ -55,6 +55,7 @@ import {
   UnstableTableRow
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub,
@@ -132,8 +133,10 @@ const VIEW_STORAGE_KEY = "cert-inventory-active-view";
 const MS_PER_DAY = 86_400_000;
 const SEARCH_DEBOUNCE_MS = 500;
 
+const EmptyCell = () => <span className="text-muted">—</span>;
+
 const getEnrollmentMethodBadge = (enrollmentType: string | null | undefined) => {
-  if (!enrollmentType) return null;
+  if (!enrollmentType) return <EmptyCell />;
   const label = enrollmentType.toUpperCase();
   return <Badge variant="ghost">{label}</Badge>;
 };
@@ -191,6 +194,23 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+
+  const canReadViews = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.CertificateInventoryViews
+  );
+  const canCreateViews = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.CertificateInventoryViews
+  );
+  const canEditViews = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.CertificateInventoryViews
+  );
+  const canDeleteViews = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.CertificateInventoryViews
+  );
 
   const projectId = currentProject?.id ?? "";
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
@@ -598,7 +618,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                 handleClearAllFilters();
                 setIsFilterOpen(false);
               }}
-              onSaveView={() => setIsSaveViewOpen(true)}
+              onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
             />
           </PopoverContent>
@@ -614,18 +634,18 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
           <DownloadIcon />
         </UnstableIconButton>
 
-        <ViewsDropdown
-          activeViewId={activeViewId}
-          systemViews={viewsData?.systemViews || []}
-          sharedViews={viewsData?.sharedViews || []}
-          customViews={viewsData?.customViews || []}
-          currentUserId={user?.id}
-          onSelectView={handleSelectView}
-          onDeleteView={(viewId) => {
-            handleDeleteView(viewId);
-          }}
-          onToggleShare={handleToggleShare}
-        />
+        {canReadViews && (
+          <ViewsDropdown
+            activeViewId={activeViewId}
+            systemViews={viewsData?.systemViews || []}
+            sharedViews={viewsData?.sharedViews || []}
+            customViews={viewsData?.customViews || []}
+            currentUserId={user?.id}
+            onSelectView={handleSelectView}
+            onDeleteView={canDeleteViews ? (viewId) => handleDeleteView(viewId) : undefined}
+            onToggleShare={canEditViews ? handleToggleShare : undefined}
+          />
+        )}
 
         <ColumnVisibilityToggle
           visibleColumns={visibleColumns}
@@ -783,32 +803,36 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
                       )}
                       {visibleColumns.has("issuedAt") && (
                         <UnstableTableCell>
-                          {certificate.notBefore
-                            ? format(new Date(certificate.notBefore), "MMM d, yyyy")
-                            : "-"}
+                          {certificate.notBefore ? (
+                            format(new Date(certificate.notBefore), "MMM d, yyyy")
+                          ) : (
+                            <EmptyCell />
+                          )}
                         </UnstableTableCell>
                       )}
                       {visibleColumns.has("expiresAt") && (
                         <UnstableTableCell>
-                          {certificate.notAfter
-                            ? format(new Date(certificate.notAfter), "MMM d, yyyy")
-                            : "-"}
+                          {certificate.notAfter ? (
+                            format(new Date(certificate.notAfter), "MMM d, yyyy")
+                          ) : (
+                            <EmptyCell />
+                          )}
                         </UnstableTableCell>
                       )}
                       {visibleColumns.has("ca") && (
                         <UnstableTableCell isTruncatable>
-                          {certificate.caName || "-"}
+                          {certificate.caName || <EmptyCell />}
                         </UnstableTableCell>
                       )}
                       {visibleColumns.has("profile") && (
                         <UnstableTableCell isTruncatable>
-                          {certificate.profileName || "-"}
+                          {certificate.profileName || <EmptyCell />}
                         </UnstableTableCell>
                       )}
                       {visibleColumns.has("algorithm") && (
                         <UnstableTableCell>
                           <span className="text-xs">
-                            {certificate.keyAlgorithm?.replace("_", "-") || "-"}
+                            {certificate.keyAlgorithm?.replace("_", "-") || <EmptyCell />}
                           </span>
                         </UnstableTableCell>
                       )}

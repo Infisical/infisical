@@ -753,15 +753,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
-  can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Delete
-    ],
-    ProjectPermissionSub.CertificateInventoryViews
-  );
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateInventoryViews);
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCertificatePolicyActions.Read, ProjectPermissionSub.CertificatePolicies);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);

@@ -346,7 +346,7 @@ export const ValidityReadinessSection = ({ stats }: Props) => {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold text-foreground">47-Day Validity Readiness</h2>
-      <div className="grid auto-rows-[1fr] grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid auto-rows-[1fr] grid-cols-1 gap-4 xl:grid-cols-3">
         <MandateCountdown />
         <ProjectedRenewals activeCerts={tlsActiveCerts} />
         <ValidityDistribution buckets={stats.validityBuckets} />

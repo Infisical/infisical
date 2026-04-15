@@ -9,6 +9,7 @@ import {
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
+  UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
@@ -125,9 +126,9 @@ export const CertificatesSection = ({
           Certificates
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
         </UnstableCardTitle>
-        <p className="text-sm text-muted">
+        <UnstableCardDescription>
           View, filter, and manage all certificates across your project.
-        </p>
+        </UnstableCardDescription>
         <UnstableCardAction>
           <ProjectPermissionCan
             I={ProjectPermissionCertificateActions.Import}

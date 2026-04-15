@@ -28,7 +28,7 @@ type Props = {
   customViews: (TCertificateInventoryView & { isSystem: false; isShared: false })[];
   currentUserId?: string;
   onSelectView: (viewId: string, filters: TInventoryViewFilters | TSystemViewFilters) => void;
-  onDeleteView: (viewId: string) => void;
+  onDeleteView?: (viewId: string) => void;
   onToggleShare?: (viewId: string, isShared: boolean) => void;
 };
 
@@ -50,10 +50,13 @@ export const ViewsDropdown = ({
     customViews.find((v) => v.id === activeViewId);
   const label = activeView?.name || "All Certificates";
 
-  const renderActions = (viewId: string, isShared: boolean) => {
-    if (pendingDeleteId === viewId) {
+  const renderActions = (viewId: string, isShared: boolean, isActive = false) => {
+    if (!onDeleteView && !onToggleShare) return null;
+    if (isActive && pendingDeleteId !== viewId) return null;
+
+    if (pendingDeleteId === viewId && onDeleteView) {
       return (
-        <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5">
+        <div className="absolute top-1/2 right-10 flex -translate-y-1/2 items-center gap-0.5">
           <UnstableIconButton
             variant="ghost"
             size="xs"
@@ -106,18 +109,20 @@ export const ViewsDropdown = ({
             </TooltipContent>
           </Tooltip>
         )}
-        <UnstableIconButton
-          variant="ghost"
-          size="xs"
-          aria-label="Delete view"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPendingDeleteId(viewId);
-          }}
-          className="text-muted hover:text-red-400"
-        >
-          <Trash2Icon />
-        </UnstableIconButton>
+        {onDeleteView && (
+          <UnstableIconButton
+            variant="ghost"
+            size="xs"
+            aria-label="Delete view"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPendingDeleteId(viewId);
+            }}
+            className="text-muted hover:text-red-400"
+          >
+            <Trash2Icon />
+          </UnstableIconButton>
+        )}
       </div>
     );
   };
@@ -162,8 +167,8 @@ export const ViewsDropdown = ({
                     className="group relative"
                     onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
                   >
-                    <span className="flex-1 pr-12">{view.name}</span>
-                    {isOwner && renderActions(view.id, true)}
+                    <span className="min-w-0 flex-1 truncate pr-16">{view.name}</span>
+                    {isOwner && renderActions(view.id, true, activeViewId === view.id)}
                   </UnstableDropdownMenuRadioItem>
                 );
               })}
@@ -189,8 +194,8 @@ export const ViewsDropdown = ({
                 className="group relative"
                 onClick={() => onSelectView(view.id, view.filters as Record<string, unknown>)}
               >
-                <span className="flex-1 pr-12">{view.name}</span>
-                {renderActions(view.id, false)}
+                <span className="min-w-0 flex-1 truncate pr-16">{view.name}</span>
+                {renderActions(view.id, false, activeViewId === view.id)}
               </UnstableDropdownMenuRadioItem>
             ))}
           </UnstableDropdownMenuRadioGroup>

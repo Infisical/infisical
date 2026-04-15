@@ -25,7 +25,7 @@ type Props = {
   onApply: () => void;
   onCancel: () => void;
   onClearAll: () => void;
-  onSaveView: () => void;
+  onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
 };
 
@@ -82,6 +82,12 @@ const DatePickerInput = ({
       </PopoverContent>
     </Popover>
   );
+};
+
+const isRuleEmpty = (rule: FilterRule): boolean => {
+  if (rule.value === null || rule.value === undefined || rule.value === "") return true;
+  if (Array.isArray(rule.value) && rule.value.length === 0) return true;
+  return false;
 };
 
 const FilterRow = ({
@@ -186,8 +192,10 @@ const FilterRow = ({
     }
   };
 
+  const empty = isRuleEmpty(rule);
+
   return (
-    <div className="flex items-start gap-2">
+    <div className={`flex items-start gap-2 ${empty ? "rounded ring-1 ring-warning/30" : ""}`}>
       <Select value={rule.field} onValueChange={handleFieldChange}>
         <SelectTrigger className="w-[180px] shrink-0">
           <SelectValue />
@@ -241,6 +249,18 @@ export const FilterBuilder = ({
   onSaveView,
   dynamicFieldOptions
 }: Props) => {
+  const hasEmptyRules = rules.some(isRuleEmpty);
+
+  const handleApplyWithValidation = () => {
+    onChange(rules.filter((r) => !isRuleEmpty(r)));
+    onApply();
+  };
+
+  const handleSaveWithValidation = () => {
+    onChange(rules.filter((r) => !isRuleEmpty(r)));
+    onSaveView?.();
+  };
+
   const handleAddRule = () => {
     const defaultField = FILTER_FIELDS[0];
     onChange([
@@ -303,14 +323,19 @@ export const FilterBuilder = ({
       </Button>
 
       <div className="flex items-center justify-between border-t border-border pt-3">
-        <Button variant="outline" size="xs" onClick={onSaveView}>
-          Save as View...
-        </Button>
+        {onSaveView && (
+          <Button variant="outline" size="xs" onClick={handleSaveWithValidation}>
+            Save as View...
+          </Button>
+        )}
         <div className="flex items-center gap-2">
+          {hasEmptyRules && (
+            <span className="text-xs text-warning">Empty filters will be removed</span>
+          )}
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="project" size="sm" onClick={onApply}>
+          <Button variant="project" size="sm" onClick={handleApplyWithValidation}>
             Apply Filters
           </Button>
         </div>

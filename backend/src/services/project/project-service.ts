@@ -41,13 +41,13 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -1359,19 +1359,12 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const cacheKey = KeyStorePrefixes.CertDashboardStats(projectId);
-    const cached = await keyStore.getItem(cacheKey);
-    if (cached) {
-      try {
-        return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getDashboardStats>>;
-      } catch {
-        logger.error(`Malformed dashboard stats cache entry [projectId=${projectId}]`);
-      }
-    }
-
-    const stats = await certificateDAL.getDashboardStats(projectId);
-    await keyStore.setItemWithExpiry(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(stats));
-    return stats;
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.CertDashboardStats(projectId),
+      ttlSeconds: DASHBOARD_CACHE_TTL,
+      fetcher: () => certificateDAL.getDashboardStats(projectId)
+    });
   };
 
   const getActivityTrend = async ({
@@ -1402,19 +1395,12 @@ export const projectServiceFactory = ({
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
 
-    const cacheKey = KeyStorePrefixes.CertActivityTrend(projectId, range);
-    const cached = await keyStore.getItem(cacheKey);
-    if (cached) {
-      try {
-        return JSON.parse(cached) as Awaited<ReturnType<typeof certificateDAL.getActivityTrend>>;
-      } catch {
-        logger.error(`Malformed activity trend cache entry [projectId=${projectId}] [range=${range}]`);
-      }
-    }
-
-    const trend = await certificateDAL.getActivityTrend(projectId, daysBack);
-    await keyStore.setItemWithExpiry(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(trend));
-    return trend;
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.CertActivityTrend(projectId, range),
+      ttlSeconds: DASHBOARD_CACHE_TTL,
+      fetcher: () => certificateDAL.getActivityTrend(projectId, daysBack)
+    });
   };
 
   /**
