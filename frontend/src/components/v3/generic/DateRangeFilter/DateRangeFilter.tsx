@@ -246,10 +246,16 @@ export function DateRangeFilter({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {appliedValue.type === DateRangeFilterType.Fixed ? (
-          <Button variant="outline" size="sm" className={cn("h-auto gap-3 py-1.5 font-normal", className)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("h-auto gap-3 py-1.5 font-normal", className)}
+          >
             <div className="flex flex-col items-start">
               <span className="text-muted-foreground text-[10px] leading-none">Starts</span>
-              <span className="mt-0.5 text-sm">{format(appliedValue.startDate, "MMM d, yyyy")}</span>
+              <span className="mt-0.5 text-sm">
+                {format(appliedValue.startDate, "MMM d, yyyy")}
+              </span>
             </div>
             <span className="text-muted-foreground">→</span>
             <div className="flex flex-col items-start">
@@ -350,14 +356,17 @@ export function DateRangeFilter({
 
                     <div className="flex items-center gap-2">
                       <UnstableInput
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         placeholder="Amount"
                         className="h-8 w-24 text-xs"
-                        min={1}
                         value={customDuration}
                         onChange={(e) => {
-                          setCustomDuration(e.target.value);
-                          if (e.target.value) setSelectedLastValue("");
+                          const val = e.target.value;
+                          if (val === "" || /^[1-9]\d*$/.test(val)) {
+                            setCustomDuration(val);
+                            if (val) setSelectedLastValue("");
+                          }
                         }}
                       />
                       <Select value={customUnit} onValueChange={setCustomUnit}>
