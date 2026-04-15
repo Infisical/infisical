@@ -275,44 +275,81 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      const docs = await membershipUserDAL.insertMany(newMemberships, tx);
-
-      const roleDocs: TMembershipRolesInsert[] = [];
-      docs.forEach((membership) => {
-        rolesToUse.forEach((membershipRole) => {
-          const isCustomRole = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
-          if (membershipRole.isTemporary) {
-            const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
-            roleDocs.push({
-              membershipId: membership.id,
-              role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-              customRoleId: customRolesGroupBySlug[membershipRole.role]
-                ? customRolesGroupBySlug[membershipRole.role][0].id
-                : null,
-              isTemporary: true,
-              temporaryMode: TemporaryPermissionMode.Relative,
-              temporaryRange: membershipRole.temporaryRange,
-              temporaryAccessStartTime: new Date(membershipRole.temporaryAccessStartTime as string),
-              temporaryAccessEndTime: new Date(
-                new Date(membershipRole.temporaryAccessStartTime as string).getTime() + (relativeTimeInMs as number)
-              )
-            });
-          } else {
-            roleDocs.push({
-              membershipId: membership.id,
-              role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
-              customRoleId: customRolesGroupBySlug[membershipRole.role]
-                ? customRolesGroupBySlug[membershipRole.role][0].id
-                : null
-            });
+      // Re-check for existing memberships within the transaction to prevent race conditions
+      // where concurrent requests both pass the initial existence check
+      const existingInTx = await membershipUserDAL.find(
+        {
+          scope: scopeData.scope,
+          ...scopeDatabaseFields,
+          $in: {
+            actorUserId: newMembershipUsers.map((el) => el.id)
           }
+        },
+        { tx }
+      );
+      const existingUserIds = new Set(existingInTx.map((el) => el.actorUserId));
+      const trulyNewMemberships = newMemberships.filter((m) => !existingUserIds.has(m.actorUserId));
+
+      if (trulyNewMemberships.length === 0) return [];
+
+      try {
+        const docs = await membershipUserDAL.insertMany(trulyNewMemberships, tx);
+
+        const roleDocs: TMembershipRolesInsert[] = [];
+        docs.forEach((membership) => {
+          rolesToUse.forEach((membershipRole) => {
+            const isCustomRole = Boolean(customRolesGroupBySlug?.[membershipRole.role]?.[0]);
+            if (membershipRole.isTemporary) {
+              const relativeTimeInMs = membershipRole.temporaryRange ? ms(membershipRole.temporaryRange) : null;
+              roleDocs.push({
+                membershipId: membership.id,
+                role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
+                customRoleId: customRolesGroupBySlug[membershipRole.role]
+                  ? customRolesGroupBySlug[membershipRole.role][0].id
+                  : null,
+                isTemporary: true,
+                temporaryMode: TemporaryPermissionMode.Relative,
+                temporaryRange: membershipRole.temporaryRange,
+                temporaryAccessStartTime: new Date(membershipRole.temporaryAccessStartTime as string),
+                temporaryAccessEndTime: new Date(
+                  new Date(membershipRole.temporaryAccessStartTime as string).getTime() + (relativeTimeInMs as number)
+                )
+              });
+            } else {
+              roleDocs.push({
+                membershipId: membership.id,
+                role: isCustomRole ? ProjectMembershipRole.Custom : membershipRole.role,
+                customRoleId: customRolesGroupBySlug[membershipRole.role]
+                  ? customRolesGroupBySlug[membershipRole.role][0].id
+                  : null
+              });
+            }
+          });
         });
-      });
-      await membershipRoleDAL.insertMany(roleDocs, tx);
-      return docs;
+        await membershipRoleDAL.insertMany(roleDocs, tx);
+        return docs;
+      } catch (err) {
+        // PostgreSQL unique_violation = error code 23505
+        // After the unique index is in place, a concurrent insert that races past the
+        // in-transaction re-check will hit the constraint. Treat as idempotent no-op
+        // instead of surfacing a 500 to API callers (e.g. Terraform).
+        if ((err as { code?: string }).code === "23505") {
+          return [];
+        }
+        throw err;
+      }
     });
 
-    const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
+    if (membershipDoc.length === 0) return { memberships: [] };
+
+    // Only pass truly inserted users to onCreateMembershipComplete to avoid
+    // sending duplicate invitation emails during partial race conditions
+    const insertedUserIds = new Set(membershipDoc.map((m) => m.actorUserId));
+    const trulyNewMembershipUsers = newMembershipUsers.filter((u) => insertedUserIds.has(u.id));
+
+    if (trulyNewMembershipUsers.length === 0) return { memberships: membershipDoc };
+
+    const { signUpTokens } = await factory.onCreateMembershipComplete(dto, trulyNewMembershipUsers);
     return { memberships: membershipDoc, signUpTokens };
   };
 
