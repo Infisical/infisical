@@ -996,8 +996,7 @@ export const groupServiceFactory = ({
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
-      identityGroupMembershipDAL,
-      membershipGroupDAL
+      identityGroupMembershipDAL
     });
 
     return identities[0];
