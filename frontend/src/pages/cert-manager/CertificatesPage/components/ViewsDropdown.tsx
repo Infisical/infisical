@@ -186,7 +186,7 @@ export const ViewsDropdown = ({
                     <span
                       className={twMerge(
                         "min-w-0 flex-1 truncate",
-                        activeViewId !== view.id && "group-hover:pr-8"
+                        isOwner && activeViewId !== view.id && "group-hover:pr-8"
                       )}
                     >
                       {view.name}
