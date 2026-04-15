@@ -384,7 +384,6 @@ export function DateRangeFilter({
                     startMonth={addMonths(today, -120)}
                     endMonth={today}
                     className="p-0"
-                    classNames={{ announcement: "sr-only" }}
                   />
 
                   {/* Time inputs */}
