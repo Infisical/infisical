@@ -17,12 +17,16 @@ export const gatewaysQueryKeys = {
           apiRequest.get<TGatewayV2[]>("/api/v2/gateways")
         ]);
 
+        // Filter out enrollment-flow gateways that haven't connected yet
+        // so gateway pickers don't show them as selectable options.
+        const connectedV2 = dataV2.filter((g) => g.identityId || g.heartbeat);
+
         return [
           ...data.gateways.map((g) => ({
             ...g,
             isV1: true as const
           })),
-          ...dataV2.map((g) => ({
+          ...connectedV2.map((g) => ({
             ...g,
             isV1: false as const
           }))

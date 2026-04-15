@@ -88,9 +88,9 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.GATEWAY_RE_ENROLL,
+          type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
           metadata: {
-            gatewayId: req.params.gatewayId,
+            tokenId: result.id,
             name: result.name
           }
         }
@@ -184,7 +184,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.gatewayV2.connectGateway({
         orgId: req.permission.orgId,

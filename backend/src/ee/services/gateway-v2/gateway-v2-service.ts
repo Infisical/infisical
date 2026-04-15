@@ -797,6 +797,10 @@ export const gatewayV2ServiceFactory = ({
         resolvedRelay = await relayDAL.findOne({ orgId, name: relayName });
         if (!resolvedRelay) resolvedRelay = await relayDAL.findOne({ name: relayName, orgId: null });
         if (!resolvedRelay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+
+        if (resolvedRelay.id !== gateway.relayId) {
+          await gatewayV2DAL.updateById(gateway.id, { relayId: resolvedRelay.id });
+        }
       } else {
         if (!gateway.relayId) throw new NotFoundError({ message: "No relay associated with this gateway" });
         resolvedRelay = await relayDAL.findById(gateway.relayId);
@@ -1315,6 +1319,11 @@ export const gatewayV2ServiceFactory = ({
         resolvedRelay = await relayDAL.findOne({ orgId, name: relayName });
         if (!resolvedRelay) resolvedRelay = await relayDAL.findOne({ name: relayName, orgId: null });
         if (!resolvedRelay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+
+        // Persist the relay change so future restarts use the new relay
+        if (resolvedRelay.id !== gateway.relayId) {
+          await gatewayV2DAL.updateById(gateway.id, { relayId: resolvedRelay.id });
+        }
       } else {
         if (!gateway.relayId) throw new NotFoundError({ message: "No relay associated with this gateway" });
         resolvedRelay = await relayDAL.findById(gateway.relayId);
@@ -1324,8 +1333,7 @@ export const gatewayV2ServiceFactory = ({
       return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay.name, gateway });
     }
 
-    // Identity-based flow: delegate to registerGateway
-    throw new BadRequestError({ message: "Use POST /api/v2/gateways for identity-based registration" });
+    throw new BadRequestError({ message: "Invalid actor type for gateway connect" });
   };
 
   const enrollGateway = async ({ token, relayName }: { token: string; relayName?: string }) => {
