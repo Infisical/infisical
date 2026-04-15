@@ -172,6 +172,10 @@ export const pamSessionServiceFactory = ({
         OrgPermissionGatewayActions.CreateGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (actor.type === ActorType.GATEWAY) {
+      if (project.orgId !== actor.orgId) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to this session" });
+      }
     }
 
     const authorized =
@@ -224,6 +228,9 @@ export const pamSessionServiceFactory = ({
         throw new ForbiddenRequestError({ message: "Identity does not have access to end this session" });
       }
     } else if (actor.type === ActorType.GATEWAY) {
+      if (project.orgId !== actor.orgId) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to this session" });
+      }
       if (session.gatewayId && session.gatewayId !== actor.id) {
         throw new ForbiddenRequestError({ message: "Gateway does not have access to end this session" });
       }
@@ -411,6 +418,10 @@ export const pamSessionServiceFactory = ({
         OrgPermissionGatewayActions.CreateGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (actor.type === ActorType.GATEWAY) {
+      if (project.orgId !== actor.orgId) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to this session" });
+      }
     }
 
     const authorized =

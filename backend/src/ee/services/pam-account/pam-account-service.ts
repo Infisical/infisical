@@ -972,6 +972,10 @@ export const pamAccountServiceFactory = ({
         OrgPermissionGatewayActions.CreateGateways,
         OrgPermissionSubjects.Gateway
       );
+    } else if (actor.type === ActorType.GATEWAY) {
+      if (project.orgId !== actor.orgId) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to this session" });
+      }
     }
 
     if (!session.accountId) throw new NotFoundError({ message: "Session is missing accountId column" });
