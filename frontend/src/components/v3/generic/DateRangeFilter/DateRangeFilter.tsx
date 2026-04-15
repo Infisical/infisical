@@ -245,12 +245,27 @@ export function DateRangeFilter({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
-          <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-          <span className="max-w-72 truncate">
-            {formatTriggerLabel(appliedValue, appliedIsUtc)}
-          </span>
-        </Button>
+        {appliedValue.type === DateRangeFilterType.Fixed ? (
+          <Button variant="outline" size="sm" className={cn("h-auto gap-3 py-1.5 font-normal", className)}>
+            <div className="flex flex-col items-start">
+              <span className="text-muted-foreground text-[10px] leading-none">Starts</span>
+              <span className="mt-0.5 text-sm">{format(appliedValue.startDate, "MMM d, yyyy")}</span>
+            </div>
+            <span className="text-muted-foreground">→</span>
+            <div className="flex flex-col items-start">
+              <span className="text-muted-foreground text-[10px] leading-none">Ends</span>
+              <span className="mt-0.5 text-sm">{format(appliedValue.endDate, "MMM d, yyyy")}</span>
+            </div>
+            <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
+            <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
+            <span className="max-w-72 truncate">
+              {formatTriggerLabel(appliedValue, appliedIsUtc)}
+            </span>
+          </Button>
+        )}
       </PopoverTrigger>
 
       <PopoverContent align="end" sideOffset={8} className="w-auto min-w-80 overflow-hidden p-0">
@@ -404,23 +419,24 @@ export function DateRangeFilter({
 
                   {/* Time inputs */}
                   <div className="flex flex-col gap-2 border-t border-border pt-2">
-                    <div className="flex items-end gap-4">
-                      <div className="flex flex-col gap-1">
+                    <div className="flex items-end gap-2">
+                      <div className="flex flex-1 flex-col gap-1">
                         <span className="text-muted-foreground text-xs">Start Time</span>
                         <UnstableInput
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
+                          className="h-9 w-full text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                         />
                       </div>
-                      <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground mb-2">→</span>
+                      <div className="flex flex-1 flex-col gap-1">
                         <span className="text-muted-foreground text-xs">End Time</span>
                         <UnstableInput
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
-                          className="h-8 text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
+                          className="h-9 w-full text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                         />
                       </div>
                     </div>
