@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Control, UseFormSetValue } from "react-hook-form";
 
 import { Select, SelectItem } from "@app/components/v2";
@@ -12,7 +12,6 @@ import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { useToggle } from "@app/hooks";
 
 import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
 import { useOrgPermissionActions } from "./OrgPermissionRowComponents";
@@ -29,8 +28,6 @@ enum Permission {
 }
 
 export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Props) => {
-  const [, setIsCustom] = useToggle();
-
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
@@ -48,18 +45,9 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
     return Permission.Custom;
   }, [rule]);
 
-  useEffect(() => {
-    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
-    else setIsCustom.off();
-  }, [selectedPermissionCategory]);
-
   const handlePermissionChange = (val: Permission) => {
     if (!val) return;
-    if (val === Permission.Custom) {
-      setIsCustom.on();
-      return;
-    }
-    setIsCustom.off();
+    if (val === Permission.Custom) return;
 
     switch (val) {
       case Permission.NoAccess:
