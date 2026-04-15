@@ -153,7 +153,7 @@ RUN mkdir frontend-build
 # Production stage
 FROM base AS production
 
-# Only runtime dependencies — no compilation happens in this stage
+# Runtime dependencies + build tools needed for PQC OpenSSL build
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     bash \
@@ -163,6 +163,8 @@ RUN apt-get update && apt-get install -y \
     freetds-bin \
     wget \
     perl \
+    build-essential \
+    libssl-dev \
     openssh-client \
     libaio1t64 \
     smbclient \
