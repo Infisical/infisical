@@ -36,7 +36,10 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectPermissionCache"
+  >;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -265,6 +268,8 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     if (sendEmails) {
       await notificationService.createUserNotifications(
         orgMembershipUsernames.map((member) => ({
@@ -394,6 +399,8 @@ export const projectMembershipServiceFactory = ({
 
       return deletedMemberships;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return memberships;
   };
