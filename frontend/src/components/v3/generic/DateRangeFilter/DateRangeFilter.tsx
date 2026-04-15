@@ -28,9 +28,14 @@ const RELATIVE_OPTIONS = [
   { label: "Weeks", unit: "w", values: [1, 2, 3, 4] }
 ] as const;
 
+export enum DateRangeFilterType {
+  Last = "last",
+  Fixed = "fixed"
+}
+
 export type DateRangeFilterValue =
-  | { type: "last"; value: string }
-  | { type: "fixed"; startDate: Date; endDate: Date };
+  | { type: DateRangeFilterType.Last; value: string }
+  | { type: DateRangeFilterType.Fixed; startDate: Date; endDate: Date };
 
 export type DateRangeFilterResult = {
   startDate: Date;
@@ -85,7 +90,7 @@ function formatDateForDisplay(date: Date, isUtc: boolean): string {
 }
 
 function formatTriggerLabel(value: DateRangeFilterValue, isUtc: boolean): string {
-  if (value.type === "last") return `Last ${value.value}`;
+  if (value.type === DateRangeFilterType.Last) return `Last ${value.value}`;
   const start = formatDateForDisplay(value.startDate, isUtc);
   const end = formatDateForDisplay(value.endDate, isUtc);
   return `${start} — ${end}`;
@@ -110,7 +115,7 @@ function isValidLastValue(val: string): boolean {
 }
 
 function resolveDateRange(value: DateRangeFilterValue, isUtc: boolean): DateRangeFilterResult {
-  if (value.type === "last") {
+  if (value.type === DateRangeFilterType.Last) {
     const now = new Date();
     return {
       startDate: new Date(now.getTime() - ms(value.value)),
@@ -133,32 +138,34 @@ export function DateRangeFilter({
   accent = "primary",
   className
 }: Props) {
-  const initialValue = defaultValue ?? { type: "last", value: "1h" };
+  const initialValue = defaultValue ?? { type: DateRangeFilterType.Last, value: "1h" };
   const [appliedValue, setAppliedValue] = useState<DateRangeFilterValue>(initialValue);
   const [appliedIsUtc, setAppliedIsUtc] = useState(defaultIsUtc);
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<"last" | "fixed">(
-    initialValue.type === "fixed" ? "fixed" : "last"
+  const [mode, setMode] = useState<DateRangeFilterType>(
+    initialValue.type === DateRangeFilterType.Fixed
+      ? DateRangeFilterType.Fixed
+      : DateRangeFilterType.Last
   );
 
   // Last mode state
   const [selectedLastValue, setSelectedLastValue] = useState<string>(
-    initialValue.type === "last" ? initialValue.value : "1h"
+    initialValue.type === DateRangeFilterType.Last ? initialValue.value : "1h"
   );
   const [customDuration, setCustomDuration] = useState<string>("");
   const [customUnit, setCustomUnit] = useState<string>("m");
 
   // Fixed mode state
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(
-    initialValue.type === "fixed"
+    initialValue.type === DateRangeFilterType.Fixed
       ? { from: initialValue.startDate, to: initialValue.endDate }
       : undefined
   );
   const [startTime, setStartTime] = useState<string>(
-    initialValue.type === "fixed" ? toTimeString(initialValue.startDate) : "00:00"
+    initialValue.type === DateRangeFilterType.Fixed ? toTimeString(initialValue.startDate) : "00:00"
   );
   const [endTime, setEndTime] = useState<string>(
-    initialValue.type === "fixed" ? toTimeString(initialValue.endDate) : "23:59"
+    initialValue.type === DateRangeFilterType.Fixed ? toTimeString(initialValue.endDate) : "23:59"
   );
 
   // Timezone state
@@ -167,9 +174,13 @@ export function DateRangeFilter({
   // Sync pending state when popover opens
   useEffect(() => {
     if (isOpen) {
-      setMode(appliedValue.type === "fixed" ? "fixed" : "last");
+      setMode(
+        appliedValue.type === DateRangeFilterType.Fixed
+          ? DateRangeFilterType.Fixed
+          : DateRangeFilterType.Last
+      );
       setPendingIsUtc(appliedIsUtc);
-      if (appliedValue.type === "last") {
+      if (appliedValue.type === DateRangeFilterType.Last) {
         setSelectedLastValue(appliedValue.value);
         setCustomDuration("");
         setCustomUnit("m");
@@ -183,16 +194,16 @@ export function DateRangeFilter({
 
   const handleApply = () => {
     let nextValue: DateRangeFilterValue;
-    if (mode === "last") {
+    if (mode === DateRangeFilterType.Last) {
       const lastVal =
         customDuration && customUnit ? `${customDuration}${customUnit}` : selectedLastValue;
       if (!isValidLastValue(lastVal)) return;
-      nextValue = { type: "last", value: lastVal };
+      nextValue = { type: DateRangeFilterType.Last, value: lastVal };
     } else {
       if (!pendingRange?.from || !pendingRange?.to) return;
       const startDate = combineDateAndTime(pendingRange.from, startTime);
       const endDate = combineDateAndTime(pendingRange.to, endTime);
-      nextValue = { type: "fixed", startDate, endDate };
+      nextValue = { type: DateRangeFilterType.Fixed, startDate, endDate };
     }
 
     setAppliedValue(nextValue);
@@ -205,7 +216,8 @@ export function DateRangeFilter({
 
   const calendarDefaultMonth = pendingRange?.from ? pendingRange.from : addMonths(today, -1);
 
-  const isApplyDisabled = mode === "fixed" ? !pendingRange?.from || !pendingRange?.to : false;
+  const isApplyDisabled =
+    mode === DateRangeFilterType.Fixed ? !pendingRange?.from || !pendingRange?.to : false;
 
   const activeLastValue = customDuration && customUnit ? "" : selectedLastValue;
   const accentStyles = ACCENT_STYLES[accent];
@@ -229,7 +241,7 @@ export function DateRangeFilter({
           <div className="flex">
             {/* Left sidebar */}
             <div className="flex w-24 shrink-0 flex-col border-r border-border py-2">
-              {(["last", "fixed"] as const).map((m) => (
+              {[DateRangeFilterType.Last, DateRangeFilterType.Fixed].map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -241,14 +253,14 @@ export function DateRangeFilter({
                       : "text-muted-foreground border-transparent hover:bg-foreground/5 hover:text-foreground"
                   )}
                 >
-                  {m === "last" ? "Last" : "Fixed"}
+                  {m === DateRangeFilterType.Last ? "Last" : "Fixed"}
                 </button>
               ))}
             </div>
 
             {/* Right content */}
             <div className="flex-1 p-4">
-              {mode === "last" && (
+              {mode === DateRangeFilterType.Last && (
                 <div className="flex flex-col gap-3">
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
@@ -356,7 +368,7 @@ export function DateRangeFilter({
                 </div>
               )}
 
-              {mode === "fixed" && (
+              {mode === DateRangeFilterType.Fixed && (
                 <div className="flex flex-col gap-3">
                   {/* Calendar */}
                   <Calendar
@@ -401,7 +413,7 @@ export function DateRangeFilter({
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-            {mode === "fixed" ? (
+            {mode === DateRangeFilterType.Fixed ? (
               <div className="flex shrink-0 cursor-pointer items-center gap-2 select-none">
                 <span
                   className={cn(

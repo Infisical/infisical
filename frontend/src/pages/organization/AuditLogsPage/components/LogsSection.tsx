@@ -5,6 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
   DateRangeFilter,
   type DateRangeFilterResult,
+  DateRangeFilterType,
   type DateRangeFilterValue,
   DocumentationLinkBadge,
   UnstableAlert,
@@ -79,11 +80,11 @@ const LogsSectionComponent = ({
   const defaultDateValue: DateRangeFilterValue =
     presets?.endDate || presets?.startDate
       ? {
-          type: "fixed",
+          type: DateRangeFilterType.Fixed,
           startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
           endDate: presets?.endDate || new Date()
         }
-      : { type: "last", value: "1h" };
+      : { type: DateRangeFilterType.Last, value: "1h" };
   const [dateRange, setDateRange] = useState<DateRangeFilterResult>({
     startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
     endDate: presets?.endDate || new Date(),
