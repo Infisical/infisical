@@ -5,7 +5,7 @@ import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
@@ -274,4 +274,3 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
 
   // Enrollment endpoints have moved to V3: /api/v3/gateways
 };
-

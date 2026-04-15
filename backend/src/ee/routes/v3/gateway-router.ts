@@ -2,7 +2,7 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -135,23 +135,25 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         relayName: req.body.relayName
       });
 
-      await server.services.auditLog.createAuditLog({
-        orgId: result.orgId,
-        actor: {
-          type: ActorType.GATEWAY,
-          metadata: { gatewayId: result.gatewayId }
-        },
-        event: {
-          type: EventType.GATEWAY_ENROLL,
-          metadata: {
-            gatewayId: result.gatewayId,
-            name: result.gatewayName
-          }
-        },
-        ipAddress: req.ip,
-        userAgent: req.headers["user-agent"] ?? "",
-        userAgentType: UserAgentType.CLI
-      });
+      await server.services.auditLog
+        .createAuditLog({
+          orgId: result.orgId,
+          actor: {
+            type: ActorType.GATEWAY,
+            metadata: { gatewayId: result.gatewayId }
+          },
+          event: {
+            type: EventType.GATEWAY_ENROLL,
+            metadata: {
+              gatewayId: result.gatewayId,
+              name: result.gatewayName
+            }
+          },
+          ipAddress: req.ip,
+          userAgent: req.headers["user-agent"] ?? "",
+          userAgentType: UserAgentType.CLI
+        })
+        .catch(() => {});
 
       return result;
     }
