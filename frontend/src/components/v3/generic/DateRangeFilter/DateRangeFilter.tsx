@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
 import { addMonths, format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { ArrowRight, CalendarIcon } from "lucide-react";
 import ms from "ms";
 
 import { cn } from "@app/components/v3/utils";
@@ -13,12 +13,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
 import { Switch } from "../Switch";
 
-const RELATIVE_PRESETS = [
-  { value: "5m", label: "5 minutes" },
-  { value: "30m", label: "30 minutes" },
-  { value: "1h", label: "1 hour" },
-  { value: "3h", label: "3 hours" },
-  { value: "12h", label: "12 hours" }
+const SECONDARY_PRESETS = [
+  { value: "1d", label: "1 day" },
+  { value: "2d", label: "2 days" },
+  { value: "1w", label: "1 week" },
+  { value: "2w", label: "2 weeks" },
+  { value: "3w", label: "3 weeks" },
+  { value: "30d", label: "30 days" }
 ] as const;
 
 const RELATIVE_OPTIONS = [
@@ -43,17 +44,18 @@ export type DateRangeFilterResult = {
   isUtc: boolean;
 };
 
-type DateRangeFilterAccent = "primary" | "secondary";
+export type DateRangeFilterAccent = "primary" | "secondary";
 
 type Props = {
   defaultValue?: DateRangeFilterValue;
   defaultIsUtc?: boolean;
   onChange: (value: DateRangeFilterResult) => void;
   accent?: DateRangeFilterAccent;
+  isActive?: boolean;
   className?: string;
 };
 
-const ACCENT_STYLES: Record<
+export const ACCENT_STYLES: Record<
   DateRangeFilterAccent,
   {
     selectedBorderBg: string;
@@ -121,6 +123,12 @@ function isValidLastValue(val: string): boolean {
   return typeof parsed === "number" && parsed > 0;
 }
 
+function parseLastValue(val: string): { duration: string; unit: string } | null {
+  const match = val.match(/^(\d+)([mhdw])$/);
+  if (!match) return null;
+  return { duration: match[1], unit: match[2] };
+}
+
 function resolveDateRange(value: DateRangeFilterValue, isUtc: boolean): DateRangeFilterResult {
   if (value.type === DateRangeFilterType.Last) {
     const now = new Date();
@@ -143,6 +151,7 @@ export function DateRangeFilter({
   defaultIsUtc = false,
   onChange,
   accent = "primary",
+  isActive = true,
   className
 }: Props) {
   const initialValue = defaultValue ?? { type: DateRangeFilterType.Last, value: "1h" };
@@ -155,12 +164,13 @@ export function DateRangeFilter({
       : DateRangeFilterType.Last
   );
 
-  // Last mode state
-  const [selectedLastValue, setSelectedLastValue] = useState<string>(
-    initialValue.type === DateRangeFilterType.Last ? initialValue.value : "1h"
-  );
-  const [customDuration, setCustomDuration] = useState<string>("");
-  const [customUnit, setCustomUnit] = useState<string>("m");
+  // Last mode state — seed from the initial value if it's a Last type
+  const initialLastParsed =
+    initialValue.type === DateRangeFilterType.Last
+      ? (parseLastValue(initialValue.value) ?? { duration: "1", unit: "h" })
+      : { duration: "1", unit: "h" };
+  const [customDuration, setCustomDuration] = useState<string>(initialLastParsed.duration);
+  const [customUnit, setCustomUnit] = useState<string>(initialLastParsed.unit);
 
   // Fixed mode state
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(
@@ -188,9 +198,9 @@ export function DateRangeFilter({
       );
       setPendingIsUtc(appliedIsUtc);
       if (appliedValue.type === DateRangeFilterType.Last) {
-        setSelectedLastValue(appliedValue.value);
-        setCustomDuration("");
-        setCustomUnit("m");
+        const parsed = parseLastValue(appliedValue.value) ?? { duration: "1", unit: "h" };
+        setCustomDuration(parsed.duration);
+        setCustomUnit(parsed.unit);
       } else {
         setPendingRange({ from: appliedValue.startDate, to: appliedValue.endDate });
         setStartTime(toTimeString(appliedValue.startDate));
@@ -202,8 +212,7 @@ export function DateRangeFilter({
   const handleApply = () => {
     let nextValue: DateRangeFilterValue;
     if (mode === DateRangeFilterType.Last) {
-      const lastVal =
-        customDuration && customUnit ? `${customDuration}${customUnit}` : selectedLastValue;
+      const lastVal = `${customDuration}${customUnit}`;
       if (!isValidLastValue(lastVal)) return;
       nextValue = { type: DateRangeFilterType.Last, value: lastVal };
     } else {
@@ -236,49 +245,57 @@ export function DateRangeFilter({
       if (!pendingRange?.from || !pendingRange?.to) return true;
       return isInvalidFixedRange;
     }
-    const lastVal =
-      customDuration && customUnit ? `${customDuration}${customUnit}` : selectedLastValue;
-    return !isValidLastValue(lastVal);
-  }, [mode, pendingRange, isInvalidFixedRange, customDuration, customUnit, selectedLastValue]);
+    return !isValidLastValue(`${customDuration}${customUnit}`);
+  }, [mode, pendingRange, isInvalidFixedRange, customDuration, customUnit]);
 
-  const activeLastValue = customDuration && customUnit ? "" : selectedLastValue;
   const accentStyles = ACCENT_STYLES[accent];
   const selectedCustomUnit = useMemo(
     () => RELATIVE_OPTIONS.find((opt) => opt.unit === customUnit),
     [customUnit]
   );
 
+  const renderTrigger = () => {
+    if (!isActive) {
+      return (
+        <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
+          <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
+          Custom
+        </Button>
+      );
+    }
+
+    if (appliedValue.type === DateRangeFilterType.Fixed) {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
+        >
+          <span className="text-xs">{format(appliedValue.startDate, "MMM d, yyyy")}</span>
+          <ArrowRight className="text-muted-foreground size-3 shrink-0" />
+          <span className="text-xs">{format(appliedValue.endDate, "MMM d, yyyy")}</span>
+          <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
+      >
+        <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
+        <span className="max-w-72 truncate">
+          {formatTriggerLabel(appliedValue, appliedIsUtc)}
+        </span>
+      </Button>
+    );
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {appliedValue.type === DateRangeFilterType.Fixed ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn("h-auto gap-3 py-1.5 font-normal", className)}
-          >
-            <div className="flex flex-col items-start">
-              <span className="text-muted-foreground text-[10px] leading-none">Starts</span>
-              <span className="mt-0.5 text-sm">
-                {format(appliedValue.startDate, "MMM d, yyyy")}
-              </span>
-            </div>
-            <span className="text-muted-foreground">→</span>
-            <div className="flex flex-col items-start">
-              <span className="text-muted-foreground text-[10px] leading-none">Ends</span>
-              <span className="mt-0.5 text-sm">{format(appliedValue.endDate, "MMM d, yyyy")}</span>
-            </div>
-            <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" className={cn("gap-1.5 font-normal", className)}>
-            <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-            <span className="max-w-72 truncate">
-              {formatTriggerLabel(appliedValue, appliedIsUtc)}
-            </span>
-          </Button>
-        )}
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
 
       <PopoverContent align="end" sideOffset={8} className="w-auto min-w-[30rem] overflow-hidden p-0">
         <div className="flex flex-col">
@@ -307,111 +324,95 @@ export function DateRangeFilter({
             <div className="flex-1 p-4">
               {mode === DateRangeFilterType.Last && (
                 <div className="flex flex-col gap-3">
-                  <div>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                        Quick ranges
-                      </span>
-                      {!!activeLastValue && (
-                        <span className={accentStyles.selectedBadge}>{activeLastValue}</span>
-                      )}
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {RELATIVE_PRESETS.map(({ value: val, label }) => (
+                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    Quick ranges
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SECONDARY_PRESETS.map(({ value: val, label }) => {
+                      const parsed = parseLastValue(val);
+                      const isPresetActive =
+                        parsed &&
+                        customDuration === parsed.duration &&
+                        customUnit === parsed.unit;
+                      return (
                         <button
                           key={val}
                           type="button"
                           onClick={() => {
-                            setSelectedLastValue(val);
-                            setCustomDuration("");
+                            if (parsed) {
+                              setCustomDuration(parsed.duration);
+                              setCustomUnit(parsed.unit);
+                            }
                           }}
                           className={cn(
-                            "group rounded-md border px-3 py-2 text-left transition-all",
-                            activeLastValue === val
+                            "rounded-md border px-3 py-2 text-left text-sm transition-all",
+                            isPresetActive
                               ? accentStyles.selectedCard
                               : "border-border hover:border-foreground/25 hover:bg-foreground/5"
                           )}
                         >
                           <span
                             className={cn(
-                              "block text-sm leading-none",
-                              activeLastValue === val
-                                ? "font-medium text-foreground"
-                                : "text-foreground/90"
+                              isPresetActive ? "font-medium text-foreground" : "text-foreground/90"
                             )}
                           >
                             {label}
                           </span>
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="rounded-md border border-border bg-foreground/[0.02] p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                        Custom
-                      </span>
-                      {customDuration && (
-                        <span className={accentStyles.selectedBadge}>
-                          {customDuration}
-                          {customUnit}
-                        </span>
-                      )}
-                    </div>
+                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    Custom
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <UnstableInput
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Amount"
+                      className="h-8 flex-1 text-xs"
+                      value={customDuration}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^[1-9]\d*$/.test(val)) {
+                          setCustomDuration(val);
+                        }
+                      }}
+                    />
+                    <Select value={customUnit} onValueChange={setCustomUnit}>
+                      <SelectTrigger size="sm" className="!h-8 flex-1 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RELATIVE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.unit} value={opt.unit}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <div className="flex items-center gap-2">
-                      <UnstableInput
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Amount"
-                        className="h-8 flex-1 text-xs"
-                        value={customDuration}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "" || /^[1-9]\d*$/.test(val)) {
-                            setCustomDuration(val);
-                            if (val) setSelectedLastValue("");
-                          }
-                        }}
-                      />
-                      <Select value={customUnit} onValueChange={setCustomUnit}>
-                        <SelectTrigger size="sm" className="!h-8 flex-1 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {RELATIVE_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.unit} value={opt.unit}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-3">
-                      {selectedCustomUnit?.values.map((val) => {
-                        const isActive = customDuration === String(val);
-                        return (
-                          <button
-                            key={`${selectedCustomUnit.unit}-${val}`}
-                            type="button"
-                            onClick={() => {
-                              setCustomDuration(String(val));
-                              setSelectedLastValue("");
-                            }}
-                            className={cn(
-                              "rounded-md border px-2 py-1 text-xs transition-colors",
-                              isActive
-                                ? accentStyles.selectedChip
-                                : "text-muted-foreground border-border hover:border-foreground/25 hover:bg-foreground/5 hover:text-foreground"
-                            )}
-                          >
-                            {val}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCustomUnit?.values.map((val) => {
+                      const isChipActive = customDuration === String(val);
+                      return (
+                        <button
+                          key={`${selectedCustomUnit.unit}-${val}`}
+                          type="button"
+                          onClick={() => setCustomDuration(String(val))}
+                          className={cn(
+                            "rounded-md border px-2 py-1 text-xs transition-colors",
+                            isChipActive
+                              ? accentStyles.selectedChip
+                              : "text-muted-foreground border-border hover:border-foreground/25 hover:bg-foreground/5 hover:text-foreground"
+                          )}
+                        >
+                          {val}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

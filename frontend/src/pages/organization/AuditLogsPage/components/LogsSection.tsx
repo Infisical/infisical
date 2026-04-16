@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
   DateRangeFilter,
   type DateRangeFilterResult,
   DateRangeFilterType,
-  type DateRangeFilterValue,
+  DateRangeQuickPresets,
   DocumentationLinkBadge,
   UnstableAlert,
   UnstableAlertDescription
@@ -77,17 +76,18 @@ const LogsSectionComponent = ({
 
   const searchDerived = useMemo(() => appliedFiltersToLogFilter(searchFilters), [searchFilters]);
 
-  const defaultDateValue: DateRangeFilterValue =
-    presets?.endDate || presets?.startDate
-      ? {
-          type: DateRangeFilterType.Fixed,
-          startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
-          endDate: presets?.endDate || new Date()
-        }
-      : { type: DateRangeFilterType.Last, value: "1h" };
+  const hasPresetDates = Boolean(presets?.startDate || presets?.endDate);
+  const defaultCustomValue = hasPresetDates
+    ? {
+        type: DateRangeFilterType.Fixed as const,
+        startDate: presets?.startDate ?? new Date(Date.now() - 60 * 60 * 1000),
+        endDate: presets?.endDate ?? new Date()
+      }
+    : undefined;
+  const [activePreset, setActivePreset] = useState<string>(hasPresetDates ? "" : "1h");
   const [dateRange, setDateRange] = useState<DateRangeFilterResult>({
-    startDate: presets?.startDate || new Date(Date.now() - ms("1h")),
-    endDate: presets?.endDate || new Date(),
+    startDate: presets?.startDate ?? new Date(Date.now() - 60 * 60 * 1000),
+    endDate: presets?.endDate ?? new Date(),
     isUtc: false
   });
 
@@ -140,11 +140,29 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <DateRangeFilter
-                defaultValue={defaultDateValue}
-                onChange={setDateRange}
-                accent={dateRangeAccent}
-              />
+              <>
+                <div className="flex">
+                  <DateRangeQuickPresets
+                    value={activePreset}
+                    onChange={(preset, result) => {
+                      setActivePreset(preset);
+                      setDateRange(result);
+                    }}
+                    hasTrailingItem
+                    accent={dateRangeAccent}
+                  />
+                  <DateRangeFilter
+                    defaultValue={defaultCustomValue}
+                    isActive={!activePreset}
+                    onChange={(result) => {
+                      setActivePreset("");
+                      setDateRange(result);
+                    }}
+                    accent={dateRangeAccent}
+                    className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -226,11 +244,29 @@ const LogsSectionComponent = ({
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <DateRangeFilter
-            defaultValue={defaultDateValue}
-            onChange={setDateRange}
-            accent={dateRangeAccent}
-          />
+          <>
+            <div className="flex">
+              <DateRangeQuickPresets
+                value={activePreset}
+                onChange={(preset, result) => {
+                  setActivePreset(preset);
+                  setDateRange(result);
+                }}
+                hasTrailingItem
+                accent={dateRangeAccent}
+              />
+              <DateRangeFilter
+                defaultValue={defaultCustomValue}
+                isActive={!activePreset}
+                onChange={(result) => {
+                  setActivePreset("");
+                  setDateRange(result);
+                }}
+                accent={dateRangeAccent}
+                className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
+              />
+            </div>
+          </>
         )}
         {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
