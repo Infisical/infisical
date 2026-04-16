@@ -927,6 +927,16 @@ export const identityKubernetesAuthServiceFactory = ({
       orgId: identityMembershipOrg.scopeOrgId
     });
 
+    let resolvedGatewayId: string | null | undefined = null;
+    let resolvedGatewayV2Id: string | null | undefined = null;
+    if (!gatewayPoolId && gatewayId) {
+      if (isGatewayV1) {
+        resolvedGatewayId = gatewayId;
+      } else {
+        resolvedGatewayV2Id = gatewayId;
+      }
+    }
+
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.create(
         {
@@ -939,8 +949,8 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          gatewayId: gatewayPoolId ? null : isGatewayV1 ? gatewayId : null,
-          gatewayV2Id: gatewayPoolId ? null : isGatewayV1 ? null : gatewayId,
+          gatewayId: resolvedGatewayId,
+          gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
@@ -1106,8 +1116,15 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
-    const gatewayIdValue = gatewayPoolId ? null : isGatewayV1 ? gatewayId : null;
-    const gatewayV2IdValue = gatewayPoolId ? null : isGatewayV1 ? null : gatewayId;
+    let gatewayIdValue: string | null | undefined = null;
+    let gatewayV2IdValue: string | null | undefined = null;
+    if (!gatewayPoolId && gatewayId) {
+      if (isGatewayV1) {
+        gatewayIdValue = gatewayId;
+      } else {
+        gatewayV2IdValue = gatewayId;
+      }
+    }
     const gatewayPoolIdValue = gatewayPoolId ?? (gatewayId !== undefined ? null : undefined);
 
     const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
