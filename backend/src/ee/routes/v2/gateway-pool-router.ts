@@ -3,6 +3,7 @@ import z from "zod";
 import { GatewayPoolMembershipsSchema, GatewayPoolsSchema, GatewaysV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -29,7 +30,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "createGatewayPool",
       body: z.object({
-        name: z.string().min(1).max(255).describe("Name for the gateway pool")
+        name: slugSchema({ min: 1, max: 32, field: "name" }).describe("Name for the gateway pool")
       }),
       response: {
         200: SanitizedGatewayPoolSchema
@@ -118,7 +119,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
         poolId: z.string().uuid()
       }),
       body: z.object({
-        name: z.string().min(1).max(255).optional().describe("New name for the pool")
+        name: slugSchema({ min: 1, max: 32, field: "name" }).optional().describe("New name for the pool")
       }),
       response: {
         200: SanitizedGatewayPoolSchema

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faEllipsisV, faHeartPulse, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -59,6 +59,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   const addGateway = useAddGatewayToPool();
   const removeGateway = useRemoveGatewayFromPool();
   const triggerHealthCheck = useTriggerGatewayV2Heartbeat();
+  const [isAddGatewayOpen, setIsAddGatewayOpen] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["removeGateway"] as const);
 
@@ -150,7 +151,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               {(isAllowed: boolean) => {
                 const isDisabled = !isAllowed || availableGateways.length === 0;
                 return (
-                  <Popover>
+                  <Popover open={isAddGatewayOpen} onOpenChange={setIsAddGatewayOpen} modal>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline_bg"
@@ -172,7 +173,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                                 key={gw.id}
                                 value={gw.id}
                                 keywords={[gw.name]}
-                                onSelect={() => handleAdd(gw.id)}
+                                onSelect={() => {
+                                  setIsAddGatewayOpen(false);
+                                  handleAdd(gw.id);
+                                }}
                               >
                                 {gw.name}
                               </CommandItem>

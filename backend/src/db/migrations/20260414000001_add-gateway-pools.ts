@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      t.string("name", 255).notNullable();
+      t.string("name", 32).notNullable();
       t.timestamps(true, true, true);
       t.unique(["orgId", "name"]);
     });
