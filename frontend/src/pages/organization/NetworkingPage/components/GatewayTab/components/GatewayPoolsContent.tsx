@@ -39,7 +39,9 @@ export const GatewayPoolsContent = () => {
   const [search, setSearch] = useState("");
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
   const [resourcesPool, setResourcesPool] = useState<{ id: string; name: string } | null>(null);
-  const { data: pools, isPending: isPoolsLoading } = useListGatewayPools();
+  const { data: pools, isPending: isPoolsLoading } = useListGatewayPools({
+    refetchInterval: 15_000
+  });
   const deletePool = useDeleteGatewayPool();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
