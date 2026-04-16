@@ -79,8 +79,8 @@
     "lodash": "^4.18.0",
     "tar": "^7.5.11",
     "flatted": "^3.4.2",
-    "minimatch": ">=9.0.7",
-    "@octokit/request-error": ">=5.1.1"
+    "minimatch": "^9.0.7",
+    "@octokit/request-error": "^5.1.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.18.10",
