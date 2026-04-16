@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -87,9 +88,12 @@ export const registerCertificateProfilesRouter = async (
             .optional(),
           scepConfig: z
             .object({
-              challengePassword: z.string().min(8),
+              challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
+              challengePassword: z.string().optional(),
               includeCaCertInResponse: z.boolean().optional(),
-              allowCertBasedRenewal: z.boolean().optional()
+              allowCertBasedRenewal: z.boolean().optional(),
+              dynamicChallengeExpiryMinutes: z.number().int().min(1).max(1440).default(60),
+              dynamicChallengeMaxPending: z.number().int().min(1).max(1000).default(100)
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema,
@@ -195,12 +199,15 @@ export const registerCertificateProfilesRouter = async (
         .refine(
           (data) => {
             if (data.enrollmentType === EnrollmentType.SCEP) {
-              return !!data.scepConfig?.challengePassword;
+              if (!data.scepConfig) return false;
+              // Static mode requires a challenge password with min 8 chars; dynamic mode does not
+              if (data.scepConfig.challengeType === ScepChallengeType.DYNAMIC) return true;
+              return !!data.scepConfig.challengePassword && data.scepConfig.challengePassword.length >= 8;
             }
             return true;
           },
           {
-            message: "SCEP enrollment type requires SCEP configuration with a challenge password"
+            message: "SCEP static challenge requires a challenge password with at least 8 characters"
           }
         )
         .refine(
@@ -357,7 +364,11 @@ export const registerCertificateProfilesRouter = async (
                 raCertificatePem: z.string(),
                 raCertExpiresAt: z.date(),
                 includeCaCertInResponse: z.boolean(),
-                allowCertBasedRenewal: z.boolean()
+                allowCertBasedRenewal: z.boolean(),
+                challengeType: z.string(),
+                challengeEndpointUrl: z.string().optional(),
+                dynamicChallengeExpiryMinutes: z.number().optional(),
+                dynamicChallengeMaxPending: z.number().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema,
@@ -459,7 +470,11 @@ export const registerCertificateProfilesRouter = async (
                 raCertificatePem: z.string(),
                 raCertExpiresAt: z.date(),
                 includeCaCertInResponse: z.boolean(),
-                allowCertBasedRenewal: z.boolean()
+                allowCertBasedRenewal: z.boolean(),
+                challengeType: z.string(),
+                challengeEndpointUrl: z.string().optional(),
+                dynamicChallengeExpiryMinutes: z.number().optional(),
+                dynamicChallengeMaxPending: z.number().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema
@@ -578,9 +593,12 @@ export const registerCertificateProfilesRouter = async (
             .optional(),
           scepConfig: z
             .object({
-              challengePassword: z.string().min(8).optional(),
+              challengeType: z.nativeEnum(ScepChallengeType).optional(),
+              challengePassword: z.string().optional(),
               includeCaCertInResponse: z.boolean().optional(),
-              allowCertBasedRenewal: z.boolean().optional()
+              allowCertBasedRenewal: z.boolean().optional(),
+              dynamicChallengeExpiryMinutes: z.number().int().min(1).max(1440).optional(),
+              dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional()
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema,
@@ -633,6 +651,18 @@ export const registerCertificateProfilesRouter = async (
           },
           {
             message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.scepConfig?.challengePassword) {
+              if (data.scepConfig.challengeType === ScepChallengeType.DYNAMIC) return true;
+              return data.scepConfig.challengePassword.length >= 8;
+            }
+            return true;
+          },
+          {
+            message: "SCEP static challenge requires a challenge password with at least 8 characters"
           }
         ),
       response: {

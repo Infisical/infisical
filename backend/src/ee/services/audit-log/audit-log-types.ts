@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -746,6 +747,7 @@ export enum EventType {
   PKI_SIGNER_SIGN = "pki-signer-sign",
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
+  SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
 
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
@@ -5901,7 +5903,7 @@ interface ScepEnrollmentEvent {
     profileSlug: string;
     transactionId: string;
     csrSubject: string;
-    challengeType: "static";
+    challengeType: ScepChallengeType;
     status: "success" | "pending" | "failure";
     failReason?: string;
     issuedCertificateId?: string;
@@ -5923,6 +5925,15 @@ interface ScepRenewalEvent {
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
     clientIp: string;
+  };
+}
+
+interface ScepDynamicChallengeGeneratedEvent {
+  type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED;
+  metadata: {
+    profileId: string;
+    profileSlug: string;
+    expiresAt: string;
   };
 }
 
@@ -6541,6 +6552,7 @@ export type Event =
   | CertificateCleanupCompletedEvent
   | ScepEnrollmentEvent
   | ScepRenewalEvent
+  | ScepDynamicChallengeGeneratedEvent
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
   | SecretValidationRuleDeleteEvent
