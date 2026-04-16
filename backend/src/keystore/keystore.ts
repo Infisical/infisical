@@ -110,7 +110,10 @@ export const KeyStorePrefixes = {
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
+  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+
+  FrequentResourceCleanUpLock: "frequent-resource-cleanup-lock" as const,
+  WeeklyResourceCleanUpLock: "weekly-resource-cleanup-lock" as const
 };
 
 export const KeyStoreTtls = {

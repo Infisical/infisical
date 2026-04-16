@@ -4,6 +4,7 @@ import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-t
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -23,7 +24,8 @@ import { TServiceTokenServiceFactory } from "../service-token/service-token-serv
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
   auditLogDAL: Pick<TAuditLogDALFactory, "pruneAuditLog">;
   auditLogService: Pick<TAuditLogServiceFactory, "checkPostgresAuditLogVolumeMigrationAlert">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "removeExpiredTokens" | "removeIdleTokens">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions">;
@@ -63,7 +65,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestDAL,
   approvalRequestGrantsDAL,
   certificateRequestDAL,
-  scepTransactionDAL
+  scepTransactionDAL,
+  keyStore
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -113,8 +116,21 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       { name: QueueJobs.DailyResourceCleanUp }
     );
 
-    // Hourly cleanup routine
+    const CLEANUP_LOCK_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+    // Hourly cleanup routine. A distributed Redis lock prevents overlapping
+    // runs across instances — when a previous run exceeds the cron interval,
+    // the next tick skips instead of compounding DB load.
     queueService.start(QueueName.FrequentResourceCleanUp, async () => {
+      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+      try {
+        lock = await keyStore.acquireLock([KeyStorePrefixes.FrequentResourceCleanUpLock], CLEANUP_LOCK_TTL_MS, {
+          retryCount: 0
+        });
+      } catch {
+        logger.info(`${QueueName.FrequentResourceCleanUp}: another instance holds the lock, skipping this run`);
+        return;
+      }
       try {
         logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
@@ -122,6 +138,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       } catch (error) {
         logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
         throw error;
+      } finally {
+        await lock.release().catch((err) => logger.warn(err, `${QueueName.FrequentResourceCleanUp}: failed to release lock`));
       }
     });
 
@@ -130,6 +148,38 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       `${JOB_SCHEDULER_PREFIX}:${QueueJobs.FrequentResourceCleanUp}`,
       { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *" },
       { name: QueueJobs.FrequentResourceCleanUp }
+    );
+
+    // Weekly cleanup routine. Drains idle access tokens that the hourly job's
+    // TTL/revoked/uses-exhausted predicates cannot reach. Separate lock from
+    // the hourly so a long-running hourly run does not starve the weekly job.
+    queueService.start(QueueName.WeeklyResourceCleanUp, async () => {
+      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+      try {
+        lock = await keyStore.acquireLock([KeyStorePrefixes.WeeklyResourceCleanUpLock], CLEANUP_LOCK_TTL_MS, {
+          retryCount: 0
+        });
+      } catch {
+        logger.info(`${QueueName.WeeklyResourceCleanUp}: another instance holds the lock, skipping this run`);
+        return;
+      }
+      try {
+        logger.info(`${QueueName.WeeklyResourceCleanUp}: queue task started`);
+        await identityAccessTokenDAL.removeIdleTokens();
+        logger.info(`${QueueName.WeeklyResourceCleanUp}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.WeeklyResourceCleanUp}: resource cleanup failed`);
+        throw error;
+      } finally {
+        await lock.release().catch((err) => logger.warn(err, `${QueueName.WeeklyResourceCleanUp}: failed to release lock`));
+      }
+    });
+
+    await queueService.upsertJobScheduler(
+      QueueName.WeeklyResourceCleanUp,
+      `${JOB_SCHEDULER_PREFIX}:${QueueJobs.WeeklyResourceCleanUp}`,
+      { pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 3 * * 0" },
+      { name: QueueJobs.WeeklyResourceCleanUp }
     );
   };
 

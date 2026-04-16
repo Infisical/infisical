@@ -143,5 +143,91 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     );
   };
 
-  return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };
+  // Deletes tokens that have been idle for longer than IDLE_THRESHOLD_DAYS.
+  // "Idle" is COALESCE(accessTokenLastUsedAt, createdAt) — i.e. tokens that
+  // have never been used fall back to their creation time. Known edge case:
+  // a token that was used but whose accessTokenQueue update job failed
+  // (removeOnFail: true) will keep accessTokenLastUsedAt = NULL and may be
+  // deleted early. Equally, a token that is only ever renewed (never used to
+  // auth) stays NULL here — accessTokenLastRenewedAt is not considered. Both
+  // cases are rare at a 30-day threshold and the worst outcome is a forced
+  // re-auth.
+  const removeIdleTokens = async (tx?: Knex) => {
+    logger.info(`${QueueName.WeeklyResourceCleanUp}: remove idle access tokens started`);
+
+    const BATCH_SIZE = 5000;
+    const MAX_RETRY_ON_FAILURE = 3;
+    const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const IDLE_THRESHOLD_DAYS = 30;
+
+    const dbConnection = tx || db;
+    const nowResult = await dbConnection.raw<{ rows: Array<{ now: Date }> }>(`SELECT NOW() AT TIME ZONE 'UTC' as now`);
+    const { now } = nowResult.rows[0];
+
+    let deletedTokenIds: { id: string }[] = [];
+    let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
+    let totalDeletedCount = 0;
+
+    // No AT TIME ZONE 'UTC' cast — COALESCE(timestamptz, timestamptz) is
+    // immutable and the index expression matches this predicate as-is. The
+    // expiration index uses AT TIME ZONE to produce a timestamp (no-tz) before
+    // interval arithmetic; here we stay in timestamptz throughout so the cast
+    // is unnecessary and omitting it keeps the index expression consistent.
+    const getIdleTokensQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) =>
+      dbClient(TableName.IdentityAccessToken)
+        .whereRaw(
+          `COALESCE(
+             "${TableName.IdentityAccessToken}"."accessTokenLastUsedAt",
+             "${TableName.IdentityAccessToken}"."createdAt"
+           ) < ?::timestamptz - make_interval(days => ?)`,
+          [nowTimestamp, IDLE_THRESHOLD_DAYS]
+        )
+        .select("id");
+
+    do {
+      try {
+        const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
+          await dbClient.raw(`SET LOCAL random_page_cost = 1.1`);
+          const idsToDeleteQuery = getIdleTokensQuery(dbClient, now).limit(BATCH_SIZE);
+          return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
+        };
+
+        if (tx) {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await deleteBatch(tx);
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await db.transaction(async (trx) => {
+            await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
+            return deleteBatch(trx);
+          });
+        }
+
+        numberOfRetryOnFailure = 0;
+        totalDeletedCount += deletedTokenIds.length;
+      } catch (error) {
+        numberOfRetryOnFailure += 1;
+        logger.error(error, "Failed to delete a batch of idle identity access tokens on pruning");
+      } finally {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 500);
+        });
+      }
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedTokenIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+
+    if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
+      logger.error(
+        `IdentityAccessTokenIdlePrune: Pruning failed and stopped after ${MAX_RETRY_ON_FAILURE} consecutive retries.`
+      );
+    }
+
+    logger.info(
+      `${QueueName.WeeklyResourceCleanUp}: remove idle access tokens completed. Deleted ${totalDeletedCount} tokens.`
+    );
+  };
+
+  return { ...identityAccessTokenOrm, findOne, removeExpiredTokens, removeIdleTokens };
 };
