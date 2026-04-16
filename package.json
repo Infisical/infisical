@@ -13,6 +13,12 @@
   "scripts": {
     "prepare": "husky install"
   },
+  "overrides": {
+    "flatted": "^3.4.2",
+    "minimatch": "^3.1.3",
+    "js-yaml": "^4.1.1",
+    "@babel/runtime": "^7.26.10"
+  },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
     "eslint": "^8.57.1",
