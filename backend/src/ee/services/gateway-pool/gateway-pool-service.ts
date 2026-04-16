@@ -95,17 +95,7 @@ export const gatewayPoolServiceFactory = ({
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
     await $checkLicense(actor.orgId);
 
-    const pools = await gatewayPoolDAL.findByOrgIdWithDetails(actor.orgId);
-
-    const poolsWithCounts = await Promise.all(
-      pools.map(async (pool) => {
-        // Add more DAL counts here as pool support expands to other consumers
-        const k8sCount = await identityKubernetesAuthDAL.countByGatewayPoolId(pool.id);
-        return { ...pool, connectedResourcesCount: k8sCount };
-      })
-    );
-
-    return poolsWithCounts;
+    return gatewayPoolDAL.findByOrgIdWithDetails(actor.orgId);
   };
 
   const getGatewayPoolById = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {

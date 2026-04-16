@@ -208,14 +208,14 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 </UnstableTableRow>
               )}
               {memberGateways.map((gw) => {
-                const isHealthy =
-                  "lastHealthCheckStatus" in gw &&
-                  gw.lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
                 const hasHeartbeat =
                   "heartbeat" in gw &&
                   gw.heartbeat &&
                   new Date(gw.heartbeat).getTime() > Date.now() - 60 * 60 * 1000;
-                const isOnline = hasHeartbeat && isHealthy;
+                const isNotFailed =
+                  !("lastHealthCheckStatus" in gw) ||
+                  gw.lastHealthCheckStatus !== GatewayHealthCheckStatus.Failed;
+                const isOnline = hasHeartbeat && isNotFailed;
 
                 return (
                   <UnstableTableRow key={gw.id}>

@@ -1141,7 +1141,7 @@ export const identityKubernetesAuthServiceFactory = ({
         gatewayV2IdValue = gatewayId;
       }
     }
-    const gatewayPoolIdValue = gatewayPoolId ?? (gatewayId !== undefined ? null : undefined);
+    const gatewayPoolIdValue = gatewayPoolId !== undefined ? gatewayPoolId : (gatewayId !== undefined ? null : undefined);
 
     const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
     const effectiveKubernetesHost =
@@ -1179,7 +1179,10 @@ export const identityKubernetesAuthServiceFactory = ({
         const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolId);
         validationGatewayId = picked.id;
       } catch {
-        // No healthy gateways in pool, skip validation
+        logger.warn(
+          { gatewayPoolId: effectiveGatewayPoolId },
+          "No healthy gateways in pool, skipping connectivity validation for k8s auth update"
+        );
       }
     }
 
