@@ -38,6 +38,8 @@ export type NavItem = {
   submenu?: Submenu;
   /** For SSH CA permission gating */
   permissionCheck?: boolean;
+  /** Query params to append to the link and use for active state matching */
+  search?: Record<string, string>;
 };
 
 export type OrgNavItem = {

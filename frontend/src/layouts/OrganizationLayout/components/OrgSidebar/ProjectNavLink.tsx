@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Badge, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
+import { Badge, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 
 import type { NavItem, Submenu } from "./types";
@@ -19,12 +19,19 @@ export const ProjectNavLink = ({
 }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { pathname } = useLocation();
+  const { pathname, search: locationSearch } = useLocation();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
   const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
-  const isActive = pathname.startsWith(fullPath) || Boolean(item.activeMatch?.test(pathname));
+
+  const pathMatch = pathname.startsWith(fullPath) || Boolean(item.activeMatch?.test(pathname));
+  const isActive = item.search
+    ? pathMatch &&
+      Object.entries(item.search).every(
+        ([key, value]) => (locationSearch as Record<string, unknown>)?.[key] === value
+      )
+    : pathMatch;
 
   if (item.submenu && onSubmenuOpen) {
     return (
@@ -57,6 +64,8 @@ export const ProjectNavLink = ({
           to={`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          search={item.search as any}
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>
@@ -78,7 +87,7 @@ export const ProjectNavList = ({
   items: NavItem[];
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => (
-  <>
+  <SidebarMenu>
     {items
       .filter((i) => !i.hidden)
       .map((item) => (
@@ -88,5 +97,5 @@ export const ProjectNavList = ({
           onSubmenuOpen={item.submenu ? onSubmenuOpen : undefined}
         />
       ))}
-  </>
+  </SidebarMenu>
 );
