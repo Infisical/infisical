@@ -462,6 +462,16 @@ export const secretFolderServiceFactory = ({
     }
 
     const { newFolder, newFolderPath, oldFolderPath } = await folderDAL.transaction(async (tx) => {
+      // Read the old folder path BEFORE the update to capture the original name in the path.
+      // This must be done inside the transaction to ensure read-after-write consistency
+      // when using read replicas, but before the UPDATE to get the old state.
+      const [oldFolderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id], tx);
+      if (!oldFolderWithPath) {
+        throw new NotFoundError({
+          message: `Failed to retrieve path for folder with ID '${folder.id}'`
+        });
+      }
+
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
         { name, description },
@@ -499,25 +509,15 @@ export const secretFolderServiceFactory = ({
       );
       if (!doc) throw new NotFoundError({ message: `Failed to update folder with ID '${id}'`, name: "UpdateFolder" });
 
-      // Read the folder paths inside the transaction to avoid replication lag issues
-      // when using read replicas. The transaction ensures we read from the primary.
-      const foldersWithFullPaths = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id, folder.id], tx);
-
-      const newFolderWithFullPath = foldersWithFullPaths.find((f) => f?.id === doc.id);
-      if (!newFolderWithFullPath) {
+      // Read the new folder path AFTER the update to get the updated name in the path.
+      const [newFolderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
+      if (!newFolderWithPath) {
         throw new NotFoundError({
           message: `Failed to retrieve path for folder with ID '${doc.id}'`
         });
       }
 
-      const folderWithFullPath = foldersWithFullPaths.find((f) => f?.id === folder.id);
-      if (!folderWithFullPath) {
-        throw new NotFoundError({
-          message: `Failed to retrieve path for folder with ID '${folder.id}'`
-        });
-      }
-
-      return { newFolder: doc, newFolderPath: newFolderWithFullPath.path, oldFolderPath: folderWithFullPath.path };
+      return { newFolder: doc, newFolderPath: newFolderWithPath.path, oldFolderPath: oldFolderWithPath.path };
     });
 
     await snapshotService.performSnapshot(newFolder.parentId as string);
