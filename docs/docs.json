@@ -193,6 +193,7 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/gateway-deployment",
                   {
                     "group": "Relay Deployment",
