@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, DoorOpen, FileKey, Shield } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
@@ -31,6 +31,7 @@ import {
 import { ProjectSubmenuView } from "./SubmenuViews";
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
+import { useApprovalSubmenu } from "./useApprovalSubmenu";
 
 const PROJECT_NAV_COMPONENT: Record<
   ProjectType,
@@ -52,6 +53,8 @@ export const ProjectNav = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { submenu: smApprovalsSubmenu, pendingRequestsCount: smPendingCount } =
+    useApprovalSubmenu();
   const projectLabel = isSubOrganization ? "Sub-Organization" : "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
 
@@ -90,17 +93,7 @@ export const ProjectNav = () => {
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     if (currentProject.type === ProjectType.PAM && pathname.includes("/approvals"))
       return PAM_APPROVALS_SUBMENU;
-    if (isOnApproval)
-      return {
-        title: "Approvals",
-        pathSuffix: "approval",
-        defaultTab: "approval-requests",
-        items: [
-          { label: "Change Requests", icon: FileKey, tab: "approval-requests" },
-          { label: "Access Requests", icon: DoorOpen, tab: "resource-requests" },
-          { label: "Policies", icon: Shield, tab: "policies" }
-        ]
-      };
+    if (isOnApproval) return smApprovalsSubmenu;
     return null;
   };
 
@@ -109,6 +102,16 @@ export const ProjectNav = () => {
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the active submenu in sync when badge data changes
+  useEffect(() => {
+    setActiveSubmenu((current) => {
+      if (current && current.pathSuffix === smApprovalsSubmenu.pathSuffix) {
+        return smApprovalsSubmenu;
+      }
+      return current;
+    });
+  }, [smPendingCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
