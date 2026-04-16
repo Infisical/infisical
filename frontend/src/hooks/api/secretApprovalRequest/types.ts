@@ -134,6 +134,7 @@ export type TUpdateSecretApprovalReviewStatusDTO = {
   status: ApprovalStatus;
   comment?: string;
   id: string;
+  projectId: string;
 };
 
 export type TUpdateSecretApprovalRequestStatusDTO = {
