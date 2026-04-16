@@ -45,7 +45,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
       <Tab title="Linux Server (Production)">
         For production deployments on Linux, install as a systemd service:
         ```bash
-        sudo infisical gateway systemd install my-gateway \
+        sudo infisical gateway systemd install <gateway-name> \
           --enroll-method=token \
           --token=<enrollment-token> \
           --domain=<your-infisical-domain>
