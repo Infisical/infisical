@@ -33,10 +33,7 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  identityKubernetesAuthDAL: Pick<
-    TIdentityKubernetesAuthDALFactory,
-    "findByGatewayPoolId" | "countByGatewayPoolId"
-  >;
+  identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
 };
 
 export type TGatewayPoolServiceFactory = ReturnType<typeof gatewayPoolServiceFactory>;
