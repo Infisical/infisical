@@ -50,12 +50,10 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
       req.auditLogInfo = payload;
       return;
     }
-
     if (req.auth.actor === ActorType.USER) {
       payload.actor = {
         type: ActorType.USER,
         metadata: {
-          ...(req.auth.authMethod ? { authMethod: req.auth.authMethod } : {}),
           email: req.auth.user.email,
           username: req.auth.user.username,
           userId: req.permission.id
@@ -77,7 +75,6 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         metadata: {
           name: req.auth.identityName,
           identityId: req.auth.identityId,
-          ...(identityAuthInfo?.authMethod ? { authMethod: identityAuthInfo.authMethod } : {}),
           ...(identityAuthInfo?.aws ? { aws: identityAuthInfo.aws } : {}),
           ...(identityAuthInfo?.kubernetes ? { kubernetes: identityAuthInfo.kubernetes } : {}),
           ...(identityAuthInfo?.oidc ? { oidc: identityAuthInfo.oidc } : {})
