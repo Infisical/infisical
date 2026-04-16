@@ -11,17 +11,24 @@ export {
 } from "./mutations";
 export {
   useGetCert,
+  useGetCertActivityTrend,
   useGetCertBody,
   useGetCertBundle,
+  useGetCertDashboardStats,
   useGetCertificateById,
   useGetCertificateRequest,
   useListCertificateRequests
 } from "./queries";
 export type {
+  TActivityTrendPoint,
+  TActivityTrendResponse,
   TCertificate,
   TCertificateByIdResponse,
   TCertificateRequestDetails,
   TCertificateRequestListItem,
+  TDashboardDistribution,
+  TDashboardStats,
+  TExpirationBucket,
   TListCertificateRequestsParams,
   TListCertificateRequestsResponse,
   TUpdateCertificateDTO

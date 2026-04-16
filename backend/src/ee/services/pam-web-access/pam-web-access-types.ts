@@ -44,7 +44,7 @@ export const MAX_WEB_SESSIONS_PER_USER = 5;
 export const WS_PING_INTERVAL_MS = 30000;
 
 // Idle timeout (ms) — auto-close sessions with no user input/control messages
-export const WS_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+export const WS_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
 
 export type TSessionContext = {
   socket: WebSocket;

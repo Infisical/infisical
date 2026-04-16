@@ -60,6 +60,7 @@ export const SanitizedSessionSchema = PamSessionsSchema.omit({
 }).extend({
   logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema])),
   gatewayIdentityId: z.string().nullable().optional(),
+  gatewayId: z.string().nullable().optional(),
   aiInsights: AiInsightsSchema
 });
 

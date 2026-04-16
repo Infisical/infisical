@@ -227,6 +227,10 @@ export enum ProjectPermissionAuditLogsActions {
   Read = "read"
 }
 
+export enum ProjectPermissionInsightsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionAppConnectionActions {
   Read = "read-app-connections",
   Create = "create-app-connections",
@@ -414,6 +418,7 @@ export enum ProjectPermissionSub {
   SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  CertificateInventoryViews = "certificate-inventory-views",
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
@@ -441,7 +446,8 @@ export enum ProjectPermissionSub {
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   ApprovalRequests = "approval-requests",
-  ApprovalRequestGrants = "approval-request-grants"
+  ApprovalRequestGrants = "approval-request-grants",
+  Insights = "insights"
 }
 
 export type SecretSubjectFields = {
@@ -672,6 +678,7 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
   | [ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub.PkiDiscovery]
   | [
       ProjectPermissionPkiCertificateInstallationActions,
@@ -727,6 +734,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
   | [
       ProjectPermissionMcpEndpointActions,
       (

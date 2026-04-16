@@ -47,6 +47,9 @@ export const useDeleteCert = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectId)
       });
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getDashboardStats(projectId)
+      });
     }
   });
 };
@@ -81,6 +84,9 @@ export const useRevokeCert = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectId)
       });
+      queryClient.invalidateQueries({
+        queryKey: certKeys.getDashboardStats(projectId)
+      });
     }
   });
 };
@@ -98,6 +104,9 @@ export const useImportCertificate = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cert-dashboard-stats"]
       });
     }
   });
@@ -129,6 +138,9 @@ export const useRenewCertificate = () => {
       if (data.projectId) {
         queryClient.invalidateQueries({
           queryKey: projectKeys.forProjectCertificates(data.projectId)
+        });
+        queryClient.invalidateQueries({
+          queryKey: certKeys.getDashboardStats(data.projectId)
         });
       }
     }
@@ -255,6 +267,9 @@ export const useUnifiedCertificateIssuance = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["certificateRequests", "list", projectSlug]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cert-dashboard-stats"]
       });
     }
   });

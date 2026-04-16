@@ -220,6 +220,7 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
+  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
 
   KeyValueStore = "key_value_store",
 
@@ -257,6 +258,9 @@ export enum TableName {
 
   // PKI Cleanup
   CertificateCleanupConfig = "certificate_cleanup_configs",
+
+  // PKI Inventory Views
+  CertificateInventoryView = "certificate_inventory_views",
 
   // AI
   AiMcpServer = "ai_mcp_servers",

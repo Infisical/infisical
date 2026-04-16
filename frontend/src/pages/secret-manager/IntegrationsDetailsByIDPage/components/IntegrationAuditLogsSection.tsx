@@ -30,7 +30,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
         </p>
       </div>
       <LogsSection
-        refetchInterval={4000}
+        refetchInterval={15_000}
         showFilters={false}
         project={currentProject}
         presets={{

@@ -158,7 +158,7 @@ export const useGetInvalidatingCacheStatus = (enabled = true) => {
       return data.invalidating;
     },
     enabled,
-    refetchInterval: (data) => (data ? 3000 : false)
+    refetchInterval: (query) => (query.state.data ? 10_000 : false)
   });
 };
 

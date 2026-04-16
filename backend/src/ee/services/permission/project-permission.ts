@@ -248,6 +248,10 @@ export enum ProjectPermissionAuditLogsActions {
   Read = "read"
 }
 
+export enum ProjectPermissionInsightsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionPamAccountActions {
   Access = "access",
   Read = "read",
@@ -337,6 +341,7 @@ export enum ProjectPermissionSub {
   PkiSubscribers = "pki-subscribers",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  CertificateInventoryViews = "certificate-inventory-views",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -362,7 +367,8 @@ export enum ProjectPermissionSub {
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
   McpServers = "mcp-servers",
-  McpActivityLogs = "mcp-activity-logs"
+  McpActivityLogs = "mcp-activity-logs",
+  Insights = "insights"
 }
 
 // Structure: { [subject]: { [action]: allowedConditionKeys[] } }
@@ -635,6 +641,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
+  | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
   | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
@@ -694,7 +701,8 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
-  | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest];
+  | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -1518,6 +1526,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.Insights).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionInsightsActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.IpAllowList).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -1559,6 +1573,14 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.PkiCollections).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.CertificateInventoryViews)
+      .describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
