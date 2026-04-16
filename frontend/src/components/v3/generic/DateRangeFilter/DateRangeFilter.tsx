@@ -1,32 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
-import { addMonths, format } from "date-fns";
+import { addDays, addMonths, format, subMonths } from "date-fns";
 import { ArrowRight, CalendarIcon } from "lucide-react";
 import ms from "ms";
 
 import { cn } from "@app/components/v3/utils";
 
-import { Button } from "../Button";
+import { Button, type ButtonProps } from "../Button";
 import { Calendar, CalendarDayButton } from "../Calendar";
 import { UnstableInput } from "../Input";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
 import { Switch } from "../Switch";
 
+const MAX_RANGE_MONTHS = 3;
+
 const SECONDARY_PRESETS = [
   { value: "1d", label: "1 day" },
   { value: "2d", label: "2 days" },
   { value: "1w", label: "1 week" },
   { value: "2w", label: "2 weeks" },
-  { value: "3w", label: "3 weeks" },
-  { value: "30d", label: "30 days" }
+  { value: "1M", label: "1 month" },
+  { value: "3M", label: "3 months" }
 ] as const;
 
 const RELATIVE_OPTIONS = [
   { label: "Minutes", unit: "m", values: [5, 10, 15, 30, 45] },
   { label: "Hours", unit: "h", values: [1, 2, 3, 6, 8, 12] },
   { label: "Days", unit: "d", values: [1, 2, 3, 4, 5, 6] },
-  { label: "Weeks", unit: "w", values: [1, 2, 3, 4] }
+  { label: "Weeks", unit: "w", values: [1, 2, 3, 4] },
+  { label: "Months", unit: "M", values: [1, 2, 3] }
 ] as const;
 
 export enum DateRangeFilterType {
@@ -65,27 +68,30 @@ export const ACCENT_STYLES: Record<
     switchChecked: string;
     applyButton: string;
     calendarMiddle: string;
+    activeVariant: ButtonProps["variant"];
   }
 > = {
   primary: {
-    selectedBorderBg: "border-primary bg-primary/10",
-    selectedCard: "border-primary/40 bg-primary/10 shadow-xs",
-    selectedBadge: "rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary",
-    selectedChip: "border-primary/40 bg-primary/10 text-foreground",
+    selectedBorderBg: "border-primary bg-primary/5",
+    selectedCard: "border-primary/40 bg-primary/5 shadow-xs",
+    selectedBadge: "rounded-sm bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary",
+    selectedChip: "border-primary/40 bg-primary/5 text-foreground",
     switchChecked:
       "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:border-primary/30 data-[state=checked]:hover:bg-primary/15",
     applyButton: "border-primary/25 bg-primary/10 hover:bg-primary/15 hover:border-primary/30",
-    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]"
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
+    activeVariant: "project"
   },
   secondary: {
-    selectedBorderBg: "border-org bg-org/10",
-    selectedCard: "border-org/40 bg-org/10 shadow-xs",
-    selectedBadge: "rounded-sm bg-org/10 px-1.5 py-0.5 text-[11px] font-medium text-org",
-    selectedChip: "border-org/40 bg-org/10 text-foreground",
+    selectedBorderBg: "border-org bg-org/5",
+    selectedCard: "border-org/40 bg-org/5 shadow-xs",
+    selectedBadge: "rounded-sm bg-org/5 px-1.5 py-0.5 text-[11px] font-medium text-org",
+    selectedChip: "border-org/40 bg-org/5 text-foreground",
     switchChecked:
       "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:hover:border-org/30 data-[state=checked]:hover:bg-org/15",
     applyButton: "border-org/25 bg-org/10 hover:bg-org/15 hover:border-org/30",
-    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]"
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
+    activeVariant: "org"
   }
 };
 
@@ -119,12 +125,13 @@ function toTimeString(date: Date): string {
 
 function isValidLastValue(val: string): boolean {
   if (!val) return false;
+  if (/^(\d+)M$/.test(val)) return parseInt(val, 10) > 0;
   const parsed = ms(val);
   return typeof parsed === "number" && parsed > 0;
 }
 
 function parseLastValue(val: string): { duration: string; unit: string } | null {
-  const match = val.match(/^(\d+)([mhdw])$/);
+  const match = val.match(/^(\d+)([mhdwM])$/);
   if (!match) return null;
   return { duration: match[1], unit: match[2] };
 }
@@ -132,11 +139,11 @@ function parseLastValue(val: string): { duration: string; unit: string } | null 
 function resolveDateRange(value: DateRangeFilterValue, isUtc: boolean): DateRangeFilterResult {
   if (value.type === DateRangeFilterType.Last) {
     const now = new Date();
-    return {
-      startDate: new Date(now.getTime() - ms(value.value)),
-      endDate: now,
-      isUtc
-    };
+    const monthMatch = value.value.match(/^(\d+)M$/);
+    const startDate = monthMatch
+      ? subMonths(now, parseInt(monthMatch[1], 10))
+      : new Date(now.getTime() - ms(value.value));
+    return { startDate, endDate: now, isUtc };
   }
 
   return {
@@ -335,30 +342,21 @@ export function DateRangeFilter({
                         customDuration === parsed.duration &&
                         customUnit === parsed.unit;
                       return (
-                        <button
+                        <Button
                           key={val}
-                          type="button"
+                          size="xs"
+                          variant={isPresetActive ? accentStyles.activeVariant : "outline"}
+                          isFullWidth
+                          className="justify-start"
                           onClick={() => {
                             if (parsed) {
                               setCustomDuration(parsed.duration);
                               setCustomUnit(parsed.unit);
                             }
                           }}
-                          className={cn(
-                            "rounded-md border px-3 py-2 text-left text-sm transition-all",
-                            isPresetActive
-                              ? accentStyles.selectedCard
-                              : "border-border hover:border-foreground/25 hover:bg-foreground/5"
-                          )}
                         >
-                          <span
-                            className={cn(
-                              isPresetActive ? "font-medium text-foreground" : "text-foreground/90"
-                            )}
-                          >
-                            {label}
-                          </span>
-                        </button>
+                          {label}
+                        </Button>
                       );
                     })}
                   </div>
@@ -398,19 +396,14 @@ export function DateRangeFilter({
                     {selectedCustomUnit?.values.map((val) => {
                       const isChipActive = customDuration === String(val);
                       return (
-                        <button
+                        <Button
                           key={`${selectedCustomUnit.unit}-${val}`}
-                          type="button"
+                          size="xs"
+                          variant={isChipActive ? accentStyles.activeVariant : "outline"}
                           onClick={() => setCustomDuration(String(val))}
-                          className={cn(
-                            "rounded-md border px-2 py-1 text-xs transition-colors",
-                            isChipActive
-                              ? accentStyles.selectedChip
-                              : "text-muted-foreground border-border hover:border-foreground/25 hover:bg-foreground/5 hover:text-foreground"
-                          )}
                         >
                           {val}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -438,9 +431,9 @@ export function DateRangeFilter({
                     numberOfMonths={2}
                     showOutsideDays={false}
                     captionLayout="dropdown"
-                    disabled={{ after: today }}
+                    disabled={[{ after: today }, { before: addDays(subMonths(today, MAX_RANGE_MONTHS), 1) }]}
                     defaultMonth={calendarDefaultMonth}
-                    startMonth={addMonths(today, -120)}
+                    startMonth={addDays(subMonths(today, MAX_RANGE_MONTHS), 1)}
                     endMonth={today}
                     className="p-0"
                     classNames={{

@@ -1,5 +1,6 @@
 import { cn } from "@app/components/v3/utils";
 
+import { Button } from "../Button";
 import type { DateRangeFilterAccent, DateRangeFilterResult } from "./DateRangeFilter";
 import { ACCENT_STYLES } from "./DateRangeFilter";
 
@@ -68,24 +69,23 @@ export function DateRangeQuickPresets({
         const isFirst = index === 0;
         const isLast = index === presets.length - 1 && !hasTrailingItem;
         return (
-          <button
+          <Button
             key={preset.value}
-            type="button"
+            size="xs"
+            variant={isActive ? accentStyles.activeVariant : "outline"}
             onClick={() => {
               const { startDate, endDate } = preset.resolve();
               onChange(preset.value, { startDate, endDate, isUtc });
             }}
             className={cn(
-              "-ml-px w-11 border py-1.5 text-center text-xs font-medium transition-colors",
-              isFirst && "rounded-l-md",
-              isLast && "rounded-r-md",
-              isActive
-                ? `relative z-10 ${accentStyles.selectedChip}`
-                : "text-muted-foreground border-border hover:relative hover:z-10 hover:border-foreground/25 hover:bg-foreground/5 hover:text-foreground"
+              "-ml-px w-11 rounded-none",
+              isFirst && "rounded-l-sm",
+              isLast && "rounded-r-sm",
+              isActive ? "relative z-10" : "hover:relative hover:z-10"
             )}
           >
             {preset.label}
-          </button>
+          </Button>
         );
       })}
     </div>
