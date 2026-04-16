@@ -225,10 +225,10 @@ export const SecretTableRow = ({
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             !singleEnvPendingAction &&
-              "relative bg-container transition-colors duration-75 group-hover:bg-container-hover",
+              "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
-            isSingleEnvView && "pt-3 align-top",
+            isSingleEnvView && "relative pt-3 align-top",
             pendingActionBorderClass(singleEnvPendingAction)
           )}
         >
