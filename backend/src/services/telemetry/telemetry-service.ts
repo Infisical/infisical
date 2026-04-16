@@ -218,7 +218,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const sendPostHogEvents = async (event: TPostHogEvent) => {
-    if (!appCfg.INFISICAL_CLOUD && !appCfg.INFISICAL_DEDICATED && postHog) {
+    if (!appCfg.INFISICAL_CLOUD && postHog) {
       if (
         [
           PostHogEventTypes.SecretPulled,
