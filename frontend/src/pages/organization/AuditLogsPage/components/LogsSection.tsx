@@ -126,7 +126,6 @@ const LogsSectionComponent = ({
         },
         project?.id || searchDerived.projectId || logFilter?.project?.id
       );
-      createNotification({ type: "success", text: "Audit logs exported successfully" });
     } catch {
       createNotification({ type: "error", text: "Failed to export audit logs" });
     } finally {
