@@ -27,6 +27,16 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
     },
     tx?: knex.Knex
   ) => Promise<TAuditLogs[]>;
+  stream: (
+    arg: Omit<TFindQuery, "actor" | "eventType" | "limit" | "offset"> & {
+      actorId?: string | undefined;
+      actorType?: ActorType | undefined;
+      secretPath?: string | undefined;
+      secretKey?: string | undefined;
+      eventType?: EventType[] | undefined;
+      eventMetadata?: Record<string, string> | undefined;
+    }
+  ) => AsyncGenerator<TAuditLogs>;
 }
 
 type TFindQuery = {
@@ -45,6 +55,113 @@ type TFindQuery = {
 const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
+
+type TBuildQueryArg = {
+  orgId: string;
+  projectId?: string;
+  environment?: string;
+  userAgentType?: string;
+  startDate: string;
+  endDate: string;
+  limit: number;
+  offset: number;
+  actorId?: string;
+  actorType?: ActorType;
+  secretPath?: string;
+  secretKey?: string;
+  eventType?: EventType[];
+  eventMetadata?: Record<string, string>;
+};
+
+const buildAuditLogFindQuery = (conn: knex.Knex, arg: TBuildQueryArg) => {
+  const {
+    orgId,
+    projectId,
+    environment,
+    userAgentType,
+    startDate,
+    endDate,
+    limit,
+    offset,
+    actorId,
+    actorType,
+    secretPath,
+    secretKey,
+    eventType,
+    eventMetadata
+  } = arg;
+
+  const sqlQuery = conn(TableName.AuditLog)
+    .where(`${TableName.AuditLog}.orgId`, orgId)
+    .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+    .andWhereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+    // eslint-disable-next-line func-names
+    .where(function () {
+      if (projectId) {
+        void this.where(`${TableName.AuditLog}.projectId`, projectId);
+      }
+    });
+
+  if (userAgentType) {
+    void sqlQuery.where("userAgentType", userAgentType);
+  }
+
+  void sqlQuery
+    .select(selectAllTableCols(TableName.AuditLog))
+    .limit(limit)
+    .offset(offset)
+    .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
+
+  if (actorId) {
+    const metadataKey = actorType
+      ? ACTOR_TYPE_TO_METADATA_ID_KEY[actorType]
+      : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
+    if (metadataKey) {
+      void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object(?::text, ?::text)`, [metadataKey, actorId]);
+    }
+  }
+
+  if (eventMetadata && Object.keys(eventMetadata).length) {
+    Object.entries(eventMetadata).forEach(([key, value]) => {
+      void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
+    });
+  }
+
+  const eventIsSecretType = !eventType?.length || eventType.some((event) => filterableSecretEvents.includes(event));
+  // We only want to filter for environment/secretPath/secretKey if the user is either checking for all event types
+
+  // ? Note(daniel): use the `eventMetadata" @> ?::jsonb` approach to properly use our GIN index
+  if (projectId && eventIsSecretType) {
+    if (environment || secretPath) {
+      // Handle both environment and secret path together to only use the GIN index once
+      void sqlQuery.whereRaw(`"eventMetadata" @> ?::jsonb`, [
+        JSON.stringify({
+          ...(environment && { environment }),
+          ...(secretPath && { secretPath })
+        })
+      ]);
+    }
+
+    // Handle secret key separately to include the OR condition
+    if (secretKey) {
+      void sqlQuery.whereRaw(
+        `("eventMetadata" @> ?::jsonb
+            OR "eventMetadata"->'secrets' @> ?::jsonb)`,
+        [JSON.stringify({ secretKey }), JSON.stringify([{ secretKey }])]
+      );
+    }
+  }
+
+  if (actorType) {
+    void sqlQuery.where("actor", actorType);
+  }
+
+  if (eventType?.length) {
+    void sqlQuery.whereIn("eventType", eventType);
+  }
+
+  return sqlQuery;
+};
 
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
@@ -69,80 +186,22 @@ export const auditLogDALFactory = (db: TDbClient) => {
     tx
   ) => {
     try {
-      // Find statements
-      const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
-        .where(`${TableName.AuditLog}.orgId`, orgId)
-        .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
-        .andWhereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
-        // eslint-disable-next-line func-names
-        .where(function () {
-          if (projectId) {
-            void this.where(`${TableName.AuditLog}.projectId`, projectId);
-          }
-        });
-
-      if (userAgentType) {
-        void sqlQuery.where("userAgentType", userAgentType);
-      }
-
-      // Select statements
-      void sqlQuery
-        .select(selectAllTableCols(TableName.AuditLog))
-        .limit(limit)
-        .offset(offset)
-        .orderBy(`${TableName.AuditLog}.createdAt`, "desc");
-
-      // Special case: Filter by actor ID
-      if (actorId) {
-        const metadataKey = actorType
-          ? ACTOR_TYPE_TO_METADATA_ID_KEY[actorType]
-          : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
-        if (metadataKey) {
-          void sqlQuery.whereRaw(`"actorMetadata" @> jsonb_build_object(?::text, ?::text)`, [metadataKey, actorId]);
-        }
-      }
-
-      // Special case: Filter by key/value pairs in eventMetadata field
-      if (eventMetadata && Object.keys(eventMetadata).length) {
-        Object.entries(eventMetadata).forEach(([key, value]) => {
-          void sqlQuery.whereRaw(`"eventMetadata" @> jsonb_build_object(?::text, ?::text)`, [key, value]);
-        });
-      }
-
-      const eventIsSecretType = !eventType?.length || eventType.some((event) => filterableSecretEvents.includes(event));
-      // We only want to filter for environment/secretPath/secretKey if the user is either checking for all event types
-
-      // ? Note(daniel): use the `eventMetadata" @> ?::jsonb` approach to properly use our GIN index
-      if (projectId && eventIsSecretType) {
-        if (environment || secretPath) {
-          // Handle both environment and secret path together to only use the GIN index once
-          void sqlQuery.whereRaw(`"eventMetadata" @> ?::jsonb`, [
-            JSON.stringify({
-              ...(environment && { environment }),
-              ...(secretPath && { secretPath })
-            })
-          ]);
-        }
-
-        // Handle secret key separately to include the OR condition
-        if (secretKey) {
-          void sqlQuery.whereRaw(
-            `("eventMetadata" @> ?::jsonb
-            OR "eventMetadata"->'secrets' @> ?::jsonb)`,
-            [JSON.stringify({ secretKey }), JSON.stringify([{ secretKey }])]
-          );
-        }
-      }
-
-      // Filter by actor type
-      if (actorType) {
-        void sqlQuery.where("actor", actorType);
-      }
-
-      // Filter by event types
-      if (eventType?.length) {
-        void sqlQuery.whereIn("eventType", eventType);
-      }
+      const sqlQuery = buildAuditLogFindQuery(tx || db.replicaNode(), {
+        orgId,
+        projectId,
+        environment,
+        userAgentType,
+        startDate,
+        endDate,
+        limit,
+        offset,
+        actorId,
+        actorType,
+        secretPath,
+        secretKey,
+        eventType,
+        eventMetadata
+      });
 
       // we timeout long running queries to prevent DB resource issues (2 minutes)
       const docs = await sqlQuery.timeout(1000 * 120);
@@ -157,6 +216,43 @@ export const auditLogDALFactory = (db: TDbClient) => {
       }
 
       throw new DatabaseError({ error });
+    }
+  };
+
+  const stream: TAuditLogDALFactory["stream"] = async function* ({
+    orgId,
+    projectId,
+    environment,
+    userAgentType,
+    startDate,
+    endDate,
+    actorId,
+    actorType,
+    secretPath,
+    secretKey,
+    eventType,
+    eventMetadata
+  }) {
+    const sqlQuery = buildAuditLogFindQuery(db.replicaNode(), {
+      orgId,
+      projectId,
+      environment,
+      userAgentType,
+      startDate,
+      endDate,
+      limit: 10_001,
+      offset: 0,
+      actorId,
+      actorType,
+      secretPath,
+      secretKey,
+      eventType,
+      eventMetadata
+    });
+
+    const knexStream = sqlQuery.stream();
+    for await (const row of knexStream) {
+      yield row;
     }
   };
 
@@ -248,5 +344,5 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
-  return { ...auditLogOrm, create, pruneAuditLog, getApproximateRowCount, find };
+  return { ...auditLogOrm, create, pruneAuditLog, getApproximateRowCount, find, stream };
 };

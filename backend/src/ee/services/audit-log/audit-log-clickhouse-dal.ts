@@ -51,107 +51,138 @@ const isSafeKey = (key: string): boolean => SAFE_KEY_RE.test(key);
 
 export type TClickHouseAuditLogDALFactory = ReturnType<typeof clickhouseAuditLogDALFactory>;
 
+const buildClickhouseConditions = (
+  arg: Omit<TClickHouseFindArg, "limit" | "offset">
+): { conditions: string[]; params: Record<string, unknown> } => {
+  const conditions: string[] = [];
+  const params: Record<string, unknown> = {};
+
+  // Required: orgId filter (matches the primary key prefix)
+  conditions.push("orgId = {orgId:UUID}");
+  params.orgId = arg.orgId;
+
+  // Date range filter – pass as DateTime64(6) so ClickHouse can compare
+  // directly against the createdAt column without implicit string conversion.
+  // Strip the trailing 'Z' because ClickHouse's DateTime64 parser doesn't accept it.
+  conditions.push("createdAt >= {startDate:DateTime64(6)}");
+  params.startDate = arg.startDate.replace("Z", "");
+  conditions.push("createdAt < {endDate:DateTime64(6)}");
+  params.endDate = arg.endDate.replace("Z", "");
+
+  // Optional: project filter
+  if (arg.projectId) {
+    conditions.push("projectId = {projectId:String}");
+    params.projectId = arg.projectId;
+  }
+
+  // Optional: user agent type filter
+  if (arg.userAgentType) {
+    conditions.push("userAgentType = {userAgentType:String}");
+    params.userAgentType = arg.userAgentType;
+  }
+
+  // Optional: actor type filter
+  if (arg.actorType) {
+    conditions.push("actor = {actorType:String}");
+    params.actorType = arg.actorType;
+  }
+
+  // Optional: actor ID filter - queries the actorMetadata JSON field
+  if (arg.actorId) {
+    const metadataKey = arg.actorType
+      ? ACTOR_TYPE_TO_METADATA_ID_KEY[arg.actorType]
+      : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
+    if (metadataKey) {
+      conditions.push("JSONExtractString(actorMetadata, {actorMetaKey:String}) = {actorId:String}");
+      params.actorMetaKey = metadataKey;
+      params.actorId = arg.actorId;
+    }
+  }
+
+  // Optional: event type filter
+  if (arg.eventType?.length) {
+    conditions.push("eventType IN ({eventTypes:Array(String)})");
+    params.eventTypes = arg.eventType;
+  }
+
+  // Optional: eventMetadata dynamic key/value filters
+  if (arg.eventMetadata && Object.keys(arg.eventMetadata).length) {
+    let metaIdx = 0;
+    for (const [key, value] of Object.entries(arg.eventMetadata)) {
+      if (!isSafeKey(key)) {
+        logger.warn({ key }, "Skipping unsafe eventMetadata filter key in ClickHouse query");
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      const keyParamName = `metaKey${metaIdx}`;
+      const valParamName = `metaVal${metaIdx}`;
+      conditions.push(`JSONExtractString(eventMetadata, {${keyParamName}:String}) = {${valParamName}:String}`);
+      params[keyParamName] = key;
+      params[valParamName] = value;
+      metaIdx += 1;
+    }
+  }
+
+  // Secret-specific filters (environment, secretPath, secretKey)
+  const eventIsSecretType =
+    !arg.eventType?.length || arg.eventType.some((event) => filterableSecretEvents.includes(event));
+
+  if (arg.projectId && eventIsSecretType) {
+    if (arg.environment) {
+      conditions.push("JSONExtractString(eventMetadata, 'environment') = {envFilter:String}");
+      params.envFilter = arg.environment;
+    }
+
+    if (arg.secretPath) {
+      conditions.push("JSONExtractString(eventMetadata, 'secretPath') = {secretPathFilter:String}");
+      params.secretPathFilter = arg.secretPath;
+    }
+
+    if (arg.secretKey) {
+      // Match secretKey at top level in eventMetadata OR inside the eventMetadata.secrets[] array.
+      // The top-level check covers single-secret events, e.g.:
+      //   { "secretKey": "MY_SECRET", "environment": "prod", ... }
+      // The arrayExists check covers batch/multi-secret events, e.g.:
+      //   { "secrets": [{ "secretKey": "MY_SECRET" }, { "secretKey": "OTHER" }], ... }
+      conditions.push(
+        `(${[
+          "JSONExtractString(eventMetadata, 'secretKey') = {secretKeyFilter:String}",
+          "arrayExists(x -> JSONExtractString(x, 'secretKey') = {secretKeyFilter:String}, JSONExtractArrayRaw(eventMetadata, 'secrets'))"
+        ].join(" OR ")})`
+      );
+      params.secretKeyFilter = arg.secretKey;
+    }
+  }
+
+  return { conditions, params };
+};
+
+const mapClickhouseRow = (
+  row: TClickHouseAuditLogRow,
+  projectNameMap: Record<string, string>
+): TAuditLogWithProjectName =>
+  ({
+    id: row.id,
+    actor: row.actor,
+    actorMetadata: (row.actorMetadata ? JSON.parse(row.actorMetadata) : {}) as TAuditLogs["actorMetadata"],
+    ipAddress: row.ipAddress || null,
+    eventType: row.eventType,
+    eventMetadata: (row.eventMetadata ? JSON.parse(row.eventMetadata) : null) as TAuditLogs["eventMetadata"],
+    userAgent: row.userAgent || null,
+    userAgentType: row.userAgentType || null,
+    createdAt: new Date(row.createdAt),
+    orgId: row.orgId || null,
+    projectId: row.projectId || null,
+    projectName: projectNameMap[row.projectId] ?? null,
+    expiresAt: row.expiresAt ? new Date(row.expiresAt) : null
+  }) as TAuditLogWithProjectName;
+
 export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient, db: TDbClient, tableName: string) => {
   const find = async (arg: TClickHouseFindArg): Promise<TAuditLogWithProjectName[]> => {
-    const conditions: string[] = [];
-    const params: Record<string, unknown> = {};
+    const { conditions, params } = buildClickhouseConditions(arg);
 
-    // Required: orgId filter (matches the primary key prefix)
-    conditions.push("orgId = {orgId:UUID}");
-    params.orgId = arg.orgId;
-
-    // Date range filter – pass as DateTime64(6) so ClickHouse can compare
-    // directly against the createdAt column without implicit string conversion.
-    // Strip the trailing 'Z' because ClickHouse's DateTime64 parser doesn't accept it.
-    conditions.push("createdAt >= {startDate:DateTime64(6)}");
-    params.startDate = arg.startDate.replace("Z", "");
-    conditions.push("createdAt < {endDate:DateTime64(6)}");
-    params.endDate = arg.endDate.replace("Z", "");
-
-    // Optional: project filter
-    if (arg.projectId) {
-      conditions.push("projectId = {projectId:String}");
-      params.projectId = arg.projectId;
-    }
-
-    // Optional: user agent type filter
-    if (arg.userAgentType) {
-      conditions.push("userAgentType = {userAgentType:String}");
-      params.userAgentType = arg.userAgentType;
-    }
-
-    // Optional: actor type filter
-    if (arg.actorType) {
-      conditions.push("actor = {actorType:String}");
-      params.actorType = arg.actorType;
-    }
-
-    // Optional: actor ID filter - queries the actorMetadata JSON field
-    if (arg.actorId) {
-      const metadataKey = arg.actorType
-        ? ACTOR_TYPE_TO_METADATA_ID_KEY[arg.actorType]
-        : ACTOR_TYPE_TO_METADATA_ID_KEY[ActorType.USER];
-      if (metadataKey) {
-        conditions.push("JSONExtractString(actorMetadata, {actorMetaKey:String}) = {actorId:String}");
-        params.actorMetaKey = metadataKey;
-        params.actorId = arg.actorId;
-      }
-    }
-
-    // Optional: event type filter
-    if (arg.eventType?.length) {
-      conditions.push("eventType IN ({eventTypes:Array(String)})");
-      params.eventTypes = arg.eventType;
-    }
-
-    // Optional: eventMetadata dynamic key/value filters
-    if (arg.eventMetadata && Object.keys(arg.eventMetadata).length) {
-      let metaIdx = 0;
-      for (const [key, value] of Object.entries(arg.eventMetadata)) {
-        if (!isSafeKey(key)) {
-          logger.warn({ key }, "Skipping unsafe eventMetadata filter key in ClickHouse query");
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-        const keyParamName = `metaKey${metaIdx}`;
-        const valParamName = `metaVal${metaIdx}`;
-        conditions.push(`JSONExtractString(eventMetadata, {${keyParamName}:String}) = {${valParamName}:String}`);
-        params[keyParamName] = key;
-        params[valParamName] = value;
-        metaIdx += 1;
-      }
-    }
-
-    // Secret-specific filters (environment, secretPath, secretKey)
-    const eventIsSecretType =
-      !arg.eventType?.length || arg.eventType.some((event) => filterableSecretEvents.includes(event));
-
-    if (arg.projectId && eventIsSecretType) {
-      if (arg.environment) {
-        conditions.push("JSONExtractString(eventMetadata, 'environment') = {envFilter:String}");
-        params.envFilter = arg.environment;
-      }
-
-      if (arg.secretPath) {
-        conditions.push("JSONExtractString(eventMetadata, 'secretPath') = {secretPathFilter:String}");
-        params.secretPathFilter = arg.secretPath;
-      }
-
-      if (arg.secretKey) {
-        // Match secretKey at top level in eventMetadata OR inside the eventMetadata.secrets[] array.
-        // The top-level check covers single-secret events, e.g.:
-        //   { "secretKey": "MY_SECRET", "environment": "prod", ... }
-        // The arrayExists check covers batch/multi-secret events, e.g.:
-        //   { "secrets": [{ "secretKey": "MY_SECRET" }, { "secretKey": "OTHER" }], ... }
-        conditions.push(
-          `(${[
-            "JSONExtractString(eventMetadata, 'secretKey') = {secretKeyFilter:String}",
-            "arrayExists(x -> JSONExtractString(x, 'secretKey') = {secretKeyFilter:String}, JSONExtractArrayRaw(eventMetadata, 'secrets'))"
-          ].join(" OR ")})`
-        );
-        params.secretKeyFilter = arg.secretKey;
-      }
-    }
+    params.limit = arg.limit ?? 20;
+    params.offset = arg.offset ?? 0;
 
     const whereClause = conditions.join(" AND ");
 
@@ -165,9 +196,6 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
       LIMIT {limit:UInt32}
       OFFSET {offset:UInt32}
     `;
-
-    params.limit = arg.limit ?? 20;
-    params.offset = arg.offset ?? 0;
 
     try {
       const result = await clickhouseClient.query({
@@ -187,26 +215,59 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         projectNameMap = Object.fromEntries(projects.map((p: { id: string; name: string }) => [p.id, p.name]));
       }
 
-      return rows.map((row) => ({
-        id: row.id,
-        actor: row.actor,
-        actorMetadata: (row.actorMetadata ? JSON.parse(row.actorMetadata) : {}) as TAuditLogs["actorMetadata"],
-        ipAddress: row.ipAddress || null,
-        eventType: row.eventType,
-        eventMetadata: (row.eventMetadata ? JSON.parse(row.eventMetadata) : null) as TAuditLogs["eventMetadata"],
-        userAgent: row.userAgent || null,
-        userAgentType: row.userAgentType || null,
-        createdAt: new Date(row.createdAt),
-        orgId: row.orgId || null,
-        projectId: row.projectId || null,
-        projectName: projectNameMap[row.projectId] ?? null,
-        expiresAt: row.expiresAt ? new Date(row.expiresAt) : null
-      })) as TAuditLogWithProjectName[];
+      return rows.map((row) => mapClickhouseRow(row, projectNameMap));
     } catch (error) {
       logger.error(error, "Failed to query audit logs from ClickHouse");
       throw new DatabaseError({ error });
     }
   };
 
-  return { find };
+  const stream = async function* (
+    arg: Omit<TClickHouseFindArg, "limit" | "offset">
+  ): AsyncGenerator<TAuditLogWithProjectName> {
+    const { conditions, params } = buildClickhouseConditions(arg);
+
+    params.limit = 10_001;
+    params.offset = 0;
+
+    const whereClause = conditions.join(" AND ");
+
+    const query = `
+      SELECT
+        id, actor, actorMetadata, ipAddress, eventType, eventMetadata,
+        userAgent, userAgentType, orgId, projectId, expiresAt, createdAt
+      FROM ${tableName}
+      WHERE ${whereClause}
+      ORDER BY createdAt DESC
+      LIMIT {limit:UInt32}
+      OFFSET {offset:UInt32}
+    `;
+
+    // Pre-fetch all project names for this org once — bounded by org size, avoids per-row lookups
+    const projects = await db(TableName.Project).where("orgId", arg.orgId).select("id", "name");
+    const projectNameMap: Record<string, string> = Object.fromEntries(
+      projects.map((p: { id: string; name: string }) => [p.id, p.name])
+    );
+
+    try {
+      const resultSet = await clickhouseClient.query({
+        query,
+        query_params: params,
+        format: "JSONEachRow"
+      });
+
+      const chStream = resultSet.stream<TClickHouseAuditLogRow>();
+
+      for await (const rows of chStream) {
+        for (const row of rows) {
+          yield mapClickhouseRow(row.json(), projectNameMap);
+        }
+      }
+    } catch (error) {
+      logger.error(error, "Failed to stream audit logs from ClickHouse");
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return { find, stream };
 };

@@ -13,6 +13,7 @@ import {
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -257,6 +258,120 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { auditLogs };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/audit-logs/export",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "exportOrganizationAuditLogs",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Export audit logs for an organization as a JSONL file. Returns at most 10,000 entries.",
+      querystring: z
+        .object({
+          projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
+          environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
+          actorType: z.nativeEnum(ActorType).optional().describe(AUDIT_LOGS.EXPORT.actorType),
+          secretPath: z
+            .string()
+            .optional()
+            .transform((val) => (!val ? val : removeTrailingSlash(val)))
+            .describe(AUDIT_LOGS.EXPORT.secretPath),
+          secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
+          eventType: z
+            .string()
+            .optional()
+            .transform((val) => (val ? val.split(",") : undefined))
+            .pipe(z.nativeEnum(EventType).array().optional()),
+          userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+          eventMetadata: z
+            .string()
+            .optional()
+            .transform((val) => {
+              if (!val) {
+                return undefined;
+              }
+
+              const pairs = val.split(",");
+
+              return pairs.reduce(
+                (acc, pair) => {
+                  const eqIdx = pair.indexOf("=");
+                  if (eqIdx > 0) {
+                    const key = pair.slice(0, eqIdx);
+                    const value = pair.slice(eqIdx + 1);
+                    if (value) acc[key] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, string>
+              );
+            })
+            .describe(AUDIT_LOGS.EXPORT.eventMetadata),
+          startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
+          endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+          actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+        })
+        .superRefine((el, ctx) => {
+          if (el.endDate && el.startDate) {
+            const startDate = new Date(el.startDate);
+            const endDate = new Date(el.endDate);
+            const maxAllowedDate = new Date(startDate);
+            maxAllowedDate.setMonth(maxAllowedDate.getMonth() + 3);
+            if (endDate < startDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "End date cannot be before start date"
+              });
+            }
+            if (endDate > maxAllowedDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "Dates must be within 3 months"
+              });
+            }
+          }
+        })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, reply) => {
+      const date = new Date().toISOString().split("T")[0];
+      void reply.raw.setHeader("Content-Type", "application/x-ndjson");
+      void reply.raw.setHeader("Content-Disposition", `attachment; filename="audit-logs-${date}.jsonl"`);
+
+      void reply.hijack();
+
+      try {
+        const exportGen = server.services.auditLog.exportAuditLogs({
+          filter: {
+            ...req.query,
+            endDate: req.query.endDate || new Date().toISOString(),
+            startDate: req.query.startDate || getLastMidnightDateISO(),
+            auditLogActorId: req.query.actor,
+            actorType: req.query.actorType,
+            eventType: req.query.eventType
+          },
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          actor: req.permission.type
+        });
+
+        for await (const row of exportGen) {
+          reply.raw.write(`${JSON.stringify(row)}\n`);
+        }
+      } catch (err) {
+        logger.error(err, "audit-log-export: stream error");
+      } finally {
+        reply.raw.end();
+      }
     }
   });
 

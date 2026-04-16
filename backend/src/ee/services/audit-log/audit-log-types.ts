@@ -75,6 +75,42 @@ export type TListProjectAuditLogDTO = {
   };
 } & Omit<TProjectPermission, "projectId">;
 
+export type TExportAuditLogDTO = {
+  filter: {
+    userAgentType?: UserAgentType;
+    eventType?: EventType[];
+    endDate: string;
+    startDate: string;
+    projectId?: string;
+    environment?: string;
+    auditLogActorId?: string;
+    actorType?: ActorType;
+    secretPath?: string;
+    secretKey?: string;
+    eventMetadata?: Record<string, string>;
+  };
+} & Omit<TProjectPermission, "projectId">;
+
+export type TExportedAuditLog = {
+  event: { type: string; metadata: unknown };
+  actor: { type: string; metadata: unknown };
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  orgId?: string | null;
+  userAgent?: string | null;
+  expiresAt?: Date | null;
+  ipAddress?: string | null;
+  userAgentType?: string | null;
+  projectId?: string | null;
+  projectName?: string | null;
+};
+
+export type TExportTruncationMarker = {
+  _exportTruncated: true;
+  _exportedCount: number;
+};
+
 export type TCreateAuditLogDTO = {
   event: Event;
   actor:
@@ -117,6 +153,7 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
+  exportAuditLogs: (arg: TExportAuditLogDTO) => AsyncGenerator<TExportedAuditLog | TExportTruncationMarker>;
   getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
     clickHouseConfigured: boolean;
     auditLogGenerationDisabled: boolean;

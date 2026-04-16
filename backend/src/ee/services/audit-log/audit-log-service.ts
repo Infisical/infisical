@@ -19,7 +19,14 @@ import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../perm
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
+import {
+  ACTOR_TYPE_TO_METADATA_ID_KEY,
+  EventType,
+  TAuditLogServiceFactory,
+  TExportAuditLogDTO,
+  TExportedAuditLog,
+  TExportTruncationMarker
+} from "./audit-log-types";
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
@@ -260,9 +267,85 @@ export const auditLogServiceFactory = ({
     logger.info(`checkPostgresAuditLogVolumeMigrationAlert: alert sent to super admins (rowCount=${rowCount})`);
   };
 
+  const exportAuditLogs: TAuditLogServiceFactory["exportAuditLogs"] = async function* ({
+    actorAuthMethod,
+    actorId,
+    actorOrgId,
+    actor,
+    filter
+  }: TExportAuditLogDTO): AsyncGenerator<TExportedAuditLog | TExportTruncationMarker> {
+    if (filter.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: filter.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Read,
+        ProjectPermissionSub.AuditLogs
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAuditLogsActions.Read,
+        OrgPermissionSubjects.AuditLogs
+      );
+    }
+
+    const findArgs = {
+      startDate: filter.startDate,
+      endDate: filter.endDate,
+      eventType: filter.eventType,
+      userAgentType: filter.userAgentType,
+      actorId: filter.auditLogActorId,
+      actorType: filter.actorType,
+      eventMetadata: filter.eventMetadata,
+      secretPath: filter.secretPath,
+      secretKey: filter.secretKey,
+      environment: filter.environment,
+      orgId: actorOrgId,
+      ...(filter.projectId ? { projectId: filter.projectId } : {})
+    };
+
+    const appCfg = getConfig();
+    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
+    const source = useClickHouse ? clickhouseAuditLogDAL.stream(findArgs) : auditLogDAL.stream(findArgs);
+
+    const MAX_EXPORT_ENTRIES = 10_000;
+    let count = 0;
+
+    for await (const rawRow of source) {
+      count += 1;
+      if (count > MAX_EXPORT_ENTRIES) {
+        yield { _exportTruncated: true, _exportedCount: MAX_EXPORT_ENTRIES };
+        return;
+      }
+
+      const { eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el } = rawRow;
+      yield {
+        ...el,
+        updatedAt: el.createdAt,
+        expiresAt: el.expiresAt,
+        event: { type: logEventType, metadata: eventMetadata },
+        actor: { type: eActor, metadata: actorMetadata }
+      };
+    }
+  };
+
   return {
     createAuditLog,
     listAuditLogs,
+    exportAuditLogs,
     getAuditLogPostgresStorageStatus,
     checkPostgresAuditLogVolumeMigrationAlert
   };

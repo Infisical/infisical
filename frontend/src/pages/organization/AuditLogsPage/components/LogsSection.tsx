@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { faDownload, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
+import { createNotification } from "@app/components/notifications";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { Button } from "@app/components/v2";
 import {
   DocumentationLinkBadge,
   UnstableAlert,
@@ -17,7 +21,7 @@ import {
 import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission, withProjectPermission } from "@app/hoc";
-import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
+import { exportAuditLogs, useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -55,6 +59,7 @@ const LogsSectionComponent = ({
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const { data: postgresStorageStatus } = useGetAuditLogPostgresStorageStatus();
+  const [isExporting, setIsExporting] = useState(false);
 
   const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
   const showClickHouseWarning =
@@ -101,6 +106,33 @@ const LogsSectionComponent = ({
       handlePopUpOpen("upgradePlan");
     }
   }, [subscription]);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await exportAuditLogs(
+        {
+          eventMetadata: logFilter?.eventMetadata,
+          actor: searchDerived.actor || logFilter?.actor,
+          actorType: searchDerived.actorType || presets?.actorType,
+          eventType:
+            searchDerived.eventType.length > 0 ? searchDerived.eventType : logFilter?.eventType,
+          userAgentType: searchDerived.userAgentType || logFilter?.userAgentType,
+          environment: searchDerived.environment || logFilter?.environment?.slug,
+          secretPath: searchDerived.secretPath,
+          secretKey: searchDerived.secretKey,
+          startDate: dateFilter?.startDate,
+          endDate: dateFilter?.endDate
+        },
+        project?.id || searchDerived.projectId || logFilter?.project?.id
+      );
+      createNotification({ type: "success", text: "Audit logs exported successfully" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to export audit logs" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (pageView)
     return (
@@ -149,6 +181,17 @@ const LogsSectionComponent = ({
                 setTimezone={setTimezone}
               />
             )}
+            <Button
+              variant="outline_bg"
+              size="xs"
+              isLoading={isExporting}
+              leftIcon={
+                <FontAwesomeIcon icon={isExporting ? faSpinner : faDownload} />
+              }
+              onClick={handleExport}
+            >
+              Export
+            </Button>
           </div>
         </div>
         {showFilters && (

@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { downloadFile } from "@app/helpers/download";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
@@ -67,4 +68,30 @@ export const useGetAuditLogPostgresStorageStatus = () => {
     queryKey: auditLogKeys.postgresStorageStatus,
     queryFn: fetchAuditLogPostgresStorageStatus
   });
+};
+
+export type TExportAuditLogsFilter = Omit<TGetAuditLogsFilter, "limit">;
+
+export const exportAuditLogs = async (filters: TExportAuditLogsFilter, projectId?: string | null) => {
+  const date = new Date().toISOString().split("T")[0];
+  const response = await apiRequest.get<Blob>("/api/v1/organization/audit-logs/export", {
+    responseType: "blob",
+    params: {
+      ...filters,
+      startDate: filters.startDate.toISOString(),
+      endDate: filters.endDate.toISOString(),
+      ...(filters.eventMetadata && Object.keys(filters.eventMetadata).length
+        ? {
+            eventMetadata: Object.entries(filters.eventMetadata)
+              .map(([key, value]) => `${key}=${value}`)
+              .join(",")
+          }
+        : {}),
+      ...(filters.eventType?.length ? { eventType: filters.eventType.join(",") } : {}),
+      ...(projectId ? { projectId } : {})
+    }
+  });
+
+  const text = await (response.data as Blob).text();
+  downloadFile(text, `audit-logs-${date}.jsonl`, "application/x-ndjson");
 };
