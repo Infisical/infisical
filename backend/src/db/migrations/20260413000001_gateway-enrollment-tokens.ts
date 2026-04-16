@@ -4,10 +4,17 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
+  const hasTokenVersionColumn = await knex.schema.hasColumn(TableName.GatewayV2, "tokenVersion");
+  const hasIdentityIdColumn = await knex.schema.hasColumn(TableName.GatewayV2, "identityId");
+
   // Make identityId nullable and add tokenVersion to support enrollment-token-based gateways
   await knex.schema.alterTable(TableName.GatewayV2, (t) => {
-    t.uuid("identityId").nullable().alter();
-    t.integer("tokenVersion").notNullable().defaultTo(0);
+    if (hasIdentityIdColumn) {
+      t.uuid("identityId").nullable().alter();
+    }
+    if (!hasTokenVersionColumn) {
+      t.integer("tokenVersion").notNullable().defaultTo(0);
+    }
   });
 
   if (!(await knex.schema.hasTable(TableName.GatewayEnrollmentTokens))) {

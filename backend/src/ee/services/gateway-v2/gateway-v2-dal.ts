@@ -76,5 +76,14 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, find, findById };
+  const countByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.GatewayV2).where({ orgId }).count("id").first();
+      return parseInt(String(result?.count || "0"), 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.GatewayV2}: Count by org id` });
+    }
+  };
+
+  return { ...orm, find, findById, countByOrgId };
 };

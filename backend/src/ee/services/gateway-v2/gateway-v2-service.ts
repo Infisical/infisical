@@ -46,6 +46,9 @@ import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
+// Temporary limit until gateway limiting is implemented at the relay level
+const MAX_GATEWAYS_PER_ORG = 50;
+
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
   kmsService: TKmsServiceFactory;
@@ -1223,15 +1226,32 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    try {
-      const gateway = await gatewayV2DAL.create({ orgId, name });
-      return gateway;
-    } catch (err) {
-      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    const gateway = await gatewayV2DAL.transaction(async (tx) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateGateway(orgId)]);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+      const existingGatewayCount = await gatewayV2DAL.countByOrgId(orgId, tx);
+      if (existingGatewayCount >= MAX_GATEWAYS_PER_ORG) {
+        throw new BadRequestError({
+          message: `Organization has reached the maximum limit of ${MAX_GATEWAYS_PER_ORG} gateways`
+        });
       }
-      throw err;
-    }
+
+      try {
+        return await gatewayV2DAL.create({ orgId, name }, tx);
+      } catch (err) {
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+        }
+        throw err;
+      }
+    });
+
+    return gateway;
   };
 
   const configureTokenAuth = async ({

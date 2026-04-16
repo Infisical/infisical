@@ -136,9 +136,10 @@ export const GatewayTab = withPermission(
       id: string;
       name: string;
     } | null>(null);
-    const { data: gateways, isPending: isGatewaysLoading } = useQuery(
-      gatewaysQueryKeys.listWithTokens()
-    );
+    const { data: gateways, isPending: isGatewaysLoading } = useQuery({
+      ...gatewaysQueryKeys.listWithTokens(),
+      refetchInterval: 15_000
+    });
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
