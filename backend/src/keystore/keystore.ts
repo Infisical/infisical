@@ -105,6 +105,9 @@ export const KeyStorePrefixes = {
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
+
+  CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
+  CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const
 };
 

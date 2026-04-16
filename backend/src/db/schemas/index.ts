@@ -34,6 +34,7 @@ export * from "./certificate-authority-crl";
 export * from "./certificate-authority-secret";
 export * from "./certificate-bodies";
 export * from "./certificate-cleanup-configs";
+export * from "./certificate-inventory-views";
 export * from "./certificate-requests";
 export * from "./certificate-secrets";
 export * from "./certificate-syncs";
