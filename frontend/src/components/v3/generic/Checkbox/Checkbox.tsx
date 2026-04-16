@@ -1,12 +1,26 @@
 /* eslint-disable react/prop-types */
 import * as React from "react";
 import { CheckboxIndicator, Root as CheckboxPrimitive } from "@radix-ui/react-checkbox";
-import { cva, VariantProps } from "cva";
+import { cva } from "cva";
 import { CheckIcon, MinusIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 
-const checkboxVariants = cva(
+export const checkboxVariantOptions = [
+  "outline",
+  "neutral",
+  "project",
+  "org",
+  "sub-org",
+  "success",
+  "info",
+  "warning",
+  "danger"
+] as const;
+
+export type CheckboxVariant = (typeof checkboxVariantOptions)[number];
+
+const checkboxStyles = cva(
   cn(
     "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
     "outline-none group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2",
@@ -35,7 +49,7 @@ const checkboxVariants = cva(
           "data-[state=checked]:border-warning/25 data-[state=checked]:bg-warning/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
         danger:
           "data-[state=checked]:border-danger/25 data-[state=checked]:bg-danger/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30"
-      }
+      } satisfies Record<CheckboxVariant, string>
     },
     defaultVariants: {
       variant: "outline"
@@ -43,16 +57,16 @@ const checkboxVariants = cva(
   }
 );
 
-type CheckboxProps = Omit<
+export type CheckboxProps = Omit<
   React.ComponentProps<typeof CheckboxPrimitive>,
   "checked" | "disabled" | "required"
-> &
-  VariantProps<typeof checkboxVariants> & {
-    isDisabled?: boolean;
-    isIndeterminate?: boolean;
-    isChecked?: boolean;
-    isRequired?: boolean;
-  };
+> & {
+  variant?: CheckboxVariant;
+  isDisabled?: boolean;
+  isIndeterminate?: boolean;
+  isChecked?: boolean;
+  isRequired?: boolean;
+};
 
 function Checkbox({
   className,
@@ -66,7 +80,7 @@ function Checkbox({
   return (
     <CheckboxPrimitive
       data-slot="checkbox"
-      className={cn(checkboxVariants({ variant }), className)}
+      className={cn(checkboxStyles({ variant }), className)}
       {...props}
       checked={isChecked}
       disabled={isDisabled}
