@@ -152,6 +152,27 @@ export type TListProjectCertsDTO = {
   toDate?: Date;
   metadataFilter?: Array<{ key: string; value?: string }>;
   extendedKeyUsage?: string;
+  keyAlgorithm?: string | string[];
+  signatureAlgorithm?: string;
+  keySizes?: number[];
+  caIds?: string[];
+  enrollmentTypes?: string[];
+  source?: string | string[];
+  notAfterFrom?: Date;
+  notAfterTo?: Date;
+  notBeforeFrom?: Date;
+  notBeforeTo?: Date;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetDashboardStatsDTO = {
+  filter: Filter;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TGetActivityTrendDTO = {
+  filter: Filter;
+  range?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectAlertsDTO = TProjectPermission;

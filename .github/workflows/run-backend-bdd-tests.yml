@@ -25,7 +25,7 @@ jobs:
           docker system prune -af
 
       - name: ☁️ Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Python
@@ -36,11 +36,10 @@ jobs:
         with:
           version: "2.14.2"
       - name: 🔧 Setup Node 22
-        uses: actions/setup-node@v3
+        id: setup-node
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -52,8 +51,15 @@ jobs:
           cmake -S /tmp/sscep-build -B /tmp/sscep-build/build
           make -C /tmp/sscep-build/build -j$(nproc)
           sudo cp /tmp/sscep-build/build/sscep /usr/local/bin/sscep
+      - name: 📦 Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('backend/package-lock.json') }}
       - name: Install dependencies
-        run: npm install
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
         working-directory: backend
 
       - name: Output .env file and enable feature flags for BDD tests

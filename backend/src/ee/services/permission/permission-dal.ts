@@ -811,8 +811,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   // Lightweight permission fingerprint for ETag validation.
   // Same tables/joins/WHERE as getPermission but selects only IDs + timestamps,
   // then hashes in JS. The CASE expressions make the hash flip at temporary access expiry.
-  // Includes both project-scoped AND org-scoped memberships so that org-level
-  // permission changes (e.g. SSO bypass grant/revoke) also invalidate the cache.
   const getPermissionFingerprint: TPermissionDALFactory["getPermissionFingerprint"] = async ({
     projectId,
     orgId,
@@ -848,25 +846,9 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             `${TableName.AdditionalPrivilege}.projectId`
           );
         })
-        .leftJoin(TableName.IdentityMetadata, (qb) => {
-          if (actorType === ActorType.IDENTITY) {
-            qb.on(`${TableName.IdentityMetadata}.identityId`, `${TableName.Membership}.actorIdentityId`);
-          } else {
-            void qb
-              .on(`${TableName.IdentityMetadata}.userId`, db.raw("?", [actorId]))
-              .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
-          }
-        })
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where((scopeQb) => {
-          void scopeQb
-            .where((inner) => {
-              void inner
-                .where(`${TableName.Membership}.scope`, AccessScope.Project)
-                .where(`${TableName.Membership}.scopeProjectId`, projectId);
-            })
-            .orWhere(`${TableName.Membership}.scope`, AccessScope.Organization);
-        })
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where((qb) => {
           const directCol =
             actorType === ActorType.USER
@@ -882,8 +864,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),
           db.ref("id").withSchema(TableName.AdditionalPrivilege).as("pId"),
           db.ref("updatedAt").withSchema(TableName.AdditionalPrivilege).as("pUp"),
-          db.ref("id").withSchema(TableName.IdentityMetadata).as("imId"),
-          db.ref("updatedAt").withSchema(TableName.IdentityMetadata).as("imUp"),
           db.raw(
             `CASE WHEN "${TableName.MembershipRole}"."isTemporary" AND NOW() >= "${TableName.MembershipRole}"."temporaryAccessEndTime" THEN true ELSE false END AS "rExp"`
           ),

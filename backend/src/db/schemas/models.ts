@@ -258,6 +258,9 @@ export enum TableName {
   // PKI Cleanup
   CertificateCleanupConfig = "certificate_cleanup_configs",
 
+  // PKI Inventory Views
+  CertificateInventoryView = "certificate_inventory_views",
+
   // AI
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",

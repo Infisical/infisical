@@ -110,6 +110,9 @@ import {
   TCertificateCleanupConfigs,
   TCertificateCleanupConfigsInsert,
   TCertificateCleanupConfigsUpdate,
+  TCertificateInventoryViews,
+  TCertificateInventoryViewsInsert,
+  TCertificateInventoryViewsUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -1768,6 +1771,11 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigs,
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
+    >;
+    [TableName.CertificateInventoryView]: KnexOriginal.CompositeTableType<
+      TCertificateInventoryViews,
+      TCertificateInventoryViewsInsert,
+      TCertificateInventoryViewsUpdate
     >;
     [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
       TSecretValidationRules,

@@ -716,6 +716,9 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateInventoryViews]: GeneralPolicyActionSchema.array().default(
+        []
+      ),
       [ProjectPermissionSub.PkiDiscovery]: z
         .object({
           read: z.boolean().optional(),
@@ -1037,6 +1040,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Member,
         ProjectPermissionSub.Groups,
         ProjectPermissionSub.PkiCollections,
+        ProjectPermissionSub.CertificateInventoryViews,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
@@ -2758,6 +2762,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete", description: "Delete PKI alerts" }
     ]
   },
+  [ProjectPermissionSub.CertificateInventoryViews]: {
+    title: "Inventory Views",
+    description: "Manage saved certificate inventory views and filters",
+    actions: [
+      { label: "Read", value: "read", description: "View saved inventory views" },
+      { label: "Create", value: "create", description: "Create new inventory views" },
+      { label: "Modify", value: "edit", description: "Update inventory views and toggle sharing" },
+      { label: "Remove", value: "delete", description: "Delete inventory views" }
+    ]
+  },
   [ProjectPermissionSub.SecretApproval]: {
     title: "Approval Policies",
     description: "Define approval workflows for secret changes and access requests",
@@ -3411,6 +3425,7 @@ const KmsPermissionSubjects = (enabled = false) => ({
 const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiCollections]: enabled,
   [ProjectPermissionSub.PkiAlerts]: enabled,
+  [ProjectPermissionSub.CertificateInventoryViews]: enabled,
   [ProjectPermissionSub.PkiSubscribers]: enabled,
   [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
@@ -3708,6 +3723,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           actions: [ProjectPermissionActions.Read]
         },
         {
+          subject: ProjectPermissionSub.CertificateInventoryViews,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
           subject: ProjectPermissionSub.CertificateAuthorities,
           actions: [ProjectPermissionActions.Read]
         },
@@ -3743,6 +3762,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         },
         {
           subject: ProjectPermissionSub.PkiAlerts,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateInventoryViews,
           actions: Object.values(ProjectPermissionActions)
         },
         {
