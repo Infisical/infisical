@@ -35,9 +35,6 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
           ),
           db.raw(
             `COALESCE(array_agg(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") FILTER (WHERE ${TableName.GatewayPoolMembership}."gatewayId" IS NOT NULL), '{}') AS "memberGatewayIds"`
-          ),
-          db.raw(
-            `(SELECT COUNT(*) FROM ${TableName.IdentityKubernetesAuth} WHERE ${TableName.IdentityKubernetesAuth}."gatewayPoolId" = ${TableName.GatewayPool}.id) AS "connectedResourcesCount"`
           )
         )
         .groupBy(`${TableName.GatewayPool}.id`)
@@ -49,8 +46,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
           ...p,
           memberCount: Number(raw.memberCount ?? 0),
           healthyMemberCount: Number(raw.healthyMemberCount ?? 0),
-          memberGatewayIds: (raw.memberGatewayIds as string[]) ?? [],
-          connectedResourcesCount: Number(raw.connectedResourcesCount ?? 0)
+          memberGatewayIds: (raw.memberGatewayIds as string[]) ?? []
         };
       });
     } catch (error) {

@@ -1141,7 +1141,14 @@ export const identityKubernetesAuthServiceFactory = ({
         gatewayV2IdValue = gatewayId;
       }
     }
-    const gatewayPoolIdValue = gatewayPoolId !== undefined ? gatewayPoolId : (gatewayId !== undefined ? null : undefined);
+    let gatewayPoolIdValue: string | null | undefined;
+    if (gatewayPoolId !== undefined) {
+      gatewayPoolIdValue = gatewayPoolId;
+    } else if (gatewayId !== undefined) {
+      gatewayPoolIdValue = null;
+    } else {
+      gatewayPoolIdValue = undefined;
+    }
 
     const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
     const effectiveKubernetesHost =
