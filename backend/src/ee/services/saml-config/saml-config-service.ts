@@ -15,10 +15,10 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
@@ -35,10 +35,11 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -85,6 +86,8 @@ type TSamlConfigServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
+  loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -104,7 +107,9 @@ export const samlConfigServiceFactory = ({
   identityMetadataDAL,
   kmsService,
   membershipRoleDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  loginService,
+  emailDomainDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -421,14 +426,18 @@ export const samlConfigServiceFactory = ({
           message: `SAML configuration for organization with ID '${dto.orgId}' not found`
         });
       }
+    } else if (dto.type === "domain") {
+      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: dto.domain, emailDomainDAL });
+      if (!verifiedDomain) {
+        throw new NotFoundError({ message: `No verified domain found for '${dto.domain}'` });
+      }
+      samlConfig = await samlConfigDAL.findOne({ orgId: verifiedDomain.orgId, isActive: true });
     } else if (dto.type === "orgSlug") {
       const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
       if (!org) {
-        throw new NotFoundError({
-          message: `Organization with slug '${dto.orgSlug}' not found`
-        });
+        throw new NotFoundError({ message: `Organization with slug '${dto.orgSlug}' not found` });
       }
-      samlConfig = await samlConfigDAL.findOne({ orgId: org.id });
+      samlConfig = await samlConfigDAL.findOne({ orgId: org.id, isActive: true });
     } else if (dto.type === "ssoId") {
       // TODO:
       // We made this change because saml config ids were not moved over during the migration
@@ -504,10 +513,11 @@ export const samlConfigServiceFactory = ({
     lastName,
     authProvider,
     orgId,
-    relayState,
+    ip,
+    userAgent,
+    callbackPort,
     metadata
   }) => {
-    const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
@@ -522,6 +532,11 @@ export const samlConfigServiceFactory = ({
       aliasType: UserAliasType.SAML
     });
 
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
+
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
@@ -533,8 +548,14 @@ export const samlConfigServiceFactory = ({
 
     let user: TUsers;
     if (userAlias) {
+      const foundUser = await userDAL.findById(userAlias.userId);
+      // Verify the existing user's stored email domain + cross-org check
+      await verifyEmailDomainOwnership({
+        email: foundUser.username,
+        orgId,
+        emailDomainDAL
+      });
       user = await userDAL.transaction(async (tx) => {
-        const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -550,10 +571,10 @@ export const samlConfigServiceFactory = ({
           const membership = await orgDAL.createMembership(
             {
               actorUserId: userAlias.userId,
-              inviteEmail: email,
+              inviteEmail: sanitizedEmail,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -563,15 +584,6 @@ export const samlConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );
@@ -609,49 +621,14 @@ export const samlConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
-        const usersWithSameEmail = await userDAL.find(
-          {
-            email: email.toLowerCase()
-          },
-          {
-            tx
-          }
-        );
-
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          newUser = verifiedEmail;
-        } else if (userWithSameUsername) {
-          newUser = userWithSameUsername;
-        }
-
-        // Prevent cross-org account takeover: if an existing user was found by email,
-        // verify they are already a member of this org before binding the SAML identity.
-        if (newUser) {
-          const [existingMembership] = await orgDAL.findMembership(
-            {
-              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
-              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-            },
-            { tx }
-          );
-          if (!existingMembership) {
-            throw new ForbiddenRequestError({
-              message:
-                "User is not a member of this organization. Please contact your organization admin to receive an invite."
-            });
-          }
-        }
+        newUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
 
         if (!newUser) {
-          const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
             {
-              username: serverCfg.trustSamlEmails ? email.toLowerCase() : uniqueUsername,
-              email,
-              isEmailVerified: serverCfg.trustSamlEmails,
+              username: sanitizedEmail,
+              email: sanitizedEmail,
+              isEmailVerified: false,
               firstName,
               lastName,
               authMethods: [],
@@ -666,9 +643,9 @@ export const samlConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
-            emails: email ? [email.toLowerCase()] : [],
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: serverCfg.trustSamlEmails
+            isEmailVerified: false
           },
           tx
         );
@@ -692,9 +669,9 @@ export const samlConfigServiceFactory = ({
               actorUserId: newUser.id,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true,
-              inviteEmail: email.toLowerCase()
+              inviteEmail: sanitizedEmail
             },
             tx
           );
@@ -703,15 +680,6 @@ export const samlConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );
@@ -748,35 +716,6 @@ export const samlConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted && userAlias.isEmailVerified);
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
-        username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
-        firstName,
-        lastName,
-        organizationName: organization.name,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        authMethod: authProvider,
-        hasExchangedPrivateKey: true,
-        aliasId: userAlias.id,
-        authType: UserAliasType.SAML,
-        isUserCompleted,
-        ...(relayState
-          ? {
-              callbackPort: (JSON.parse(relayState) as { callbackPort: string }).callbackPort
-            }
-          : {})
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
     if (user.email && !userAlias.isEmailVerified) {
@@ -796,7 +735,18 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    return { isUserCompleted, providerAuthToken, user, organization };
+    const callbackResult = await loginService.processProviderCallback({
+      user,
+      authMethod: authProvider as AuthMethod,
+      isEmailVerified: Boolean(userAlias.isEmailVerified),
+      aliasId: userAlias.id,
+      ip,
+      userAgent,
+      organizationId: organization.id,
+      callbackPort
+    });
+
+    return { ...callbackResult, userId: user.id, orgId: organization.id, orgName: organization.name };
   };
 
   return {

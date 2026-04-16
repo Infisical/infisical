@@ -77,6 +77,20 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           lastName: string | null | undefined;
           username: string;
         };
+        approvedByUser: {
+          userId: string;
+          email: string | null | undefined;
+          firstName: string | null | undefined;
+          lastName: string | null | undefined;
+          username: string;
+        } | null;
+        revokedByUser: {
+          userId: string;
+          email: string | null | undefined;
+          firstName: string | null | undefined;
+          lastName: string | null | undefined;
+          username: string;
+        } | null;
         status: string;
         id: string;
         createdAt: Date;
@@ -181,6 +195,20 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         lastName: string | null | undefined;
         username: string;
       };
+      approvedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
+      revokedByUser: {
+        userId: string;
+        email: string | null | undefined;
+        firstName: string | null | undefined;
+        lastName: string | null | undefined;
+        username: string;
+      } | null;
       privilege: {
         membershipId: string;
         userId: string;
@@ -295,6 +323,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `${TableName.AccessApprovalRequest}.requestedByUserId`,
             `requestedByUser.id`
           )
+          .leftJoin<TUsers>(
+            db(TableName.Users).as("approvedByUser"),
+            `${TableName.AccessApprovalRequest}.approvedByUserId`,
+            `approvedByUser.id`
+          )
+          .leftJoin<TUsers>(
+            db(TableName.Users).as("revokedByUser"),
+            `${TableName.AccessApprovalRequest}.revokedByUserId`,
+            `revokedByUser.id`
+          )
 
           .leftJoin<TMemberships>(db(TableName.Membership).as("approverOrgMembership"), (qb) => {
             qb.on(
@@ -363,6 +401,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
             db.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
 
+            db.ref("email").withSchema("approvedByUser").as("approvedByUserEmail"),
+            db.ref("username").withSchema("approvedByUser").as("approvedByUserUsername"),
+            db.ref("firstName").withSchema("approvedByUser").as("approvedByUserFirstName"),
+            db.ref("lastName").withSchema("approvedByUser").as("approvedByUserLastName"),
+
+            db.ref("email").withSchema("revokedByUser").as("revokedByUserEmail"),
+            db.ref("username").withSchema("revokedByUser").as("revokedByUserUsername"),
+            db.ref("firstName").withSchema("revokedByUser").as("revokedByUserFirstName"),
+            db.ref("lastName").withSchema("revokedByUser").as("revokedByUserLastName"),
+
             db.ref("actorUserId").withSchema(TableName.AdditionalPrivilege).as("privilegeUserId"),
             db.ref("projectId").withSchema(TableName.AdditionalPrivilege).as("privilegeMembershipId"),
 
@@ -409,6 +457,24 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               lastName: doc.requestedByUserLastName,
               username: doc.requestedByUserUsername
             },
+            approvedByUser: doc.approvedByUserId
+              ? {
+                  userId: doc.approvedByUserId,
+                  email: doc.approvedByUserEmail,
+                  firstName: doc.approvedByUserFirstName,
+                  lastName: doc.approvedByUserLastName,
+                  username: doc.approvedByUserUsername
+                }
+              : null,
+            revokedByUser: doc.revokedByUserId
+              ? {
+                  userId: doc.revokedByUserId,
+                  email: doc.revokedByUserEmail,
+                  firstName: doc.revokedByUserFirstName,
+                  lastName: doc.revokedByUserLastName,
+                  username: doc.revokedByUserUsername
+                }
+              : null,
             privilege: doc.privilegeId
               ? {
                   membershipId: doc.privilegeMembershipId,
@@ -507,6 +573,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `${TableName.AccessApprovalRequest}.requestedByUserId`,
         `requestedByUser.id`
       )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("approvedByUser"),
+        `${TableName.AccessApprovalRequest}.approvedByUserId`,
+        `approvedByUser.id`
+      )
+      .leftJoin<TUsers>(
+        db(TableName.Users).as("revokedByUser"),
+        `${TableName.AccessApprovalRequest}.revokedByUserId`,
+        `revokedByUser.id`
+      )
 
       .leftJoin(
         TableName.AccessApprovalPolicyApprover,
@@ -592,6 +668,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
         tx.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
 
+        tx.ref("email").withSchema("approvedByUser").as("approvedByUserEmail"),
+        tx.ref("username").withSchema("approvedByUser").as("approvedByUserUsername"),
+        tx.ref("firstName").withSchema("approvedByUser").as("approvedByUserFirstName"),
+        tx.ref("lastName").withSchema("approvedByUser").as("approvedByUserLastName"),
+
+        tx.ref("email").withSchema("revokedByUser").as("revokedByUserEmail"),
+        tx.ref("username").withSchema("revokedByUser").as("revokedByUserUsername"),
+        tx.ref("firstName").withSchema("revokedByUser").as("revokedByUserFirstName"),
+        tx.ref("lastName").withSchema("revokedByUser").as("revokedByUserLastName"),
+
         // Bypassers
         tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser),
         tx.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"),
@@ -654,7 +740,25 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             firstName: el.requestedByUserFirstName,
             lastName: el.requestedByUserLastName,
             username: el.requestedByUserUsername
-          }
+          },
+          approvedByUser: el.approvedByUserId
+            ? {
+                userId: el.approvedByUserId,
+                email: el.approvedByUserEmail,
+                firstName: el.approvedByUserFirstName,
+                lastName: el.approvedByUserLastName,
+                username: el.approvedByUserUsername
+              }
+            : null,
+          revokedByUser: el.revokedByUserId
+            ? {
+                userId: el.revokedByUserId,
+                email: el.revokedByUserEmail,
+                firstName: el.revokedByUserFirstName,
+                lastName: el.revokedByUserLastName,
+                username: el.revokedByUserUsername
+              }
+            : null
         }),
         childrenMapper: [
           {

@@ -18,6 +18,7 @@ import {
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
 import { OrgPermissionAuditLogsRow } from "./OrgPermissionAuditLogsRow";
 import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
+import { OrgPermissionEmailDomainRow } from "./OrgPermissionEmailDomainRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
@@ -215,6 +216,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   isEditable={isCustomRole}
                 />
               )}
+              <OrgPermissionEmailDomainRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgPermissionSecretShareRow
                 control={control}
                 setValue={setValue}

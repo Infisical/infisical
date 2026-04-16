@@ -122,431 +122,306 @@ const FORM_STEPS = [
   }
 ];
 
-const createSchema = z
-  .object({
-    slug: z
-      .string()
-      .trim()
-      .min(1, "Profile slug is required")
-      .max(255, "Profile slug must be less than 255 characters")
-      .regex(
-        /^[a-zA-Z0-9-_]+$/,
-        "Profile slug must contain only letters, numbers, hyphens, and underscores"
-      ),
-    description: z
-      .string()
-      .trim()
-      .max(1000, "Description must be less than 1000 characters")
-      .optional(),
-    enrollmentType: z.nativeEnum(EnrollmentType),
-    issuerType: z.nativeEnum(IssuerType),
-    certificateAuthorityId: z.string().nullable().optional(),
-    certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
-    estConfig: z
-      .object({
-        disableBootstrapCaValidation: z.boolean().optional(),
-        passphrase: z.string().min(1, "EST passphrase is required"),
-        caChain: z.string().min(1, "EST CA chain is required").optional()
-      })
-      .refine(
-        (data) => {
-          if (!data.disableBootstrapCaValidation && !data.caChain) {
-            return false;
-          }
-          return true;
-        },
-        {
-          message: "EST CA chain is required when bootstrap CA validation is enabled",
-          path: ["caChain"]
-        }
-      )
-      .optional(),
-    apiConfig: z
-      .object({
-        autoRenew: z.boolean().optional(),
-        renewBeforeDays: z.number().min(1).max(365).optional()
-      })
-      .optional(),
-    acmeConfig: z
-      .object({
-        skipDnsOwnershipVerification: z.boolean().optional(),
-        skipEabBinding: z.boolean().optional()
-      })
-      .optional(),
-    scepConfig: z
-      .object({
-        challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
-        challengePassword: z.string().optional(),
-        includeCaCertInResponse: z.boolean().optional(),
-        allowCertBasedRenewal: z.boolean().optional(),
-        dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
-        dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
-      })
-      .optional(),
-    externalConfigs: z
-      .object({
-        template: z.string().min(1, "Azure ADCS template is required")
-      })
-      .optional(),
-    defaults: certificateDefaultsSchema
-  })
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.EST) {
-        return !!data.estConfig;
-      }
-      return true;
-    },
-    {
-      message: "EST enrollment type requires EST configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.API) {
-        return !!data.apiConfig;
-      }
-      return true;
-    },
-    {
-      message: "API enrollment type requires API configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME) {
-        return !!data.acmeConfig;
-      }
-      return true;
-    },
-    {
-      message: "ACME enrollment type requires ACME configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.SCEP) {
-        return !!data.scepConfig;
-      }
-      return true;
-    },
-    {
-      message: "SCEP enrollment type requires SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.enrollmentType === EnrollmentType.SCEP &&
-        data.scepConfig &&
-        data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC &&
-        (!data.scepConfig.challengePassword || data.scepConfig.challengePassword.length < 8)
-      ) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Challenge password must be at least 8 characters for static challenges",
-      path: ["scepConfig", "challengePassword"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.EST) {
-        return !data.apiConfig && !data.acmeConfig && !data.scepConfig;
-      }
-      return true;
-    },
-    {
-      message: "EST enrollment type cannot have API, ACME, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.API) {
-        return !data.estConfig && !data.acmeConfig && !data.scepConfig;
-      }
-      return true;
-    },
-    {
-      message: "API enrollment type cannot have EST, ACME, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME) {
-        return !data.estConfig && !data.apiConfig && !data.scepConfig;
-      }
-      return true;
-    },
-    {
-      message: "ACME enrollment type cannot have EST, API, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.SCEP) {
-        return !data.estConfig && !data.apiConfig && !data.acmeConfig;
-      }
-      return true;
-    },
-    {
-      message: "SCEP enrollment type cannot have EST, API, or ACME configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
-      }
-      return true;
-    },
-    {
-      message: "Cannot skip both EAB and DNS ownership validation."
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.CA) {
-        return !!data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "CA issuer type requires a certificate authority"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return !data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type cannot have a certificate authority"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return data.enrollmentType === EnrollmentType.API;
-      }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type only supports API enrollment"
-    }
-  );
+const stripInactiveEnrollmentConfigs = (val: unknown) => {
+  const data = val as Record<string, unknown>;
+  return {
+    ...data,
+    estConfig: data.enrollmentType === EnrollmentType.EST ? data.estConfig : undefined,
+    apiConfig: data.enrollmentType === EnrollmentType.API ? data.apiConfig : undefined,
+    acmeConfig: data.enrollmentType === EnrollmentType.ACME ? data.acmeConfig : undefined,
+    scepConfig: data.enrollmentType === EnrollmentType.SCEP ? data.scepConfig : undefined
+  };
+};
 
-const editSchema = z
-  .object({
-    slug: z
-      .string()
-      .trim()
-      .min(1, "Profile slug is required")
-      .max(255, "Profile slug must be less than 255 characters")
-      .regex(
-        /^[a-zA-Z0-9-_]+$/,
-        "Profile slug must contain only letters, numbers, hyphens, and underscores"
-      ),
-    description: z
-      .string()
-      .trim()
-      .max(1000, "Description must be less than 1000 characters")
-      .optional(),
-    enrollmentType: z.nativeEnum(EnrollmentType),
-    issuerType: z.nativeEnum(IssuerType),
-    certificateAuthorityId: z.string().nullable().optional(),
-    certificatePolicyId: z.string().optional(),
-    estConfig: z
-      .object({
-        disableBootstrapCaValidation: z.boolean().optional(),
-        passphrase: z.string().optional(),
-        caChain: z.string().optional()
-      })
-      .optional(),
-    apiConfig: z
-      .object({
-        autoRenew: z.boolean().optional(),
-        renewBeforeDays: z.number().min(1).max(365).optional()
-      })
-      .optional(),
-    acmeConfig: z
-      .object({
-        skipDnsOwnershipVerification: z.boolean().optional(),
-        skipEabBinding: z.boolean().optional()
-      })
-      .optional(),
-    scepConfig: z
-      .object({
-        challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
-        challengePassword: z.string().optional(),
-        includeCaCertInResponse: z.boolean().optional(),
-        allowCertBasedRenewal: z.boolean().optional(),
-        dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
-        dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
-      })
-      .optional(),
-    externalConfigs: z
-      .object({
-        template: z.string().optional()
-      })
-      .optional(),
-    defaults: certificateDefaultsSchema
-  })
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.EST) {
-        return !!data.estConfig;
+const createSchema = z.preprocess(
+  stripInactiveEnrollmentConfigs,
+  z
+    .object({
+      slug: z
+        .string()
+        .trim()
+        .min(1, "Profile slug is required")
+        .max(255, "Profile slug must be less than 255 characters")
+        .regex(
+          /^[a-zA-Z0-9-_]+$/,
+          "Profile slug must contain only letters, numbers, hyphens, and underscores"
+        ),
+      description: z
+        .string()
+        .trim()
+        .max(1000, "Description must be less than 1000 characters")
+        .optional(),
+      enrollmentType: z.nativeEnum(EnrollmentType),
+      issuerType: z.nativeEnum(IssuerType),
+      certificateAuthorityId: z.string().nullable().optional(),
+      certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
+      estConfig: z
+        .object({
+          disableBootstrapCaValidation: z.boolean().optional(),
+          passphrase: z.string().min(1, "EST passphrase is required"),
+          caChain: z.string().min(1, "EST CA chain is required").optional()
+        })
+        .refine(
+          (data) => {
+            if (!data.disableBootstrapCaValidation && !data.caChain) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message: "EST CA chain is required when bootstrap CA validation is enabled",
+            path: ["caChain"]
+          }
+        )
+        .optional(),
+      apiConfig: z
+        .object({
+          autoRenew: z.boolean().optional(),
+          renewBeforeDays: z.number().min(1).max(365).optional()
+        })
+        .optional(),
+      acmeConfig: z
+        .object({
+          skipDnsOwnershipVerification: z.boolean().optional(),
+          skipEabBinding: z.boolean().optional()
+        })
+        .optional(),
+      scepConfig: z
+        .object({
+          challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
+          challengePassword: z.string().optional(),
+          includeCaCertInResponse: z.boolean().optional(),
+          allowCertBasedRenewal: z.boolean().optional(),
+          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
+          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
+        })
+        .optional(),
+      externalConfigs: z
+        .object({
+          template: z.string().min(1, "Azure ADCS template is required")
+        })
+        .optional(),
+      defaults: certificateDefaultsSchema
+    })
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.EST) {
+          return !!data.estConfig;
+        }
+        return true;
+      },
+      {
+        message: "EST enrollment type requires EST configuration",
+        path: ["estConfig"]
       }
-      return true;
-    },
-    {
-      message: "EST enrollment type requires EST configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.API) {
-        return !!data.apiConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.API) {
+          return !!data.apiConfig;
+        }
+        return true;
+      },
+      {
+        message: "API enrollment type requires API configuration",
+        path: ["apiConfig"]
       }
-      return true;
-    },
-    {
-      message: "API enrollment type requires API configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME) {
-        return !!data.acmeConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.ACME) {
+          return !!data.acmeConfig;
+        }
+        return true;
+      },
+      {
+        message: "ACME enrollment type requires ACME configuration",
+        path: ["acmeConfig"]
       }
-      return true;
-    },
-    {
-      message: "ACME enrollment type requires ACME configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.SCEP) {
-        return !!data.scepConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.SCEP) {
+          return !!data.scepConfig;
+        }
+        return true;
+      },
+      {
+        message: "SCEP enrollment type requires SCEP configuration",
+        path: ["scepConfig"]
       }
-      return true;
-    },
-    {
-      message: "SCEP enrollment type requires SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.enrollmentType === EnrollmentType.SCEP &&
-        data.scepConfig &&
-        data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC &&
-        data.scepConfig.challengePassword &&
-        data.scepConfig.challengePassword.length > 0 &&
-        data.scepConfig.challengePassword.length < 8
-      ) {
-        return false;
+    )
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+          return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+        }
+        return true;
+      },
+      {
+        message: "Cannot skip both EAB and DNS ownership validation.",
+        path: ["acmeConfig", "skipEabBinding"]
       }
-      return true;
-    },
-    {
-      message: "Challenge password must be at least 8 characters for static challenges",
-      path: ["scepConfig", "challengePassword"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.EST) {
-        return !data.apiConfig && !data.acmeConfig && !data.scepConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.CA) {
+          return !!data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Certificate Authority is required",
+        path: ["certificateAuthorityId"]
       }
-      return true;
-    },
-    {
-      message: "EST enrollment type cannot have API, ACME, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.API) {
-        return !data.estConfig && !data.acmeConfig && !data.scepConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.SELF_SIGNED) {
+          return !data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Self-signed issuer type cannot have a certificate authority",
+        path: ["certificateAuthorityId"]
       }
-      return true;
-    },
-    {
-      message: "API enrollment type cannot have EST, ACME, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME) {
-        return !data.estConfig && !data.apiConfig && !data.scepConfig;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.SELF_SIGNED) {
+          return data.enrollmentType === EnrollmentType.API;
+        }
+        return true;
+      },
+      {
+        message: "Self-signed issuer type only supports API enrollment",
+        path: ["enrollmentType"]
       }
-      return true;
-    },
-    {
-      message: "ACME enrollment type cannot have EST, API, or SCEP configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.SCEP) {
-        return !data.estConfig && !data.apiConfig && !data.acmeConfig;
+    )
+    .refine(
+      (data) => {
+        if (
+          data.enrollmentType === EnrollmentType.SCEP &&
+          data.scepConfig &&
+          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC &&
+          (!data.scepConfig.challengePassword || data.scepConfig.challengePassword.length < 8)
+        ) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Challenge password must be at least 8 characters for static challenges",
+        path: ["scepConfig", "challengePassword"]
       }
-      return true;
-    },
-    {
-      message: "SCEP enrollment type cannot have EST, API, or ACME configuration"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+    )
+);
+
+const editSchema = z.preprocess(
+  stripInactiveEnrollmentConfigs,
+  z
+    .object({
+      slug: z
+        .string()
+        .trim()
+        .min(1, "Profile slug is required")
+        .max(255, "Profile slug must be less than 255 characters")
+        .regex(
+          /^[a-zA-Z0-9-_]+$/,
+          "Profile slug must contain only letters, numbers, hyphens, and underscores"
+        ),
+      description: z
+        .string()
+        .trim()
+        .max(1000, "Description must be less than 1000 characters")
+        .optional(),
+      enrollmentType: z.nativeEnum(EnrollmentType),
+      issuerType: z.nativeEnum(IssuerType),
+      certificateAuthorityId: z.string().nullable().optional(),
+      certificatePolicyId: z.string().optional(),
+      estConfig: z
+        .object({
+          disableBootstrapCaValidation: z.boolean().optional(),
+          passphrase: z.string().optional(),
+          caChain: z.string().optional()
+        })
+        .optional(),
+      apiConfig: z
+        .object({
+          autoRenew: z.boolean().optional(),
+          renewBeforeDays: z.number().min(1).max(365).optional()
+        })
+        .optional(),
+      acmeConfig: z
+        .object({
+          skipDnsOwnershipVerification: z.boolean().optional(),
+          skipEabBinding: z.boolean().optional()
+        })
+        .optional(),
+      scepConfig: z
+        .object({
+          challengePassword: z.string().min(8, "Challenge password must be at least 8 characters"),
+          includeCaCertInResponse: z.boolean().optional(),
+          allowCertBasedRenewal: z.boolean().optional()
+        })
+        .optional(),
+      externalConfigs: z
+        .object({
+          template: z.string().optional()
+        })
+        .optional(),
+      defaults: certificateDefaultsSchema
+    })
+    .refine(
+      (data) => {
+        if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+          return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+        }
+        return true;
+      },
+      {
+        message: "Cannot skip both EAB and DNS ownership validation.",
+        path: ["acmeConfig", "skipEabBinding"]
       }
-      return true;
-    },
-    {
-      message: "Cannot skip both EAB and DNS ownership validation."
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.CA) {
-        return !!data.certificateAuthorityId;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.CA) {
+          return !!data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Certificate Authority is required",
+        path: ["certificateAuthorityId"]
       }
-      return true;
-    },
-    {
-      message: "CA issuer type requires a certificate authority"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return !data.certificateAuthorityId;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.SELF_SIGNED) {
+          return !data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Self-signed issuer type cannot have a certificate authority",
+        path: ["certificateAuthorityId"]
       }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type cannot have a certificate authority"
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return data.enrollmentType === EnrollmentType.API;
+    )
+    .refine(
+      (data) => {
+        if (data.issuerType === IssuerType.SELF_SIGNED) {
+          return data.enrollmentType === EnrollmentType.API;
+        }
+        return true;
+      },
+      {
+        message: "Self-signed issuer type only supports API enrollment",
+        path: ["enrollmentType"]
       }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type only supports API enrollment"
-    }
-  );
+    )
+);
 
 export type FormData = z.infer<typeof createSchema>;
 
@@ -738,7 +613,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     }
   };
 
-  const { control, handleSubmit, reset, watch, setValue, trigger, formState } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, trigger } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues: isEdit
       ? {
@@ -1242,12 +1117,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                               autoRenew: false,
                               renewBeforeDays: 30
                             });
-                            setValue("estConfig", undefined);
-                            setValue("acmeConfig", {
-                              skipDnsOwnershipVerification: false,
-                              skipEabBinding: false
-                            });
-                            setValue("scepConfig", undefined);
                           }
                           onChange(value);
                         }}
@@ -1366,44 +1235,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
                           // Reset defaults when policy changes
                           setValue("defaults", undefined);
-
-                          if (watchedEnrollmentType === EnrollmentType.EST) {
-                            setValue("apiConfig", undefined);
-                            setValue("estConfig", {
-                              disableBootstrapCaValidation: false,
-                              passphrase: ""
-                            });
-                            setValue("acmeConfig", undefined);
-                            setValue("scepConfig", undefined);
-                          } else if (watchedEnrollmentType === EnrollmentType.API) {
-                            setValue("apiConfig", {
-                              autoRenew: false,
-                              renewBeforeDays: 30
-                            });
-                            setValue("estConfig", undefined);
-                            setValue("acmeConfig", undefined);
-                            setValue("scepConfig", undefined);
-                          } else if (watchedEnrollmentType === EnrollmentType.ACME) {
-                            setValue("estConfig", undefined);
-                            setValue("apiConfig", undefined);
-                            setValue("acmeConfig", {
-                              skipDnsOwnershipVerification: false,
-                              skipEabBinding: false
-                            });
-                            setValue("scepConfig", undefined);
-                          } else if (watchedEnrollmentType === EnrollmentType.SCEP) {
-                            setValue("estConfig", undefined);
-                            setValue("apiConfig", undefined);
-                            setValue("acmeConfig", undefined);
-                            setValue("scepConfig", {
-                              challengeType: ScepChallengeType.STATIC,
-                              challengePassword: "",
-                              includeCaCertInResponse: true,
-                              allowCertBasedRenewal: true,
-                              dynamicChallengeExpiryMinutes: 60,
-                              dynamicChallengeMaxPending: 100
-                            });
-                          }
                         }}
                         options={policyOptions}
                         getOptionLabel={(option) => option.name}
@@ -1434,33 +1265,21 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         {...field}
                         onValueChange={(value) => {
                           if (value === EnrollmentType.EST) {
-                            setValue("apiConfig", undefined);
                             setValue("estConfig", {
                               disableBootstrapCaValidation: false,
                               passphrase: ""
                             });
-                            setValue("acmeConfig", undefined);
-                            setValue("scepConfig", undefined);
                           } else if (value === EnrollmentType.API) {
                             setValue("apiConfig", {
                               autoRenew: false,
                               renewBeforeDays: 30
                             });
-                            setValue("estConfig", undefined);
-                            setValue("acmeConfig", undefined);
-                            setValue("scepConfig", undefined);
                           } else if (value === EnrollmentType.ACME) {
-                            setValue("apiConfig", undefined);
-                            setValue("estConfig", undefined);
                             setValue("acmeConfig", {
                               skipDnsOwnershipVerification: false,
                               skipEabBinding: false
                             });
-                            setValue("scepConfig", undefined);
                           } else if (value === EnrollmentType.SCEP) {
-                            setValue("apiConfig", undefined);
-                            setValue("estConfig", undefined);
-                            setValue("acmeConfig", undefined);
                             setValue("scepConfig", {
                               challengeType: ScepChallengeType.STATIC,
                               challengePassword: "",
@@ -1592,6 +1411,41 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         </FormControl>
                       )}
                     />
+                    {watchedAutoRenew && (
+                      <Controller
+                        control={control}
+                        name="apiConfig.renewBeforeDays"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Auto-Renewal Days Before Expiration"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                          >
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="30"
+                              min="1"
+                              max="365"
+                              className="w-full"
+                              onChange={(e) => {
+                                const { value } = e.target;
+                                if (value === "") {
+                                  field.onChange("");
+                                } else {
+                                  const parsed = parseInt(value, 10);
+                                  if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) {
+                                    field.onChange(parsed);
+                                  } else {
+                                    field.onChange(field.value || "");
+                                  }
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -1849,44 +1703,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     />
                   </div>
                 )}
-                {watchedAutoRenew && (
-                  <div className="mb-4 space-y-4">
-                    <Controller
-                      control={control}
-                      name="apiConfig.renewBeforeDays"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label="Auto-Renewal Days Before Expiration"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                        >
-                          <Input
-                            {...field}
-                            type="number"
-                            placeholder="30"
-                            min="1"
-                            max="365"
-                            className="w-full"
-                            isDisabled={!watchedAutoRenew}
-                            onChange={(e) => {
-                              const { value } = e.target;
-                              if (value === "") {
-                                field.onChange("");
-                              } else {
-                                const parsed = parseInt(value, 10);
-                                if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) {
-                                  field.onChange(parsed);
-                                } else {
-                                  field.onChange(field.value || "");
-                                }
-                              }
-                            }}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                )}
               </Tab.Panel>
 
               {/* Tab 2: Certificate Defaults */}
@@ -2074,11 +1890,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               type="button"
               onClick={handleNext}
               isLoading={createProfile.isPending || updateProfile.isPending}
-              isDisabled={
-                createProfile.isPending ||
-                updateProfile.isPending ||
-                (!formState.isValid && isFinalStep)
-              }
+              isDisabled={createProfile.isPending || updateProfile.isPending}
             >
               {isFinalStep && (isEdit ? "Update" : "Create")}
               {!isFinalStep && "Next"}

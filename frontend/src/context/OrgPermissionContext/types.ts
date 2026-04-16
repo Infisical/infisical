@@ -71,7 +71,15 @@ export enum OrgPermissionSubjects {
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
-  SubOrganization = "sub-organization"
+  SubOrganization = "sub-organization",
+  EmailDomains = "email-domains"
+}
+
+export enum OrgPermissionEmailDomainActions {
+  Read = "read",
+  Create = "create",
+  VerifyDomain = "verify-domain",
+  Delete = "delete"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -169,6 +177,7 @@ export type OrgPermissionSet =
         | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
       )
     ]
-  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization];
+  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
+  | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

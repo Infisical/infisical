@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { Knex } from "knex";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
@@ -56,12 +57,17 @@ export async function seed(knex: Knex): Promise<void> {
         lastName: "",
         authMethods: [AuthMethod.EMAIL],
         isAccepted: true,
+        isEmailVerified: true,
         isMfaEnabled: false,
         mfaMethods: null,
         devices: null
       }
     ])
     .returning("*");
+
+  // Hash password for modern login support (POST /api/v3/auth/login)
+  const hashedPassword = await bcrypt.hash(seedData1.password, 10);
+  await knex(TableName.Users).where({ id: user.id }).update({ hashedPassword });
 
   const encKeys = await generateUserSrpKeys(seedData1.password);
   // password: testInfisical@1

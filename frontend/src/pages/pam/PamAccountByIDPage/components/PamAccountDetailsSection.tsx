@@ -101,6 +101,10 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
           <DetailValue>{account.resource.name}</DetailValue>
         </Detail>
         <Detail>
+          <DetailLabel>Account Policy</DetailLabel>
+          <DetailValue>{account.policyName ?? "None"}</DetailValue>
+        </Detail>
+        <Detail>
           <DetailLabel>Created</DetailLabel>
           <DetailValue>{format(new Date(account.createdAt), "MM/dd/yyyy, hh:mm a")}</DetailValue>
         </Detail>

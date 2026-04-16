@@ -13,9 +13,7 @@ import {
   ProjectSshConfigsSchema,
   ProjectType,
   SecretFoldersSchema,
-  SortDirection,
-  UserEncryptionKeysSchema,
-  UsersSchema
+  SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -46,7 +44,8 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import {
   integrationAuthPubSchema,
   InternalCertificateAuthorityResponseSchema,
-  SanitizedProjectSchema
+  SanitizedProjectSchema,
+  SanitizedUserSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
@@ -89,17 +88,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: ProjectMembershipsSchema.extend({
             isGroupMember: z.boolean(),
-            user: UsersSchema.pick({
+            user: SanitizedUserSchema.pick({
               email: true,
               username: true,
               firstName: true,
               lastName: true,
               id: true
-            })
-              .merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
-              .extend({
-                isOrgMembershipActive: z.boolean()
-              }),
+            }).extend({
+              publicKey: z.string().optional().nullable(),
+              isOrgMembershipActive: z.boolean()
+            }),
             project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(
               z.object({

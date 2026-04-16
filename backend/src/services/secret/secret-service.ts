@@ -37,6 +37,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
@@ -1709,7 +1711,9 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TCreateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (project.enforceCapitalization) {
       if (secretName !== secretName.toUpperCase()) {
         throw new BadRequestError({
@@ -1889,7 +1893,9 @@ export const secretServiceFactory = ({
     secretMetadata
   }: TUpdateSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (project.enforceCapitalization) {
       if (newSecretName && newSecretName !== newSecretName.toUpperCase()) {
         throw new BadRequestError({
@@ -2183,7 +2189,9 @@ export const secretServiceFactory = ({
         : undefined;
 
     if (shouldUseSecretV2Bridge) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
@@ -2346,7 +2354,9 @@ export const secretServiceFactory = ({
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
-      const project = await projectDAL.findById(projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())

@@ -34,7 +34,8 @@ describe("Login V1 Router", async () => {
       url: "/api/v3/auth/login2",
       body: {
         email: seedData1.email,
-        clientProof
+        clientProof,
+        password: seedData1.password
       }
     });
     expect(res.statusCode).toBe(200);
