@@ -140,29 +140,27 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <>
-                <div className="flex">
-                  <DateRangeQuickPresets
-                    value={activePreset}
-                    onChange={(preset, result) => {
-                      setActivePreset(preset);
-                      setDateRange(result);
-                    }}
-                    hasTrailingItem
-                    accent={dateRangeAccent}
-                  />
-                  <DateRangeFilter
-                    defaultValue={defaultCustomValue}
-                    isActive={!activePreset}
-                    onChange={(result) => {
-                      setActivePreset("");
-                      setDateRange(result);
-                    }}
-                    accent={dateRangeAccent}
-                    className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
-                  />
-                </div>
-              </>
+              <div className="flex">
+                <DateRangeQuickPresets
+                  value={activePreset}
+                  onChange={(preset, result) => {
+                    setActivePreset(preset);
+                    setDateRange(result);
+                  }}
+                  hasTrailingItem
+                  accent={dateRangeAccent}
+                />
+                <DateRangeFilter
+                  defaultValue={defaultCustomValue}
+                  isActive={!activePreset}
+                  onChange={(result) => {
+                    setActivePreset("");
+                    setDateRange(result);
+                  }}
+                  accent={dateRangeAccent}
+                  className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
+                />
+              </div>
             )}
           </div>
         </div>
@@ -244,29 +242,27 @@ const LogsSectionComponent = ({
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <>
-            <div className="flex">
-              <DateRangeQuickPresets
-                value={activePreset}
-                onChange={(preset, result) => {
-                  setActivePreset(preset);
-                  setDateRange(result);
-                }}
-                hasTrailingItem
-                accent={dateRangeAccent}
-              />
-              <DateRangeFilter
-                defaultValue={defaultCustomValue}
-                isActive={!activePreset}
-                onChange={(result) => {
-                  setActivePreset("");
-                  setDateRange(result);
-                }}
-                accent={dateRangeAccent}
-                className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
-              />
-            </div>
-          </>
+          <div className="flex">
+            <DateRangeQuickPresets
+              value={activePreset}
+              onChange={(preset, result) => {
+                setActivePreset(preset);
+                setDateRange(result);
+              }}
+              hasTrailingItem
+              accent={dateRangeAccent}
+            />
+            <DateRangeFilter
+              defaultValue={defaultCustomValue}
+              isActive={!activePreset}
+              onChange={(result) => {
+                setActivePreset("");
+                setDateRange(result);
+              }}
+              accent={dateRangeAccent}
+              className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
+            />
+          </div>
         )}
         {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
 import { addDays, addMonths, format, subMonths } from "date-fns";
 import { ArrowRight, CalendarIcon } from "lucide-react";
@@ -256,6 +256,15 @@ export function DateRangeFilter({
   }, [mode, pendingRange, isInvalidFixedRange, customDuration, customUnit]);
 
   const accentStyles = ACCENT_STYLES[accent];
+
+  // eslint-disable-next-line react/no-unstable-nested-components
+  const DayButton = useCallback(
+    (props: React.ComponentProps<typeof CalendarDayButton>) => (
+      <CalendarDayButton {...props} className={accentStyles.calendarMiddle} />
+    ),
+    [accentStyles.calendarMiddle]
+  );
+
   const selectedCustomUnit = useMemo(
     () => RELATIVE_OPTIONS.find((opt) => opt.unit === customUnit),
     [customUnit]
@@ -293,9 +302,7 @@ export function DateRangeFilter({
         className={cn("gap-1.5 font-normal", accentStyles.selectedChip, className)}
       >
         <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" />
-        <span className="max-w-72 truncate">
-          {formatTriggerLabel(appliedValue, appliedIsUtc)}
-        </span>
+        <span className="max-w-72 truncate">{formatTriggerLabel(appliedValue, appliedIsUtc)}</span>
       </Button>
     );
   };
@@ -304,7 +311,11 @@ export function DateRangeFilter({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>{renderTrigger()}</PopoverTrigger>
 
-      <PopoverContent align="end" sideOffset={8} className="w-auto min-w-[30rem] overflow-hidden p-0">
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-auto min-w-[30rem] overflow-hidden p-0"
+      >
         <div className="flex flex-col">
           {/* Body */}
           <div className="flex">
@@ -338,9 +349,7 @@ export function DateRangeFilter({
                     {SECONDARY_PRESETS.map(({ value: val, label }) => {
                       const parsed = parseLastValue(val);
                       const isPresetActive =
-                        parsed &&
-                        customDuration === parsed.duration &&
-                        customUnit === parsed.unit;
+                        parsed && customDuration === parsed.duration && customUnit === parsed.unit;
                       return (
                         <Button
                           key={val}
@@ -431,7 +440,10 @@ export function DateRangeFilter({
                     numberOfMonths={2}
                     showOutsideDays={false}
                     captionLayout="dropdown"
-                    disabled={[{ after: today }, { before: addDays(subMonths(today, MAX_RANGE_MONTHS), 1) }]}
+                    disabled={[
+                      { after: today },
+                      { before: addDays(subMonths(today, MAX_RANGE_MONTHS), 1) }
+                    ]}
                     defaultMonth={calendarDefaultMonth}
                     startMonth={addDays(subMonths(today, MAX_RANGE_MONTHS), 1)}
                     endMonth={today}
@@ -444,9 +456,7 @@ export function DateRangeFilter({
                       range_middle: "rounded-none"
                     }}
                     components={{
-                      DayButton: (props) => (
-                        <CalendarDayButton {...props} className={accentStyles.calendarMiddle} />
-                      )
+                      DayButton
                     }}
                   />
 
