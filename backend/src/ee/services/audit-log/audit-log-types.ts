@@ -88,7 +88,8 @@ export type TCreateAuditLogDTO = {
     | AcmeProfileActor
     | AcmeAccountActor
     | EstAccountActor
-    | ScepAccountActor;
+    | ScepAccountActor
+    | GatewayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -754,7 +755,12 @@ export enum EventType {
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
-  DELETE_EMAIL_DOMAIN = "delete-email-domain"
+  DELETE_EMAIL_DOMAIN = "delete-email-domain",
+
+  // Gateway Enrollment Tokens
+  GATEWAY_CREATE = "gateway-create",
+  GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
+  GATEWAY_ENROLL = "gateway-enroll"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -769,7 +775,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_PROFILE]: "profileId",
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
-  [ActorType.SCEP_ACCOUNT]: "profileId"
+  [ActorType.SCEP_ACCOUNT]: "profileId",
+  [ActorType.GATEWAY]: "gatewayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -833,6 +840,10 @@ interface ScepAccountActorMetadata {
 
 interface UnknownUserActorMetadata {}
 
+interface GatewayActorMetadata {
+  gatewayId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -886,6 +897,12 @@ export interface ScepAccountActor {
   type: ActorType.SCEP_ACCOUNT;
   metadata: ScepAccountActorMetadata;
 }
+
+export interface GatewayActor {
+  type: ActorType.GATEWAY;
+  metadata: GatewayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -896,7 +913,8 @@ export type Actor =
   | AcmeProfileActor
   | AcmeAccountActor
   | EstAccountActor
-  | ScepAccountActor;
+  | ScepAccountActor
+  | GatewayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -5963,6 +5981,30 @@ interface DeleteEmailDomainEvent {
   };
 }
 
+interface GatewayCreateEvent {
+  type: EventType.GATEWAY_CREATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
+interface GatewayEnrollmentTokenCreateEvent {
+  type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface GatewayEnrollEvent {
+  type: EventType.GATEWAY_ENROLL;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6504,4 +6546,7 @@ export type Event =
   | SecretValidationRuleDeleteEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
-  | DeleteEmailDomainEvent;
+  | DeleteEmailDomainEvent
+  | GatewayCreateEvent
+  | GatewayEnrollmentTokenCreateEvent
+  | GatewayEnrollEvent;

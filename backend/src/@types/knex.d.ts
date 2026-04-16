@@ -161,6 +161,9 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
+  TGatewayEnrollmentTokens,
+  TGatewayEnrollmentTokensInsert,
+  TGatewayEnrollmentTokensUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -1588,6 +1591,11 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TGatewayEnrollmentTokens,
+      TGatewayEnrollmentTokensInsert,
+      TGatewayEnrollmentTokensUpdate
+    >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,

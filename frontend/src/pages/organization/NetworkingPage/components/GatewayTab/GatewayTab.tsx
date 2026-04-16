@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  faArrowsRotate,
+  faClock,
   faCopy,
   faDoorClosed,
   faEdit,
@@ -52,14 +54,36 @@ import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
+import { ReEnrollGatewayModal } from "./components/ReEnrollGatewayModal";
 
 const GatewayHealthStatus = ({
   heartbeat,
-  lastHealthCheckStatus
+  lastHealthCheckStatus,
+  isPending
 }: {
-  heartbeat?: string;
+  heartbeat?: string | null;
   lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
+  isPending?: boolean;
 }) => {
+  if (isPending) {
+    return (
+      <Tooltip content="Waiting for gateway to enroll using the CLI command">
+        <span className="inline-flex cursor-default items-center gap-1.5 text-yellow-500">
+          <FontAwesomeIcon icon={faClock} className="size-3" />
+          Pending
+        </span>
+      </Tooltip>
+    );
+  }
+
+  if (!heartbeat && !lastHealthCheckStatus) {
+    return (
+      <Tooltip content="Gateway has not connected yet">
+        <span className="cursor-default text-yellow-500">Unregistered</span>
+      </Tooltip>
+    );
+  }
+
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
 
   const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
@@ -112,13 +136,17 @@ export const GatewayTab = withPermission(
       id: string;
       name: string;
     } | null>(null);
-    const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+    const { data: gateways, isPending: isGatewaysLoading } = useQuery({
+      ...gatewaysQueryKeys.listWithTokens(),
+      refetchInterval: 15_000
+    });
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
       "editDetails",
-      "connectedResources"
+      "connectedResources",
+      "reEnrollGateway"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -141,7 +169,10 @@ export const GatewayTab = withPermission(
     };
 
     const handleDeleteGateway = async () => {
-      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
+      const data = popUp.deleteGateway.data as {
+        id: string;
+        isV1: boolean;
+      };
       if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
       } else {
@@ -166,13 +197,21 @@ export const GatewayTab = withPermission(
             <h3 className="text-lg font-medium text-mineshaft-100">Gateways</h3>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/overview" />
             <div className="flex grow" />
-            <Button
-              variant="outline_bg"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("deployGateway")}
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.CreateGateways}
+              a={OrgPermissionSubjects.Gateway}
             >
-              Deploy Gateway
-            </Button>
+              {(isAllowed: boolean) => (
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("deployGateway")}
+                  isDisabled={!isAllowed}
+                >
+                  Create Gateway
+                </Button>
+              )}
+            </OrgPermissionCan>
           </div>
         </div>
         <p className="mb-4 text-sm text-mineshaft-400">
@@ -216,29 +255,50 @@ export const GatewayTab = withPermission(
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
-                        <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                          Gateway v{el.isV1 ? "1" : "2"}
-                        </span>
+                        {(() => {
+                          if (el.isPending) {
+                            return (
+                              <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
+                                Pending
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                              Gateway v{el.isV1 ? "1" : "2"}
+                            </span>
+                          );
+                        })()}
+                        {"hasReEnrollToken" in el && el.hasReEnrollToken && (
+                          <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
+                            Re-enrolling
+                          </span>
+                        )}
                       </div>
                     </Td>
                     <Td>
-                      <GatewayConnectedCell
-                        isV1={el.isV1}
-                        connectedResourcesCount={
-                          "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
-                        }
-                        onClick={() => {
-                          setSelectedGateway({ id: el.id, name: el.name });
-                          handlePopUpOpen("connectedResources");
-                        }}
-                      />
+                      {el.isPending ? (
+                        <span className="text-mineshaft-400">—</span>
+                      ) : (
+                        <GatewayConnectedCell
+                          isV1={el.isV1}
+                          connectedResourcesCount={
+                            "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                          }
+                          onClick={() => {
+                            setSelectedGateway({ id: el.id, name: el.name });
+                            handlePopUpOpen("connectedResources");
+                          }}
+                        />
+                      )}
                     </Td>
                     <Td>
                       <GatewayHealthStatus
-                        heartbeat={el.heartbeat}
+                        heartbeat={"heartbeat" in el ? el.heartbeat : null}
                         lastHealthCheckStatus={
                           "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
                         }
+                        isPending={el.isPending}
                       />
                     </Td>
                     <Td className="w-5">
@@ -261,7 +321,7 @@ export const GatewayTab = withPermission(
                             >
                               Copy ID
                             </DropdownMenuItem>
-                            {!el.isV1 && (
+                            {!el.isV1 && !el.isPending && (
                               <DropdownMenuItem
                                 icon={<FontAwesomeIcon icon={faHeartPulse} />}
                                 onClick={() => handleTriggerHealthCheck(el.id)}
@@ -285,6 +345,23 @@ export const GatewayTab = withPermission(
                                 )}
                               </OrgPermissionCan>
                             )}
+                            {!el.isV1 &&
+                              (el.isPending || ("identityId" in el && !el.identityId)) && (
+                                <OrgPermissionCan
+                                  I={OrgGatewayPermissionActions.EditGateways}
+                                  a={OrgPermissionSubjects.Gateway}
+                                >
+                                  {(isAllowed: boolean) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faArrowsRotate} />}
+                                      onClick={() => handlePopUpOpen("reEnrollGateway", el)}
+                                    >
+                                      Re-enroll
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
                             <OrgPermissionCan
                               I={OrgGatewayPermissionActions.DeleteGateways}
                               a={OrgPermissionSubjects.Gateway}
@@ -331,9 +408,7 @@ export const GatewayTab = withPermission(
             )}
             <DeleteActionModal
               isOpen={popUp.deleteGateway.isOpen}
-              title={`Are you sure you want to delete gateway ${
-                (popUp?.deleteGateway?.data as { name: string })?.name || ""
-              }?`}
+              title={`Are you sure you want to delete gateway ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
               onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteGateway()}
@@ -341,6 +416,17 @@ export const GatewayTab = withPermission(
             <GatewayDeployModal
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
+            />
+            <ReEnrollGatewayModal
+              isOpen={popUp.reEnrollGateway.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("reEnrollGateway", isOpen)}
+              gatewayData={
+                popUp.reEnrollGateway.data as {
+                  id: string;
+                  name: string;
+                  isPending: boolean;
+                } | null
+              }
             />
             {selectedGateway && (
               <GatewayConnectedResourcesDrawer
