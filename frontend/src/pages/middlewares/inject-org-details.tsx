@@ -65,15 +65,20 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
       queryFn: () => fetchOrganizationById(organizationId)
     });
 
-    await context.queryClient.ensureQueryData({
-      queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
-      queryFn: () => fetchOrgSubscription(organizationId)
-    });
+    // Prefetch subscription and permissions data but don't block route
+    // loading if they fail — the components using this data have their
+    // own useQuery hooks that will retry independently.
+    await Promise.allSettled([
+      context.queryClient.ensureQueryData({
+        queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
+        queryFn: () => fetchOrgSubscription(organizationId)
+      }),
+      context.queryClient.ensureQueryData({
+        queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
+        queryFn: () => fetchUserOrgPermissions({ orgId: organizationId })
+      })
+    ]);
 
-    await context.queryClient.ensureQueryData({
-      queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
-      queryFn: () => fetchUserOrgPermissions({ orgId: organizationId })
-    });
     return { organizationId };
   }
 });
