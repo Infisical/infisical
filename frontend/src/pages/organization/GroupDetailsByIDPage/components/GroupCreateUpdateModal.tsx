@@ -28,6 +28,14 @@ const GroupFormSchema = z.object({
 
 export type TGroupFormData = z.infer<typeof GroupFormSchema>;
 
+type TGroupModalData = {
+  groupId: string;
+  name: string;
+  slug: string;
+  role: string;
+  customRoleSlug?: string | null;
+};
+
 type Props = {
   popUp: UsePopUpState<["groupCreateUpdate"]>;
   handlePopUpClose: (popUpName: keyof UsePopUpState<["groupCreateUpdate"]>) => void;
@@ -48,42 +56,37 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
   });
 
   useEffect(() => {
-    const group = popUp?.groupCreateUpdate?.data as {
-      groupId: string;
-      name: string;
-      slug: string;
-      role: string;
-      customRole: {
-        name: string;
-        slug: string;
-      };
-    };
+    const group = popUp?.groupCreateUpdate?.data as TGroupModalData | undefined;
 
     if (!roles?.length) return;
+    const defaultRole =
+      (currentOrg?.defaultMembershipRole
+        ? findOrgMembershipRole(roles, currentOrg.defaultMembershipRole)
+        : undefined) ?? roles[0];
 
     if (group) {
+      const selectedRole = group.customRoleSlug
+        ? roles.find((role) => role.slug === group.customRoleSlug)
+        : findOrgMembershipRole(roles, group.role);
+
       reset({
         name: group.name,
         slug: group.slug,
-        role: group?.customRole ?? findOrgMembershipRole(roles, group.role)
+        role: selectedRole ?? defaultRole
       });
     } else {
       reset({
         name: "",
         slug: "",
-        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
+        role: defaultRole
       });
     }
-  }, [popUp?.groupCreateUpdate?.data, roles]);
+  }, [popUp?.groupCreateUpdate?.data, roles, currentOrg?.defaultMembershipRole]);
 
   const onGroupModalSubmit = async ({ name, slug, role }: TGroupFormData) => {
     if (!currentOrg?.id) return;
 
-    const group = popUp?.groupCreateUpdate?.data as {
-      groupId: string;
-      name: string;
-      slug: string;
-    };
+    const group = popUp?.groupCreateUpdate?.data as TGroupModalData | undefined;
 
     if (group) {
       await updateMutateAsync({

@@ -58,7 +58,8 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
                       groupId,
                       name: data.group.name,
                       slug: data.group.slug,
-                      role: data.group.roleId || data.group.role
+                      role: data.group.role,
+                      customRoleSlug: data.group.customRoleSlug
                     });
                   }}
                   size="xs"
