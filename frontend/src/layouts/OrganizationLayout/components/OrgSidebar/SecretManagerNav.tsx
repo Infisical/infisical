@@ -1,8 +1,22 @@
-import { ActivityIcon, BookCheck, FileText, Plug, RefreshCw, Settings, Shield } from "lucide-react";
+import {
+  ActivityIcon,
+  BookCheck,
+  DoorOpen,
+  FileKey,
+  FileText,
+  Plug,
+  RefreshCw,
+  Settings,
+  Shield
+} from "lucide-react";
 
 import { ProjectIcon } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useGetSecretRotations } from "@app/hooks/api";
+import {
+  useGetAccessRequestsCount,
+  useGetSecretApprovalRequestCount,
+  useGetSecretRotations
+} from "@app/hooks/api";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import {
@@ -11,20 +25,46 @@ import {
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import type { NavItem, Submenu } from "./types";
-import { useApprovalSubmenu } from "./useApprovalSubmenu";
 
 export const SecretManagerNav = ({
   onSubmenuOpen
 }: {
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
-  const { projectId } = useProject();
+  const { currentProject, projectId } = useProject();
 
-  const { submenu: approvalsSubmenu, pendingRequestsCount } = useApprovalSubmenu();
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ projectId });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
+    projectSlug: currentProject?.slug || ""
+  });
   const { data: secretRotations } = useGetSecretRotations({
     workspaceId: projectId,
     options: { refetchOnMount: false }
   });
+
+  const pendingRequestsCount =
+    (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
+
+  const approvalsSubmenu: Submenu = {
+    title: "Approvals",
+    pathSuffix: "approval",
+    defaultTab: "approval-requests",
+    items: [
+      {
+        label: "Change Requests",
+        icon: FileKey,
+        tab: "approval-requests",
+        badgeCount: secretApprovalReqCount?.open || undefined
+      },
+      {
+        label: "Access Requests",
+        icon: DoorOpen,
+        tab: "resource-requests",
+        badgeCount: accessApprovalRequestCount?.pendingCount || undefined
+      },
+      { label: "Policies", icon: Shield, tab: "policies" }
+    ]
+  };
 
   const items: NavItem[] = [
     {

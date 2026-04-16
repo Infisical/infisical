@@ -48,18 +48,6 @@ Each API domain in `src/hooks/api/` (100+ domain folders) follows this structure
 
 HTTP client in `src/config/request.ts`: Axios instance with automatic token injection and 401/403 interceptors.
 
-#### React Query Global Defaults (`src/hooks/api/reactQuery.tsx`)
-
-The `QueryClient` sets these global defaults for all queries:
-- **`staleTime: 60_000`** (60 seconds) — data fetched within the last 60s is considered fresh and won't be refetched on component mount/remount. This prevents redundant API calls during normal page navigation. Queries that need real-time data (e.g., identity auth configs, dynamic secret leases) override this with `staleTime: 0`.
-- **`refetchOnWindowFocus: false`** — queries do not refetch when the browser tab regains focus.
-- **`retry: 1`** — failed queries retry once.
-
-When adding new queries, consider whether the default 60s staleTime is appropriate:
-- For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
-- For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
-- For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
-
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
