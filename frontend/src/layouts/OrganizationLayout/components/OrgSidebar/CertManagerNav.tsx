@@ -99,7 +99,8 @@ export const CertManagerNav = ({
       icon: PenTool,
       pathSuffix: "code-signing",
       activeMatch: /\/code-signing/,
-      search: { selectedTab: "signers" }
+      search: { selectedTab: "signers" },
+      isDefaultSearch: true
     },
     {
       label: "Signing Requests",

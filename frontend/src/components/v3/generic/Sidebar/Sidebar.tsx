@@ -525,6 +525,13 @@ function SidebarCollapsibleGroup({
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   const { state, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isOpen || isCollapsed) return;
+    const hasActiveChild = contentRef.current?.querySelector('[data-active="true"]');
+    if (hasActiveChild) setIsOpen(true);
+  });
 
   const abbreviation =
     collapsedLabel ||
@@ -569,12 +576,16 @@ function SidebarCollapsibleGroup({
         </button>
       )}
       <div
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...(!isCollapsed && !isOpen ? { inert: "" as any } : {})}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
           isCollapsed || isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         )}
       >
-        <div className="overflow-hidden">{children}</div>
+        <div ref={contentRef} className="overflow-hidden">
+          {children}
+        </div>
       </div>
     </SidebarGroup>
   );

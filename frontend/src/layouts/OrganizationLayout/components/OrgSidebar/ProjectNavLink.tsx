@@ -28,9 +28,10 @@ export const ProjectNavLink = ({
   const pathMatch = pathname.startsWith(fullPath) || Boolean(item.activeMatch?.test(pathname));
   const isActive = item.search
     ? pathMatch &&
-      Object.entries(item.search).every(
-        ([key, value]) => (locationSearch as Record<string, unknown>)?.[key] === value
-      )
+      Object.entries(item.search).every(([key, value]) => {
+        const urlValue = (locationSearch as Record<string, unknown>)?.[key];
+        return urlValue === value || (urlValue === undefined && item.isDefaultSearch);
+      })
     : pathMatch;
 
   if (item.submenu && onSubmenuOpen) {
