@@ -93,14 +93,14 @@ Before you begin, make sure you have:
         Next, configure the challenge authentication:
 
         <Tabs>
-            <Tab title="Static">
+            <Tab title="Static Challenge">
                 - **Challenge Type**: Select **Static** from the dropdown.
                 - **Challenge**: Enter the **Challenge Password** from your Infisical certificate profile.
                 - **Verify Challenge**: Re-enter the challenge password to confirm.
 
                 ![SCEP configuration — Challenge and certificate options](/images/platform/pki/integrations/jamf-pro/scep-config-challenge.png)
             </Tab>
-            <Tab title="Dynamic">
+            <Tab title="Dynamic Challenge">
                 - **Challenge Type**: Select **Dynamic** from the dropdown.
 
                 No manual challenge password entry is needed, Jamf Pro automatically calls the webhook configured in step 1 to fetch a one-time challenge for each device enrollment.

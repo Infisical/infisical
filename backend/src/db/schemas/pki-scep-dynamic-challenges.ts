@@ -12,8 +12,6 @@ export const PkiScepDynamicChallengesSchema = z.object({
   scepConfigId: z.string().uuid(),
   hashedChallenge: z.string(),
   expiresAt: z.date(),
-  usedAt: z.date().nullable().optional(),
-  clientIp: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

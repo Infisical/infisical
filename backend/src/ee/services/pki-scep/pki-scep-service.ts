@@ -9,7 +9,6 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -858,7 +857,6 @@ export const pkiScepServiceFactory = ({
 
   const generateDynamicChallenge = async ({
     profileId,
-    clientIp,
     actor,
     actorId,
     actorAuthMethod,
@@ -909,17 +907,19 @@ export const pkiScepServiceFactory = ({
 
     const challengePlaintext = randomBytes(32).toString("hex");
 
-    const appCfg = getConfig();
-    const hashedChallenge = await crypto.hashing().createHash(challengePlaintext, appCfg.SALT_ROUNDS);
+    const hashedChallenge = crypto.nativeCrypto.createHash("sha256").update(challengePlaintext).digest("hex");
+
+    const expiryMinutes = scepConfig.dynamicChallengeExpiryMinutes ?? 60;
+    const maxPending = scepConfig.dynamicChallengeMaxPending ?? 100;
 
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + scepConfig.dynamicChallengeExpiryMinutes);
+    expiresAt.setMinutes(expiresAt.getMinutes() + expiryMinutes);
 
     await scepDynamicChallengeDAL.transaction(async (tx) => {
       const pendingCount = await scepDynamicChallengeDAL.countPending(scepConfig.id, tx);
-      if (pendingCount >= scepConfig.dynamicChallengeMaxPending) {
+      if (pendingCount >= maxPending) {
         throw new BadRequestError({
-          message: `Maximum number of pending challenges (${scepConfig.dynamicChallengeMaxPending}) reached. Wait for existing challenges to expire or be used.`
+          message: `Maximum number of pending challenges (${maxPending}) reached. Wait for existing challenges to expire or be used.`
         });
       }
 
@@ -927,8 +927,7 @@ export const pkiScepServiceFactory = ({
         {
           scepConfigId: scepConfig.id,
           hashedChallenge,
-          expiresAt,
-          clientIp: clientIp || null
+          expiresAt
         },
         tx
       );

@@ -361,9 +361,12 @@ const editSchema = z.preprocess(
         .optional(),
       scepConfig: z
         .object({
-          challengePassword: z.string().min(8, "Challenge password must be at least 8 characters"),
+          challengeType: z.nativeEnum(ScepChallengeType).optional(),
+          challengePassword: z.string().optional(),
           includeCaCertInResponse: z.boolean().optional(),
-          allowCertBasedRenewal: z.boolean().optional()
+          allowCertBasedRenewal: z.boolean().optional(),
+          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
+          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
         })
         .optional(),
       externalConfigs: z
@@ -419,6 +422,22 @@ const editSchema = z.preprocess(
       {
         message: "Self-signed issuer type only supports API enrollment",
         path: ["enrollmentType"]
+      }
+    )
+    .refine(
+      (data) => {
+        if (
+          data.enrollmentType === EnrollmentType.SCEP &&
+          data.scepConfig?.challengePassword &&
+          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC
+        ) {
+          return data.scepConfig.challengePassword.length >= 8;
+        }
+        return true;
+      },
+      {
+        message: "Challenge password must be at least 8 characters",
+        path: ["scepConfig", "challengePassword"]
       }
     )
 );
@@ -1573,26 +1592,32 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       <Controller
                         control={control}
                         name="scepConfig.challengePassword"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Challenge Password"
-                            isRequired={!isEdit}
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                            helperText="The challenge password cannot be viewed after creation. Make sure to save it somewhere safe."
-                          >
-                            <Input
-                              {...field}
-                              type="password"
-                              placeholder={
-                                isEdit
-                                  ? "Leave empty to keep current password"
-                                  : "Enter SCEP challenge password"
-                              }
-                              className="w-full"
-                            />
-                          </FormControl>
-                        )}
+                        render={({ field, fieldState: { error } }) => {
+                          const hadStaticPassword =
+                            isEdit &&
+                            profile?.scepConfig?.challengeType === ScepChallengeType.STATIC;
+
+                          return (
+                            <FormControl
+                              label="Challenge Password"
+                              isRequired={!hadStaticPassword}
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="The challenge password cannot be viewed after saving. Make sure to save it somewhere safe."
+                            >
+                              <Input
+                                {...field}
+                                type="password"
+                                placeholder={
+                                  hadStaticPassword
+                                    ? "Leave empty to keep current password"
+                                    : "Enter SCEP challenge password"
+                                }
+                                className="w-full"
+                              />
+                            </FormControl>
+                          );
+                        }}
                       />
                     )}
 

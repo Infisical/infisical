@@ -10,16 +10,17 @@ export type TScepDynamicChallengeDALFactory = ReturnType<typeof scepDynamicChall
 export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiScepDynamicChallenge);
 
-  const findUnusedByConfigId = async (scepConfigId: string, tx?: Knex) => {
+  const consumeByHash = async (hashedChallenge: string, scepConfigId: string, tx?: Knex) => {
     try {
-      const results = await (tx || db)(TableName.PkiScepDynamicChallenge)
-        .where({ scepConfigId })
-        .whereNull("usedAt")
-        .where("expiresAt", ">", new Date());
+      const [result] = await (tx || db)(TableName.PkiScepDynamicChallenge)
+        .where({ hashedChallenge, scepConfigId })
+        .where("expiresAt", ">", new Date())
+        .delete()
+        .returning("*");
 
-      return results;
+      return result;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find unused SCEP dynamic challenges" });
+      throw new DatabaseError({ error, name: "Consume SCEP dynamic challenge by hash" });
     }
   };
 
@@ -27,7 +28,6 @@ export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
     try {
       const result = await (tx || db)(TableName.PkiScepDynamicChallenge)
         .where({ scepConfigId })
-        .whereNull("usedAt")
         .where("expiresAt", ">", new Date())
         .count("id as count")
         .first();
@@ -35,20 +35,6 @@ export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
       return Number((result as { count?: string | number })?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count pending SCEP dynamic challenges" });
-    }
-  };
-
-  const markUsed = async (id: string, tx?: Knex) => {
-    try {
-      const [result] = await (tx || db)(TableName.PkiScepDynamicChallenge)
-        .where({ id })
-        .whereNull("usedAt")
-        .update({ usedAt: new Date() })
-        .returning("*");
-
-      return result;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Mark SCEP dynamic challenge as used" });
     }
   };
 
@@ -65,11 +51,21 @@ export const scepDynamicChallengeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteByConfigId = async (scepConfigId: string, tx?: Knex) => {
+    try {
+      const deletedCount = await (tx || db)(TableName.PkiScepDynamicChallenge).where({ scepConfigId }).delete();
+
+      return deletedCount;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete SCEP dynamic challenges by config" });
+    }
+  };
+
   return {
     ...orm,
-    findUnusedByConfigId,
+    consumeByHash,
     countPending,
-    markUsed,
-    pruneExpired
+    pruneExpired,
+    deleteByConfigId
   };
 };

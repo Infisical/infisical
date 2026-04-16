@@ -132,11 +132,9 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId } = req.params;
-      const clientIp = req.ip || "unknown";
 
       const result = await server.services.pkiScep.generateDynamicChallenge({
         profileId,
-        clientIp,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -151,8 +149,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
           metadata: {
             profileId,
             profileSlug: result.profileSlug,
-            expiresAt: result.expiresAt,
-            clientIp: clientIp || "unknown"
+            expiresAt: result.expiresAt
           }
         }
       });

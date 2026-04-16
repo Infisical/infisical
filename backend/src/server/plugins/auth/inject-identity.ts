@@ -166,7 +166,7 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url.includes("/scep/") && !req.url.includes("/challenge")) {
+      if (req.url.includes("/scep/") && req.url.includes("pkiclient.exe")) {
         return;
       }
 

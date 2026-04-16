@@ -319,6 +319,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
+  [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
+  [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
+  [EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED]: "SCEP Dynamic Challenge Generated",
+
   [EventType.APPROVAL_POLICY_CREATE]: "Create Approval Policy",
   [EventType.APPROVAL_POLICY_UPDATE]: "Update Approval Policy",
   [EventType.APPROVAL_POLICY_DELETE]: "Delete Approval Policy",

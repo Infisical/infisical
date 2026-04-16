@@ -135,8 +135,8 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     allowCertBasedRenewal: boolean;
     challengeType: string;
     challengeEndpointUrl?: string;
-    dynamicChallengeExpiryMinutes: number;
-    dynamicChallengeMaxPending: number;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
 };
 

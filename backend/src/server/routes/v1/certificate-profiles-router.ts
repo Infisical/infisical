@@ -367,8 +367,8 @@ export const registerCertificateProfilesRouter = async (
                 allowCertBasedRenewal: z.boolean(),
                 challengeType: z.string(),
                 challengeEndpointUrl: z.string().optional(),
-                dynamicChallengeExpiryMinutes: z.number(),
-                dynamicChallengeMaxPending: z.number()
+                dynamicChallengeExpiryMinutes: z.number().optional(),
+                dynamicChallengeMaxPending: z.number().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema,
@@ -473,8 +473,8 @@ export const registerCertificateProfilesRouter = async (
                 allowCertBasedRenewal: z.boolean(),
                 challengeType: z.string(),
                 challengeEndpointUrl: z.string().optional(),
-                dynamicChallengeExpiryMinutes: z.number(),
-                dynamicChallengeMaxPending: z.number()
+                dynamicChallengeExpiryMinutes: z.number().optional(),
+                dynamicChallengeMaxPending: z.number().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema
@@ -663,17 +663,6 @@ export const registerCertificateProfilesRouter = async (
           },
           {
             message: "SCEP static challenge requires a challenge password with at least 8 characters"
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.scepConfig?.challengeType === ScepChallengeType.STATIC) {
-              return !!data.scepConfig.challengePassword;
-            }
-            return true;
-          },
-          {
-            message: "Switching to static challenge type requires providing a challenge password"
           }
         ),
       response: {

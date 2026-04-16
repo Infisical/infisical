@@ -4,7 +4,7 @@ import { TScepDynamicChallengeDALFactory } from "../pki-scep-dynamic-challenge-d
 import { IScepChallengeValidator } from "./scep-challenge-types";
 
 type TDynamicChallengeValidatorDep = {
-  scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "findUnusedByConfigId" | "markUsed">;
+  scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "consumeByHash">;
 };
 
 export const dynamicChallengeValidator = ({
@@ -13,18 +13,9 @@ export const dynamicChallengeValidator = ({
   validate: async (challengePassword: string, scepConfigId: string): Promise<boolean> => {
     if (!challengePassword) return false;
 
-    const pendingChallenges = await scepDynamicChallengeDAL.findUnusedByConfigId(scepConfigId);
+    const hashedChallenge = crypto.nativeCrypto.createHash("sha256").update(challengePassword).digest("hex");
+    const claimed = await scepDynamicChallengeDAL.consumeByHash(hashedChallenge, scepConfigId);
 
-    for (const challenge of pendingChallenges) {
-      // eslint-disable-next-line no-await-in-loop
-      const matches = await crypto.hashing().compareHash(challengePassword, challenge.hashedChallenge);
-      if (matches) {
-        // eslint-disable-next-line no-await-in-loop
-        const claimed = await scepDynamicChallengeDAL.markUsed(challenge.id);
-        if (claimed) return true;
-      }
-    }
-
-    return false;
+    return !!claimed;
   }
 });

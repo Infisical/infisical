@@ -12,14 +12,11 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("scepConfigId").references("id").inTable(TableName.PkiScepEnrollmentConfig).onDelete("CASCADE");
       t.index("scepConfigId");
 
-      t.text("hashedChallenge").notNullable();
+      t.string("hashedChallenge", 64).notNullable();
+      t.index("hashedChallenge");
 
       t.timestamp("expiresAt").notNullable();
       t.index("expiresAt");
-
-      t.timestamp("usedAt").nullable();
-
-      t.string("clientIp", 45).nullable();
 
       t.timestamps(true, true, true);
     });
@@ -30,8 +27,8 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.PkiScepEnrollmentConfig, "challengeType"))) {
     await knex.schema.alterTable(TableName.PkiScepEnrollmentConfig, (t) => {
       t.string("challengeType", 32).notNullable().defaultTo("static");
-      t.integer("dynamicChallengeExpiryMinutes").notNullable().defaultTo(60);
-      t.integer("dynamicChallengeMaxPending").notNullable().defaultTo(100);
+      t.integer("dynamicChallengeExpiryMinutes").nullable();
+      t.integer("dynamicChallengeMaxPending").nullable();
     });
   }
 

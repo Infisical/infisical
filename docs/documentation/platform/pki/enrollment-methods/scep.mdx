@@ -53,7 +53,7 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
 
     The endpoint accepts authenticated `POST` requests and returns a plain-text one-time challenge password. The caller must authenticate using a [Machine Identity](/documentation/platform/identities/machine-identities) access token.
 
-    Configuration options for dynamic challenges:
+    The following settings are part of the certificate profile configuration and apply to all challenges generated for this profile:
 
     - **Challenge Expiry (minutes)**: How long each generated challenge remains valid before expiring. Default: 60 minutes. Maximum: 1440 minutes (24 hours).
     - **Max Pending Challenges**: Maximum number of unused challenges that can exist at once. Default: 100. Maximum: 1000.

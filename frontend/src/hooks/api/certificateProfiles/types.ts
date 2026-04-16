@@ -96,8 +96,8 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     allowCertBasedRenewal: boolean;
     challengeType: ScepChallengeType;
     challengeEndpointUrl?: string;
-    dynamicChallengeExpiryMinutes: number;
-    dynamicChallengeMaxPending: number;
+    dynamicChallengeExpiryMinutes?: number;
+    dynamicChallengeMaxPending?: number;
   };
 };
 

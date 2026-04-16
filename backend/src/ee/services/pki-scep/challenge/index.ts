@@ -11,7 +11,7 @@ export { ScepChallengeType } from "./scep-challenge-types";
 
 type TScepChallengeValidatorFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
-  scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "findUnusedByConfigId" | "markUsed">;
+  scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "consumeByHash">;
 };
 
 export const getScepChallengeValidator = (

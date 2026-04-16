@@ -5838,7 +5838,6 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileId: string;
     profileSlug: string;
     expiresAt: string;
-    clientIp: string;
   };
 }
 
