@@ -92,7 +92,7 @@
     "cva": "npm:class-variance-authority@^0.7.1",
     "date-fns": "^4.1.0",
     "diff": "^8.0.3",
-    "dompurify": "^3.2.4",
+    "dompurify": "^3.4.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^11.14.1",
     "i18next": "^24.1.0",
