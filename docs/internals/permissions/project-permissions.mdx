@@ -284,6 +284,12 @@ Supports conditions and permission inversion.
 | `delete-root-credential` | Remove dynamic secrets | `environment`, `secretPath`, `metadata` |
 | `lease` | Create dynamic secret leases | `environment`, `secretPath`, `metadata` |
 
+#### Subject: `insights`
+
+| Action | Description                                                                          |
+| ------ | ------------------------------------------------------------------------------------ |
+| `read` | View project insights dashboard, including secret access volume, access locations, auth method distribution, and rotation/reminder calendar |
+
 ### Key Management Service (KMS)
 
 #### Subject: `kms`
@@ -442,11 +448,12 @@ Supports conditions and permission inversion.
 
 | Action             | Description                                              | Condition keys |
 | ------------------ | -------------------------------------------------------- | ----- |
-| `read`   | View PAM accounts the identity is allowed to use | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `access` | Request or use access to PAM accounts            | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `create` | Create new PAM accounts                          | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `edit`   | Modify existing PAM accounts                     | `resourceName`, `accountName`, `resourceType`, `metadata` |
-| `delete` | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `read`             | View PAM accounts the identity is allowed to use | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `access`           | Request or use access to PAM accounts            | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `create`           | Create new PAM accounts                          | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `edit`             | Modify existing PAM accounts                     | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `delete`           | Remove PAM accounts                              | `resourceName`, `accountName`, `resourceType`, `metadata` |
+| `read-credentials` | View sensitive account credentials like passwords and private keys | `resourceName`, `accountName`, `resourceType`, `metadata` |
 
 ## Condition Operators
 

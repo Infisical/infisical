@@ -386,6 +386,9 @@ export enum EventType {
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
   DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_CERTIFICATE_INVENTORY_VIEW = "create-certificate-inventory-view",
+  UPDATE_CERTIFICATE_INVENTORY_VIEW = "update-certificate-inventory-view",
+  DELETE_CERTIFICATE_INVENTORY_VIEW = "delete-certificate-inventory-view",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -596,6 +599,12 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
@@ -615,6 +624,11 @@ export enum EventType {
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_ACCOUNT_POLICY_CREATE = "pam-account-policy-create",
+  PAM_ACCOUNT_POLICY_UPDATE = "pam-account-policy-update",
+  PAM_ACCOUNT_POLICY_DELETE = "pam-account-policy-delete",
+  PAM_ACCOUNT_POLICY_LIST = "pam-account-policy-list",
+  PAM_ACCOUNT_POLICY_GET = "pam-account-policy-get",
   PAM_ACCOUNT_READ_CREDENTIALS = "pam-account-read-credentials",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
@@ -651,6 +665,10 @@ export enum EventType {
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+  ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
+  ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
+  ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -731,7 +749,12 @@ export enum EventType {
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
-  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
+  // Email Domains
+  CREATE_EMAIL_DOMAIN = "create-email-domain",
+  VERIFY_EMAIL_DOMAIN = "verify-email-domain",
+  DELETE_EMAIL_DOMAIN = "delete-email-domain"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -776,7 +799,7 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
-
+  authMethod?: string;
   aws?: TAWSAuthDetails;
   kubernetes?: TKubernetesAuthDetails;
   oidc?: TOidcAuthDetails;
@@ -2999,6 +3022,36 @@ interface DeletePkiCollectionItem {
   };
 }
 
+interface CreateCertificateInventoryView {
+  type: EventType.CREATE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
+  };
+}
+
+interface UpdateCertificateInventoryView {
+  type: EventType.UPDATE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name?: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
+  };
+}
+
+interface DeleteCertificateInventoryView {
+  type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name: string;
+  };
+}
+
 interface CreatePkiSubscriber {
   type: EventType.CREATE_PKI_SUBSCRIBER;
   metadata: {
@@ -4639,6 +4692,45 @@ interface DashboardGetSecretVersionValueEvent {
   };
 }
 
+interface ViewSecretManagementInsightsCalendarEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR;
+  metadata: {
+    projectId: string;
+    month: number;
+    year: number;
+  };
+}
+
+interface ViewSecretManagementInsightsAccessVolumeEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewSecretManagementInsightsAccessLocationsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS;
+  metadata: {
+    projectId: string;
+    days: number;
+  };
+}
+
+interface ViewInsightsAuthMethodsEvent {
+  type: EventType.VIEW_INSIGHTS_AUTH_METHODS;
+  metadata: {
+    projectId: string;
+    days: number;
+  };
+}
+
+interface ViewSecretManagementInsightsSummaryEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -4875,6 +4967,49 @@ interface PamAccountCredentialRotationFailedEvent {
     resourceId: string;
     resourceType: string;
     errorMessage: string;
+  };
+}
+
+interface PamAccountPolicyCreateEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_CREATE;
+  metadata: {
+    projectId: string;
+    name: string;
+    description?: string;
+  };
+}
+
+interface PamAccountPolicyUpdateEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_UPDATE;
+  metadata: {
+    policyId: string;
+    projectId: string;
+    name?: string;
+    isActive?: boolean;
+  };
+}
+
+interface PamAccountPolicyDeleteEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_DELETE;
+  metadata: {
+    policyId: string;
+    projectId: string;
+    name: string;
+  };
+}
+
+interface PamAccountPolicyListEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_LIST;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface PamAccountPolicyGetEvent {
+  type: EventType.PAM_ACCOUNT_POLICY_GET;
+  metadata: {
+    policyId: string;
+    projectId: string;
   };
 }
 
@@ -5280,6 +5415,46 @@ interface ApprovalRequestGrantRevokeEvent {
     policyType: string;
     grantId: string;
     revocationReason?: string;
+  };
+}
+
+interface AccessApprovalRequestCreateEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CREATE;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    isTemporary: boolean;
+    temporaryRange?: string;
+    permissions: unknown;
+    note?: string;
+  };
+}
+
+interface AccessApprovalRequestReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    reviewStatus: string;
+  };
+}
+
+interface AccessApprovalRequestRevokeEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    policyId: string;
+  };
+}
+
+interface AccessApprovalRequestUpdateEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_UPDATE;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    temporaryRange: string;
+    editNote: string;
   };
 }
 
@@ -5764,6 +5939,30 @@ interface SecretValidationRuleDeleteEvent {
   };
 }
 
+interface CreateEmailDomainEvent {
+  type: EventType.CREATE_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
+interface VerifyEmailDomainEvent {
+  type: EventType.VERIFY_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
+interface DeleteEmailDomainEvent {
+  type: EventType.DELETE_EMAIL_DOMAIN;
+  metadata: {
+    emailDomainId: string;
+    domain: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5974,6 +6173,9 @@ export type Event =
   | GetPkiCollectionItems
   | AddPkiCollectionItem
   | DeletePkiCollectionItem
+  | CreateCertificateInventoryView
+  | UpdateCertificateInventoryView
+  | DeleteCertificateInventoryView
   | CreatePkiSubscriber
   | UpdatePkiSubscriber
   | DeletePkiSubscriber
@@ -6166,6 +6368,11 @@ export type Event =
   | DashboardListSecretsEvent
   | DashboardGetSecretValueEvent
   | DashboardGetSecretVersionValueEvent
+  | ViewSecretManagementInsightsCalendarEvent
+  | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsAccessLocationsEvent
+  | ViewInsightsAuthMethodsEvent
+  | ViewSecretManagementInsightsSummaryEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -6192,6 +6399,11 @@ export type Event =
   | PamAccountDeleteEvent
   | PamAccountCredentialRotationEvent
   | PamAccountCredentialRotationFailedEvent
+  | PamAccountPolicyCreateEvent
+  | PamAccountPolicyUpdateEvent
+  | PamAccountPolicyDeleteEvent
+  | PamAccountPolicyListEvent
+  | PamAccountPolicyGetEvent
   | PamAccountReadCredentialsEvent
   | PamResourceListEvent
   | PamResourceGetEvent
@@ -6239,6 +6451,10 @@ export type Event =
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
+  | AccessApprovalRequestCreateEvent
+  | AccessApprovalRequestReviewEvent
+  | AccessApprovalRequestRevokeEvent
+  | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
   | CreateAcmeOrderEvent
@@ -6285,4 +6501,7 @@ export type Event =
   | ScepRenewalEvent
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
-  | SecretValidationRuleDeleteEvent;
+  | SecretValidationRuleDeleteEvent
+  | CreateEmailDomainEvent
+  | VerifyEmailDomainEvent
+  | DeleteEmailDomainEvent;

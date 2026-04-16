@@ -392,6 +392,13 @@ export const useDataExplorerSession = ({
     [sendRequest]
   );
 
+  const cancelQuery = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "cancel" }));
+    }
+  }, []);
+
   const executeQuery = useCallback(
     async (
       sql: string
@@ -399,6 +406,8 @@ export const useDataExplorerSession = ({
       rows: Record<string, unknown>[];
       fields: FieldInfo[];
       rowCount: number | null;
+      isTruncated: boolean;
+      transactionOpen: boolean;
       command: string;
       executionTimeMs: number;
     }> => {
@@ -410,6 +419,8 @@ export const useDataExplorerSession = ({
         rows: resp.rows,
         fields: resp.fields,
         rowCount: resp.rowCount,
+        isTruncated: resp.isTruncated,
+        transactionOpen: resp.transactionOpen,
         command: resp.command,
         executionTimeMs: resp.executionTimeMs
       };
@@ -435,6 +446,7 @@ export const useDataExplorerSession = ({
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
-    executeQuery
+    executeQuery,
+    cancelQuery
   };
 };

@@ -119,7 +119,7 @@ export const ChangeEmailSection = () => {
       setTypedOTP("");
 
       // Clear frontend session/token to ensure proper logout
-      clearSession(true);
+      clearSession();
 
       // Redirect to login after a short delay
       setTimeout(() => {

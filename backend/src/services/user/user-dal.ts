@@ -19,18 +19,6 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
-  const findUserByUsername = async (username: string, tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.Users).whereRaw('lower("username") = :username', {
-      username: username.toLowerCase()
-    });
-
-  const findUserByEmail = async (email: string, tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.Users)
-      .whereRaw('lower("email") = :email', { email: email.toLowerCase() })
-      .where({
-        isEmailVerified: true
-      });
-
   const getUsersByFilter = async ({
     limit,
     offset,
@@ -112,13 +100,21 @@ export const userDALFactory = (db: TDbClient) => {
   const findUserEncKeyByUserId = async (userId: string, tx?: Knex) => {
     try {
       const user = await (tx || db.replicaNode())(TableName.Users)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .where(`${TableName.Users}.id`, userId)
-        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(
+          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
+          db.ref("iv").withSchema(TableName.UserEncryptionKey),
+          db.ref("salt").withSchema(TableName.UserEncryptionKey),
+          db.ref("tag").withSchema(TableName.UserEncryptionKey),
+          db.ref("protectedKey").withSchema(TableName.UserEncryptionKey),
+          db.ref("protectedKeyIV").withSchema(TableName.UserEncryptionKey),
+          db.ref("protectedKeyTag").withSchema(TableName.UserEncryptionKey),
+          db.ref("encryptedPrivateKey").withSchema(TableName.UserEncryptionKey)
+        )
         .first();
-      if (user?.id) {
-        // change to user id
-        user.id = user.userId;
-      }
+
       return user;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user id" });
@@ -251,7 +247,6 @@ export const userDALFactory = (db: TDbClient) => {
 
   return {
     ...userOrm,
-    findUserByUsername,
     findUserEncKeyByUsername,
     findUserEncKeyByUserIdsBatch,
     findUserEncKeyByUserId,
@@ -263,7 +258,6 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    findAllMyAccounts,
-    findUserByEmail
+    findAllMyAccounts
   };
 };

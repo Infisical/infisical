@@ -10,8 +10,21 @@
   "author": "",
   "license": "ISC",
   "description": "",
+  "overrides": {
+    "express": {
+      "path-to-regexp": "0.1.13",
+      "qs": ">=6.14.2"
+    },
+    "@koa/router": {
+      "path-to-regexp": "^8.4.0"
+    },
+    "oidc-provider": {
+      "koa": ">=3.1.2"
+    },
+    "qs": ">=6.14.2"
+  },
   "dependencies": {
-    "axios": "^1.12.0",
+    "axios": "^1.15.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "form-data": "^4.0.2",

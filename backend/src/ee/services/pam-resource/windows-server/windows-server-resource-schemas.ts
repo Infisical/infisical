@@ -64,6 +64,11 @@ export const WindowsResourceInternalMetadataSchema = z.object({
   osVersionDetail: z.string().optional()
 });
 
+export const SanitizedWindowsResourceInternalMetadataSchema = WindowsResourceInternalMetadataSchema.pick({
+  osVersion: true,
+  osVersionDetail: true
+});
+
 export const WindowsResourceSchema = BaseWindowsResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema,
   rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional()

@@ -5,7 +5,18 @@ import { useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  FieldError,
+  FieldLabel,
+  UnstableInput
+} from "@app/components/v3";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -19,7 +30,7 @@ export type FormData = z.infer<typeof schema>;
 
 interface CreateOrgModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
@@ -43,13 +54,9 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
   const { mutateAsync: selectOrg } = useSelectOrganization();
 
   const onFormSubmit = async ({ name }: FormData) => {
-    const organization = await createOrg({
-      name
-    });
+    const organization = await createOrg({ name });
 
-    await selectOrg({
-      organizationId: organization.id
-    });
+    await selectOrg({ organizationId: organization.id });
 
     createNotification({
       text: "Successfully created organization",
@@ -64,42 +71,57 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     localStorage.setItem("orgData.id", organization.id);
 
     reset();
-    onClose();
+    onClose?.();
   };
 
   return (
-    <Modal modal={false} isOpen={isOpen}>
-      <ModalContent
-        title="Create Organization"
-        subTitle="Looks like you're not part of any organizations. Create one to start using Infisical"
-      >
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          reset();
+          onClose?.();
+        }
+      }}
+    >
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Organization</DialogTitle>
+          <DialogDescription>
+            Welcome! It looks like you haven&apos;t joined or created an organization yet. Create
+            one to get started.
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
             defaultValue=""
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Acme Corp" />
-              </FormControl>
+              <div className="mb-4">
+                <FieldLabel>Name</FieldLabel>
+                <UnstableInput {...field} placeholder="Acme Corp" className="h-10" />
+                {error && <FieldError>{error.message}</FieldError>}
+              </div>
             )}
           />
-          <div className="flex w-full gap-4">
+          <DialogFooter>
+            {onClose && (
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+            )}
             <Button
-              className=""
-              size="sm"
               type="submit"
-              isLoading={isSubmitting}
+              variant="project"
+              isPending={isSubmitting}
               isDisabled={isSubmitting}
             >
               Create
             </Button>
-            <Button className="" size="sm" variant="outline_bg" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

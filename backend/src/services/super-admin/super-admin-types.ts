@@ -34,6 +34,21 @@ export type TGetOrganizationsDTO = {
   searchTerm: string;
 };
 
+export type TAdminGetEmailDomainsDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
+export type TAdminCreateEmailDomainDTO = {
+  orgId: string;
+  domain: string;
+};
+
+export type TAdminDeleteEmailDomainDTO = {
+  emailDomainId: string;
+};
+
 export type TCreateOrganizationDTO = {
   name: string;
   inviteAdminEmails: string[];

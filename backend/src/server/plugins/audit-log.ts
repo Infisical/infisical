@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { ActorType } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
@@ -49,10 +50,12 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
       req.auditLogInfo = payload;
       return;
     }
+
     if (req.auth.actor === ActorType.USER) {
       payload.actor = {
         type: ActorType.USER,
         metadata: {
+          ...(req.auth.authMethod ? { authMethod: req.auth.authMethod } : {}),
           email: req.auth.user.email,
           username: req.auth.user.username,
           userId: req.permission.id
@@ -67,13 +70,14 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         }
       };
     } else if (req.auth.actor === ActorType.IDENTITY) {
-      const identityAuthInfo = requestContext.get("identityAuthInfo");
+      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
 
       payload.actor = {
         type: ActorType.IDENTITY,
         metadata: {
           name: req.auth.identityName,
           identityId: req.auth.identityId,
+          ...(identityAuthInfo?.authMethod ? { authMethod: identityAuthInfo.authMethod } : {}),
           ...(identityAuthInfo?.aws ? { aws: identityAuthInfo.aws } : {}),
           ...(identityAuthInfo?.kubernetes ? { kubernetes: identityAuthInfo.kubernetes } : {}),
           ...(identityAuthInfo?.oidc ? { oidc: identityAuthInfo.oidc } : {})

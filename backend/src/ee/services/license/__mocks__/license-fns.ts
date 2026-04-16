@@ -19,9 +19,10 @@ export const getDefaultOnPremFeatures = () => {
     customAlerts: false,
     auditLogs: false,
     auditLogsRetentionDays: 0,
-    samlSSO: false,
-    scim: false,
-    ldap: false,
+    samlSSO: true,
+    oidcSSO: true,
+    scim: true,
+    ldap: true,
     groups: false,
     status: null,
     trial_end: null,
@@ -34,7 +35,8 @@ export const getDefaultOnPremFeatures = () => {
     enterpriseCertificateSyncs: false,
     enterpriseAppConnections: true,
     machineIdentityAuthTemplates: false,
-    pkiLegacyTemplates: false
+    pkiLegacyTemplates: false,
+    emailDomainVerification: true
   };
 };
 

@@ -5,10 +5,11 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { logger } from "@app/lib/logger";
 
 import { fetchReleases } from "./github-client";
-import { BreakingChange, FormattedRelease, UpgradePathConfig, UpgradePathResult, VersionConfig } from "./types";
+import { BreakingChange, FormattedRelease, UpgradePathConfig, UpgradePathResult } from "./types";
 import { versionConfigSchema, versionSchema } from "./upgrade-path-schemas";
 
 export type TUpgradePathServiceFactory = {
@@ -20,6 +21,10 @@ interface CalculateUpgradePathParams {
   fromVersion: string;
   toVersion: string;
 }
+
+const UPGRADE_PATH_CONFIG_KEY = "upgrade-path:config";
+const UPGRADE_PATH_CONFIG_TTL = 24 * 60 * 60; // 24 hours
+const UPGRADE_PATH_CACHE_TTL = 60 * 60; // 1 hour
 
 export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFactory) => {
   const sanitizeCacheKey = (key: string): string => {
@@ -52,42 +57,35 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
   };
 
   const getUpgradePathConfig = async (): Promise<Record<string, z.infer<typeof versionConfigSchema>>> => {
-    const cacheKey = "upgrade-path:config";
+    return withCache({
+      keyStore,
+      key: UPGRADE_PATH_CONFIG_KEY,
+      ttlSeconds: UPGRADE_PATH_CONFIG_TTL,
+      fetcher: async () => {
+        try {
+          const yamlPath = path.join(__dirname, "..", "..", "..", "upgrade-path.yaml");
+          const resolvedPath = path.resolve(yamlPath);
+          const expectedBaseDir = path.resolve(__dirname, "..", "..", "..");
+          if (!resolvedPath.startsWith(expectedBaseDir)) {
+            throw new Error("Invalid configuration file path");
+          }
 
-    try {
-      const cached = await keyStore.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as Record<string, VersionConfig>;
-    } catch (error) {
-      logger.error(error, "Failed to retrieve config from cache");
-    }
+          const yamlContent = await readFile(yamlPath, "utf8");
 
-    try {
-      const yamlPath = path.join(__dirname, "..", "..", "..", "upgrade-path.yaml");
-      const resolvedPath = path.resolve(yamlPath);
-      const expectedBaseDir = path.resolve(__dirname, "..", "..", "..");
-      if (!resolvedPath.startsWith(expectedBaseDir)) {
-        throw new Error("Invalid configuration file path");
+          if (yamlContent.length > 1024 * 1024) {
+            throw new Error("Config file too large");
+          }
+
+          const config = yaml.load(yamlContent, { schema: yaml.FAILSAFE_SCHEMA }) as UpgradePathConfig;
+          return config?.versions || {};
+        } catch (error) {
+          if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+            return {};
+          }
+          throw new Error(`Config load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
       }
-
-      const yamlContent = await readFile(yamlPath, "utf8");
-
-      if (yamlContent.length > 1024 * 1024) {
-        throw new Error("Config file too large");
-      }
-
-      const config = yaml.load(yamlContent, { schema: yaml.FAILSAFE_SCHEMA }) as UpgradePathConfig;
-      const versionConfig = config?.versions || {};
-
-      await keyStore.setItemWithExpiry(cacheKey, 24 * 60 * 60, JSON.stringify(versionConfig));
-      return versionConfig;
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        const empty = {};
-        await keyStore.setItemWithExpiry(cacheKey, 24 * 60 * 60, JSON.stringify(empty));
-        return empty;
-      }
-      throw new Error(`Config load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+    });
   };
 
   const normalizeVersion = (version: string): string => {
@@ -124,131 +122,128 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     const { fromVersion, toVersion } = validateParams(params);
     const cacheKey = sanitizeCacheKey(`upgrade-path:${fromVersion}:${toVersion}`);
 
-    try {
-      const cached = await keyStore.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as UpgradePathResult;
-    } catch (error) {
-      logger.error(error, "Failed to retrieve upgrade path from cache");
-    }
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: UPGRADE_PATH_CACHE_TTL,
+      fetcher: async () => {
+        const [releases, config] = await Promise.all([getGitHubReleases(), getUpgradePathConfig()]);
 
-    const [releases, config] = await Promise.all([getGitHubReleases(), getUpgradePathConfig()]);
+        const cleanFrom = normalizeVersion(fromVersion);
+        const cleanTo = normalizeVersion(toVersion);
 
-    const cleanFrom = normalizeVersion(fromVersion);
-    const cleanTo = normalizeVersion(toVersion);
+        const compareVersions = (v1: string, v2: string): number => {
+          const normalize = (v: string) => normalizeVersion(v);
+          const clean1 = normalize(v1);
+          const clean2 = normalize(v2);
 
-    const compareVersions = (v1: string, v2: string): number => {
-      const normalize = (v: string) => normalizeVersion(v);
-      const clean1 = normalize(v1);
-      const clean2 = normalize(v2);
+          const parts1 = clean1.split(".").map(Number);
+          const parts2 = clean2.split(".").map(Number);
 
-      const parts1 = clean1.split(".").map(Number);
-      const parts2 = clean2.split(".").map(Number);
+          const maxLength = Math.max(parts1.length, parts2.length);
+          while (parts1.length < maxLength) parts1.push(0);
+          while (parts2.length < maxLength) parts2.push(0);
 
-      const maxLength = Math.max(parts1.length, parts2.length);
-      while (parts1.length < maxLength) parts1.push(0);
-      while (parts2.length < maxLength) parts2.push(0);
+          for (let i = 0; i < maxLength; i += 1) {
+            if (parts1[i] > parts2[i]) return 1;
+            if (parts1[i] < parts2[i]) return -1;
+          }
+          return 0;
+        };
 
-      for (let i = 0; i < maxLength; i += 1) {
-        if (parts1[i] > parts2[i]) return 1;
-        if (parts1[i] < parts2[i]) return -1;
-      }
-      return 0;
-    };
-
-    if (compareVersions(cleanFrom, cleanTo) >= 0) {
-      throw new Error("fromVersion must be older than toVersion");
-    }
-
-    const fromIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanFrom);
-    const toIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanTo);
-
-    let upgradePath: FormattedRelease[] = [];
-    const filteredPath: FormattedRelease[] = [];
-
-    if (fromIdx !== -1 && toIdx !== -1) {
-      if (fromIdx <= toIdx) throw new Error("Invalid version order");
-      upgradePath = releases.slice(toIdx, fromIdx + 1).reverse();
-      const [first, last] = [upgradePath[0], upgradePath[upgradePath.length - 1]];
-
-      filteredPath.push(first);
-      if (last !== first) filteredPath.push(last);
-    }
-
-    const breakingChanges: Array<{ version: string; changes: BreakingChange[] }> = [];
-    const features: Array<{ version: string; name: string; body: string; publishedAt: string }> = [];
-    let hasDbMigration = false;
-
-    const isVersionInRange = (version: string, fromVer: string, toVer: string): boolean => {
-      const versionComp = compareVersions(version, fromVer);
-      const toVersionComp = compareVersions(version, toVer);
-      return versionComp > 0 && toVersionComp < 0;
-    };
-
-    Object.keys(config).forEach((configVersion) => {
-      const versionConfig = config[configVersion];
-      if (versionConfig?.breaking_changes?.length) {
-        if (isVersionInRange(configVersion, cleanFrom, cleanTo)) {
-          breakingChanges.push({
-            version: configVersion,
-            changes: versionConfig.breaking_changes
-          });
+        if (compareVersions(cleanFrom, cleanTo) >= 0) {
+          throw new Error("fromVersion must be older than toVersion");
         }
-      }
-    });
-    for (let i = 0; i < upgradePath.length; i += 1) {
-      const version = upgradePath[i];
-      const isFromVersion = normalizeVersion(version.normalizedTagName) === cleanFrom;
 
-      if (!isFromVersion) {
-        const versionNumber = normalizeVersion(version.tagName);
-        const possibleKeys = [
-          version.tagName,
-          version.normalizedTagName,
-          versionNumber,
-          `v${versionNumber}`,
-          version.tagName.replace(new RE2(/^infisical\//), ""),
-          version.tagName.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), "")
-        ];
+        const fromIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanFrom);
+        const toIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanTo);
 
-        for (const key of possibleKeys) {
-          const versionConfig = config[key];
-          if (
-            versionConfig?.db_schema_changes &&
-            typeof versionConfig.db_schema_changes === "string" &&
-            versionConfig.db_schema_changes.trim()
-          ) {
-            hasDbMigration = true;
-            break;
+        let upgradePath: FormattedRelease[] = [];
+        const filteredPath: FormattedRelease[] = [];
+
+        if (fromIdx !== -1 && toIdx !== -1) {
+          if (fromIdx <= toIdx) throw new Error("Invalid version order");
+          upgradePath = releases.slice(toIdx, fromIdx + 1).reverse();
+          const [first, last] = [upgradePath[0], upgradePath[upgradePath.length - 1]];
+
+          filteredPath.push(first);
+          if (last !== first) filteredPath.push(last);
+        }
+
+        const breakingChanges: Array<{ version: string; changes: BreakingChange[] }> = [];
+        const features: Array<{ version: string; name: string; body: string; publishedAt: string }> = [];
+        let hasDbMigration = false;
+
+        const isVersionInRange = (version: string, fromVer: string, toVer: string): boolean => {
+          const versionComp = compareVersions(version, fromVer);
+          const toVersionComp = compareVersions(version, toVer);
+          return versionComp > 0 && toVersionComp < 0;
+        };
+
+        Object.keys(config).forEach((configVersion) => {
+          const versionConfig = config[configVersion];
+          if (versionConfig?.breaking_changes?.length) {
+            if (isVersionInRange(configVersion, cleanFrom, cleanTo)) {
+              breakingChanges.push({
+                version: configVersion,
+                changes: versionConfig.breaking_changes
+              });
+            }
+          }
+        });
+        for (let i = 0; i < upgradePath.length; i += 1) {
+          const version = upgradePath[i];
+          const isFromVersion = normalizeVersion(version.normalizedTagName) === cleanFrom;
+
+          if (!isFromVersion) {
+            const versionNumber = normalizeVersion(version.tagName);
+            const possibleKeys = [
+              version.tagName,
+              version.normalizedTagName,
+              versionNumber,
+              `v${versionNumber}`,
+              version.tagName.replace(new RE2(/^infisical\//), ""),
+              version.tagName.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), "")
+            ];
+
+            for (const key of possibleKeys) {
+              const versionConfig = config[key];
+              if (
+                versionConfig?.db_schema_changes &&
+                typeof versionConfig.db_schema_changes === "string" &&
+                versionConfig.db_schema_changes.trim()
+              ) {
+                hasDbMigration = true;
+                break;
+              }
+            }
+          }
+
+          // Collect release notes and features
+          if (version.body) {
+            features.push({
+              version: version.tagName,
+              name: version.name,
+              body: version.body,
+              publishedAt: version.publishedAt
+            });
           }
         }
+
+        return {
+          path: filteredPath.map((r) => ({
+            version: r.tagName,
+            name: r.name,
+            publishedAt: r.publishedAt,
+            prerelease: r.prerelease
+          })),
+          breakingChanges,
+          features,
+          hasDbMigration,
+          config
+        };
       }
-
-      // Collect release notes and features
-      if (version.body) {
-        features.push({
-          version: version.tagName,
-          name: version.name,
-          body: version.body,
-          publishedAt: version.publishedAt
-        });
-      }
-    }
-
-    const result: UpgradePathResult = {
-      path: filteredPath.map((r) => ({
-        version: r.tagName,
-        name: r.name,
-        publishedAt: r.publishedAt,
-        prerelease: r.prerelease
-      })),
-      breakingChanges,
-      features,
-      hasDbMigration,
-      config
-    };
-
-    await keyStore.setItemWithExpiry(cacheKey, 60 * 60, JSON.stringify(result));
-    return result;
+    });
   };
 
   return {
