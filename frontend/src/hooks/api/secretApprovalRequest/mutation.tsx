@@ -20,10 +20,8 @@ export const useUpdateSecretApprovalReviewStatus = () => {
       });
       return data;
     },
-    onSuccess: (_, { id, projectId }) => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.list({ projectId }) });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     }
   });
 };

@@ -24,8 +24,6 @@ export const useGetDynamicSecretLeases = ({
       dynamicSecretName
     }),
     enabled: Boolean(projectSlug && environmentSlug && path && dynamicSecretName && enabled),
-    staleTime: 0,
-    gcTime: 0,
     queryFn: async () => {
       const { data } = await apiRequest.get<{ leases: TDynamicSecretLease[] }>(
         `/api/v1/dynamic-secrets/${dynamicSecretName}/leases`,

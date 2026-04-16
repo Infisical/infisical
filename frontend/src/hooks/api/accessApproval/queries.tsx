@@ -104,8 +104,7 @@ export const useGetAccessRequestsCount = ({
     queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug, policyId),
     queryFn: () => fetchAccessRequestsCount(projectSlug, policyId),
     ...options,
-    enabled: Boolean(projectSlug) && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval ?? 30_000
+    enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
 
 export const useGetAccessApprovalPolicies = ({
@@ -132,6 +131,5 @@ export const useGetAccessApprovalRequests = ({
     queryFn: () => fetchApprovalRequests({ projectSlug, envSlug, authorUserId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true),
-    placeholderData: (previousData) => previousData,
-    refetchInterval: options?.refetchInterval ?? 30_000
+    placeholderData: (previousData) => previousData
   });

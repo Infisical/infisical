@@ -188,8 +188,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     await updateSecretApprovalRequestStatus({
       id: approvalRequestId,
       status,
-      comment,
-      projectId
+      comment
     });
     createNotification({
       type: "success",

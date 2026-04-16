@@ -101,9 +101,11 @@ export const useSelectOrganization = () => {
       return data;
     },
     onSuccess: () => {
+      // Invalidate the auth token cache so the authenticate middleware
+      // re-calls fetchAuthToken (which reads the new in-memory token with orgId)
       queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects });
     }
   });
 };
@@ -251,8 +253,6 @@ export const useGetAuthToken = () =>
   useQuery({
     queryKey: authKeys.getAuthToken,
     queryFn: fetchAuthToken,
-    staleTime: 0,
-    gcTime: 0,
     retry: 0
   });
 
