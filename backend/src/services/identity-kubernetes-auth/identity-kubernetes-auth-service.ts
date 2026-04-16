@@ -1147,11 +1147,14 @@ export const identityKubernetesAuthServiceFactory = ({
     const effectiveKubernetesHost =
       kubernetesHost !== undefined ? kubernetesHost : identityKubernetesAuth.kubernetesHost;
     const effectiveGatewayPoolId = gatewayPoolId !== undefined ? gatewayPoolId : identityKubernetesAuth.gatewayPoolId;
-    const effectiveGatewayId = effectiveGatewayPoolId
-      ? null
-      : gatewayId !== undefined
-        ? gatewayId
-        : (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId);
+    let effectiveGatewayId: string | null | undefined = null;
+    if (effectiveGatewayPoolId) {
+      effectiveGatewayId = null;
+    } else if (gatewayId !== undefined) {
+      effectiveGatewayId = gatewayId;
+    } else {
+      effectiveGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId;
+    }
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
