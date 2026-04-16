@@ -76,7 +76,7 @@ export function DateRangeQuickPresets({
               onChange(preset.value, { startDate, endDate, isUtc });
             }}
             className={cn(
-              "-ml-px border px-2.5 py-1.5 text-xs font-medium transition-colors",
+              "-ml-px w-11 border py-1.5 text-center text-xs font-medium transition-colors",
               isFirst && "rounded-l-md",
               isLast && "rounded-r-md",
               isActive

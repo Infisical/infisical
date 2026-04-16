@@ -423,8 +423,20 @@ export function DateRangeFilter({
                   <Calendar
                     mode="range"
                     selected={pendingRange}
-                    onSelect={setPendingRange}
+                    onSelect={(range, selectedDay) => {
+                      // If a complete range (with distinct start/end) is already selected, restart from the clicked date
+                      if (
+                        pendingRange?.from &&
+                        pendingRange?.to &&
+                        pendingRange.from.getTime() !== pendingRange.to.getTime()
+                      ) {
+                        setPendingRange({ from: selectedDay, to: undefined });
+                        return;
+                      }
+                      setPendingRange(range);
+                    }}
                     numberOfMonths={2}
+                    showOutsideDays={false}
                     captionLayout="dropdown"
                     disabled={{ after: today }}
                     defaultMonth={calendarDefaultMonth}
