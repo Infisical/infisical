@@ -131,129 +131,132 @@ const BulkTagDialogContent = ({
   const onSubmit = async (data: TFormSchema) => {
     setIsSubmitting(true);
 
-    const selectedTagIds = data.tags.map((t) => t.value);
+    try {
+      const selectedTagIds = data.tags.map((t) => t.value);
 
-    // Group secrets by environment
-    const secretsByEnv = Object.values(secrets).reduce<Record<string, SecretV3RawSanitized[]>>(
-      (acc, secretRecord) => {
-        Object.entries(secretRecord).forEach(([envSlug, secret]) => {
-          const canEditSecret = permission.can(
-            ProjectPermissionSecretActions.Edit,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: envSlug,
-              secretPath,
-              secretName: secret.key,
-              secretTags: (secret.tags || []).map((t) => t.slug)
-            })
-          );
-          if (!canEditSecret) return;
+      // Group secrets by environment
+      const secretsByEnv = Object.values(secrets).reduce<Record<string, SecretV3RawSanitized[]>>(
+        (acc, secretRecord) => {
+          Object.entries(secretRecord).forEach(([envSlug, secret]) => {
+            const canEditSecret = permission.can(
+              ProjectPermissionSecretActions.Edit,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: envSlug,
+                secretPath,
+                secretName: secret.key,
+                secretTags: (secret.tags || []).map((t) => t.slug)
+              })
+            );
+            if (!canEditSecret) return;
 
-          if (!acc[envSlug]) acc[envSlug] = [];
-          acc[envSlug].push(secret);
+            if (!acc[envSlug]) acc[envSlug] = [];
+            acc[envSlug].push(secret);
+          });
+          return acc;
+        },
+        {}
+      );
+
+      const envSlugs = Object.keys(secretsByEnv);
+
+      if (envSlugs.length === 0) {
+        createNotification({
+          type: "info",
+          text: "You don't have access to tag the selected secrets"
         });
-        return acc;
-      },
-      {}
-    );
+        return;
+      }
 
-    const envSlugs = Object.keys(secretsByEnv);
+      let hasApprovalRequest = false;
+      let hasDirectUpdate = false;
 
-    if (envSlugs.length === 0) {
-      createNotification({
-        type: "info",
-        text: "You don't have access to tag the selected secrets"
-      });
-      setIsSubmitting(false);
-      return;
-    }
+      const results = await Promise.allSettled(
+        envSlugs.map(async (envSlug) => {
+          const envSecrets = secretsByEnv[envSlug];
 
-    let hasApprovalRequest = false;
-    let hasDirectUpdate = false;
+          const secretUpdates = envSecrets.map((secret) => {
+            let tagIds: string[];
+            if (data.isReplaceMode) {
+              tagIds = selectedTagIds;
+            } else {
+              const existingTagIds = (secret.tags || []).map((t) => t.id);
+              tagIds = [...new Set([...existingTagIds, ...selectedTagIds])];
+            }
 
-    const results = await Promise.allSettled(
-      envSlugs.map(async (envSlug) => {
-        const envSecrets = secretsByEnv[envSlug];
+            return {
+              secretKey: secret.key,
+              type: SecretType.Shared,
+              tagIds
+            };
+          });
 
-        const secretUpdates = envSecrets.map((secret) => {
-          let tagIds: string[];
-          if (data.isReplaceMode) {
-            tagIds = selectedTagIds;
+          const result = await updateSecretBatch({
+            projectId,
+            environment: envSlug,
+            secretPath,
+            secrets: secretUpdates
+          });
+
+          if (result && "approval" in result) {
+            hasApprovalRequest = true;
           } else {
-            const existingTagIds = (secret.tags || []).map((t) => t.id);
-            tagIds = [...new Set([...existingTagIds, ...selectedTagIds])];
+            hasDirectUpdate = true;
           }
 
-          return {
-            secretKey: secret.key,
-            type: SecretType.Shared,
-            tagIds
-          };
-        });
+          return { environment: envSlug };
+        })
+      );
 
-        const result = await updateSecretBatch({
-          projectId,
-          environment: envSlug,
-          secretPath,
-          secrets: secretUpdates
-        });
+      const allSucceeded = results.every((r) => r.status === "fulfilled");
+      const someSucceeded = results.some((r) => r.status === "fulfilled");
 
-        if (result && "approval" in result) {
-          hasApprovalRequest = true;
+      const failedEnvs = environments
+        .filter(
+          (env) =>
+            !results.some((r) => r.status === "fulfilled" && r.value.environment === env.slug)
+        )
+        .filter((env) => secretsByEnv[env.slug])
+        .map((env) => env.name);
+
+      if (allSucceeded) {
+        onClose();
+        onComplete();
+        if (hasDirectUpdate && hasApprovalRequest) {
+          createNotification({
+            type: "info",
+            text: "Tags updated and an approval request was generated for protected environments"
+          });
+        } else if (hasApprovalRequest) {
+          createNotification({
+            type: "info",
+            text: "An approval request has been generated for the tag changes"
+          });
         } else {
-          hasDirectUpdate = true;
+          createNotification({
+            type: "success",
+            text: "Successfully updated tags on selected secrets"
+          });
         }
-
-        return { environment: envSlug };
-      })
-    );
-
-    const allSucceeded = results.every((r) => r.status === "fulfilled");
-    const someSucceeded = results.some((r) => r.status === "fulfilled");
-
-    const failedEnvs = environments
-      .filter(
-        (env) => !results.some((r) => r.status === "fulfilled" && r.value.environment === env.slug)
-      )
-      .filter((env) => secretsByEnv[env.slug])
-      .map((env) => env.name);
-
-    if (allSucceeded) {
-      onClose();
-      onComplete();
-      if (hasDirectUpdate && hasApprovalRequest) {
+      } else if (someSucceeded) {
         createNotification({
-          type: "info",
-          text: "Tags updated and an approval request was generated for protected environments"
-        });
-      } else if (hasApprovalRequest) {
-        createNotification({
-          type: "info",
-          text: "An approval request has been generated for the tag changes"
+          type: "warning",
+          text: `Tag update partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
         });
       } else {
         createNotification({
-          type: "success",
-          text: "Successfully updated tags on selected secrets"
+          type: "error",
+          text: "Failed to update tags on selected secrets"
         });
       }
-    } else if (someSucceeded) {
-      createNotification({
-        type: "warning",
-        text: `Tag update partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
-      });
-    } else {
-      createNotification({
-        type: "error",
-        text: "Failed to update tags on selected secrets"
-      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   const selectedSecretCount = Object.keys(secrets).length;
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
       onSubmit={handleSubmit(onSubmit)}
       onKeyDown={(e) => {

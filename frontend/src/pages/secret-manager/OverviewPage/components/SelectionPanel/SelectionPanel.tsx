@@ -319,7 +319,7 @@ export const SelectionPanel = ({
                   size="xs"
                 >
                   <TagsIcon />
-                  Tags
+                  Add Tags
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Access denied</TooltipContent>
