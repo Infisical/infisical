@@ -3,7 +3,6 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -23,6 +22,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { GatewayPicker } from "@app/components/v3";
 import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
@@ -30,7 +30,6 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
-  gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
@@ -54,6 +53,7 @@ const schema = z
     kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
+    gatewayPoolId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
@@ -85,11 +85,16 @@ const schema = z
       });
     }
 
-    if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+    if (
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+      !data.gatewayId &&
+      !data.gatewayPoolId
+    ) {
       ctx.addIssue({
         path: ["gatewayId"],
         code: z.ZodIssueCode.custom,
-        message: "When token review mode is set to Gateway, a gateway must be selected"
+        message:
+          "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
       });
     }
   });
@@ -124,8 +129,6 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
-
-  const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
 
   const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
@@ -181,7 +184,8 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
-        gatewayId: data.gatewayId || null,
+        gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
+        gatewayPoolId: data.gatewayPoolId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
@@ -308,6 +312,7 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     gatewayId,
+    gatewayPoolId,
     tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
@@ -329,7 +334,8 @@ export const IdentityKubernetesAuthForm = ({
         allowedAudience,
         caCert,
         identityId,
-        gatewayId: gatewayId || null,
+        gatewayId: gatewayPoolId ? null : gatewayId || null,
+        gatewayPoolId: gatewayPoolId || null,
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -351,7 +357,8 @@ export const IdentityKubernetesAuthForm = ({
         allowedNames: allowedNames || "",
         allowedNamespaces: allowedNamespaces || "",
         allowedAudience: allowedAudience || "",
-        gatewayId: gatewayId || null,
+        gatewayId: gatewayPoolId ? null : gatewayId || null,
+        gatewayPoolId: gatewayPoolId || null,
         caCert: caCert || "",
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
@@ -441,61 +448,46 @@ export const IdentityKubernetesAuthForm = ({
                     control={control}
                     name="gatewayId"
                     defaultValue=""
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Gateway"
-                        isOptional
-                      >
-                        <Tooltip
-                          isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
-                        >
-                          <div>
-                            <Select
-                              isDisabled={!isAllowed}
-                              value={value as string}
-                              onValueChange={(v) => {
-                                if (v !== "") {
-                                  onChange(v);
-                                }
+                    render={({ fieldState: { error } }) => {
+                      const gatewayPoolIdVal = watch("gatewayPoolId");
+                      const gatewayIdVal = watch("gatewayId");
 
-                                if (v === null) {
-                                  setValue(
-                                    "tokenReviewMode",
-                                    IdentityKubernetesAuthTokenReviewMode.Api,
-                                    {
-                                      shouldDirty: true,
-                                      shouldTouch: true
-                                    }
-                                  );
-                                }
-                              }}
-                              className="w-full border border-mineshaft-500"
-                              dropdownContainerClassName="max-w-none"
-                              isLoading={isGatewayLoading}
-                              placeholder="Default: Internet Gateway"
-                              position="popper"
-                            >
-                              <SelectItem
-                                value={null as unknown as string}
-                                onClick={() => {
-                                  onChange(null);
+                      return (
+                        <FormControl
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          label="Gateway"
+                          isOptional
+                        >
+                          <Tooltip
+                            isDisabled={isAllowed}
+                            content="Restricted access. You don't have permission to attach gateways to resources."
+                          >
+                            <div>
+                              <GatewayPicker
+                                value={{
+                                  gatewayId: gatewayIdVal || null,
+                                  gatewayPoolId: gatewayPoolIdVal || null
                                 }}
-                              >
-                                Internet Gateway
-                              </SelectItem>
-                              {gateways?.map((el) => (
-                                <SelectItem value={el.id} key={el.id}>
-                                  {el.name}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </div>
-                        </Tooltip>
-                      </FormControl>
-                    )}
+                                onChange={({ gatewayId: gwId, gatewayPoolId: poolId }) => {
+                                  setValue("gatewayId", gwId, { shouldDirty: true });
+                                  setValue("gatewayPoolId", poolId, { shouldDirty: true });
+                                  if (!gwId && !poolId) {
+                                    setValue(
+                                      "tokenReviewMode",
+                                      IdentityKubernetesAuthTokenReviewMode.Api,
+                                      { shouldDirty: true, shouldTouch: true }
+                                    );
+                                  }
+                                }}
+                                isDisabled={!isAllowed}
+                                className="w-full"
+                              />
+                            </div>
+                          </Tooltip>
+                        </FormControl>
+                      );
+                    }}
                   />
                 )}
               </OrgPermissionCan>

@@ -30,7 +30,8 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedNamespaces: true,
   allowedNames: true,
   allowedAudience: true,
-  gatewayId: true
+  gatewayId: true,
+  gatewayPoolId: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -189,6 +190,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
+          gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -226,11 +228,22 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               message: "When token review mode is set to API, a Kubernetes host must be provided"
             });
           }
-          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+          if (
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+            !data.gatewayId &&
+            !data.gatewayPoolId
+          ) {
             ctx.addIssue({
               path: ["gatewayId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+            });
+          }
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
             });
           }
 
@@ -353,6 +366,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
+          gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -386,12 +400,20 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           if (
             data.tokenReviewMode &&
             data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId
+            !data.gatewayId &&
+            !data.gatewayPoolId
           ) {
             ctx.addIssue({
               path: ["gatewayId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+            });
+          }
+          if (data.gatewayId && data.gatewayPoolId) {
+            ctx.addIssue({
+              path: ["gatewayPoolId"],
+              code: z.ZodIssueCode.custom,
+              message: "Cannot specify both a gateway and a gateway pool"
             });
           }
           if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {

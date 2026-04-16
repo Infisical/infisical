@@ -221,6 +221,8 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
   GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  GatewayPool = "gateway_pools",
+  GatewayPoolMembership = "gateway_pool_memberships",
 
   KeyValueStore = "key_value_store",
 

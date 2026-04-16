@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { projectIdentityQuery, projectKeys } from "@app/hooks/api";
 
+import { gatewayPoolsQueryKeys as gatewayPoolsKeys } from "../gateway-pools/queries";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
@@ -1414,6 +1415,7 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
       gatewayId,
+      gatewayPoolId,
       tokenReviewMode
     }) => {
       const {
@@ -1432,6 +1434,7 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
           gatewayId,
+          gatewayPoolId,
           tokenReviewMode
         }
       );
@@ -1533,6 +1536,7 @@ export const useDeleteIdentityAzureAuth = () => {
       }
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsKeys.allKey() });
     }
   });
 };
@@ -1553,6 +1557,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
       gatewayId,
+      gatewayPoolId,
       tokenReviewMode
     }) => {
       const {
@@ -1571,6 +1576,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
           gatewayId,
+          gatewayPoolId,
           tokenReviewMode
         }
       );
@@ -1595,6 +1601,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsKeys.allKey() });
     }
   });
 };

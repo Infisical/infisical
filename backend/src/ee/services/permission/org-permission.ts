@@ -74,6 +74,14 @@ export enum OrgPermissionGatewayActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgPermissionGatewayPoolActions {
+  CreateGatewayPools = "create-gateway-pools",
+  ListGatewayPools = "list-gateway-pools",
+  EditGatewayPools = "edit-gateway-pools",
+  DeleteGatewayPools = "delete-gateway-pools",
+  AttachGatewayPools = "attach-gateway-pools"
+}
+
 export enum OrgPermissionRelayActions {
   CreateRelays = "create-relays",
   ListRelays = "list-relays",
@@ -141,6 +149,7 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  GatewayPool = "gateway-pool",
   Relay = "relay",
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
@@ -172,6 +181,7 @@ export type OrgPermissionSet =
   | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
+  | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
   | [
       OrgPermissionAppConnectionActions,
@@ -331,6 +341,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.GatewayPool).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionGatewayPoolActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.Relay).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionRelayActions).describe(
       "Describe what action an entity can take."
@@ -456,6 +472,12 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
+  can(OrgPermissionGatewayPoolActions.ListGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.CreateGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.EditGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.DeleteGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.AttachGatewayPools, OrgPermissionSubjects.GatewayPool);
+
   can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
@@ -525,6 +547,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+
+  can(OrgPermissionGatewayPoolActions.ListGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.CreateGatewayPools, OrgPermissionSubjects.GatewayPool);
+  can(OrgPermissionGatewayPoolActions.AttachGatewayPools, OrgPermissionSubjects.GatewayPool);
 
   can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
