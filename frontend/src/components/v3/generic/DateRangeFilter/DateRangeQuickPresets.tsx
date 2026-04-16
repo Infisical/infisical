@@ -47,7 +47,6 @@ type Props = {
   presets?: QuickPreset[];
   isUtc?: boolean;
   accent?: DateRangeFilterAccent;
-  hasTrailingItem?: boolean;
   className?: string;
 };
 
@@ -57,37 +56,29 @@ export function DateRangeQuickPresets({
   presets = DEFAULT_QUICK_PRESETS,
   isUtc = false,
   accent = "primary",
-  hasTrailingItem = false,
   className
 }: Props) {
   const accentStyles = ACCENT_STYLES[accent];
 
   return (
-    <div className={cn("flex items-center", className)}>
-      {presets.map((preset, index) => {
+    <>
+      {presets.map((preset) => {
         const isActive = value === preset.value;
-        const isFirst = index === 0;
-        const isLast = index === presets.length - 1 && !hasTrailingItem;
         return (
           <Button
             key={preset.value}
-            size="xs"
+            size="sm"
             variant={isActive ? accentStyles.activeVariant : "outline"}
             onClick={() => {
               const { startDate, endDate } = preset.resolve();
               onChange(preset.value, { startDate, endDate, isUtc });
             }}
-            className={cn(
-              "-ml-px w-11 rounded-none",
-              isFirst && "rounded-l-sm",
-              isLast && "rounded-r-sm",
-              isActive ? "relative z-10" : "hover:relative hover:z-10"
-            )}
+            className={cn(isActive ? "relative z-10" : "hover:relative hover:z-10", className)}
           >
             {preset.label}
           </Button>
         );
       })}
-    </div>
+    </>
   );
 }

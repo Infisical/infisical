@@ -8,7 +8,8 @@ import {
   DateRangeQuickPresets,
   DocumentationLinkBadge,
   UnstableAlert,
-  UnstableAlertDescription
+  UnstableAlertDescription,
+  UnstableButtonGroup
 } from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
@@ -140,14 +141,13 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <div className="flex">
+              <UnstableButtonGroup>
                 <DateRangeQuickPresets
                   value={activePreset}
                   onChange={(preset, result) => {
                     setActivePreset(preset);
                     setDateRange(result);
                   }}
-                  hasTrailingItem
                   accent={dateRangeAccent}
                 />
                 <DateRangeFilter
@@ -158,9 +158,8 @@ const LogsSectionComponent = ({
                     setDateRange(result);
                   }}
                   accent={dateRangeAccent}
-                  className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
                 />
-              </div>
+              </UnstableButtonGroup>
             )}
           </div>
         </div>
@@ -242,14 +241,13 @@ const LogsSectionComponent = ({
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <div className="flex">
+          <UnstableButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
               onChange={(preset, result) => {
                 setActivePreset(preset);
                 setDateRange(result);
               }}
-              hasTrailingItem
               accent={dateRangeAccent}
             />
             <DateRangeFilter
@@ -260,9 +258,8 @@ const LogsSectionComponent = ({
                 setDateRange(result);
               }}
               accent={dateRangeAccent}
-              className="-ml-px h-auto rounded-l-none px-2.5 py-1.5 text-xs"
             />
-          </div>
+          </UnstableButtonGroup>
         )}
         {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
