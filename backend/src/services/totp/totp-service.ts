@@ -22,6 +22,8 @@ type TTotpServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
 };
 
+authenticator.options = { window: 1 };
+
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
 const MAX_RECOVERY_CODE_LIMIT = 10;
