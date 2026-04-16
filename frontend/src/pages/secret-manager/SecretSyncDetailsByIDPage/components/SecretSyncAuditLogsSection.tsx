@@ -36,7 +36,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
       </div>
       {subscription.auditLogs ? (
         <LogsSection
-          refetchInterval={4000}
+          refetchInterval={15_000}
           showFilters={false}
           project={currentProject}
           presets={{
