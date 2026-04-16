@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -52,9 +54,13 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdWithMembers = async (poolId: string) => {
+  const findByIdWithMembers = async (poolId: string, orgId: string) => {
     try {
-      const pool = await db.replicaNode()(TableName.GatewayPool).where(`${TableName.GatewayPool}.id`, poolId).first();
+      const pool = await db
+        .replicaNode()(TableName.GatewayPool)
+        .where(`${TableName.GatewayPool}.id`, poolId)
+        .where(`${TableName.GatewayPool}.orgId`, orgId)
+        .first();
 
       if (!pool) return null;
 
@@ -75,5 +81,14 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByOrgIdWithDetails, findByIdWithMembers };
+  const countByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.GatewayPool).where({ orgId }).count("id").first();
+      return parseInt(String(result?.count || "0"), 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.GatewayPool}: CountByOrgId` });
+    }
+  };
+
+  return { ...orm, findByOrgIdWithDetails, findByIdWithMembers, countByOrgId };
 };

@@ -1,10 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+
+// Temporary limit until pool limiting is implemented at the plan level
+const MAX_GATEWAY_POOLS_PER_ORG = 50;
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -72,21 +76,32 @@ export const gatewayPoolServiceFactory = ({
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.CreateGatewayPools);
     await $checkLicense(actor.orgId);
 
-    try {
-      const pool = await gatewayPoolDAL.create({
-        orgId: actor.orgId,
-        name
-      });
-      return pool;
-    } catch (error) {
-      if (
-        error instanceof DatabaseError &&
-        (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
-      ) {
-        throw new BadRequestError({ message: `A gateway pool named "${name}" already exists in this organization.` });
+    const pool = await gatewayPoolDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateGatewayPool(actor.orgId)]);
+
+      const existingCount = await gatewayPoolDAL.countByOrgId(actor.orgId, tx);
+      if (existingCount >= MAX_GATEWAY_POOLS_PER_ORG) {
+        throw new BadRequestError({
+          message: `Organization has reached the maximum limit of ${MAX_GATEWAY_POOLS_PER_ORG} gateway pools`
+        });
       }
-      throw error;
-    }
+
+      try {
+        return await gatewayPoolDAL.create({ orgId: actor.orgId, name }, tx);
+      } catch (error) {
+        if (
+          error instanceof DatabaseError &&
+          (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({
+            message: `A gateway pool named "${name}" already exists in this organization.`
+          });
+        }
+        throw error;
+      }
+    });
+
+    return pool;
   };
 
   const listGatewayPools = async (actor: TListGatewayPoolsDTO) => {
@@ -110,8 +125,8 @@ export const gatewayPoolServiceFactory = ({
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
     await $checkLicense(actor.orgId);
 
-    const pool = await gatewayPoolDAL.findByIdWithMembers(poolId);
-    if (!pool || pool.orgId !== actor.orgId) {
+    const pool = await gatewayPoolDAL.findByIdWithMembers(poolId, actor.orgId);
+    if (!pool) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
@@ -152,16 +167,20 @@ export const gatewayPoolServiceFactory = ({
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
-    // Check for referencing consumer configs (add more DAL counts here as pool support expands)
-    const k8sAuthCount = await identityKubernetesAuthDAL.countByGatewayPoolId(poolId);
-    const totalReferences = k8sAuthCount;
-    if (totalReferences > 0) {
-      throw new BadRequestError({
-        message: `Cannot delete pool "${existingPool.name}" because it is referenced by ${totalReferences} consumer configuration(s). Remove the pool reference from those configs first.`
-      });
-    }
+    await gatewayPoolDAL.transaction(async (tx) => {
+      // Check for referencing consumer configs inside transaction to prevent race conditions
+      // Add more DAL counts here as pool support expands
+      const k8sAuthCount = await identityKubernetesAuthDAL.countByGatewayPoolId(poolId, tx);
+      const totalReferences = k8sAuthCount;
+      if (totalReferences > 0) {
+        throw new BadRequestError({
+          message: `Cannot delete pool "${existingPool.name}" because it is referenced by ${totalReferences} consumer configuration(s). Remove the pool reference from those configs first.`
+        });
+      }
 
-    await gatewayPoolDAL.deleteById(poolId);
+      await gatewayPoolDAL.deleteById(poolId, tx);
+    });
+
     return existingPool;
   };
 

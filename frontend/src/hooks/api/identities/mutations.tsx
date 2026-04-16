@@ -1456,7 +1456,10 @@ export const useAddIdentityKubernetesAuth = () => {
         });
       }
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
-      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
+      });
+      queryClient.invalidateQueries({ queryKey: gatewayPoolsKeys.allKey() });
     }
   });
 };

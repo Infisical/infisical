@@ -14,6 +14,7 @@ import {
 } from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -89,7 +90,11 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "getPlatformConnectionDetailsByPoolId" | "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "getPlatformConnectionDetailsByPoolId" | "pickRandomHealthyGateway"
+  >;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
@@ -110,6 +115,7 @@ export const identityKubernetesAuthServiceFactory = ({
   gatewayV2DAL,
   kmsService,
   gatewayPoolService,
+  gatewayPoolDAL,
   orgDAL
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
@@ -889,6 +895,11 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionSubjects.GatewayPool
       );
 
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
+      }
+
       // Validate connectivity through a random healthy pool member
       const validationGateway = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
@@ -1112,6 +1123,11 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionGatewayPoolActions.AttachGatewayPools,
         OrgPermissionSubjects.GatewayPool
       );
+
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
+      }
     }
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.

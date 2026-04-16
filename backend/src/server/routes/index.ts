@@ -1973,7 +1973,8 @@ export const registerRoutes = async (
     gatewayDAL,
     kmsService,
     membershipIdentityDAL,
-    gatewayPoolService
+    gatewayPoolService,
+    gatewayPoolDAL
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityDAL,
