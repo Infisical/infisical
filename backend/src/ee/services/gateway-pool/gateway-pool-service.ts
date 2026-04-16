@@ -1,14 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-
-// Temporary limit until pool limiting is implemented at the plan level
-const MAX_GATEWAY_POOLS_PER_ORG = 50;
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -76,32 +72,23 @@ export const gatewayPoolServiceFactory = ({
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.CreateGatewayPools);
     await $checkLicense(actor.orgId);
 
-    const pool = await gatewayPoolDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateGatewayPool(actor.orgId)]);
-
-      const existingCount = await gatewayPoolDAL.countByOrgId(actor.orgId, tx);
-      if (existingCount >= MAX_GATEWAY_POOLS_PER_ORG) {
+    try {
+      const pool = await gatewayPoolDAL.create({
+        orgId: actor.orgId,
+        name
+      });
+      return pool;
+    } catch (error) {
+      if (
+        error instanceof DatabaseError &&
+        (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+      ) {
         throw new BadRequestError({
-          message: `Organization has reached the maximum limit of ${MAX_GATEWAY_POOLS_PER_ORG} gateway pools`
+          message: `A gateway pool named "${name}" already exists in this organization.`
         });
       }
-
-      try {
-        return await gatewayPoolDAL.create({ orgId: actor.orgId, name }, tx);
-      } catch (error) {
-        if (
-          error instanceof DatabaseError &&
-          (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
-        ) {
-          throw new BadRequestError({
-            message: `A gateway pool named "${name}" already exists in this organization.`
-          });
-        }
-        throw error;
-      }
-    });
-
-    return pool;
+      throw error;
+    }
   };
 
   const listGatewayPools = async (actor: TListGatewayPoolsDTO) => {
