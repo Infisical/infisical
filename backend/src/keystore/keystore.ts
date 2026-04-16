@@ -109,8 +109,7 @@ export const KeyStorePrefixes = {
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
-  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
+  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const
 };
 
 export const KeyStoreTtls = {
@@ -123,8 +122,7 @@ export const KeyStoreTtls = {
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
-  RefreshTokenGraceInSeconds: 30,
-  InsightsCacheInSeconds: 300 // 5 minutes
+  RefreshTokenGraceInSeconds: 30
 };
 
 type TDeleteItems = {

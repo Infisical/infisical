@@ -245,15 +245,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
   [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
 
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR]:
-    "View Secrets Management Calendar Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
-    "View Secrets Management Access Volume Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:
-    "View Secrets Management Access Locations Insights",
-  [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
-
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
   [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",

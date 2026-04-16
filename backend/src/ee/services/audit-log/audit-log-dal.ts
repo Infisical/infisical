@@ -13,14 +13,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
-type TAggregateQuery = {
-  orgId: string;
-  projectId: string;
-  eventTypes: EventType[];
-  startDate: string;
-  endDate: string;
-};
-
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
@@ -35,15 +27,6 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
     },
     tx?: knex.Knex
   ) => Promise<TAuditLogs[]>;
-  countByDateAndActor: (
-    arg: TAggregateQuery,
-    tx?: knex.Knex
-  ) => Promise<{ date: string; actor: string; actorMetadata: unknown; count: number }[]>;
-  countByIpAddress: (arg: TAggregateQuery, tx?: knex.Knex) => Promise<{ ipAddress: string; count: number }[]>;
-  countByAuthMethod: (
-    arg: TAggregateQuery,
-    tx?: knex.Knex
-  ) => Promise<{ actor: string; actorMetadata: unknown; count: number }[]>;
 }
 
 type TFindQuery = {
@@ -265,111 +248,5 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return auditLogOrm.create(tx);
   };
 
-  const countByDateAndActor = async (
-    {
-      orgId,
-      projectId,
-      eventTypes,
-      startDate,
-      endDate
-    }: {
-      orgId: string;
-      projectId: string;
-      eventTypes: EventType[];
-      startDate: string;
-      endDate: string;
-    },
-    tx?: knex.Knex
-  ) => {
-    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
-      .where(`${TableName.AuditLog}.orgId`, orgId)
-      .where(`${TableName.AuditLog}.projectId`, projectId)
-      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
-      .select(
-        db.raw(`DATE("${TableName.AuditLog}"."createdAt") as date`),
-        `${TableName.AuditLog}.actor`,
-        `${TableName.AuditLog}.actorMetadata`
-      )
-      .groupByRaw(
-        `DATE("${TableName.AuditLog}"."createdAt"), "${TableName.AuditLog}"."actor", "${TableName.AuditLog}"."actorMetadata"`
-      )
-      .select(db.raw("COUNT(*)::int as count"))
-      .timeout(1000 * 120);
-
-    return rows as { date: string; actor: string; actorMetadata: unknown; count: number }[];
-  };
-
-  const countByIpAddress = async (
-    {
-      orgId,
-      projectId,
-      eventTypes,
-      startDate,
-      endDate
-    }: {
-      orgId: string;
-      projectId: string;
-      eventTypes: EventType[];
-      startDate: string;
-      endDate: string;
-    },
-    tx?: knex.Knex
-  ) => {
-    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
-      .where(`${TableName.AuditLog}.orgId`, orgId)
-      .where(`${TableName.AuditLog}.projectId`, projectId)
-      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
-      .whereNotNull(`${TableName.AuditLog}.ipAddress`)
-      .select(`${TableName.AuditLog}.ipAddress`)
-      .groupBy(`${TableName.AuditLog}.ipAddress`)
-      .select(db.raw("COUNT(*)::int as count"))
-      .timeout(1000 * 120);
-
-    return rows as { ipAddress: string; count: number }[];
-  };
-
-  const countByAuthMethod = async (
-    {
-      orgId,
-      projectId,
-      eventTypes,
-      startDate,
-      endDate
-    }: {
-      orgId: string;
-      projectId: string;
-      eventTypes: EventType[];
-      startDate: string;
-      endDate: string;
-    },
-    tx?: knex.Knex
-  ) => {
-    const rows = await (tx || db.replicaNode())(TableName.AuditLog)
-      .where(`${TableName.AuditLog}.orgId`, orgId)
-      .where(`${TableName.AuditLog}.projectId`, projectId)
-      .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
-      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
-      .select(`${TableName.AuditLog}.actor`, `${TableName.AuditLog}.actorMetadata`)
-      .groupBy(`${TableName.AuditLog}.actor`, `${TableName.AuditLog}.actorMetadata`)
-      .select(db.raw("COUNT(*)::int as count"))
-      .timeout(1000 * 120);
-
-    return rows as { actor: string; actorMetadata: unknown; count: number }[];
-  };
-
-  return {
-    ...auditLogOrm,
-    create,
-    pruneAuditLog,
-    getApproximateRowCount,
-    find,
-    countByDateAndActor,
-    countByIpAddress,
-    countByAuthMethod
-  };
+  return { ...auditLogOrm, create, pruneAuditLog, getApproximateRowCount, find };
 };
