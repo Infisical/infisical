@@ -18,7 +18,8 @@ export const Route = createFileRoute("/_authenticate")({
     const data = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
-        queryFn: fetchAuthToken
+        queryFn: fetchAuthToken,
+        staleTime: 0
       })
       .catch(() => {
         createNotification({
