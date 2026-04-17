@@ -111,10 +111,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/settings",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings"
     ),
-    InsightsPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/insights",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights"
-    ),
     IntegrationDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId"
