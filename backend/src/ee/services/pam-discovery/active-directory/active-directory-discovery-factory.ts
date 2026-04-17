@@ -513,6 +513,7 @@ const upsertWindowsServerResource = async (
   projectId: string,
   computer: TLdapComputer,
   domainId: string,
+  domainFQDN: string,
   gatewayId: string,
   winrmConfig: {
     winrmPort: number;
@@ -521,23 +522,29 @@ const upsertWindowsServerResource = async (
     winrmCaCert?: string;
   },
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find">,
+  pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "updateById">,
   tx: Knex
 ) => {
-  const fingerprint = computer.objectGUID;
+  const fingerprint = `${domainFQDN.toLowerCase()}:${computer.objectGUID}`;
 
   const existing = await pamResourceDAL.find(
     {
       projectId,
       resourceType: PamResource.Windows,
-      discoveryFingerprint: fingerprint,
-      domainId
+      discoveryFingerprint: fingerprint
     },
     { tx }
   );
 
   if (existing.length > 0) {
-    return { resource: existing[0], isNew: false };
+    const found = existing[0];
+
+    // Reconnect if the resource was orphaned (e.g. the domain was previously deleted)
+    if (!found.domainId) {
+      const reconnected = await pamResourceDAL.updateById(found.id, { domainId }, tx);
+      return { resource: reconnected, isNew: false };
+    }
+    return { resource: found, isNew: false };
   }
 
   const hostname = computer.dNSHostName || computer.cn;
@@ -585,14 +592,16 @@ const upsertDomainAccount = async (
   projectId: string,
   user: TLdapUser,
   domainId: string,
+  domainFQDN: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find">,
   tx: Knex
 ) => {
-  const fingerprint = user.objectGUID;
+  const fingerprint = `${domainFQDN.toLowerCase()}:${user.objectGUID}`;
 
   const existing = await pamAccountDAL.find(
     {
+      projectId,
       domainId,
       discoveryFingerprint: fingerprint
     },
@@ -783,12 +792,13 @@ const upsertLocalAccount = async (
   projectId: string,
   localUser: TWinRmLocalUser,
   computerObjectGUID: string,
+  domainFQDN: string,
   windowsServerResourceId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find">,
   tx: Knex
 ) => {
-  const fingerprint = `${computerObjectGUID}:${localUser.Name.toLowerCase()}`;
+  const fingerprint = `${domainFQDN.toLowerCase()}:${computerObjectGUID}:${localUser.Name.toLowerCase()}`;
 
   const existing = await pamAccountDAL.find(
     {
@@ -1004,6 +1014,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
               projectId,
               computer,
               domain.id,
+              configuration.domainFQDN,
               gatewayId,
               {
                 winrmPort: configuration.winrmPort,
@@ -1047,7 +1058,15 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
       for await (const user of users) {
         try {
           const { account, isNew } = await pamAccountDAL.transaction(async (tx) => {
-            const result = await upsertDomainAccount(projectId, user, domain.id, kmsService, pamAccountDAL, tx);
+            const result = await upsertDomainAccount(
+              projectId,
+              user,
+              domain.id,
+              configuration.domainFQDN,
+              kmsService,
+              pamAccountDAL,
+              tx
+            );
 
             await pamDiscoverySourceAccountsDAL.upsertJunction(
               {
@@ -1106,6 +1125,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
                     projectId,
                     localUser,
                     computer.objectGUID,
+                    configuration.domainFQDN,
                     windowsResourceId,
                     kmsService,
                     pamAccountDAL,
