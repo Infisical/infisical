@@ -1174,6 +1174,45 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const movePersonalOverrides = async (
+    sourceFolderId: string,
+    destinationFolderId: string,
+    secretKeys: string[],
+    tx?: Knex
+  ) => {
+    if (secretKeys.length === 0) return [];
+    try {
+      const movedSecrets = await (tx || db)(TableName.SecretV2)
+        .where({
+          folderId: sourceFolderId,
+          type: SecretType.Personal
+        })
+        .whereIn("key", secretKeys)
+        .update({ folderId: destinationFolderId })
+        .returning("*");
+      return movedSecrets;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "move personal overrides" });
+    }
+  };
+
+  const deletePersonalOverridesByKeys = async (folderId: string, secretKeys: string[], tx?: Knex) => {
+    if (secretKeys.length === 0) return [];
+    try {
+      const deletedSecrets = await (tx || db)(TableName.SecretV2)
+        .where({
+          folderId,
+          type: SecretType.Personal
+        })
+        .whereIn("key", secretKeys)
+        .delete()
+        .returning("*");
+      return deletedSecrets;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "delete personal overrides by keys" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -1199,6 +1238,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findSecretsWithReminderRecipientsOld,
     findReferencedSecretReferencesBySecretKey,
     updateSecretReferenceSecretKey,
-    updateSecretReferenceEnvAndPath
+    updateSecretReferenceEnvAndPath,
+    movePersonalOverrides,
+    deletePersonalOverridesByKeys
   };
 };
