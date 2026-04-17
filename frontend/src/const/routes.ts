@@ -7,7 +7,10 @@ const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRou
 
 export const ROUTE_PATHS = Object.freeze({
   Auth: {
-    LoginSSO: setRoute("/login/sso", "/_restrict-login-signup/login/sso"),
+    SelectOrgPage: setRoute(
+      "/login/select-organization",
+      "/_restrict-login-signup/login/select-organization"
+    ),
     ProviderSuccessPage: setRoute(
       "/login/provider/success",
       "/_restrict-login-signup/login/provider/success"
@@ -107,6 +110,10 @@ export const ROUTE_PATHS = Object.freeze({
     SettingsPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/settings",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings"
+    ),
+    InsightsPage: setRoute(
+      "/organizations/$orgId/projects/secret-management/$projectId/insights",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights"
     ),
     IntegrationDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",

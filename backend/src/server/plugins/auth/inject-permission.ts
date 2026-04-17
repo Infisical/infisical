@@ -61,6 +61,19 @@ export const injectPermission = fp(async (server) => {
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForIdentity=${req.auth.scimTokenId}] [type=${ActorType.SCIM_CLIENT}]`
       );
+    } else if (req.auth.actor === ActorType.GATEWAY) {
+      req.permission = {
+        type: ActorType.GATEWAY,
+        id: req.auth.gatewayId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForGateway=${req.auth.gatewayId}] [type=${ActorType.GATEWAY}]`
+      );
     }
   });
 });

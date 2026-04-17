@@ -23,6 +23,7 @@ import {
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource, PamResourceOrderBy } from "@app/ee/services/pam-resource/pam-resource-enums";
+import { PAM_AI_INSIGHT_MODELS } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import {
   PostgresResourceListItemSchema,
   SanitizedPostgresResourceSchema
@@ -74,6 +75,32 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/ai-insights/models",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List available AI models for PAM session insights, grouped by app connection type",
+      response: {
+        200: z.object({
+          models: z
+            .object({
+              connectionApp: z.string(),
+              id: z.string(),
+              label: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: () => {
+      return { models: PAM_AI_INSIGHT_MODELS };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/options",

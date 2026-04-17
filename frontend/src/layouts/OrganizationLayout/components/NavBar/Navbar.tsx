@@ -91,6 +91,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { VersionBadge } from "./VersionBadge";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -269,7 +270,6 @@ export const Navbar = () => {
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
-      console.log("Logging out...");
       await logout.mutateAsync();
       navigate({ to: "/login" });
     } catch (error) {
@@ -318,7 +318,7 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
+        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }
@@ -582,6 +582,7 @@ export const Navbar = () => {
           {getPlan(subscription)}
         </Badge>
       )}
+      <VersionBadge />
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>

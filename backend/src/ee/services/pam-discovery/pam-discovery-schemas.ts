@@ -11,10 +11,10 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { ActiveDirectoryAccountMetadataSchema } from "../pam-domain/active-directory/active-directory-domain-schemas";
 import { PamDomainType } from "../pam-domain/pam-domain-enums";
 import { PamResource } from "../pam-resource/pam-resource-enums";
-import { SSHResourceInternalMetadataSchema } from "../pam-resource/ssh/ssh-resource-schemas";
+import { SanitizedSSHResourceInternalMetadataSchema } from "../pam-resource/ssh/ssh-resource-schemas";
 import {
-  WindowsAccountMetadataSchema,
-  WindowsResourceInternalMetadataSchema
+  SanitizedWindowsResourceInternalMetadataSchema,
+  WindowsAccountMetadataSchema
 } from "../pam-resource/windows-server/windows-server-resource-schemas";
 import {
   PamDiscoverySchedule,
@@ -58,7 +58,7 @@ export const DiscoveredResourceSchema = PamDiscoverySourceResourcesSchema.extend
   resourceName: z.string(),
   resourceType: z.nativeEnum(PamResource),
   resourceInternalMetadata: z
-    .union([SSHResourceInternalMetadataSchema, WindowsResourceInternalMetadataSchema])
+    .union([SanitizedSSHResourceInternalMetadataSchema, SanitizedWindowsResourceInternalMetadataSchema])
     .optional(),
   dependencyCount: z.number().default(0)
 });

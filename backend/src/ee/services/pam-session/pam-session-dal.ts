@@ -58,6 +58,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
       .select(selectAllTableCols(TableName.PamSession))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))
+      .select(db.ref("id").withSchema(TableName.GatewayV2).as("gatewayId"))
       .where(`${TableName.PamSession}.projectId`, projectId);
 
     return sessions;

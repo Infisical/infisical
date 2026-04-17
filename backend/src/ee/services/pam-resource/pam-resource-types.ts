@@ -122,8 +122,15 @@ export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails"
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 
+export type TSessionSummaryConfigDTO = {
+  aiInsightsEnabled: boolean;
+  connectionId: string;
+  model: string;
+} | null;
+
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
   resourceId: string;
+  sessionSummaryConfig?: TSessionSummaryConfigDTO;
 };
 
 export type TListResourcesDTO = {

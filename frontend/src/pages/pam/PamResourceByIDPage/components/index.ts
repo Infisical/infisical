@@ -4,4 +4,7 @@ export { PamResourceDependenciesSection } from "./PamResourceDependenciesSection
 export { PamResourceDetailsSection } from "./PamResourceDetailsSection";
 export { PamResourceMetadataSection } from "./PamResourceMetadataSection";
 export { PamResourceRotationPolicySection } from "./PamResourceRotationPolicySection";
+export type { SessionRecordingConfig } from "./PamResourceSessionRecordingSection";
+export { PamResourceSessionRecordingSection } from "./PamResourceSessionRecordingSection";
 export { PamRotationPolicyModal } from "./PamRotationPolicyModal";
+export { PamSessionRecordingModal } from "./PamSessionRecordingModal";

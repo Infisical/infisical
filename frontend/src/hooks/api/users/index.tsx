@@ -4,8 +4,7 @@ export {
   useRequestEmailChangeOTP,
   useRevokeMySessionById,
   useSendEmailVerificationCode,
-  useUpdateUserEmail,
-  useVerifyEmailVerificationCode
+  useUpdateUserEmail
 } from "./mutation";
 export {
   fetchOrgUsers,

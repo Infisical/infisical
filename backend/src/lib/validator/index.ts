@@ -1,5 +1,5 @@
 export { matchesAllowedEmailDomain } from "./email-domain-matcher";
-export { isDisposableEmail } from "./validate-email";
+export { isDisposableEmail, isValidEmailDomain, sanitizeEmail, validateEmail } from "./validate-email";
 export { isValidFolderName, isValidSecretPath } from "./validate-folder-name";
 export {
   containsDangerousSmbChars,

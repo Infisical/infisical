@@ -1,4 +1,5 @@
 import { TPamResources } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -119,8 +120,34 @@ export const decryptResource = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const { encryptedConnectionDetails, encryptedRotationAccountCredentials, encryptedResourceMetadata, ...rest } =
-    resource;
+  const {
+    encryptedConnectionDetails,
+    encryptedRotationAccountCredentials,
+    encryptedResourceMetadata,
+    encryptedSessionSummaryConfig,
+    ...rest
+  } = resource;
+
+  let sessionSummaryConfig: { aiInsightsEnabled: boolean; connectionId: string; model: string } | null = null;
+
+  if (encryptedSessionSummaryConfig) {
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      sessionSummaryConfig = JSON.parse(decryptor({ cipherTextBlob: encryptedSessionSummaryConfig }).toString()) as {
+        aiInsightsEnabled: boolean;
+        connectionId: string;
+        model: string;
+      };
+    } catch (err) {
+      logger.warn(
+        { err, resourceId: resource.id },
+        "decryptResource: failed to decrypt sessionSummaryConfig, falling back to null"
+      );
+    }
+  }
 
   return {
     ...rest,
@@ -135,6 +162,7 @@ export const decryptResource = async (
           projectId,
           kmsService
         })
-      : null
+      : null,
+    sessionSummaryConfig
   } as TPamResource;
 };

@@ -18,14 +18,32 @@ export const GatewayAccessResponseSchema = z.object({
   metadata: z.record(z.string(), z.string().optional()).optional()
 });
 
+// AI Insights model list — single source of truth for what models are available per provider
+export const PAM_AI_INSIGHT_MODELS: { connectionApp: string; id: string; label: string }[] = [
+  { connectionApp: "anthropic", id: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { connectionApp: "anthropic", id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { connectionApp: "anthropic", id: "claude-haiku-4-5", label: "Claude Haiku 4.5" }
+];
+
 // Resources
+export const SessionSummaryConfigSchema = z
+  .object({
+    aiInsightsEnabled: z.boolean(),
+    connectionId: z.string().uuid(),
+    model: z.enum(["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"])
+  })
+  .nullable()
+  .optional();
+
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   encryptedRotationAccountCredentials: true,
   encryptedResourceMetadata: true,
+  encryptedSessionSummaryConfig: true,
   resourceType: true
 }).extend({
-  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional()
+  metadata: ResourceMetadataSchema.pick({ id: true, key: true, value: true }).array().optional(),
+  sessionSummaryConfig: SessionSummaryConfigSchema
 });
 
 const CoreCreatePamResourceSchema = z.object({
@@ -42,7 +60,8 @@ export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
 
 const CoreUpdatePamResourceSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  sessionSummaryConfig: SessionSummaryConfigSchema
 });
 
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
@@ -71,6 +90,7 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
     .nullable()
     .optional(),
   domain: PamDomainsSchema.pick({ id: true, name: true, domainType: true }).nullable().optional(),
+  policyName: z.string().nullable().optional(),
   lastRotationMessage: z.string().nullable().optional(),
   rotationStatus: z.string().nullable().optional()
 });
@@ -81,12 +101,14 @@ export const BaseCreatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }),
   description: z.string().max(512).nullable().optional(),
   requireMfa: z.boolean().optional().default(false),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  policyId: z.string().uuid().nullable().optional()
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
   description: z.string().max(512).nullable().optional(),
   requireMfa: z.boolean().optional(),
-  metadata: ResourceMetadataNonEncryptionSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional(),
+  policyId: z.string().uuid().nullable().optional()
 });

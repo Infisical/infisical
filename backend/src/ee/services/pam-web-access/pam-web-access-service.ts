@@ -483,6 +483,7 @@ export const pamWebAccessServiceFactory = ({
         resourceName: resource.name,
         resourceType: resource.resourceType,
         accountId: account.id,
+        resourceId: resource.id,
         userId
       });
 

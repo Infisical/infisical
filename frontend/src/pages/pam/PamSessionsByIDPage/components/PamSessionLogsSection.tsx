@@ -18,9 +18,10 @@ import { TerminalEventView } from "./TerminalEventView";
 
 type Props = {
   session: TPamSession;
+  scrollToLogIndex?: number;
 };
 
-export const PamSessionLogsSection = ({ session }: Props) => {
+export const PamSessionLogsSection = ({ session, scrollToLogIndex }: Props) => {
   const isActive =
     session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
 
@@ -52,7 +53,9 @@ export const PamSessionLogsSection = ({ session }: Props) => {
         )}
       </div>
 
-      {isDatabaseSession && hasLogs && <CommandLogView logs={logs as TPamCommandLog[]} />}
+      {isDatabaseSession && hasLogs && (
+        <CommandLogView logs={logs as TPamCommandLog[]} scrollToLogIndex={scrollToLogIndex} />
+      )}
       {isSSHSession && hasLogs && <TerminalEventView events={logs as TTerminalEvent[]} />}
       {isHttpSession && hasLogs && <HttpEventView events={logs as THttpEvent[]} />}
       {isAwsIamSession && (

@@ -4,6 +4,7 @@ import {
   Cable,
   FileKey,
   FileText,
+  LayoutDashboard,
   Monitor,
   PenTool,
   Plug,
@@ -44,6 +45,11 @@ export const CertManagerNav = ({
   const templates = templatesData?.certificateTemplates || [];
 
   const items: NavItem[] = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      pathSuffix: "overview"
+    },
     {
       label: "Certificates",
       icon: FileKey,

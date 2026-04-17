@@ -55,6 +55,27 @@ USER non-root-user
 ##
 ## BACKEND
 ##
+
+# Oracle Instant Client (parallel stage — downloads while other stages build)
+FROM debian:trixie-slim AS oracle
+RUN apt-get update && apt-get install -y unzip wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.x64-23.26.0.0.0.zip" && \
+        EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
+        EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32"; \
+    fi && \
+    ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
+    wget -q "$ORACLE_URL" && \
+    echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
+    mkdir -p /opt/oracle && \
+    unzip "$ORACLE_ZIP" -d /opt/oracle && \
+    rm "$ORACLE_ZIP"
+
 FROM base AS backend-build
 
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
@@ -117,13 +138,14 @@ RUN mkdir frontend-build
 # Production stage
 FROM base AS production
 
-# Install necessary packages including ODBC
+# Install all required runtime packages
 RUN apt-get update && apt-get install -y \
     build-essential \
     autoconf \
     automake \
     libtool \
     wget \
+    perl \
     libssl-dev \
     ca-certificates \
     curl \
@@ -136,39 +158,26 @@ RUN apt-get update && apt-get install -y \
     freetds-dev \
     freetds-bin \
     tdsodbc \
+    libaio1t64 \
+    smbclient \
     openssh-client \
+    && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.43.47 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Oracle Instant Client for OracleDB mTLS wallet support
+# Copy Oracle Instant Client from parallel stage
+COPY --from=oracle /opt/oracle /opt/oracle
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
-        ORACLE_ZIP="instantclient-basic-linux.x64-23.26.0.0.0.zip" && \
-        ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
-        EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
-        apt-get update && apt-get install -y libaio1t64 unzip && \
-        ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 && \
-        wget -q "$ORACLE_URL" && \
-        echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
-        unzip "$ORACLE_ZIP" -d /opt/oracle && \
-        rm "$ORACLE_ZIP"; \
+        ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
     elif [ "$ARCH" = "arm64" ]; then \
-        ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
-        ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
-        EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
-        apt-get update && apt-get install -y libaio1t64 unzip && \
-        ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1 && \
-        wget -q "$ORACLE_URL" && \
-        echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
-        unzip "$ORACLE_ZIP" -d /opt/oracle && \
-        rm "$ORACLE_ZIP"; \
+        ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
     fi && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
-    ldconfig && \
-    rm -rf /var/lib/apt/lists/*
+    ldconfig
 
 # Configure ODBC in production
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
-
 
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
@@ -182,13 +191,18 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install smbclient for Windows SMB operations
-RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
-
-# Install Infisical CLI
-RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.47 \
-    && rm -rf /var/lib/apt/lists/*
+# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+# Installed to /opt/openssl-pqc so it does not conflict with the FIPS OpenSSL above.
+WORKDIR /tmp/openssl-pqc-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-pqc-build
 
 RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
 

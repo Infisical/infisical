@@ -7,6 +7,8 @@ This guide demonstrates how to use Infisical to issue and distribute certificate
 
 With this integration, Jamf Pro acts as the SCEP client on behalf of your managed devices, once a configuration profile is saved and scoped, enrolled devices automatically receive certificates issued by your Infisical Certificate Manager without any manual intervention on the device.
 
+Infisical supports both **static** and **dynamic** SCEP challenges with Jamf Pro. Dynamic challenges provide stronger security by generating a unique, one-time-use challenge password for each device enrollment.
+
 ## Prerequisites
 
 Before you begin, make sure you have:
@@ -14,6 +16,7 @@ Before you begin, make sure you have:
 - A [Jamf Pro](https://www.jamf.com/products/jamf-pro/) instance with administrative access.
 - A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [SCEP enrollment method](/documentation/platform/pki/enrollment-methods/scep) in Infisical. Refer to the [SCEP enrollment guide](/documentation/platform/pki/enrollment-methods/scep) for setup instructions.
 - One or more computers or mobile devices enrolled in Jamf Pro.
+- For **dynamic challenges**: A [Machine Identity](/documentation/platform/identities/machine-identities) with access to the project containing the certificate profile.
 
 ## Guide
 
@@ -24,7 +27,34 @@ Before you begin, make sure you have:
         From the certificate profile, gather the following values:
 
         - **SCEP URL**: The SCEP endpoint URL for your certificate profile. This takes the form `https://app.infisical.com/scep/{profile_id}/pkiclient.exe`. For self-hosted instances, replace `app.infisical.com` with your instance's domain.
-        - **Challenge Password**: The shared secret configured on the SCEP enrollment method.
+
+        <Tabs>
+            <Tab title="Static Challenge">
+                - **Challenge Password**: The shared secret configured on the SCEP enrollment method.
+            </Tab>
+            <Tab title="Dynamic Challenge">
+                - **Challenge Endpoint URL**: The authenticated endpoint for generating one-time challenges. This takes the form `https://app.infisical.com/scep/{profile_id}/challenge`.
+                - **Machine Identity Access Token**: An access token for a Machine Identity with permissions on the project. You can obtain this by authenticating a [Machine Identity](/documentation/platform/identities/machine-identities) configured with [Token Auth](/documentation/platform/identities/token-auth).
+
+                With dynamic challenges, Jamf Pro calls a webhook to fetch a one-time challenge password for each device enrollment. Configure this webhook now:
+
+                ![Jamf Pro webhook configuration for SCEP challenges](/images/platform/pki/integrations/jamf-pro/jamf-webhook-config.png)
+
+                1. In Jamf Pro, navigate to **Settings** > **Global Management** > **Webhooks**.
+                2. Click **+ New** to create a new webhook.
+                3. Configure the webhook with the following settings:
+                    - **Display Name**: A descriptive name (e.g., `Infisical SCEP Challenge`).
+                    - **Enabled**: Check this box.
+                    - **Webhook URL**: Enter the **Challenge Endpoint URL** from above.
+                    - **Authentication Type**: Select **Header Authentication**.
+                    - **Header Name**: Enter `Authorization`.
+                    - **Header Value**: Enter `Bearer <your-machine-identity-access-token>`.
+                    - **Content Type**: Select **JSON**.
+                    - **Webhook Event**: Select **SCEPChallenge**.
+                4. Click **Save**.
+            </Tab>
+        </Tabs>
+
     </Step>
 
     <Step title="Create a configuration profile in Jamf Pro">
@@ -63,12 +93,19 @@ Before you begin, make sure you have:
         Next, configure the challenge authentication:
 
         <Tabs>
-            <Tab title="Static">
+            <Tab title="Static Challenge">
                 - **Challenge Type**: Select **Static** from the dropdown.
                 - **Challenge**: Enter the **Challenge Password** from your Infisical certificate profile.
                 - **Verify Challenge**: Re-enter the challenge password to confirm.
 
                 ![SCEP configuration — Challenge and certificate options](/images/platform/pki/integrations/jamf-pro/scep-config-challenge.png)
+            </Tab>
+            <Tab title="Dynamic Challenge">
+                - **Challenge Type**: Select **Dynamic** from the dropdown.
+
+                No manual challenge password entry is needed, Jamf Pro automatically calls the webhook configured in step 1 to fetch a one-time challenge for each device enrollment.
+
+                ![SCEP configuration — Dynamic challenge type selected](/images/platform/pki/integrations/jamf-pro/scep-config-challenge-dynamic.png)
             </Tab>
         </Tabs>
 

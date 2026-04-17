@@ -1,10 +1,6 @@
-import crypto from "crypto";
-
 import { useState } from "react";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useSearch } from "@tanstack/react-router";
-import jsrp from "jsrp";
 import { ChevronLeft } from "lucide-react";
 
 import { checkIsPasswordBreached } from "@app/components/utilities/checks/password/checkIsPasswordBreached";
@@ -15,13 +11,9 @@ import {
   numAndSpecialCharRegex,
   repeatedCharRegex
 } from "@app/components/utilities/checks/password/passwordRegexes";
-import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { FormControl, Input } from "@app/components/v2";
 import { Button } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
-import { useResetPassword, useResetPasswordV2 } from "@app/hooks/api";
-import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
+import { useResetPasswordV2 } from "@app/hooks/api";
 
 type PasswordErrors = {
   tooShort: boolean;
@@ -52,22 +44,11 @@ const hasValidationErrors = (errors: PasswordErrors): boolean => {
 
 type Props = {
   verificationToken: string;
-  privateKey: string;
-  encryptionVersion: UserEncryptionVersion;
   onComplete: () => void;
   onBack: () => void;
 };
 
-export const EnterPasswordStep = ({
-  verificationToken,
-  encryptionVersion,
-  privateKey,
-  onComplete,
-  onBack
-}: Props) => {
-  const search = useSearch({ from: ROUTE_PATHS.Auth.AccountRecoveryResetPage.id });
-  const { to: email } = search;
-
+export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Props) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({
@@ -85,7 +66,6 @@ export const EnterPasswordStep = ({
   const passwordsMatch = password === confirmPassword;
   const showConfirmError = confirmPassword.length > 0 && !passwordsMatch;
 
-  const { mutateAsync: resetPassword, isPending: isLoading } = useResetPassword();
   const { mutateAsync: resetPasswordV2, isPending: isLoadingV2 } = useResetPasswordV2();
 
   const handlePasswordChange = (value: string) => {
@@ -108,82 +88,18 @@ export const EnterPasswordStep = ({
     setIsSubmitting(true);
 
     try {
-      if (encryptionVersion === UserEncryptionVersion.V2) {
-        await resetPasswordV2({
-          newPassword: password,
-          verificationToken
-        });
-        onComplete();
-      } else {
-        // eslint-disable-next-line new-cap
-        const client = new jsrp.client();
-        client.init(
-          {
-            username: email,
-            password
-          },
-          async () => {
-            client.createVerifier(async (_err: any, result: { salt: string; verifier: string }) => {
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
-
-              if (!derivedKey) throw new Error("Failed to derive key from password");
-
-              const key = crypto.randomBytes(32);
-
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              await resetPassword({
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                salt: result.salt,
-                verifier: result.verifier,
-                verificationToken,
-                password
-              });
-
-              onComplete();
-            });
-          }
-        );
-      }
+      await resetPasswordV2({
+        newPassword: password,
+        verificationToken
+      });
+      onComplete();
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const isPasswordError = hasValidationErrors(passwordErrors);
-  const isFormLoading = isSubmitting || isLoading || isLoadingV2;
+  const isFormLoading = isSubmitting || isLoadingV2;
 
   const validationRules = [
     { key: "tooShort", label: "at least 14 characters", hasError: passwordErrors.tooShort },

@@ -1,4 +1,5 @@
 import { TPamSessionEventBatches, TPamSessions } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -49,6 +50,24 @@ export const decryptSession = async (
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
+  const { encryptedAiInsights } = session;
+
+  let aiInsights: { summary: string; warnings: { text: string; logIndex?: number }[] } | null = null;
+  if (encryptedAiInsights) {
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      aiInsights = JSON.parse(decryptor({ cipherTextBlob: encryptedAiInsights }).toString()) as {
+        summary: string;
+        warnings: { text: string; logIndex?: number }[];
+      };
+    } catch (err) {
+      logger.warn({ err }, "decryptSession: failed to decrypt aiInsights, falling back to null");
+    }
+  }
+
   return {
     ...session,
     logs: session.encryptedLogsBlob
@@ -57,6 +76,7 @@ export const decryptSession = async (
           encryptedLogs: session.encryptedLogsBlob,
           kmsService
         })
-      : []
+      : [],
+    aiInsights
   } as TPamSanitizedSession;
 };

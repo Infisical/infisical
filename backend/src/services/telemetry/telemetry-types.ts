@@ -3,6 +3,7 @@ import {
   AcmeAccountActor,
   AcmeProfileActor,
   EstAccountActor,
+  GatewayActor,
   IdentityActor,
   KmipClientActor,
   PlatformActor,
@@ -133,7 +134,8 @@ export type TSecretModifiedEvent = {
       | AcmeProfileActor
       | KmipClientActor
       | EstAccountActor
-      | ScepAccountActor;
+      | ScepAccountActor
+      | GatewayActor;
   };
 };
 

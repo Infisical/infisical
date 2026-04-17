@@ -11,7 +11,11 @@ import {
   TActiveDirectoryAccount
 } from "@app/hooks/api/pamDomain/active-directory-types";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 import { RequireMfaField } from "./RequireMfaField";
 
@@ -145,6 +149,7 @@ export const ActiveDirectoryAccountForm = ({ account, onSubmit, closeSheet }: Pr
             />
           </div>
           <RequireMfaField />
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

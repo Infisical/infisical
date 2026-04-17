@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { AuthTokenSessionsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { AuthTokenSessionsSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,30 +34,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/me/emails/verify",
-    config: {
-      rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
-      })
-    },
-    schema: {
-      operationId: "verifyEmailVerificationCode",
-      body: z.object({
-        username: z.string().trim(),
-        code: z.string().trim()
-      }),
-      response: {
-        200: z.object({})
-      }
-    },
-    handler: async (req) => {
-      await server.services.user.verifyEmailVerificationCode(req.body.username, req.body.code);
-      return {};
-    }
-  });
-
-  server.route({
     method: "PATCH",
     url: "/me/mfa",
     config: {
@@ -69,7 +47,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -99,7 +77,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -123,7 +101,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -178,7 +156,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },
@@ -363,23 +341,38 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       description: "Retrieve the current user on the request",
       response: {
         200: z.object({
-          user: UsersSchema.merge(
-            UserEncryptionKeysSchema.pick({
-              clientPublicKey: true,
-              serverPrivateKey: true,
-              encryptionVersion: true,
-              protectedKey: true,
-              protectedKeyIV: true,
-              protectedKeyTag: true,
-              publicKey: true,
-              encryptedPrivateKey: true,
-              iv: true,
-              tag: true,
-              salt: true,
-              verifier: true,
-              userId: true
-            })
-          )
+          user: z.object({
+            id: z.string().uuid(),
+            email: z.string().nullable().optional(),
+            authMethods: z.string().array().nullable().optional(),
+            superAdmin: z.boolean().default(false).nullable().optional(),
+            firstName: z.string().nullable().optional(),
+            lastName: z.string().nullable().optional(),
+            isAccepted: z.boolean().default(false).nullable().optional(),
+            isMfaEnabled: z.boolean().default(false).nullable().optional(),
+            mfaMethods: z.string().array().nullable().optional(),
+            devices: z.unknown().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            isGhost: z.boolean().default(false),
+            username: z.string(),
+            isEmailVerified: z.boolean().default(false).nullable().optional(),
+            consecutiveFailedMfaAttempts: z.number().default(0).nullable().optional(),
+            isLocked: z.boolean().default(false).nullable().optional(),
+            temporaryLockDateEnd: z.date().nullable().optional(),
+            consecutiveFailedPasswordAttempts: z.number().default(0).nullable().optional(),
+            selectedMfaMethod: z.string().nullable().optional(),
+            isGitHubVerified: z.boolean().nullable().optional(),
+            isGitLabVerified: z.boolean().nullable().optional(),
+            isGoogleVerified: z.boolean().nullable().optional(),
+            encryptedPrivateKey: z.string().nullable().optional(),
+            iv: z.string().nullable().optional(),
+            tag: z.string().nullable().optional(),
+            salt: z.string().nullable().optional(),
+            protectedKey: z.string().nullable().optional(),
+            protectedKeyIV: z.string().nullable().optional(),
+            protectedKeyTag: z.string().nullable().optional()
+          })
         })
       }
     },
@@ -400,7 +393,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteUser",
       response: {
         200: z.object({
-          user: UsersSchema
+          user: SanitizedUserSchema
         })
       }
     },

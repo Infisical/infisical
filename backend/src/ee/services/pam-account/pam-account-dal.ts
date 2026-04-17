@@ -48,6 +48,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const query = dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
         .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
+        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.projectId`, projectId);
 
       if (accountView === PamAccountView.Nested) {
@@ -105,7 +106,9 @@ export const pamAccountDALFactory = (db: TDbClient) => {
           .as("resourceEncryptedRotationAccountCredentials"),
         // domain (may be null for resource accounts)
         db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-        db.ref("domainType").withSchema(TableName.PamDomain)
+        db.ref("domainType").withSchema(TableName.PamDomain),
+        // policy
+        db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
       );
 
       const direction = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
@@ -128,6 +131,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
           ...row,
           resourceId: rId,
           domainId: dId,
+          policyName: (r.policyName as string) || null,
           resource: rId
             ? {
                 id: rId,
@@ -158,6 +162,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const result = await dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
         .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
+        .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.id`, accountId)
         .select(selectAllTableCols(TableName.PamAccount))
         .select(
@@ -170,7 +175,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
             .as("resourceEncryptedRotationAccountCredentials"),
           // domain (may be null for resource accounts)
           db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
-          db.ref("domainType").withSchema(TableName.PamDomain)
+          db.ref("domainType").withSchema(TableName.PamDomain),
+          db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
         )
         .first();
 
@@ -184,13 +190,24 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         resourceEncryptedRotationAccountCredentials,
         domainName,
         domainType,
+        policyName,
         ...account
-      } = result;
+      } = result as {
+        resourceId: string | null;
+        domainId: string | null;
+        resourceName: string | null;
+        resourceType: string | null;
+        resourceEncryptedRotationAccountCredentials: Buffer | null;
+        domainName: string | null;
+        domainType: string | null;
+        policyName: string | null;
+      } & typeof result;
 
       return {
         ...account,
         resourceId,
         domainId,
+        policyName: policyName || null,
         resource: resourceId
           ? {
               id: resourceId,

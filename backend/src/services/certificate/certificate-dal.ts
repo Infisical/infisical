@@ -12,6 +12,7 @@ import {
 import { isUuidV4 } from "@app/lib/validator";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
+import { keySizeToAlgorithms } from "./certificate-fns";
 import { CertStatus } from "./certificate-types";
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
@@ -48,19 +49,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countCertificatesInProject = async ({
-    projectId,
-    friendlyName,
-    commonName,
-    search,
-    status,
-    profileIds,
-    fromDate,
-    toDate,
-    metadataFilter,
-    extendedKeyUsage
-  }: {
-    projectId: string;
+  type TInventoryFilterParams = {
     friendlyName?: string;
     commonName?: string;
     search?: string;
@@ -70,7 +59,165 @@ export const certificateDALFactory = (db: TDbClient) => {
     toDate?: Date;
     metadataFilter?: Array<{ key: string; value?: string }>;
     extendedKeyUsage?: string;
-  }) => {
+    keyAlgorithm?: string | string[];
+    signatureAlgorithm?: string;
+    keySizes?: number[];
+    caIds?: string[];
+    enrollmentTypes?: string[];
+    source?: string | string[];
+    notAfterFrom?: Date;
+    notAfterTo?: Date;
+    notBeforeFrom?: Date;
+    notBeforeTo?: Date;
+  };
+
+  const applyInventoryFilters = (
+    query: Knex.QueryBuilder,
+    filters: TInventoryFilterParams,
+    hasProfileJoin: boolean
+  ): Knex.QueryBuilder => {
+    let q = query;
+
+    if (filters.friendlyName) {
+      const sanitizedValue = sanitizeSqlLikeString(filters.friendlyName);
+      q = q.andWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+    }
+
+    if (filters.commonName) {
+      const sanitizedValue = sanitizeSqlLikeString(filters.commonName);
+      q = q.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+    }
+
+    if (filters.search) {
+      const sanitizedValue = sanitizeSqlLikeString(filters.search);
+      q = q.andWhere((qb: Knex.QueryBuilder) => {
+        void qb
+          .where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
+          .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
+          .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
+          .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+
+        if (isUuidV4(sanitizedValue)) {
+          void qb.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
+        }
+      });
+    }
+
+    if (filters.status) {
+      const now = new Date();
+      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+
+      q = q.andWhere((qb: Knex.QueryBuilder) => {
+        statuses.forEach((statusValue, index) => {
+          const whereMethod = index === 0 ? "where" : "orWhere";
+
+          if (statusValue === CertStatus.ACTIVE) {
+            void qb[whereMethod]((innerQb: Knex.QueryBuilder) => {
+              void innerQb
+                .where(`${TableName.Certificate}.notAfter`, ">", now)
+                .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
+            });
+          } else if (statusValue === CertStatus.EXPIRED) {
+            void qb[whereMethod]((innerQb: Knex.QueryBuilder) => {
+              void innerQb
+                .where(`${TableName.Certificate}.notAfter`, "<=", now)
+                .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
+            });
+          } else {
+            void qb[whereMethod](`${TableName.Certificate}.status`, statusValue);
+          }
+        });
+      });
+    }
+
+    if (filters.fromDate) {
+      q = q.andWhere(`${TableName.Certificate}.createdAt`, ">=", filters.fromDate);
+    }
+
+    if (filters.toDate) {
+      q = q.andWhere(`${TableName.Certificate}.createdAt`, "<=", filters.toDate);
+    }
+
+    if (filters.profileIds) {
+      q = q.whereIn(`${TableName.Certificate}.profileId`, filters.profileIds);
+    }
+
+    if (filters.metadataFilter && filters.metadataFilter.length > 0) {
+      q = applyMetadataFilter(q, filters.metadataFilter, "certificateId", TableName.Certificate);
+    }
+
+    if (filters.extendedKeyUsage) {
+      q = q.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [filters.extendedKeyUsage]);
+    }
+
+    if (filters.keyAlgorithm) {
+      if (Array.isArray(filters.keyAlgorithm)) {
+        q = q.whereIn(`${TableName.Certificate}.keyAlgorithm`, filters.keyAlgorithm);
+      } else {
+        q = q.andWhere(`${TableName.Certificate}.keyAlgorithm`, filters.keyAlgorithm);
+      }
+    }
+
+    if (filters.signatureAlgorithm) {
+      q = q.andWhere(`${TableName.Certificate}.signatureAlgorithm`, filters.signatureAlgorithm);
+    }
+
+    if (filters.keySizes && filters.keySizes.length > 0) {
+      const allAlgorithms = filters.keySizes.flatMap((size) => keySizeToAlgorithms(size));
+      q = q.whereIn(`${TableName.Certificate}.keyAlgorithm`, allAlgorithms);
+    }
+
+    if (filters.caIds) {
+      q = q.whereIn(`${TableName.Certificate}.caId`, filters.caIds);
+    }
+
+    if (filters.enrollmentTypes && hasProfileJoin) {
+      q = q.whereIn(`${TableName.PkiCertificateProfile}.enrollmentType`, filters.enrollmentTypes);
+    }
+
+    if (filters.source) {
+      const sources = Array.isArray(filters.source) ? filters.source : [filters.source];
+      const includesIssued = sources.includes("issued");
+      const otherSources = sources.filter((s) => s !== "issued");
+
+      q = q.andWhere((qb: Knex.QueryBuilder) => {
+        if (otherSources.length > 0) {
+          void qb.whereIn(`${TableName.Certificate}.source`, otherSources);
+        }
+        if (includesIssued) {
+          void qb.orWhere(`${TableName.Certificate}.source`, "issued").orWhereNull(`${TableName.Certificate}.source`);
+        }
+      });
+    }
+
+    if (filters.notAfterFrom) {
+      q = q.andWhere(`${TableName.Certificate}.notAfter`, ">=", filters.notAfterFrom);
+    }
+
+    if (filters.notAfterTo) {
+      q = q.andWhere(`${TableName.Certificate}.notAfter`, "<=", filters.notAfterTo);
+    }
+
+    if (filters.notBeforeFrom) {
+      q = q.andWhere(`${TableName.Certificate}.notBefore`, ">=", filters.notBeforeFrom);
+    }
+
+    if (filters.notBeforeTo) {
+      q = q.andWhere(`${TableName.Certificate}.notBefore`, "<=", filters.notBeforeTo);
+    }
+
+    return q;
+  };
+
+  const countCertificatesInProject = async (
+    {
+      projectId,
+      ...filters
+    }: {
+      projectId: string;
+    } & TInventoryFilterParams,
+    permissionFilters?: ProcessedPermissionRules
+  ) => {
     try {
       interface CountResult {
         count: string;
@@ -82,79 +229,19 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.id`, projectId);
 
-      if (friendlyName) {
-        const sanitizedValue = sanitizeSqlLikeString(friendlyName);
-        query = query.andWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+      const hasEnrollmentTypeFilter = Boolean(filters.enrollmentTypes);
+      if (hasEnrollmentTypeFilter) {
+        query = query.leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        );
       }
 
-      if (commonName) {
-        const sanitizedValue = sanitizeSqlLikeString(commonName);
-        query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
-      }
+      query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter) as typeof query;
 
-      if (search) {
-        const sanitizedValue = sanitizeSqlLikeString(search);
-        query = query.andWhere((qb) => {
-          void qb
-            .where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
-
-          if (isUuidV4(sanitizedValue)) {
-            void qb.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
-          }
-        });
-      }
-
-      if (status) {
-        const now = new Date();
-        const statuses = Array.isArray(status) ? status : [status];
-
-        query = query.andWhere((qb) => {
-          statuses.forEach((statusValue, index) => {
-            const whereMethod = index === 0 ? "where" : "orWhere";
-
-            if (statusValue === CertStatus.ACTIVE) {
-              void qb[whereMethod]((innerQb) => {
-                void innerQb
-                  .where(`${TableName.Certificate}.notAfter`, ">", now)
-                  .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
-              });
-            } else if (statusValue === CertStatus.EXPIRED) {
-              void qb[whereMethod]((innerQb) => {
-                void innerQb
-                  .where(`${TableName.Certificate}.notAfter`, "<=", now)
-                  .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
-              });
-            } else {
-              void qb[whereMethod](`${TableName.Certificate}.status`, statusValue);
-            }
-          });
-        });
-      }
-
-      if (fromDate) {
-        query = query.andWhere(`${TableName.Certificate}.createdAt`, ">=", fromDate);
-      }
-
-      if (toDate) {
-        query = query.andWhere(`${TableName.Certificate}.createdAt`, "<=", toDate);
-      }
-
-      if (profileIds) {
-        query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
-      }
-
-      if (metadataFilter && metadataFilter.length > 0) {
-        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
-      }
-
-      if (extendedKeyUsage) {
-        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
-        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
-          extendedKeyUsage
-        ]);
+      if (permissionFilters) {
+        query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
       }
 
       const count = await query.count("*").first();
@@ -225,7 +312,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const findActiveCertificatesForSync = async (
-    filter: Partial<TCertificates & { friendlyName?: string; commonName?: string }>,
+    filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
     options?: { limit?: number; offset?: number },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
@@ -356,29 +443,37 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  type TCertificateWithInventoryFields = TCertificates & {
+    hasPrivateKey: boolean;
+    caName?: string | null;
+    profileName?: string | null;
+    enrollmentType?: string | null;
+  };
+
   const findWithPrivateKeyInfo = async (
-    filter: Partial<
-      TCertificates & {
-        friendlyName?: string;
-        commonName?: string;
-        search?: string;
-        status?: string | string[];
-        profileIds?: string[];
-        fromDate?: Date;
-        toDate?: Date;
-        metadataFilter?: Array<{ key: string; value?: string }>;
-        extendedKeyUsage?: string;
-      }
-    >,
+    filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
     permissionFilters?: ProcessedPermissionRules
-  ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
+  ): Promise<TCertificateWithInventoryFields[]> => {
     try {
       let query = db
         .replicaNode()(TableName.Certificate)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .leftJoin(
+          TableName.CertificateAuthority,
+          `${TableName.Certificate}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
         .select(selectAllTableCols(TableName.Certificate))
-        .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"));
+        .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
+        .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("enrollmentType").withSchema(TableName.PkiCertificateProfile).as("enrollmentType"));
 
       const {
         friendlyName,
@@ -390,6 +485,16 @@ export const certificateDALFactory = (db: TDbClient) => {
         toDate,
         metadataFilter,
         extendedKeyUsage,
+        keyAlgorithm,
+        signatureAlgorithm,
+        keySizes,
+        caIds,
+        enrollmentTypes,
+        source,
+        notAfterFrom,
+        notAfterTo,
+        notBeforeFrom,
+        notBeforeTo,
         ...regularFilters
       } = filter;
 
@@ -399,80 +504,31 @@ export const certificateDALFactory = (db: TDbClient) => {
         }
       });
 
-      if (friendlyName) {
-        const sanitizedValue = sanitizeSqlLikeString(friendlyName);
-        query = query.andWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
-      }
-
-      if (commonName) {
-        const sanitizedValue = sanitizeSqlLikeString(commonName);
-        query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
-      }
-
-      if (search) {
-        const sanitizedValue = sanitizeSqlLikeString(search);
-        query = query.andWhere((qb) => {
-          void qb
-            .where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
-            .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
-
-          if (isUuidV4(sanitizedValue)) {
-            void qb.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
-          }
-        });
-      }
-
-      if (status) {
-        const now = new Date();
-        const statuses = Array.isArray(status) ? status : [status];
-
-        query = query.andWhere((qb) => {
-          statuses.forEach((statusValue, index) => {
-            const whereMethod = index === 0 ? "where" : "orWhere";
-
-            if (statusValue === CertStatus.ACTIVE) {
-              void qb[whereMethod]((innerQb) => {
-                void innerQb
-                  .where(`${TableName.Certificate}.notAfter`, ">", now)
-                  .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
-              });
-            } else if (statusValue === CertStatus.EXPIRED) {
-              void qb[whereMethod]((innerQb) => {
-                void innerQb
-                  .where(`${TableName.Certificate}.notAfter`, "<=", now)
-                  .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
-              });
-            } else {
-              void qb[whereMethod](`${TableName.Certificate}.status`, statusValue);
-            }
-          });
-        });
-      }
-
-      if (fromDate) {
-        query = query.andWhere(`${TableName.Certificate}.createdAt`, ">=", fromDate);
-      }
-
-      if (toDate) {
-        query = query.andWhere(`${TableName.Certificate}.createdAt`, "<=", toDate);
-      }
-
-      if (profileIds) {
-        query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
-      }
-
-      if (metadataFilter && metadataFilter.length > 0) {
-        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
-      }
-
-      if (extendedKeyUsage) {
-        // PostgreSQL array containment: extendedKeyUsages @> ARRAY['codeSigning']::text[]
-        query = query.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
-          extendedKeyUsage
-        ]);
-      }
+      query = applyInventoryFilters(
+        query,
+        {
+          friendlyName,
+          commonName,
+          search,
+          status,
+          profileIds,
+          fromDate,
+          toDate,
+          metadataFilter,
+          extendedKeyUsage,
+          keyAlgorithm,
+          signatureAlgorithm,
+          keySizes,
+          caIds,
+          enrollmentTypes,
+          source,
+          notAfterFrom,
+          notAfterTo,
+          notBeforeFrom,
+          notBeforeTo
+        },
+        true
+      ) as typeof query;
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
@@ -486,17 +542,15 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
       if (options?.sort) {
         options.sort.forEach(([column, direction]) => {
-          query = query.orderBy(column, direction);
+          query = query.orderBy(`${TableName.Certificate}.${column}`, direction);
         });
       }
 
       const results = await query;
-      return results.map((row) => {
-        return {
-          ...row,
-          hasPrivateKey: row.privateKeyRef !== null
-        };
-      });
+      return results.map((row) => ({
+        ...row,
+        hasPrivateKey: row.privateKeyRef !== null
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
     }
@@ -508,7 +562,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     caType?: "internal" | "external" | null;
   };
 
-  // Flexible lookup filter for certificate queries - either id or serialNumber, not both
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
 
   const findWithFullDetails = async (
@@ -516,8 +569,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TCertificateWithRequestDetails | undefined> => {
     try {
-      let query = (tx || db)
-        .replicaNode()(TableName.Certificate)
+      let query = (tx || db.replicaNode())(TableName.Certificate)
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.Certificate}.caId`,
@@ -538,7 +590,6 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
 
-      // Dynamic where clause based on filter
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
       } else {
@@ -566,6 +617,307 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getDashboardStats = async (projectId: string) => {
+    try {
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      interface TotalsRow {
+        total: number;
+        active: number;
+        expiringSoon: number;
+        expired: number;
+        revoked: number;
+        expiringSoonNoAutoRenewal: number;
+        expiredNotRenewed: number;
+      }
+
+      interface LabelCount {
+        label: string;
+        count: string;
+      }
+
+      interface LabelCountWithId extends LabelCount {
+        id: string;
+      }
+
+      interface BucketCount {
+        bucket: string;
+        count: string;
+      }
+
+      const [totalsRow] = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .select(
+          db.raw("COUNT(*)::int as total"),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ?)::int as active`,
+            [now, CertStatus.REVOKED]
+          ),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as "expiringSoon"`,
+            [now, thirtyDaysFromNow, CertStatus.REVOKED]
+          ),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as expired`,
+            [now, CertStatus.REVOKED]
+          ),
+          db.raw(`COUNT(*) FILTER (WHERE "${TableName.Certificate}"."status" = ?)::int as revoked`, [
+            CertStatus.REVOKED
+          ]),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewBeforeDays" IS NULL)::int as "expiringSoonNoAutoRenewal"`,
+            [now, thirtyDaysFromNow, CertStatus.REVOKED]
+          ),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL)::int as "expiredNotRenewed"`,
+            [now, CertStatus.REVOKED]
+          )
+        );
+
+      const totals = totalsRow as unknown as TotalsRow;
+
+      const byAlgorithm = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .select(`${TableName.Certificate}.keyAlgorithm as label`)
+        .count("* as count")
+        .groupBy(`${TableName.Certificate}.keyAlgorithm`);
+
+      const byCA = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .select(`${TableName.CertificateAuthority}.id as id`)
+        .select(`${TableName.CertificateAuthority}.name as label`)
+        .count("* as count")
+        .groupBy(`${TableName.CertificateAuthority}.id`, `${TableName.CertificateAuthority}.name`);
+
+      const byStatus = [
+        { label: "Active", count: totals.active },
+        { label: "Expired", count: totals.expired },
+        { label: "Revoked", count: totals.revoked }
+      ];
+
+      const byEnrollmentMethod = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .select(db.raw(`COALESCE("${TableName.PkiCertificateProfile}"."enrollmentType", 'API') as label`))
+        .count("* as count")
+        .groupBy("label");
+
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+      const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+      const expirationBuckets = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .select(
+          db.raw(
+            `CASE
+              WHEN "${TableName.Certificate}"."notAfter" < ? THEN 'expired'
+              WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '0-7d'
+              WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '8-30d'
+              WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '31-60d'
+              WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '61-90d'
+              ELSE '90d+'
+            END as bucket`,
+            [now, sevenDaysFromNow, thirtyDaysFromNow, sixtyDaysFromNow, ninetyDaysFromNow]
+          )
+        )
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("bucket");
+
+      const validityBuckets = await db
+        .replicaNode()(TableName.Certificate)
+        .where(`${TableName.Certificate}.projectId`, projectId)
+        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .where(`${TableName.Certificate}.notAfter`, ">", now)
+        .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
+        .select(
+          db.raw(
+            `CASE
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 47 THEN '<=47d'
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 99 THEN '48-99d'
+              WHEN EXTRACT(EPOCH FROM ("${TableName.Certificate}"."notAfter" - "${TableName.Certificate}"."notBefore")) / 86400 <= 199 THEN '100-199d'
+              ELSE '>=200d'
+            END as bucket`
+          )
+        )
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("bucket");
+
+      return {
+        totals: {
+          total: totals.total,
+          active: totals.active,
+          expiringSoon: totals.expiringSoon,
+          expired: totals.expired,
+          revoked: totals.revoked
+        },
+        expiringSoonNoAutoRenewal: totals.expiringSoonNoAutoRenewal,
+        expiredNotRenewed: totals.expiredNotRenewed,
+        distributions: {
+          byEnrollmentMethod: (byEnrollmentMethod as unknown as LabelCount[]).map((r) => ({
+            label: r.label,
+            count: Number(r.count)
+          })),
+          byAlgorithm: (byAlgorithm as unknown as LabelCount[]).map((r) => ({
+            label: r.label,
+            count: Number(r.count)
+          })),
+          byCA: (byCA as unknown as LabelCountWithId[]).map((r) => ({
+            id: r.id,
+            label: r.label || "Unknown",
+            count: Number(r.count)
+          })),
+          byStatus
+        },
+        expirationBuckets: (expirationBuckets as unknown as BucketCount[]).map((r) => ({
+          bucket: r.bucket,
+          count: Number(r.count)
+        })),
+        validityBuckets: (validityBuckets as unknown as BucketCount[]).map((r) => ({
+          bucket: r.bucket,
+          count: Number(r.count)
+        }))
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get dashboard stats" });
+    }
+  };
+
+  const getActivityTrend = async (projectId: string, daysBack: number) => {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      startDate.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      const useDaily = daysBack <= 30;
+
+      if (!useDaily) {
+        startDate.setDate(1);
+      }
+      const truncUnit = useDaily ? "day" : "month";
+      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
+
+      const periodExpr = (col: string) =>
+        db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."${col}"), ?) as period`, [truncUnit, dateFormat]);
+
+      const issued = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+        .where(`${TableName.Certificate}.notBefore`, "<=", now)
+        .select(periodExpr("notBefore"))
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("period")
+        .orderBy("period");
+
+      const expired = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
+        .where(`${TableName.Certificate}.notAfter`, "<=", now)
+        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .select(periodExpr("notAfter"))
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("period")
+        .orderBy("period");
+
+      const revoked = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
+        .where(`${TableName.Certificate}.revokedAt`, "<=", now)
+        .select(periodExpr("revokedAt"))
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("period")
+        .orderBy("period");
+
+      const renewed = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
+        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+        .where(`${TableName.Certificate}.notBefore`, "<=", now)
+        .select(periodExpr("notBefore"))
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("period")
+        .orderBy("period");
+
+      const periods: Array<{
+        period: string;
+        issued: number;
+        expired: number;
+        revoked: number;
+        renewed: number;
+      }> = [];
+      interface PeriodCount {
+        period: string;
+        count: string;
+      }
+
+      const typedIssued = issued as unknown as PeriodCount[];
+      const typedExpired = expired as unknown as PeriodCount[];
+      const typedRevoked = revoked as unknown as PeriodCount[];
+      const typedRenewed = renewed as unknown as PeriodCount[];
+
+      const issuedMap = new Map(typedIssued.map((r) => [r.period, r.count]));
+      const expiredMap = new Map(typedExpired.map((r) => [r.period, r.count]));
+      const revokedMap = new Map(typedRevoked.map((r) => [r.period, r.count]));
+      const renewedMap = new Map(typedRenewed.map((r) => [r.period, r.count]));
+
+      const cursor = new Date(startDate);
+      while (cursor <= now) {
+        let periodKey: string;
+        if (useDaily) {
+          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+        } else {
+          periodKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+        }
+        const issuedCount = issuedMap.get(periodKey);
+        const expiredCount = expiredMap.get(periodKey);
+        const revokedCount = revokedMap.get(periodKey);
+        const renewedCount = renewedMap.get(periodKey);
+        periods.push({
+          period: periodKey,
+          issued: issuedCount ? Number(issuedCount) : 0,
+          expired: expiredCount ? Number(expiredCount) : 0,
+          revoked: revokedCount ? Number(revokedCount) : 0,
+          renewed: renewedCount ? Number(renewedCount) : 0
+        });
+        if (useDaily) {
+          cursor.setDate(cursor.getDate() + 1);
+        } else {
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      return { periods };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get activity trend" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -578,6 +930,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,
     findWithPrivateKeyInfo,
-    findWithFullDetails
+    findWithFullDetails,
+    getDashboardStats,
+    getActivityTrend
   };
 };

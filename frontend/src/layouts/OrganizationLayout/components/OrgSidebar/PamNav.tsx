@@ -3,6 +3,7 @@ import {
   Database,
   FileText,
   Globe,
+  ScrollText,
   Search,
   Settings,
   Shield,
@@ -19,6 +20,7 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
     { label: "Discovery", icon: Search, pathSuffix: "discovery", activeMatch: /\/discovery\// },
     { label: "Sessions", icon: Video, pathSuffix: "sessions" },
     { label: "Domains", icon: Globe, pathSuffix: "domains" },
+    { label: "Account Policies", icon: ScrollText, pathSuffix: "account-policies" },
     {
       label: "Approvals",
       icon: BookCheck,
