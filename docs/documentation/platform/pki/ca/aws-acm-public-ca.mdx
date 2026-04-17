@@ -9,7 +9,7 @@ AWS Certificate Manager (ACM) is Amazon's managed public certificate authority. 
 
 ACM is distinct from [**AWS Private CA (PCA)**](/documentation/platform/pki/ca/aws-pca), which Infisical also supports separately. PCA issues certificates from a private root you control, intended for internal use; ACM Public CA issues from Amazon's public roots, intended for public-facing services.
 
-Each certificate has a fixed 198-day validity and is generated and stored by AWS. Infisical orchestrates the full lifecycle on top: domain validation via Route 53, exporting the certificate and private key into Infisical, scheduled auto-renewal, and revocation.
+Each certificate has a fixed 198-day validity and is generated and stored by AWS. Infisical orchestrates the full lifecycle on top: domain validation via Route 53, saving the certificate and private key into Infisical, scheduled auto-renewal, and revocation.
 
 <Note>
   Domain validation is performed exclusively through **Amazon Route 53**. Other DNS providers are not supported for this CA type.
@@ -69,8 +69,14 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
 ## Setup
 
 <Steps>
+  <Step title="Copy Your Route 53 Hosted Zone ID">
+    In the AWS Console, navigate to **Route 53 → Hosted zones** and select the public hosted zone for the domain(s) you will issue certificates for. Copy the **Hosted Zone ID** from the details panel.
+    ![Copy Hosted Zone ID](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-copy-hosted-zone-id.png)
+  </Step>
+
   <Step title="Navigate to External Certificate Authorities">
     In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
+    ![External CA Page](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-page.png)
   </Step>
 
   <Step title="Create the CA">
@@ -79,31 +85,47 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
     - **Name**: lowercase letters, numbers, and hyphens
     - **AWS Connection**: the connection with ACM permissions
     - **Route 53 Connection**: the connection with Route 53 permissions (can be the same as above)
-    - **Hosted Zone ID**: the Route 53 public hosted zone ID
+    - **Hosted Zone ID**: the Route 53 public hosted zone ID from the previous step
     - **Region**: the ACM region to issue from
+
+    ![External CA Form](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-external-ca-form.png)
   </Step>
 
   <Step title="Create a Certificate Profile and Issue">
-    Create a certificate profile linked to this CA, then submit a certificate request. Infisical calls `RequestCertificate`, writes the required CNAME(s) to Route 53, polls until ACM finishes validation, and exports the certificate and private key into Infisical.
+    Create a certificate profile linked to this CA, then submit a certificate request. Infisical requests the certificate from ACM, writes the required CNAME(s) to Route 53, waits for ACM to finish validation, and saves the certificate and private key.
+    ![Certificate Created](/images/platform/pki/aws-acm-public-ca/aws-acm-public-ca-certificate-created.png)
   </Step>
 </Steps>
 
 ## Auto-Renewal
 
-ACM certificates expire after 198 days, so most users will want auto-renewal turned on.
+ACM certificates expire after 198 days. There are two renewal paths that both end up producing a fresh certificate in Infisical.
 
-### Enabling on a profile
+### AWS managed renewal
 
-When you create or edit a certificate profile pointed at an ACM CA, configure the API enrollment with:
+AWS attempts to automatically renew ACM public certificates 45 days before expiry. This is [ACM managed renewal](https://docs.aws.amazon.com/acm/latest/userguide/managed-renewal.html) and happens on AWS's schedule, independent of Infisical. When it succeeds, AWS issues a new certificate body and private key under the **same ARN** but with a new serial number.
+
+The catch: AWS only updates the copy held inside ACM. The copy saved in Infisical still holds the old material until something pulls the new version out.
+
+### Infisical auto-renewal
+
+To keep the copy stored in Infisical in sync with AWS, enable auto-renewal on the certificate profile when you create or edit it:
 
 - **Auto-renew**: enabled
-- **Renew before days**: how many days before expiry the renewal should fire. Allowed range is **1–30 days**.
+- **Renew before days**: how many days before expiry renewal should fire (1–30 days)
 
 Every certificate issued through that profile inherits these values. You can also override them on an individual certificate from **Certificates → Manage Renewal**.
 
-### How it works
+When a certificate reaches the configured threshold, Infisical reconciles it with AWS:
 
-Once a day, Infisical checks for certificates nearing expiry and asks AWS to renew them. The renewed certificate is stored as a new entry linked to the original, and inherits the same auto-renewal settings — so the cycle continues automatically.
+- If AWS has **already renewed** the certificate on its own, Infisical pulls in the new certificate and private key.
+- If AWS has **not yet renewed**, Infisical triggers renewal, waits for ACM to finish re-issuance, then saves the new material.
+
+In both cases the renewed certificate is stored as a new entry linked to the original and inherits the same auto-renewal settings — so the cycle continues automatically.
+
+<Note>
+  AWS generates a fresh private key on every renewal. Infisical pulls it in each time and stores it encrypted with your project's KMS key.
+</Note>
 
 ## Troubleshooting
 
@@ -113,7 +135,7 @@ Once a day, Infisical checks for certificates nearing expiry and asks AWS to ren
 
 **Request stays pending** — DNS validation can take several minutes. Infisical retries automatically. Verify the CNAME records exist in Route 53 and that the hosted zone is authoritative for the requested domain.
 
-**Renewal appears stuck** — immediately after `RenewCertificate`, ACM may not yet expose the renewed certificate for export. Infisical treats this as transient and retries until the new certificate body is available (detected by a new serial number on the ARN).
+**Renewal appears stuck** — immediately after renewal is triggered, ACM may not yet have the new certificate available. Infisical treats this as transient and retries until a new serial number appears on the ARN.
 
 ## FAQ
 
@@ -127,7 +149,7 @@ Once a day, Infisical checks for certificates nearing expiry and asks AWS to ren
   </Accordion>
 
   <Accordion title="Can I provide my own CSR or private key?">
-    No. ACM generates the key pair itself. Infisical exports the certificate and private key from ACM and stores them encrypted.
+    No. ACM generates the key pair itself. Infisical pulls the certificate and private key from ACM and stores them encrypted.
   </Accordion>
 
   <Accordion title="Which key algorithms are supported?">
