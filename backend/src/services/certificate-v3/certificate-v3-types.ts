@@ -75,6 +75,7 @@ export type TOrderCertificateFromProfileDTO = {
     keyAlgorithm?: string;
     template?: string;
     csr?: string;
+    basicConstraints?: { isCA: boolean; pathLength?: number };
     organization?: string;
     organizationalUnit?: string;
     country?: string;

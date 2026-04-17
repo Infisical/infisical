@@ -31,6 +31,14 @@ import {
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme/acme-certificate-authority-types";
 import {
+  AwsAcmPublicCaCertificateAuthorityFns,
+  castDbEntryToAwsAcmPublicCaCertificateAuthority
+} from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import {
+  TCreateAwsAcmPublicCaCertificateAuthorityDTO,
+  TUpdateAwsAcmPublicCaCertificateAuthorityDTO
+} from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-types";
+import {
   AwsPcaCertificateAuthorityFns,
   castDbEntryToAwsPcaCertificateAuthority
 } from "./aws-pca/aws-pca-certificate-authority-fns";
@@ -77,7 +85,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -87,7 +95,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -142,6 +150,19 @@ export const certificateAuthorityServiceFactory = ({
   });
 
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL
+  });
+
+  const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -227,6 +248,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return awsAcmPublicCaFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
+        status,
+        actor
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -287,6 +318,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return castDbEntryToAwsAcmPublicCaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -356,6 +391,10 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return castDbEntryToAwsAcmPublicCaCertificateAuthority(certificateAuthority);
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -416,6 +455,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return awsPcaFns.listCertificateAuthorities({ projectId, permissionFilters });
+    }
+
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return awsAcmPublicCaFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -507,6 +550,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return awsAcmPublicCaFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -568,6 +621,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return castDbEntryToAwsAcmPublicCaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -662,6 +719,16 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return awsAcmPublicCaFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -729,6 +796,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.AWS_PCA) {
       return castDbEntryToAwsPcaCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AWS_ACM_PUBLIC_CA) {
+      return castDbEntryToAwsAcmPublicCaCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -837,6 +908,11 @@ export const certificateAuthorityServiceFactory = ({
 
     if (caType === CaType.AWS_PCA) {
       await awsPcaFns.revokeCertificate({ caId, serialNumber, reason });
+      return;
+    }
+
+    if (caType === CaType.AWS_ACM_PUBLIC_CA) {
+      await awsAcmPublicCaFns.revokeCertificate({ caId, serialNumber, reason });
       return;
     }
 

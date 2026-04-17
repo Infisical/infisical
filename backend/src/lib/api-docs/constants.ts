@@ -2543,6 +2543,12 @@ export const CertificateAuthorities = {
       certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,
       region: `The AWS region where the Private Certificate Authority is located.`
     },
+    AWS_ACM_PUBLIC_CA: {
+      appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Certificate Manager (ACM). This connection must have permissions to request, describe, export, renew, and delete certificates.`,
+      dnsAppConnectionId: `The ID of the AWS App Connection to use for creating and managing Route 53 CNAME records required for ACM domain validation.`,
+      hostedZoneId: `The Route 53 hosted zone ID to use for ACM DNS validation CNAME records.`,
+      region: `The AWS region to use for the ACM API calls.`
+    },
     INTERNAL: {
       type: "The type of CA to create.",
       friendlyName: "A friendly name for the CA.",

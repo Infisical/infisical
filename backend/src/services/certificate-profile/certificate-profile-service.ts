@@ -99,6 +99,20 @@ const validateTemplateByExternalCaType = (
   }
 };
 
+const validateAcmEnrollmentType = async (
+  caId: string | null | undefined,
+  enrollmentType: EnrollmentType,
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">
+) => {
+  if (!caId) return;
+  const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
+  if (externalCa?.type === CaType.AWS_ACM_PUBLIC_CA && enrollmentType !== EnrollmentType.API) {
+    throw new ForbiddenRequestError({
+      message: "AWS Certificate Manager only supports API enrollment"
+    });
+  }
+};
+
 const validateExternalConfigs = async (
   externalConfigs: Record<string, unknown> | null | undefined,
   caId: string | null,
@@ -351,6 +365,8 @@ export const certificateProfileServiceFactory = ({
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
+    await validateAcmEnrollmentType(data.caId, data.enrollmentType, externalCertificateAuthorityDAL);
+
     // Validate defaults against policy constraints
     if (data.defaults && data.certificatePolicyId) {
       const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
@@ -600,6 +616,8 @@ export const certificateProfileServiceFactory = ({
     const finalCaId = data.caId !== undefined ? data.caId : existingProfile.caId;
 
     validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
+
+    await validateAcmEnrollmentType(finalCaId, finalEnrollmentType, externalCertificateAuthorityDAL);
 
     // Validate external configs only if they are provided in the update
     if (data.externalConfigs !== undefined) {

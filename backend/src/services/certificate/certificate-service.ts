@@ -410,7 +410,7 @@ export const certificateServiceFactory = ({
     // Note: External CA revocation handling would go here for supported CA types
     // Currently, only internal CAs, ACME CAs and AWS PCA (external CA) support revocation
 
-    if (ca.externalCa?.type === CaType.AWS_PCA) {
+    if (ca.externalCa?.type === CaType.AWS_PCA || ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
       await certificateAuthorityService.revokeCertificate({
         caId: ca.id,
         serialNumber: cert.serialNumber,
