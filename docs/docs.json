@@ -830,6 +830,7 @@
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/aws-acm-public-ca",
                   "documentation/platform/pki/ca/venafi"
                 ]
               }

@@ -28,7 +28,10 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
+  CertKeyUsage,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason
@@ -53,7 +56,6 @@ import {
   acmValidationFailedError,
   AcmValidationPendingError,
   buildIdempotencyToken,
-  calculateAcmRenewBeforeDays,
   generateAcmPassphrase,
   mapCertKeyAlgorithmToAcm,
   validateAcmIssuanceInputs
@@ -490,10 +492,12 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       if (!detail) {
         throw new BadRequestError({ message: `ACM did not return details for certificate ${certificateArn}` });
       }
-
-      const awsNotAfter = detail.NotAfter;
-      const storedNotAfter = originalCert.notAfter;
-      const alreadyRenewedByAws = awsNotAfter && storedNotAfter && awsNotAfter.getTime() > storedNotAfter.getTime();
+      // ACM serials may come back colon-separated hex (e.g., "0a:1b:..."), our DB stores plain hex —
+      // normalize both before comparing.
+      const normalizeSerial = (s?: string | null) => s?.replace(/:/g, "").toLowerCase() ?? "";
+      const storedSerial = normalizeSerial(originalCert.serialNumber);
+      const awsSerial = normalizeSerial(detail.Serial);
+      const alreadyRenewedByAws = Boolean(awsSerial && storedSerial && awsSerial !== storedSerial);
 
       if (!alreadyRenewedByAws) {
         if (detail.DomainValidationOptions) {
@@ -524,10 +528,10 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           throw acmValidationFailedError(`AWS ACM renewal failed for ${certificateArn}`);
         }
         // ExportCertificate keeps returning the original cert until ACM has fully re-issued the
-        // renewed one. NotAfter advancing is the ground-truth signal; RenewalStatus can still be
-        // undefined or PENDING_* right after RenewCertificate even once renewal eventually succeeds.
-        const newNotAfter = afterRenew.Certificate?.NotAfter;
-        const renewalComplete = newNotAfter && storedNotAfter && newNotAfter.getTime() > storedNotAfter.getTime();
+        // renewed one. Serial number changing is the ground-truth signal that a new cert body
+        // exists; NotAfter and RenewalStatus can lag or be misleading.
+        const newSerial = normalizeSerial(afterRenew.Certificate?.Serial);
+        const renewalComplete = Boolean(newSerial && storedSerial && newSerial !== storedSerial);
         if (!renewalComplete) {
           throw new AcmValidationPendingError(
             `AWS ACM renewal for ${certificateArn} has not completed yet (status=${renewStatus ?? "unknown"}) — will retry`
@@ -662,6 +666,25 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
     const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
 
+    // Extract key usages and extended key usages from the certificate ACM actually issued —
+    // ACM applies its own policy and revises it over time, so the request is not the source of truth.
+    let issuedKeyUsages: CertKeyUsage[] = [];
+    const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
+    if (keyUsagesExt) {
+      issuedKeyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (usage) => (x509.KeyUsageFlags[usage] & keyUsagesExt.usages) !== 0
+      );
+    }
+
+    let issuedExtendedKeyUsages: CertExtendedKeyUsage[] = [];
+    const extKeyUsageExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
+    if (extKeyUsageExt) {
+      issuedExtendedKeyUsages = extKeyUsageExt.usages
+        .map((oid) => CertExtendedKeyUsageOIDToName[oid as string])
+        .filter(Boolean);
+    }
+
     const externalMetadata = ExternalMetadataSchema.parse({
       type: CaType.AWS_ACM_PUBLIC_CA,
       arn: certificateArn,
@@ -684,6 +707,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           notAfter: certObj.notAfter,
           keyAlgorithm,
           signatureAlgorithm,
+          keyUsages: issuedKeyUsages,
+          extendedKeyUsages: issuedExtendedKeyUsages,
           projectId: ca.projectId,
           externalMetadata,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
@@ -717,11 +742,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       if (profileId && certificateProfileDAL) {
         const profile = await certificateProfileDAL.findByIdWithConfigs(profileId, tx);
-        if (profile) {
-          const finalRenewBeforeDays = calculateAcmRenewBeforeDays(profile);
-          if (finalRenewBeforeDays !== undefined) {
-            await certificateDAL.updateById(cert.id, { renewBeforeDays: finalRenewBeforeDays }, tx);
-          }
+        if (profile?.apiConfig?.autoRenew && profile.apiConfig.renewBeforeDays) {
+          await certificateDAL.updateById(cert.id, { renewBeforeDays: profile.apiConfig.renewBeforeDays }, tx);
         }
       }
     });

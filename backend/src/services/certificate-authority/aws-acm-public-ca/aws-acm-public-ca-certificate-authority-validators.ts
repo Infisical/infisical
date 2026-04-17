@@ -26,7 +26,6 @@ export const validateAcmIssuanceInputs = ({
   ttl,
   notBefore,
   notAfter,
-  basicConstraints,
   organization,
   organizationalUnit,
   country,
@@ -40,7 +39,6 @@ export const validateAcmIssuanceInputs = ({
   ttl?: string;
   notBefore?: Date | string;
   notAfter?: Date | string;
-  basicConstraints?: { isCA?: boolean; pathLength?: number };
   organization?: string;
   organizationalUnit?: string;
   country?: string;
@@ -100,11 +98,6 @@ export const validateAcmIssuanceInputs = ({
       });
     }
   }
-  if (basicConstraints?.isCA) {
-    throw new BadRequestError({
-      message: "AWS Certificate Manager does not issue CA certificates."
-    });
-  }
 };
 
 export const mapCertKeyAlgorithmToAcm = (keyAlgorithm: CertKeyAlgorithm) => {
@@ -132,20 +125,6 @@ export const generateAcmPassphrase = (): string => {
     out += ACM_PASSPHRASE_ALPHABET[bytes[i] % ACM_PASSPHRASE_ALPHABET.length];
   }
   return out;
-};
-
-// ACM validity is fixed — clamp renewBeforeDays so auto-renewal fires before expiry.
-export const calculateAcmRenewBeforeDays = (
-  profile: { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } } | undefined
-): number | undefined => {
-  if (!profile?.apiConfig?.autoRenew || !profile.apiConfig.renewBeforeDays) {
-    return undefined;
-  }
-  const profileRenewBeforeDays = profile.apiConfig.renewBeforeDays;
-  if (profileRenewBeforeDays >= AWS_ACM_CERTIFICATE_VALIDITY_DAYS) {
-    return Math.max(1, AWS_ACM_CERTIFICATE_VALIDITY_DAYS - 1);
-  }
-  return profileRenewBeforeDays;
 };
 
 // Strip hyphens from the certificate UUID to produce a 32-char token that
