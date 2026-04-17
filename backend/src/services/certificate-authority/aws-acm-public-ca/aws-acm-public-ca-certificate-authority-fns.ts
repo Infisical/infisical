@@ -286,46 +286,48 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    if (configuration) {
+      const { appConnectionId, dnsAppConnectionId, hostedZoneId, region } = configuration;
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
+
+      const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
+      try {
+        await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+      } catch (error) {
+        throw new BadRequestError({
+          message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
+        });
+      }
+
+      const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
+      try {
+        await route53GetHostedZone(dnsConnection, hostedZoneId);
+      } catch (error) {
+        throw new BadRequestError({
+          message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
+        });
+      }
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { appConnectionId, dnsAppConnectionId, hostedZoneId, region } = configuration;
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
-
-        const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
-        try {
-          await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
-        } catch (error) {
-          throw new BadRequestError({
-            message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
-          });
-        }
-
-        const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
-        try {
-          await route53GetHostedZone(dnsConnection, hostedZoneId);
-        } catch (error) {
-          throw new BadRequestError({
-            message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
-          });
-        }
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
             type: CaType.AWS_ACM_PUBLIC_CA
           },
           {
-            appConnectionId,
+            appConnectionId: configuration.appConnectionId,
             configuration: {
-              dnsAppConnectionId,
-              hostedZoneId,
-              region
+              dnsAppConnectionId: configuration.dnsAppConnectionId,
+              hostedZoneId: configuration.hostedZoneId,
+              region: configuration.region
             }
           },
           tx
@@ -451,6 +453,11 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
     const { appConnectionId, dnsAppConnectionId, hostedZoneId, region } = acmCa.configuration;
 
+    // ACM ARNs are region-locked. On renewal this gets overwritten with the original
+    // cert's region so the stored metadata stays consistent with the ARN even if the
+    // CA's configured region was edited between issuance and renewal.
+    let issuanceRegion: AWSRegion = region;
+
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
       projectDAL,
@@ -477,12 +484,11 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         });
       }
       certificateArn = parsedMetadata.data.arn;
+      issuanceRegion = parsedMetadata.data.region;
 
-      // ARNs are region-locked. Use the cert's stored region, not the CA's current region
-      // (the CA's region may have been edited since the cert was issued).
       acmClient = await createAcmClient({
         appConnectionId,
-        region: parsedMetadata.data.region,
+        region: issuanceRegion,
         appConnectionDAL,
         kmsService
       });
@@ -688,7 +694,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     const externalMetadata = ExternalMetadataSchema.parse({
       type: CaType.AWS_ACM_PUBLIC_CA,
       arn: certificateArn,
-      region,
+      region: issuanceRegion,
       validationMethod: AwsAcmValidationMethod.DNS
     });
 
