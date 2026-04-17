@@ -42,10 +42,9 @@ export const webhookServiceFactory = ({
 }: TWebhookServiceFactoryDep) => {
   const subscribableEvents = new Set<string>(SUBSCRIBABLE_WEBHOOK_EVENTS);
 
-  // `eventsFilter` on the API mirrors the DB's `filteredEvents` column: both are the blocklist
-  // of events that should NOT trigger the webhook. Empty array => no events are filtered out
-  // (webhook fires on everything subscribable). Stale DB values that aren't in the current enum
-  // (e.g. legacy empty strings) are dropped so the response stays valid against the zod schema.
+  // `eventsFilter` on the API mirrors the DB's `filteredEvents` column: both are the allowlist
+  // of events that should trigger the webhook. Empty array => no events are filtered out
+  // (webhook fires on everything subscribable).
   const withEventsFilter = <T extends { filteredEvents?: string[] | null }>(webhook: T) => ({
     ...webhook,
     eventsFilter: (webhook.filteredEvents ?? [])
