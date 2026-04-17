@@ -6,22 +6,22 @@ import { format } from "date-fns";
 import { Lottie, Tooltip } from "@app/components/v2";
 import {
   Button,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useGetScanHistory } from "@app/hooks/api";
 import { getScanStatusBadge } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -54,12 +54,12 @@ export const DiscoveryScanLogsSection = ({
   const totalCount = data?.totalCount || 0;
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
+    <Card>
+      <CardHeader className="border-b">
         <div className="flex items-center justify-between">
           <div>
-            <UnstableCardTitle>Scan Runs</UnstableCardTitle>
-            <UnstableCardDescription>History of scan executions</UnstableCardDescription>
+            <CardTitle>Scan Runs</CardTitle>
+            <CardDescription>History of scan executions</CardDescription>
           </div>
           <Button
             variant="outline"
@@ -72,38 +72,36 @@ export const DiscoveryScanLogsSection = ({
             Trigger Scan
           </Button>
         </div>
-      </UnstableCardHeader>
-      <UnstableCardContent className="p-0">
+      </CardHeader>
+      <CardContent className="p-0">
         {isPending && (
           <div className="flex h-40 w-full items-center justify-center">
             <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
           </div>
         )}
         {!isPending && scans.length === 0 && (
-          <UnstableEmpty>
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No scan history</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
-                Trigger a scan to see scan history
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No scan history</EmptyTitle>
+              <EmptyDescription>Trigger a scan to see scan history</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && scans.length > 0 && (
           <>
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableRow>
-                  <UnstableTableHead>Started</UnstableTableHead>
-                  <UnstableTableHead>Status</UnstableTableHead>
-                  <UnstableTableHead>Targets</UnstableTableHead>
-                  <UnstableTableHead>Certs Found</UnstableTableHead>
-                  <UnstableTableHead>Installations</UnstableTableHead>
-                  <UnstableTableHead>Duration</UnstableTableHead>
-                  <UnstableTableHead>Message</UnstableTableHead>
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Targets</TableHead>
+                  <TableHead>Certs Found</TableHead>
+                  <TableHead>Installations</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {scans.map((scan) => {
                   const duration =
                     scan.completedAt && scan.startedAt
@@ -115,18 +113,16 @@ export const DiscoveryScanLogsSection = ({
                       : null;
 
                   return (
-                    <UnstableTableRow key={scan.id}>
-                      <UnstableTableCell>
+                    <TableRow key={scan.id}>
+                      <TableCell>
                         {format(new Date(scan.startedAt), "MMM dd, yyyy HH:mm:ss")}
-                      </UnstableTableCell>
-                      <UnstableTableCell>{getScanStatusBadge(scan.status)}</UnstableTableCell>
-                      <UnstableTableCell>{scan.targetsScannedCount}</UnstableTableCell>
-                      <UnstableTableCell>{scan.certificatesFoundCount}</UnstableTableCell>
-                      <UnstableTableCell>{scan.installationsFoundCount}</UnstableTableCell>
-                      <UnstableTableCell>
-                        {duration !== null ? `${duration}s` : "-"}
-                      </UnstableTableCell>
-                      <UnstableTableCell>
+                      </TableCell>
+                      <TableCell>{getScanStatusBadge(scan.status)}</TableCell>
+                      <TableCell>{scan.targetsScannedCount}</TableCell>
+                      <TableCell>{scan.certificatesFoundCount}</TableCell>
+                      <TableCell>{scan.installationsFoundCount}</TableCell>
+                      <TableCell>{duration !== null ? `${duration}s` : "-"}</TableCell>
+                      <TableCell>
                         {scan.errorMessage ? (
                           <Tooltip
                             className="max-w-sm"
@@ -145,14 +141,14 @@ export const DiscoveryScanLogsSection = ({
                         ) : (
                           "-"
                         )}
-                      </UnstableTableCell>
-                    </UnstableTableRow>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </UnstableTableBody>
-            </UnstableTable>
+              </TableBody>
+            </Table>
             {Boolean(totalCount) && (
-              <UnstablePagination
+              <Pagination
                 count={totalCount}
                 page={page}
                 perPage={perPage}
@@ -162,7 +158,7 @@ export const DiscoveryScanLogsSection = ({
             )}
           </>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

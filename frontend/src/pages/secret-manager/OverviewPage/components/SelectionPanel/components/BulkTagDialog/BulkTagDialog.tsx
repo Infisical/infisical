@@ -21,12 +21,12 @@ import {
   FieldDescription,
   FieldLabel,
   Switch,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -271,54 +271,51 @@ const BulkTagDialogContent = ({
         </DialogDescription>
       </DialogHeader>
       {selectedResources.length > 0 && (
-        <UnstableTable containerClassName="max-h-[40vh] mt-4 overflow-auto">
-          <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-            <UnstableTableRow>
-              <UnstableTableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+        <Table containerClassName="max-h-[40vh] mt-4 overflow-auto">
+          <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+            <TableRow>
+              <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Type
-              </UnstableTableHead>
-              <UnstableTableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
+              </TableHead>
+              <TableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
                 Name
-              </UnstableTableHead>
+              </TableHead>
               {visibleEnvs.map((env) => (
-                <UnstableTableHead
+                <TableHead
                   key={env.slug}
                   className="w-32 max-w-32 border-r border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)] last:border-r-0"
                   isTruncatable
                 >
                   {env.name}
-                </UnstableTableHead>
+                </TableHead>
               ))}
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {selectedResources.map((item) => (
-              <UnstableTableRow key={item.name} className="group">
-                <UnstableTableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
+              <TableRow key={item.name} className="group">
+                <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
                   <KeyIcon className="size-4 text-secret" />
-                </UnstableTableCell>
-                <UnstableTableCell
+                </TableCell>
+                <TableCell
                   className="sticky left-10 z-10 max-w-80 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover"
                   isTruncatable
                 >
                   {item.name}
-                </UnstableTableCell>
+                </TableCell>
                 {visibleEnvs.map((env) => (
-                  <UnstableTableCell
-                    key={env.slug}
-                    className="border-r text-center last:border-r-0"
-                  >
+                  <TableCell key={env.slug} className="border-r text-center last:border-r-0">
                     {item.envSlugs.has(env.slug) ? (
                       <TagsIcon className="inline-block size-4 text-project" />
                     ) : (
                       <span className="text-muted">&mdash;</span>
                     )}
-                  </UnstableTableCell>
+                  </TableCell>
                 ))}
-              </UnstableTableRow>
+              </TableRow>
             ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       )}
 
       <div className="flex flex-col gap-4 py-4">

@@ -5,6 +5,8 @@ import {
   Button,
   Calendar,
   FilterableSelect,
+  IconButton,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -12,9 +14,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableIconButton,
-  UnstableInput
+  SelectValue
 } from "@app/components/v3";
 
 import { FILTER_FIELDS, type FilterFieldDefinition, type FilterRule } from "./inventory-types";
@@ -170,7 +170,7 @@ const FilterRow = ({
         );
       case "number":
         return (
-          <UnstableInput
+          <Input
             type="number"
             value={rule.value !== null ? String(rule.value) : ""}
             onChange={(e) =>
@@ -182,7 +182,7 @@ const FilterRow = ({
         );
       default:
         return (
-          <UnstableInput
+          <Input
             value={(rule.value as string) || ""}
             onChange={(e) => onUpdate({ ...rule, value: e.target.value })}
             placeholder="Value"
@@ -225,7 +225,7 @@ const FilterRow = ({
 
       <div className="min-w-0 flex-1">{renderValueInput()}</div>
 
-      <UnstableIconButton
+      <IconButton
         variant="ghost"
         size="xs"
         onClick={onRemove}
@@ -233,7 +233,7 @@ const FilterRow = ({
         className="mt-1.5 shrink-0 hover:text-red-400"
       >
         <Trash2Icon />
-      </UnstableIconButton>
+      </IconButton>
     </div>
   );
 };

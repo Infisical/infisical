@@ -6,14 +6,7 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { EmailServiceSetupModal } from "@app/components/v2";
-import {
-  Button,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableInput
-} from "@app/components/v3";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
 import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -71,19 +64,19 @@ export const AccountRecoveryEmailPage = () => {
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         {step === 1 && (
           <form onSubmit={onSubmit} className="mx-auto w-full max-w-sm">
-            <UnstableCard className="w-full items-stretch gap-0 p-6">
-              <UnstableCardHeader className="mb-4 gap-4">
-                <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+            <Card className="w-full items-stretch gap-0 p-6">
+              <CardHeader className="mb-4 gap-4">
+                <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
                   Recover your account
-                </UnstableCardTitle>
-              </UnstableCardHeader>
-              <UnstableCardContent>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="mb-4 text-sm text-label">
                   Enter your email to start the recovery process. You will receive an email with
                   instructions.
                 </p>
                 <div className="w-full">
-                  <UnstableInput
+                  <Input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
@@ -105,18 +98,18 @@ export const AccountRecoveryEmailPage = () => {
                     </span>
                   </Link>
                 </div>
-              </UnstableCardContent>
-            </UnstableCard>
+              </CardContent>
+            </Card>
           </form>
         )}
         {step === 2 && (
-          <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
-            <UnstableCardHeader className="mb-4 gap-4">
-              <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+          <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+            <CardHeader className="mb-4 gap-4">
+              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
                 Check your inbox
-              </UnstableCardTitle>
-            </UnstableCardHeader>
-            <UnstableCardContent>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <p className="text-center text-sm text-foreground">
                 If the email is in our system, you will receive an email at{" "}
                 <span className="italic">{email}</span> to initiate the account recovery process.
@@ -128,8 +121,8 @@ export const AccountRecoveryEmailPage = () => {
                   </span>
                 </Link>
               </div>
-            </UnstableCardContent>
-          </UnstableCard>
+            </CardContent>
+          </Card>
         )}
       </div>
       <AuthPageFooter />

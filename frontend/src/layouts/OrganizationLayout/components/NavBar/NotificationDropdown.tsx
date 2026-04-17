@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { UnstableIconButton } from "@app/components/v3";
+import { IconButton } from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
@@ -44,14 +44,9 @@ export const NotificationDropdown = () => {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <UnstableIconButton
-          variant="outline"
-          size="sm"
-          aria-label="Notifications"
-          className="relative"
-        >
+        <IconButton variant="outline" size="sm" aria-label="Notifications" className="relative">
           {unreadCount > 0 ? <BellDotIcon className="text-warning" /> : <Bell />}
-        </UnstableIconButton>
+        </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

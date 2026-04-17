@@ -7,17 +7,17 @@ import { z } from "zod";
 
 import {
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   FieldError,
+  IconButton,
+  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  TextArea,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton,
-  UnstableInput
+  TextArea
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
@@ -164,16 +164,16 @@ export default function UserInfoStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
-        <UnstableCardHeader className="mb-4 gap-2">
-          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <CardHeader className="mb-4 gap-2">
+          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
             {isInvite ? "Set up your account" : t("signup.step3-message")}
-          </UnstableCardTitle>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="flex w-full flex-col items-stretch py-2">
             <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Your Name</p>
-            <UnstableInput
+            <Input
               {...register("name")}
               placeholder="Jane Doe"
               autoComplete="given-name"
@@ -185,7 +185,7 @@ export default function UserInfoStep({
             <>
               <div className="flex w-full flex-col items-stretch py-2">
                 <p className="mb-1 ml-1 text-sm font-medium text-bunker-300">Organization Name</p>
-                <UnstableInput
+                <Input
                   {...register("organizationName")}
                   placeholder="Infisical"
                   maxLength={64}
@@ -221,14 +221,14 @@ export default function UserInfoStep({
                 id="new-password"
               />
               <InputGroupAddon align="inline-end">
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff /> : <Eye />}
-                </UnstableIconButton>
+                </IconButton>
               </InputGroupAddon>
             </InputGroup>
             {allIssues.length > 0 && passwordValue.length > 0 && (
@@ -258,8 +258,8 @@ export default function UserInfoStep({
               {String(t("signup.signup"))}
             </Button>
           </div>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </div>
   );
 }

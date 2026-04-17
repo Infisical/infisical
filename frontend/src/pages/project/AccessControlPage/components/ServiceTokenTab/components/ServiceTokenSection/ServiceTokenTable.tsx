@@ -12,26 +12,26 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
@@ -160,22 +160,22 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
         </InputGroup>
       </div>
       {!isPending && !filteredTokens?.length ? (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {search ? "No service tokens match search" : "No service tokens found"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {search ? "Adjust your search criteria." : "Create a token to get started."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead onClick={() => handleSort(TokensOrderBy.Name)}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead onClick={() => handleSort(TokensOrderBy.Name)}>
                   Name
                   <ChevronDownIcon
                     className={twMerge(
@@ -186,9 +186,9 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== TokensOrderBy.Name && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead>Environment / Secret Path</UnstableTableHead>
-                <UnstableTableHead onClick={() => handleSort(TokensOrderBy.Expiration)}>
+                </TableHead>
+                <TableHead>Environment / Secret Path</TableHead>
+                <TableHead onClick={() => handleSort(TokensOrderBy.Expiration)}>
                   Valid Until
                   <ChevronDownIcon
                     className={twMerge(
@@ -199,33 +199,33 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== TokensOrderBy.Expiration && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                </TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isPending &&
                 Array.from({ length: 10 }).map((_, i) => (
-                  <UnstableTableRow key={`skeleton-${i + 1}`}>
-                    <UnstableTableCell>
+                  <TableRow key={`skeleton-${i + 1}`}>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-4" />
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 ))}
               {!isPending &&
                 filteredTokens.slice(offset, perPage * page).map((row) => (
-                  <UnstableTableRow key={row.id}>
-                    <UnstableTableCell isTruncatable>{row.name}</UnstableTableCell>
-                    <UnstableTableCell>
+                  <TableRow key={row.id}>
+                    <TableCell isTruncatable>{row.name}</TableCell>
+                    <TableCell>
                       <div className="flex flex-row flex-wrap gap-1">
                         {row?.scopes.map(({ secretPath, environment }) => (
                           <Badge key={`${row.id}-${environment}-${secretPath}`} variant="neutral">
@@ -235,32 +235,32 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                           </Badge>
                         ))}
                       </div>
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       {row.expiresAt ? (
                         format(row.expiresAt, "MMM d, yyyy h:mm aa")
                       ) : (
                         <span className="text-muted">&mdash;</span>
                       )}
-                    </UnstableTableCell>
-                    <UnstableTableCell>
-                      <UnstableDropdownMenu>
-                        <UnstableDropdownMenuTrigger asChild>
-                          <UnstableIconButton
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
                             variant="ghost"
                             size="xs"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontalIcon />
-                          </UnstableIconButton>
-                        </UnstableDropdownMenuTrigger>
-                        <UnstableDropdownMenuContent sideOffset={2} align="end">
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.ServiceTokens}
                           >
                             {(isAllowed) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={!isAllowed}
                                 onClick={(e) => {
@@ -273,18 +273,18 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                               >
                                 <TrashIcon />
                                 Delete Token
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
-                        </UnstableDropdownMenuContent>
-                      </UnstableDropdownMenu>
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {Boolean(filteredTokens.length) && (
-            <UnstablePagination
+            <Pagination
               count={filteredTokens.length}
               page={page}
               perPage={perPage}

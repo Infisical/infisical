@@ -21,32 +21,29 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button as V2Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
   IconButton as V2IconButton,
   Input as V2Input
 } from "@app/components/v2";
 import {
   Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
@@ -354,22 +351,22 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Account Name</UnstableTableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Account Name</TableHead>
               {hasAccountsWithDependencies(resource.resourceType) && (
-                <UnstableTableHead>Dependencies</UnstableTableHead>
+                <TableHead>Dependencies</TableHead>
               )}
-              {hasAccountType(resource.resourceType) && <UnstableTableHead>Type</UnstableTableHead>}
-              <UnstableTableHead>Last Rotated</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              {hasAccountType(resource.resourceType) && <TableHead>Type</TableHead>}
+              <TableHead>Last Rotated</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isPending && (
-              <UnstableTableRow>
-                <UnstableTableCell
+              <TableRow>
+                <TableCell
                   colSpan={
                     3 +
                     (hasAccountType(resource.resourceType) ? 1 : 0) +
@@ -378,29 +375,29 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   className="text-center text-muted"
                 >
                   Loading accounts...
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending && accounts.length === 0 && (
-              <UnstableTableRow>
-                <UnstableTableCell
+              <TableRow>
+                <TableCell
                   colSpan={
                     3 +
                     (hasAccountType(resource.resourceType) ? 1 : 0) +
                     (hasAccountsWithDependencies(resource.resourceType) ? 1 : 0)
                   }
                 >
-                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
-                    <UnstableEmptyHeader>
-                      <UnstableEmptyTitle>
+                  <Empty className="border-0 bg-transparent py-8 shadow-none">
+                    <EmptyHeader>
+                      <EmptyTitle>
                         {debouncedSearch || isTableFiltered
                           ? "No accounts match your search"
                           : "No accounts found"}
-                      </UnstableEmptyTitle>
-                    </UnstableEmptyHeader>
-                  </UnstableEmpty>
-                </UnstableTableCell>
-              </UnstableTableRow>
+                      </EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             )}
             {accounts.map((account) => {
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
@@ -418,12 +415,12 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                 : undefined;
 
               return (
-                <UnstableTableRow
+                <TableRow
                   key={account.id}
                   className="group cursor-pointer"
                   onClick={() => handleAccountClick(account)}
                 >
-                  <UnstableTableCell>
+                  <TableCell>
                     <div className="flex items-center gap-3">
                       <Tooltip disableHoverableContent>
                         <TooltipTrigger>
@@ -446,18 +443,18 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         </Badge>
                       )}
                     </div>
-                  </UnstableTableCell>
+                  </TableCell>
                   {hasAccountsWithDependencies(resource.resourceType) && (
-                    <UnstableTableCell>
+                    <TableCell>
                       <span className="text-muted">{account.dependencyCount ?? 0}</span>
-                    </UnstableTableCell>
+                    </TableCell>
                   )}
                   {hasAccountType(resource.resourceType) && (
-                    <UnstableTableCell>
+                    <TableCell>
                       <span className="capitalize">{getAccountType(account) ?? "-"}</span>
-                    </UnstableTableCell>
+                    </TableCell>
                   )}
-                  <UnstableTableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted">
                         {lastRotatedAt
@@ -505,8 +502,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         </Badge>
                       )}
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       {/* Temporarily disable accessing Windows Server accounts */}
                       {/* Disable accessing Active Directory accounts */}
@@ -531,14 +528,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                             </Button>
                           </ProjectPermissionCan>
                         )}
-                      <UnstableDropdownMenu>
-                        <UnstableDropdownMenuTrigger asChild>
-                          <UnstableIconButton variant="ghost" size="xs">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs">
                             <EllipsisVerticalIcon />
-                          </UnstableIconButton>
-                        </UnstableDropdownMenuTrigger>
-                        <UnstableDropdownMenuContent sideOffset={2} align="end">
-                          <UnstableDropdownMenuItem
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCopyId(account.id);
@@ -550,13 +547,13 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               <CopyIcon className="size-4" />
                             )}
                             Copy Account ID
-                          </UnstableDropdownMenuItem>
+                          </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionPamAccountActions.TriggerRotation}
                             a={ProjectPermissionSub.PamAccounts}
                           >
                             {(isAllowed: boolean) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 isDisabled={!isAllowed || manualRotate.isPending}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -565,7 +562,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               >
                                 <RefreshCwIcon className="size-4" />
                                 Rotate Account
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
@@ -573,7 +570,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                             a={ProjectPermissionSub.PamAccounts}
                           >
                             {(isAllowed: boolean) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 isDisabled={!isAllowed}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -582,7 +579,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               >
                                 <PencilIcon className="size-4" />
                                 Edit Account
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
@@ -590,7 +587,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                             a={ProjectPermissionSub.PamAccounts}
                           >
                             {(isAllowed: boolean) => (
-                              <UnstableDropdownMenuItem
+                              <DropdownMenuItem
                                 isDisabled={!isAllowed}
                                 variant="danger"
                                 onClick={(e) => {
@@ -600,18 +597,18 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               >
                                 <TrashIcon className="size-4" />
                                 Delete Account
-                              </UnstableDropdownMenuItem>
+                              </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
-                        </UnstableDropdownMenuContent>
-                      </UnstableDropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       </div>
 
       <PamAddAccountModal

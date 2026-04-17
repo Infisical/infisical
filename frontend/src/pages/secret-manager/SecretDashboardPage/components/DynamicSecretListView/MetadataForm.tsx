@@ -3,12 +3,7 @@ import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, FormControl, FormLabel, IconButton, Input } from "@app/components/v2";
-import {
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
-} from "@app/components/v3";
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@app/components/v3";
 
 export const MetadataForm = ({
   control,
@@ -30,11 +25,11 @@ export const MetadataForm = ({
     <FormControl label={title} className="mt-4">
       <div className="flex flex-col space-y-2 pt-1">
         {metadataFormFields.fields.length === 0 ? (
-          <UnstableEmpty className="gap-2 p-6 md:p-6">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No metadata entries</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-            <UnstableEmptyContent>
+          <Empty className="gap-2 p-6 md:p-6">
+            <EmptyHeader>
+              <EmptyTitle>No metadata entries</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
               <Button
                 variant="outline_bg"
                 size="xs"
@@ -43,8 +38,8 @@ export const MetadataForm = ({
               >
                 Add entry
               </Button>
-            </UnstableEmptyContent>
-          </UnstableEmpty>
+            </EmptyContent>
+          </Empty>
         ) : (
           <>
             {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (

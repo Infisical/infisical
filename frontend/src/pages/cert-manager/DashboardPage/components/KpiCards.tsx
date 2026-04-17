@@ -1,6 +1,6 @@
 import { AlertTriangle, FileCheck, FileClock, FileKey, FileX } from "lucide-react";
 
-import { Badge, UnstableCard, UnstableCardContent } from "@app/components/v3";
+import { Badge, Card, CardContent } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 
 type Props = {
@@ -101,12 +101,12 @@ export const KpiCards = ({ stats, onNavigate }: Props) => {
         const count = stats.totals[card.key];
         const badge = getBadge(card.key, stats);
         return (
-          <UnstableCard
+          <Card
             key={card.key}
             className="min-w-[180px] flex-1 cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
             onClick={() => onNavigate(card.filters)}
           >
-            <UnstableCardContent className="flex h-full flex-col p-4">
+            <CardContent className="flex h-full flex-col p-4">
               <div className="flex items-start justify-between">
                 <span className="text-base font-semibold text-foreground">{card.label}</span>
                 <div
@@ -124,8 +124,8 @@ export const KpiCards = ({ stats, onNavigate }: Props) => {
                   {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
                 </div>
               </div>
-            </UnstableCardContent>
-          </UnstableCard>
+            </CardContent>
+          </Card>
         );
       })}
     </div>

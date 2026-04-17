@@ -17,6 +17,17 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -29,26 +40,15 @@ import {
   SheetHeader,
   SheetTitle,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableInput,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -148,7 +148,7 @@ const RuleFormContent = ({
                 control={control}
                 name="name"
                 render={({ field }) => (
-                  <UnstableInput
+                  <Input
                     {...field}
                     placeholder="e.g. Production key naming"
                     isError={Boolean(errors.name)}
@@ -162,7 +162,7 @@ const RuleFormContent = ({
                 control={control}
                 name="description"
                 render={({ field }) => (
-                  <UnstableInput
+                  <Input
                     {...field}
                     value={field.value ?? ""}
                     placeholder="Brief description of this rule"
@@ -241,7 +241,7 @@ const RuleFormContent = ({
                   name="folderPath"
                   render={({ field, fieldState: { error } }) => (
                     <div>
-                      <UnstableInput {...field} placeholder="/**" isError={Boolean(error)} />
+                      <Input {...field} placeholder="/**" isError={Boolean(error)} />
                       {error?.message && (
                         <p className="mt-1 text-xs text-danger">{error.message}</p>
                       )}
@@ -257,14 +257,14 @@ const RuleFormContent = ({
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
               {availableConstraintOptions.length > 0 && (
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button type="button" variant="outline" size="xs">
                       <PlusIcon className="size-4" />
                       Add Constraint
                     </Button>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
                     {availableConstraintOptions.map((opt) => {
                       const valueUsed = usedConstraintPairs.has(
                         `${opt.type}:${ConstraintTarget.SecretValue}`
@@ -274,7 +274,7 @@ const RuleFormContent = ({
                         : ConstraintTarget.SecretValue;
 
                       return (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           key={opt.type}
                           onClick={() =>
                             append({
@@ -289,11 +289,11 @@ const RuleFormContent = ({
                             <div className="text-sm">{opt.label}</div>
                             <div className="text-xs text-muted">{opt.description}</div>
                           </div>
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       );
                     })}
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
 
@@ -474,14 +474,14 @@ export const SecretValidationRulesTab = () => {
               </div>
             )}
             {!isLoading && rules.length === 0 ? (
-              <UnstableEmpty className="border">
-                <UnstableEmptyHeader>
-                  <UnstableEmptyTitle>No validation rules configured</UnstableEmptyTitle>
-                  <UnstableEmptyDescription>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>No validation rules configured</EmptyTitle>
+                  <EmptyDescription>
                     Create a rule to enforce validation constraints on secret keys and values
-                  </UnstableEmptyDescription>
-                </UnstableEmptyHeader>
-                <UnstableEmptyContent>
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Settings}
@@ -507,24 +507,24 @@ export const SecretValidationRulesTab = () => {
                       </Tooltip>
                     )}
                   </ProjectPermissionCan>
-                </UnstableEmptyContent>
-              </UnstableEmpty>
+                </EmptyContent>
+              </Empty>
             ) : (
               !isLoading && (
-                <UnstableTable>
-                  <UnstableTableHeader>
-                    <UnstableTableRow>
-                      <UnstableTableHead>Name</UnstableTableHead>
-                      <UnstableTableHead>Type</UnstableTableHead>
-                      <UnstableTableHead>Scope</UnstableTableHead>
-                      <UnstableTableHead>Status</UnstableTableHead>
-                      <UnstableTableHead className="w-12" />
-                    </UnstableTableRow>
-                  </UnstableTableHeader>
-                  <UnstableTableBody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Scope</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-12" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {rules.map((rule) => (
-                      <UnstableTableRow key={rule.id}>
-                        <UnstableTableCell className="py-3">
+                      <TableRow key={rule.id}>
+                        <TableCell className="py-3">
                           <div className="flex items-center">
                             <span className="text-sm font-medium text-foreground">{rule.name}</span>
                             {rule.description && (
@@ -536,37 +536,37 @@ export const SecretValidationRulesTab = () => {
                               </Tooltip>
                             )}
                           </div>
-                        </UnstableTableCell>
-                        <UnstableTableCell className="py-3">
+                        </TableCell>
+                        <TableCell className="py-3">
                           <Badge variant="neutral">
                             {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
                           </Badge>
-                        </UnstableTableCell>
-                        <UnstableTableCell className="py-3">
+                        </TableCell>
+                        <TableCell className="py-3">
                           <div className="flex items-center gap-1.5">
                             <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
                             <Badge variant="neutral">{rule.secretPath}</Badge>
                           </div>
-                        </UnstableTableCell>
-                        <UnstableTableCell className="py-3">
+                        </TableCell>
+                        <TableCell className="py-3">
                           <Badge variant={rule.isActive ? "success" : "neutral"}>
                             {rule.isActive ? "Active" : "Inactive"}
                           </Badge>
-                        </UnstableTableCell>
-                        <UnstableTableCell className="py-3">
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton aria-label="Actions" variant="ghost" size="xs">
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton aria-label="Actions" variant="ghost" size="xs">
                                 <EllipsisVerticalIcon className="size-4" />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent align="end">
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
                               <ProjectPermissionCan
                                 I={ProjectPermissionActions.Edit}
                                 a={ProjectPermissionSub.Settings}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     isDisabled={!isAllowed}
                                     onClick={() =>
                                       setSheetState({ open: true, mode: "edit", ruleId: rule.id })
@@ -574,7 +574,7 @@ export const SecretValidationRulesTab = () => {
                                   >
                                     <PencilIcon className="mr-2 size-4" />
                                     Edit
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
                               <ProjectPermissionCan
@@ -582,23 +582,23 @@ export const SecretValidationRulesTab = () => {
                                 a={ProjectPermissionSub.Settings}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     variant="danger"
                                     isDisabled={!isAllowed}
                                     onClick={() => setDeleteRuleId(rule.id)}
                                   >
                                     <TrashIcon className="mr-2 size-4" />
                                     Delete
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </UnstableTableBody>
-                </UnstableTable>
+                  </TableBody>
+                </Table>
               )
             )}
           </div>
@@ -629,7 +629,7 @@ export const SecretValidationRulesTab = () => {
               </span>{" "}
               to confirm the deletion
             </p>
-            <UnstableInput
+            <Input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
               placeholder={rules.find((r) => r.id === deleteRuleId)?.name}

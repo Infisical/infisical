@@ -6,13 +6,13 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
@@ -45,7 +45,7 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
   }, [workspaces, project]);
 
   return (
-    <UnstableTableRow
+    <TableRow
       key={`group-project-${project.id}`}
       onClick={() => {
         if (isAccessible) {
@@ -68,18 +68,18 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
         });
       }}
     >
-      <UnstableTableCell className="max-w-0 truncate">{project.name}</UnstableTableCell>
-      <UnstableTableCell>{getProjectTitle(project.type as ProjectType)}</UnstableTableCell>
-      <UnstableTableCell>{format(new Date(project.joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
-      <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger>
-            <UnstableIconButton variant="ghost" size="xs">
+      <TableCell className="max-w-0 truncate">{project.name}</TableCell>
+      <TableCell>{getProjectTitle(project.type as ProjectType)}</TableCell>
+      <TableCell>{format(new Date(project.joinedGroupAt), "yyyy-MM-dd")}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <IconButton variant="ghost" size="xs">
               <MoreHorizontalIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuItem
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               isDisabled={!isAccessible}
               onClick={(e) => {
                 e.stopPropagation();
@@ -96,10 +96,10 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
               }}
             >
               Access Project
-            </UnstableDropdownMenuItem>
+            </DropdownMenuItem>
             <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
-                <UnstableDropdownMenuItem
+                <DropdownMenuItem
                   variant="danger"
                   isDisabled={!isAllowed}
                   onClick={(e) => {
@@ -111,12 +111,12 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
                   }}
                 >
                   Remove From Project
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
               )}
             </OrgPermissionCan>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableTableCell>
-    </UnstableTableRow>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

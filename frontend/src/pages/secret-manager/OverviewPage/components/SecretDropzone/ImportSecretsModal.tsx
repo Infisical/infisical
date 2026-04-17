@@ -26,25 +26,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
   Field,
   FieldContent,
   FieldLabel,
+  IconButton,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -406,7 +406,7 @@ const ImportSecretsContent = ({
             })}
           >
             {(isAllowed) => (
-              <UnstableEmpty
+              <Empty
                 className={twMerge(
                   "relative cursor-pointer border transition-colors duration-75",
                   isDragActive && "bg-container-hover"
@@ -416,17 +416,17 @@ const ImportSecretsContent = ({
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <UnstableEmptyHeader>
+                <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <UploadIcon />
                   </EmptyMedia>
-                  <UnstableEmptyTitle>
+                  <EmptyTitle>
                     {isDragActive ? "Drop your file here" : "Upload your secrets"}
-                  </UnstableEmptyTitle>
-                  <UnstableEmptyDescription>
+                  </EmptyTitle>
+                  <EmptyDescription>
                     Drag and drop your .env, .json, .yml, or .csv files here, or click to browse
-                  </UnstableEmptyDescription>
-                </UnstableEmptyHeader>
+                  </EmptyDescription>
+                </EmptyHeader>
                 <input
                   type="file"
                   disabled={!isAllowed}
@@ -434,7 +434,7 @@ const ImportSecretsContent = ({
                   accept=".txt,.env,.yml,.yaml,.json,.csv"
                   onChange={handleFileUpload}
                 />
-              </UnstableEmpty>
+              </Empty>
             )}
           </ProjectPermissionCan>
 
@@ -452,39 +452,32 @@ const ImportSecretsContent = ({
       ) : (
         <div className="flex flex-col gap-4">
           <div className="relative flex flex-col gap-2">
-            <UnstableTable
+            <Table
               className="border-collapse"
               containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
             >
-              <UnstableTableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
-                <UnstableTableRow className="relative h-9">
-                  <UnstableTableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+              <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
+                <TableRow className="relative h-9">
+                  <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Key
-                  </UnstableTableHead>
-                  <UnstableTableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                  </TableHead>
+                  <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Value
-                  </UnstableTableHead>
-                  <UnstableTableHead className="w-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      onClick={toggleAllSecretVisibility}
-                    >
+                  </TableHead>
+                  <TableHead className="w-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                    <IconButton variant="ghost" size="xs" onClick={toggleAllSecretVisibility}>
                       {areAllVisible ? <EyeOffIcon /> : <EyeIcon />}
-                    </UnstableIconButton>
-                  </UnstableTableHead>
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
+                    </IconButton>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {Object.entries(activeSecrets!).map(([key, secretData]) => {
                   const isVisible = visibleSecretKeys.has(key);
                   const hasComments = secretData.comments.length > 0;
                   return (
-                    <UnstableTableRow key={key}>
-                      <UnstableTableCell
-                        isTruncatable
-                        className="w-1/2 overflow-hidden font-mono text-xs"
-                      >
+                    <TableRow key={key}>
+                      <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <div className="flex w-full items-center gap-1.5">
                           <p className="truncate">{key}</p>
                           {hasComments && (
@@ -500,28 +493,28 @@ const ImportSecretsContent = ({
                             </Tooltip>
                           )}
                         </div>
-                      </UnstableTableCell>
-                      <UnstableTableCell isTruncatable className="w-1/2 font-mono text-xs">
+                      </TableCell>
+                      <TableCell isTruncatable className="w-1/2 font-mono text-xs">
                         {isVisible ? (
                           secretData.value || <span className="text-muted">EMPTY</span>
                         ) : (
                           <span className="tracking-widest">••••••••••••••••••••••</span>
                         )}
-                      </UnstableTableCell>
-                      <UnstableTableCell className="w-10">
-                        <UnstableIconButton
+                      </TableCell>
+                      <TableCell className="w-10">
+                        <IconButton
                           variant="ghost"
                           size="xs"
                           onClick={() => toggleSecretVisibility(key)}
                         >
                           {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-                        </UnstableIconButton>
-                      </UnstableTableCell>
-                    </UnstableTableRow>
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </UnstableTableBody>
-            </UnstableTable>
+              </TableBody>
+            </Table>
           </div>
           <Field>
             <FieldLabel>

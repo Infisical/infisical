@@ -8,7 +8,7 @@ import { cn } from "@app/components/v3/utils";
 
 import { Button, type ButtonProps } from "../Button";
 import { Calendar, CalendarDayButton } from "../Calendar";
-import { UnstableInput } from "../Input";
+import { Input } from "../Input";
 import { Popover, PopoverContent, PopoverTrigger } from "../Popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
 import { Switch } from "../Switch";
@@ -374,7 +374,7 @@ export function DateRangeFilter({
                     Custom
                   </span>
                   <div className="flex items-center gap-2">
-                    <UnstableInput
+                    <Input
                       type="text"
                       inputMode="numeric"
                       placeholder="Amount"
@@ -465,7 +465,7 @@ export function DateRangeFilter({
                     <div className="flex items-end gap-2">
                       <div className="flex flex-1 flex-col gap-1">
                         <span className="text-muted-foreground text-xs">Start Time</span>
-                        <UnstableInput
+                        <Input
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
@@ -475,7 +475,7 @@ export function DateRangeFilter({
                       <span className="text-muted-foreground mb-2">→</span>
                       <div className="flex flex-1 flex-col gap-1">
                         <span className="text-muted-foreground text-xs">End Time</span>
-                        <UnstableInput
+                        <Input
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}

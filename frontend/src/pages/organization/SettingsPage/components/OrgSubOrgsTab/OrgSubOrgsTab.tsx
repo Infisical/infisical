@@ -24,32 +24,32 @@ import { DeleteActionModal, FormControl, Input, Modal, ModalContent } from "@app
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrgPermission, useUser } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
@@ -228,13 +228,11 @@ export const OrgSubOrgsTab = () => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Sub-Organizations</UnstableCardTitle>
-          <UnstableCardDescription>
-            Manage sub-organizations under this organization.
-          </UnstableCardDescription>
-          <UnstableCardAction>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sub-Organizations</CardTitle>
+          <CardDescription>Manage sub-organizations under this organization.</CardDescription>
+          <CardAction>
             <OrgPermissionCan
               I={OrgPermissionSubOrgActions.Create}
               a={OrgPermissionSubjects.SubOrganization}
@@ -250,9 +248,9 @@ export const OrgSubOrgsTab = () => {
                 </Button>
               )}
             </OrgPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div className="mb-4 flex gap-2">
             <InputGroup className="flex-1">
               <InputGroupAddon>
@@ -266,26 +264,26 @@ export const OrgSubOrgsTab = () => {
             </InputGroup>
           </div>
           {!isLoading && paginatedSubOrgs.length === 0 ? (
-            <UnstableEmpty className="border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
                   {searchFilter
                     ? "No sub-organizations match search"
                     : "No sub-organizations found"}
-                </UnstableEmptyTitle>
-                <UnstableEmptyDescription>
+                </EmptyTitle>
+                <EmptyDescription>
                   {searchFilter
                     ? "Adjust your search criteria."
                     : "Create a sub-organization to get started."}
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
-            </UnstableEmpty>
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <>
-              <UnstableTable>
-                <UnstableTableHeader>
-                  <UnstableTableRow>
-                    <UnstableTableHead onClick={toggleOrderDirection} className="w-1/3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead onClick={toggleOrderDirection} className="w-1/3">
                       Name
                       <ChevronDownIcon
                         className={twMerge(
@@ -293,37 +291,37 @@ export const OrgSubOrgsTab = () => {
                           "transition-transform"
                         )}
                       />
-                    </UnstableTableHead>
-                    <UnstableTableHead className="w-1/4">Slug</UnstableTableHead>
-                    <UnstableTableHead className="w-1/4">Created</UnstableTableHead>
-                    <UnstableTableHead>Status</UnstableTableHead>
-                    <UnstableTableHead className="w-5" />
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
+                    </TableHead>
+                    <TableHead className="w-1/4">Slug</TableHead>
+                    <TableHead className="w-1/4">Created</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-5" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {isLoading &&
                     Array.from({ length: perPage }).map((_, i) => (
-                      <UnstableTableRow key={`skeleton-${i + 1}`}>
-                        <UnstableTableCell>
+                      <TableRow key={`skeleton-${i + 1}`}>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-full" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-16" />
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-4" />
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                        </TableCell>
+                      </TableRow>
                     ))}
                   {!isLoading &&
                     paginatedSubOrgs.map((subOrg) => (
-                      <UnstableTableRow
+                      <TableRow
                         key={subOrg.id}
                         className="group"
                         onClick={
@@ -334,14 +332,12 @@ export const OrgSubOrgsTab = () => {
                             : undefined
                         }
                       >
-                        <UnstableTableCell isTruncatable>{subOrg.name}</UnstableTableCell>
-                        <UnstableTableCell isTruncatable className="text-muted">
+                        <TableCell isTruncatable>{subOrg.name}</TableCell>
+                        <TableCell isTruncatable className="text-muted">
                           {subOrg.slug}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          {format(new Date(subOrg.createdAt), "MMM d, yyyy")}
-                        </UnstableTableCell>
-                        <UnstableTableCell onClick={(e) => e.stopPropagation()}>
+                        </TableCell>
+                        <TableCell>{format(new Date(subOrg.createdAt), "MMM d, yyyy")}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {subOrg.isMember ? (
                             <Badge variant="info">
                               <CheckIcon />
@@ -366,33 +362,33 @@ export const OrgSubOrgsTab = () => {
                               }
                             </OrgPermissionCan>
                           )}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           {canManageSubOrgs && (
                             <div
                               className="flex items-center justify-end"
                               onClick={(e) => e.stopPropagation()}
                               role="none"
                             >
-                              <UnstableDropdownMenu>
-                                <UnstableDropdownMenuTrigger asChild>
-                                  <UnstableIconButton variant="ghost" size="xs">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton variant="ghost" size="xs">
                                     <MoreHorizontalIcon />
-                                  </UnstableIconButton>
-                                </UnstableDropdownMenuTrigger>
-                                <UnstableDropdownMenuContent sideOffset={2} align="end">
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent sideOffset={2} align="end">
                                   <OrgPermissionCan
                                     I={OrgPermissionSubOrgActions.Edit}
                                     a={OrgPermissionSubjects.SubOrganization}
                                   >
                                     {(isAllowed) =>
                                       isAllowed ? (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           onClick={() => handleOpenEditModal(subOrg)}
                                         >
                                           <PencilIcon />
                                           Edit
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       ) : null
                                     }
                                   </OrgPermissionCan>
@@ -402,27 +398,27 @@ export const OrgSubOrgsTab = () => {
                                   >
                                     {(isAllowed) =>
                                       isAllowed ? (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           variant="danger"
                                           onClick={() => handleOpenDeleteModal(subOrg)}
                                         >
                                           <TrashIcon />
                                           Delete
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       ) : null
                                     }
                                   </OrgPermissionCan>
-                                </UnstableDropdownMenuContent>
-                              </UnstableDropdownMenu>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           )}
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                </UnstableTableBody>
-              </UnstableTable>
+                </TableBody>
+              </Table>
               {Boolean(totalCount) && (
-                <UnstablePagination
+                <Pagination
                   count={totalCount}
                   page={page}
                   perPage={perPage}
@@ -432,8 +428,8 @@ export const OrgSubOrgsTab = () => {
               )}
             </>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       <Modal
         isOpen={popUp.addSubOrg.isOpen}

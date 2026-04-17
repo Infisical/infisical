@@ -9,6 +9,7 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   Select,
   SelectContent,
@@ -20,8 +21,7 @@ import {
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { PamResourceType, TWindowsResource, useListPamResources } from "@app/hooks/api/pam";
@@ -165,7 +165,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                 <Field className="flex-1">
                   <FieldLabel>Hostname</FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       isError={Boolean(error)}
                       placeholder="example.com or 192.168.1.1"
@@ -182,7 +182,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                 <Field className="w-28">
                   <FieldLabel>Port</FieldLabel>
                   <FieldContent>
-                    <UnstableInput type="number" {...field} isError={Boolean(error)} />
+                    <Input type="number" {...field} isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -211,12 +211,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
-                      {...field}
-                      type="number"
-                      placeholder="5986"
-                      isError={Boolean(error)}
-                    />
+                    <Input {...field} type="number" placeholder="5986" isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -304,7 +299,7 @@ export const WindowsResourceForm = ({ resource, onSubmit, closeSheet }: Props) =
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="server.corp.example.com"
                       disabled={!useWinrmHttps || !winrmRejectUnauthorized}

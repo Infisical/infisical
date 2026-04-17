@@ -14,34 +14,34 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -194,16 +194,16 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             placeholder="Search project users..."
           />
         </InputGroup>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant={isTableFiltered ? "project" : "outline"}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant={isTableFiltered ? "project" : "outline"}>
               <FilterIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuLabel>Filter by Project Role</UnstableDropdownMenuLabel>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by Project Role</DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 key={id}
                 checked={filter.roles.includes(slug)}
                 onClick={(e) => {
@@ -213,35 +213,32 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                 }}
               >
                 {name}
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {!isMembersLoading && !filteredUsers?.length ? (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {search || isTableFiltered
                 ? "No project users match search"
                 : "No project users found"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {search || isTableFiltered
                 ? "Adjust your search or filter criteria."
                 : "Add users to get started."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead
-                  className="w-1/3"
-                  onClick={() => handleSort(MembersOrderBy.Name)}
-                >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1/3" onClick={() => handleSort(MembersOrderBy.Name)}>
                   Name
                   <ChevronDownIcon
                     className={twMerge(
@@ -252,11 +249,8 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== MembersOrderBy.Name && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead
-                  className="w-1/3"
-                  onClick={() => handleSort(MembersOrderBy.Email)}
-                >
+                </TableHead>
+                <TableHead className="w-1/3" onClick={() => handleSort(MembersOrderBy.Email)}>
                   Email
                   <ChevronDownIcon
                     className={twMerge(
@@ -267,28 +261,28 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       orderBy !== MembersOrderBy.Email && "opacity-30"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead>Project Role</UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                </TableHead>
+                <TableHead>Project Role</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isMembersLoading &&
                 Array.from({ length: 10 }).map((_, i) => (
-                  <UnstableTableRow key={`skeleton-${i + 1}`}>
-                    <UnstableTableCell>
+                  <TableRow key={`skeleton-${i + 1}`}>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-4" />
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 ))}
               {!isMembersLoading &&
                 filteredUsersPage.map((projectMember) => {
@@ -298,7 +292,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                   const email = u?.email || inviteEmail;
 
                   return (
-                    <UnstableTableRow
+                    <TableRow
                       key={`membership-${membershipId}`}
                       className="group cursor-pointer"
                       role="button"
@@ -324,11 +318,11 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                         })
                       }
                     >
-                      <UnstableTableCell isTruncatable>
+                      <TableCell isTruncatable>
                         {name ?? <span className="text-muted">&mdash;</span>}
-                      </UnstableTableCell>
-                      <UnstableTableCell isTruncatable>{email}</UnstableTableCell>
-                      <UnstableTableCell>
+                      </TableCell>
+                      <TableCell isTruncatable>{email}</TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-1.5">
                           {roles
                             .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
@@ -420,21 +414,21 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             </Popover>
                           )}
                         </div>
-                      </UnstableTableCell>
-                      <UnstableTableCell>
-                        <UnstableDropdownMenu>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
                           <Tooltip>
                             <TooltipTrigger>
-                              <UnstableDropdownMenuTrigger asChild>
-                                <UnstableIconButton
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
                                   variant="ghost"
                                   size="xs"
                                   isDisabled={userId === u?.id}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <MoreHorizontalIcon />
-                                </UnstableIconButton>
-                              </UnstableDropdownMenuTrigger>
+                                </IconButton>
+                              </DropdownMenuTrigger>
                             </TooltipTrigger>
                             {userId === u?.id && (
                               <TooltipContent side="left">
@@ -442,13 +436,13 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               </TooltipContent>
                             )}
                           </Tooltip>
-                          <UnstableDropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuContent sideOffset={2} align="end">
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Delete}
                               a={ProjectPermissionSub.Member}
                             >
                               {(isAllowed) => (
-                                <UnstableDropdownMenuItem
+                                <DropdownMenuItem
                                   variant="danger"
                                   isDisabled={!isAllowed}
                                   onClick={(evt) => {
@@ -461,19 +455,19 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                 >
                                   <UserXIcon />
                                   Remove User From Project
-                                </UnstableDropdownMenuItem>
+                                </DropdownMenuItem>
                               )}
                             </ProjectPermissionCan>
-                          </UnstableDropdownMenuContent>
-                        </UnstableDropdownMenu>
-                      </UnstableTableCell>
-                    </UnstableTableRow>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {Boolean(filteredUsers.length) && (
-            <UnstablePagination
+            <Pagination
               count={filteredUsers.length}
               page={page}
               perPage={perPage}

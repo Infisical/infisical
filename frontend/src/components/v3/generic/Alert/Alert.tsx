@@ -23,7 +23,7 @@ const alertVariants = cva(
   }
 );
 
-function UnstableAlert({
+function Alert({
   className,
   variant,
   ...props
@@ -38,7 +38,7 @@ function UnstableAlert({
   );
 }
 
-function UnstableAlertTitle({ className, ...props }: React.ComponentProps<"div">) {
+function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-title"
@@ -48,7 +48,7 @@ function UnstableAlertTitle({ className, ...props }: React.ComponentProps<"div">
   );
 }
 
-function UnstableAlertDescription({ className, ...props }: React.ComponentProps<"div">) {
+function AlertDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-description"
@@ -61,4 +61,4 @@ function UnstableAlertDescription({ className, ...props }: React.ComponentProps<
   );
 }
 
-export { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle };
+export { Alert, AlertDescription, AlertTitle };

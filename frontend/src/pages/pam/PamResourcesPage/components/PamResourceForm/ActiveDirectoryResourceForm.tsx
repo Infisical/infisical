@@ -9,14 +9,14 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   SheetFooter,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { PamResourceType, TActiveDirectoryResource } from "@app/hooks/api/pam";
 
@@ -111,11 +111,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
               <Field>
                 <FieldLabel>Domain</FieldLabel>
                 <FieldContent>
-                  <UnstableInput
-                    {...field}
-                    isError={Boolean(error)}
-                    placeholder="corp.example.com"
-                  />
+                  <Input {...field} isError={Boolean(error)} placeholder="corp.example.com" />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
@@ -129,7 +125,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                 <Field className="flex-1">
                   <FieldLabel>DC Address</FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       isError={Boolean(error)}
                       placeholder="10.0.1.10 or dc.corp.example.com"
@@ -146,7 +142,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                 <Field className="w-28">
                   <FieldLabel>Port</FieldLabel>
                   <FieldContent>
-                    <UnstableInput type="number" {...field} isError={Boolean(error)} />
+                    <Input type="number" {...field} isError={Boolean(error)} />
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -237,7 +233,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="dc.corp.example.com"
                       disabled={!useLdaps || !ldapRejectUnauthorized}

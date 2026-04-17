@@ -4,7 +4,7 @@ import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FormControl, Input, Tab, TabList, TabPanel, Tabs, TextArea } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
-import { Tooltip, TooltipContent, TooltipTrigger, UnstableIconButton } from "@app/components/v3";
+import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
@@ -107,7 +107,7 @@ export const SqlCredentialsRotationParametersFields = () => {
             </pre>
             <Tooltip>
               <TooltipTrigger asChild>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
                   className="absolute top-1.5 right-1.5 text-mineshaft-300 hover:text-mineshaft-100"
@@ -118,7 +118,7 @@ export const SqlCredentialsRotationParametersFields = () => {
                   ) : (
                     <CopyIcon className="size-3.5" />
                   )}
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>{isCopied ? "Copied!" : "Copy"}</TooltipContent>
             </Tooltip>

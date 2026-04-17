@@ -9,7 +9,7 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableSeparator
+  Separator
 } from "@app/components/v3";
 
 import { CalendarEvent } from "./types";
@@ -88,7 +88,7 @@ export const CalendarEventDetail = ({ event }: { event: CalendarEvent }) => {
           {isRotation ? "Rotation" : "Reminder"}
         </Badge>
       </div>
-      <UnstableSeparator />
+      <Separator />
       <DetailGroup>
         <Detail>
           <DetailLabel>Date</DetailLabel>

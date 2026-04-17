@@ -10,10 +10,10 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 
 type Props = {
@@ -271,21 +271,18 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                 <SlashIcon className="size-3 -rotate-12" />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <span className="data-[state=open]:[&>*]:bg-foreground/10">
                       <BreadcrumbEllipsis className="size-6 cursor-pointer rounded hover:bg-foreground/10" />
                     </span>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent
-                    className="relative max-w-[300px] pl-3"
-                    align="start"
-                  >
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="relative max-w-[300px] pl-3" align="start">
                     <div className="absolute top-3 bottom-[23px] left-[8px] w-px bg-muted/50" />
                     {hiddenSegments.map((segment, idx) => {
                       const originalIndex = startCount + idx;
                       return (
-                        <UnstableDropdownMenuItem
+                        <DropdownMenuItem
                           key={`hidden-${originalIndex}`}
                           onClick={() => onFolderCrumbClick(originalIndex + 1)}
                           className="text-accent hover:text-foreground"
@@ -295,11 +292,11 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
 
                           <FolderIcon className="text-folder" />
                           <span className="truncate">{segment}</span>
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                       );
                     })}
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </BreadcrumbItem>
             </>
           )}

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent } from "@app/components/v2";
-import { Badge, UnstableButtonGroup, UnstableIconButton } from "@app/components/v3";
+import { Badge, ButtonGroup, IconButton } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { TPamAccount, useUpdatePamAccount } from "@app/hooks/api/pam";
@@ -84,7 +84,7 @@ export const PamAccountMetadataSection = ({ account }: Props) => {
             a={ProjectPermissionSub.PamAccounts}
           >
             {(isAllowed) => (
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 onClick={() => {
@@ -94,7 +94,7 @@ export const PamAccountMetadataSection = ({ account }: Props) => {
                 isDisabled={!isAllowed}
               >
                 <PencilIcon />
-              </UnstableIconButton>
+              </IconButton>
             )}
           </ProjectPermissionCan>
         </div>
@@ -102,17 +102,14 @@ export const PamAccountMetadataSection = ({ account }: Props) => {
           <div className="flex flex-wrap gap-2">
             {metadata.map((item) =>
               item.value ? (
-                <UnstableButtonGroup
-                  className="max-w-full min-w-0"
-                  key={`${item.key}=${item.value}`}
-                >
+                <ButtonGroup className="max-w-full min-w-0" key={`${item.key}=${item.value}`}>
                   <Badge isTruncatable className="max-w-[12rem] shrink-0">
                     <span>{item.key}</span>
                   </Badge>
                   <Badge variant="outline" isTruncatable>
                     <span>{item.value}</span>
                   </Badge>
-                </UnstableButtonGroup>
+                </ButtonGroup>
               ) : (
                 <Badge key={item.key} isTruncatable>
                   <span>{item.key}</span>

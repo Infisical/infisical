@@ -5,12 +5,12 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
@@ -86,11 +86,11 @@ export const GroupMembersSection = ({ groupId, groupSlug, isLinkedGroup = false 
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Group Members</UnstableCardTitle>
-          <UnstableCardDescription>Manage members of this group</UnstableCardDescription>
-          <UnstableCardAction>
+      <Card>
+        <CardHeader>
+          <CardTitle>Group Members</CardTitle>
+          <CardDescription>Manage members of this group</CardDescription>
+          <CardAction>
             {!isLinkedGroup && (
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
@@ -111,17 +111,17 @@ export const GroupMembersSection = ({ groupId, groupSlug, isLinkedGroup = false 
                 )}
               </OrgPermissionCan>
             )}
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <GroupMembersTable
             groupId={groupId}
             groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
             isLinkedGroup={isLinkedGroup}
           />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <AddGroupMembersModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}

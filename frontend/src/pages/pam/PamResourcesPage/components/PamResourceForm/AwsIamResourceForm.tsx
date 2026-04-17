@@ -12,8 +12,8 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
-  SheetFooter,
-  UnstableInput
+  Input,
+  SheetFooter
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
@@ -114,7 +114,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit, closeSheet }: Props) =>
               <Field>
                 <FieldLabel>Name</FieldLabel>
                 <FieldContent>
-                  <UnstableInput
+                  <Input
                     autoFocus
                     placeholder="my-aws-console"
                     {...field}
@@ -134,7 +134,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit, closeSheet }: Props) =>
               <Field>
                 <FieldLabel>Resource Role ARN</FieldLabel>
                 <FieldContent>
-                  <UnstableInput
+                  <Input
                     placeholder="arn:aws:iam::123456789012:role/InfisicalResourceRole"
                     {...field}
                     isError={Boolean(error)}

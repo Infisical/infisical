@@ -2,17 +2,17 @@ import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import type { TExpirationBucket } from "@app/hooks/api/certificates";
 
@@ -64,22 +64,18 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   const total = chartData.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <UnstableCard className="flex h-auto min-w-[250px] flex-1 flex-col">
-      <UnstableCardHeader className="pb-0">
-        <UnstableCardTitle className="text-base font-semibold">
-          Expiration Timeline
-        </UnstableCardTitle>
-        <UnstableCardDescription className="text-xs">
-          Certificates by time to expiry
-        </UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 items-center pt-2">
+    <Card className="flex h-auto min-w-[250px] flex-1 flex-col">
+      <CardHeader className="pb-0">
+        <CardTitle className="text-base font-semibold">Expiration Timeline</CardTitle>
+        <CardDescription className="text-xs">Certificates by time to expiry</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-2">
         {nonZeroData.length === 0 ? (
-          <UnstableEmpty className="h-[200px]">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No expiration data</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="h-[200px]">
+            <EmptyHeader>
+              <EmptyTitle>No expiration data</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="flex w-full items-center gap-3">
             <div className="w-[120px] shrink-0">
@@ -174,7 +170,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
             </div>
           </div>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

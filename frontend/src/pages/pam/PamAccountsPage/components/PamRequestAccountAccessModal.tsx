@@ -15,7 +15,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
@@ -99,13 +99,13 @@ const Content = ({ onOpenChange, resourceName, accountName, accountAccessed }: P
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       {accountAccessed && (
-        <UnstableAlert variant="info" className="mb-3">
+        <Alert variant="info" className="mb-3">
           <InfoIcon />
-          <UnstableAlertTitle>This account is protected by an approval policy</UnstableAlertTitle>
-          <UnstableAlertDescription>
+          <AlertTitle>This account is protected by an approval policy</AlertTitle>
+          <AlertDescription>
             You must request access by filling out the fields below.
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
       {resourceName && accountName && (
         <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-3">

@@ -7,7 +7,7 @@ import { type DayButton, DayPicker, getDefaultClassNames, type Locale } from "re
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { iconButtonVariants, UnstableIconButton } from "../IconButton";
+import { IconButton, iconButtonVariants } from "../IconButton";
 
 function CalendarDayButton({
   className,
@@ -24,7 +24,7 @@ function CalendarDayButton({
   }, [modifiers.focused]);
 
   return (
-    <UnstableIconButton
+    <IconButton
       ref={ref}
       variant="ghost"
       size="xs"
@@ -59,7 +59,7 @@ function Calendar({
   components,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
-  buttonVariant?: React.ComponentProps<typeof UnstableIconButton>["variant"];
+  buttonVariant?: React.ComponentProps<typeof IconButton>["variant"];
 }) {
   const defaultClassNames = getDefaultClassNames();
 

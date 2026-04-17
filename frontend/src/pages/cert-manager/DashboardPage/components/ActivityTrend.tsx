@@ -11,14 +11,14 @@ import {
 
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import type { TActivityTrendPoint } from "@app/hooks/api/certificates";
 
@@ -43,10 +43,10 @@ export const ActivityTrend = ({ data, onRangeChange, currentRange }: Props) => {
     (d) => d.issued > 0 || d.expired > 0 || d.revoked > 0 || d.renewed > 0
   );
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Certificate Activity Trend</UnstableCardTitle>
-        <UnstableCardAction>
+    <Card>
+      <CardHeader>
+        <CardTitle>Certificate Activity Trend</CardTitle>
+        <CardAction>
           <div className="flex gap-0.5">
             {ranges.map((r) => (
               <Button
@@ -59,15 +59,15 @@ export const ActivityTrend = ({ data, onRangeChange, currentRange }: Props) => {
               </Button>
             ))}
           </div>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         {!hasAnyData ? (
-          <UnstableEmpty className="h-[250px]">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No activity in this period</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="h-[250px]">
+            <EmptyHeader>
+              <EmptyTitle>No activity in this period</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -129,7 +129,7 @@ export const ActivityTrend = ({ data, onRangeChange, currentRange }: Props) => {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

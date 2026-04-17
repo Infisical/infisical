@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Switch,
-  UnstableInput
+  Input,
+  Switch
 } from "@app/components/v3";
 import { useCreateCertificateInventoryView } from "@app/hooks/api/certificateInventoryViews";
 import type { TInventoryViewFilters } from "@app/hooks/api/certificateInventoryViews/types";
@@ -79,7 +79,7 @@ export const SaveViewModal = ({
             handleSave();
           }}
         >
-          <UnstableInput
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter view name"

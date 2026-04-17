@@ -3,7 +3,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
-import { UnstableInput } from "../Input";
+import { Input } from "../Input";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -124,7 +124,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
 const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, ...props }, ref) => {
     return (
-      <UnstableInput
+      <Input
         ref={ref}
         data-slot="input-group-control"
         className={cn(

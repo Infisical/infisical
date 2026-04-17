@@ -15,7 +15,7 @@ import {
   DialogTitle,
   FieldError,
   FieldLabel,
-  UnstableInput
+  Input
 } from "@app/components/v3";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
@@ -100,7 +100,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
             render={({ field, fieldState: { error } }) => (
               <div className="mb-4">
                 <FieldLabel>Name</FieldLabel>
-                <UnstableInput {...field} placeholder="Acme Corp" className="h-10" />
+                <Input {...field} placeholder="Acme Corp" className="h-10" />
                 {error && <FieldError>{error.message}</FieldError>}
               </div>
             )}

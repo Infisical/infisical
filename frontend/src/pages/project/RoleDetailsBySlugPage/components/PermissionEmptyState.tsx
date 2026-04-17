@@ -1,11 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import {
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
-} from "@app/components/v3";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@app/components/v3";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
 
@@ -20,13 +15,11 @@ export const PermissionEmptyState = () => {
   if (isNotEmptyPermissions) return null;
 
   return (
-    <UnstableEmpty className="border py-8">
-      <UnstableEmptyHeader>
-        <UnstableEmptyTitle>No policies applied</UnstableEmptyTitle>
-        <UnstableEmptyDescription>
-          Add policies to configure permissions for this role.
-        </UnstableEmptyDescription>
-      </UnstableEmptyHeader>
-    </UnstableEmpty>
+    <Empty className="border py-8">
+      <EmptyHeader>
+        <EmptyTitle>No policies applied</EmptyTitle>
+        <EmptyDescription>Add policies to configure permissions for this role.</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 };

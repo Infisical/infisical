@@ -9,16 +9,16 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  IconButton,
   InfisicalSecretInput,
+  Input,
   PasswordGenerator,
   SheetFooter,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   Field,
@@ -374,7 +374,7 @@ export const CreateSecretForm = ({
               <FieldLabel>Key</FieldLabel>
               <FieldContent>
                 <div className="relative">
-                  <UnstableInput
+                  <Input
                     ref={secretKeyInputRef}
                     value={field.value ?? ""}
                     onChange={(e) => {
@@ -538,7 +538,7 @@ export const CreateSecretForm = ({
                       name={`metadata.${index}.key`}
                       render={({ field: inputField, fieldState: { error } }) => (
                         <>
-                          <UnstableInput {...inputField} placeholder="Enter key" className="h-8" />
+                          <Input {...inputField} placeholder="Enter key" className="h-8" />
                           <FieldError errors={[error]} />
                         </>
                       )}
@@ -554,11 +554,7 @@ export const CreateSecretForm = ({
                       name={`metadata.${index}.value`}
                       render={({ field: inputField, fieldState: { error } }) => (
                         <>
-                          <UnstableInput
-                            {...inputField}
-                            placeholder="Enter value"
-                            className="h-8"
-                          />
+                          <Input {...inputField} placeholder="Enter value" className="h-8" />
                           <FieldError errors={[error]} />
                         </>
                       )}
@@ -583,7 +579,7 @@ export const CreateSecretForm = ({
                   />
                 </Field>
 
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
                   type="button"
@@ -594,7 +590,7 @@ export const CreateSecretForm = ({
                   onClick={() => removeMetadata(index)}
                 >
                   <TrashIcon className="size-4" />
-                </UnstableIconButton>
+                </IconButton>
               </div>
             ))}
           </div>

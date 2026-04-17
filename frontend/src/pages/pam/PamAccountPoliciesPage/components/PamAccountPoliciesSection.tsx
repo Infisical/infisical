@@ -9,23 +9,23 @@ import { DeleteActionModal, Input } from "@app/components/v2";
 import {
   Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountPolicyActions } from "@app/context/ProjectPermissionContext/types";
@@ -102,40 +102,40 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
       </div>
 
       <div className="mt-4">
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Name</UnstableTableHead>
-              <UnstableTableHead>Status</UnstableTableHead>
-              <UnstableTableHead>Created</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isPending && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={4} className="text-center text-muted">
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted">
                   Loading account policies...
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending && (!policies || policies.length === 0) && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={4}>
-                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
-                    <UnstableEmptyHeader>
-                      <UnstableEmptyTitle>
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <Empty className="border-0 bg-transparent py-8 shadow-none">
+                    <EmptyHeader>
+                      <EmptyTitle>
                         {search ? "No account policies match search" : "No account policies"}
-                      </UnstableEmptyTitle>
-                    </UnstableEmptyHeader>
-                  </UnstableEmpty>
-                </UnstableTableCell>
-              </UnstableTableRow>
+                      </EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending &&
               policies?.map((policy) => (
-                <UnstableTableRow key={policy.id}>
-                  <UnstableTableCell>
+                <TableRow key={policy.id}>
+                  <TableCell>
                     <div className="flex items-center">
                       <span className="font-medium">{policy.name}</span>
                       {policy.description && (
@@ -147,35 +147,35 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
                         </Tooltip>
                       )}
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={policy.isActive ? "success" : "neutral"}>
                       {policy.isActive ? "Enabled" : "Disabled"}
                     </Badge>
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
+                  </TableCell>
+                  <TableCell className="text-muted">
                     {format(new Date(policy.createdAt), "MMM d, yyyy")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <UnstableDropdownMenu>
-                      <UnstableDropdownMenuTrigger asChild>
-                        <UnstableIconButton variant="ghost" size="xs">
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs">
                           <EllipsisVerticalIcon />
-                        </UnstableIconButton>
-                      </UnstableDropdownMenuTrigger>
-                      <UnstableDropdownMenuContent sideOffset={2} align="end">
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent sideOffset={2} align="end">
                         <ProjectPermissionCan
                           I={ProjectPermissionPamAccountPolicyActions.Edit}
                           a={ProjectPermissionSub.PamAccountPolicies}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               isDisabled={!isAllowed}
                               onSelect={() => handlePopUpOpen("editPolicy", policy)}
                             >
                               <PencilIcon className="mr-2 size-4" />
                               Edit
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
@@ -183,23 +183,23 @@ export const PamAccountPoliciesSection = ({ projectId }: Props) => {
                           a={ProjectPermissionSub.PamAccountPolicies}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               isDisabled={!isAllowed}
                               variant="danger"
                               onSelect={() => handlePopUpOpen("deletePolicy", policy)}
                             >
                               <TrashIcon className="mr-2 size-4" />
                               Delete
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                      </UnstableDropdownMenuContent>
-                    </UnstableDropdownMenu>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
               ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       </div>
 
       <PolicySheet

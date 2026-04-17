@@ -1,12 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  UnstableTableCell,
-  UnstableTableRow
-} from "@app/components/v3";
+import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { SecretImportSecretValueCell } from "./SecretImportSecretValueCell";
 
@@ -26,8 +20,8 @@ export const SecretImportSecretRow = ({
   missingFromEnvs
 }: Props) => {
   return (
-    <UnstableTableRow className="group">
-      <UnstableTableCell isTruncatable>
+    <TableRow className="group">
+      <TableCell isTruncatable>
         <div className="flex items-center gap-1.5">
           <span className="truncate">{secretKey}</span>
           {missingFromEnvs && missingFromEnvs.length > 0 && (
@@ -39,15 +33,15 @@ export const SecretImportSecretRow = ({
             </Tooltip>
           )}
         </div>
-      </UnstableTableCell>
-      <UnstableTableCell>
+      </TableCell>
+      <TableCell>
         <SecretImportSecretValueCell
           secretKey={secretKey}
           environment={environment}
           secretPath={secretPath}
           isEmpty={isEmpty}
         />
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -5,7 +5,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { UnstablePageLoader } from "@app/components/v3";
+import { PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -125,7 +125,7 @@ export const PoliciesPage = () => {
   );
 
   if (!currentProject) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   return (

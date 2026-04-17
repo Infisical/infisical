@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretInput } from "@app/components/v2";
-import { Tooltip, TooltipContent, TooltipTrigger, UnstableIconButton } from "@app/components/v3";
+import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
@@ -96,14 +96,14 @@ export const SecretImportSecretValueCell = ({
       >
         <Tooltip>
           <TooltipTrigger>
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
               onClick={handleCopyValue}
             >
               {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-            </UnstableIconButton>
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent>{isCopied ? "Copied" : "Copy value"}</TooltipContent>
         </Tooltip>

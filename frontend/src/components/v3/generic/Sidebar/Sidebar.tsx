@@ -6,9 +6,9 @@ import { cva, type VariantProps } from "cva";
 import { ChevronDown, PanelLeftIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { UnstableIconButton } from "../IconButton";
-import { UnstableInput as Input } from "../Input";
-import { UnstableSeparator as Separator } from "../Separator";
+import { IconButton } from "../IconButton";
+import { Input } from "../Input";
+import { Separator } from "../Separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../Sheet";
 import { Skeleton } from "../Skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
@@ -324,15 +324,11 @@ function Sidebar({
   );
 }
 
-function SidebarTrigger({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof UnstableIconButton>) {
+function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof IconButton>) {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <UnstableIconButton
+    <IconButton
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       size="sm"
@@ -345,7 +341,7 @@ function SidebarTrigger({
     >
       <PanelLeftIcon className="cn-rtl-flip" />
       <span className="sr-only">Toggle Sidebar</span>
-    </UnstableIconButton>
+    </IconButton>
   );
 }
 

@@ -13,18 +13,18 @@ import {
 
 import {
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  SelectValue
 } from "@app/components/v3";
 import {
   SigningOperationStatus,
@@ -156,9 +156,9 @@ export const CodeSigningSection = ({ projectId }: Props) => {
   }
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="flex-row items-center gap-2">
-        <UnstableCardTitle className="text-sm">Code Signing Activity</UnstableCardTitle>
+    <Card>
+      <CardHeader className="flex-row items-center gap-2">
+        <CardTitle className="text-sm">Code Signing Activity</CardTitle>
         <div className="ml-auto flex items-center gap-2 pr-5">
           <div className="flex gap-0.5">
             {ranges.map((r) => (
@@ -186,14 +186,14 @@ export const CodeSigningSection = ({ projectId }: Props) => {
             </SelectContent>
           </Select>
         </div>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+      </CardHeader>
+      <CardContent>
         {trendData.length === 0 ? (
-          <UnstableEmpty className="h-[250px]">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No signing operations yet</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="h-[250px]">
+            <EmptyHeader>
+              <EmptyTitle>No signing operations yet</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={trendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -238,7 +238,7 @@ export const CodeSigningSection = ({ projectId }: Props) => {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

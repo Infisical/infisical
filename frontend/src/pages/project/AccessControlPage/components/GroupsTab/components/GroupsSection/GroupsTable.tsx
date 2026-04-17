@@ -6,26 +6,26 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -128,22 +128,22 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
         </InputGroup>
       </div>
       {!isPending && !filteredGroupMemberships?.length ? (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {search ? "No project groups match search" : "No project groups found"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {search ? "Adjust your search criteria." : "Add a group to get started."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead className="w-1/3" onClick={toggleOrderDirection}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1/3" onClick={toggleOrderDirection}>
                   Name
                   <ChevronDownIcon
                     className={twMerge(
@@ -151,29 +151,29 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       orderDirection === OrderByDirection.DESC && "rotate-180"
                     )}
                   />
-                </UnstableTableHead>
-                <UnstableTableHead>Project Role</UnstableTableHead>
-                <UnstableTableHead>Added on</UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                </TableHead>
+                <TableHead>Project Role</TableHead>
+                <TableHead>Added on</TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isPending &&
                 Array.from({ length: 10 }).map((_, i) => (
-                  <UnstableTableRow key={`skeleton-${i + 1}`}>
-                    <UnstableTableCell>
+                  <TableRow key={`skeleton-${i + 1}`}>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-full" />
-                    </UnstableTableCell>
-                    <UnstableTableCell>
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-4" />
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                    </TableCell>
+                  </TableRow>
                 ))}
               {!isPending &&
                 filteredGroupMembershipsPage.map(
@@ -181,7 +181,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                     const isLinkedGroup =
                       groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                     return (
-                      <UnstableTableRow
+                      <TableRow
                         className="group cursor-pointer"
                         key={`st-v3-${id}`}
                         role="button"
@@ -209,8 +209,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           })
                         }
                       >
-                        <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-                        <UnstableTableCell>
+                        <TableCell isTruncatable>{name}</TableCell>
+                        <TableCell>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Groups}
@@ -224,29 +224,27 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               />
                             )}
                           </ProjectPermissionCan>
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          {format(new Date(createdAt), "MMM d, yyyy")}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton
+                        </TableCell>
+                        <TableCell>{format(new Date(createdAt), "MMM d, yyyy")}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
                                 variant="ghost"
                                 size="xs"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent sideOffset={2} align="end">
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
                               {!isLinkedGroup && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Delete}
                                   a={ProjectPermissionSub.Groups}
                                 >
                                   {(isAllowed) => (
-                                    <UnstableDropdownMenuItem
+                                    <DropdownMenuItem
                                       variant="danger"
                                       isDisabled={!isAllowed}
                                       onClick={(e) => {
@@ -259,21 +257,21 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                                     >
                                       <UserRoundXIcon />
                                       Remove Group From Project
-                                    </UnstableDropdownMenuItem>
+                                    </DropdownMenuItem>
                                   )}
                                 </ProjectPermissionCan>
                               )}
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     );
                   }
                 )}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
           {Boolean(filteredGroupMemberships.length) && (
-            <UnstablePagination
+            <Pagination
               count={filteredGroupMemberships.length}
               page={page}
               perPage={perPage}

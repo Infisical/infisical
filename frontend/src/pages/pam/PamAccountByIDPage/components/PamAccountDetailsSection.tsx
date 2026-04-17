@@ -8,7 +8,7 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
@@ -68,9 +68,9 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
           a={ProjectPermissionSub.PamAccounts}
         >
           {(isAllowed) => (
-            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+            <IconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
               <PencilIcon />
-            </UnstableIconButton>
+            </IconButton>
           )}
         </ProjectPermissionCan>
       </div>

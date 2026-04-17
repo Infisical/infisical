@@ -19,16 +19,16 @@ import { Modal, ModalContent } from "@app/components/v2";
 import {
   Button,
   Checkbox,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -216,11 +216,11 @@ export const SecretTableRow = ({
 
   return (
     <>
-      <UnstableTableRow
+      <TableRow
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
         className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
       >
-        <UnstableTableCell
+        <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-0 z-10",
             !singleEnvPendingAction &&
@@ -264,7 +264,7 @@ export const SecretTableRow = ({
               )}
             />
           )}
-        </UnstableTableCell>
+        </TableCell>
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
@@ -309,7 +309,7 @@ export const SecretTableRow = ({
             reminder={singleEnvSecret?.reminder}
           />
         ) : (
-          <UnstableTableCell
+          <TableCell
             isTruncatable
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
@@ -334,7 +334,7 @@ export const SecretTableRow = ({
             >
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     onClick={(e) => {
@@ -345,13 +345,13 @@ export const SecretTableRow = ({
                     className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   >
                     {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                  </UnstableIconButton>
+                  </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Copy Secret Name</TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
-                  <UnstableIconButton
+                  <IconButton
                     variant="ghost"
                     size="xs"
                     onClick={(e) => {
@@ -361,17 +361,16 @@ export const SecretTableRow = ({
                     className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
                   >
                     <EditIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </TooltipTrigger>
                 <TooltipContent>Edit Secret Name</TooltipContent>
               </Tooltip>
             </div>
-          </UnstableTableCell>
+          </TableCell>
         )}
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded)
-              return <UnstableTableCell className="border-b-0 bg-container-hover" />;
+            if (isFormExpanded) return <TableCell className="border-b-0 bg-container-hover" />;
 
             const secret = getSecretByKey(slug, secretKey);
 
@@ -400,14 +399,14 @@ export const SecretTableRow = ({
               />
             );
           })}
-      </UnstableTableRow>
+      </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <UnstableTableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
-          <UnstableTableCell>
+        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+          <TableCell>
             <GitBranchIcon className="text-override" />
-          </UnstableTableCell>
-          <UnstableTableCell className="border-r text-override">{secretKey}</UnstableTableCell>
-          <UnstableTableCell>
+          </TableCell>
+          <TableCell className="border-r text-override">{secretKey}</TableCell>
+          <TableCell>
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -433,8 +432,8 @@ export const SecretTableRow = ({
               onSecretUpdate={onSecretUpdate}
               onSecretDelete={onSecretDelete}
             />
-          </UnstableTableCell>
-        </UnstableTableRow>
+          </TableCell>
+        </TableRow>
       )}
       {!isSingleEnvView && (
         <Modal
@@ -452,17 +451,17 @@ export const SecretTableRow = ({
         </Modal>
       )}
       {!isSingleEnvView && isFormExpanded && (
-        <UnstableTableRow>
-          <UnstableTableCell colSpan={totalCols} className={`${isFormExpanded && "bg-card p-0"}`}>
+        <TableRow>
+          <TableCell colSpan={totalCols} className={`${isFormExpanded && "bg-card p-0"}`}>
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
               className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
             >
-              <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-                <UnstableTableHeader className="">
-                  <UnstableTableRow className="border-none">
-                    <UnstableTableHead>Environment</UnstableTableHead>
-                    <UnstableTableHead className="w-full">Value</UnstableTableHead>
+              <Table containerClassName="border-none rounded-none bg-transparent">
+                <TableHeader className="">
+                  <TableRow className="border-none">
+                    <TableHead>Environment</TableHead>
+                    <TableHead className="w-full">Value</TableHead>
                     <div className="absolute top-0 right-0">
                       <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
                         {isSecretVisible ? (
@@ -479,9 +478,9 @@ export const SecretTableRow = ({
                         Values
                       </Button>
                     </div>
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {environments.map(({ name, slug }) => {
                     const secret = getSecretByKey(slug, secretKey);
                     const isCreatable = !secret;
@@ -495,10 +494,8 @@ export const SecretTableRow = ({
 
                     return (
                       <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
-                        <UnstableTableRow className="group hover:z-10">
-                          <UnstableTableCell
-                            className={hasOverride ? "border-b-border/50" : undefined}
-                          >
+                        <TableRow className="group hover:z-10">
+                          <TableCell className={hasOverride ? "border-b-border/50" : undefined}>
                             <div title={name} className="flex h-8 w-32 items-center space-x-2">
                               <span className="truncate">{name}</span>
                               {isImportedSecret && (
@@ -521,8 +518,8 @@ export const SecretTableRow = ({
                                 </Tooltip>
                               )}
                             </div>
-                          </UnstableTableCell>
-                          <UnstableTableCell
+                          </TableCell>
+                          <TableCell
                             className={twMerge("col-span-2", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
@@ -554,15 +551,15 @@ export const SecretTableRow = ({
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
                               reminder={secret?.reminder}
                             />
-                          </UnstableTableCell>
-                        </UnstableTableRow>
+                          </TableCell>
+                        </TableRow>
                         {showOverrideRow && (
-                          <UnstableTableRow
+                          <TableRow
                             className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
                             key={`secret-override-${slug}-${secretKey}`}
                           >
-                            <UnstableTableCell />
-                            <UnstableTableCell>
+                            <TableCell />
+                            <TableCell>
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}
@@ -587,17 +584,17 @@ export const SecretTableRow = ({
                                 onSecretUpdate={onSecretUpdate}
                                 onSecretDelete={onSecretDelete}
                               />
-                            </UnstableTableCell>
-                          </UnstableTableRow>
+                            </TableCell>
+                          </TableRow>
                         )}
                       </Fragment>
                     );
                   })}
-                </UnstableTableBody>
-              </UnstableTable>
+                </TableBody>
+              </Table>
             </div>
-          </UnstableTableCell>
-        </UnstableTableRow>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );

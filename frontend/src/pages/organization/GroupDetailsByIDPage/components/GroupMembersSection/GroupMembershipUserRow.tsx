@@ -4,13 +4,13 @@ import { MoreHorizontalIcon, UserIcon } from "lucide-react";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
@@ -41,23 +41,23 @@ export const GroupMembershipUserRow = ({
     useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
   return (
-    <UnstableTableRow key={`group-user-${id}`}>
-      <UnstableTableCell>
+    <TableRow key={`group-user-${id}`}>
+      <TableCell>
         <UserIcon size={14} className="text-mineshaft-400" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         {`${firstName ?? "-"} ${lastName ?? ""}`} <span className="text-muted">({email})</span>
-      </UnstableTableCell>
-      <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
-      <UnstableTableCell>
+      </TableCell>
+      <TableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</TableCell>
+      <TableCell>
         {!isLinkedGroup && (
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger>
-              <UnstableIconButton variant="ghost" size="xs">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <IconButton variant="ghost" size="xs">
                 <MoreHorizontalIcon />
-              </UnstableIconButton>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="end">
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
                   <Tooltip
@@ -68,7 +68,7 @@ export const GroupMembershipUserRow = ({
                     }
                     position="left"
                   >
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       onClick={() =>
                         handlePopUpOpen("removeMemberFromGroup", {
@@ -79,14 +79,14 @@ export const GroupMembershipUserRow = ({
                       isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
                     >
                       Remove User From Group
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   </Tooltip>
                 )}
               </OrgPermissionCan>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

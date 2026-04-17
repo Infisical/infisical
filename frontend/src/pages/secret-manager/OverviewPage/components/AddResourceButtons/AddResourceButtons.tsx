@@ -12,15 +12,15 @@ import {
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  ButtonGroup,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableButtonGroup,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
@@ -60,7 +60,7 @@ export function AddResourceButtons({
   isOrgAdmin
 }: Props) {
   return (
-    <UnstableButtonGroup>
+    <ButtonGroup>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
         {(isAllowed) => (
           <Tooltip open={!isAllowed ? undefined : false}>
@@ -79,13 +79,13 @@ export function AddResourceButtons({
           </Tooltip>
         )}
       </ProjectPermissionCan>
-      <UnstableDropdownMenu>
-        <UnstableDropdownMenuTrigger asChild>
-          <UnstableIconButton variant="project">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton variant="project">
             <ChevronDown />
-          </UnstableIconButton>
-        </UnstableDropdownMenuTrigger>
-        <UnstableDropdownMenuContent align="end">
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.SecretFolders}
@@ -93,10 +93,10 @@ export function AddResourceButtons({
             {(isAllowed) => (
               <Tooltip open={!isAllowed ? undefined : false}>
                 <TooltipTrigger className="block w-full">
-                  <UnstableDropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
+                  <DropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
                     <FolderIcon className="text-folder" />
                     Add Folder
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">Access Restricted</TooltipContent>
               </Tooltip>
@@ -104,37 +104,37 @@ export function AddResourceButtons({
           </ProjectPermissionCan>
           <Tooltip open={!isDyanmicSecretAvailable ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <UnstableDropdownMenuItem
+              <DropdownMenuItem
                 onClick={onAddDyanamicSecret}
                 isDisabled={!isDyanmicSecretAvailable}
               >
                 <FingerprintIcon className="text-dynamic-secret" />
                 Add Dynamic Secret
-              </UnstableDropdownMenuItem>
+              </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
           <Tooltip open={!isSecretRotationAvailable ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <UnstableDropdownMenuItem
+              <DropdownMenuItem
                 onClick={onAddSecretRotation}
                 isDisabled={!isSecretRotationAvailable}
               >
                 <RefreshCwIcon className="text-secret-rotation" />
                 Add Secret Rotation
-              </UnstableDropdownMenuItem>
+              </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <UnstableDropdownMenuItem
+              <DropdownMenuItem
                 onClick={onAddSecretImport}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
                 <ImportIcon className="text-import" />
                 Add Secret Import
-              </UnstableDropdownMenuItem>
+              </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">
               {!isSecretImportAvailable
@@ -149,10 +149,10 @@ export function AddResourceButtons({
             {(isAllowed) => (
               <Tooltip open={!isAllowed ? undefined : false}>
                 <TooltipTrigger className="block w-full">
-                  <UnstableDropdownMenuItem onClick={onImportSecrets} isDisabled={!isAllowed}>
+                  <DropdownMenuItem onClick={onImportSecrets} isDisabled={!isAllowed}>
                     <UploadIcon className="text-accent" />
                     Upload Secrets
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">Access Restricted</TooltipContent>
               </Tooltip>
@@ -165,13 +165,13 @@ export function AddResourceButtons({
             {(isAllowed) => (
               <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
                 <TooltipTrigger className="block w-full">
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     onClick={onReplicateSecrets}
                     isDisabled={!isReplicateSecretsAvailable || !isAllowed}
                   >
                     <ClipboardPasteIcon className="text-accent" />
                     Replicate Secrets
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   {!isReplicateSecretsAvailable
@@ -191,7 +191,7 @@ export function AddResourceButtons({
                   open={!isAllowed || !isOrgAdmin || !isSingleEnvSelected ? undefined : false}
                 >
                   <TooltipTrigger className="block w-full">
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       onClick={onImportFromVault}
                       isDisabled={!isAllowed || !isOrgAdmin || !isSingleEnvSelected}
                     >
@@ -203,7 +203,7 @@ export function AddResourceButtons({
                         />
                       </div>
                       Add from HashiCorp Vault
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
                     {/* eslint-disable-next-line no-nested-ternary */}
@@ -217,8 +217,8 @@ export function AddResourceButtons({
               )}
             </ProjectPermissionCan>
           )}
-        </UnstableDropdownMenuContent>
-      </UnstableDropdownMenu>
-    </UnstableButtonGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </ButtonGroup>
   );
 }
