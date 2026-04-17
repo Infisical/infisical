@@ -14,11 +14,14 @@ export const PkiScepEnrollmentConfigsSchema = z.object({
   encryptedRaPrivateKey: zodBuffer,
   raCertificate: z.string(),
   raCertExpiresAt: z.date(),
-  hashedChallengePassword: z.string(),
+  hashedChallengePassword: z.string().nullable().optional(),
   includeCaCertInResponse: z.boolean().default(true),
   allowCertBasedRenewal: z.boolean().default(true),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  challengeType: z.string().default("static"),
+  dynamicChallengeExpiryMinutes: z.number().nullable().optional(),
+  dynamicChallengeMaxPending: z.number().nullable().optional()
 });
 
 export type TPkiScepEnrollmentConfigs = z.infer<typeof PkiScepEnrollmentConfigsSchema>;

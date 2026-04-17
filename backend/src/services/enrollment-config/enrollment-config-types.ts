@@ -52,7 +52,10 @@ export type TScepEnrollmentConfigInsert = TPkiScepEnrollmentConfigsInsert;
 export type TScepEnrollmentConfigUpdate = TPkiScepEnrollmentConfigsUpdate;
 
 export interface TScepConfigData {
-  challengePassword: string;
+  challengeType?: string;
+  challengePassword?: string;
   includeCaCertInResponse?: boolean;
   allowCertBasedRenewal?: boolean;
+  dynamicChallengeExpiryMinutes?: number;
+  dynamicChallengeMaxPending?: number;
 }

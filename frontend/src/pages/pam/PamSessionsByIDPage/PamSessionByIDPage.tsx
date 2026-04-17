@@ -59,7 +59,7 @@ const Page = () => {
 
   const isActive =
     session?.status === PamSessionStatus.Active || session?.status === PamSessionStatus.Starting;
-  const isGatewaySession = !!session?.gatewayIdentityId;
+  const isGatewaySession = !!session?.gatewayIdentityId || !!session?.gatewayId;
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (

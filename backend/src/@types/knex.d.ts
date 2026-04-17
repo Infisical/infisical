@@ -161,6 +161,9 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
+  TGatewayEnrollmentTokens,
+  TGatewayEnrollmentTokensInsert,
+  TGatewayEnrollmentTokensUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -371,6 +374,9 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepDynamicChallenges,
+  TPkiScepDynamicChallengesInsert,
+  TPkiScepDynamicChallengesUpdate,
   TPkiScepEnrollmentConfigs,
   TPkiScepEnrollmentConfigsInsert,
   TPkiScepEnrollmentConfigsUpdate,
@@ -883,6 +889,11 @@ declare module "knex/types/tables" {
       TPkiScepTransactions,
       TPkiScepTransactionsInsert,
       TPkiScepTransactionsUpdate
+    >;
+    [TableName.PkiScepDynamicChallenge]: KnexOriginal.CompositeTableType<
+      TPkiScepDynamicChallenges,
+      TPkiScepDynamicChallengesInsert,
+      TPkiScepDynamicChallengesUpdate
     >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
@@ -1588,6 +1599,11 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TGatewayEnrollmentTokens,
+      TGatewayEnrollmentTokensInsert,
+      TGatewayEnrollmentTokensUpdate
+    >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,

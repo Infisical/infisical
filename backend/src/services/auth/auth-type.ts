@@ -21,7 +21,8 @@ export enum AuthTokenType {
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
-  SCIM_TOKEN = "scimToken"
+  SCIM_TOKEN = "scimToken",
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken"
 }
 
 // Result state from processProviderCallback — determines what the route handler should do
@@ -38,7 +39,8 @@ export enum AuthMode {
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
-  MCP_JWT = "mcpJwt"
+  MCP_JWT = "mcpJwt",
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -52,8 +54,16 @@ export enum ActorType { // would extend to AWS, Azure, ...
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
   SCEP_ACCOUNT = "scepAccount",
-  UNKNOWN_USER = "unknownUser"
+  UNKNOWN_USER = "unknownUser",
+  GATEWAY = "gateway"
 }
+
+export type TGatewayAccessTokenJwtPayload = {
+  authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
+  gatewayId: string;
+  orgId: string;
+  tokenVersion: number;
+};
 
 // This will be null unless the token-type is JWT
 export type ActorAuthMethod = AuthMethod | null;

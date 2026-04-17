@@ -148,11 +148,58 @@ export const reminderDALFactory = (db: TDbClient) => {
     return reminders;
   };
 
+  const findByProjectAndDateRange = async (
+    {
+      projectId,
+      startDate,
+      endDate
+    }: {
+      projectId: string;
+      startDate: Date;
+      endDate: Date;
+    },
+    tx?: Knex
+  ) => {
+    const query = (tx || db.replicaNode())(TableName.Reminder)
+      .whereNotNull(`${TableName.Reminder}.secretId`)
+      .whereBetween(`${TableName.Reminder}.nextReminderDate`, [startDate, endDate])
+      .join<TSecretsV2>(TableName.SecretV2, `${TableName.Reminder}.secretId`, `${TableName.SecretV2}.id`)
+      .join<TSecretFolders>(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join<TProjectEnvironments>(
+        TableName.Environment,
+        `${TableName.SecretFolder}.envId`,
+        `${TableName.Environment}.id`
+      )
+      .where(`${TableName.Environment}.projectId`, projectId);
+
+    const rawReminders = await query
+      .select(selectAllTableCols(TableName.Reminder))
+      .select(
+        db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
+        db.ref("folderId").withSchema(TableName.SecretV2).as("secretFolderId"),
+        db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+        db.ref("name").withSchema(TableName.Environment).as("envName")
+      );
+
+    return rawReminders.map((r) => ({
+      id: r.id,
+      secretId: r.secretId,
+      secretKey: (r as unknown as Record<string, string>).secretKey,
+      nextReminderDate: r.nextReminderDate,
+      message: r.message,
+      repeatDays: r.repeatDays,
+      folderId: (r as unknown as Record<string, string>).secretFolderId,
+      envSlug: (r as unknown as Record<string, string>).envSlug,
+      envName: (r as unknown as Record<string, string>).envName
+    }));
+  };
+
   return {
     ...reminderOrm,
     findSecretDailyReminders,
     findUpcomingReminders,
     findSecretReminder,
-    findSecretReminders
+    findSecretReminders,
+    findByProjectAndDateRange
   };
 };

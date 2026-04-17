@@ -22,6 +22,8 @@
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
     "baseUrl": ".",
     "paths": {
       "@app/*": ["./src/*"],

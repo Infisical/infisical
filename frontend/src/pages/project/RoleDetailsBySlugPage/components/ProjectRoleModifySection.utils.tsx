@@ -21,6 +21,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
@@ -57,6 +58,10 @@ const GeneralPolicyActionSchema = z.object({
 
 const AuditLogsPolicyActionSchema = z.object({
   [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+});
+
+const InsightsPolicyActionSchema = z.object({
+  [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -689,6 +694,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -1050,7 +1056,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PamResources,
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
-        ProjectPermissionSub.McpActivityLogs
+        ProjectPermissionSub.McpActivityLogs,
+        ProjectPermissionSub.Insights
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -2457,6 +2464,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.Insights]: {
+    title: "Insights",
+    description: "View project analytics and insights dashboards",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionInsightsActions.Read,
+        description: "View secret access volume, locations, auth methods, and calendar insights"
+      }
+    ]
+  },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
     description: "Restrict project access by IP address",
@@ -3394,6 +3412,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
+  [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });

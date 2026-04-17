@@ -148,7 +148,6 @@ export type TRemoveIdentitiesFromGroup = {
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

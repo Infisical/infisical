@@ -230,7 +230,7 @@ export type TUpdateSecretBatchDTO = {
   secrets: Array<{
     type: SecretType;
     secretKey: string;
-    secretValue: string;
+    secretValue?: string;
     secretComment?: string;
     skipMultilineEncoding?: boolean | null;
     tagIds?: string[];

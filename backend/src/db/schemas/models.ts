@@ -33,6 +33,7 @@ export enum TableName {
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
   PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
   PkiScepTransaction = "pki_scep_transactions",
+  PkiScepDynamicChallenge = "pki_scep_dynamic_challenges",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",
@@ -220,6 +221,7 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
+  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
 
   KeyValueStore = "key_value_store",
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { FolderInputIcon, TrashIcon } from "lucide-react";
+import { FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +27,7 @@ import {
 } from "@app/hooks/api/types";
 import {
   BulkDeleteDialog,
+  BulkTagDialog,
   MoveSecretsModal
 } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
 
@@ -62,7 +63,8 @@ export const SelectionPanel = ({
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
-    "bulkMoveSecrets"
+    "bulkMoveSecrets",
+    "bulkTagSecrets"
   ] as const);
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
@@ -91,6 +93,20 @@ export const SelectionPanel = ({
       })
     )
   );
+
+  const canEditSecretsInAnyEnv = userAvailableEnvs.some((env) =>
+    permission.can(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: env.slug,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      })
+    )
+  );
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const isTagActionDisabled = !canEditSecretsInAnyEnv || !canReadTags;
 
   const usedBySecretSyncsFiltered = useMemo(() => {
     if (selectedKeysCount === 0 || usedBySecretSyncs.length === 0) return null;
@@ -289,8 +305,25 @@ export const SelectionPanel = ({
           </button>
           {isRotatedSecretSelected && (
             <span className="text-xs text-accent">
-              Rotated Secrets will not be affected by action.
+              Rotated Secrets will not be affected by move or delete action.
             </span>
+          )}
+          {selectedKeysCount > 0 && (
+            <Tooltip open={isTagActionDisabled ? undefined : false}>
+              <TooltipTrigger>
+                <Button
+                  isDisabled={isTagActionDisabled}
+                  variant="project"
+                  className="ml-2"
+                  onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                  size="xs"
+                >
+                  <TagsIcon />
+                  Add Tags
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Access denied</TooltipContent>
+            </Tooltip>
           )}
           {shouldShowDelete && (
             <>
@@ -331,6 +364,16 @@ export const SelectionPanel = ({
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
+        onComplete={resetSelectedEntries}
+      />
+      <BulkTagDialog
+        isOpen={popUp.bulkTagSecrets.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("bulkTagSecrets", isOpen)}
+        projectId={projectId}
+        secretPath={secretPath}
+        secrets={selectedEntries[EntryType.SECRET]}
+        environments={userAvailableEnvs}
+        visibleEnvs={visibleEnvs}
         onComplete={resetSelectedEntries}
       />
       <BulkDeleteDialog

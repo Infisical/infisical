@@ -633,7 +633,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
 
       interface LabelCount {
-        label: string;
+        label: string | null;
         count: string;
       }
 
@@ -771,11 +771,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         expiredNotRenewed: totals.expiredNotRenewed,
         distributions: {
           byEnrollmentMethod: (byEnrollmentMethod as unknown as LabelCount[]).map((r) => ({
-            label: r.label,
+            label: r.label || "Unknown",
             count: Number(r.count)
           })),
           byAlgorithm: (byAlgorithm as unknown as LabelCount[]).map((r) => ({
-            label: r.label,
+            label: r.label || "Unknown",
             count: Number(r.count)
           })),
           byCA: (byCA as unknown as LabelCountWithId[]).map((r) => ({

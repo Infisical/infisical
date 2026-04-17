@@ -44,6 +44,7 @@ import {
 import {
   EnrollmentType,
   IssuerType,
+  ScepChallengeType,
   TCertificateProfileDefaults,
   TCertificateProfileWithDetails,
   TCreateCertificateProfileDTO,
@@ -187,9 +188,12 @@ const createSchema = z.preprocess(
         .optional(),
       scepConfig: z
         .object({
-          challengePassword: z.string().min(8, "Challenge password must be at least 8 characters"),
+          challengeType: z.nativeEnum(ScepChallengeType).default(ScepChallengeType.STATIC),
+          challengePassword: z.string().optional(),
           includeCaCertInResponse: z.boolean().optional(),
-          allowCertBasedRenewal: z.boolean().optional()
+          allowCertBasedRenewal: z.boolean().optional(),
+          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
+          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
         })
         .optional(),
       externalConfigs: z
@@ -295,6 +299,23 @@ const createSchema = z.preprocess(
         path: ["enrollmentType"]
       }
     )
+    .refine(
+      (data) => {
+        if (
+          data.enrollmentType === EnrollmentType.SCEP &&
+          data.scepConfig &&
+          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC &&
+          (!data.scepConfig.challengePassword || data.scepConfig.challengePassword.length < 8)
+        ) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Challenge password must be at least 8 characters for static challenges",
+        path: ["scepConfig", "challengePassword"]
+      }
+    )
 );
 
 const editSchema = z.preprocess(
@@ -340,9 +361,12 @@ const editSchema = z.preprocess(
         .optional(),
       scepConfig: z
         .object({
-          challengePassword: z.string().min(8, "Challenge password must be at least 8 characters"),
+          challengeType: z.nativeEnum(ScepChallengeType).optional(),
+          challengePassword: z.string().optional(),
           includeCaCertInResponse: z.boolean().optional(),
-          allowCertBasedRenewal: z.boolean().optional()
+          allowCertBasedRenewal: z.boolean().optional(),
+          dynamicChallengeExpiryMinutes: z.number().min(1).max(1440).optional(),
+          dynamicChallengeMaxPending: z.number().min(1).max(1000).optional()
         })
         .optional(),
       externalConfigs: z
@@ -398,6 +422,22 @@ const editSchema = z.preprocess(
       {
         message: "Self-signed issuer type only supports API enrollment",
         path: ["enrollmentType"]
+      }
+    )
+    .refine(
+      (data) => {
+        if (
+          data.enrollmentType === EnrollmentType.SCEP &&
+          data.scepConfig?.challengePassword &&
+          data.scepConfig.challengeType !== ScepChallengeType.DYNAMIC
+        ) {
+          return data.scepConfig.challengePassword.length >= 8;
+        }
+        return true;
+      },
+      {
+        message: "Challenge password must be at least 8 characters",
+        path: ["scepConfig", "challengePassword"]
       }
     )
 );
@@ -629,9 +669,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           scepConfig:
             profile.enrollmentType === EnrollmentType.SCEP
               ? {
+                  challengeType:
+                    (profile.scepConfig?.challengeType as ScepChallengeType) ??
+                    ScepChallengeType.STATIC,
                   challengePassword: "",
                   includeCaCertInResponse: profile.scepConfig?.includeCaCertInResponse ?? true,
-                  allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true
+                  allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true,
+                  dynamicChallengeExpiryMinutes:
+                    profile.scepConfig?.dynamicChallengeExpiryMinutes ?? 60,
+                  dynamicChallengeMaxPending: profile.scepConfig?.dynamicChallengeMaxPending ?? 100
                 }
               : undefined,
           externalConfigs: profile.externalConfigs
@@ -674,6 +720,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const watchedAutoRenew = watch("apiConfig.autoRenew");
   const watchedSkipDnsOwnershipVerification = watch("acmeConfig.skipDnsOwnershipVerification");
   const watchedSkipEabBinding = watch("acmeConfig.skipEabBinding");
+  const watchedChallengeType = watch("scepConfig.challengeType");
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
 
@@ -822,9 +869,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         scepConfig:
           profile.enrollmentType === EnrollmentType.SCEP
             ? {
+                challengeType:
+                  (profile.scepConfig?.challengeType as ScepChallengeType) ??
+                  ScepChallengeType.STATIC,
                 challengePassword: "",
                 includeCaCertInResponse: profile.scepConfig?.includeCaCertInResponse ?? true,
-                allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true
+                allowCertBasedRenewal: profile.scepConfig?.allowCertBasedRenewal ?? true,
+                dynamicChallengeExpiryMinutes:
+                  profile.scepConfig?.dynamicChallengeExpiryMinutes ?? 60,
+                dynamicChallengeMaxPending: profile.scepConfig?.dynamicChallengeMaxPending ?? 100
               }
             : undefined,
         externalConfigs: profile.externalConfigs
@@ -1247,9 +1300,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             });
                           } else if (value === EnrollmentType.SCEP) {
                             setValue("scepConfig", {
+                              challengeType: ScepChallengeType.STATIC,
                               challengePassword: "",
                               includeCaCertInResponse: true,
-                              allowCertBasedRenewal: true
+                              allowCertBasedRenewal: true,
+                              dynamicChallengeExpiryMinutes: 60,
+                              dynamicChallengeMaxPending: 100
                             });
                           }
                           onChange(value);
@@ -1493,24 +1549,134 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   <div className="mb-4 space-y-4">
                     <Controller
                       control={control}
-                      name="scepConfig.challengePassword"
-                      render={({ field, fieldState: { error } }) => (
+                      name="scepConfig.challengeType"
+                      render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl
-                          label="Challenge Password"
-                          isRequired
+                          label="Challenge Type"
                           isError={Boolean(error)}
                           errorText={error?.message}
-                          helperText="The challenge password cannot be viewed after creation. Make sure to save it somewhere safe."
+                          helperText={
+                            value === ScepChallengeType.DYNAMIC
+                              ? "Challenges are generated on-demand via an authenticated API endpoint. Ideal for MDM tools like JAMF."
+                              : "A single shared challenge password is used for all enrollment requests."
+                          }
                         >
-                          <Input
-                            {...field}
-                            type="password"
-                            placeholder="Enter SCEP challenge password"
+                          <Select
+                            value={value ?? ScepChallengeType.STATIC}
+                            onValueChange={(val) => {
+                              onChange(val);
+                              if (val === ScepChallengeType.DYNAMIC) {
+                                setValue("scepConfig.challengePassword", "");
+                              }
+                            }}
                             className="w-full"
-                          />
+                          >
+                            <SelectItem
+                              value={ScepChallengeType.STATIC}
+                              key={ScepChallengeType.STATIC}
+                            >
+                              Static Challenge
+                            </SelectItem>
+                            <SelectItem
+                              value={ScepChallengeType.DYNAMIC}
+                              key={ScepChallengeType.DYNAMIC}
+                            >
+                              Dynamic Challenge
+                            </SelectItem>
+                          </Select>
                         </FormControl>
                       )}
                     />
+
+                    {watchedChallengeType !== ScepChallengeType.DYNAMIC && (
+                      <Controller
+                        control={control}
+                        name="scepConfig.challengePassword"
+                        render={({ field, fieldState: { error } }) => {
+                          const hadStaticPassword =
+                            isEdit &&
+                            profile?.scepConfig?.challengeType === ScepChallengeType.STATIC;
+
+                          return (
+                            <FormControl
+                              label="Challenge Password"
+                              isRequired={!hadStaticPassword}
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="The challenge password cannot be viewed after saving. Make sure to save it somewhere safe."
+                            >
+                              <Input
+                                {...field}
+                                type="password"
+                                placeholder={
+                                  hadStaticPassword
+                                    ? "Leave empty to keep current password"
+                                    : "Enter SCEP challenge password"
+                                }
+                                className="w-full"
+                              />
+                            </FormControl>
+                          );
+                        }}
+                      />
+                    )}
+
+                    {watchedChallengeType === ScepChallengeType.DYNAMIC && (
+                      <>
+                        <Controller
+                          control={control}
+                          name="scepConfig.dynamicChallengeExpiryMinutes"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Challenge Expiry (minutes)"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="How long each generated challenge remains valid before expiring."
+                            >
+                              <Input
+                                {...field}
+                                type="number"
+                                placeholder="60"
+                                min="1"
+                                max="1440"
+                                className="w-full"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  field.onChange(val === "" ? undefined : Number(val));
+                                }}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name="scepConfig.dynamicChallengeMaxPending"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Max Pending Challenges"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="Maximum number of unused challenges that can exist at once."
+                            >
+                              <Input
+                                {...field}
+                                type="number"
+                                placeholder="100"
+                                min="1"
+                                max="1000"
+                                className="w-full"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  field.onChange(val === "" ? undefined : Number(val));
+                                }}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      </>
+                    )}
 
                     <Controller
                       control={control}
