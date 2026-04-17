@@ -255,6 +255,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
                 <UnstableInput
                   {...register("email")}
                   type="email"
+                  id="email"
                   placeholder="Enter your email..."
                   autoComplete="username"
                   className="h-10"
