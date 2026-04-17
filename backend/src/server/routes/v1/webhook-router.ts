@@ -8,7 +8,11 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { WebhookEvents, WebhookType } from "@app/services/webhook/webhook-types";
+import {
+  SUBSCRIBABLE_WEBHOOK_EVENTS,
+  TSubscribableWebhookEvent,
+  WebhookType
+} from "@app/services/webhook/webhook-types";
 
 export const sanitizedWebhookSchema = WebhooksSchema.pick({
   id: true,
@@ -29,7 +33,7 @@ export const sanitizedWebhookSchema = WebhooksSchema.pick({
   }),
   eventsFilter: z.array(
     z.object({
-      eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+      eventName: z.enum([...SUBSCRIBABLE_WEBHOOK_EVENTS] as [TSubscribableWebhookEvent, ...TSubscribableWebhookEvent[]])
     })
   )
 });
@@ -55,7 +59,10 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           eventsFilter: z
             .array(
               z.object({
-                eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+                eventName: z.enum([...SUBSCRIBABLE_WEBHOOK_EVENTS] as [
+                  TSubscribableWebhookEvent,
+                  ...TSubscribableWebhookEvent[]
+                ])
               })
             )
             .optional()
@@ -133,7 +140,10 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           eventsFilter: z
             .array(
               z.object({
-                eventName: z.enum([WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed])
+                eventName: z.enum([...SUBSCRIBABLE_WEBHOOK_EVENTS] as [
+                  TSubscribableWebhookEvent,
+                  ...TSubscribableWebhookEvent[]
+                ])
               })
             )
             .optional()
