@@ -32,6 +32,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertSignatureAlgorithm,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason
@@ -389,7 +390,6 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     commonName,
     altNames = [],
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
-    signatureAlgorithm,
     isRenewal,
     originalCertificateId,
     certificateId,
@@ -408,7 +408,6 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyAlgorithm?: CertKeyAlgorithm;
-    signatureAlgorithm?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
     certificateId: string;
@@ -691,6 +690,29 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         .filter(Boolean);
     }
 
+    // ACM picks the signature algorithm server-side — derive it from the issued cert
+    // so the persisted value matches what was actually signed.
+    const sigAlgName = certObj.signatureAlgorithm.name;
+    const sigHashName = (certObj.signatureAlgorithm as unknown as { hash?: { name: string } }).hash?.name;
+    let issuedSignatureAlgorithm: CertSignatureAlgorithm;
+    if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-256") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA256;
+    } else if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-384") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA384;
+    } else if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-512") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA512;
+    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-256") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA256;
+    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-384") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA384;
+    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-512") {
+      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA512;
+    } else {
+      throw new BadRequestError({
+        message: `Unsupported signature algorithm from AWS ACM: ${sigAlgName} with ${sigHashName}`
+      });
+    }
+
     const externalMetadata = ExternalMetadataSchema.parse({
       type: CaType.AWS_ACM_PUBLIC_CA,
       arn: certificateArn,
@@ -712,7 +734,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           notBefore: certObj.notBefore,
           notAfter: certObj.notAfter,
           keyAlgorithm,
-          signatureAlgorithm,
+          signatureAlgorithm: issuedSignatureAlgorithm,
           keyUsages: issuedKeyUsages,
           extendedKeyUsages: issuedExtendedKeyUsages,
           projectId: ca.projectId,
