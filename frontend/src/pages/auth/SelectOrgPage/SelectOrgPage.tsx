@@ -258,7 +258,8 @@ export const SelectOrgPage = () => {
     }
   }, [mfaMethodFromSearch, orgs?.length, orgId]);
 
-  const renderListContent = () => {
+
+const renderListContent = () => {
     if (orgsLoading) {
       return (
         <div className="flex justify-center py-6">

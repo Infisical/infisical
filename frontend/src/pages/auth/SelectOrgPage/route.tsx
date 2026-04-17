@@ -4,14 +4,14 @@ import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
 import { SessionStorageKeys } from "@app/const";
-import { selectOrganization } from "@app/hooks/api/auth/queries";
+import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
 import {
   fetchOrganizationsWithSubOrgs,
   organizationKeys
 } from "@app/hooks/api/organization/queries";
-import { setAuthToken } from "@app/hooks/api/reactQuery";
-import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { onRequestError, setAuthToken } from "@app/hooks/api/reactQuery";
+import { fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
 
 import { SelectOrgPage } from "./SelectOrgPage";
 
@@ -109,7 +109,24 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       if (error instanceof Error && error.message === "REDIRECT") throw error;
       // For redirect objects from TanStack Router
       if (typeof error === "object" && error !== null && "to" in error) throw error;
-      // Otherwise let the page render and handle errors
+      // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
+      // never fires for it — surface SMTP errors manually and log the user out.
+      if (typeof error === "object" && error !== null && "response" in error) {
+        const response = (error as { response?: { data?: { error?: string; message?: string } } }).response;
+        if (response?.data?.error === "SmtpError") {
+          onRequestError(error);
+          // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
+          // so we replicate its mutationFn manually:
+          // - setAuthToken("") stops outgoing requests from carrying the stale token.
+          // - removeQueries drops the cached auth token so the restrict-login-signup
+          //   middleware doesn't find it and redirect back to select-organization.
+          // - logoutUser() invalidates the session on the server.
+          setAuthToken("");
+          context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+          await logoutUser();
+          throw redirect({ to: "/login" });
+        }
+      }
     }
   }
 });
