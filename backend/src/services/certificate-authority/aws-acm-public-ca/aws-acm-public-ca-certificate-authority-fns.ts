@@ -798,12 +798,19 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     });
     const revocationReason = CRL_REASON_TO_ACM_REVOCATION_REASON_MAP[reason];
 
-    const result = await acmClient.send(
-      new RevokeCertificateCommand({
-        CertificateArn: parsedMetadata.data.arn,
-        RevocationReason: revocationReason
-      })
-    );
+    let result;
+    try {
+      result = await acmClient.send(
+        new RevokeCertificateCommand({
+          CertificateArn: parsedMetadata.data.arn,
+          RevocationReason: revocationReason
+        })
+      );
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to revoke certificate via AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
     logger.info(result, "AWS ACM RevokeCertificate result");
   };
 
