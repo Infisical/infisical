@@ -77,6 +77,7 @@ import {
   decryptAccount,
   decryptAccountCredentials,
   encryptAccountCredentials,
+  formatAccountParent,
   hasSensitiveCredentials
 } from "./pam-account-fns";
 import {
@@ -307,23 +308,11 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(account, parent.projectId, kmsService)),
-        parentType: (parent.resourceType || parent.domainType)!,
-        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? [],
-        resource: parent.isResource
-          ? {
-              id: parent.raw.id,
-              name: parent.name,
-              resourceType: parent.resourceType,
-              rotationCredentialsConfigured: !!parent.encryptedRotationAccountCredentials
-            }
-          : null,
-        domain: !parent.isResource
-          ? {
-              id: parent.raw.id,
-              name: parent.name,
-              domainType: parent.domainType
-            }
-          : null
+        ...formatAccountParent({
+          resource: parent.isResource ? parent.raw : null,
+          domain: parent.isResource ? null : parent.raw
+        }),
+        metadata: insertedMetadata?.map(({ id, key, value }) => ({ id, key, value: value ?? "" })) ?? []
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -474,23 +463,11 @@ export const pamAccountServiceFactory = ({
       const existingMeta = await pamAccountDAL.findMetadataByAccountIds([accountId]);
       return {
         ...(await decryptAccount(account, account.projectId, kmsService)),
-        parentType: resource?.resourceType || (!parent.isResource ? parent.domainType : "") || "",
-        metadata: existingMeta[accountId] || [],
-        resource: resource
-          ? {
-              id: resource.id,
-              name: resource.name,
-              resourceType: resource.resourceType,
-              rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
-            }
-          : null,
-        domain: !parent.isResource
-          ? {
-              id: parent.raw.id,
-              name: parent.name,
-              domainType: parent.domainType
-            }
-          : null
+        ...formatAccountParent({
+          resource,
+          domain: parent.isResource ? null : parent.raw
+        }),
+        metadata: existingMeta[accountId] || []
       };
     }
 
@@ -520,23 +497,11 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
-        parentType: resource?.resourceType || (!parent.isResource ? parent.domainType : "") || "",
-        metadata: freshMeta[accountId] || [],
-        resource: resource
-          ? {
-              id: resource.id,
-              name: resource.name,
-              resourceType: resource.resourceType,
-              rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
-            }
-          : null,
-        domain: !parent.isResource
-          ? {
-              id: parent.raw.id,
-              name: parent.name,
-              domainType: parent.domainType
-            }
-          : null
+        ...formatAccountParent({
+          resource,
+          domain: parent.isResource ? null : parent.raw
+        }),
+        metadata: freshMeta[accountId] || []
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -580,22 +545,10 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...(await decryptAccount(deletedAccount, account.projectId, kmsService)),
-      parentType: (parent.resourceType || parent.domainType)!,
-      resource: parent.isResource
-        ? {
-            id: parent.raw.id,
-            name: parent.name,
-            resourceType: parent.resourceType,
-            rotationCredentialsConfigured: !!parent.encryptedRotationAccountCredentials
-          }
-        : null,
-      domain: !parent.isResource
-        ? {
-            id: parent.raw.id,
-            name: parent.name,
-            domainType: parent.domainType
-          }
-        : null
+      ...formatAccountParent({
+        resource: parent.isResource ? parent.raw : null,
+        domain: parent.isResource ? null : parent.raw
+      })
     };
   };
 
@@ -672,22 +625,10 @@ export const pamAccountServiceFactory = ({
 
         decryptedAndPermittedAccounts.push({
           ...decryptedAccount,
-          parentType: account.resource?.resourceType || account.domain?.domainType || "",
-          resource: account.resource
-            ? {
-                id: account.resource.id,
-                name: account.resource.name,
-                resourceType: account.resource.resourceType,
-                rotationCredentialsConfigured: !!account.resource.encryptedRotationAccountCredentials
-              }
-            : null,
-          domain: account.domain
-            ? {
-                id: account.domain.id,
-                name: account.domain.name,
-                domainType: account.domain.domainType
-              }
-            : null
+          ...formatAccountParent({
+            resource: account.resource,
+            domain: account.domain
+          })
         } as unknown as (typeof decryptedAndPermittedAccounts)[0]);
       }
     }
@@ -743,23 +684,11 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...decryptedAccount,
-      parentType: accountWithParent.resource?.resourceType || accountWithParent.domain?.domainType || "",
-      metadata: accountMetadata,
-      resource: accountWithParent.resource
-        ? {
-            id: accountWithParent.resource.id,
-            name: accountWithParent.resource.name,
-            resourceType: accountWithParent.resource.resourceType,
-            rotationCredentialsConfigured: !!accountWithParent.resource.encryptedRotationAccountCredentials
-          }
-        : null,
-      domain: accountWithParent.domain
-        ? {
-            id: accountWithParent.domain.id,
-            name: accountWithParent.domain.name,
-            domainType: accountWithParent.domain.domainType
-          }
-        : null
+      ...formatAccountParent({
+        resource: accountWithParent.resource,
+        domain: accountWithParent.domain
+      }),
+      metadata: accountMetadata
     };
   };
 
@@ -1590,14 +1519,10 @@ export const pamAccountServiceFactory = ({
     return {
       ...decryptedAccount,
       metadata: accountMetadata,
-      parentType: updatedAccountWithParent.resource.resourceType,
-      resource: {
-        id: updatedAccountWithParent.resource.id,
-        name: updatedAccountWithParent.resource.name,
-        resourceType: updatedAccountWithParent.resource.resourceType,
-        rotationCredentialsConfigured: !!updatedAccountWithParent.resource.encryptedRotationAccountCredentials
-      },
-      domain: null
+      ...formatAccountParent({
+        resource: updatedAccountWithParent.resource,
+        domain: null
+      })
     };
   };
 

@@ -5,6 +5,44 @@ import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials, TPamResourceInternalMetadata } from "../pam-resource/pam-resource-types";
 import { SSHAuthMethod } from "../pam-resource/ssh/ssh-resource-enums";
 
+type TAccountParentResource = {
+  id: string;
+  name: string;
+  resourceType: string;
+  encryptedRotationAccountCredentials?: Buffer | null;
+};
+
+type TAccountParentDomain = {
+  id: string;
+  name: string;
+  domainType: string;
+};
+
+export const formatAccountParent = ({
+  resource,
+  domain
+}: {
+  resource?: TAccountParentResource | null;
+  domain?: TAccountParentDomain | null;
+}) => ({
+  parentType: resource?.resourceType ?? domain?.domainType ?? "",
+  resource: resource
+    ? {
+        id: resource.id,
+        name: resource.name,
+        resourceType: resource.resourceType,
+        rotationCredentialsConfigured: Boolean(resource.encryptedRotationAccountCredentials)
+      }
+    : null,
+  domain: domain
+    ? {
+        id: domain.id,
+        name: domain.name,
+        domainType: domain.domainType
+      }
+    : null
+});
+
 export const encryptAccountCredentials = async ({
   projectId,
   credentials,
