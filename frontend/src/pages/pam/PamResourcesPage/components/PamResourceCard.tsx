@@ -16,6 +16,7 @@ import { Badge, UnstableIconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
+import { PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
 
 type Props = {
   resource: TPamResource;
@@ -37,6 +38,12 @@ export const PamResourceCard = ({
 
   const { id, name, resourceType, projectId } = resource;
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
+
+  const { data: domain } = useGetPamDomainById(
+    PamDomainType.ActiveDirectory,
+    resource.domainId || undefined,
+    { enabled: !!resource.domainId }
+  );
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -158,9 +165,10 @@ export const PamResourceCard = ({
               </DropdownMenu>
             </div>
           </div>
-          <Badge variant="neutral" className="mt-1">
-            {resourceTypeName}
-          </Badge>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Badge variant="neutral">{resourceTypeName}</Badge>
+            {domain && <Badge variant="info">{domain.connectionDetails.domain}</Badge>}
+          </div>
         </div>
       </div>
     </div>

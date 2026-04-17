@@ -191,7 +191,7 @@ const SshAccountFields = ({ isUpdate, resourceId }: { isUpdate: boolean; resourc
 
 export const SshAccountForm = ({ account, resourceId, onSubmit, closeSheet }: Props) => {
   const isUpdate = Boolean(account);
-  const effectiveResourceId = resourceId || account?.resource.id || "";
+  const effectiveResourceId = resourceId || account?.resource?.id || "";
 
   const getDefaultCredentials = () => {
     if (!account) return undefined;

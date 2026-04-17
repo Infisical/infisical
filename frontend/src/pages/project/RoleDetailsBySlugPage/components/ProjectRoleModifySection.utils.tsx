@@ -808,6 +808,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.PamDomains]: GeneralPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PamAccounts]: PamAccountPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -883,6 +889,7 @@ type TConditionalFields =
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
+  | ProjectPermissionSub.PamDomains
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups;
@@ -909,6 +916,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.AppConnections ||
   subject === ProjectPermissionSub.PamAccounts ||
   subject === ProjectPermissionSub.PamResources ||
+  subject === ProjectPermissionSub.PamDomains ||
   subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups;
@@ -1054,6 +1062,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.AppConnections,
         ProjectPermissionSub.PamFolders,
         ProjectPermissionSub.PamResources,
+        ProjectPermissionSub.PamDomains,
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
@@ -3169,6 +3178,28 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PamDomains]: {
+    title: "Domains",
+    description: "Manage PAM domains such as Active Directory",
+    actions: [
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM domains" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Add new domains to PAM"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update domain configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionActions.Delete,
+        description: "Remove PAM domains"
+      }
+    ]
+  },
   [ProjectPermissionSub.PamAccounts]: {
     title: "Accounts",
     description: "Manage privileged account credentials",
@@ -3455,6 +3486,7 @@ const SecretScanningSubject = (enabled = false) => ({
 const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamFolders]: enabled,
   [ProjectPermissionSub.PamResources]: enabled,
+  [ProjectPermissionSub.PamDomains]: enabled,
   [ProjectPermissionSub.PamAccounts]: enabled,
   [ProjectPermissionSub.PamSessions]: enabled,
   [ProjectPermissionSub.PamAccountPolicies]: enabled,
@@ -3992,6 +4024,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           actions: [ProjectPermissionActions.Read]
         },
         {
+          subject: ProjectPermissionSub.PamDomains,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
           subject: ProjectPermissionSub.PamAccounts,
           actions: [ProjectPermissionPamAccountActions.Read]
         }
@@ -4022,6 +4058,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         },
         {
           subject: ProjectPermissionSub.PamResources,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.PamDomains,
           actions: Object.values(ProjectPermissionActions)
         },
         {

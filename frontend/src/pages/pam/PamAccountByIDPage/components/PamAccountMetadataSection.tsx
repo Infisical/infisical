@@ -56,7 +56,7 @@ export const PamAccountMetadataSection = ({ account }: Props) => {
       try {
         await updateAccount({
           accountId: account.id,
-          resourceType: account.resource.resourceType,
+          parentType: account.parentType,
           metadata: formData.metadata || []
         });
         createNotification({
@@ -71,7 +71,7 @@ export const PamAccountMetadataSection = ({ account }: Props) => {
         });
       }
     },
-    [account.id, account.resource.resourceType, updateAccount]
+    [account.id, account.resource?.resourceType, updateAccount]
   );
 
   return (

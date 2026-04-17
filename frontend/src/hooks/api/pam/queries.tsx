@@ -169,32 +169,6 @@ export const useGetPamResourceById = (
   });
 };
 
-export const useListRelatedResources = (
-  resourceId?: string,
-  options?: Omit<
-    UseQueryOptions<
-      TPamResource[],
-      unknown,
-      TPamResource[],
-      ReturnType<typeof pamKeys.listRelatedResources>
-    >,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery({
-    queryKey: pamKeys.listRelatedResources(resourceId || ""),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ resources: TPamResource[] }>(
-        `/api/v1/pam/resources/active-directory/${resourceId}/related-resources`
-      );
-
-      return data.resources;
-    },
-    enabled: !!resourceId && (options?.enabled ?? true),
-    ...options
-  });
-};
-
 export const useGetPamResourceDependencies = (
   resourceType?: PamResourceType,
   resourceId?: string
@@ -232,13 +206,17 @@ export const useListPamAccounts = (
   return useQuery({
     queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { metadataFilter, filterResourceIds, ...rest } = params;
+      const { metadataFilter, filterResourceIds, filterDomainIds, ...rest } = params;
       const { data } = await apiRequest.post<TListPamAccountsResponse>(
         "/api/v1/pam/accounts/search",
         {
           ...rest,
           metadata: metadataFilter,
           filterResourceIds: filterResourceIds
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          filterDomainIds: filterDomainIds
             ?.split(",")
             .map((s) => s.trim())
             .filter(Boolean)

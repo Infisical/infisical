@@ -34,6 +34,11 @@ import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { PAM_DISCOVERY_REGISTER_ROUTER_MAP } from "./pam-discovery-routers";
 import { registerPamDiscoveryRouter } from "./pam-discovery-routers/pam-discovery-router";
+import {
+  PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP,
+  PAM_DOMAIN_REGISTER_ROUTER_MAP,
+  registerPamDomainRouter
+} from "./pam-domain-routers";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
@@ -210,6 +215,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
       await pamRouter.register(registerPamAccountPolicyRouter, { prefix: "/account-policies" });
       await pamRouter.register(
+        async (pamDomainRouter) => {
+          await pamDomainRouter.register(registerPamDomainRouter);
+
+          // Domain-type-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_DOMAIN_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamDomainRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/domains" }
+      );
+      await pamRouter.register(
         async (pamDiscoveryRouter) => {
           await pamDiscoveryRouter.register(registerPamDiscoveryRouter);
 
@@ -227,9 +245,16 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
         async (pamAccountRouter) => {
           await pamAccountRouter.register(registerPamAccountRouter);
 
-          // Provider-specific endpoints
+          // Resource-type-specific account endpoints
           await Promise.all(
             Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamAccountRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+
+          // Domain-type-specific account endpoints
+          await Promise.all(
+            Object.entries(PAM_DOMAIN_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
               pamAccountRouter.register(router, { prefix: `/${provider}` })
             )
           );

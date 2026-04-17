@@ -1,7 +1,3 @@
-import { PamResourceType } from "../enums";
-import { TBasePamAccount } from "./base-account";
-import { TBasePamResource } from "./base-resource";
-
 export enum ActiveDirectoryAccountType {
   User = "user",
   Service = "service"
@@ -30,16 +26,17 @@ export type TActiveDirectoryAccountInternalMetadata = {
   lastLogon?: string;
 };
 
-// Resources
-export type TActiveDirectoryResource = TBasePamResource & {
-  resourceType: PamResourceType.ActiveDirectory;
-} & {
-  connectionDetails: TActiveDirectoryConnectionDetails;
-  rotationAccountCredentials?: TActiveDirectoryCredentials | null;
-};
-
-// Accounts
-export type TActiveDirectoryAccount = TBasePamAccount & {
+export type TActiveDirectoryAccount = {
+  id: string;
+  name: string;
+  description?: string | null;
+  projectId: string;
+  resourceId?: string | null;
+  domainId?: string | null;
+  folderId?: string | null;
+  requireMfa: boolean;
+  createdAt: string;
+  updatedAt: string;
   credentials: TActiveDirectoryCredentials;
   internalMetadata: TActiveDirectoryAccountInternalMetadata;
 };

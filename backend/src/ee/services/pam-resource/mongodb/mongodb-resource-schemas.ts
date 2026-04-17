@@ -117,7 +117,7 @@ export const UpdateMongoDBAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedMongoDBAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.MongoDB),
+  parentType: z.literal(PamResource.MongoDB),
   credentials: MongoDBAccountCredentialsSchema.pick({
     username: true
   })

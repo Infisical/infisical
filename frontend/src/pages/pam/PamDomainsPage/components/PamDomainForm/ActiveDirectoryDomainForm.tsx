@@ -18,24 +18,26 @@ import {
   TooltipTrigger,
   UnstableInput
 } from "@app/components/v3";
-import { PamResourceType, TActiveDirectoryResource } from "@app/hooks/api/pam";
+import { TPamDomain } from "@app/hooks/api/pamDomain";
 
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
-import { MetadataFields } from "./MetadataFields";
+import {
+  GenericResourceFields,
+  genericResourceFieldsSchema
+} from "../../../PamResourcesPage/components/PamResourceForm/GenericResourceFields";
+import { MetadataFields } from "../../../PamResourcesPage/components/PamResourceForm/MetadataFields";
 
 type Props = {
-  resource?: TActiveDirectoryResource;
+  domain?: TPamDomain;
   onSubmit: (formData: FormData) => Promise<void>;
   closeSheet: () => void;
 };
 
 const formSchema = genericResourceFieldsSchema.extend({
-  resourceType: z.literal(PamResourceType.ActiveDirectory),
   connectionDetails: z.object({
     domain: z.string().trim().min(1, "Domain is required"),
     dcAddress: z.string().trim().min(1, "DC address is required"),
     port: z.coerce.number().int().min(1).max(65535),
-    useLdaps: z.boolean().default(false),
+    useLdaps: z.boolean().default(true),
     ldapRejectUnauthorized: z.boolean().default(true),
     ldapCaCert: z
       .string()
@@ -52,31 +54,30 @@ const formSchema = genericResourceFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: Props) => {
-  const isUpdate = Boolean(resource);
+export const ActiveDirectoryDomainForm = ({ domain, onSubmit, closeSheet }: Props) => {
+  const isUpdate = Boolean(domain);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: resource
+    defaultValues: domain
       ? {
-          ...resource,
-          gateway: resource.gatewayId ? { id: resource.gatewayId, name: "" } : undefined,
+          name: domain.name,
+          gateway: domain.gatewayId ? { id: domain.gatewayId, name: "" } : undefined,
           connectionDetails: {
-            ...resource.connectionDetails,
-            useLdaps: resource.connectionDetails.useLdaps ?? false,
-            ldapRejectUnauthorized: resource.connectionDetails.ldapRejectUnauthorized ?? true,
-            ldapCaCert: resource.connectionDetails.ldapCaCert ?? "",
-            ldapTlsServerName: resource.connectionDetails.ldapTlsServerName ?? ""
+            ...domain.connectionDetails,
+            useLdaps: domain.connectionDetails.useLdaps ?? false,
+            ldapRejectUnauthorized: domain.connectionDetails.ldapRejectUnauthorized ?? true,
+            ldapCaCert: domain.connectionDetails.ldapCaCert ?? "",
+            ldapTlsServerName: domain.connectionDetails.ldapTlsServerName ?? ""
           }
         }
       : {
-          resourceType: PamResourceType.ActiveDirectory,
           gateway: undefined,
           connectionDetails: {
             domain: "",
             dcAddress: "",
-            port: 389,
-            useLdaps: false,
+            port: 636,
+            useLdaps: true,
             ldapRejectUnauthorized: true,
             ldapCaCert: "",
             ldapTlsServerName: ""
@@ -257,7 +258,7 @@ export const ActiveDirectoryResourceForm = ({ resource, onSubmit, closeSheet }: 
             variant="neutral"
             type="submit"
           >
-            {isUpdate ? "Update Details" : "Create Resource"}
+            {isUpdate ? "Update Details" : "Create Domain"}
           </Button>
           <Button onClick={closeSheet} variant="outline" className="mr-auto" type="button">
             Cancel

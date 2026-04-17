@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InfoIcon, PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -298,19 +298,6 @@ export const PamRotationPolicyModal = ({ isOpen, onOpenChange, resource }: Props
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
-          {/* LDAPS warning for AD resources */}
-          {resource.resourceType === PamResourceType.ActiveDirectory &&
-            !(resource.connectionDetails as { useLdaps?: boolean }).useLdaps && (
-              <UnstableAlert variant="info">
-                <TriangleAlertIcon />
-                <UnstableAlertTitle>LDAPS Required for Rotation</UnstableAlertTitle>
-                <UnstableAlertDescription>
-                  Active Directory requires LDAPS (TLS) to change passwords. Enable LDAPS in the
-                  resource connection settings before configuring rotation.
-                </UnstableAlertDescription>
-              </UnstableAlert>
-            )}
-
           {/* Local account warning for Windows Server resources */}
           {resource.resourceType === PamResourceType.Windows && (
             <UnstableAlert variant="info">

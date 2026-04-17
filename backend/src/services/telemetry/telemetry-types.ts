@@ -13,6 +13,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -748,7 +749,7 @@ export type TPamResourceEvent = {
 export type TPamAccountEvent = {
   event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
   properties: {
-    resourceType: string;
+    parentType: PamParentType;
     projectId: string;
   };
 };
@@ -765,7 +766,7 @@ export type TPamAccountAccessedEvent = {
 export type TPamAccountRotatedEvent = {
   event: PostHogEventTypes.PamAccountRotated;
   properties: {
-    resourceType: string;
+    parentType: PamParentType;
     projectId: string;
   };
 };

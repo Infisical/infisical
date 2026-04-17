@@ -5,9 +5,11 @@ import { z } from "zod";
 
 import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { Button, SheetFooter } from "@app/components/v3";
-import { PamResourceType, TActiveDirectoryAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
-import { ActiveDirectoryAccountType } from "@app/hooks/api/pam/types/active-directory-resource";
+import {
+  ActiveDirectoryAccountType,
+  TActiveDirectoryAccount
+} from "@app/hooks/api/pamDomain/active-directory-types";
 
 import {
   AccountPolicyField,
@@ -19,8 +21,6 @@ import { RequireMfaField } from "./RequireMfaField";
 
 type Props = {
   account?: TActiveDirectoryAccount;
-  resourceId?: string;
-  resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
   closeSheet: () => void;
 };

@@ -7,27 +7,23 @@ import { logger } from "@app/lib/logger";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { generatePassword } from "../../secret-rotation-v2/shared/utils";
-import { PamResource } from "../pam-resource-enums";
+import { PamResource } from "../../pam-resource/pam-resource-enums";
 import {
-  TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
   TPamResourceFactoryValidateAccountCredentials,
-  TPamResourceInternalMetadata,
   TPostRotateContext
-} from "../pam-resource-types";
-import { syncDependenciesAfterRotation } from "../shared/dependency-sync-fns";
-import { resolveDnsTcp } from "../shared/dns-over-dc";
-import {
-  TActiveDirectoryAccountCredentials,
-  TActiveDirectoryResourceConnectionDetails
-} from "./active-directory-resource-types";
+} from "../../pam-resource/pam-resource-types";
+import { syncDependenciesAfterRotation } from "../../pam-resource/shared/dependency-sync-fns";
+import { resolveDnsTcp } from "../../pam-resource/shared/dns-over-dc";
+import { generatePassword } from "../../secret-rotation-v2/shared/utils";
+import { TPamDomainFactory } from "../pam-domain-types";
+import { TActiveDirectoryAccountCredentials, TActiveDirectoryConnectionDetails } from "./active-directory-domain-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const executeWithGateway = async <T>(
   config: {
-    connectionDetails: TActiveDirectoryResourceConnectionDetails;
+    connectionDetails: TActiveDirectoryConnectionDetails;
     resourceType: PamResource;
     gatewayId: string;
     targetPortOverride?: number;
@@ -64,11 +60,11 @@ const executeWithGateway = async <T>(
   );
 };
 
-export const activeDirectoryResourceFactory: TPamResourceFactory<
-  TActiveDirectoryResourceConnectionDetails,
-  TActiveDirectoryAccountCredentials,
-  TPamResourceInternalMetadata
-> = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
+export const activeDirectoryDomainFactory: TPamDomainFactory<
+  TActiveDirectoryConnectionDetails,
+  TActiveDirectoryAccountCredentials
+> = (domainType, connectionDetails, gatewayId, gatewayV2Service) => {
+  const resourceType = domainType as unknown as PamResource;
   const ldapProtocol = connectionDetails.useLdaps ? "ldaps" : "ldap";
 
   const buildLdapTlsOptions = () => {
@@ -113,15 +109,18 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
             if (clientError) return;
 
             if (err) {
-              // Even if anonymous bind is rejected, an LDAP error response means the server is an LDAP server
-              // Only reject if it's a connection-level error (not an LDAP protocol error)
+              // Connection-level errors mean the server is unreachable
+              // Any other LDAP error (e.g. InvalidCredentialsError) means the server responded with a protocol-level rejection
               if (err.name === "ConnectionError" || err.name === "TimeoutError") {
                 client.unbind();
                 reject(err);
-              } else {
-                logger.info("[Active Directory Resource Factory] LDAP connection validated (server responded)");
+              } else if ("lde_message" in err) {
+                logger.info("[Active Directory Domain Factory] LDAP connection validated (server responded)");
                 client.unbind();
                 resolve();
+              } else {
+                client.unbind();
+                reject(err);
               }
             } else {
               logger.info("[Active Directory Resource Factory] LDAP anonymous bind successful");
@@ -238,7 +237,7 @@ export const activeDirectoryResourceFactory: TPamResourceFactory<
           // Search for target user's DN by sAMAccountName
           const searchBase = connectionDetails.domain
             .split(".")
-            .map((dc) => `DC=${dc}`)
+            .map((dc: string) => `DC=${dc}`)
             .join(",");
 
           client.search(

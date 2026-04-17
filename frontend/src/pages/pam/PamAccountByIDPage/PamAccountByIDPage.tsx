@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   BanIcon,
   EllipsisVerticalIcon,
@@ -15,7 +15,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
   UnstableDropdownMenu,
@@ -40,6 +39,7 @@ import {
 } from "@app/hooks/api/pam";
 import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
 import { pamKeys } from "@app/hooks/api/pam/queries";
+import { PAM_DOMAIN_TYPE_MAP, PamDomainType } from "@app/hooks/api/pamDomain";
 
 import { PamAccessAccountModal } from "../PamAccountsPage/components/PamAccessAccountModal";
 import { PamDeleteAccountModal } from "../PamAccountsPage/components/PamDeleteAccountModal";
@@ -52,7 +52,7 @@ import {
   PamAccountDetailsSection,
   PamAccountMetadataSection,
   PamAccountPropertiesSection,
-  PamAccountResourcesSection
+  PamSelectResourceModal
 } from "./components";
 
 const PageContent = () => {
@@ -66,35 +66,20 @@ const PageContent = () => {
     orgId?: string;
     resourceType?: string;
     resourceId?: string;
+    domainType?: string;
+    domainId?: string;
   };
 
-  const { accountId, projectId, resourceType, resourceId } = params;
-
-  const selectedTab = useSearch({
-    strict: false,
-    select: (el) => el.selectedTab
-  });
-
-  const handleTabChange = (tab: string) => {
-    navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      search: (prev) => ({ ...prev, selectedTab: tab }),
-      params: {
-        orgId: currentOrg.id,
-        projectId: projectId!,
-        resourceType: resourceType!,
-        resourceId: resourceId!,
-        accountId: accountId!
-      }
-    });
-  };
+  const { accountId, projectId, resourceType, resourceId, domainType, domainId } = params;
+  const isDomainAccount = !!domainId;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "accessAccount",
     "requestAccount",
-    "deleteAccount"
+    "deleteAccount",
+    "selectResource"
   ] as const);
 
   const queryClient = useQueryClient();
@@ -123,40 +108,65 @@ const PageContent = () => {
     );
   }
 
-  const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
+  const resourceTypeInfo = account.resource
+    ? PAM_RESOURCE_TYPE_MAP[account.resource.resourceType]
+    : null;
+
+  const domainTypeInfo = account.domain
+    ? PAM_DOMAIN_TYPE_MAP[account.domain.domainType as PamDomainType]
+    : null;
+
+  const parentTypeInfo = resourceTypeInfo || domainTypeInfo;
 
   const handleBack = () => {
-    navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
-      params: {
-        orgId: currentOrg.id,
-        projectId: projectId!,
-        resourceType: resourceType!,
-        resourceId: resourceId!
-      }
-    });
+    if (isDomainAccount) {
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId",
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          domainType: domainType!,
+          domainId: domainId!
+        }
+      });
+    } else {
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          resourceType: resourceType!,
+          resourceId: resourceId!
+        }
+      });
+    }
   };
 
   const handleAccess = async () => {
+    if (isDomainAccount && account.domain) {
+      handlePopUpOpen("selectResource");
+      return;
+    }
+
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        resourceName: account.resource.name,
+        resourceName: account.resource?.name ?? "",
         accountName: account.name
       }
     });
 
     if (requiresApproval) {
       handlePopUpOpen("requestAccount", {
-        resourceName: account.resource.name,
+        resourceName: account.resource?.name ?? "",
         accountName: account.name,
         accountAccessed: true
       });
       return;
     }
 
-    if (account.resource.resourceType === PamResourceType.AwsIam) {
+    if (account.resource?.resourceType === PamResourceType.AwsIam) {
       accessAwsIam(account);
     } else {
       handlePopUpOpen("accessAccount", { account });
@@ -197,40 +207,42 @@ const PageContent = () => {
         className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-        Back to resource
+        {isDomainAccount ? "Back to domain" : "Back to resource"}
       </button>
 
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-mineshaft-700">
-            <img
-              alt={resourceTypeInfo.name}
-              src={`/images/integrations/${resourceTypeInfo.image}`}
-              className="size-6"
-            />
-          </div>
+          {parentTypeInfo && (
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-mineshaft-700">
+              <img
+                alt={parentTypeInfo.name}
+                src={`/images/integrations/${parentTypeInfo.image}`}
+                className="size-6"
+              />
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-semibold text-mineshaft-100">{account.name}</h1>
             <p className="text-sm text-bunker-300">
-              {resourceTypeInfo.name} Account on {account.resource.name}
+              {account.domain
+                ? `${account.domain.domainType === "active-directory" ? "Active Directory" : account.domain.domainType} Account on ${account.domain.name}`
+                : `${resourceTypeInfo?.name ?? ""} Account on ${account.resource?.name ?? ""}`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Windows Server accounts cannot be accessed temporarily */}
-          {/* Active Directory accounts cannot be accessed */}
-          {account.resource.resourceType !== PamResourceType.Windows &&
-            account.resource.resourceType !== PamResourceType.ActiveDirectory && (
-              <ProjectPermissionCan
-                I={ProjectPermissionPamAccountActions.Access}
-                a={ProjectPermissionSub.PamAccounts}
-              >
-                <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
-                  <LogInIcon />
-                  Access
-                </Button>
-              </ProjectPermissionCan>
-            )}
+          {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
+          {!isDomainAccount && account.resource?.resourceType !== PamResourceType.Windows && (
+            <ProjectPermissionCan
+              I={ProjectPermissionPamAccountActions.Access}
+              a={ProjectPermissionSub.PamAccounts}
+            >
+              <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+                <LogInIcon />
+                Access
+              </Button>
+            </ProjectPermissionCan>
+          )}
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -252,7 +264,7 @@ const PageContent = () => {
                   </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              {account.resource.rotationCredentialsConfigured && (
+              {account.resource?.rotationCredentialsConfigured && (
                 <ProjectPermissionCan
                   I={ProjectPermissionPamAccountActions.TriggerRotation}
                   a={ProjectPermissionSub.PamAccounts}
@@ -299,20 +311,8 @@ const PageContent = () => {
           <PamAccountMetadataSection account={account} />
         </div>
 
-        {/* Right Column - Tabbed Content */}
         <div className="min-w-0 flex-1">
-          <Tabs value={selectedTab} onValueChange={handleTabChange}>
-            <TabList>
-              <Tab value="resources">Resources</Tab>
-              <Tab value="dependencies">Dependencies</Tab>
-            </TabList>
-            <TabPanel value="resources">
-              <PamAccountResourcesSection account={account} onAccessResource={handleAccess} />
-            </TabPanel>
-            <TabPanel value="dependencies">
-              <PamAccountDependenciesSection account={account} />
-            </TabPanel>
-          </Tabs>
+          <PamAccountDependenciesSection account={account} />
         </div>
       </div>
 
@@ -343,6 +343,18 @@ const PageContent = () => {
         account={popUp.deleteAccount.data}
         onDeleted={handleBack}
       />
+
+      {isDomainAccount && account.domain && (
+        <PamSelectResourceModal
+          isOpen={popUp.selectResource.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("selectResource", isOpen)}
+          domainType={account.domain.domainType}
+          domainId={account.domain.id}
+          onSelect={(resource) => {
+            handlePopUpOpen("accessAccount", { account, resource });
+          }}
+        />
+      )}
     </div>
   );
 };

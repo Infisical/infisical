@@ -1,13 +1,14 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
-import { PamAccountDependenciesSchema } from "@app/db/schemas";
+import { PamAccountDependenciesSchema, PamDomainsSchema, PamResourcesSchema } from "@app/db/schemas";
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
+import { PamAccountOrderBy, PamAccountView, PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
 import {
   ActiveDirectoryAccountCredentialsSchema,
-  SanitizedActiveDirectoryAccountWithResourceSchema
-} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+  SanitizedActiveDirectoryAccountWithDomainSchema
+} from "@app/ee/services/pam-domain/active-directory/active-directory-domain-schemas";
+import { PamDomainType } from "@app/ee/services/pam-domain/pam-domain-enums";
 import {
   AwsIamAccountCredentialsSchema,
   SanitizedAwsIamAccountWithResourceSchema
@@ -58,7 +59,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedAccountSchema = z
-  .discriminatedUnion("resourceType", [
+  .discriminatedUnion("parentType", [
     SanitizedKubernetesAccountWithResourceSchema,
     SanitizedSSHAccountWithResourceSchema,
     SanitizedPostgresAccountWithResourceSchema,
@@ -68,7 +69,7 @@ const SanitizedAccountSchema = z
     SanitizedRedisAccountWithResourceSchema,
     SanitizedAwsIamAccountWithResourceSchema,
     SanitizedWindowsAccountWithResourceSchema,
-    SanitizedActiveDirectoryAccountWithResourceSchema
+    SanitizedActiveDirectoryAccountWithDomainSchema
   ])
   .and(
     z.object({
@@ -85,49 +86,50 @@ const ListPamAccountsResponseSchema = z.object({
 const AccountCredentialsBaseSchema = z.object({
   accountId: z.string().uuid(),
   accountName: z.string(),
-  resourceName: z.string(),
-  projectId: z.string().uuid()
+  projectId: z.string().uuid(),
+  resource: PamResourcesSchema.pick({ id: true, name: true, resourceType: true }).nullable().optional(),
+  domain: PamDomainsSchema.pick({ id: true, name: true, domainType: true }).nullable().optional()
 });
 
-const AccountCredentialsResponseSchema = z.discriminatedUnion("resourceType", [
+const AccountCredentialsResponseSchema = z.discriminatedUnion("parentType", [
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.Postgres),
+    parentType: z.literal(PamResource.Postgres),
     credentials: PostgresAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.MySQL),
+    parentType: z.literal(PamResource.MySQL),
     credentials: MySQLAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.MsSQL),
+    parentType: z.literal(PamResource.MsSQL),
     credentials: MsSQLAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.MongoDB),
+    parentType: z.literal(PamResource.MongoDB),
     credentials: MongoDBAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.SSH),
-    credentials: SSHAccountCredentialsSchema
-  }),
-  AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.Redis),
+    parentType: z.literal(PamResource.Redis),
     credentials: RedisAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.Kubernetes),
+    parentType: z.literal(PamResource.SSH),
+    credentials: SSHAccountCredentialsSchema
+  }),
+  AccountCredentialsBaseSchema.extend({
+    parentType: z.literal(PamResource.Kubernetes),
     credentials: KubernetesAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.AwsIam),
+    parentType: z.literal(PamResource.AwsIam),
     credentials: AwsIamAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.Windows),
+    parentType: z.literal(PamResource.Windows),
     credentials: WindowsAccountCredentialsSchema
   }),
   AccountCredentialsBaseSchema.extend({
-    resourceType: z.literal(PamResource.ActiveDirectory),
+    parentType: z.literal(PamDomainType.ActiveDirectory),
     credentials: ActiveDirectoryAccountCredentialsSchema
   })
 ]);
@@ -267,7 +269,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            resourceType: account.resourceType,
+            parentType: account.parentType as PamParentType,
             projectId: account.projectId
           }
         })
@@ -359,8 +361,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           metadata: {
             accountId: result.accountId,
             accountName: result.accountName,
-            resourceId: result.resourceId,
-            resourceType: result.resourceType
+            resourceId: result.resource?.id,
+            resourceType: result.resource?.resourceType,
+            domainId: result.domain?.id,
+            domainType: result.domain?.domainType
           }
         }
       });
@@ -451,6 +455,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
         search: z.string().trim().optional(),
         filterResourceIds: z.array(z.string().uuid()).optional(),
+        filterDomainIds: z.array(z.string().uuid()).optional(),
         metadata: z
           .array(
             z.object({
@@ -466,8 +471,18 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds, metadata } =
-        req.body;
+      const {
+        projectId,
+        accountView,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection,
+        filterResourceIds,
+        filterDomainIds,
+        metadata
+      } = req.body;
 
       const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
@@ -482,6 +497,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         orderBy,
         orderDirection,
         filterResourceIds,
+        filterDomainIds,
         metadataFilter: metadata
       });
 

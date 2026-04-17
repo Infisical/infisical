@@ -7,7 +7,6 @@ import {
   PamSessionStatus,
   TerminalChannelType
 } from "../enums";
-import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
 import { TSessionSummaryConfig } from "./base-resource";
 import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
@@ -19,7 +18,6 @@ import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
 import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
-export * from "./active-directory-resource";
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
 export * from "./mongodb-resource";
@@ -39,8 +37,7 @@ export type TPamResource =
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TWindowsResource
-  | TActiveDirectoryResource;
+  | TWindowsResource;
 
 export type TPamAccount =
   | TPostgresAccount
@@ -51,8 +48,7 @@ export type TPamAccount =
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TWindowsAccount
-  | TActiveDirectoryAccount;
+  | TWindowsAccount;
 
 export type TPamFolder = {
   id: string;
@@ -150,7 +146,7 @@ export type TCreatePamResourceDTO = Pick<
   TPamResource,
   "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
 > & {
-  adServerResourceId?: string | null;
+  domainId?: string | null;
   metadata?: { key: string; value: string }[];
 };
 
@@ -161,7 +157,7 @@ export type TUpdatePamResourceDTO = Partial<
 > & {
   resourceId: string;
   resourceType: PamResourceType;
-  adServerResourceId?: string | null;
+  domainId?: string | null;
   metadata?: { key: string; value: string }[];
   rotationAccountCredentials?: { username: string; password: string } | null;
   sessionSummaryConfig?: TSessionSummaryConfig;
@@ -182,6 +178,7 @@ export type TListPamAccountsDTO = {
   orderDirection?: OrderByDirection;
   search?: string;
   filterResourceIds?: string;
+  filterDomainIds?: string;
   metadataFilter?: Array<{ key: string; value?: string }>;
 };
 
@@ -189,7 +186,8 @@ export type TCreatePamAccountDTO = Pick<
   TPamAccount,
   "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
 > & {
-  resourceType: PamResourceType;
+  parentType: string;
+  domainId?: string;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
   policyId?: string | null;
@@ -199,7 +197,7 @@ export type TUpdatePamAccountDTO = Partial<
   Pick<TPamAccount, "name" | "description" | "credentials" | "requireMfa">
 > & {
   accountId: string;
-  resourceType: PamResourceType;
+  parentType: string;
   internalMetadata?: Record<string, unknown>;
   metadata?: { key: string; value: string }[];
   policyId?: string | null;
@@ -207,7 +205,7 @@ export type TUpdatePamAccountDTO = Partial<
 
 export type TDeletePamAccountDTO = {
   accountId: string;
-  resourceType: PamResourceType;
+  parentType: string;
 };
 
 // Folder DTOs

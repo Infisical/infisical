@@ -25,7 +25,8 @@ export const ResourceMetadataSchema = z.object({
   certificateRequestId: z.string().uuid().nullable().optional(),
   certificateRequestCreatedAt: z.date().nullable().optional(),
   pamResourceId: z.string().uuid().nullable().optional(),
-  pamAccountId: z.string().uuid().nullable().optional()
+  pamAccountId: z.string().uuid().nullable().optional(),
+  pamDomainId: z.string().uuid().nullable().optional()
 });
 
 export type TResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
