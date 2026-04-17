@@ -1,18 +1,35 @@
-import { useEffect, useMemo } from "react";
-import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo } from "react";
+import { Control, UseFormSetValue } from "react-hook-form";
+import { TrashIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
-import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
-import { useToggle } from "@app/hooks";
+import {
+  PermissionActionSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 
-import { TFormSchema } from "../OrgRoleModifySection.utils";
+import { ORG_PERMISSION_OBJECT, TFormSchema } from "../OrgRoleModifySection.utils";
+import { useOrgPermissionActions } from "./OrgPermissionRowComponents";
 
 type Props = {
   isEditable: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
+  onDelete?: () => void;
 };
 
 enum Permission {
@@ -20,109 +37,101 @@ enum Permission {
   Custom = "custom"
 }
 
-const PERMISSION_ACTIONS = [{ action: "proxy", label: "Proxy KMIP requests" }] as const;
-
-export const OrgPermissionKmipRow = ({ isEditable, control, setValue }: Props) => {
-  const [isRowExpanded, setIsRowExpanded] = useToggle();
-  const [isCustom, setIsCustom] = useToggle();
-
-  const rule = useWatch({
+export const OrgPermissionKmipRow = ({ isEditable, control, setValue, onDelete }: Props) => {
+  const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
-    name: "permissions.kmip"
+    setValue,
+    formPath: "permissions.kmip",
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Kmip].actions
   });
 
+  const selectedCount = selectedActions.length;
+
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.proxy) {
+    if (rule?.[OrgPermissionKmipActions.Proxy]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
-  }, [rule, isCustom]);
-
-  useEffect(() => {
-    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
-    else setIsCustom.off();
-  }, [selectedPermissionCategory]);
-
-  useEffect(() => {
-    const isRowCustom = selectedPermissionCategory === Permission.Custom;
-    if (isRowCustom) {
-      setIsRowExpanded.on();
-    }
-  }, []);
+  }, [rule]);
 
   const handlePermissionChange = (val: Permission) => {
     if (!val) return;
-    if (val === Permission.Custom) {
-      setIsRowExpanded.on();
-      setIsCustom.on();
-      return;
-    }
-    setIsCustom.off();
+    if (val === Permission.Custom) return;
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.kmip", { proxy: false }, { shouldDirty: true });
+      setValue(
+        "permissions.kmip",
+        { [OrgPermissionKmipActions.Proxy]: false },
+        { shouldDirty: true }
+      );
     }
   };
 
   return (
-    <>
-      <Tr
-        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-        onClick={() => setIsRowExpanded.toggle()}
-      >
-        <Td className="w-4">
-          <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
-        </Td>
-        <Td className="w-full select-none">KMIP</Td>
-        <Td>
-          <Select
-            value={selectedPermissionCategory}
-            className="h-8 w-40 bg-mineshaft-700"
-            dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
-            onValueChange={handlePermissionChange}
+    <UnstableAccordionItem value={OrgPermissionSubjects.Kmip}>
+      <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
+        <div className="flex flex-1 items-center gap-2 text-left">
+          <div className="flex grow flex-col">
+            <span className="text-base select-none">
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Kmip].title}
+            </span>
+            <span className="text-sm text-muted">
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Kmip].description}
+            </span>
+          </div>
+          <div role="none" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={selectedPermissionCategory}
+              onValueChange={handlePermissionChange}
+              disabled={!isEditable}
+            >
+              <SelectTrigger className="h-8 w-40 bg-mineshaft-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                className="border border-mineshaft-600 bg-mineshaft-800 text-left"
+              >
+                <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+                <SelectItem value={Permission.Custom}>
+                  {selectedPermissionCategory === Permission.Custom
+                    ? `Custom (${selectedCount})`
+                    : "Custom"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {isEditable && onDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UnstableIconButton
+                    type="button"
+                    variant="danger"
+                    aria-label="Remove policy"
+                    onClick={onDelete}
+                  >
+                    <TrashIcon className="size-4" />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent side="top">Remove Policy</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+      </UnstableAccordionTrigger>
+      <UnstableAccordionContent className="!p-0">
+        <div className="bg-container px-6 py-4">
+          <PermissionActionSelect
+            value={selectedActions}
+            onChange={handleActionsChange}
+            options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.Kmip].actions}
+            placeholder={isEditable ? "Select actions..." : "No actions allowed"}
             isDisabled={!isEditable}
-            position="popper"
-          >
-            <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={Permission.Custom}>Custom</SelectItem>
-          </Select>
-        </Td>
-      </Tr>
-      {isRowExpanded && (
-        <Tr>
-          <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
-            <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
-              {PERMISSION_ACTIONS.map(({ action, label }) => {
-                return (
-                  <Controller
-                    name={`permissions.kmip.${action}`}
-                    key={`permissions.kmip.${action}`}
-                    control={control}
-                    render={({ field }) => (
-                      <Checkbox
-                        isChecked={field.value}
-                        onCheckedChange={(e) => {
-                          if (!isEditable) {
-                            createNotification({
-                              type: "error",
-                              text: "Failed to update default role"
-                            });
-                            return;
-                          }
-                          field.onChange(e);
-                        }}
-                        id={`permissions.kmip.${action}`}
-                      >
-                        {label}
-                      </Checkbox>
-                    )}
-                  />
-                );
-              })}
-            </div>
-          </Td>
-        </Tr>
-      )}
-    </>
+            isClearable={isEditable}
+            className="w-full"
+            menuPosition="fixed"
+          />
+        </div>
+      </UnstableAccordionContent>
+    </UnstableAccordionItem>
   );
 };

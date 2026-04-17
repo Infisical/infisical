@@ -18,7 +18,7 @@ import {
   UnstableIconButton
 } from "@app/components/v3";
 import {
-  OrgPermissionAdminConsoleAction,
+  OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 
@@ -37,7 +37,7 @@ enum Permission {
   Custom = "custom"
 }
 
-export const OrgPermissionAdminConsoleRow = ({
+export const OrgPermissionGithubOrgSyncManualRow = ({
   isEditable,
   control,
   setValue,
@@ -46,14 +46,14 @@ export const OrgPermissionAdminConsoleRow = ({
   const { rule, selectedActions, handleActionsChange } = useOrgPermissionActions({
     control,
     setValue,
-    formPath: "permissions.organization-admin-console",
-    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].actions
+    formPath: `permissions.${OrgPermissionSubjects.GithubOrgSyncManual}`,
+    permissionActions: ORG_PERMISSION_OBJECT[OrgPermissionSubjects.GithubOrgSyncManual].actions
   });
 
   const selectedCount = selectedActions.length;
 
   const selectedPermissionCategory = useMemo(() => {
-    if (rule?.[OrgPermissionAdminConsoleAction.AccessAllProjects]) {
+    if (rule?.[OrgPermissionActions.Edit]) {
       return Permission.Custom;
     }
     return Permission.NoAccess;
@@ -61,29 +61,27 @@ export const OrgPermissionAdminConsoleRow = ({
 
   const handlePermissionChange = (val: Permission) => {
     if (!val) return;
-    if (val === Permission.Custom) {
-      return;
-    }
+    if (val === Permission.Custom) return;
 
     if (val === Permission.NoAccess) {
       setValue(
-        "permissions.organization-admin-console",
-        { [OrgPermissionAdminConsoleAction.AccessAllProjects]: false },
+        `permissions.${OrgPermissionSubjects.GithubOrgSyncManual}`,
+        { [OrgPermissionActions.Edit]: false },
         { shouldDirty: true }
       );
     }
   };
 
   return (
-    <UnstableAccordionItem value={OrgPermissionSubjects.AdminConsole}>
+    <UnstableAccordionItem value={OrgPermissionSubjects.GithubOrgSyncManual}>
       <UnstableAccordionTrigger className="min-h-14 px-4 py-2.5 hover:bg-container-hover [&>svg]:size-5">
         <div className="flex flex-1 items-center gap-2 text-left">
           <div className="flex grow flex-col">
             <span className="text-base select-none">
-              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].title}
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.GithubOrgSyncManual].title}
             </span>
             <span className="text-sm text-muted">
-              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].description}
+              {ORG_PERMISSION_OBJECT[OrgPermissionSubjects.GithubOrgSyncManual].description}
             </span>
           </div>
           <div role="none" className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -130,7 +128,7 @@ export const OrgPermissionAdminConsoleRow = ({
           <PermissionActionSelect
             value={selectedActions}
             onChange={handleActionsChange}
-            options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.AdminConsole].actions}
+            options={ORG_PERMISSION_OBJECT[OrgPermissionSubjects.GithubOrgSyncManual].actions}
             placeholder={isEditable ? "Select actions..." : "No actions allowed"}
             isDisabled={!isEditable}
             isClearable={isEditable}
