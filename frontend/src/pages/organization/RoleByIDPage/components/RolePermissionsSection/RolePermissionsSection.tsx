@@ -1,11 +1,10 @@
 import { FormProvider, useForm, useWatch } from "react-hook-form";
-import { faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { SaveIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
 import {
+  Button,
   UnstableAccordion,
   UnstableEmpty,
   UnstableEmptyDescription,
@@ -126,23 +125,17 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
             <div className="flex items-center gap-2">
               {isDirty && (
                 <Button
-                  className="mr-4 text-mineshaft-300"
-                  variant="link"
-                  isDisabled={isSubmitting || !isDirty}
-                  isLoading={isSubmitting}
+                  type="button"
+                  className="mr-4 text-muted"
+                  variant="ghost"
+                  disabled={isSubmitting || !isDirty}
                   onClick={() => reset()}
                 >
                   Discard
                 </Button>
               )}
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                className="h-10 border"
-                leftIcon={<FontAwesomeIcon icon={faSave} />}
-                isDisabled={isSubmitting || !isDirty}
-                isLoading={isSubmitting}
-              >
+              <Button variant="neutral" type="submit" disabled={isSubmitting || !isDirty}>
+                <SaveIcon className="size-4" />
                 Save
               </Button>
               <div className="ml-2 border-l border-border pl-4">

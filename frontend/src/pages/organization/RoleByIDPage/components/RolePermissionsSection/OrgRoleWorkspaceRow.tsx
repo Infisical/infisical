@@ -121,7 +121,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue, onDelete }:
         </div>
       </UnstableAccordionTrigger>
       <UnstableAccordionContent className="!p-0">
-        <div className="bg-mineshaft-800 px-6 py-4">
+        <div className="bg-container px-6 py-4">
           <PermissionActionSelect
             value={selectedActions}
             onChange={handleActionsChange}
