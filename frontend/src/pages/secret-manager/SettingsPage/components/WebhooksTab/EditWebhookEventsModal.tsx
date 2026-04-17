@@ -115,7 +115,6 @@ export const EditWebhookEventsModal = ({
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!hasSelection) return;
     await onSave(eventSettings);
   };
 
@@ -129,9 +128,11 @@ export const EditWebhookEventsModal = ({
         <form onSubmit={handleSave}>
           <FormControl
             label="Events"
-            isRequired
-            isError={!hasSelection}
-            errorText="Select at least one event."
+            helperText={
+              !hasSelection
+                ? "No events selected. The webhook will trigger on all events by default."
+                : undefined
+            }
           >
             <FilterableSelect
               isMulti
@@ -158,11 +159,7 @@ export const EditWebhookEventsModal = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              isDisabled={isSubmitting || !hasSelection}
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
               Save Changes
             </Button>
           </div>

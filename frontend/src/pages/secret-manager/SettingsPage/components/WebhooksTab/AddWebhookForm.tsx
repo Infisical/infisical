@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { components, OptionProps } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckIcon } from "lucide-react";
 import z from "zod";
 
 import {
@@ -9,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  Checkbox,
+  FilterableSelect,
   FormControl,
   Input,
   Modal,
@@ -24,6 +26,34 @@ import {
   WebhookEvent,
   WebhookType
 } from "@app/hooks/api/webhooks/types";
+
+type TWebhookEventOption = {
+  value: WebhookEvent;
+  label: string;
+  description: string;
+};
+
+const EVENT_OPTIONS: TWebhookEventOption[] = WEBHOOK_EVENTS.map((event) => ({
+  value: event,
+  label: WEBHOOK_EVENT_METADATA[event].label,
+  description: WEBHOOK_EVENT_METADATA[event].description
+}));
+
+const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
+  const { data, children, isSelected } = props;
+
+  return (
+    <components.Option {...props}>
+      <div className="flex flex-row items-center justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{children}</p>
+          <p className="truncate text-xs leading-4 text-mineshaft-400">{data.description}</p>
+        </div>
+        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
+      </div>
+    </components.Option>
+  );
+};
 
 const formSchema = z
   .object({
@@ -82,6 +112,7 @@ export const AddWebhookForm = ({
 
   const selectedWebhookType = watch("type");
   const selectedEnvironment = watch("environment");
+  const modalContainer = useRef<HTMLDivElement>(null);
 
   const generalFormFields = (
     <>
@@ -156,7 +187,7 @@ export const AddWebhookForm = ({
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Create a new webhook">
+      <ModalContent ref={modalContainer} title="Create a new webhook">
         <form onSubmit={handleSubmit(onCreateWebhook)}>
           <div>
             <Controller
@@ -240,35 +271,57 @@ export const AddWebhookForm = ({
                   <div className="order-1 ml-3">Advanced Settings</div>
                 </AccordionTrigger>
                 <AccordionContent childrenClassName="p-0 pt-2">
-                  <p className="mb-4 text-sm text-mineshaft-400">
-                    Select which events will trigger this webhook
-                  </p>
                   <Controller
                     control={control}
                     name="enabledEvents"
-                    render={({ field: { value, onChange } }) => (
-                      <div className="space-y-4">
-                        {WEBHOOK_EVENTS.map((event) => {
-                          const { label, description } = WEBHOOK_EVENT_METADATA[event];
-                          const isChecked = value?.[event] ?? true;
+                    render={({ field: { value, onChange } }) => {
+                      const selectedOptions = EVENT_OPTIONS.filter(
+                        (option) => value?.[option.value]
+                      );
+                      const hasSelection = selectedOptions.length > 0;
 
-                          return (
-                            <Checkbox
-                              key={event}
-                              id={`webhook-event-${event}`}
-                              isChecked={isChecked}
-                              onCheckedChange={(checked) =>
-                                onChange({ ...value, [event]: checked === true })
-                              }
-                              allowMultilineLabel
-                            >
-                              <p className="font-medium text-mineshaft-50">{label}</p>
-                              <p className="text-mineshaft-400">{description}</p>
-                            </Checkbox>
-                          );
-                        })}
-                      </div>
-                    )}
+                      const handleChange = (selected: readonly TWebhookEventOption[]) => {
+                        const next = WEBHOOK_EVENTS.reduce<Record<WebhookEvent, boolean>>(
+                          (acc, event) => {
+                            acc[event] = false;
+                            return acc;
+                          },
+                          {} as Record<WebhookEvent, boolean>
+                        );
+                        selected.forEach((option) => {
+                          next[option.value] = true;
+                        });
+                        onChange(next);
+                      };
+
+                      return (
+                        <FormControl
+                          label="Events"
+                          helperText={
+                            !hasSelection
+                              ? "No events selected — the webhook will fire on all events."
+                              : "Select which events will trigger this webhook."
+                          }
+                        >
+                          <FilterableSelect
+                            isMulti
+                            options={EVENT_OPTIONS}
+                            value={selectedOptions}
+                            onChange={(selected) =>
+                              handleChange(selected as readonly TWebhookEventOption[])
+                            }
+                            getOptionValue={(option) => option.value}
+                            getOptionLabel={(option) => option.label}
+                            placeholder="Select events..."
+                            menuPortalTarget={modalContainer.current}
+                            menuPlacement="bottom"
+                            closeMenuOnSelect={false}
+                            hideSelectedOptions={false}
+                            components={{ Option: OptionWithDescription }}
+                          />
+                        </FormControl>
+                      );
+                    }}
                   />
                 </AccordionContent>
               </AccordionItem>
