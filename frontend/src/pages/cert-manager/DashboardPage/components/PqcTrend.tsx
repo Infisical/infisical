@@ -50,7 +50,7 @@ const renderLegend = (value: string) => (
 export const PqcTrend = ({ data, onRangeChange, currentRange }: Props) => {
   const hasAnyData = data.some((d) => d.pqc > 0 || d.nonPqc > 0);
   return (
-    <UnstableCard className="h-auto min-w-[400px] flex-1">
+    <UnstableCard className="h-auto w-full flex-1 md:w-auto">
       <UnstableCardHeader>
         <UnstableCardTitle>PQC Adoption Trend</UnstableCardTitle>
         <UnstableCardAction>
