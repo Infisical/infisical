@@ -1,6 +1,8 @@
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -23,7 +25,9 @@ export const getBotKeyFnFactory = (
   projectDAL: Pick<TProjectDALFactory, "findById">
 ) => {
   const getBotKeyFn = async (projectId: string, shouldGetBotKey?: boolean) => {
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project)
       throw new NotFoundError({
         message: `Project with ID '${projectId}' not found during bot lookup. Are you sure you are using the correct project ID?`

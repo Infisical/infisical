@@ -89,7 +89,10 @@ export const ApprovalPolicyRow = ({
       return {
         sequence: el.sequence || policy.approvals,
 
-        users: members.filter((member) => el.user.find((i) => i.id === member.user.id)),
+        users: el.user.map((approver) => {
+          const member = members.find((m) => m.user.id === approver.id);
+          return { member, approver };
+        }),
 
         groupLabels: groups
           ?.filter(({ group }) => el.group.find((i) => i.id === group.id))
@@ -209,16 +212,37 @@ export const ApprovalPolicyRow = ({
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                       {Boolean(el.users.length) && (
                         <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map((u, idx) => {
-                            return u.user.isOrgMembershipActive ? (
-                              <div className="flex items-center" key={u.id}>
-                                <span>{getMemberLabel(u)}</span>
+                          {el.users.map(({ member, approver }, idx) => {
+                            if (!member) {
+                              return (
+                                <div className="flex items-center" key={approver.id}>
+                                  <span className="flex items-center gap-2 opacity-40">
+                                    {approver.name || approver.id}
+                                    <span className="text-xs">
+                                      <Tooltip content="This user has been removed from the project.">
+                                        <div>
+                                          <Badge variant="neutral">
+                                            <BanIcon />
+                                            Removed
+                                          </Badge>
+                                        </div>
+                                      </Tooltip>
+                                    </span>
+                                  </span>
+                                  {idx < el.users.length - 1 && ","}
+                                </div>
+                              );
+                            }
+
+                            return member.user.isOrgMembershipActive ? (
+                              <div className="flex items-center" key={member.id}>
+                                <span>{getMemberLabel(member)}</span>
                                 {idx < el.users.length - 1 && ","}
                               </div>
                             ) : (
-                              <div className="flex items-center" key={u.id}>
-                                <span className="flex items-center opacity-40">
-                                  {getMemberLabel(u)}
+                              <div className="flex items-center" key={member.id}>
+                                <span className="flex items-center gap-2 opacity-40">
+                                  {getMemberLabel(member)}
                                   <span className="text-xs">
                                     <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
                                       <div>

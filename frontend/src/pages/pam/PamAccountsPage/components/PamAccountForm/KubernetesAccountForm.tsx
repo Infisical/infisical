@@ -7,7 +7,11 @@ import { Button, SheetFooter } from "@app/components/v3";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 
 type Props = {
@@ -101,6 +105,7 @@ export const KubernetesAccountForm = ({ account, onSubmit, closeSheet }: Props) 
         <div className="flex min-h-0 flex-1 shrink flex-col gap-4 overflow-y-auto p-4 pb-8">
           <GenericAccountFields />
           <KubernetesAccountFields isUpdate={isUpdate} />
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

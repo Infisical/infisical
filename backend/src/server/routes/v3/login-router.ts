@@ -2,8 +2,11 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
+import { UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -57,14 +60,23 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req, res) => {
       const cfg = getConfig();
 
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "Invalid auth mode" });
+      }
+
       const tokens = await server.services.login.selectOrganization({
         userAgent: req.body.userAgent ?? req.headers["user-agent"],
-        authJwtToken: req.headers.authorization,
         organizationId: req.body.organizationId,
-        ipAddress: req.realIp
+        ipAddress: req.realIp,
+        userId: req.auth.userId,
+        userAuthMethod: req.auth.authMethod,
+        actorOrgId: req.auth.orgId,
+        isMfaVerified: req.auth.isMfaVerified,
+        mfaMethod: req.auth.mfaMethod
       });
 
       if (tokens.isMfaEnabled) {
@@ -78,11 +90,11 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const githubOauthAccessToken = req.cookies[INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN];
       if (githubOauthAccessToken) {
         await server.services.githubOrgSync
-          .syncUserGroups(req.body.organizationId, tokens.user.userId, githubOauthAccessToken)
+          .syncUserGroups(req.body.organizationId, tokens.user.id, githubOauthAccessToken)
           .finally(() => {
             void res.setCookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, "", {
               httpOnly: true,
-              path: "/",
+              path: "/api",
               sameSite: "strict",
               secure: cfg.HTTPS_ENABLED,
               maxAge: 0
@@ -92,7 +104,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.setCookie("jid", tokens.refresh, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
       });
@@ -101,7 +113,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED,
         maxAge: 0
@@ -120,11 +132,11 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "loginExchangeClientProofV3",
       body: z.object({
-        email: z.string().trim(),
+        email: z.string().toLowerCase().trim(),
         providerAuthToken: z.string().trim().optional(),
         clientProof: z.string().trim(),
         captchaToken: z.string().trim().optional(),
-        password: z.string().optional()
+        password: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -143,59 +155,46 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
-      const appCfg = getConfig();
 
-      const data = await server.services.login.loginExchangeClientProof({
-        captchaToken: req.body.captchaToken,
+      const { tokens, user } = await server.services.login.login({
         email: req.body.email,
+        password: req.body.password,
         ip: req.realIp,
         userAgent,
-        providerAuthToken: req.body.providerAuthToken,
-        clientProof: req.body.clientProof,
-        password: req.body.password
+        captchaToken: req.body.captchaToken
       });
+      const appCfg = getConfig();
 
-      const login2DistinctId = data.user.username ?? data.user.email ?? "";
-      if (login2DistinctId) {
+      const loginDistinctId = user.username ?? user.email ?? "";
+      if (loginDistinctId) {
         void server.services.telemetry.identifyUser(
-          login2DistinctId,
+          loginDistinctId,
           {
-            email: data.user.email ?? undefined,
-            username: data.user.username,
-            userId: data.user.userId
+            email: user.email ?? undefined,
+            username: user.username,
+            userId: user.id
           },
           { skipDedup: true }
         );
       }
 
-      void res.setCookie("jid", data.token.refresh, {
+      void res.setCookie("jid", tokens.refreshToken, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
 
       addAuthOriginDomainCookie(res);
-
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0
       });
 
-      return {
-        encryptionVersion: data.user.encryptionVersion,
-        token: data.token.access,
-        publicKey: data.user.publicKey,
-        encryptedPrivateKey: data.user.encryptedPrivateKey,
-        iv: data.user.iv,
-        tag: data.user.tag,
-        protectedKey: data.user.protectedKey || null,
-        protectedKeyIV: data.user.protectedKeyIV || null,
-        protectedKeyTag: data.user.protectedKeyTag || null
-      } as const;
+      return { token: tokens.accessToken, encryptionVersion: 2 };
     }
   });
 
@@ -211,7 +210,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         email: z.string().trim(),
         password: z.string().trim(),
-        providerAuthToken: z.string().trim().optional(),
         captchaToken: z.string().trim().optional()
       }),
       response: {
@@ -229,7 +227,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         password: req.body.password,
         ip: req.realIp,
         userAgent,
-        providerAuthToken: req.body.providerAuthToken,
         captchaToken: req.body.captchaToken
       });
       const appCfg = getConfig();
@@ -241,7 +238,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           {
             email: user.email ?? undefined,
             username: user.username,
-            userId: user.userId
+            userId: user.id
           },
           { skipDedup: true }
         );
@@ -249,7 +246,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.setCookie("jid", tokens.refreshToken, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
@@ -258,7 +255,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED,
         maxAge: 0

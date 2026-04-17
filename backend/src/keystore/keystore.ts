@@ -16,6 +16,7 @@ export const PgSqlLock = {
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
   SanitizedSchemaGeneration: 2026,
+  EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
@@ -30,6 +31,7 @@ export const PgSqlLock = {
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
+  CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
@@ -103,7 +105,12 @@ export const KeyStorePrefixes = {
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
-  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const
+  SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
+
+  CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
+  CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
+  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
 };
 
 export const KeyStoreTtls = {
@@ -115,7 +122,9 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
-  TelemetryIdentifyIdentityInSeconds: 86400 // 24 hours
+  TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
+  RefreshTokenGraceInSeconds: 30,
+  InsightsCacheInSeconds: 300 // 5 minutes
 };
 
 type TDeleteItems = {

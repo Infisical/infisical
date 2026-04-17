@@ -30,6 +30,7 @@ const addAcceptedUsersToGroup = async ({
     },
     tx
   );
+  if (!users.length) return;
 
   await userGroupMembershipDAL.insertMany(
     users.map((user) => ({

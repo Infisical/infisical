@@ -9,6 +9,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
+import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
@@ -255,6 +257,7 @@ type TCertificateProfileServiceFactoryDep = {
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
   acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
   scepEnrollmentConfigDAL: TScepEnrollmentConfigDALFactory;
+  scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "deleteByConfigId">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
@@ -298,6 +301,7 @@ export const certificateProfileServiceFactory = ({
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
+  scepDynamicChallengeDAL,
   certificateBodyDAL,
   certificateSecretDAL,
   certificateAuthorityDAL,
@@ -430,9 +434,12 @@ export const certificateProfileServiceFactory = ({
           encryptedRaPrivateKey: Buffer;
           raCertificatePem: string;
           raCertExpiresAt: Date;
-          hashedChallengePassword: string;
+          hashedChallengePassword: string | null;
+          challengeType: string;
           includeCaCertInResponse: boolean;
           allowCertBasedRenewal: boolean;
+          dynamicChallengeExpiryMinutes: number | null;
+          dynamicChallengeMaxPending: number | null;
         }
       | undefined;
 
@@ -449,18 +456,28 @@ export const certificateProfileServiceFactory = ({
         plainText: Buffer.from(raCert.privateKeyDer)
       });
 
-      const appCfg = getConfig();
-      const hashedChallengePassword = await crypto
-        .hashing()
-        .createHash(data.scepConfig.challengePassword, appCfg.SALT_ROUNDS);
+      const challengeType = (data.scepConfig.challengeType as ScepChallengeType) || ScepChallengeType.STATIC;
+      let hashedChallengePassword: string | null = null;
+
+      if (challengeType === ScepChallengeType.STATIC && data.scepConfig.challengePassword) {
+        const appCfg = getConfig();
+        hashedChallengePassword = await crypto
+          .hashing()
+          .createHash(data.scepConfig.challengePassword, appCfg.SALT_ROUNDS);
+      }
 
       precomputedScepConfig = {
         encryptedRaPrivateKey,
         raCertificatePem: raCert.certificatePem,
         raCertExpiresAt: raCert.expiresAt,
         hashedChallengePassword,
+        challengeType,
         includeCaCertInResponse: data.scepConfig.includeCaCertInResponse ?? true,
-        allowCertBasedRenewal: data.scepConfig.allowCertBasedRenewal ?? true
+        allowCertBasedRenewal: data.scepConfig.allowCertBasedRenewal ?? true,
+        dynamicChallengeExpiryMinutes:
+          challengeType === ScepChallengeType.DYNAMIC ? (data.scepConfig.dynamicChallengeExpiryMinutes ?? 60) : null,
+        dynamicChallengeMaxPending:
+          challengeType === ScepChallengeType.DYNAMIC ? (data.scepConfig.dynamicChallengeMaxPending ?? 100) : null
       };
     }
 
@@ -523,8 +540,11 @@ export const certificateProfileServiceFactory = ({
             raCertificate: precomputedScepConfig.raCertificatePem,
             raCertExpiresAt: precomputedScepConfig.raCertExpiresAt,
             hashedChallengePassword: precomputedScepConfig.hashedChallengePassword,
+            challengeType: precomputedScepConfig.challengeType,
             includeCaCertInResponse: precomputedScepConfig.includeCaCertInResponse,
-            allowCertBasedRenewal: precomputedScepConfig.allowCertBasedRenewal
+            allowCertBasedRenewal: precomputedScepConfig.allowCertBasedRenewal,
+            dynamicChallengeExpiryMinutes: precomputedScepConfig.dynamicChallengeExpiryMinutes,
+            dynamicChallengeMaxPending: precomputedScepConfig.dynamicChallengeMaxPending
           },
           tx
         );
@@ -728,13 +748,38 @@ export const certificateProfileServiceFactory = ({
       }
 
       if (scepConfig && existingProfile.scepConfigId) {
+        const existingScepConfig = await scepEnrollmentConfigDAL.findById(existingProfile.scepConfigId, tx);
+
         const scepUpdateData: {
-          hashedChallengePassword?: string;
+          hashedChallengePassword?: string | null;
+          challengeType?: string;
           includeCaCertInResponse?: boolean;
           allowCertBasedRenewal?: boolean;
+          dynamicChallengeExpiryMinutes?: number | null;
+          dynamicChallengeMaxPending?: number | null;
         } = {};
 
-        if (scepConfig.challengePassword) {
+        if (scepConfig.challengeType !== undefined) {
+          scepUpdateData.challengeType = scepConfig.challengeType;
+          if (scepConfig.challengeType === ScepChallengeType.DYNAMIC) {
+            scepUpdateData.hashedChallengePassword = null;
+            scepUpdateData.dynamicChallengeExpiryMinutes = scepConfig.dynamicChallengeExpiryMinutes ?? 60;
+            scepUpdateData.dynamicChallengeMaxPending = scepConfig.dynamicChallengeMaxPending ?? 100;
+          }
+          if (scepConfig.challengeType === ScepChallengeType.STATIC) {
+            // Require password when switching from dynamic to static
+            const isSwitchingFromDynamic = existingScepConfig?.challengeType === ScepChallengeType.DYNAMIC;
+            if (isSwitchingFromDynamic && !scepConfig.challengePassword) {
+              throw new BadRequestError({
+                message: "Switching to static challenge type requires providing a challenge password"
+              });
+            }
+            await scepDynamicChallengeDAL.deleteByConfigId(existingProfile.scepConfigId, tx);
+            scepUpdateData.dynamicChallengeExpiryMinutes = null;
+            scepUpdateData.dynamicChallengeMaxPending = null;
+          }
+        }
+        if (scepConfig.challengePassword && scepUpdateData.challengeType !== ScepChallengeType.DYNAMIC) {
           scepUpdateData.hashedChallengePassword = await crypto
             .hashing()
             .createHash(scepConfig.challengePassword, getConfig().SALT_ROUNDS);
@@ -744,6 +789,12 @@ export const certificateProfileServiceFactory = ({
         }
         if (scepConfig.allowCertBasedRenewal !== undefined) {
           scepUpdateData.allowCertBasedRenewal = scepConfig.allowCertBasedRenewal;
+        }
+        if (scepUpdateData.challengeType === undefined && scepConfig.dynamicChallengeExpiryMinutes !== undefined) {
+          scepUpdateData.dynamicChallengeExpiryMinutes = scepConfig.dynamicChallengeExpiryMinutes;
+        }
+        if (scepUpdateData.challengeType === undefined && scepConfig.dynamicChallengeMaxPending !== undefined) {
+          scepUpdateData.dynamicChallengeMaxPending = scepConfig.dynamicChallengeMaxPending;
         }
         if (Object.keys(scepUpdateData).length > 0) {
           await scepEnrollmentConfigDAL.updateById(existingProfile.scepConfigId, scepUpdateData, tx);
@@ -857,6 +908,12 @@ export const certificateProfileServiceFactory = ({
       const appCfg = getConfig();
       const siteUrl = appCfg.SITE_URL ?? "";
       profile.scepConfig.scepEndpointUrl = `${siteUrl}/scep/${profile.id}/pkiclient.exe`;
+      if (profile.scepConfig.challengeType === ScepChallengeType.DYNAMIC) {
+        profile.scepConfig.challengeEndpointUrl = `${siteUrl}/scep/${profile.id}/challenge`;
+      } else {
+        delete profile.scepConfig.dynamicChallengeExpiryMinutes;
+        delete profile.scepConfig.dynamicChallengeMaxPending;
+      }
     }
 
     // Parse externalConfigs from JSON string to object if it exists
@@ -1035,7 +1092,16 @@ export const certificateProfileServiceFactory = ({
             ? { ...profileWithConfigs.acmeConfig, directoryUrl: buildUrl(profile.id, "/directory") }
             : undefined,
           scepConfig: profileWithConfigs.scepConfig
-            ? { ...profileWithConfigs.scepConfig, scepEndpointUrl: `${siteUrl}/scep/${profile.id}/pkiclient.exe` }
+            ? {
+                ...profileWithConfigs.scepConfig,
+                scepEndpointUrl: `${siteUrl}/scep/${profile.id}/pkiclient.exe`,
+                ...(profileWithConfigs.scepConfig.challengeType === ScepChallengeType.DYNAMIC
+                  ? { challengeEndpointUrl: `${siteUrl}/scep/${profile.id}/challenge` }
+                  : {
+                      dynamicChallengeExpiryMinutes: undefined,
+                      dynamicChallengeMaxPending: undefined
+                    })
+              }
             : undefined
         };
 

@@ -7,7 +7,7 @@ ARG SOFTHSM2_VERSION=2.5.0
 ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
     SOFTHSM2_SOURCES=/tmp/softhsm2
 
-# Install build dependencies including python3 (required for pkcs11js and partially TDS driver)
+# Install all build and runtime dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     autoconf \
@@ -21,26 +21,29 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     openssl \
     curl \
+    wget \
+    perl \
     pkg-config \
-    unzip
-
-# Install libaio (required for Oracle Instant Client) - architecture-specific for Debian Trixie
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "arm64" ]; then \
-      apt-get install -y libaio1t64 && \
-      ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
-    else \
-      apt-get install -y libaio1t64 && \
-      ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
-    fi
-
-# Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
-RUN apt-get install -y \
+    unzip \
+    libaio1t64 \
     unixodbc \
     unixodbc-dev \
     freetds-dev \
     freetds-bin \
-    tdsodbc
+    tdsodbc \
+    opensc \
+    smbclient \
+    && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.43.14 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create libaio symlink for Oracle Instant Client
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
+      ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
+    else \
+      ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
+    fi
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
@@ -56,9 +59,6 @@ RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
 
 WORKDIR /root
 RUN rm -fr ${SOFTHSM2_SOURCES}
-
-# Install pkcs11-tool
-RUN apt-get install -y opensc
 
 # Install Oracle Instant Client for OracleDB mTLS (Wallet) support
 RUN mkdir -p /opt/oracle && \
@@ -76,15 +76,19 @@ RUN mkdir -p /opt/oracle && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
+# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+WORKDIR /tmp/openssl-pqc-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-pqc-build
+
 # ? App setup
-
-# Install smbclient for Windows SMB operations
-RUN apt-get update && apt-get install -y smbclient
-
-# Install Infisical CLI
-RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
-    apt-get update && \
-    apt-get install -y infisical=0.43.14
 
 WORKDIR /app
 

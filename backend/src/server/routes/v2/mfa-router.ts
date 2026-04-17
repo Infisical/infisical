@@ -36,7 +36,7 @@ const handleMfaVerification = async (
 
   void res.setCookie("jid", token.refresh, {
     httpOnly: true,
-    path: "/",
+    path: "/api",
     sameSite: "strict",
     secure: appCfg.HTTPS_ENABLED
   });
@@ -45,10 +45,8 @@ const handleMfaVerification = async (
 
   return {
     ...user,
-    token: token.access,
-    protectedKey: user.protectedKey || null,
-    protectedKeyIV: user.protectedKeyIV || null,
-    protectedKeyTag: user.protectedKeyTag || null
+    hashedPassword: null,
+    token: token.access
   };
 };
 

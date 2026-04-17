@@ -7,6 +7,7 @@ import {
   OrgPermissionAppConnectionActions,
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
+  OrgPermissionEmailDomainActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
@@ -37,6 +38,15 @@ const billingPermissionSchema = z
   .object({
     [OrgPermissionBillingActions.Read]: z.boolean().optional(),
     [OrgPermissionBillingActions.ManageBilling]: z.boolean().optional()
+  })
+  .optional();
+
+const emailDomainPermissionSchema = z
+  .object({
+    [OrgPermissionEmailDomainActions.Read]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.Create]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.VerifyDomain]: z.boolean().optional(),
+    [OrgPermissionEmailDomainActions.Delete]: z.boolean().optional()
   })
   .optional();
 
@@ -182,7 +192,8 @@ export const formSchema = z.object({
       relay: orgRelayPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
-      "sub-organization": subOrganizationPermissionSchema
+      "sub-organization": subOrganizationPermissionSchema,
+      "email-domains": emailDomainPermissionSchema
     })
     .optional()
 });

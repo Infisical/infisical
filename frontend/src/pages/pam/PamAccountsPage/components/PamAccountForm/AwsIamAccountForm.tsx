@@ -24,7 +24,11 @@ import {
   useGetPamResourceById
 } from "@app/hooks/api/pam";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import {
+  AccountPolicyField,
+  GenericAccountFields,
+  genericAccountFieldsSchema
+} from "./GenericAccountFields";
 import { MetadataFields } from "./MetadataFields";
 
 const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
@@ -267,6 +271,7 @@ export const AwsIamAccountForm = ({
             </AccordionItem>
           </Accordion>
 
+          <AccountPolicyField />
           <MetadataFields />
         </div>
         <SheetFooter className="shrink-0 border-t">

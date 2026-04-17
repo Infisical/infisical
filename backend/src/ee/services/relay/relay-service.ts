@@ -1154,16 +1154,18 @@ export const relayServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod: actorAuthMethod!,
-      actorOrgId
-    });
+    if (actor !== ActorType.GATEWAY) {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod: actorAuthMethod!,
+        actorOrgId
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+    }
 
     const instanceRelays = await relayDAL.find({
       orgId: null

@@ -418,7 +418,7 @@ const RunsTab = ({
     discoverySourceId,
     discoveryType,
     { offset, limit: perPage },
-    { refetchInterval: isPolling ? 3000 : false }
+    { refetchInterval: isPolling ? 10_000 : false }
   );
 
   const runs = data?.runs || [];
