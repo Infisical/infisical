@@ -74,17 +74,17 @@ export enum DeploymentType {
  * Computes the deployment type based on the instance type and environment configuration.
  * - US Cloud: instanceType is Cloud and INTERNAL_REGION is "us" (or unset, defaults to US)
  * - EU Cloud: instanceType is Cloud and INTERNAL_REGION is "eu"
- * - Dedicated: INFISICAL_CLOUD is true but instanceType is not Cloud (uses self-hosted license keys)
+ * - Dedicated: INFISICAL_DEDICATED is true
  * - Self-Hosted: everything else
  */
 const getDeploymentType = (
   instanceType: InstanceType,
-  appConfig: { INFISICAL_CLOUD: boolean; INTERNAL_REGION?: string }
+  appConfig: { INFISICAL_CLOUD: boolean; INFISICAL_DEDICATED: boolean; INTERNAL_REGION?: string }
 ) => {
   if (instanceType === InstanceType.Cloud) {
     return appConfig.INTERNAL_REGION === "eu" ? DeploymentType.EUCloud : DeploymentType.USCloud;
   }
-  if (appConfig.INFISICAL_CLOUD) {
+  if (appConfig.INFISICAL_DEDICATED) {
     return DeploymentType.Dedicated;
   }
   return DeploymentType.SelfHosted;
