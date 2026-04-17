@@ -100,6 +100,10 @@ export const secretSharingServiceFactory = ({
     }
   };
 
+  // Checks whether external (non-org) email access is available for this secret.
+  const $hasExternalEmailAccess = (sharedSecret: TSecretSharing): boolean =>
+    Boolean(sharedSecret.allowExternalEmails && sharedSecret.password);
+
   const createSharedSecret = async ({
     actor,
     actorId,
@@ -611,8 +615,9 @@ export const secretSharingServiceFactory = ({
     }
 
     const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
+    const hasExternalEmailAccess = $hasExternalEmailAccess(sharedSecret);
 
-    if (!isAuthorizedUser && !sharedSecret.allowExternalEmails) {
+    if (!isAuthorizedUser && !hasExternalEmailAccess) {
       if (!actorId) {
         throw new UnauthorizedError({ message: "Authentication required to view this secret" });
       }
@@ -666,8 +671,9 @@ export const secretSharingServiceFactory = ({
       }
 
       const isAuthorizedUser = await $isAuthorizedEmailUser(sharedSecret, actorId);
+      const hasExternalEmailAccess = $hasExternalEmailAccess(sharedSecret);
 
-      if (!isAuthorizedUser && !sharedSecret.allowExternalEmails) {
+      if (!isAuthorizedUser && !hasExternalEmailAccess) {
         if (!actorId) {
           throw new UnauthorizedError({ message: "Authentication required to view this secret" });
         }
