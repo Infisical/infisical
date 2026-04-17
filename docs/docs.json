@@ -3239,7 +3239,8 @@
                   "api-reference/endpoints/kms/keys/update",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
-                  "api-reference/endpoints/kms/keys/private-key"
+                  "api-reference/endpoints/kms/keys/private-key",
+                  "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                 ]
               },
               {

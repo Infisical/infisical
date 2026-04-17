@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -322,13 +322,14 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   const bulkGetPrivateKeys = async ({ keyIds }: TCmekBulkGetPrivateKeysDTO, actor: OrgServiceActor) => {
     if (keyIds.length === 0) throw new BadRequestError({ message: "At least one key ID is required" });
 
-    const keys = await kmsDAL.findCmeksByIds(keyIds);
+    const uniqueKeyIds = [...new Set(keyIds)];
+    const keys = await kmsDAL.findCmeksByIds(uniqueKeyIds);
 
     if (keys.length === 0) throw new NotFoundError({ message: "No keys found for the provided IDs" });
 
-    if (keys.length !== keyIds.length) {
+    if (keys.length !== uniqueKeyIds.length) {
       const foundIds = new Set(keys.map((k) => k.id));
-      const missingIds = keyIds.filter((id) => !foundIds.has(id));
+      const missingIds = uniqueKeyIds.filter((id) => !foundIds.has(id));
       throw new NotFoundError({ message: `Keys not found for IDs: ${missingIds.join(", ")}` });
     }
 
@@ -358,23 +359,26 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       ProjectPermissionSub.Cmek
     );
 
-    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keyIds });
+    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: uniqueKeyIds });
 
     const result = await Promise.all(
       keys.map(async (key) => {
         const materialEntry = bulkMaterials.find((m) => m.kmsId === key.id);
+
+        if (!materialEntry) {
+          throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
+        }
+
         const isAsymmetric = Object.values(AsymmetricKeyAlgorithm).includes(
           key.encryptionAlgorithm as AsymmetricKeyAlgorithm
         );
 
         let publicKey: string | undefined;
         if (isAsymmetric) {
-          const pubKeyBuffer = await kmsService.getPublicKey({ kmsId: key.id });
+          const pubKeyBuffer = signingService(
+            key.encryptionAlgorithm as AsymmetricKeyAlgorithm
+          ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
           publicKey = pubKeyBuffer.toString("base64");
-        }
-
-        if (!materialEntry) {
-          throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
         }
 
         return {

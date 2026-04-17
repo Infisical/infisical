@@ -8,7 +8,6 @@ import {
   faEdit,
   faEllipsis,
   faFileSignature,
-  faInfoCircle,
   faLock,
   faLockOpen,
   faPlus,
@@ -16,7 +15,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
-import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, InfoIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -425,6 +424,7 @@ export const CmekTable = () => {
                     return (
                       <UnstableTableRow
                         key={`cmek-${id}`}
+                        className="group"
                         data-state={isSelected ? "selected" : undefined}
                         onMouseLeave={() => setCopyCipherText("")}
                       >
@@ -454,10 +454,7 @@ export const CmekTable = () => {
                             {description && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <FontAwesomeIcon
-                                    icon={faInfoCircle}
-                                    className="text-mineshaft-400"
-                                  />
+                                  <InfoIcon className="size-3.5 text-muted opacity-0 transition-all group-hover:opacity-100" />
                                 </TooltipTrigger>
                                 <TooltipContent>{description}</TooltipContent>
                               </Tooltip>
@@ -486,10 +483,7 @@ export const CmekTable = () => {
                             {kmsKeyUsageOptions[keyUsage].label}
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <FontAwesomeIcon
-                                  icon={faInfoCircle}
-                                  className="text-mineshaft-400"
-                                />
+                                <InfoIcon className="size-3.5 text-muted opacity-0 transition-all group-hover:opacity-100" />
                               </TooltipTrigger>
                               <TooltipContent>
                                 {kmsKeyUsageOptions[keyUsage].tooltip}
