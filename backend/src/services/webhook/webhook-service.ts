@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -13,9 +13,11 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { decryptWebhookDetails, getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
+  SUBSCRIBABLE_WEBHOOK_EVENTS,
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
   TListWebhookDTO,
+  TSubscribableWebhookEvent,
   TTestWebhookDTO,
   TUpdateWebhookDTO,
   WebhookEvents
@@ -38,6 +40,18 @@ export const webhookServiceFactory = ({
   projectDAL,
   kmsService
 }: TWebhookServiceFactoryDep) => {
+  const subscribableEvents = new Set<string>(SUBSCRIBABLE_WEBHOOK_EVENTS);
+
+  // `eventsFilter` on the API mirrors the DB's `filteredEvents` column: both are the allowlist
+  // of events that should trigger the webhook. Empty array => no events are filtered out
+  // (webhook fires on everything subscribable).
+  const withEventsFilter = <T extends { filteredEvents?: string[] | null }>(webhook: T) => ({
+    ...webhook,
+    eventsFilter: (webhook.filteredEvents ?? [])
+      .filter((eventName): eventName is TSubscribableWebhookEvent => subscribableEvents.has(eventName))
+      .map((eventName) => ({ eventName }))
+  });
+
   const createWebhook = async ({
     actor,
     actorId,
@@ -48,7 +62,8 @@ export const webhookServiceFactory = ({
     environment,
     secretPath,
     webhookSecretKey,
-    type
+    type,
+    eventsFilter
   }: TCreateWebhookDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -70,12 +85,16 @@ export const webhookServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+
+    const filteredEvents = eventsFilter?.map((e) => e.eventName) ?? [];
+
     const insertDoc: TWebhooksInsert = {
       envId: env.id,
       isDisabled: false,
       secretPath: secretPath || "/",
       type,
-      encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob
+      encryptedUrl: secretManagerEncryptor({ plainText: Buffer.from(webhookUrl) }).cipherTextBlob,
+      filteredEvents
     };
 
     if (webhookSecretKey) {
@@ -83,10 +102,18 @@ export const webhookServiceFactory = ({
     }
 
     const webhook = await webhookDAL.create(insertDoc);
-    return { ...webhook, projectId, environment: env };
+    return { ...withEventsFilter(webhook), projectId, environment: env };
   };
 
-  const updateWebhook = async ({ actorId, actor, actorOrgId, actorAuthMethod, id, isDisabled }: TUpdateWebhookDTO) => {
+  const updateWebhook = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    id,
+    isDisabled,
+    eventsFilter
+  }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
@@ -100,8 +127,15 @@ export const webhookServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
-    const updatedWebhook = await webhookDAL.updateById(id, { isDisabled });
-    return { ...webhook, ...updatedWebhook };
+    const filteredEvents = eventsFilter?.map((e) => e.eventName);
+
+    const updateData = {
+      ...(isDisabled !== undefined ? { isDisabled } : {}),
+      ...(filteredEvents !== undefined ? { filteredEvents } : {})
+    };
+
+    const updatedWebhook = await webhookDAL.updateById(id, updateData);
+    return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
   const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
@@ -119,7 +153,7 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
     const deletedWebhook = await webhookDAL.deleteById(id);
-    return { ...webhook, ...deletedWebhook };
+    return withEventsFilter({ ...webhook, ...deletedWebhook });
   };
 
   const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
@@ -144,19 +178,23 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
     let webhookError: string | undefined;
     try {
+      const payload = getWebhookPayload({
+        type: WebhookEvents.TestEvent,
+        payload: {
+          projectName: project.name,
+          projectId: webhook.projectId,
+          environment: webhook.environment.slug,
+          secretPath: webhook.secretPath,
+          type: webhook.type
+        }
+      });
+
+      if (!payload) throw new BadRequestError({ message: "Failed to get webhook payload for test event" });
+
       await triggerWebhookRequest(
         webhook,
         (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString(),
-        getWebhookPayload({
-          type: "test" as WebhookEvents.SecretModified,
-          payload: {
-            projectName: project.name,
-            projectId: webhook.projectId,
-            environment: webhook.environment.slug,
-            secretPath: webhook.secretPath,
-            type: webhook.type
-          }
-        })
+        payload
       );
     } catch (err) {
       webhookError = (err as Error).message;
@@ -166,7 +204,7 @@ export const webhookServiceFactory = ({
       lastStatus: isSuccess ? "success" : "failed",
       lastRunErrorMessage: isSuccess ? null : webhookError
     });
-    return { ...webhook, ...updatedWebhook };
+    return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
   const listWebhooks = async ({
@@ -197,7 +235,7 @@ export const webhookServiceFactory = ({
     return webhooks.map((w) => {
       const { url } = decryptWebhookDetails(w, (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString());
       return {
-        ...w,
+        ...withEventsFilter(w),
         url
       };
     });

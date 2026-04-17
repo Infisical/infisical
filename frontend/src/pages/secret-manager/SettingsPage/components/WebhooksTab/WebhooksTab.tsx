@@ -18,6 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -28,8 +29,15 @@ import {
   useTestWebhook,
   useUpdateWebhook
 } from "@app/hooks/api";
+import {
+  TWebhook,
+  WEBHOOK_EVENT_METADATA,
+  WEBHOOK_EVENTS,
+  WebhookEvent
+} from "@app/hooks/api/webhooks/types";
 
 import { AddWebhookForm, TFormSchema } from "./AddWebhookForm";
+import { EditWebhookEventsModal } from "./EditWebhookEventsModal";
 
 export const WebhooksTab = withProjectPermission(
   () => {
@@ -39,7 +47,8 @@ export const WebhooksTab = withProjectPermission(
     const projectId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
-      "deleteWebhook"
+      "deleteWebhook",
+      "editWebhook"
     ] as const);
 
     const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(projectId);
@@ -59,8 +68,14 @@ export const WebhooksTab = withProjectPermission(
     const { mutateAsync: deleteWebhook } = useDeleteWebhook();
 
     const handleWebhookCreate = async (data: TFormSchema) => {
+      // eventsFilter is the allowlist of events to trigger on
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => data.enabledEvents[event]).map(
+        (event) => ({ eventName: event })
+      );
+
       await createWebhook({
         ...data,
+        eventsFilter,
         projectId
       });
       handlePopUpClose("addWebhook");
@@ -79,6 +94,27 @@ export const WebhooksTab = withProjectPermission(
       createNotification({
         type: "success",
         text: "Successfully updated webhook"
+      });
+    };
+
+    const handleWebhookEventsUpdate = async (
+      webhookId: string,
+      settings: Record<WebhookEvent, boolean>
+    ) => {
+      // eventsFilter is the allowlist — every checked event goes in.
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => settings[event]).map((event) => ({
+        eventName: event
+      }));
+
+      await updateWebhook({
+        webhookId,
+        projectId,
+        eventsFilter
+      });
+      handlePopUpClose("editWebhook");
+      createNotification({
+        type: "success",
+        text: "Successfully updated webhook events"
       });
     };
 
@@ -134,22 +170,34 @@ export const WebhooksTab = withProjectPermission(
                   <Td>URL</Td>
                   <Td>Environment</Td>
                   <Td>Secret Path</Td>
+                  <Td>
+                    <div className="flex items-center gap-1">
+                      <span>Events</span>
+                      <Tooltip content="Events that are configured to trigger this webhook.">
+                        <FontAwesomeIcon
+                          icon={faInfoCircle}
+                          size="xs"
+                          className="text-mineshaft-400"
+                        />
+                      </Tooltip>
+                    </div>
+                  </Td>
                   <Td>Status</Td>
                   <Td className="text-right">Action</Td>
                 </Tr>
               </THead>
               <TBody>
-                {isWebhooksLoading && <TableSkeleton columns={5} innerKey="webhooks-loading" />}
+                {isWebhooksLoading && <TableSkeleton columns={6} innerKey="webhooks-loading" />}
                 {!isWebhooksLoading && webhooks && webhooks?.length === 0 && (
                   <Tr>
-                    <Td colSpan={5}>
+                    <Td colSpan={6}>
                       <EmptyState title="No webhooks found" icon={faPlug} />
                     </Td>
                   </Tr>
                 )}
                 {!isWebhooksLoading &&
-                  webhooks?.map(
-                    ({
+                  webhooks?.map((webhook) => {
+                    const {
                       id,
                       url,
                       environment,
@@ -158,7 +206,19 @@ export const WebhooksTab = withProjectPermission(
                       isDisabled,
                       updatedAt,
                       lastRunErrorMessage
-                    }) => (
+                    } = webhook;
+
+                    // eventsFilter is the allowlist — empty means every event is enabled.
+                    const filteredSet = new Set(webhook.eventsFilter.map((e) => e.eventName));
+                    const enabledEvents =
+                      webhook.eventsFilter.length === 0
+                        ? [...WEBHOOK_EVENTS]
+                        : WEBHOOK_EVENTS.filter((event) => filteredSet.has(event));
+                    const enabledEventsCount = enabledEvents.length;
+                    const hasEnabledEvents = enabledEventsCount > 0;
+                    const allEventsEnabled = enabledEventsCount === WEBHOOK_EVENTS.length;
+
+                    return (
                       <Tr key={id}>
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                           {url}
@@ -166,6 +226,32 @@ export const WebhooksTab = withProjectPermission(
                         </Td>
                         <Td>{environment.slug}</Td>
                         <Td>{secretPath}</Td>
+                        <Td>
+                          <Tooltip
+                            content={
+                              hasEnabledEvents ? (
+                                <div className="text-xs">
+                                  <p className="mb-1 font-medium">Enabled Events:</p>
+                                  <ul className="list-disc space-y-0.5 pl-4">
+                                    {enabledEvents.map((event) => (
+                                      <li key={event}>{WEBHOOK_EVENT_METADATA[event].label}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : (
+                                "This webhook is not triggered by any events."
+                              )
+                            }
+                          >
+                            <Badge variant="neutral">
+                              {allEventsEnabled && "All Events"}
+                              {!hasEnabledEvents && "No Events"}
+                              {hasEnabledEvents &&
+                                !allEventsEnabled &&
+                                `${enabledEventsCount} Event${enabledEventsCount === 1 ? "" : "s"}`}
+                            </Badge>
+                          </Tooltip>
+                        </Td>
                         <Td>
                           {!lastStatus ? (
                             "-"
@@ -199,6 +285,21 @@ export const WebhooksTab = withProjectPermission(
                         </Td>
                         <Td>
                           <div className="flex items-center justify-end space-x-2">
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Edit}
+                              a={ProjectPermissionSub.Webhooks}
+                            >
+                              {(isAllowed) => (
+                                <Button
+                                  variant="outline_bg"
+                                  size="xs"
+                                  isDisabled={!isAllowed}
+                                  onClick={() => handlePopUpOpen("editWebhook", webhook)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                            </ProjectPermissionCan>
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Edit}
                               a={ProjectPermissionSub.Webhooks}
@@ -263,8 +364,8 @@ export const WebhooksTab = withProjectPermission(
                           </div>
                         </Td>
                       </Tr>
-                    )
-                  )}
+                    );
+                  })}
               </TBody>
             </Table>
           </TableContainer>
@@ -282,6 +383,20 @@ export const WebhooksTab = withProjectPermission(
           onChange={(isOpen) => handlePopUpToggle("deleteWebhook", isOpen)}
           onClose={() => handlePopUpClose("deleteWebhook")}
           onDeleteApproved={handleWebhookDelete}
+        />
+        <EditWebhookEventsModal
+          isOpen={popUp.editWebhook.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("editWebhook", isOpen)}
+          webhook={popUp.editWebhook.data as TWebhook | undefined}
+          isSubmitting={
+            isUpdateWebhookSubmitting &&
+            updateWebhookVars?.webhookId === (popUp.editWebhook.data as TWebhook | undefined)?.id
+          }
+          onSave={async (settings) => {
+            const webhookId = (popUp.editWebhook.data as TWebhook | undefined)?.id;
+            if (!webhookId) return;
+            await handleWebhookEventsUpdate(webhookId, settings);
+          }}
         />
       </div>
     );
