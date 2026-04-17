@@ -177,10 +177,18 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         throw new Error(`Unhandled Zabbix Scope Destination Col Values ${destination}`);
       }
       break;
-    case SecretSync.Railway:
+    case SecretSync.Railway: {
       primaryText = destinationConfig.projectName;
-      secondaryText = "Railway Project";
+      const railwayServiceNames =
+        destinationConfig.serviceNames ??
+        (destinationConfig.serviceName ? [destinationConfig.serviceName] : []);
+      if (railwayServiceNames.length > 0) {
+        secondaryText = railwayServiceNames.join(", ");
+      } else {
+        secondaryText = "Shared Variables";
+      }
       break;
+    }
     case SecretSync.Checkly:
       primaryText = destinationConfig.accountName || destinationConfig.accountId;
       secondaryText = destinationConfig.groupName || destinationConfig.groupId || "Checkly Account";
