@@ -783,10 +783,6 @@ export const pamAccountServiceFactory = ({
     if (resourceType === PamResource.ActiveDirectory)
       throw new BadRequestError({ message: `Active Directory resources cannot be accessed` });
 
-    // Temporarily disable access to Windows Server
-    if (resourceType === PamResource.Windows)
-      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
-
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 

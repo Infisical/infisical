@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useParams } from "@tanstack/react-router";
 
-import { PamResourceType, useGetPamAccountById } from "@app/hooks/api/pam";
-import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
+import { useGetPamAccountById } from "@app/hooks/api/pam";
 
-import { PamWindowsRdpPage } from "./PamWindowsRdpPage";
-import { useWebAccessSession } from "./useWebAccessSession";
+import { useRdpSession } from "./useRdpSession";
 
-const TerminalContent = ({
+/**
+ * Browser-side RDP session page. Rendered by PamAccountAccessPage for
+ * Windows resources.
+ *
+ * Phase 4 scaffold: the WebSocket lifecycle and page chrome are wired;
+ * the actual RDP rendering (IronRDP WASM into the canvas) is TODO. See
+ * useRdpSession for the full list of remaining integration points.
+ */
+export const PamWindowsRdpPage = ({
   accountId,
   projectId,
   orgId
@@ -20,13 +24,12 @@ const TerminalContent = ({
   const { data: account, isPending } = useGetPamAccountById(accountId);
   const [sessionEnded, setSessionEnded] = useState(false);
 
-  const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
+  const { canvasRef, isConnected, disconnect, reconnect } = useRdpSession({
     accountId,
     projectId,
     orgId,
     resourceName: account?.resource.name ?? "",
     accountName: account?.name ?? "",
-    resourceType: account?.resource.resourceType ?? "",
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -63,11 +66,14 @@ const TerminalContent = ({
 
   return (
     <div className="flex h-screen w-screen flex-col bg-[#0d1117]">
-      <div
-        className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
-        style={{ minHeight: 0 }}
-      >
-        <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
+      <div className="thin-scrollbar flex-1 overflow-auto p-2" style={{ minHeight: 0 }}>
+        <canvas
+          ref={canvasRef}
+          width={1920}
+          height={1080}
+          className="mx-auto block max-h-full max-w-full bg-black"
+          style={{ imageRendering: "pixelated" }}
+        />
       </div>
       <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">
@@ -105,50 +111,5 @@ const TerminalContent = ({
         </div>
       </div>
     </div>
-  );
-};
-
-const PageContent = () => {
-  const params = useParams({
-    strict: false
-  }) as {
-    accountId?: string;
-    projectId?: string;
-    orgId?: string;
-    resourceType?: string;
-    resourceId?: string;
-  };
-
-  const { accountId, projectId, orgId } = params;
-  const { data: account, isPending } = useGetPamAccountById(accountId);
-
-  if (isPending) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
-        Loading...
-      </div>
-    );
-  }
-
-  if (account?.resource.resourceType === PamResourceType.Postgres) {
-    return <PamDataExplorerPage />;
-  }
-
-  if (account?.resource.resourceType === PamResourceType.Windows) {
-    return <PamWindowsRdpPage accountId={accountId!} projectId={projectId!} orgId={orgId!} />;
-  }
-
-  return <TerminalContent accountId={accountId!} projectId={projectId!} orgId={orgId!} />;
-};
-
-export const PamAccountAccessPage = () => {
-  return (
-    <>
-      <Helmet>
-        <title>Web Access | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
-      <PageContent />
-    </>
   );
 };
