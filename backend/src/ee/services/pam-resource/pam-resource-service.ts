@@ -25,6 +25,7 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
@@ -49,6 +50,7 @@ const AI_SUMMARY_SUPPORTED_RESOURCE_TYPES = new Set<PamResource>([PamResource.Po
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamResourceFavoriteDAL: TPamResourceFavoriteDALFactory;
+  pamDomainDAL: Pick<TPamDomainDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithParentDetails" | "findMetadataByAccountIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -65,6 +67,7 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
   pamResourceFavoriteDAL,
+  pamDomainDAL,
   pamAccountDAL,
   permissionService,
   kmsService,
@@ -72,6 +75,14 @@ export const pamResourceServiceFactory = ({
   resourceMetadataDAL,
   appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
+  const assertDomainInProject = async (domainId: string, projectId: string) => {
+    const domain = await pamDomainDAL.findById(domainId);
+    if (!domain) throw new NotFoundError({ message: `Domain with ID '${domainId}' not found` });
+    if (domain.projectId !== projectId) {
+      throw new BadRequestError({ message: "Domain must belong to the same project as the resource" });
+    }
+  };
+
   const getById = async (id: string, resourceType: PamResource, actor: OrgServiceActor) => {
     const resource = await pamResourceDAL.findById(id);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${id}' not found` });
@@ -175,6 +186,10 @@ export const pamResourceServiceFactory = ({
         metadata: (metadata || []).map(({ key, value }) => ({ key, value: value ?? "" }))
       })
     );
+
+    if (domainId) {
+      await assertDomainInProject(domainId, projectId);
+    }
 
     const factory = PAM_RESOURCE_FACTORY_MAP[resourceType](
       resourceType,
@@ -310,6 +325,9 @@ export const pamResourceServiceFactory = ({
     }
 
     if (domainId !== undefined) {
+      if (domainId) {
+        await assertDomainInProject(domainId, resource.projectId);
+      }
       updateDoc.domainId = domainId;
     }
 
