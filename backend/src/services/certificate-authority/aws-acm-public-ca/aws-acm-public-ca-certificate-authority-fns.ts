@@ -42,11 +42,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import {
-  createAcmClient,
-  FAKE_ACM_USE_REAL,
-  resolveDnsAwsConnection
-} from "./aws-acm-public-ca-certificate-authority-client";
+import { createAcmClient, resolveDnsAwsConnection } from "./aws-acm-public-ca-certificate-authority-client";
 import { AwsAcmValidationMethod } from "./aws-acm-public-ca-certificate-authority-enums";
 import {
   TAwsAcmPublicCaCertificateAuthority,
@@ -476,23 +472,18 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       if (!alreadyRenewedByAws) {
         if (detail.DomainValidationOptions) {
-          // FAKE_ACM: skip Route 53 writes when running against the fake ACM client.
-          if (!FAKE_ACM_USE_REAL) {
-            logger.info("[FAKE_ACM] Skipping Route 53 CNAME upserts for renewal path");
-          } else {
-            const dnsConnection = await resolveDnsAwsConnection({
-              dnsAppConnectionId,
-              appConnectionDAL,
-              kmsService
-            });
-            for (const dv of detail.DomainValidationOptions) {
-              if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-                await route53UpsertRecord(dnsConnection, hostedZoneId, {
-                  name: dv.ResourceRecord.Name,
-                  type: "CNAME",
-                  value: dv.ResourceRecord.Value
-                });
-              }
+          const dnsConnection = await resolveDnsAwsConnection({
+            dnsAppConnectionId,
+            appConnectionDAL,
+            kmsService
+          });
+          for (const dv of detail.DomainValidationOptions) {
+            if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
+              await route53UpsertRecord(dnsConnection, hostedZoneId, {
+                name: dv.ResourceRecord.Name,
+                type: "CNAME",
+                value: dv.ResourceRecord.Value
+              });
             }
           }
         }
@@ -548,23 +539,18 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
 
       if (detail.DomainValidationOptions) {
-        // FAKE_ACM: skip Route 53 writes when running against the fake ACM client.
-        if (!FAKE_ACM_USE_REAL) {
-          logger.info("[FAKE_ACM] Skipping Route 53 CNAME upserts for issuance path");
-        } else {
-          const dnsConnection = await resolveDnsAwsConnection({
-            dnsAppConnectionId,
-            appConnectionDAL,
-            kmsService
-          });
-          for (const dv of detail.DomainValidationOptions) {
-            if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
-              await route53UpsertRecord(dnsConnection, hostedZoneId, {
-                name: dv.ResourceRecord.Name,
-                type: "CNAME",
-                value: dv.ResourceRecord.Value
-              });
-            }
+        const dnsConnection = await resolveDnsAwsConnection({
+          dnsAppConnectionId,
+          appConnectionDAL,
+          kmsService
+        });
+        for (const dv of detail.DomainValidationOptions) {
+          if (dv.ResourceRecord?.Name && dv.ResourceRecord?.Value) {
+            await route53UpsertRecord(dnsConnection, hostedZoneId, {
+              name: dv.ResourceRecord.Name,
+              type: "CNAME",
+              value: dv.ResourceRecord.Value
+            });
           }
         }
       }
