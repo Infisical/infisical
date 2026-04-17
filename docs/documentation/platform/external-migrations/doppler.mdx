@@ -8,12 +8,12 @@ This guide helps you bring secrets from **Doppler** into Infisical. Register a D
 
 **What you can migrate:**
 
-- **Secrets** — Key/value pairs from a Doppler **project** and **environment** are imported into a chosen Infisical **project**, **environment**, and **secret path** (folder).
+- **Secrets** — Key/value pairs from a Doppler **project** and **config** (root or branch) are imported into a chosen Infisical **project**, **environment**, and **secret path** (folder). Both root configs and branched configs are supported.
 
 <Warning>
-  **Organization Admin Access Required:** Creating and managing Doppler migration
+  Organization Admin Access Required: Creating and managing Doppler migration
   configurations, listing Doppler projects and environments, and running
-  in-platform imports are limited to **organization administrators**, matching
+  in-platform imports are limited to organization administrators, matching
   the Vault in-platform migration model.
 </Warning>
 
@@ -54,29 +54,7 @@ This guide helps you bring secrets from **Doppler** into Infisical. Register a D
   </Step>
 </Steps>
 
-## Import Secrets
-
-You can import in two places: **External Migrations** (pick any Infisical project and path) or the **Secret overview** for a single environment (current project, path, and environment).
-
-<Tip>
-  **Migration strategy:** Start with a non-production Infisical environment, verify key names and values, then expand to other environments.
-</Tip>
-
-### Import from Organization Settings
-
-1. Open **Organization Settings > External Migrations** and find your Doppler row.
-2. Click **Import**.
-3. Choose the **Doppler project** and **Doppler environment** to read from.
-4. Choose the **Infisical project**, **environment**, and **secret path** where secrets should be created.
-5. Confirm the import.
-
-![Import secrets from Doppler (organization settings)](/images/platform/external-migrations/doppler-in-platform/doppler-import-modal-org-settings.png)
-
-<Warning>
-  The import will fail if any secret key from Doppler already exists at the target path. Make sure the destination is empty or use a new secret path to avoid conflicts.
-</Warning>
-
-### Import from the Secret Overview
+## Migrating Secrets from Doppler to Infisical
 
 When you are already in a **Secret Manager** project and have **one** environment selected (not “all environments”):
 
@@ -86,7 +64,7 @@ When you are already in a **Secret Manager** project and have **one** environmen
 
 ![Add from Doppler on the secret overview](/images/platform/external-migrations/doppler-in-platform/import-doppler-secret-overview-option.png)
 
-4. Select the **Doppler project** and **environment**; Infisical uses your linked migration configuration and imports into the **current** environment and path.
+4. Select the **Doppler project** and **config**; Infisical lists all configs including root configs and branch configs. Root configs are labeled with **(root)** for clarity. Infisical uses your linked migration configuration and imports into the **current** environment and path.
 
 ![Import from Doppler modal on secret overview](/images/platform/external-migrations/doppler-in-platform/import-doppler-secret-overview-modal.png)
 

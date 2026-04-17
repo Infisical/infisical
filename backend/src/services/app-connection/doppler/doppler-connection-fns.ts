@@ -6,6 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "../app-connection-enums";
 import { DopplerConnectionMethod } from "./doppler-connection-enums";
 import {
+  TDopplerConfig,
   TDopplerConnection,
   TDopplerConnectionConfig,
   TDopplerEnvironment,
@@ -108,6 +109,39 @@ export const listDopplerEnvironments = async (
   }
 
   return environments;
+};
+
+export const listDopplerConfigs = async (
+  appConnection: TDopplerConnection,
+  projectSlug: string
+): Promise<TDopplerConfig[]> => {
+  const {
+    credentials: { apiToken }
+  } = appConnection;
+
+  const configs: TDopplerConfig[] = [];
+  let page = 1;
+  const perPage = 50;
+  const maxPages = 20;
+  let hasMore = true;
+
+  while (hasMore && page <= maxPages) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await request.get<{ configs: TDopplerConfig[] }>(`${DOPPLER_API_URL}/v3/configs`, {
+      params: { project: projectSlug, page, per_page: perPage },
+      headers: { Authorization: `Bearer ${apiToken}` }
+    });
+
+    configs.push(...res.data.configs);
+
+    if (res.data.configs.length < perPage) {
+      hasMore = false;
+    } else {
+      page += 1;
+    }
+  }
+
+  return configs;
 };
 
 export const getDopplerSecrets = async (

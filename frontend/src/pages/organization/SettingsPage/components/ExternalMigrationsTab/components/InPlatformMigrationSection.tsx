@@ -4,7 +4,6 @@ import { Edit, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  EmptyMedia,
   Skeleton,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
@@ -145,9 +144,6 @@ export const InPlatformMigrationSection = () => {
       return (
         <UnstableEmpty>
           <UnstableEmptyHeader>
-            <EmptyMedia variant="icon">
-              <Plus />
-            </EmptyMedia>
             <UnstableEmptyTitle>No migration configurations</UnstableEmptyTitle>
             <UnstableEmptyDescription>
               Add a platform configuration to enable in-platform migration features.

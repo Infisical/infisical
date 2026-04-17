@@ -45,6 +45,7 @@ import {
   decryptEnvKeyDataFn,
   getDopplerSecrets,
   importVaultDataFn,
+  listDopplerConfigs,
   listDopplerEnvironments,
   listDopplerProjects,
   parseEnvKeyDataFn,
@@ -820,6 +821,19 @@ export const externalMigrationServiceFactory = ({
     return listDopplerEnvironments(appConnection, projectSlug);
   };
 
+  const getDopplerConfigs = async ({
+    configId,
+    projectSlug,
+    actor
+  }: {
+    configId: string;
+    projectSlug: string;
+    actor: OrgServiceActor;
+  }) => {
+    const appConnection = await getDopplerConnectionForConfig(configId, actor);
+    return listDopplerConfigs(appConnection, projectSlug);
+  };
+
   const importDopplerSecrets = async ({
     configId,
     dopplerProject,
@@ -903,6 +917,7 @@ export const externalMigrationServiceFactory = ({
 
     getDopplerProjects,
     getDopplerEnvironments,
+    getDopplerConfigs,
     importDopplerSecrets
   };
 };

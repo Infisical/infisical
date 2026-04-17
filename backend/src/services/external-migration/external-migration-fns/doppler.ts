@@ -2,6 +2,7 @@
 // The actual implementation lives in the Doppler AppConnection package.
 export {
   getDopplerSecrets,
+  listDopplerConfigs,
   listDopplerEnvironments,
   listDopplerProjects
 } from "@app/services/app-connection/doppler/doppler-connection-fns";

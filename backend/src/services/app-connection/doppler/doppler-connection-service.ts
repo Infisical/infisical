@@ -2,7 +2,12 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { getDopplerSecrets, listDopplerEnvironments, listDopplerProjects } from "./doppler-connection-fns";
+import {
+  getDopplerSecrets,
+  listDopplerConfigs,
+  listDopplerEnvironments,
+  listDopplerProjects
+} from "./doppler-connection-fns";
 import { TDopplerConnection } from "./doppler-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -32,6 +37,16 @@ export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
+  const listConfigs = async (connectionId: string, projectSlug: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Doppler, connectionId, actor);
+    try {
+      return await listDopplerConfigs(appConnection, projectSlug);
+    } catch (error) {
+      logger.error(error, "Failed to list configs for Doppler connection");
+      return [];
+    }
+  };
+
   const getSecrets = async (
     connectionId: string,
     projectSlug: string,
@@ -42,5 +57,5 @@ export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc
     return getDopplerSecrets(appConnection, projectSlug, environmentSlug);
   };
 
-  return { listProjects, listEnvironments, getSecrets };
+  return { listProjects, listEnvironments, listConfigs, getSecrets };
 };

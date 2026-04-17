@@ -2,9 +2,11 @@ import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
+import { components, GroupHeadingProps, OptionProps } from "react-select";
 import { z } from "zod";
 
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -19,13 +21,13 @@ import {
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
-import { useGetDopplerEnvironments, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
-import { TExternalMigrationConfig } from "@app/hooks/api/migration/types";
+import { useGetDopplerConfigs, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
+import { TDopplerConfig, TExternalMigrationConfig } from "@app/hooks/api/migration/types";
 
 const schema = z.object({
   configId: z.string().min(1, "Doppler configuration is required"),
   dopplerProject: z.string().min(1, "Doppler project is required"),
-  dopplerEnvironment: z.string().min(1, "Doppler environment is required")
+  dopplerEnvironment: z.string().min(1, "Doppler config is required")
 });
 
 type FormData = z.infer<typeof schema>;
@@ -37,6 +39,37 @@ type Props = {
   environment: string;
   secretPath: string;
   onImport: (dopplerProject: string, dopplerEnvironment: string, configId: string) => Promise<void>;
+};
+
+const DopplerConfigGroupHeading = (props: GroupHeadingProps<TDopplerConfig>) => (
+  <components.GroupHeading
+    {...props}
+    className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted"
+  />
+);
+
+const DopplerConfigOption = (props: OptionProps<TDopplerConfig>) => {
+  const { data } = props;
+  return (
+    <components.Option {...props}>
+      <div className="flex items-center gap-2">
+        <span>{formatConfigLabel(data)}</span>
+        {data.root && <Badge variant="project">Root</Badge>}
+      </div>
+    </components.Option>
+  );
+};
+
+const formatConfigLabel = (config: TDopplerConfig) => {
+  if (config.root) {
+    return config.name;
+  }
+  // Branch configs are named like "env_branch" — show only the branch suffix
+  const prefix = `${config.environment}_`;
+  const branchName = config.name.startsWith(prefix)
+    ? config.name.slice(prefix.length)
+    : config.name;
+  return branchName;
 };
 
 export const DopplerSecretImportModal = ({
@@ -83,8 +116,24 @@ export const DopplerSecretImportModal = ({
   const { data: dopplerProjects = [], isPending: isLoadingProjects } = useGetDopplerProjects(
     selectedConfigId || undefined
   );
-  const { data: dopplerEnvironments = [], isPending: isLoadingEnvironments } =
-    useGetDopplerEnvironments(selectedConfigId || undefined, selectedDopplerProject || undefined);
+  const { data: dopplerConfigs = [], isPending: isLoadingConfigs } = useGetDopplerConfigs(
+    selectedConfigId || undefined,
+    selectedDopplerProject || undefined
+  );
+
+  const sortedDopplerConfigs = useMemo(() => {
+    return [...dopplerConfigs].sort((a, b) => {
+      // Group by environment first
+      if (a.environment !== b.environment) {
+        return a.environment.localeCompare(b.environment);
+      }
+      // Root configs come first within each environment
+      if (a.root !== b.root) {
+        return a.root ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [dopplerConfigs]);
 
   const configOptions = useMemo(
     () =>
@@ -117,8 +166,7 @@ export const DopplerSecretImportModal = ({
         <DialogHeader>
           <DialogTitle>Import from Doppler</DialogTitle>
           <DialogDescription>
-            Select a Doppler project and environment to import secrets into the current Infisical
-            folder.
+            Select a Doppler project and config to import secrets into the current Infisical folder.
           </DialogDescription>
         </DialogHeader>
 
@@ -202,28 +250,33 @@ export const DopplerSecretImportModal = ({
             control={control}
             name="dopplerEnvironment"
             render={({ field }) => {
-              const selectedItem = dopplerEnvironments.find((e) => e.slug === field.value);
+              const selectedItem = sortedDopplerConfigs.find((c) => c.name === field.value);
 
               return (
                 <Field>
-                  <FieldLabel>Source Environment</FieldLabel>
+                  <FieldLabel>Source Config</FieldLabel>
                   <FieldContent>
                     <FilterableSelect
                       value={selectedItem || null}
                       onChange={(newValue) => {
                         const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                        if (singleValue && "slug" in singleValue) {
-                          field.onChange(singleValue.slug);
+                        if (singleValue && "name" in singleValue) {
+                          field.onChange(singleValue.name);
                         } else {
                           field.onChange("");
                         }
                       }}
-                      isLoading={isLoadingEnvironments && Boolean(selectedDopplerProject)}
+                      isLoading={isLoadingConfigs && Boolean(selectedDopplerProject)}
                       isDisabled={!selectedDopplerProject}
-                      options={dopplerEnvironments}
-                      placeholder="Select source environment..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.slug}
+                      options={sortedDopplerConfigs}
+                      placeholder="Select source config..."
+                      getOptionLabel={formatConfigLabel}
+                      getOptionValue={(option) => option.name}
+                      groupBy="environment"
+                      components={{
+                        GroupHeading: DopplerConfigGroupHeading,
+                        Option: DopplerConfigOption
+                      }}
                     />
                   </FieldContent>
                   <FieldError>{errors.dopplerEnvironment?.message}</FieldError>

@@ -37,6 +37,14 @@ export type TDopplerEnvironment = {
   createdAt: string;
 };
 
+export type TDopplerConfig = {
+  name: string;
+  root: boolean;
+  locked: boolean;
+  environment: string;
+  project: string;
+};
+
 export type TDopplerSecret = {
   raw: string | null;
   computed: string | null;

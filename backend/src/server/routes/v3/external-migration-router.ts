@@ -742,7 +742,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
               id: z.string(),
               slug: z.string(),
               name: z.string(),
-              project: z.string()
+              project: z.string(),
+              parentId: z.string().nullish()
             })
             .array()
         })
@@ -756,6 +757,41 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission
       });
       return { environments };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/doppler/doppler-configs",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getDopplerConfigsV3",
+      querystring: z.object({
+        configId: z.string().uuid(),
+        projectSlug: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          configs: z
+            .object({
+              name: z.string(),
+              root: z.boolean(),
+              locked: z.boolean(),
+              environment: z.string(),
+              project: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const configs = await server.services.migration.getDopplerConfigs({
+        configId: req.query.configId,
+        projectSlug: req.query.projectSlug,
+        actor: req.permission
+      });
+      return { configs };
     }
   });
 

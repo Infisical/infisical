@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   ExternalMigrationProviders,
+  TDopplerConfig,
   TDopplerEnvironment,
   TDopplerProject,
   TExternalMigrationConfig,
@@ -55,6 +56,11 @@ export const externalMigrationQueryKeys = {
   dopplerProjects: (configId?: string) => ["doppler-projects", configId],
   dopplerEnvironments: (configId?: string, projectSlug?: string) => [
     "doppler-environments",
+    configId,
+    projectSlug
+  ],
+  dopplerConfigs: (configId?: string, projectSlug?: string) => [
+    "doppler-configs",
     configId,
     projectSlug
   ]
@@ -303,6 +309,22 @@ export const useGetDopplerEnvironments = (configId?: string, projectSlug?: strin
         }
       );
       return data.environments;
+    },
+    enabled: !!configId && !!projectSlug
+  });
+};
+
+export const useGetDopplerConfigs = (configId?: string, projectSlug?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.dopplerConfigs(configId, projectSlug),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ configs: TDopplerConfig[] }>(
+        "/api/v3/external-migration/doppler/doppler-configs",
+        {
+          params: { configId, projectSlug }
+        }
+      );
+      return data.configs;
     },
     enabled: !!configId && !!projectSlug
   });

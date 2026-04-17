@@ -55,6 +55,14 @@ export type TDopplerEnvironment = {
   project: string;
 };
 
+export type TDopplerConfig = {
+  name: string;
+  root: boolean;
+  locked: boolean;
+  environment: string;
+  project: string;
+};
+
 export type TImportDopplerSecretsDTO = {
   configId: string;
   dopplerProject: string;
