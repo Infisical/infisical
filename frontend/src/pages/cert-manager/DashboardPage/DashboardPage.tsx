@@ -28,12 +28,10 @@ export const DashboardPage = () => {
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const [trendRange, setTrendRange] = useState("30d");
-
   const { data: stats, isPending: isStatsLoading } = useGetCertDashboardStats(
     currentProject?.id || ""
   );
   const { data: trendData } = useGetCertActivityTrend(currentProject?.id || "", trendRange);
-
   const navigateToInventory = useCallback(
     (filters: Record<string, string | undefined>) => {
       navigate({
@@ -48,11 +46,9 @@ export const DashboardPage = () => {
     },
     [navigate, currentProject]
   );
-
   if (!currentProject) {
     return <PageLoader />;
   }
-
   return (
     <div className="h-full bg-bunker-800">
       <Helmet>

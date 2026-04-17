@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
-import { PanelLeftIcon } from "lucide-react";
+import { ChevronDown, PanelLeftIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { IconButton } from "../IconButton";
@@ -504,6 +504,94 @@ function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div"
   );
 }
 
+function SidebarCollapsibleGroup({
+  label,
+  collapsedLabel,
+  defaultOpen = true,
+  children,
+  className
+}: {
+  label: string;
+  /** Short label shown when the sidebar is collapsed. Defaults to initials of the label. */
+  collapsedLabel?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = state === "collapsed" && !isMobile;
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const previousHasActiveChildRef = React.useRef<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (isCollapsed) return;
+    const hasActiveChild = !!contentRef.current?.querySelector('[data-active="true"]');
+    const previous = previousHasActiveChildRef.current;
+    if (hasActiveChild && previous !== true && !isOpen) {
+      setIsOpen(true);
+    }
+    previousHasActiveChildRef.current = hasActiveChild;
+  });
+
+  const abbreviation =
+    collapsedLabel ||
+    label
+      .split(" ")
+      .map((w) => w[0])
+      .join("");
+
+  return (
+    <SidebarGroup className={cn(isCollapsed ? "mt-1" : "mt-3", className)}>
+      {isCollapsed ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center justify-center py-1">
+              <span
+                className={cn(
+                  "flex h-6 min-w-2 items-center justify-center rounded-md px-1 text-[0.65rem] font-bold text-muted/60 uppercase"
+                )}
+              >
+                {abbreviation}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="center">
+            {label}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="flex h-7 shrink-0 cursor-pointer items-center gap-1 px-4 text-[0.65rem] font-semibold tracking-wide text-muted/60 outline-hidden transition-colors select-none hover:text-muted focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          <span className="truncate uppercase">{label}</span>
+          <ChevronDown
+            className={cn(
+              "size-3 shrink-0 transition-transform duration-200",
+              !isOpen && "-rotate-90"
+            )}
+          />
+        </button>
+      )}
+      <div
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...(!isCollapsed && !isOpen ? { inert: "" as any } : {})}
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
+          isCollapsed || isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div ref={contentRef} className="overflow-hidden">
+          {children}
+        </div>
+      </div>
+    </SidebarGroup>
+  );
+}
+
 function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
@@ -737,6 +825,7 @@ function SidebarMenuSubButton({
 
 export {
   Sidebar,
+  SidebarCollapsibleGroup,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,

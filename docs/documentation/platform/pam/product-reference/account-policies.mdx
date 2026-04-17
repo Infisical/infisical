@@ -87,6 +87,12 @@ Patterns use standard regular expression syntax. Some examples:
   Patterns are matched as regular expressions against the full command (for command blocking) or session log content (for session log masking). Test your patterns carefully to avoid overly broad matches.
 </Info>
 
+<Note>
+  Command blocking helps prevent unintended or careless commands from reaching the target, adding a guardrail in front of systems where direct controls on the target resource aren't available.
+
+  Because matches are evaluated with regular expressions, patterns need to cover the different ways a command might be typed, and exhaustive coverage of every variation is difficult to guarantee in practice. It is highly recommended to pair command blocking with target-side controls like restricted shells or `sudoers` rules where those are available.
+</Note>
+
 ## FAQ
 
 <AccordionGroup>
