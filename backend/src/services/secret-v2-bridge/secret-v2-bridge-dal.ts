@@ -1182,6 +1182,18 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   ) => {
     if (secretKeys.length === 0) return [];
     try {
+      // Delete destination overrides for the same keys to prevent duplicates.
+      // This ensures source overrides replace any pre-existing destination overrides
+      // and maintains the one-override-per-user/key assumption.
+      await (tx || db)(TableName.SecretV2)
+        .where({
+          folderId: destinationFolderId,
+          type: SecretType.Personal
+        })
+        .whereIn("key", secretKeys)
+        .delete();
+
+      // Move source overrides to destination folder.
       const movedSecrets = await (tx || db)(TableName.SecretV2)
         .where({
           folderId: sourceFolderId,

@@ -125,6 +125,7 @@ describe("movePersonalOverrides", () => {
     txChain.where = vi.fn().mockReturnValue(txChain);
     txChain.whereIn = vi.fn().mockReturnValue(txChain);
     txChain.update = vi.fn().mockReturnValue(txChain);
+    txChain.delete = vi.fn().mockReturnValue(txChain);
     txChain.returning = vi.fn().mockResolvedValue([]);
 
     const tx = vi.fn().mockReturnValue(txChain);
@@ -148,6 +149,45 @@ describe("movePersonalOverrides", () => {
     expect(tx).toHaveBeenCalledWith(TableName.SecretV2);
     // db should NOT have been called for this query
     expect(db).not.toHaveBeenCalledWith(TableName.SecretV2);
+  });
+
+  test("should delete conflicting destination overrides before moving source overrides", async () => {
+    const { db, chain } = createMockDb();
+
+    const movedOverrides = [
+      { id: "source-override-1", key: "API_URL", type: SecretType.Personal, folderId: "dest-folder", userId: "user-1" }
+    ];
+    chain.returning.mockResolvedValue(movedOverrides);
+    chain.delete.mockReturnValue(chain);
+
+    const mockKeyStore = {
+      pgIncrementBy: vi.fn(),
+      deleteItem: vi.fn()
+    } as any;
+
+    const dal = secretV2BridgeDALFactory({ db: db as any, keyStore: mockKeyStore });
+
+    const result = await dal.movePersonalOverrides("source-folder", "dest-folder", ["API_URL"]);
+
+    // Verify delete was called on destination first
+    const { calls } = (chain.where as any).mock;
+    // First call: delete destination overrides
+    expect(calls[0][0]).toEqual({
+      folderId: "dest-folder",
+      type: SecretType.Personal
+    });
+    // Second call: move source overrides
+    expect(calls[1][0]).toEqual({
+      folderId: "source-folder",
+      type: SecretType.Personal
+    });
+
+    // Verify delete was called
+    expect(chain.delete).toHaveBeenCalled();
+    // Verify update was called
+    expect(chain.update).toHaveBeenCalledWith({ folderId: "dest-folder" });
+    // Verify result is the moved overrides
+    expect(result).toEqual(movedOverrides);
   });
 
   test("should return empty array when no personal overrides exist for given keys", async () => {
