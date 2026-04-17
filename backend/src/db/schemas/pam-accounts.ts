@@ -25,8 +25,8 @@ export const PamAccountsSchema = z.object({
   requireMfa: z.boolean().default(false).nullable().optional(),
   internalMetadata: z.unknown().nullable().optional(),
   discoveryFingerprint: z.string().nullable().optional(),
-  domainId: z.string().uuid().nullable().optional(),
-  policyId: z.string().uuid().nullable().optional()
+  policyId: z.string().uuid().nullable().optional(),
+  domainId: z.string().uuid().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;
