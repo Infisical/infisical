@@ -49,7 +49,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     let isRetrying = false;
     let totalDeletedCount = 0;
 
-    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) => {
+    // Query for revoked and exceeded usage tokens (these use indexes correctly)
+    const getRevokedAndExceededQuery = (dbClient: Knex | Knex.Transaction) => {
       const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
@@ -65,23 +66,33 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         )
         .select("id");
 
-      const expiredTTLQuery = dbClient(TableName.IdentityAccessToken)
+      return dbClient
+        .select("id")
+        .from(revokedTokensQuery.unionAll(exceededUsageLimitQuery).as("revoked_and_exceeded"))
+        .distinct();
+    };
+
+    // Query for TTL-expired tokens - run separately with ORDER BY + LIMIT to force index usage.
+    // WHY ORDER BY: PostgreSQL's planner cannot accurately estimate selectivity for
+    // "(expression) < NOW()" because NOW() is volatile and there's no histogram for computed expressions.
+    // Adding ORDER BY on the indexed expression forces an Index Scan because the index is already sorted.
+    // The ORDER BY must be at the same level as LIMIT to work.
+    const getExpiredTTLQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) => {
+      return dbClient(TableName.IdentityAccessToken)
         .where("accessTokenTTL", ">", 0)
         .andWhereRaw(
           `
-            -- Check if the token's effective expiration time has passed.
-            -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
             (COALESCE(
-              "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
-              "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
-            ) AT TIME ZONE 'UTC')                                            -- Convert to UTC so that it can be an immutable function for our expression index
+              "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt",
+              "${TableName.IdentityAccessToken}"."createdAt"
+            ) AT TIME ZONE 'UTC')
             + make_interval(
                 secs => LEAST(
-                  "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
-                  ?                                                         -- Capped by MAX_TTL (parameterized value)
+                  "${TableName.IdentityAccessToken}"."accessTokenTTL",
+                  ?
                 )
               )
-            < ?::timestamptz AT TIME ZONE 'UTC'                             -- Check if the calculated time is before now (cast to UTC timestamp for comparison)
+            < ?::timestamptz AT TIME ZONE 'UTC'
             `,
           [MAX_TTL, nowTimestamp]
         )
@@ -98,24 +109,13 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
               )`
         )
         .select("id");
-
-      // Notice: we broken down the query into multiple queries and union them to avoid index usage issues.
-      //         each query got their own index for better performance, therefore, if you want to change
-      //         the query, you need to update the indexes accordingly to avoid performance regressions.
-      return dbClient
-        .select("id")
-        .from(revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery).as("all_expired_tokens"))
-        .distinct();
     };
 
+    // Delete revoked and exceeded usage tokens first (these use indexes correctly)
     do {
       try {
         const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
-          // The default random_page_cost is 4.0, which is too high for this query.
-          // With SSD powered database, random access is way faster.
-          // We set it to 1.1 to make the query opt for random access and thus more likely to use the index.
-          await dbClient.raw(`SET LOCAL random_page_cost = 1.1`);
-          const idsToDeleteQuery = getExpiredTokensQuery(dbClient, now).limit(BATCH_SIZE);
+          const idsToDeleteQuery = getRevokedAndExceededQuery(dbClient).limit(BATCH_SIZE);
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
@@ -130,15 +130,53 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           });
         }
 
-        numberOfRetryOnFailure = 0; // reset
+        numberOfRetryOnFailure = 0;
         totalDeletedCount += deletedTokenIds.length;
       } catch (error) {
         numberOfRetryOnFailure += 1;
-        logger.error(error, "Failed to delete a batch of expired identity access tokens on pruning");
+        logger.error(error, "Failed to delete revoked/exceeded tokens on pruning");
       } finally {
         // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => {
-          setTimeout(resolve, 500); // time to breathe for db
+          setTimeout(resolve, 500);
+        });
+      }
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedTokenIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+
+    // Reset for TTL deletion
+    numberOfRetryOnFailure = 0;
+    isRetrying = false;
+
+    // Delete TTL-expired tokens separately with ORDER BY + LIMIT to force index usage
+    do {
+      try {
+        const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
+          // ORDER BY + LIMIT at the same level forces PostgreSQL to use the index
+          const idsToDeleteQuery = getExpiredTTLQuery(dbClient, now).limit(BATCH_SIZE);
+          return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
+        };
+
+        if (tx) {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await deleteBatch(tx);
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await db.transaction(async (trx) => {
+            await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
+            return deleteBatch(trx);
+          });
+        }
+
+        numberOfRetryOnFailure = 0;
+        totalDeletedCount += deletedTokenIds.length;
+      } catch (error) {
+        numberOfRetryOnFailure += 1;
+        logger.error(error, "Failed to delete TTL-expired tokens on pruning");
+      } finally {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 500);
         });
       }
       isRetrying = numberOfRetryOnFailure > 0;
