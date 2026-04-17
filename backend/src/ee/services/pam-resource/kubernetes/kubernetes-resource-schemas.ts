@@ -36,8 +36,15 @@ export const KubernetesServiceAccountTokenCredentialsSchema = z.object({
   serviceAccountToken: z.string().trim().max(10000)
 });
 
+export const KubernetesGatewayAuthCredentialsSchema = z.object({
+  authMethod: z.literal(KubernetesAuthMethod.GatewayKubernetesAuth),
+  namespace: z.string().trim().min(1).max(63),
+  serviceAccountName: z.string().trim().min(1).max(253)
+});
+
 export const KubernetesAccountCredentialsSchema = z.discriminatedUnion("authMethod", [
-  KubernetesServiceAccountTokenCredentialsSchema
+  KubernetesServiceAccountTokenCredentialsSchema,
+  KubernetesGatewayAuthCredentialsSchema
 ]);
 
 export const KubernetesResourceSchema = BaseKubernetesResourceSchema.extend({
@@ -51,6 +58,11 @@ export const SanitizedKubernetesResourceSchema = BaseKubernetesResourceSchema.ex
     .discriminatedUnion("authMethod", [
       z.object({
         authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken)
+      }),
+      z.object({
+        authMethod: z.literal(KubernetesAuthMethod.GatewayKubernetesAuth),
+        namespace: z.string(),
+        serviceAccountName: z.string()
       })
     ])
     .nullable()
@@ -85,6 +97,11 @@ export const SanitizedKubernetesAccountWithResourceSchema = BasePamAccountSchema
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
       authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken)
+    }),
+    z.object({
+      authMethod: z.literal(KubernetesAuthMethod.GatewayKubernetesAuth),
+      namespace: z.string(),
+      serviceAccountName: z.string()
     })
   ])
 });

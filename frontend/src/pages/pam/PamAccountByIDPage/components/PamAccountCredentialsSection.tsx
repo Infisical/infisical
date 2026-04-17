@@ -13,7 +13,13 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import { PamResourceType, TPamAccount, TWindowsAccount } from "@app/hooks/api/pam";
+import {
+  KubernetesAuthMethod,
+  PamResourceType,
+  TKubernetesCredentials,
+  TPamAccount,
+  TWindowsAccount
+} from "@app/hooks/api/pam";
 import { TPamAccountCredentialsResponse } from "@app/hooks/api/pam/queries";
 import { TAwsIamCredentials } from "@app/hooks/api/pam/types/aws-iam-resource";
 import { TBaseSqlCredentials } from "@app/hooks/api/pam/types/shared/sql-resource";
@@ -103,6 +109,20 @@ const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirect
   );
 };
 
+const KubernetesCredentialsContent = ({ credentials }: { credentials: TKubernetesCredentials }) => {
+  if (credentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth) {
+    return (
+      <>
+        <CopyableField label="Namespace" value={credentials.namespace} />
+        <CopyableField label="Service Account Name" value={credentials.serviceAccountName} />
+      </>
+    );
+  }
+
+  // ServiceAccountToken: no non-sensitive fields (token is behind the reveal gate)
+  return null;
+};
+
 const CredentialsContent = ({ account }: { account: TPamAccount }) => {
   if (account.domain) {
     switch (account.domain.domainType) {
@@ -133,6 +153,10 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
       return <AwsIamCredentialsContent credentials={account.credentials as TAwsIamCredentials} />;
     case PamResourceType.Windows:
       return <WindowsCredentialsContent account={account as TWindowsAccount} />;
+    case PamResourceType.Kubernetes:
+      return (
+        <KubernetesCredentialsContent credentials={account.credentials as TKubernetesCredentials} />
+      );
     default:
       return null;
   }
@@ -249,6 +273,13 @@ const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
       return [];
     }
 
+    case PamResourceType.Kubernetes: {
+      const { authMethod } = account.credentials as TKubernetesCredentials;
+      if (authMethod === KubernetesAuthMethod.ServiceAccountToken)
+        return [{ key: "serviceAccountToken", label: "Service Account Token", multiline: true }];
+      return [];
+    }
+
     default:
       return [];
   }
@@ -294,11 +325,7 @@ const RevealedCredentials = ({
 export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
   const { state, startReveal, reset } = useCredentialsReveal(account.id);
 
-  if (
-    Object.keys(account.credentials).length <= 0 ||
-    [PamResourceType.Kubernetes].includes(account.resource?.resourceType as PamResourceType)
-  )
-    return null;
+  if (Object.keys(account.credentials).length <= 0) return null;
 
   const sensitiveFieldDefs = getSensitiveFieldDefs(account);
   const hasSensitiveFields = sensitiveFieldDefs.length > 0;

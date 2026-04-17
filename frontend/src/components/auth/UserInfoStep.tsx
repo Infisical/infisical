@@ -21,6 +21,7 @@ import {
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
+import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
@@ -130,7 +131,8 @@ export default function UserInfoStep({
       firstName: formData.name.split(" ")[0],
       lastName: formData.name.split(" ").slice(1).join(" "),
       organizationName: formData.organizationName || undefined,
-      attributionSource: formData.attributionSource
+      attributionSource: formData.attributionSource,
+      hubspotUtk: getHubSpotUtk()
     });
 
     SecurityClient.setSignupToken("");
