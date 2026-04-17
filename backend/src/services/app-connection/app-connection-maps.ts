@@ -89,7 +89,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
   [AppConnection.Stripe]: "Stripe",
   [AppConnection.HpeIloRedFish]: "HPE iLO",
-  [AppConnection.Coolify] = "Coolify",
+  [AppConnection.Coolify]: "Coolify"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
