@@ -267,19 +267,24 @@ export const CmekTable = () => {
             {(isAllowed) => (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="ml-2"
-                    size="xs"
-                    onClick={handleBulkExport}
-                    isDisabled={!isAllowed}
-                    isPending={bulkExportMutation.isPending}
-                  >
-                    <FontAwesomeIcon icon={faDownload} className="mr-1" />
-                    Export
-                  </Button>
+                  <span className="ml-2">
+                    <Button
+                      variant="project"
+                      size="xs"
+                      onClick={handleBulkExport}
+                      isDisabled={!isAllowed}
+                      isPending={bulkExportMutation.isPending}
+                    >
+                      <FontAwesomeIcon icon={faDownload} className="mr-1" />
+                      Export
+                    </Button>
+                  </span>
                 </TooltipTrigger>
-                <TooltipContent>Export all selected keys as a JSON file</TooltipContent>
+                <TooltipContent>
+                  {isAllowed
+                    ? "Export all selected keys as a JSON file"
+                    : "You don't have permission to export keys"}
+                </TooltipContent>
               </Tooltip>
             )}
           </ProjectPermissionCan>
@@ -320,7 +325,6 @@ export const CmekTable = () => {
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
-                  setSelectedKeyIds([]);
                 }}
                 placeholder="Search keys by name..."
               />
@@ -431,11 +435,16 @@ export const CmekTable = () => {
                             variant="project"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedKeyIds((prev) => {
-                                if (isSelected) return prev.filter((k) => k !== id);
-                                if (prev.length >= 100) return prev;
-                                return [...prev, id];
-                              });
+                              if (!isSelected && selectedKeyIds.length >= 100) {
+                                createNotification({
+                                  text: "Cannot select more than 100 keys at once",
+                                  type: "error"
+                                });
+                                return;
+                              }
+                              setSelectedKeyIds((prev) =>
+                                isSelected ? prev.filter((k) => k !== id) : [...prev, id]
+                              );
                             }}
                           />
                         </UnstableTableCell>
@@ -593,10 +602,7 @@ export const CmekTable = () => {
               count={totalCount}
               page={page}
               perPage={perPage}
-              onChangePage={(newPage) => {
-                setPage(newPage);
-                setSelectedKeyIds([]);
-              }}
+              onChangePage={setPage}
               onChangePerPage={handlePerPageChange}
             />
           )}
