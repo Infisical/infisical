@@ -85,6 +85,18 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `,
           [MAX_TTL, nowTimestamp]
         )
+        .orderByRaw(
+          `(COALESCE(
+              "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt",
+              "${TableName.IdentityAccessToken}"."createdAt"
+            ) AT TIME ZONE 'UTC')
+            + make_interval(
+                secs => LEAST(
+                  "${TableName.IdentityAccessToken}"."accessTokenTTL",
+                  ${MAX_TTL}
+                )
+              )`
+        )
         .select("id");
 
       // Notice: we broken down the query into multiple queries and union them to avoid index usage issues.
