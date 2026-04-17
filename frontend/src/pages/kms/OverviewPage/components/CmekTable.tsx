@@ -181,6 +181,11 @@ export const CmekTable = () => {
   };
 
   const handleBulkExport = async () => {
+    if (selectedKeyIds.length > 100) {
+      createNotification({ text: "Cannot export more than 100 keys at once", type: "error" });
+      return;
+    }
+
     const { keys: exportedKeys } = await bulkExportMutation.mutateAsync({
       keyIds: selectedKeyIds
     });
@@ -354,9 +359,10 @@ export const CmekTable = () => {
                             prev.filter((id) => !keys.find((k) => k.id === id))
                           );
                         } else {
-                          setSelectedKeyIds((prev) => [
-                            ...new Set([...prev, ...keys.map((k) => k.id)])
-                          ]);
+                          setSelectedKeyIds((prev) => {
+                            const merged = [...new Set([...prev, ...keys.map((k) => k.id)])];
+                            return merged.slice(0, 100);
+                          });
                         }
                       }}
                     />
@@ -425,9 +431,11 @@ export const CmekTable = () => {
                             variant="project"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedKeyIds((prev) =>
-                                isSelected ? prev.filter((k) => k !== id) : [...prev, id]
-                              );
+                              setSelectedKeyIds((prev) => {
+                                if (isSelected) return prev.filter((k) => k !== id);
+                                if (prev.length >= 100) return prev;
+                                return [...prev, id];
+                              });
                             }}
                           />
                         </UnstableTableCell>
