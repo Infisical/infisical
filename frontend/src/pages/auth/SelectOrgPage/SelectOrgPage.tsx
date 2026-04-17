@@ -190,6 +190,11 @@ export const SelectOrgPage = () => {
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
     } catch (error: any) {
+      if (error?.response?.data?.error === "SmtpError") {
+        // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
+        await handleLogout();
+        return;
+      }
       const message = error?.response?.data?.message || "Failed to select organization.";
       createNotification({ text: message, type: "error" });
       return;
@@ -235,6 +240,7 @@ export const SelectOrgPage = () => {
       navigate({ to: "/cli-redirect" });
     } else {
       setAuthToken(token);
+      createNotification({ text: "Successfully logged in", type: "success" });
       navigateUserToOrg({ navigate, organizationId: targetOrgId });
     }
   };

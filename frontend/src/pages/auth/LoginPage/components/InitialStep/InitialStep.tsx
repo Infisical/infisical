@@ -188,10 +188,6 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
       if (isLoginSuccessful) {
         saveLastLogin({ method: LoginMethod.EMAIL });
         navigateToSelectOrganization(callbackPort || undefined, isAdmin);
-        createNotification({
-          text: "Successfully logged in",
-          type: "success"
-        });
       } else {
         handleLoginFailure();
       }
