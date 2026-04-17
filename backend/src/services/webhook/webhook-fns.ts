@@ -293,7 +293,7 @@ export const fnTriggerWebhook = async ({
 }: TFnTriggerWebhookDTO) => {
   const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, filteredEvents }) => {
-    const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || !filteredEvents.includes(event.type);
+    const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || filteredEvents.includes(event.type);
 
     return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
   });

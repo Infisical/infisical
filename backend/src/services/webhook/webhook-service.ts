@@ -13,6 +13,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { decryptWebhookDetails, getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
+  SUBSCRIBABLE_WEBHOOK_EVENTS,
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
   TListWebhookDTO,
@@ -39,14 +40,17 @@ export const webhookServiceFactory = ({
   projectDAL,
   kmsService
 }: TWebhookServiceFactoryDep) => {
+  const subscribableEvents = new Set<string>(SUBSCRIBABLE_WEBHOOK_EVENTS);
+
   // `eventsFilter` on the API mirrors the DB's `filteredEvents` column: both are the blocklist
   // of events that should NOT trigger the webhook. Empty array => no events are filtered out
-  // (webhook fires on everything subscribable).
+  // (webhook fires on everything subscribable). Stale DB values that aren't in the current enum
+  // (e.g. legacy empty strings) are dropped so the response stays valid against the zod schema.
   const withEventsFilter = <T extends { filteredEvents?: string[] | null }>(webhook: T) => ({
     ...webhook,
-    eventsFilter: (webhook.filteredEvents ?? []).map((eventName) => ({
-      eventName: eventName as TSubscribableWebhookEvent
-    }))
+    eventsFilter: (webhook.filteredEvents ?? [])
+      .filter((eventName): eventName is TSubscribableWebhookEvent => subscribableEvents.has(eventName))
+      .map((eventName) => ({ eventName }))
   });
 
   const createWebhook = async ({

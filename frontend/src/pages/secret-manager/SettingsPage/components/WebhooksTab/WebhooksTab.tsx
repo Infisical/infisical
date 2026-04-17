@@ -68,8 +68,8 @@ export const WebhooksTab = withProjectPermission(
     const { mutateAsync: deleteWebhook } = useDeleteWebhook();
 
     const handleWebhookCreate = async (data: TFormSchema) => {
-      // eventsFilter is the blocklist of events to filter OUT
-      const eventsFilter = WEBHOOK_EVENTS.filter((event) => !data.enabledEvents[event]).map(
+      // eventsFilter is the allowlist of events to trigger on
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => data.enabledEvents[event]).map(
         (event) => ({ eventName: event })
       );
 
@@ -101,8 +101,8 @@ export const WebhooksTab = withProjectPermission(
       webhookId: string,
       settings: Record<WebhookEvent, boolean>
     ) => {
-      // eventsFilter is the blocklist — every unchecked event goes in.
-      const eventsFilter = WEBHOOK_EVENTS.filter((event) => !settings[event]).map((event) => ({
+      // eventsFilter is the allowlist — every checked event goes in.
+      const eventsFilter = WEBHOOK_EVENTS.filter((event) => settings[event]).map((event) => ({
         eventName: event
       }));
 
@@ -208,10 +208,15 @@ export const WebhooksTab = withProjectPermission(
                       lastRunErrorMessage
                     } = webhook;
 
+                    // eventsFilter is the allowlist — empty means every event is enabled.
                     const filteredSet = new Set(webhook.eventsFilter.map((e) => e.eventName));
-                    const enabledEvents = WEBHOOK_EVENTS.filter((event) => !filteredSet.has(event));
+                    const enabledEvents =
+                      webhook.eventsFilter.length === 0
+                        ? [...WEBHOOK_EVENTS]
+                        : WEBHOOK_EVENTS.filter((event) => filteredSet.has(event));
                     const enabledEventsCount = enabledEvents.length;
                     const hasEnabledEvents = enabledEventsCount > 0;
+                    const allEventsEnabled = enabledEventsCount === WEBHOOK_EVENTS.length;
 
                     return (
                       <Tr key={id}>
@@ -238,10 +243,12 @@ export const WebhooksTab = withProjectPermission(
                               )
                             }
                           >
-                            <Badge variant={hasEnabledEvents ? "success" : "danger"}>
-                              {hasEnabledEvents
-                                ? `${enabledEventsCount} Event${enabledEventsCount === 1 ? "" : "s"}`
-                                : "No Events"}
+                            <Badge variant="neutral">
+                              {allEventsEnabled && "All Events"}
+                              {!hasEnabledEvents && "No Events"}
+                              {hasEnabledEvents &&
+                                !allEventsEnabled &&
+                                `${enabledEventsCount} Event${enabledEventsCount === 1 ? "" : "s"}`}
                             </Badge>
                           </Tooltip>
                         </Td>
