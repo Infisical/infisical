@@ -3,6 +3,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
@@ -98,6 +99,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         }
 
         setAuthToken(result.token);
+        createNotification({ text: "Successfully logged in", type: "success" });
         throw redirect({
           to: "/organizations/$orgId/projects",
           params: { orgId }
@@ -112,7 +114,9 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
       // never fires for it — surface SMTP errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {
-        const response = (error as { response?: { data?: { error?: string; message?: string } } }).response;
+        const { response } = error as {
+          response?: { data?: { error?: string; message?: string } };
+        };
         if (response?.data?.error === "SmtpError") {
           onRequestError(error);
           // We can't use the useLogoutUser hook here (beforeLoad runs outside React),
@@ -123,7 +127,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
           // - logoutUser() invalidates the session on the server.
           setAuthToken("");
           context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-          await logoutUser();
+          await logoutUser().catch(() => {}); // best-effort — redirect must always fire
           throw redirect({ to: "/login" });
         }
       }
