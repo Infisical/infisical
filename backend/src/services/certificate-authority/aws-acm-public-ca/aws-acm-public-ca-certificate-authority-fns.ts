@@ -601,12 +601,25 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     }
 
     const passphrase = generateAcmPassphrase();
-    const exportResult = await acmClient.send(
-      new ExportCertificateCommand({
-        CertificateArn: certificateArn,
-        Passphrase: Buffer.from(passphrase, "utf8")
-      })
-    );
+    let exportResult;
+    try {
+      exportResult = await acmClient.send(
+        new ExportCertificateCommand({
+          CertificateArn: certificateArn,
+          Passphrase: Buffer.from(passphrase, "utf8")
+        })
+      );
+    } catch (error) {
+      // Right after RenewCertificate succeeds, ACM sometimes hasn't fully established the export
+      // relation for the renewed cert body yet and returns "must have at least one relation of type
+      // EXPORT". This is transient — let the queue retry loop handle it.
+      if (error instanceof Error && /relation of type EXPORT/i.test(error.message)) {
+        throw new AcmValidationPendingError(
+          `AWS ACM export not yet available for ${certificateArn} (${error.message}) — will retry`
+        );
+      }
+      throw error;
+    }
 
     if (!exportResult.Certificate || !exportResult.PrivateKey) {
       throw new BadRequestError({
