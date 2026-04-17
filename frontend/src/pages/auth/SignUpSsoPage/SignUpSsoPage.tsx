@@ -19,6 +19,8 @@ import {
   UnstableCardTitle
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 
@@ -87,12 +89,18 @@ export const SignupSsoPage = () => {
   const handleSubmit = async () => {
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
-      code
+      code,
+      hubspotUtk: getHubSpotUtk()
     });
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(accessToken);
     const { organizationId } = jwtDecode(accessToken) as { organizationId?: string };
+
+    if (isInfisicalCloud()) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "signup_completed" });
+    }
 
     createNotification({
       text: "Successfully verified",
