@@ -114,14 +114,59 @@ Expected flow:
 - Bridge terminates inbound TLS, connects to the Windows target, injects creds, bridges
 - Browser gets the page we scaffolded (`PamWindowsRdpPage`)
 
-### Current scaffold limitations you will hit in path B
+### Architecture for the browser flow
 
-The frontend scaffold at `frontend/src/pages/pam/PamAccountAccessPage/PamWindowsRdpPage.tsx` opens the WebSocket but **does not drive the RDP protocol yet**. The canvas will be blank. Browser rendering requires:
+Both CLI and browser flows converge inside the gateway into the same
+MITM + credential-injection + event-tap pipeline. The difference is
+how the gateway gets to that point:
 
-1. IronRDP WASM client vendored into the frontend (see `useRdpSession.ts` TODOs)
-2. Backend web-access WebSocket bridge adjusted to carry raw bytes for RDP (currently wraps everything in a JSON envelope designed for xterm)
+- **CLI**: mstsc speaks raw RDP (TPKT starts with 0x03). Gateway acts as
+  an RDP server, does its own X.224 + TLS, moves to active phase.
+- **Browser**: the vendored IronRDP WASM client speaks RDCleanPath
+  (ASN.1 SEQUENCE starts with 0x30). Gateway parses the Request, does
+  the target-side X.224 + TLS itself, sends the Response with cert
+  chain, then enters the same active-phase logic.
 
-For now, path B only validates the **gateway + backend** half. To see a working desktop end-to-end you still have to use path A until the browser client is wired up (Phase 4).
+The backend (pam-windows-rdp-session-handler) is a thin WebSocket ↔
+gateway-tunnel byte-pump for both flows. No protocol parsing on the
+backend. All RDP protocol work stays in one place (Rust bridge), which
+keeps session recording and credential injection centralized.
+
+### Current status of the browser flow
+
+Implemented:
+- Frontend: vendored ironrdp-web WASM + useRdpSession hook + Windows
+  dispatch on the access page.
+- Backend: Windows session handler that byte-pumps.
+- Gateway: auto-detects RDCleanPath vs raw RDP on first byte. For
+  RDCleanPath it parses the Request, opens the target, does X.224 +
+  TLS, sends the Response.
+
+Not implemented yet (blocks end-to-end browser rendering):
+- Post-RDCleanPath active-phase bridge in the gateway. After the
+  Response is sent, the session needs:
+  1. An acceptor-like state machine on the client side already past
+     X.224 + TLS (RDCleanPath did both), ready for the client's
+     CredSSP + Basic Settings Exchange.
+  2. A connector state on the target side already past TLS (we just
+     did it), ready to do CredSSP with vaulted credentials.
+  3. The existing event-tap bridge loop once both sides hit active.
+  IronRDP's Acceptor doesn't expose a "start from post-TLS" entry
+  point, so this needs either a narrow fork or a custom state machine
+  built from the lower-level primitives.
+
+- Frontend credential placeholder: once the active-phase bridge lands,
+  the browser's SessionBuilder just needs to use fixed placeholder
+  credentials (e.g., "infisical"/"infisical"). The gateway substitutes
+  them with vaulted credentials during its target-side CredSSP. The
+  browser never sees real creds, matching the CLI flow's security
+  story.
+
+For now, path B validates everything up through the RDCleanPath
+handshake completing successfully (Rust bridge logs "Response sent,
+handshake complete"). The session then fails cleanly because the
+active-phase bridge isn't wired. Use path A for a full working
+session today.
 
 ## Debugging tips
 
@@ -144,8 +189,18 @@ Run `go generate ./packages/pam/handlers/rdp/...` before `go build`. See `packag
 
 ## What's proven vs not proven
 
-- ✅ Path A: the protocol bridge + credential injection + event capture
-- ✅ Path B up to the gateway: handler wired, dispatcher routes, creds pulled
-- ⚠️ Path B browser rendering: scaffolded but not functional (see Phase 4 TODOs)
-- ⚠️ Session recording persistence: should work via the existing uploader path; verify by inspecting `encryptedLogsBlob` / batch endpoints after a session
+- ✅ Path A: protocol bridge + credential injection + event capture + FreeRDP rendering
+- ✅ Path B, CLI-reaching-gateway portion: handler wired, dispatcher routes, creds pulled
+- ✅ Path B, browser RDCleanPath handshake: Request parsed, X.224 + TLS to target, Response sent
+- ❌ Path B, browser active phase: missing (post-TLS acceptor hand-off + CredSSP bridge)
+- ⚠️ Session recording persistence: should work via existing uploader; verify with `encryptedLogsBlob` after a completed CLI session
 - ❌ Playback UI: Phase 5, nothing exists yet
+
+## What's left to see a Windows desktop in a browser
+
+One concrete block of work: the **post-RDCleanPath active-phase bridge**
+inside the Rust gateway (see rdcleanpath.rs TODO). Once that lands,
+the frontend just needs placeholder credentials on SessionBuilder and
+the existing recording pipeline carries RDP events from browser sessions
+as well. No backend, frontend, or architecture changes expected past
+that point.
