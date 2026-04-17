@@ -103,7 +103,7 @@ export const KpiCards = ({ stats, onNavigate }: Props) => {
         return (
           <UnstableCard
             key={card.key}
-            className="min-w-[180px] flex-1 cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
+            className="h-auto min-w-[180px] flex-1 cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
             onClick={() => onNavigate(card.filters)}
           >
             <UnstableCardContent className="flex h-full flex-col p-4">
