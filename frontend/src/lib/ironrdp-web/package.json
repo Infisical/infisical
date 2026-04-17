@@ -1,0 +1,33 @@
+{
+  "name": "ironrdp-web",
+  "type": "module",
+  "collaborators": [
+    "Devolutions Inc. <infos@devolutions.net>",
+    "Teleport <goteleport.com>"
+  ],
+  "description": "WebAssembly high-level bindings targeting web browsers",
+  "version": "0.0.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Devolutions/IronRDP"
+  },
+  "files": [
+    "ironrdp_web_bg.wasm",
+    "ironrdp_web.js",
+    "ironrdp_web.d.ts"
+  ],
+  "main": "ironrdp_web.js",
+  "homepage": "https://github.com/Devolutions/IronRDP",
+  "types": "ironrdp_web.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "keywords": [
+    "rdp",
+    "remote-desktop",
+    "network",
+    "client",
+    "protocol"
+  ]
+}
