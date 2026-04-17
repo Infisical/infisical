@@ -183,7 +183,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           event: PostHogEventTypes.UserLoginV2,
           distinctId: loginDistinctId,
           properties: {
-            email: user.email ?? "",
+            email: req.body.email,
             channel: getUserAgentType(userAgent)
           }
         });
