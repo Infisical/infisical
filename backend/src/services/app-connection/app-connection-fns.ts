@@ -652,7 +652,6 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
-  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.Coolify]: platformManagedCredentialsNotSupported
 };
 
