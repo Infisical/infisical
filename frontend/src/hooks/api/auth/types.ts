@@ -105,10 +105,12 @@ export type CompleteAccountSignupDTO =
       password: string;
       attributionSource?: string;
       organizationName?: string;
+      hubspotUtk?: string;
     }
   | {
       type: "alias";
       code: string;
+      hubspotUtk?: string;
     };
 
 export type VerifySignupInviteDTO = {

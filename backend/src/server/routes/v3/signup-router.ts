@@ -106,11 +106,13 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           lastName: z.string().trim().optional(),
           attributionSource: z.string().trim().optional(),
           password: z.string(),
-          organizationName: GenericResourceNameSchema.optional()
+          organizationName: GenericResourceNameSchema.optional(),
+          hubspotUtk: z.string().trim().max(512).optional()
         }),
         z.object({
           type: z.literal(CompleteAccountType.Alias),
-          code: z.string().trim()
+          code: z.string().trim(),
+          hubspotUtk: z.string().trim().max(512).optional()
         })
       ]),
       response: {
@@ -140,7 +142,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           user.email,
           authMethod,
           user.firstName || "",
-          user.lastName || ""
+          user.lastName || "",
+          req.body.hubspotUtk
         );
       }
 
