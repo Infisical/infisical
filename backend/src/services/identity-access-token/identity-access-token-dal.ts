@@ -44,9 +44,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     const nowResult = await dbConnection.raw<{ rows: Array<{ now: Date }> }>(`SELECT NOW() AT TIME ZONE 'UTC' as now`);
     const { now } = nowResult.rows[0];
 
-    let deletedTokenIds: { id: string }[] = [];
+    let lastBatchDeletedCount = 0;
     let numberOfRetryOnFailure = 0;
-    let isRetrying = false;
     let totalDeletedCount = 0;
 
     // Query for revoked and exceeded usage tokens (these use indexes correctly)
@@ -111,6 +110,12 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         .select("id");
     };
 
+    // Continue only if the most recent attempt produced work, or we're still within the retry
+    // budget after a failure. Tracking these signals independently ensures a failed iteration
+    // cannot inherit a prior successful batch's count and bypass MAX_RETRY_ON_FAILURE.
+    const shouldContinue = () =>
+      lastBatchDeletedCount > 0 || (numberOfRetryOnFailure > 0 && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE);
+
     // Delete revoked and exceeded usage tokens first (these use indexes correctly)
     do {
       try {
@@ -119,6 +124,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
+        let deletedTokenIds: { id: string }[];
         if (tx) {
           // eslint-disable-next-line no-await-in-loop
           deletedTokenIds = await deleteBatch(tx);
@@ -130,9 +136,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           });
         }
 
-        numberOfRetryOnFailure = 0;
+        lastBatchDeletedCount = deletedTokenIds.length;
         totalDeletedCount += deletedTokenIds.length;
+        numberOfRetryOnFailure = 0;
       } catch (error) {
+        lastBatchDeletedCount = 0;
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete revoked/exceeded tokens on pruning");
       } finally {
@@ -141,12 +149,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 500);
         });
       }
-      isRetrying = numberOfRetryOnFailure > 0;
-    } while (deletedTokenIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+    } while (shouldContinue());
 
     // Reset for TTL deletion
+    lastBatchDeletedCount = 0;
     numberOfRetryOnFailure = 0;
-    isRetrying = false;
 
     // Delete TTL-expired tokens separately with ORDER BY + LIMIT to force index usage
     do {
@@ -157,6 +164,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
+        let deletedTokenIds: { id: string }[];
         if (tx) {
           // eslint-disable-next-line no-await-in-loop
           deletedTokenIds = await deleteBatch(tx);
@@ -168,9 +176,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           });
         }
 
-        numberOfRetryOnFailure = 0;
+        lastBatchDeletedCount = deletedTokenIds.length;
         totalDeletedCount += deletedTokenIds.length;
+        numberOfRetryOnFailure = 0;
       } catch (error) {
+        lastBatchDeletedCount = 0;
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete TTL-expired tokens on pruning");
       } finally {
@@ -179,8 +189,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           setTimeout(resolve, 500);
         });
       }
-      isRetrying = numberOfRetryOnFailure > 0;
-    } while (deletedTokenIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+    } while (shouldContinue());
 
     if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
       logger.error(
