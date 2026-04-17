@@ -21,6 +21,7 @@ import {
   UnstableInput
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
+import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
@@ -59,6 +60,7 @@ export default function InitialSignupStep({
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
+    preserveHubSpotUtk();
     const popup = window.open(`/api/v1/sso/redirect/${method}`);
     if (popup) {
       window.close();

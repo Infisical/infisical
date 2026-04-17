@@ -9,14 +9,8 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
-import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
-import {
-  ResetPasswordV2Type,
-  TResetPasswordV2DTO,
-  TResetPasswordViaBackupKeyDTO,
-  TSetupPasswordViaBackupKeyDTO
-} from "./auth-password-type";
+import { ResetPasswordV2Type, TResetPasswordV2DTO, TSetupPasswordViaBackupKeyDTO } from "./auth-password-type";
 import { ActorType, AuthMethod } from "./auth-type";
 
 type TAuthPasswordServiceFactoryDep = {
@@ -28,19 +22,13 @@ type TAuthPasswordServiceFactoryDep = {
 };
 
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
-export const authPaswordServiceFactory = ({
-  authDAL,
-  userDAL,
-  tokenService,
-  smtpService,
-  totpConfigDAL
-}: TAuthPasswordServiceFactoryDep) => {
-  const resetPasswordV2 = async ({ userId, newPassword, type, oldPassword }: TResetPasswordV2DTO) => {
+export const authPaswordServiceFactory = ({ userDAL, tokenService, smtpService }: TAuthPasswordServiceFactoryDep) => {
+  const resetPasswordV2 = async ({ userId, newPassword, oldPassword, type }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
 
-    const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user) {
-      throw new BadRequestError({ message: `User encryption key not found for user with ID '${userId}'` });
+    const user = await userDAL.findById(userId);
+    if (!user || !user.isAccepted || !user.isEmailVerified) {
+      throw new BadRequestError({ message: `Invalid token` });
     }
 
     if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
@@ -51,11 +39,11 @@ export const authPaswordServiceFactory = ({
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
-    // we check the old password if the user is resetting their password while logged in
     if (type === ResetPasswordV2Type.LoggedInReset) {
       if (!user.hashedPassword) {
         throw new BadRequestError({ message: "Unable to change password, no password is set" });
       }
+
       if (!oldPassword) {
         throw new BadRequestError({ message: "Current password is required." });
       }
@@ -66,76 +54,13 @@ export const authPaswordServiceFactory = ({
       }
     }
 
-    if (user.encryptionVersion !== UserEncryption.V2) {
-      throw new BadRequestError({
-        message: "Cannot reset password without current credentials or recovery method",
-        name: "Reset password"
-      });
-    }
-
     const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
 
-    await userDAL.updateUserEncryptionByUserId(userId, {
+    await userDAL.updateById(userId, {
       hashedPassword: newHashedPassword
     });
 
     await tokenService.revokeAllMySessions(userId);
-  };
-
-  /*
-   * Reset password of a user via backup key
-   * */
-  const resetPasswordByBackupKey = async ({
-    encryptedPrivateKey,
-    protectedKeyTag,
-    protectedKey,
-    protectedKeyIV,
-    salt,
-    verifier,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    userId,
-    password
-  }: TResetPasswordViaBackupKeyDTO) => {
-    const cfg = getConfig();
-
-    const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
-
-    await userDAL.updateUserEncryptionByUserId(userId, {
-      encryptionVersion: 2,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag,
-      salt,
-      verifier,
-      hashedPassword
-    });
-
-    await userDAL.updateById(userId, {
-      isLocked: false,
-      temporaryLockDateEnd: null,
-      consecutiveFailedMfaAttempts: 0
-    });
-
-    /* we reset the mobile authenticator configs of the user
-    because we want this to be one of the recovery modes from account lockout */
-    await totpConfigDAL.delete({
-      userId
-    });
-  };
-
-  const getBackupPrivateKeyOfUser = async (userId: string) => {
-    const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user || (user && !user.isAccepted)) {
-      throw new Error("Failed to find user");
-    }
-    const backupKey = await authDAL.getBackupPrivateKeyByUserId(userId);
-    if (!backupKey) throw new Error("Failed to find user backup key");
-
-    return backupKey;
   };
 
   const sendPasswordSetupEmail = async (actor: OrgServiceActor) => {
@@ -203,13 +128,10 @@ export const authPaswordServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
-      await userDAL.updateUserEncryptionByUserId(
+      await userDAL.updateById(
         actor.id,
         {
-          encryptionVersion: UserEncryption.V2,
-          hashedPassword,
-          serverPrivateKey: null,
-          clientPublicKey: null
+          hashedPassword
         },
         tx
       );
@@ -219,8 +141,6 @@ export const authPaswordServiceFactory = ({
   };
 
   return {
-    resetPasswordByBackupKey,
-    getBackupPrivateKeyOfUser,
     sendPasswordSetupEmail,
     setupPassword,
     resetPasswordV2

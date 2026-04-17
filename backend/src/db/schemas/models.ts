@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export enum TableName {
   Users = "users",
+  EmailDomains = "email_domains",
   SshHostGroup = "ssh_host_groups",
   SshHostGroupMembership = "ssh_host_group_memberships",
   SshHost = "ssh_hosts",
@@ -32,6 +33,7 @@ export enum TableName {
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
   PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
   PkiScepTransaction = "pki_scep_transactions",
+  PkiScepDynamicChallenge = "pki_scep_dynamic_challenges",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",
@@ -219,6 +221,7 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
+  GatewayEnrollmentTokens = "gateway_enrollment_tokens",
 
   KeyValueStore = "key_value_store",
 
@@ -236,6 +239,7 @@ export enum TableName {
   PamAccountDependency = "pam_account_dependencies",
   PamResourceRotationRule = "pam_resource_rotation_rules",
   PamResourceFavorite = "pam_resource_favorites",
+  PamAccountPolicy = "pam_account_policies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
@@ -256,6 +260,9 @@ export enum TableName {
 
   // PKI Cleanup
   CertificateCleanupConfig = "certificate_cleanup_configs",
+
+  // PKI Inventory Views
+  CertificateInventoryView = "certificate_inventory_views",
 
   // AI
   AiMcpServer = "ai_mcp_servers",

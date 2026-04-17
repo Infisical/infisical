@@ -245,6 +245,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
   [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
 
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR]:
+    "View Secrets Management Calendar Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
+    "View Secrets Management Access Volume Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:
+    "View Secrets Management Access Locations Insights",
+  [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
+
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
   [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
@@ -279,6 +288,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_CREATE]: "Create PAM Account",
   [EventType.PAM_ACCOUNT_UPDATE]: "Update PAM Account",
   [EventType.PAM_ACCOUNT_DELETE]: "Delete PAM Account",
+  [EventType.PAM_ACCOUNT_POLICY_CREATE]: "Create PAM Account Policy",
+  [EventType.PAM_ACCOUNT_POLICY_UPDATE]: "Update PAM Account Policy",
+  [EventType.PAM_ACCOUNT_POLICY_DELETE]: "Delete PAM Account Policy",
+  [EventType.PAM_ACCOUNT_POLICY_LIST]: "List PAM Account Policies",
+  [EventType.PAM_ACCOUNT_POLICY_GET]: "Get PAM Account Policy",
   [EventType.PAM_ACCOUNT_READ_CREDENTIALS]: "Read PAM Account Credentials",
   [EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED]: "Create PAM Web Access Session Ticket",
   [EventType.PAM_RESOURCE_LIST]: "List PAM Resources",
@@ -313,6 +327,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
+
+  [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
+  [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
+  [EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED]: "SCEP Dynamic Challenge Generated",
 
   [EventType.APPROVAL_POLICY_CREATE]: "Create Approval Policy",
   [EventType.APPROVAL_POLICY_UPDATE]: "Update Approval Policy",
@@ -427,6 +445,11 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_ACCOUNT_CREATE,
     EventType.PAM_ACCOUNT_UPDATE,
     EventType.PAM_ACCOUNT_DELETE,
+    EventType.PAM_ACCOUNT_POLICY_CREATE,
+    EventType.PAM_ACCOUNT_POLICY_UPDATE,
+    EventType.PAM_ACCOUNT_POLICY_DELETE,
+    EventType.PAM_ACCOUNT_POLICY_LIST,
+    EventType.PAM_ACCOUNT_POLICY_GET,
     EventType.PAM_ACCOUNT_READ_CREDENTIALS,
     EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED,
     EventType.PAM_RESOURCE_LIST,

@@ -40,7 +40,7 @@ export const IntegrationDetailsByIDPage = () => {
   });
 
   const { data: integration } = useGetIntegration(integrationId, {
-    refetchInterval: 4000
+    refetchInterval: 30_000
   });
 
   const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);

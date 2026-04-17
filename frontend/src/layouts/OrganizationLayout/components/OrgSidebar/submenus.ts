@@ -18,7 +18,6 @@ import {
   Key,
   Lock,
   MapPin,
-  PenTool,
   Plug,
   Route,
   ScanSearch,
@@ -190,18 +189,6 @@ export const CERT_DISCOVERY_SUBMENU: Submenu = {
   ]
 };
 
-export const CERT_CODE_SIGNING_SUBMENU: Submenu = {
-  title: "Code Signing",
-  pathSuffix: "code-signing",
-  defaultTab: "signers",
-  items: [
-    { label: "Signers", icon: PenTool, tab: "signers" },
-    { label: "Signing Requests", icon: FileCheck, tab: "signing-requests" },
-    { label: "Signing Policies", icon: Shield, tab: "signing-policies" },
-    { label: "Grants", icon: Key, tab: "grants" }
-  ]
-};
-
 export const CERT_APPROVALS_SUBMENU: Submenu = {
   title: "Approvals",
   pathSuffix: "approvals",
@@ -219,6 +206,16 @@ export const CERT_SETTINGS_SUBMENU: Submenu = {
   items: [
     { label: "General", icon: Cog, tab: "general" },
     { label: "Certificate Cleanup", icon: Trash2, tab: "certificate-cleanup" }
+  ]
+};
+
+export const CERT_INTEGRATIONS_SUBMENU: Submenu = {
+  title: "Integrations",
+  pathSuffix: "integrations",
+  defaultTab: "app-connections",
+  items: [
+    { label: "App Connections", icon: Cable, tab: "app-connections" },
+    { label: "Certificate Syncs", icon: ArrowLeftRight, tab: "pki-syncs" }
   ]
 };
 

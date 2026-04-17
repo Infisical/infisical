@@ -270,7 +270,6 @@ export const Navbar = () => {
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
-      console.log("Logging out...");
       await logout.mutateAsync();
       navigate({ to: "/login" });
     } catch (error) {
@@ -319,7 +318,7 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
+        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }

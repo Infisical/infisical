@@ -18,6 +18,8 @@ export type TOidcLoginDTO = {
   firstName: string;
   lastName?: string;
   orgId: string;
+  ip: string;
+  userAgent: string;
   callbackPort?: string;
   groups?: string[];
   manageGroupMemberships?: boolean | null;

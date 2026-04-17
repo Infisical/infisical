@@ -7,7 +7,9 @@ import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
 import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
+  AdminEmailDomain,
   RootKeyEncryptionStrategy,
+  TAdminCreateEmailDomainDTO,
   TCreateAdminUserDTO,
   TCreateOrganizationDTO,
   TInvalidateCacheDTO,
@@ -249,6 +251,43 @@ export const useGenerateUsageReport = () => {
         "/api/v1/admin/usage-report/generate"
       );
       return data;
+    }
+  });
+};
+
+export const useAdminCreateEmailDomain = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ emailDomain: AdminEmailDomain }, object, TAdminCreateEmailDomainDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post<{ emailDomain: AdminEmailDomain }>(
+        "/api/v1/admin/email-domain-management/domains",
+        dto
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getEmailDomains]
+      });
+    }
+  });
+};
+
+export const useAdminDeleteEmailDomain = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ emailDomain: AdminEmailDomain }, object, string>({
+    mutationFn: async (emailDomainId) => {
+      const { data } = await apiRequest.delete<{ emailDomain: AdminEmailDomain }>(
+        `/api/v1/admin/email-domain-management/domains/${emailDomainId}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getEmailDomains]
+      });
     }
   });
 };

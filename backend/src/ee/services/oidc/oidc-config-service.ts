@@ -14,13 +14,18 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses, matchesAllowedEmailDomain } from "@app/lib/validator";
-import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import {
+  blockLocalAndPrivateIpAddresses,
+  matchesAllowedEmailDomain,
+  sanitizeEmail,
+  validateEmail
+} from "@app/lib/validator";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -36,10 +41,11 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
+import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import {
   OIDCConfigurationType,
@@ -88,6 +94,8 @@ type TOidcConfigServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -109,7 +117,9 @@ export const oidcConfigServiceFactory = ({
   projectDAL,
   projectBotDAL,
   auditLogService,
-  kmsService
+  kmsService,
+  loginService,
+  emailDomainDAL
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -117,7 +127,7 @@ export const oidcConfigServiceFactory = ({
     });
     if (!oidcCfg) {
       throw new NotFoundError({
-        message: `OIDC configuration for organization with ID '${dto.organizationId}' not found`
+        message: "Failed to find OIDC SSO data"
       });
     }
 
@@ -173,6 +183,8 @@ export const oidcConfigServiceFactory = ({
     firstName,
     lastName,
     orgId,
+    ip,
+    userAgent,
     callbackPort,
     groups = [],
     manageGroupMemberships
@@ -185,7 +197,11 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const appCfg = getConfig();
+    // Verify that the email domain (if verified on the platform) belongs to this org
+    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const sanitizedEmail = sanitizeEmail(email);
+    validateEmail(sanitizedEmail);
+
     let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
@@ -199,6 +215,12 @@ export const oidcConfigServiceFactory = ({
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
+        // Verify the existing user's stored email domain + cross-org check
+        await verifyEmailDomainOwnership({
+          email: foundUser.username,
+          orgId,
+          emailDomainDAL
+        });
         const [orgMembership] = await orgDAL.findMembership(
           {
             [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
@@ -215,7 +237,7 @@ export const oidcConfigServiceFactory = ({
               actorUserId: userAlias.userId,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: OrgMembershipStatus.Accepted,
+              status: OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -228,15 +250,6 @@ export const oidcConfigServiceFactory = ({
             },
             tx
           );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
-            },
-            tx
-          );
         }
 
         return foundUser;
@@ -245,69 +258,19 @@ export const oidcConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
-        const usersWithSameEmail = await userDAL.find(
+        newUser = await userDAL.findOne(
           {
-            email: email.toLowerCase()
+            username: sanitizedEmail
           },
-          {
-            tx
-          }
+          tx
         );
 
-        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
-        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
-        if (verifiedEmail) {
-          newUser = verifiedEmail;
-        } else if (userWithSameUsername) {
-          newUser = userWithSameUsername;
-        }
-
         if (!newUser) {
-          // this fetches user entries created via invites
-          newUser = await userDAL.findOne(
-            {
-              username: email
-            },
-            tx
-          );
-
-          if (newUser && !newUser.isEmailVerified) {
-            // we automatically mark it as email-verified because we've configured trust for OIDC emails
-            newUser = await userDAL.updateById(newUser.id, {
-              isEmailVerified: serverCfg.trustOidcEmails
-            });
-          }
-        }
-
-        // Prevent cross-org account takeover: if an existing user was found by email,
-        // verify they are already a member of this org before binding the SSO identity.
-        // Without this check, an attacker could configure OIDC on their own org with a
-        // victim's email and get a provider token signed for the victim's userId.
-        if (newUser) {
-          const [existingMembership] = await orgDAL.findMembership(
-            {
-              [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUser.id,
-              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-            },
-            { tx }
-          );
-          if (!existingMembership) {
-            throw new ForbiddenRequestError({
-              message:
-                "User is not a member of this organization. Please contact your organization admin to receive an invite."
-            });
-          }
-        }
-
-        if (!newUser) {
-          const uniqueUsername = await normalizeUsername(externalId, userDAL);
           newUser = await userDAL.create(
             {
-              email,
+              email: sanitizedEmail,
               firstName,
-              isEmailVerified: serverCfg.trustOidcEmails,
-              username: serverCfg.trustOidcEmails ? email : uniqueUsername,
+              username: sanitizedEmail,
               lastName,
               authMethods: [],
               isGhost: false
@@ -321,9 +284,8 @@ export const oidcConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.OIDC,
             externalId,
-            emails: email ? [email] : [],
-            orgId,
-            isEmailVerified: serverCfg.trustOidcEmails
+            emails: sanitizedEmail ? [sanitizedEmail] : [],
+            orgId
           },
           tx
         );
@@ -347,9 +309,9 @@ export const oidcConfigServiceFactory = ({
               actorUserId: newUser.id,
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: OrgMembershipStatus.Invited,
               isActive: true,
-              inviteEmail: email.toLowerCase()
+              inviteEmail: sanitizedEmail
             },
             tx
           );
@@ -358,15 +320,6 @@ export const oidcConfigServiceFactory = ({
               membershipId: membership.id,
               role,
               customRoleId: roleId
-            },
-            tx
-          );
-          // Only update the membership to Accepted if the user account is already completed.
-        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
-          await orgDAL.updateMembershipById(
-            orgMembership.id,
-            {
-              status: OrgMembershipStatus.Accepted
             },
             tx
           );
@@ -455,31 +408,6 @@ export const oidcConfigServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
-    const providerAuthToken = crypto.jwt().sign(
-      {
-        authTokenType: AuthTokenType.PROVIDER_TOKEN,
-        userId: user.id,
-        username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
-        firstName,
-        lastName,
-        organizationName: organization.name,
-        organizationId: organization.id,
-        organizationSlug: organization.slug,
-        hasExchangedPrivateKey: true,
-        aliasId: userAlias.id,
-        authMethod: AuthMethod.OIDC,
-        authType: UserAliasType.OIDC,
-        isUserCompleted,
-        ...(callbackPort && { callbackPort })
-      },
-      appCfg.AUTH_SECRET,
-      {
-        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
-      }
-    );
-
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
     if (user.email && !userAlias.isEmailVerified) {
@@ -505,7 +433,18 @@ export const oidcConfigServiceFactory = ({
         });
     }
 
-    return { isUserCompleted, providerAuthToken, user };
+    const callbackResult = await loginService.processProviderCallback({
+      user,
+      authMethod: AuthMethod.OIDC,
+      isEmailVerified: Boolean(userAlias.isEmailVerified),
+      aliasId: userAlias.id,
+      ip,
+      userAgent,
+      organizationId: organization.id,
+      callbackPort: callbackPort ? Number(callbackPort) : undefined
+    });
+
+    return { ...callbackResult, userId: user.id };
   };
 
   const updateOidcCfg = async ({
@@ -565,8 +504,7 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id
     });
 
-    const serverCfg = await getServerCfg();
-    if (isActive && !serverCfg.trustOidcEmails) {
+    if (isActive) {
       const isSmtpConnected = await smtpService.verify();
       if (!isSmtpConnected) {
         throw new BadRequestError({
@@ -706,22 +644,32 @@ export const oidcConfigServiceFactory = ({
     return oidcCfg;
   };
 
-  const getOrgAuthStrategy = async (orgSlug: string, callbackPort?: string) => {
+  const getOrgAuthStrategy = async (
+    identifier: string,
+    identifierType: "domain" | "orgSlug" = "domain",
+    callbackPort?: string
+  ) => {
     const appCfg = getConfig();
 
-    const org = await orgDAL.findOne({
-      slug: orgSlug
-    });
+    let resolvedOrgId: string;
 
-    if (!org) {
-      throw new NotFoundError({
-        message: `Organization with slug '${orgSlug}' not found`
-      });
+    if (identifierType === "domain") {
+      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: identifier, emailDomainDAL });
+      if (!verifiedDomain) {
+        throw new ForbiddenRequestError({ message: "Failed to authenticate with OIDC SSO" });
+      }
+      resolvedOrgId = verifiedDomain.orgId;
+    } else {
+      const org = await orgDAL.findOne({ slug: identifier, rootOrgId: null });
+      if (!org) {
+        throw new ForbiddenRequestError({ message: "Failed to authenticate with OIDC SSO" });
+      }
+      resolvedOrgId = org.id;
     }
 
     const oidcCfg = await getOidc({
       type: "internal",
-      organizationId: org.id
+      organizationId: resolvedOrgId
     });
 
     if (!oidcCfg || !oidcCfg.isActive) {
@@ -729,6 +677,7 @@ export const oidcConfigServiceFactory = ({
         message: "Failed to authenticate with OIDC SSO"
       });
     }
+    const org = await orgDAL.findOne({ id: resolvedOrgId });
 
     let issuer: Issuer;
     if (oidcCfg.configurationType === OIDCConfigurationType.DISCOVERY_URL) {
@@ -811,15 +760,17 @@ export const oidcConfigServiceFactory = ({
           firstName: name,
           lastName: claims.family_name ?? "",
           orgId: org.id,
+          ip: requestContext.get("ip") || "",
+          userAgent: requestContext.get("userAgent") || "",
           groups,
           callbackPort,
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
-          .then(({ isUserCompleted, providerAuthToken, user }) => {
+          .then((loginResult) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
                 "infisical.user.email": claims?.email?.toLowerCase(),
-                "infisical.user.id": user.id,
+                "infisical.user.id": loginResult.userId,
                 "infisical.organization.id": org.id,
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
@@ -829,7 +780,7 @@ export const oidcConfigServiceFactory = ({
               });
             }
 
-            cb(null, { isUserCompleted, providerAuthToken });
+            cb(null, loginResult);
           })
           .catch((error) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {

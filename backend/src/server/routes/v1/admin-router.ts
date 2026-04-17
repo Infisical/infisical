@@ -2,12 +2,11 @@ import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
 import {
+  EmailDomainsSchema,
   IdentitiesSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
-  OrgMembershipStatus,
-  SuperAdminSchema,
-  UsersSchema
+  OrgMembershipStatus
 } from "@app/db/schemas";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
@@ -27,6 +26,39 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { SanitizedUserSchema } from "../sanitizedSchemas";
+
+const SuperAdminSchema = SanitizedUserSchema.extend({
+  superAdmin: z.boolean().optional().nullable()
+});
+
+const SanitizedSuperAdminSchema = z.object({
+  id: z.string().uuid(),
+  initialized: z.boolean().default(false).nullable().optional(),
+  allowSignUp: z.boolean().default(true).nullable().optional(),
+  allowedSignUpDomain: z.string().nullable().optional(),
+  defaultAuthOrgId: z.string().uuid().nullable().optional(),
+  enabledLoginMethods: z.string().array().nullable().optional(),
+  authConsentContent: z.string().nullable().optional(),
+  pageFrameContent: z.string().nullable().optional(),
+  // Super admin-only fields (omitted for non-super-admin callers)
+  instanceId: z.string().uuid().optional(),
+  trustSamlEmails: z.boolean().nullish(),
+  trustLdapEmails: z.boolean().nullish(),
+  trustOidcEmails: z.boolean().nullish(),
+  adminIdentityIds: z.string().array().nullable().optional(),
+  fipsEnabled: z.boolean().optional(),
+  isMigrationModeOn: z.boolean().optional(),
+  isSecretScanningDisabled: z.boolean().optional(),
+  kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
+  paramsFolderSecretDetectionEnabled: z.boolean().optional(),
+  isOfflineUsageReportsEnabled: z.boolean().optional(),
+  // Always returned
+  defaultAuthOrgSlug: z.string().nullable(),
+  defaultAuthOrgAuthEnforced: z.boolean().nullish(),
+  defaultAuthOrgAuthMethod: z.string().nullish()
+});
+
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -38,45 +70,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "getAdminConfig",
       response: {
         200: z.object({
-          config: SuperAdminSchema.omit({
-            createdAt: true,
-            updatedAt: true,
-            encryptedSlackClientId: true,
-            encryptedSlackClientSecret: true,
-            encryptedMicrosoftTeamsAppId: true,
-            encryptedMicrosoftTeamsClientSecret: true,
-            encryptedMicrosoftTeamsBotId: true,
-            encryptedGitHubAppConnectionClientId: true,
-            encryptedGitHubAppConnectionClientSecret: true,
-            encryptedGitHubAppConnectionSlug: true,
-            encryptedGitHubAppConnectionId: true,
-            encryptedGitHubAppConnectionPrivateKey: true,
-            encryptedEnvOverrides: true,
-            // Fields below are only returned for super admins
-            instanceId: true,
-            trustSamlEmails: true,
-            trustLdapEmails: true,
-            trustOidcEmails: true,
-            adminIdentityIds: true,
-            fipsEnabled: true
-          }).extend({
-            // Super admin-only fields (omitted for non-super-admin callers)
-            instanceId: z.string().uuid().optional(),
-            trustSamlEmails: z.boolean().nullish(),
-            trustLdapEmails: z.boolean().nullish(),
-            trustOidcEmails: z.boolean().nullish(),
-            adminIdentityIds: z.string().array().nullable().optional(),
-            fipsEnabled: z.boolean().optional(),
-            isMigrationModeOn: z.boolean().optional(),
-            isSecretScanningDisabled: z.boolean().optional(),
-            kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
-            paramsFolderSecretDetectionEnabled: z.boolean().optional(),
-            isOfflineUsageReportsEnabled: z.boolean().optional(),
-            // Always returned
-            defaultAuthOrgSlug: z.string().nullable(),
-            defaultAuthOrgAuthEnforced: z.boolean().nullish(),
-            defaultAuthOrgAuthMethod: z.string().nullish()
-          })
+          config: SanitizedSuperAdminSchema
         })
       }
     },
@@ -172,9 +166,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          config: SuperAdminSchema.omit({
-            encryptedEnvOverrides: true
-          }).extend({
+          config: SanitizedSuperAdminSchema.extend({
             defaultAuthOrgSlug: z.string().nullable()
           })
         })
@@ -211,14 +203,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: UsersSchema.pick({
-            username: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            id: true,
-            superAdmin: true
-          }).array(),
+          users: SuperAdminSchema.array(),
           total: z.number()
         })
       }
@@ -497,13 +482,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: UsersSchema.pick({
-            username: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            id: true
-          })
+          users: SuperAdminSchema
         })
       }
     },
@@ -534,13 +513,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          users: UsersSchema.pick({
-            username: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            id: true
-          }).array()
+          users: SuperAdminSchema.array()
         })
       }
     },
@@ -650,7 +623,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UsersSchema,
+          user: SanitizedUserSchema,
           organization: OrganizationsSchema,
           token: z.string(),
           new: z.string()
@@ -696,7 +669,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       void res.setCookie("jid", token.refresh, {
         httpOnly: true,
-        path: "/",
+        path: "/api",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
@@ -762,13 +735,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          user: UsersSchema.pick({
-            username: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            id: true
-          })
+          user: SanitizedUserSchema
         })
       }
     },
@@ -802,13 +769,14 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UsersSchema.pick({
+          user: SanitizedUserSchema.pick({
             username: true,
             firstName: true,
             lastName: true,
             email: true,
-            id: true,
-            superAdmin: true
+            id: true
+          }).extend({
+            superAdmin: z.boolean().optional().nullable()
           }),
           organization: OrganizationsSchema.pick({
             id: true,
@@ -1059,6 +1027,94 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         signature: result.signature,
         filename: result.filename
       };
+    }
+  });
+
+  // Email domain management
+  server.route({
+    method: "GET",
+    url: "/email-domain-management/domains",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAdminEmailDomains",
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          emailDomains: EmailDomainsSchema.extend({ orgName: z.string().nullable() }).array(),
+          total: z.number()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      return server.services.superAdmin.getEmailDomains(req.query);
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/email-domain-management/domains",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "createAdminEmailDomain",
+      body: z.object({
+        orgId: z.string().uuid(),
+        domain: z.string().trim().toLowerCase().min(1)
+      }),
+      response: {
+        200: z.object({
+          emailDomain: EmailDomainsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const emailDomain = await server.services.superAdmin.createEmailDomain(req.body);
+      return { emailDomain };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/email-domain-management/domains/:emailDomainId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deleteAdminEmailDomain",
+      params: z.object({
+        emailDomainId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          emailDomain: EmailDomainsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const emailDomain = await server.services.superAdmin.deleteEmailDomain(req.params);
+      return { emailDomain };
     }
   });
 };

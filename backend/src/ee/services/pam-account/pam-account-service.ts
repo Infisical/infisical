@@ -52,6 +52,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES } from "../pam-account-policy/pam-account-policy-constants";
+import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
+import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
+import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
 import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -84,6 +88,7 @@ type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
+  pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceRotationRulesDAL: Pick<TPamResourceRotationRulesDALFactory, "findByResourceIds">;
   mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
@@ -116,6 +121,7 @@ export const pamAccountServiceFactory = ({
   pamResourceDAL,
   pamSessionDAL,
   pamAccountDAL,
+  pamAccountPolicyDAL,
   pamResourceRotationRulesDAL,
   mfaSessionService,
   projectDAL,
@@ -132,7 +138,17 @@ export const pamAccountServiceFactory = ({
   pamAccountDependenciesDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
-    { credentials, resourceId, name, description, folderId, requireMfa, internalMetadata, metadata }: TCreateAccountDTO,
+    {
+      credentials,
+      resourceId,
+      name,
+      description,
+      folderId,
+      requireMfa,
+      internalMetadata,
+      metadata,
+      policyId
+    }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const resource = await pamResourceDAL.findById(resourceId);
@@ -188,6 +204,13 @@ export const pamAccountServiceFactory = ({
       kmsService
     });
 
+    if (policyId) {
+      const policy = await pamAccountPolicyDAL.findById(policyId);
+      if (!policy || policy.projectId !== resource.projectId) {
+        throw new NotFoundError({ message: "Policy not found" });
+      }
+    }
+
     try {
       const { account, insertedMetadata } = await pamAccountDAL.transaction(async (tx) => {
         const newAccount = await pamAccountDAL.create(
@@ -199,7 +222,8 @@ export const pamAccountServiceFactory = ({
             description,
             folderId,
             requireMfa,
-            internalMetadata: internalMetadata ?? null
+            internalMetadata: internalMetadata ?? null,
+            policyId: policyId ?? null
           },
           tx
         );
@@ -243,7 +267,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata }: TUpdateAccountDTO,
+    { accountId, credentials, description, name, requireMfa, internalMetadata, metadata, policyId }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const account = await pamAccountDAL.findById(accountId);
@@ -304,6 +328,16 @@ export const pamAccountServiceFactory = ({
 
     if (internalMetadata !== undefined) {
       updateDoc.internalMetadata = internalMetadata;
+    }
+
+    if (policyId !== undefined) {
+      if (policyId) {
+        const policy = await pamAccountPolicyDAL.findById(policyId);
+        if (!policy || policy.projectId !== account.projectId) {
+          throw new NotFoundError({ message: "Policy not found" });
+        }
+      }
+      updateDoc.policyId = policyId;
     }
 
     if (credentials !== undefined) {
@@ -947,8 +981,8 @@ export const pamAccountServiceFactory = ({
   };
 
   const getSessionCredentials = async (sessionId: string, actor: OrgServiceActor) => {
-    // To be hit by gateways only
-    if (actor.type !== ActorType.IDENTITY) {
+    // To be hit by gateways only (identity-based or enrollment-flow)
+    if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
     }
 
@@ -958,19 +992,25 @@ export const pamAccountServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: project.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    if (actor.type === ActorType.IDENTITY) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId: project.orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    } else if (actor.type === ActorType.GATEWAY) {
+      if (project.orgId !== actor.orgId) {
+        throw new ForbiddenRequestError({ message: "Gateway does not have access to this session" });
+      }
+    }
 
     if (!session.accountId) throw new NotFoundError({ message: "Session is missing accountId column" });
 
@@ -985,15 +1025,37 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    if (resource.gatewayId && resource.gatewayIdentityId !== actor.id) {
-      throw new ForbiddenRequestError({
-        message: "Identity does not have access to fetch the PAM session credentials"
-      });
+    if (resource.gatewayId) {
+      const authorized =
+        actor.type === ActorType.GATEWAY ? resource.gatewayId === actor.id : resource.gatewayIdentityId === actor.id;
+      if (!authorized) {
+        throw new ForbiddenRequestError({
+          message: "Gateway does not have access to fetch the PAM session credentials"
+        });
+      }
     }
 
     const decryptedAccount = await decryptAccount(account, session.projectId, kmsService);
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
+
+    // Resolve policy rules for gateway
+    const policyRules: TPolicyRules = {};
+    if (account.policyId) {
+      const policy = await pamAccountPolicyDAL.findById(account.policyId);
+      if (policy && policy.isActive) {
+        const rules = (policy.rules ?? {}) as TPolicyRules;
+        for (const ruleType of Object.values(PamAccountPolicyRuleType)) {
+          const ruleConfig = rules[ruleType];
+          if (ruleConfig) {
+            const supported = PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES[ruleType];
+            if (supported === "all" || supported.includes(resource.resourceType as PamResource)) {
+              policyRules[ruleType] = ruleConfig;
+            }
+          }
+        }
+      }
+    }
 
     let sessionStarted = false;
 
@@ -1050,6 +1112,7 @@ export const pamAccountServiceFactory = ({
             privateKey,
             certificate: signedPublicKey
           },
+          policyRules,
           projectId: project.id,
           account,
           sessionStarted
@@ -1062,6 +1125,7 @@ export const pamAccountServiceFactory = ({
         ...decryptedResource.connectionDetails,
         ...decryptedAccount.credentials
       },
+      policyRules,
       projectId: project.id,
       account,
       sessionStarted

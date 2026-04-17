@@ -249,7 +249,7 @@ export const useGetCaAutoRenewal = (caId: string, options?: { enabled?: boolean 
     enabled: options?.enabled !== undefined ? options.enabled : Boolean(caId),
     refetchInterval: (query) => {
       const { data } = query.state;
-      if (data?.lastRenewalStatus === CaRenewalStatus.PENDING) return 3000;
+      if (data?.lastRenewalStatus === CaRenewalStatus.PENDING) return 10_000;
       return false;
     }
   });

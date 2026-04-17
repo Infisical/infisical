@@ -10,7 +10,6 @@ import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 
 import { ConfirmEmailStep } from "./components/ConfirmEmailStep";
 import { EnterPasswordStep } from "./components/EnterPasswordStep";
-import { InputBackupKeyStep } from "./components/InputBackupKeyStep";
 import { RecoveryMethod, SelectRecoveryMethodStep } from "./components/SelectRecoveryMethodStep";
 
 enum Steps {
@@ -87,20 +86,9 @@ export const AccountRecoveryResetPage = () => {
           hasEmailAuthEnabled={userDetails.hasEmailAuthEnabled}
         />
       )}
-      {step === Steps.InputBackupKey && (
-        <InputBackupKeyStep
-          verificationToken={userDetails.verificationToken}
-          onComplete={(key) => {
-            setUserDetails((prev) => ({ ...prev, privateKey: key }));
-            setStep(Steps.EnterNewPassword);
-          }}
-        />
-      )}
       {step === Steps.EnterNewPassword && (
         <EnterPasswordStep
           verificationToken={userDetails.verificationToken}
-          privateKey={userDetails.privateKey}
-          encryptionVersion={userDetails.userEncryptionVersion}
           onComplete={() => {
             navigate({ to: "/login" });
           }}

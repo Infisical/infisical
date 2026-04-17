@@ -63,6 +63,33 @@ export const createTelemetryEventKey = (event: string, distinctId: string): stri
   return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
 };
 
+export enum DeploymentType {
+  USCloud = "us-cloud",
+  EUCloud = "eu-cloud",
+  Dedicated = "dedicated",
+  SelfHosted = "self-hosted"
+}
+
+/**
+ * Computes the deployment type based on the instance type and environment configuration.
+ * - US Cloud: instanceType is Cloud and INTERNAL_REGION is "us" (or unset, defaults to US)
+ * - EU Cloud: instanceType is Cloud and INTERNAL_REGION is "eu"
+ * - Dedicated: INFISICAL_DEDICATED is true
+ * - Self-Hosted: everything else
+ */
+const getDeploymentType = (
+  instanceType: InstanceType,
+  appConfig: { INFISICAL_CLOUD: boolean; INFISICAL_DEDICATED: boolean; INTERNAL_REGION?: string }
+) => {
+  if (instanceType === InstanceType.Cloud) {
+    return appConfig.INTERNAL_REGION === "eu" ? DeploymentType.EUCloud : DeploymentType.USCloud;
+  }
+  if (appConfig.INFISICAL_DEDICATED) {
+    return DeploymentType.Dedicated;
+  }
+  return DeploymentType.SelfHosted;
+};
+
 export const telemetryServiceFactory = ({ keyStore, licenseService, orgDAL }: TTelemetryServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -108,7 +135,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     email: string,
     signupMethod: HubSpotSignupMethod,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    hubspotUtk?: string
   ) => {
     const instanceType = licenseService.getInstanceType();
     if (
@@ -132,14 +160,22 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
           if (value) fields.push({ name, value });
         }
 
+        const context: Record<string, string> = {
+          pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
+          pageName: "App Signup"
+        };
+
+        // Include the HubSpot tracking cookie to link this submission
+        // to the visitor's browsing session for proper attribution
+        if (hubspotUtk) {
+          context.hutk = hubspotUtk;
+        }
+
         await request.post(
           `https://api.hsforms.com/submissions/v3/integration/submit/${appCfg.HUBSPOT_PORTAL_ID}/${appCfg.HUBSPOT_SIGNUP_FORM_ID}`,
           {
             fields,
-            context: {
-              pageUri: `${appCfg.SITE_URL || "https://app.infisical.com"}/signup`,
-              pageName: "App Signup"
-            }
+            context
           },
           {
             headers: {
@@ -161,6 +197,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     const instanceType = licenseService.getInstanceType();
     properties.is_cloud = instanceType === InstanceType.Cloud;
+    properties.instance_type = instanceType;
+    properties.deployment_type = getDeploymentType(instanceType, appCfg);
+    if (appCfg.INTERNAL_REGION) {
+      properties.region = appCfg.INTERNAL_REGION;
+    }
 
     try {
       const org = await orgDAL.findOrgById(orgId);

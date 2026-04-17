@@ -1,21 +1,31 @@
+import { InfoIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import {
+  OrgPermissionEmailDomainActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription
 } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
-import { useGetLDAPConfig, useGetOIDCConfig, useGetSSOConfig } from "@app/hooks/api";
+import {
+  useGetEmailDomains,
+  useGetLDAPConfig,
+  useGetOIDCConfig,
+  useGetSSOConfig
+} from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
 import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
+import { OrgEmailDomainsSection } from "./OrgEmailDomainsSection";
 import { OrgGeneralAuthSection } from "./OrgGeneralAuthSection";
 import { OrgLDAPSection } from "./OrgLDAPSection";
 import { OrgOIDCSection } from "./OrgOIDCSection";
@@ -36,6 +46,11 @@ export const OrgSsoTab = withPermission(
     ] as const);
 
     const { subscription } = useSubscription();
+    const { permission } = useOrgPermission();
+
+    const { data: emailDomains, isPending } = useGetEmailDomains(
+      subscription?.emailDomainVerification ? currentOrg?.id : ""
+    );
 
     const { data: oidcConfig, isPending: isLoadingOidcConfig } = useGetOIDCConfig(
       currentOrg?.id ?? ""
@@ -78,6 +93,16 @@ export const OrgSsoTab = withPermission(
                 Connect your identity provider to simplify user management with options like SAML,
                 OIDC, and LDAP.
               </p>
+              {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
+                <UnstableAlert variant="info" className="mt-3 bg-info/10">
+                  <InfoIcon />
+                  <UnstableAlertTitle>Email domain verification required</UnstableAlertTitle>
+                  <UnstableAlertDescription>
+                    You must verify at least one email domain before configuring an identity
+                    provider. Add a domain in the Email Domains section above.
+                  </UnstableAlertDescription>
+                </UnstableAlert>
+              )}
             </div>
             {shouldDisplaySection(LoginMethod.SAML) && (
               <div
@@ -192,11 +217,27 @@ export const OrgSsoTab = withPermission(
               isLdapActive={Boolean(ldapConfig?.isActive)}
             />
           )}
-
+          <OrgEmailDomainsSection />
           {shouldShowCreateIdentityProviderView ? (
             createIdentityProviderView
           ) : (
             <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+              {subscription?.emailDomainVerification &&
+                permission.can(
+                  OrgPermissionEmailDomainActions.Read,
+                  OrgPermissionSubjects.EmailDomains
+                ) &&
+                !isPending &&
+                !emailDomains?.length && (
+                  <UnstableAlert variant="info" className="mt-3 bg-info/10">
+                    <InfoIcon />
+                    <UnstableAlertTitle>Email domain verification required</UnstableAlertTitle>
+                    <UnstableAlertDescription>
+                      You must verify at least one email domain before configuring an identity
+                      provider. Add a domain in the Email Domains section above.
+                    </UnstableAlertDescription>
+                  </UnstableAlert>
+                )}
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
                 {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}

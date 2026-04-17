@@ -21,10 +21,12 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
+  ProjectPermissionPamAccountPolicyActions,
   ProjectPermissionPamDiscoveryActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
@@ -56,6 +58,10 @@ const GeneralPolicyActionSchema = z.object({
 
 const AuditLogsPolicyActionSchema = z.object({
   [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+});
+
+const InsightsPolicyActionSchema = z.object({
+  [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -243,6 +249,13 @@ const PamAccountPolicyActionSchema = z.object({
 const PamSessionPolicyActionSchema = z.object({
   [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
+});
+
+const PamAccountPolicyPolicyActionSchema = z.object({
+  [ProjectPermissionPamAccountPolicyActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPamAccountPolicyActions.Delete]: z.boolean().optional()
 });
 
 const PamDiscoveryPolicyActionSchema = z.object({
@@ -681,6 +694,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -702,6 +716,9 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateInventoryViews]: GeneralPolicyActionSchema.array().default(
+        []
+      ),
       [ProjectPermissionSub.PkiDiscovery]: z
         .object({
           read: z.boolean().optional(),
@@ -798,6 +815,9 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamAccountPolicies]: PamAccountPolicyPolicyActionSchema.array().default(
+        []
+      ),
       [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
@@ -1020,6 +1040,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Member,
         ProjectPermissionSub.Groups,
         ProjectPermissionSub.PkiCollections,
+        ProjectPermissionSub.CertificateInventoryViews,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
@@ -1035,7 +1056,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PamResources,
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
-        ProjectPermissionSub.McpActivityLogs
+        ProjectPermissionSub.McpActivityLogs,
+        ProjectPermissionSub.Insights
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1804,6 +1826,20 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
     }
 
+    if (subject === ProjectPermissionSub.PamAccountPolicies) {
+      const canRead = action.includes(ProjectPermissionPamAccountPolicyActions.Read);
+      const canCreate = action.includes(ProjectPermissionPamAccountPolicyActions.Create);
+      const canDelete = action.includes(ProjectPermissionPamAccountPolicyActions.Delete);
+      const canEdit = action.includes(ProjectPermissionPamAccountPolicyActions.Edit);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Delete] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Edit] = true;
+    }
+
     if (subject === ProjectPermissionSub.PamDiscovery) {
       const canRead = action.includes(ProjectPermissionPamDiscoveryActions.Read);
       const canCreate = action.includes(ProjectPermissionPamDiscoveryActions.Create);
@@ -2428,6 +2464,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.Insights]: {
+    title: "Insights",
+    description: "View project analytics and insights dashboards",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionInsightsActions.Read,
+        description: "View secret access volume, locations, auth methods, and calendar insights"
+      }
+    ]
+  },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
     description: "Restrict project access by IP address",
@@ -2713,6 +2760,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: "create", description: "Set up new certificate expiration alerts" },
       { label: "Modify", value: "edit", description: "Update alert configuration" },
       { label: "Remove", value: "delete", description: "Delete PKI alerts" }
+    ]
+  },
+  [ProjectPermissionSub.CertificateInventoryViews]: {
+    title: "Inventory Views",
+    description: "Manage saved certificate inventory views and filters",
+    actions: [
+      { label: "Read", value: "read", description: "View saved inventory views" },
+      { label: "Create", value: "create", description: "Create new inventory views" },
+      { label: "Modify", value: "edit", description: "Update inventory views and toggle sharing" },
+      { label: "Remove", value: "delete", description: "Delete inventory views" }
     ]
   },
   [ProjectPermissionSub.SecretApproval]: {
@@ -3164,6 +3221,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PamAccountPolicies]: {
+    title: "Account Policies",
+    description: "Manage behavioral rules for PAM accounts",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionPamAccountPolicyActions.Read,
+        description: "View PAM account policies"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPamAccountPolicyActions.Create,
+        description: "Create PAM account policies"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPamAccountPolicyActions.Edit,
+        description: "Update PAM account policies"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPamAccountPolicyActions.Delete,
+        description: "Delete PAM account policies"
+      }
+    ]
+  },
   [ProjectPermissionSub.PamDiscovery]: {
     title: "Discovery",
     description: "Manage privileged access discovery",
@@ -3329,6 +3412,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
+  [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });
@@ -3341,6 +3425,7 @@ const KmsPermissionSubjects = (enabled = false) => ({
 const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiCollections]: enabled,
   [ProjectPermissionSub.PkiAlerts]: enabled,
+  [ProjectPermissionSub.CertificateInventoryViews]: enabled,
   [ProjectPermissionSub.PkiSubscribers]: enabled,
   [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
@@ -3372,6 +3457,7 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamResources]: enabled,
   [ProjectPermissionSub.PamAccounts]: enabled,
   [ProjectPermissionSub.PamSessions]: enabled,
+  [ProjectPermissionSub.PamAccountPolicies]: enabled,
   [ProjectPermissionSub.PamDiscovery]: enabled
 });
 
@@ -3637,6 +3723,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           actions: [ProjectPermissionActions.Read]
         },
         {
+          subject: ProjectPermissionSub.CertificateInventoryViews,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
           subject: ProjectPermissionSub.CertificateAuthorities,
           actions: [ProjectPermissionActions.Read]
         },
@@ -3672,6 +3762,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         },
         {
           subject: ProjectPermissionSub.PkiAlerts,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateInventoryViews,
           actions: Object.values(ProjectPermissionActions)
         },
         {
