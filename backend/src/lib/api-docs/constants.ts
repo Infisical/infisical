@@ -2471,6 +2471,10 @@ export const KMS = {
     keyId: "The ID of the key to export the private key or key material for."
   },
 
+  BULK_EXPORT_PRIVATE_KEYS: {
+    keyIds: "An array of KMS key IDs to export. Maximum 100 keys per request."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
