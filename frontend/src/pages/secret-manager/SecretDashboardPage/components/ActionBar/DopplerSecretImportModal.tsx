@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { components, GroupHeadingProps, OptionProps } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
-import { components, GroupHeadingProps, OptionProps } from "react-select";
 import { z } from "zod";
 
 import {
@@ -44,21 +44,9 @@ type Props = {
 const DopplerConfigGroupHeading = (props: GroupHeadingProps<TDopplerConfig>) => (
   <components.GroupHeading
     {...props}
-    className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted"
+    className="px-2 py-1.5 text-xs font-semibold tracking-wider text-muted uppercase"
   />
 );
-
-const DopplerConfigOption = (props: OptionProps<TDopplerConfig>) => {
-  const { data } = props;
-  return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2">
-        <span>{formatConfigLabel(data)}</span>
-        {data.root && <Badge variant="project">Root</Badge>}
-      </div>
-    </components.Option>
-  );
-};
 
 const formatConfigLabel = (config: TDopplerConfig) => {
   if (config.root) {
@@ -70,6 +58,18 @@ const formatConfigLabel = (config: TDopplerConfig) => {
     ? config.name.slice(prefix.length)
     : config.name;
   return branchName;
+};
+
+const DopplerConfigOption = (props: OptionProps<TDopplerConfig>) => {
+  const { data } = props;
+  return (
+    <components.Option {...props}>
+      <div className="flex items-center gap-2">
+        <span>{formatConfigLabel(data)}</span>
+        {data.root && <Badge variant="project">Root</Badge>}
+      </div>
+    </components.Option>
+  );
 };
 
 export const DopplerSecretImportModal = ({
