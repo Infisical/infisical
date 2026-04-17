@@ -169,6 +169,7 @@ type TProjectServiceFactoryDep = {
     | "countActiveCertificatesForSync"
     | "getDashboardStats"
     | "getActivityTrend"
+    | "getPqcTrend"
   >;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
@@ -1403,6 +1404,42 @@ export const projectServiceFactory = ({
     });
   };
 
+  const getPqcTrend = async ({
+    filter,
+    range = "30d",
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor
+  }: TGetActivityTrendDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
+    const daysBack = rangeDaysMap[range];
+
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.CertPqcTrend(projectId, range),
+      ttlSeconds: DASHBOARD_CACHE_TTL,
+      fetcher: () => certificateDAL.getPqcTrend(projectId, daysBack)
+    });
+  };
+
   /**
    * Return list of (PKI) alerts configured for project
    */
@@ -2433,6 +2470,7 @@ export const projectServiceFactory = ({
     listProjectCertificates,
     getDashboardStats,
     getActivityTrend,
+    getPqcTrend,
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,

@@ -78,6 +78,7 @@ import type {
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -126,6 +127,7 @@ type Props = {
     search?: string;
   };
   dashboardFilters?: FilterRule[];
+  dashboardViewId?: string;
 };
 
 const PER_PAGE_INIT = 25;
@@ -155,20 +157,48 @@ const SortIcon = ({
   return <Icon className="ml-1 inline-block size-3" />;
 };
 
-export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFilters }: Props) => {
+export const CertificatesTable = ({
+  handlePopUpOpen,
+  externalFilter,
+  dashboardFilters,
+  dashboardViewId
+}: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const [search, setSearch] = useState(externalFilter?.search || "");
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
-  const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(
-    dashboardFilters?.length ? dashboardFilters : []
-  );
+  const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
+    if (viewId === "system-pqc") {
+      return [
+        { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] }
+      ];
+    }
+    if (viewId === "system-non-pqc") {
+      return [
+        {
+          id: "sv-non-pqc",
+          field: "keyAlgorithm",
+          operator: "in",
+          value: [...NON_PQC_KEY_ALGORITHMS]
+        }
+      ];
+    }
+    return [];
+  };
+
+  const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(() => {
+    if (dashboardFilters?.length) return dashboardFilters;
+    return getFiltersForSystemViewId(dashboardViewId);
+  });
   const [pendingFilters, setPendingFilters] = useState<FilterRule[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const hasDashboardFilters = Boolean(dashboardFilters?.length);
+  const hasSynchronousDashboardView =
+    dashboardViewId === "system-pqc" || dashboardViewId === "system-non-pqc";
   const [activeViewId, setActiveViewId] = useState<string | null>(() => {
+    if (dashboardViewId) return dashboardViewId;
     if (hasDashboardFilters) return null;
     try {
       return localStorage.getItem(VIEW_STORAGE_KEY) || "system-all";
@@ -177,7 +207,9 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
     }
   });
   const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
-  const [hasRestoredView, setHasRestoredView] = useState(hasDashboardFilters);
+  const [hasRestoredView, setHasRestoredView] = useState(
+    hasDashboardFilters || hasSynchronousDashboardView
+  );
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
@@ -402,6 +434,24 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter, dashboardFi
       } else if (viewId === "system-revoked") {
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: ["revoked"] }
+        ]);
+      } else if (viewId === "system-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...PQC_KEY_ALGORITHMS]
+          }
+        ]);
+      } else if (viewId === "system-non-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-non-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...NON_PQC_KEY_ALGORITHMS]
+          }
         ]);
       } else {
         const customFilters = filters as TInventoryViewFilters;

@@ -9,6 +9,7 @@ export enum CertKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
   ECDSA_P384 = "EC_secp384r1",
+  ECDSA_P521 = "EC_secp521r1",
   ML_DSA_44 = "ML-DSA-44",
   ML_DSA_65 = "ML-DSA-65",
   ML_DSA_87 = "ML-DSA-87"

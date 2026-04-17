@@ -6,6 +6,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../../ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
+import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
   TCreateInventoryViewDTO,
@@ -17,6 +18,7 @@ import {
 type TSystemViewFilters = {
   status?: string[];
   notAfterTo?: string;
+  keyAlgorithm?: string[];
 };
 
 type TSystemView = {
@@ -58,6 +60,22 @@ const SYSTEM_VIEWS: TSystemView[] = [
     id: "system-revoked",
     name: "Revoked",
     filters: { status: ["revoked"] },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
+    id: "system-pqc",
+    name: "Post-Quantum (PQC)",
+    filters: { keyAlgorithm: PQC_KEY_ALGORITHMS },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
+    id: "system-non-pqc",
+    name: "Classical (Non-PQC)",
+    filters: { keyAlgorithm: NON_PQC_KEY_ALGORITHMS },
     columns: null,
     isSystem: true,
     createdByUserId: null

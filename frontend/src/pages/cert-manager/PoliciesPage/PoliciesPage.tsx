@@ -145,6 +145,7 @@ export const PoliciesPage = () => {
               <CertificatesTab
                 externalFilter={certificateFilter}
                 dashboardFilters={dashboardFilters}
+                dashboardViewId={searchParams.viewId}
               />
             ) : (
               <PermissionDeniedBanner />

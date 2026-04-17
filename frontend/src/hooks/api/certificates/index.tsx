@@ -17,6 +17,7 @@ export {
   useGetCertDashboardStats,
   useGetCertificateById,
   useGetCertificateRequest,
+  useGetCertPqcTrend,
   useListCertificateRequests
 } from "./queries";
 export type {
@@ -31,5 +32,7 @@ export type {
   TExpirationBucket,
   TListCertificateRequestsParams,
   TListCertificateRequestsResponse,
+  TPqcTrendPoint,
+  TPqcTrendResponse,
   TUpdateCertificateDTO
 } from "./types";
