@@ -1,4 +1,5 @@
-import { crypto } from "@app/lib/crypto/cryptography";
+import { customAlphabet } from "nanoid";
+
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CertKeyAlgorithm, CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
@@ -116,16 +117,11 @@ export const mapCertKeyAlgorithmToAcm = (keyAlgorithm: CertKeyAlgorithm) => {
 };
 
 // ACM's ExportCertificate passphrase must be 4-128 chars and cannot contain #, $, or %.
-const ACM_PASSPHRASE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-export const generateAcmPassphrase = (): string => {
-  const len = 32;
-  const bytes = crypto.randomBytes(len);
-  let out = "";
-  for (let i = 0; i < len; i += 1) {
-    out += ACM_PASSPHRASE_ALPHABET[bytes[i] % ACM_PASSPHRASE_ALPHABET.length];
-  }
-  return out;
-};
+const generateAcmPassphraseInternal = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+  32
+);
+export const generateAcmPassphrase = (): string => generateAcmPassphraseInternal();
 
 // Strip hyphens from the certificate UUID to produce a 32-char token that
 // satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
