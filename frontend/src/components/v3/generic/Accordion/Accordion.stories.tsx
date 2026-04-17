@@ -3,7 +3,7 @@ import { EditIcon } from "lucide-react";
 
 import { Badge } from "../Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../Card";
-import { Detail, DetailGroup, DetailHeader, DetailLabel, DetailValue } from "../Detail";
+import { Detail, DetailGroup, DetailGroupHeader, DetailLabel, DetailValue } from "../Detail";
 import { IconButton } from "../IconButton";
 import { Separator } from "../Separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./Accordion";
@@ -125,12 +125,12 @@ export const GhostCard: Story = {
       </CardHeader>
       <CardContent>
         <DetailGroup>
-          <DetailHeader className="flex items-center justify-between">
+          <DetailGroupHeader className="flex items-center justify-between">
             General
             <IconButton size="xs" variant="ghost-muted">
               <EditIcon />
             </IconButton>
-          </DetailHeader>
+          </DetailGroupHeader>
           <Detail>
             <DetailLabel>Name</DetailLabel>
             <DetailValue>ad-discovery-001</DetailValue>

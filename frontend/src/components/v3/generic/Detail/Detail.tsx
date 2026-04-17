@@ -14,7 +14,7 @@ function DetailValue({ className, ...props }: React.ComponentProps<"div">) {
   return <div data-slot="detail-value" className={cn("text-sm break-all", className)} {...props} />;
 }
 
-function DetailHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DetailGroupHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="detail-header"
@@ -30,4 +30,4 @@ function DetailGroup({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { Detail, DetailGroup, DetailHeader, DetailLabel, DetailValue };
+export { Detail, DetailGroup, DetailGroupHeader, DetailLabel, DetailValue };
