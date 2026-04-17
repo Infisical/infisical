@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 
@@ -71,6 +71,38 @@ export const executeWithGateway = async <T>(
   );
 };
 
+const validateWithGatewayHttp = async <T>(
+  config: {
+    gatewayId: string;
+  },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  operation: (baseUrl: string) => Promise<T>
+): Promise<T> => {
+  // For gateway-auth validation, the gateway auto-discovers the K8s API from env vars,
+  // so we use a placeholder host/port. The actual target is resolved by the gateway's
+  // use-k8s-sa handler via KUBERNETES_SERVICE_HOST env var.
+  const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId: config.gatewayId,
+    targetHost: "kubernetes.default.svc.cluster.local",
+    targetPort: 443
+  });
+  if (!platformConnectionDetails) {
+    throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+  }
+  return withGatewayV2Proxy(
+    async (proxyPort) => {
+      const baseUrl = `http://localhost:${proxyPort}`;
+      return operation(baseUrl);
+    },
+    {
+      protocol: GatewayProxyProtocol.Http,
+      relayHost: platformConnectionDetails.relayHost,
+      gateway: platformConnectionDetails.gateway,
+      relay: platformConnectionDetails.relay
+    }
+  );
+};
+
 export const kubernetesResourceFactory: TPamResourceFactory<
   TKubernetesResourceConnectionDetails,
   TKubernetesAccountCredentials,
@@ -127,13 +159,15 @@ export const kubernetesResourceFactory: TPamResourceFactory<
     if (!gatewayId) {
       throw new BadRequestError({ message: "Gateway ID is required" });
     }
-    try {
-      await executeWithGateway(
-        { connectionDetails, gatewayId, resourceType },
-        gatewayV2Service,
-        async (baseUrl, httpsAgent) => {
-          const { authMethod } = credentials;
-          if (authMethod === KubernetesAuthMethod.ServiceAccountToken) {
+
+    const { authMethod } = credentials;
+
+    if (authMethod === KubernetesAuthMethod.ServiceAccountToken) {
+      try {
+        await executeWithGateway(
+          { connectionDetails, gatewayId, resourceType },
+          gatewayV2Service,
+          async (baseUrl, httpsAgent) => {
             // Validate service account token using SelfSubjectReview API (whoami)
             // This endpoint doesn't require any special permissions from the service account
             try {
@@ -169,22 +203,97 @@ export const kubernetesResourceFactory: TPamResourceFactory<
               }
               throw error;
             }
-          } else {
-            throw new BadRequestError({
-              message: `Unsupported Kubernetes auth method: ${authMethod as string}`
-            });
           }
+        );
+        return credentials;
+      } catch (error) {
+        if (error instanceof BadRequestError) {
+          throw error;
         }
-      );
-      return credentials;
-    } catch (error) {
-      if (error instanceof BadRequestError) {
-        throw error;
+        throw new BadRequestError({
+          message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
+        });
       }
-      throw new BadRequestError({
-        message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
-      });
     }
+
+    if (authMethod === KubernetesAuthMethod.GatewayKubernetesAuth) {
+      // Validate gateway auth by performing an impersonated SelfSubjectReview through the gateway.
+      // The gateway's use-k8s-sa handler injects its own pod token and discovers the K8s API.
+      // We add Impersonate-User header which passes through untouched.
+      // This validates that the gateway has RBAC permission to impersonate the specified SA.
+      // NOTE: It does NOT verify the SA exists — K8s impersonation is a pure permission check.
+      // A non-existent SA passes validation here but fails at session time with 403.
+      try {
+        await validateWithGatewayHttp({ gatewayId }, gatewayV2Service, async (baseUrl) => {
+          const impersonateUser = `system:serviceaccount:${credentials.namespace}:${credentials.serviceAccountName}`;
+          try {
+            await axios.post(
+              `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
+              {
+                apiVersion: "authentication.k8s.io/v1",
+                kind: "SelfSubjectReview"
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount,
+                  "Impersonate-User": impersonateUser
+                },
+                signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+                timeout: EXTERNAL_REQUEST_TIMEOUT
+              }
+            );
+
+            logger.info(
+              `[Kubernetes Resource Factory] Gateway K8s auth validation successful [namespace=${credentials.namespace}] [sa=${credentials.serviceAccountName}]`
+            );
+          } catch (error) {
+            if (error instanceof AxiosError) {
+              const errorMessage =
+                (error.response?.data as { message?: string })?.message || error.response?.statusText || error.message;
+
+              if (errorMessage?.includes("failed to read k8s sa auth token")) {
+                throw new BadRequestError({
+                  message:
+                    "Gateway is not running inside a Kubernetes cluster. Gateway auth requires the gateway to be deployed as a pod."
+                });
+              }
+              if (error.response?.status === 403) {
+                if (errorMessage?.includes("impersonate")) {
+                  throw new BadRequestError({
+                    message: `Gateway service account lacks impersonation permissions for service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}". Ensure the gateway's ClusterRole includes the impersonate verb for this service account.`
+                  });
+                }
+                throw new BadRequestError({
+                  message: `Unable to impersonate service account "${credentials.serviceAccountName}" in namespace "${credentials.namespace}": ${errorMessage}`
+                });
+              }
+              if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
+                throw new BadRequestError({
+                  message: "Unable to reach the Kubernetes API server through the gateway."
+                });
+              }
+              throw new BadRequestError({
+                message: `Unable to validate gateway auth credentials: ${errorMessage}`
+              });
+            }
+            throw error;
+          }
+        });
+        return credentials;
+      } catch (error) {
+        if (error instanceof BadRequestError) {
+          throw error;
+        }
+        throw new BadRequestError({
+          message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
+        });
+      }
+    }
+
+    throw new BadRequestError({
+      message: `Unsupported Kubernetes auth method: ${authMethod as string}`
+    });
   };
 
   const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<
@@ -214,6 +323,9 @@ export const kubernetesResourceFactory: TPamResourceFactory<
         };
       }
     }
+
+    // Gateway auth has no sensitive fields (namespace and serviceAccountName are identifiers, not secrets),
+    // so no sentinel handling is needed — fall through to return as-is.
 
     return updatedAccountCredentials;
   };

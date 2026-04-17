@@ -1,6 +1,7 @@
 import { FileText, Server, Settings, Shield, ShieldCheck } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SidebarMenu } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 import { ProjectNavLink } from "./ProjectNavLink";
@@ -29,7 +30,7 @@ export const SshNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
   ];
 
   return (
-    <>
+    <SidebarMenu>
       {items
         .filter((i) => !i.hidden)
         .map((item) => {
@@ -52,6 +53,6 @@ export const SshNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
             />
           );
         })}
-    </>
+    </SidebarMenu>
   );
 };
