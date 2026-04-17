@@ -209,10 +209,22 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     // and Route 53 via GetHostedZone so a misconfigured DNS connection / wrong zone ID fails
     // synchronously here instead of mid-issuance.
     const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
-    await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+    try {
+      await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
 
     const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
-    await route53GetHostedZone(dnsConnection, hostedZoneId);
+    try {
+      await route53GetHostedZone(dnsConnection, hostedZoneId);
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -284,10 +296,22 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
 
         const acmClient = await createAcmClient({ appConnectionId, region, appConnectionDAL, kmsService });
-        await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+        try {
+          await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+        } catch (error) {
+          throw new BadRequestError({
+            message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
+          });
+        }
 
         const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsService });
-        await route53GetHostedZone(dnsConnection, hostedZoneId);
+        try {
+          await route53GetHostedZone(dnsConnection, hostedZoneId);
+        } catch (error) {
+          throw new BadRequestError({
+            message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
+          });
+        }
 
         await externalCertificateAuthorityDAL.update(
           {
@@ -403,7 +427,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      isRenewal
     });
 
     if (keyUsages.length > 0 || extendedKeyUsages.length > 0) {
@@ -495,13 +520,18 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
         const afterRenew = await acmClient.send(new DescribeCertificateCommand({ CertificateArn: certificateArn }));
         const renewStatus = afterRenew.Certificate?.RenewalSummary?.RenewalStatus;
-        if (renewStatus === "PENDING_VALIDATION") {
-          throw new AcmValidationPendingError(
-            `AWS ACM renewal for ${certificateArn} is still pending validation — will retry`
-          );
-        }
         if (renewStatus === "FAILED") {
           throw acmValidationFailedError(`AWS ACM renewal failed for ${certificateArn}`);
+        }
+        // ExportCertificate keeps returning the original cert until ACM has fully re-issued the
+        // renewed one. NotAfter advancing is the ground-truth signal; RenewalStatus can still be
+        // undefined or PENDING_* right after RenewCertificate even once renewal eventually succeeds.
+        const newNotAfter = afterRenew.Certificate?.NotAfter;
+        const renewalComplete = newNotAfter && storedNotAfter && newNotAfter.getTime() > storedNotAfter.getTime();
+        if (!renewalComplete) {
+          throw new AcmValidationPendingError(
+            `AWS ACM renewal for ${certificateArn} has not completed yet (status=${renewStatus ?? "unknown"}) — will retry`
+          );
         }
       }
     } else {

@@ -31,7 +31,8 @@ export const validateAcmIssuanceInputs = ({
   organizationalUnit,
   country,
   state,
-  locality
+  locality,
+  isRenewal
 }: {
   csr?: string;
   keyAlgorithm?: string;
@@ -45,6 +46,7 @@ export const validateAcmIssuanceInputs = ({
   country?: string;
   state?: string;
   locality?: string;
+  isRenewal?: boolean;
 }) => {
   if (csr) {
     throw new BadRequestError({
@@ -70,28 +72,33 @@ export const validateAcmIssuanceInputs = ({
       }
     }
   }
-  if (!ttl) {
-    throw new BadRequestError({
-      message: `AWS Certificate Manager issues certificates with a fixed validity of ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days.`
-    });
-  }
-  let ttlMs: number;
-  try {
-    ttlMs = ms(ttl);
-  } catch {
-    throw new BadRequestError({
-      message: `Invalid TTL format: ${ttl}`
-    });
-  }
-  if (ttlMs !== ACM_FIXED_VALIDITY_MS) {
-    throw new BadRequestError({
-      message: `AWS Certificate Manager issues certificates with a fixed validity of ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days.`
-    });
-  }
-  if (notBefore || notAfter) {
-    throw new BadRequestError({
-      message: `AWS Certificate Manager does not support notBefore or notAfter — validity is fixed at ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days from issuance.`
-    });
+  // On renewal, ACM handles validity itself — we don't pass a TTL to AWS, and the
+  // TTL derived from the original cert may round down (e.g., 197.999d → "197d"),
+  // so skip the exact-match check.
+  if (!isRenewal) {
+    if (!ttl) {
+      throw new BadRequestError({
+        message: `AWS Certificate Manager issues certificates with a fixed validity of ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days.`
+      });
+    }
+    let ttlMs: number;
+    try {
+      ttlMs = ms(ttl);
+    } catch {
+      throw new BadRequestError({
+        message: `Invalid TTL format: ${ttl}`
+      });
+    }
+    if (ttlMs !== ACM_FIXED_VALIDITY_MS) {
+      throw new BadRequestError({
+        message: `AWS Certificate Manager issues certificates with a fixed validity of ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days.`
+      });
+    }
+    if (notBefore || notAfter) {
+      throw new BadRequestError({
+        message: `AWS Certificate Manager does not support notBefore or notAfter — validity is fixed at ${AWS_ACM_CERTIFICATE_VALIDITY_DAYS} days from issuance.`
+      });
+    }
   }
   if (basicConstraints?.isCA) {
     throw new BadRequestError({
