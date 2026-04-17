@@ -69,16 +69,8 @@ export const EditGatewayPoolModal = ({ isOpen, onToggle, pool }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent title="Edit Gateway Pool">
-        <FormControl
-          label="Name"
-          isRequired
-          isError={Boolean(errors.name)}
-          errorText={errors.name}
-        >
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+        <FormControl label="Name" isRequired isError={Boolean(errors.name)} errorText={errors.name}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
         </FormControl>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline_bg" onClick={() => onToggle(false)} type="button">

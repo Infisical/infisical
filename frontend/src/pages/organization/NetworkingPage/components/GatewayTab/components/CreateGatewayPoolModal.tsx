@@ -70,12 +70,7 @@ export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
       }}
     >
       <ModalContent title="Create Gateway Pool">
-        <FormControl
-          label="Name"
-          isRequired
-          isError={Boolean(errors.name)}
-          errorText={errors.name}
-        >
+        <FormControl label="Name" isRequired isError={Boolean(errors.name)} errorText={errors.name}>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
