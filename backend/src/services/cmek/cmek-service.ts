@@ -326,6 +326,12 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
 
     if (keys.length === 0) throw new NotFoundError({ message: "No keys found for the provided IDs" });
 
+    if (keys.length !== keyIds.length) {
+      const foundIds = new Set(keys.map((k) => k.id));
+      const missingIds = keyIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundError({ message: `Keys not found for IDs: ${missingIds.join(", ")}` });
+    }
+
     const projectIds = new Set<string>();
     for (const key of keys) {
       if (!key.projectId || key.isReserved)
@@ -367,12 +373,16 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
           publicKey = pubKeyBuffer.toString("base64");
         }
 
+        if (!materialEntry) {
+          throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
+        }
+
         return {
           keyId: key.id,
           name: key.name,
           keyUsage: key.keyUsage,
           algorithm: key.encryptionAlgorithm,
-          privateKey: materialEntry!.keyMaterial.toString("base64"),
+          privateKey: materialEntry.keyMaterial.toString("base64"),
           ...(publicKey ? { publicKey } : {})
         };
       })

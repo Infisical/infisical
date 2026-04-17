@@ -561,7 +561,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.CMEK_BULK_GET_PRIVATE_KEYS,
+          type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS,
           metadata: {
             keyIds: keys.map((k) => k.keyId),
             keyNames: keys.map((k) => k.name)

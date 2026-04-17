@@ -99,8 +99,8 @@ export type TCmekBulkExportPrivateKeysDTO = {
 export type TCmekBulkExportedKey = {
   keyId: string;
   name: string;
-  keyUsage: string;
-  algorithm: string;
+  keyUsage: KmsKeyUsage;
+  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
   privateKey: string;
   publicKey?: string;
 };

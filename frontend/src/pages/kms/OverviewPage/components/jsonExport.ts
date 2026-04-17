@@ -1,3 +1,5 @@
+import FileSaver from "file-saver";
+
 import { KmsKeyUsage, TCmekBulkExportedKey } from "@app/hooks/api/cmeks/types";
 
 type CmekExportEntry =
@@ -40,10 +42,5 @@ export const downloadJSON = (data: unknown, filename: string) => {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json;charset=utf-8;"
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  FileSaver.saveAs(blob, filename);
 };

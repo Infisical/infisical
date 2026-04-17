@@ -473,7 +473,7 @@ export enum EventType {
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
-  CMEK_BULK_GET_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
+  CMEK_BULK_EXPORT_PRIVATE_KEYS = "cmek-bulk-export-private-keys",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -3650,7 +3650,7 @@ interface CmekGetPrivateKeyEvent {
 }
 
 interface CmekBulkGetPrivateKeysEvent {
-  type: EventType.CMEK_BULK_GET_PRIVATE_KEYS;
+  type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS;
   metadata: {
     keyIds: string[];
     keyNames: string[];
