@@ -2932,6 +2932,16 @@
                     ]
                   },
                   {
+                    "group": "AWS ACM Public CA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
