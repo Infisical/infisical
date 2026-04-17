@@ -915,6 +915,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isError={Boolean(error)}
                     errorText={error?.message}
                     label="AWS Connection"
+                    isRequired
                   >
                     <FilterableSelect
                       value={value}
