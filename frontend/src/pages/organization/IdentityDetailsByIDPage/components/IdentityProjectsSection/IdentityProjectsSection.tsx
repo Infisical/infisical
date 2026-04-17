@@ -4,12 +4,12 @@ import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@app/components/v3";
 import {
   useDeleteProjectIdentityMembership,
@@ -50,14 +50,12 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Projects</UnstableCardTitle>
-          <UnstableCardDescription>
-            Manage machine identity project memberships
-          </UnstableCardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription>Manage machine identity project memberships</CardDescription>
           {Boolean(projectMemberships?.length) && (
-            <UnstableCardAction>
+            <CardAction>
               <Button
                 onClick={() => {
                   handlePopUpOpen("addIdentityToProject");
@@ -68,13 +66,13 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
                 <PlusIcon />
                 Add to Project
               </Button>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <IdentityProjectsTable identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <DeleteActionModal
         isOpen={popUp.removeIdentityFromProject.isOpen}
         title={`Are you sure you want to remove ${

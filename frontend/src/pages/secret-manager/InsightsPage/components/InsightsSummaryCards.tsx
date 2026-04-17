@@ -16,20 +16,20 @@ import { twMerge } from "tailwind-merge";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  IconButton,
+  Separator,
   Skeleton,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton,
-  UnstableSeparator,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 import { cn } from "@app/components/v3/utils";
@@ -64,10 +64,10 @@ const StatCard = ({
   const [open, setOpen] = useState(false);
 
   return (
-    <UnstableCard className="flex-1">
-      <UnstableCardHeader>
-        <UnstableCardTitle>{title}</UnstableCardTitle>
-        <UnstableCardAction>
+    <Card className="flex-1">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardAction>
           <div
             className={cn(
               "flex size-9 items-center justify-center rounded-md border [&>svg]:size-5",
@@ -78,14 +78,14 @@ const StatCard = ({
           >
             {icon}
           </div>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-col gap-3">
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         <div>
           <span className="text-2xl font-semibold">{count}</span>
           <span className="ml-2 text-sm text-muted">{subtitle}</span>
         </div>
-        <UnstableSeparator />
+        <Separator />
         <div className="flex items-center justify-between">
           <Badge variant={footnoteVariant}>
             {footnoteVariant === "success" ? <CheckIcon /> : <AlertTriangleIcon />}
@@ -104,8 +104,8 @@ const StatCard = ({
             </Popover>
           )}
         </div>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -139,19 +139,19 @@ const RotationTable = ({
   if (!allItems.length) return <p className="p-4 text-center text-xs text-muted">No rotations</p>;
 
   return (
-    <UnstableTable containerClassName="max-h-72">
-      <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-        <UnstableTableRow>
-          <UnstableTableHead>Name</UnstableTableHead>
-          <UnstableTableHead>Env</UnstableTableHead>
-          <UnstableTableHead>Path</UnstableTableHead>
-          <UnstableTableHead>Status</UnstableTableHead>
-          <UnstableTableHead className="w-8" />
-        </UnstableTableRow>
-      </UnstableTableHeader>
-      <UnstableTableBody>
+    <Table containerClassName="max-h-72">
+      <TableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Env</TableHead>
+          <TableHead>Path</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="w-8" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {allItems.map((item) => (
-          <UnstableTableRow
+          <TableRow
             key={`${item.status}-${item.name}-${item.environment}`}
             onClick={() =>
               navigate({
@@ -165,19 +165,16 @@ const RotationTable = ({
               })
             }
           >
-            <UnstableTableCell className="max-w-[120px] truncate font-medium" title={item.name}>
+            <TableCell className="max-w-[120px] truncate font-medium" title={item.name}>
               {item.name}
-            </UnstableTableCell>
-            <UnstableTableCell className="text-muted" title={item.environment}>
+            </TableCell>
+            <TableCell className="text-muted" title={item.environment}>
               {item.environment}
-            </UnstableTableCell>
-            <UnstableTableCell
-              className="max-w-[100px] truncate text-muted"
-              title={item.secretPath}
-            >
+            </TableCell>
+            <TableCell className="max-w-[100px] truncate text-muted" title={item.secretPath}>
               {item.secretPath}
-            </UnstableTableCell>
-            <UnstableTableCell>
+            </TableCell>
+            <TableCell>
               {item.status === "failed" ? (
                 <Badge variant="danger">
                   {item.nextRotationAt
@@ -191,14 +188,14 @@ const RotationTable = ({
                     : "scheduled"}
                 </Badge>
               )}
-            </UnstableTableCell>
-            <UnstableTableCell className="w-8 px-2">
+            </TableCell>
+            <TableCell className="w-8 px-2">
               <ExternalLinkIcon className="size-3.5 text-muted" />
-            </UnstableTableCell>
-          </UnstableTableRow>
+            </TableCell>
+          </TableRow>
         ))}
-      </UnstableTableBody>
-    </UnstableTable>
+      </TableBody>
+    </Table>
   );
 };
 
@@ -229,19 +226,19 @@ const ReminderTable = ({
   if (!allItems.length) return <p className="p-4 text-center text-xs text-muted">No reminders</p>;
 
   return (
-    <UnstableTable containerClassName="max-h-72">
-      <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-        <UnstableTableRow>
-          <UnstableTableHead>Secret</UnstableTableHead>
-          <UnstableTableHead>Env</UnstableTableHead>
-          <UnstableTableHead>Path</UnstableTableHead>
-          <UnstableTableHead>Due</UnstableTableHead>
-          <UnstableTableHead className="w-8" />
-        </UnstableTableRow>
-      </UnstableTableHeader>
-      <UnstableTableBody>
+    <Table containerClassName="max-h-72">
+      <TableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+        <TableRow>
+          <TableHead>Secret</TableHead>
+          <TableHead>Env</TableHead>
+          <TableHead>Path</TableHead>
+          <TableHead>Due</TableHead>
+          <TableHead className="w-8" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {allItems.map((item) => (
-          <UnstableTableRow
+          <TableRow
             key={`${item.status}-${item.secretKey}-${item.environment}`}
             onClick={() =>
               navigate({
@@ -255,33 +252,27 @@ const ReminderTable = ({
               })
             }
           >
-            <UnstableTableCell
-              className="max-w-[120px] truncate font-medium"
-              title={item.secretKey}
-            >
+            <TableCell className="max-w-[120px] truncate font-medium" title={item.secretKey}>
               {item.secretKey}
-            </UnstableTableCell>
-            <UnstableTableCell className="text-muted" title={item.environment}>
+            </TableCell>
+            <TableCell className="text-muted" title={item.environment}>
               {item.environment}
-            </UnstableTableCell>
-            <UnstableTableCell
-              className="max-w-[100px] truncate text-muted"
-              title={item.secretPath}
-            >
+            </TableCell>
+            <TableCell className="max-w-[100px] truncate text-muted" title={item.secretPath}>
               {item.secretPath}
-            </UnstableTableCell>
-            <UnstableTableCell>
+            </TableCell>
+            <TableCell>
               <Badge variant={item.status === "overdue" ? "danger" : "warning"}>
                 {formatDistanceToNow(parseISO(item.nextReminderDate), { addSuffix: true })}
               </Badge>
-            </UnstableTableCell>
-            <UnstableTableCell className="w-8 px-2">
+            </TableCell>
+            <TableCell className="w-8 px-2">
               <ExternalLinkIcon className="size-3.5 text-muted" />
-            </UnstableTableCell>
-          </UnstableTableRow>
+            </TableCell>
+          </TableRow>
         ))}
-      </UnstableTableBody>
-    </UnstableTable>
+      </TableBody>
+    </Table>
   );
 };
 
@@ -309,19 +300,19 @@ const StaleSecretsTable = ({
 
   return (
     <div>
-      <UnstableTable containerClassName={twMerge("max-h-72", totalPages && "rounded-b-none")}>
-        <UnstableTableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-          <UnstableTableRow>
-            <UnstableTableHead>Secret</UnstableTableHead>
-            <UnstableTableHead>Env</UnstableTableHead>
-            <UnstableTableHead>Path</UnstableTableHead>
-            <UnstableTableHead>Last Modified</UnstableTableHead>
-            <UnstableTableHead className="w-8" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
+      <Table containerClassName={twMerge("max-h-72", totalPages && "rounded-b-none")}>
+        <TableHeader className="sticky top-0 z-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+          <TableRow>
+            <TableHead>Secret</TableHead>
+            <TableHead>Env</TableHead>
+            <TableHead>Path</TableHead>
+            <TableHead>Last Modified</TableHead>
+            <TableHead className="w-8" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {items.map((item) => (
-            <UnstableTableRow
+            <TableRow
               key={`${item.key}-${item.environment}-${item.secretPath}`}
               onClick={() =>
                 navigate({
@@ -335,28 +326,25 @@ const StaleSecretsTable = ({
                 })
               }
             >
-              <UnstableTableCell className="max-w-[120px] truncate font-medium" title={item.key}>
+              <TableCell className="max-w-[120px] truncate font-medium" title={item.key}>
                 {item.key}
-              </UnstableTableCell>
-              <UnstableTableCell className="text-muted" title={item.environment}>
+              </TableCell>
+              <TableCell className="text-muted" title={item.environment}>
                 {item.environment}
-              </UnstableTableCell>
-              <UnstableTableCell
-                className="max-w-[100px] truncate text-muted"
-                title={item.secretPath}
-              >
+              </TableCell>
+              <TableCell className="max-w-[100px] truncate text-muted" title={item.secretPath}>
                 {item.secretPath}
-              </UnstableTableCell>
-              <UnstableTableCell className="text-muted">
+              </TableCell>
+              <TableCell className="text-muted">
                 {formatDistanceToNow(parseISO(item.updatedAt), { addSuffix: true })}
-              </UnstableTableCell>
-              <UnstableTableCell className="w-8 px-2">
+              </TableCell>
+              <TableCell className="w-8 px-2">
                 <ExternalLinkIcon className="size-3.5 text-muted" />
-              </UnstableTableCell>
-            </UnstableTableRow>
+              </TableCell>
+            </TableRow>
           ))}
-        </UnstableTableBody>
-      </UnstableTable>
+        </TableBody>
+      </Table>
       {totalPages > 1 && (
         <div className="flex items-center justify-between border-t border-border bg-container px-3 py-2">
           <span className="text-xs text-muted">
@@ -364,22 +352,22 @@ const StaleSecretsTable = ({
             {totalCount}
           </span>
           <div className="flex items-center gap-1">
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               disabled={page === 0}
               onClick={() => onPageChange(page - 1)}
             >
               <ChevronLeftIcon className="size-3.5" />
-            </UnstableIconButton>
-            <UnstableIconButton
+            </IconButton>
+            <IconButton
               variant="ghost"
               size="xs"
               disabled={page >= totalPages - 1}
               onClick={() => onPageChange(page + 1)}
             >
               <ChevronRightIcon className="size-3.5" />
-            </UnstableIconButton>
+            </IconButton>
           </div>
         </div>
       )}

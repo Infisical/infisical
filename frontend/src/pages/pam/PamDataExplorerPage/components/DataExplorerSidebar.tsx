@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatabaseIcon, SearchIcon, TableIcon, ViewIcon } from "lucide-react";
 
-import { UnstableInput } from "@app/components/v3/generic/Input";
+import { Input } from "@app/components/v3/generic/Input";
 import {
   Select,
   SelectContent,
@@ -76,7 +76,7 @@ export const DataExplorerSidebar = ({
         )}
         <div className="relative">
           <SearchIcon className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-accent" />
-          <UnstableInput
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tables..."

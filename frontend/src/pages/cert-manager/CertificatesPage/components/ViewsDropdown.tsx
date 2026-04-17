@@ -3,17 +3,17 @@ import { CheckIcon, ChevronDownIcon, GlobeIcon, Trash2Icon, XIcon } from "lucide
 import { twMerge } from "tailwind-merge";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuRadioGroup,
-  UnstableDropdownMenuRadioItem,
-  UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { TSystemView } from "@app/hooks/api/certificateInventoryViews";
 import type {
@@ -60,7 +60,7 @@ export const ViewsDropdown = ({
         <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label="Confirm delete"
@@ -72,13 +72,13 @@ export const ViewsDropdown = ({
                 className="text-muted hover:text-success"
               >
                 <CheckIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent side="top">Confirm delete</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label="Cancel delete"
@@ -89,7 +89,7 @@ export const ViewsDropdown = ({
                 className="text-muted"
               >
                 <XIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent side="top">Cancel</TooltipContent>
           </Tooltip>
@@ -102,7 +102,7 @@ export const ViewsDropdown = ({
         {onToggleShare && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label={isShared ? "Make personal" : "Share with team"}
@@ -113,7 +113,7 @@ export const ViewsDropdown = ({
                 className="text-muted hover:text-foreground"
               >
                 <GlobeIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent side="top">
               {isShared ? "Make personal" : "Share with team"}
@@ -123,7 +123,7 @@ export const ViewsDropdown = ({
         {onDeleteView && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label="Delete view"
@@ -134,7 +134,7 @@ export const ViewsDropdown = ({
                 className="text-muted hover:text-danger"
               >
                 <Trash2Icon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent side="top">Delete view</TooltipContent>
           </Tooltip>
@@ -144,8 +144,8 @@ export const ViewsDropdown = ({
   };
 
   return (
-    <UnstableDropdownMenu onOpenChange={() => setPendingDeleteId(null)}>
-      <UnstableDropdownMenuTrigger asChild>
+    <DropdownMenu onOpenChange={() => setPendingDeleteId(null)}>
+      <DropdownMenuTrigger asChild>
         <button
           type="button"
           aria-label="Select certificate view"
@@ -154,30 +154,30 @@ export const ViewsDropdown = ({
           <span className="truncate">{label}</span>
           <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
         </button>
-      </UnstableDropdownMenuTrigger>
-      <UnstableDropdownMenuContent sideOffset={2} className="w-64" align="end">
-        <UnstableDropdownMenuLabel>System Views</UnstableDropdownMenuLabel>
-        <UnstableDropdownMenuRadioGroup value={activeViewId || "system-all"}>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent sideOffset={2} className="w-64" align="end">
+        <DropdownMenuLabel>System Views</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={activeViewId || "system-all"}>
           {systemViews.map((view) => (
-            <UnstableDropdownMenuRadioItem
+            <DropdownMenuRadioItem
               key={view.id}
               value={view.id}
               onClick={() => onSelectView(view.id, view.filters)}
             >
               {view.name}
-            </UnstableDropdownMenuRadioItem>
+            </DropdownMenuRadioItem>
           ))}
-        </UnstableDropdownMenuRadioGroup>
+        </DropdownMenuRadioGroup>
 
         {sharedViews.length > 0 && (
           <>
-            <UnstableDropdownMenuSeparator />
-            <UnstableDropdownMenuLabel>Shared Views</UnstableDropdownMenuLabel>
-            <UnstableDropdownMenuRadioGroup value={activeViewId || ""}>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Shared Views</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={activeViewId || ""}>
               {sharedViews.map((view) => {
                 const isOwner = currentUserId && view.createdByUserId === currentUserId;
                 return (
-                  <UnstableDropdownMenuRadioItem
+                  <DropdownMenuRadioItem
                     key={view.id}
                     value={view.id}
                     className="group relative"
@@ -192,16 +192,16 @@ export const ViewsDropdown = ({
                       {view.name}
                     </span>
                     {isOwner && renderActions(view.id, true, activeViewId === view.id)}
-                  </UnstableDropdownMenuRadioItem>
+                  </DropdownMenuRadioItem>
                 );
               })}
-            </UnstableDropdownMenuRadioGroup>
+            </DropdownMenuRadioGroup>
           </>
         )}
 
-        <UnstableDropdownMenuSeparator />
+        <DropdownMenuSeparator />
 
-        <UnstableDropdownMenuLabel>My Views</UnstableDropdownMenuLabel>
+        <DropdownMenuLabel>My Views</DropdownMenuLabel>
         {customViews.length === 0 ? (
           <div className="px-2 py-2 text-center text-xs text-muted">
             No custom views saved yet.
@@ -209,9 +209,9 @@ export const ViewsDropdown = ({
             Apply filters and click &quot;Save as View&quot;
           </div>
         ) : (
-          <UnstableDropdownMenuRadioGroup value={activeViewId || ""}>
+          <DropdownMenuRadioGroup value={activeViewId || ""}>
             {customViews.map((view) => (
-              <UnstableDropdownMenuRadioItem
+              <DropdownMenuRadioItem
                 key={view.id}
                 value={view.id}
                 className="group relative"
@@ -226,11 +226,11 @@ export const ViewsDropdown = ({
                   {view.name}
                 </span>
                 {renderActions(view.id, false, activeViewId === view.id)}
-              </UnstableDropdownMenuRadioItem>
+              </DropdownMenuRadioItem>
             ))}
-          </UnstableDropdownMenuRadioGroup>
+          </DropdownMenuRadioGroup>
         )}
-      </UnstableDropdownMenuContent>
-    </UnstableDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

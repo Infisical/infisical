@@ -10,37 +10,37 @@ import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -137,15 +137,15 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Project Additional Privileges
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>Assign one-off policies to this user</UnstableCardDescription>
+          </CardTitle>
+          <CardDescription>Assign one-off policies to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasAdditionalPrivileges && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.Member}
@@ -179,10 +179,10 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                   );
                 }}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           {/* eslint-disable-next-line no-nested-ternary */}
           {isPending ? (
             // scott: todo proper loader
@@ -190,15 +190,15 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
               <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
             </div>
           ) : userProjectPrivileges?.length ? (
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableRow>
-                  <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-                  <UnstableTableHead className="w-1/2">Duration</UnstableTableHead>
-                  {!isOwnProjectMembershipDetails && <UnstableTableHead className="w-5" />}
-                </UnstableTableRow>
-              </UnstableTableHeader>
-              <UnstableTableBody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/2">Name</TableHead>
+                  <TableHead className="w-1/2">Duration</TableHead>
+                  {!isOwnProjectMembershipDetails && <TableHead className="w-5" />}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {!isPending &&
                   userProjectPrivileges?.map((privilegeDetails) => {
                     const isTemporary = privilegeDetails?.isTemporary;
@@ -226,8 +226,8 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                     }
 
                     return (
-                      <UnstableTableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
-                        <UnstableTableCell className="flex items-center gap-2">
+                      <TableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
+                        <TableCell className="flex items-center gap-2">
                           <span className="truncate">{privilegeDetails.slug}</span>
                           {isLinkedToAccessApproval && (
                             <Tooltip>
@@ -242,8 +242,8 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                               </TooltipContent>
                             </Tooltip>
                           )}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           {isTemporary ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -260,16 +260,16 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                           ) : (
                             text
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                         {!isOwnProjectMembershipDetails && (
-                          <UnstableTableCell>
-                            <UnstableDropdownMenu>
-                              <UnstableDropdownMenuTrigger asChild>
-                                <UnstableIconButton size="xs" variant="ghost">
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton size="xs" variant="ghost">
                                   <EllipsisIcon />
-                                </UnstableIconButton>
-                              </UnstableDropdownMenuTrigger>
-                              <UnstableDropdownMenuContent align="end">
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
                                 {isLinkedToAccessApproval ? (
                                   <ProjectPermissionCan
                                     I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
@@ -281,7 +281,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                           userId || ""
                                         );
                                       return (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           isDisabled={
                                             !privilegeDetails.accessApprovalRequestId ||
                                             ((!isAllowed || !canModifyMemberPrivileges) &&
@@ -298,7 +298,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                           }}
                                         >
                                           Revoke Access
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       );
                                     }}
                                   </ProjectPermissionCan>
@@ -309,7 +309,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                       a={ProjectPermissionSub.Member}
                                     >
                                       {(isAllowed) => (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           isDisabled={!isAllowed || !canModifyMemberPrivileges}
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -317,7 +317,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                           }}
                                         >
                                           Edit Additional Privilege
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       )}
                                     </ProjectPermissionCan>
                                     <ProjectPermissionCan
@@ -325,7 +325,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                       a={ProjectPermissionSub.Member}
                                     >
                                       {(isAllowed) => (
-                                        <UnstableDropdownMenuItem
+                                        <DropdownMenuItem
                                           isDisabled={!isAllowed || !canModifyMemberPrivileges}
                                           variant="danger"
                                           onClick={(e) => {
@@ -337,30 +337,30 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                                           }}
                                         >
                                           Remove Additional Privilege
-                                        </UnstableDropdownMenuItem>
+                                        </DropdownMenuItem>
                                       )}
                                     </ProjectPermissionCan>
                                   </>
                                 )}
-                              </UnstableDropdownMenuContent>
-                            </UnstableDropdownMenu>
-                          </UnstableTableCell>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         )}
-                      </UnstableTableRow>
+                      </TableRow>
                     );
                   })}
-              </UnstableTableBody>
-            </UnstableTable>
+              </TableBody>
+            </Table>
           ) : (
-            <UnstableEmpty className="border">
-              <UnstableEmptyHeader>
-                <UnstableEmptyTitle>This user has no additional privileges</UnstableEmptyTitle>
-                <UnstableEmptyDescription>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>This user has no additional privileges</EmptyTitle>
+                <EmptyDescription>
                   Add an additional privilege to grant one-off access policies
-                </UnstableEmptyDescription>
-              </UnstableEmptyHeader>
+                </EmptyDescription>
+              </EmptyHeader>
               {!isOwnProjectMembershipDetails && (
-                <UnstableEmptyContent>
+                <EmptyContent>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Member}
@@ -394,12 +394,12 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                       );
                     }}
                   </ProjectPermissionCan>
-                </UnstableEmptyContent>
+                </EmptyContent>
               )}
-            </UnstableEmpty>
+            </Empty>
           )}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <Sheet
         open={popUp.modifyPrivilege.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}

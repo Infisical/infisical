@@ -2,13 +2,7 @@ import { format } from "date-fns";
 import { CopyIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Detail,
-  DetailLabel,
-  DetailValue,
-  UnstableIconButton,
-  UnstableInput
-} from "@app/components/v3";
+import { Detail, DetailLabel, DetailValue, IconButton, Input } from "@app/components/v3";
 import {
   PamResourceType,
   TActiveDirectoryAccount,
@@ -30,10 +24,10 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput value={value} readOnly className="flex-1 font-mono text-sm" />
-          <UnstableIconButton variant="ghost" onClick={handleCopy} size="sm">
+          <Input value={value} readOnly className="flex-1 font-mono text-sm" />
+          <IconButton variant="ghost" onClick={handleCopy} size="sm">
             <CopyIcon />
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>

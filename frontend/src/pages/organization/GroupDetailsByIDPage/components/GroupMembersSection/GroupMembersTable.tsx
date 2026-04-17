@@ -6,24 +6,24 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Lottie } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableInput,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Input,
+  Pagination,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
@@ -129,27 +129,27 @@ export const GroupMembersTable = ({
   return (
     <>
       <div className="mb-4 flex gap-2">
-        <UnstableInput
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search members..."
           className="flex-1"
         />
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
               variant={
                 // eslint-disable-next-line no-nested-ternary
                 memberTypeFilter.length ? (isSubOrganization ? "sub-org" : "org") : "outline"
               }
             >
               <FilterIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuLabel>Filter by Member Type</UnstableDropdownMenuLabel>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by Member Type</DropdownMenuLabel>
             {filterOptions.map((option) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 key={option.value}
                 checked={memberTypeFilter.includes(option.value)}
                 onClick={(e) => {
@@ -164,17 +164,17 @@ export const GroupMembersTable = ({
                 }}
               >
                 {option.label}
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {members.length ? (
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead className="w-5" />
-              <UnstableTableHead onClick={toggleOrderDirection} className="w-2/3">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-5" />
+              <TableHead onClick={toggleOrderDirection} className="w-2/3">
                 Name
                 <ChevronDownIcon
                   className={twMerge(
@@ -182,12 +182,12 @@ export const GroupMembersTable = ({
                     "transition-transform"
                   )}
                 />
-              </UnstableTableHead>
-              <UnstableTableHead>Added On</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+              <TableHead>Added On</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {members.map((userGroupMembership) =>
               userGroupMembership.type === GroupMemberType.USER ? (
                 <GroupMembershipUserRow
@@ -205,21 +205,21 @@ export const GroupMembersTable = ({
                 />
               )
             )}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       ) : (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {isFiltered ? "No members match this search" : "This group does not have any members"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {isFiltered
                 ? "Adjust search filters to view members."
                 : "Add users or machine identities to this group."}
-            </UnstableEmptyDescription>
+            </EmptyDescription>
             {!isFiltered && !isLinkedGroup && (
-              <UnstableEmptyContent>
+              <EmptyContent>
                 <OrgPermissionCan
                   I={OrgPermissionGroupActions.Edit}
                   a={OrgPermissionSubjects.Groups}
@@ -241,13 +241,13 @@ export const GroupMembersTable = ({
                     </Button>
                   )}
                 </OrgPermissionCan>
-              </UnstableEmptyContent>
+              </EmptyContent>
             )}
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+          </EmptyHeader>
+        </Empty>
       )}
       {Boolean(members.length) && (
-        <UnstablePagination
+        <Pagination
           count={totalCount}
           page={page}
           perPage={perPage}

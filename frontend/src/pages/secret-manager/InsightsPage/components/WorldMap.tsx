@@ -10,11 +10,11 @@
 //   TooltipContent,
 //   TooltipProvider,
 //   TooltipTrigger,
-//   UnstableCard,
-//   UnstableCardContent,
-//   UnstableCardDescription,
-//   UnstableCardHeader,
-//   UnstableCardTitle
+//   Card,
+//   CardContent,
+//   CardDescription,
+//   CardHeader,
+//   CardTitle
 // } from "@app/components/v3";
 // import { useProject } from "@app/context";
 // import { useGetSecretAccessLocations } from "@app/hooks/api";
@@ -291,14 +291,14 @@
 //   const totalAccess = allLocations.reduce((sum, l) => sum + l.count, 0);
 
 //   return (
-//     <UnstableCard>
-//       <UnstableCardHeader>
-//         <UnstableCardTitle>Secret Access Locations</UnstableCardTitle>
-//         <UnstableCardDescription>
+//     <Card>
+//       <CardHeader>
+//         <CardTitle>Secret Access Locations</CardTitle>
+//         <CardDescription>
 //           Geographic distribution of secret access over the past 30 days
-//         </UnstableCardDescription>
-//       </UnstableCardHeader>
-//       <UnstableCardContent>
+//         </CardDescription>
+//       </CardHeader>
+//       <CardContent>
 //         {isPending ? (
 //           <Skeleton
 //             className="my-[0.5px] w-full rounded-md"
@@ -342,7 +342,7 @@
 //             )}
 //           </TooltipProvider>
 //         )}
-//       </UnstableCardContent>
-//     </UnstableCard>
+//       </CardContent>
+//     </Card>
 //   );
 // };

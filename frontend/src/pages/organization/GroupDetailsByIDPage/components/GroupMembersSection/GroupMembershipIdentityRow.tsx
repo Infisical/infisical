@@ -3,13 +3,13 @@ import { HardDriveIcon, MoreHorizontalIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { GroupMemberType, TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
@@ -34,24 +34,24 @@ export const GroupMembershipIdentityRow = ({
   isLinkedGroup = false
 }: Props) => {
   return (
-    <UnstableTableRow key={`group-identity-${id}`}>
-      <UnstableTableCell>
+    <TableRow key={`group-identity-${id}`}>
+      <TableCell>
         <HardDriveIcon size={14} className="text-mineshaft-400" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
-      <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
-      <UnstableTableCell>
+      </TableCell>
+      <TableCell isTruncatable>{name}</TableCell>
+      <TableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</TableCell>
+      <TableCell>
         {!isLinkedGroup && (
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger>
-              <UnstableIconButton variant="ghost" size="xs">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <IconButton variant="ghost" size="xs">
                 <MoreHorizontalIcon />
-              </UnstableIconButton>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="end">
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
-                  <UnstableDropdownMenuItem
+                  <DropdownMenuItem
                     variant="danger"
                     onClick={() =>
                       handlePopUpOpen("removeMemberFromGroup", {
@@ -63,13 +63,13 @@ export const GroupMembershipIdentityRow = ({
                     isDisabled={!isAllowed}
                   >
                     Remove Identity From Group
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 )}
               </OrgPermissionCan>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

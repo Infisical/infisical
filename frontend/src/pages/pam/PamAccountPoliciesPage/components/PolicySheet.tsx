@@ -16,6 +16,8 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  IconButton,
+  Input,
   Label,
   Popover,
   PopoverContent,
@@ -30,9 +32,7 @@ import {
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   PamAccountPolicyRuleType,
@@ -173,7 +173,7 @@ const RulePatterns = ({
                 control={control}
                 name={`rules.${ruleIndex}.patterns.${patternIndex}.value`}
                 render={({ field }) => (
-                  <UnstableInput
+                  <Input
                     {...field}
                     placeholder={"Regex pattern, e.g. rm\\s+-rf"}
                     className="flex-1 font-mono text-xs"
@@ -181,7 +181,7 @@ const RulePatterns = ({
                   />
                 )}
               />
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 size="xs"
                 aria-label="Remove pattern"
@@ -189,7 +189,7 @@ const RulePatterns = ({
                 disabled={fields.length <= 1}
               >
                 <CircleMinus className="h-3.5 w-3.5 text-mineshaft-400" />
-              </UnstableIconButton>
+              </IconButton>
             </div>
             {patternError && <p className="mt-1 text-xs text-danger">{patternError.message}</p>}
           </div>
@@ -324,7 +324,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 <Field>
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
-                    <UnstableInput
+                    <Input
                       {...field}
                       placeholder="e.g. Production SSH Policy"
                       isError={Boolean(error)}
@@ -411,14 +411,14 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                         <span className="text-sm font-medium text-foreground">{meta.name}</span>
                         {ruleType && <RuleSupportedResourceIndicator ruleType={ruleType} />}
                       </div>
-                      <UnstableIconButton
+                      <IconButton
                         variant="danger"
                         size="xs"
                         aria-label="Remove rule"
                         onClick={() => removeRule(ruleIndex)}
                       >
                         <Trash2 className="size-3.5" />
-                      </UnstableIconButton>
+                      </IconButton>
                     </div>
                     {meta.description && (
                       <p className="mt-2 text-xs text-muted">{meta.description}</p>

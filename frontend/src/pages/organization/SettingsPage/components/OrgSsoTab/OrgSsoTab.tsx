@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
-import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSsoActions,
@@ -94,14 +94,14 @@ export const OrgSsoTab = withPermission(
                 OIDC, and LDAP.
               </p>
               {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
-                <UnstableAlert variant="info" className="mt-3 bg-info/10">
+                <Alert variant="info" className="mt-3 bg-info/10">
                   <InfoIcon />
-                  <UnstableAlertTitle>Email domain verification required</UnstableAlertTitle>
-                  <UnstableAlertDescription>
+                  <AlertTitle>Email domain verification required</AlertTitle>
+                  <AlertDescription>
                     You must verify at least one email domain before configuring an identity
                     provider. Add a domain in the Email Domains section above.
-                  </UnstableAlertDescription>
-                </UnstableAlert>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
             {shouldDisplaySection(LoginMethod.SAML) && (
@@ -229,14 +229,14 @@ export const OrgSsoTab = withPermission(
                 ) &&
                 !isPending &&
                 !emailDomains?.length && (
-                  <UnstableAlert variant="info" className="mt-3 bg-info/10">
+                  <Alert variant="info" className="mt-3 bg-info/10">
                     <InfoIcon />
-                    <UnstableAlertTitle>Email domain verification required</UnstableAlertTitle>
-                    <UnstableAlertDescription>
+                    <AlertTitle>Email domain verification required</AlertTitle>
+                    <AlertDescription>
                       You must verify at least one email domain before configuring an identity
                       provider. Add a domain in the Email Domains section above.
-                    </UnstableAlertDescription>
-                  </UnstableAlert>
+                    </AlertDescription>
+                  </Alert>
                 )}
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}

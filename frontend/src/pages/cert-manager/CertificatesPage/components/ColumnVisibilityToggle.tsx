@@ -1,13 +1,13 @@
 import { Columns3Icon } from "lucide-react";
 
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton
 } from "@app/components/v3";
 
 export type ColumnDef = {
@@ -85,39 +85,39 @@ export const ColumnVisibilityToggle = ({ visibleColumns, onChange, projectId }: 
   };
 
   return (
-    <UnstableDropdownMenu>
-      <UnstableDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <div className="relative">
-          <UnstableIconButton
+          <IconButton
             variant={!allVisible ? "project" : "outline"}
             size="md"
             aria-label="Toggle columns"
           >
             <Columns3Icon />
-          </UnstableIconButton>
+          </IconButton>
         </div>
-      </UnstableDropdownMenuTrigger>
-      <UnstableDropdownMenuContent sideOffset={2} className="w-52" align="end">
-        <UnstableDropdownMenuLabel>Columns</UnstableDropdownMenuLabel>
-        <UnstableDropdownMenuCheckboxItem
+      </DropdownMenuTrigger>
+      <DropdownMenuContent sideOffset={2} className="w-52" align="end">
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuCheckboxItem
           checked={allVisible}
           onCheckedChange={handleToggleAll}
           onSelect={(e) => e.preventDefault()}
         >
           {allVisible ? "Hide All" : "Show All"}
-        </UnstableDropdownMenuCheckboxItem>
-        <UnstableDropdownMenuSeparator />
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
         {INVENTORY_COLUMNS.map((col) => (
-          <UnstableDropdownMenuCheckboxItem
+          <DropdownMenuCheckboxItem
             key={col.key}
             checked={visibleColumns.has(col.key)}
             onCheckedChange={() => handleToggle(col.key)}
             onSelect={(e) => e.preventDefault()}
           >
             {col.label}
-          </UnstableDropdownMenuCheckboxItem>
+          </DropdownMenuCheckboxItem>
         ))}
-      </UnstableDropdownMenuContent>
-    </UnstableDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

@@ -4,10 +4,10 @@ import { CircleOffIcon, EraserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  UnstableDropdownMenu as DropdownMenu,
-  UnstableDropdownMenuContent as DropdownMenuContent,
-  UnstableDropdownMenuItem as DropdownMenuItem,
-  UnstableDropdownMenuTrigger as DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3/generic/Dropdown";
 
 import { useAsRef } from "./hooks/use-as-ref";

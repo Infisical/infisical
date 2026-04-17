@@ -4,13 +4,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  IconButton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetCalendarInsights } from "@app/hooks/api";
@@ -31,35 +31,33 @@ export const CalendarCard = () => {
   );
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Rotation & Reminder Calendar</UnstableCardTitle>
-        <UnstableCardDescription>
-          View upcoming secret rotations and reminders
-        </UnstableCardDescription>
-        <UnstableCardAction>
+    <Card>
+      <CardHeader>
+        <CardTitle>Rotation & Reminder Calendar</CardTitle>
+        <CardDescription>View upcoming secret rotations and reminders</CardDescription>
+        <CardAction>
           <div className="ml-4 flex items-center gap-1">
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
             >
               <ChevronLeft className="size-4" />
-            </UnstableIconButton>
+            </IconButton>
             <span className="min-w-[140px] text-center text-sm font-medium">
               {format(currentMonth, "MMMM yyyy")}
             </span>
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
             >
               <ChevronRight className="size-4" />
-            </UnstableIconButton>
+            </IconButton>
           </div>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <div className="relative">
           <CalendarGrid
             currentMonth={currentMonth}
@@ -73,7 +71,7 @@ export const CalendarCard = () => {
           )}
         </div>
         <CalendarLegend />
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

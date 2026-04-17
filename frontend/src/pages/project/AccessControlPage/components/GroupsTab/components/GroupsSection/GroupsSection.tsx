@@ -6,13 +6,13 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  DocumentationLinkBadge,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -65,14 +65,14 @@ export const GroupsSection = () => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             Project Groups
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
-          </UnstableCardTitle>
-          <UnstableCardDescription>Add and manage project groups</UnstableCardDescription>
-          <UnstableCardAction>
+          </CardTitle>
+          <CardDescription>Add and manage project groups</CardDescription>
+          <CardAction>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
               a={ProjectPermissionSub.Groups}
@@ -88,13 +88,13 @@ export const GroupsSection = () => {
                 </Button>
               )}
             </ProjectPermissionCan>
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <GroupModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
           <GroupTable handlePopUpOpen={handlePopUpOpen} />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
         title={`Are you sure you want to remove the group ${

@@ -4,7 +4,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
-import { UnstableSeparator as Separator } from "../Separator";
+import { Separator } from "../Separator";
 
 function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

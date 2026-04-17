@@ -2,7 +2,7 @@ import * as React from "react";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 
 import { Button } from "@app/components/v3/generic/Button";
-import { UnstableInput as Input } from "@app/components/v3/generic/Input";
+import { Input } from "@app/components/v3/generic/Input";
 
 import { useAsRef } from "./hooks/use-as-ref";
 import { useDebouncedCallback } from "./hooks/use-debounced-callback";

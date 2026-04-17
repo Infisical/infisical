@@ -22,6 +22,7 @@ const iconButtonVariants = cva(
           "border-accent/10 bg-accent/40 text-foreground hover:bg-accent/50 hover:border-accent/20",
         outline: "text-foreground hover:bg-foreground/20 border-border hover:border-foreground/50",
         ghost: "text-foreground hover:bg-foreground/10 border-transparent",
+        "ghost-muted": "text-muted hover:text-foreground hover:bg-foreground/10 border-transparent",
         project:
           "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30",
         org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30",
@@ -56,14 +57,14 @@ const iconButtonVariants = cva(
   }
 );
 
-type UnstableIconButtonProps = React.ComponentProps<"button"> &
+type IconButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof iconButtonVariants> & {
     asChild?: boolean;
     isPending?: boolean;
     isDisabled?: boolean;
   };
 
-const UnstableIconButton = forwardRef<HTMLButtonElement, UnstableIconButtonProps>(
+const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   (
     {
       className,
@@ -109,6 +110,6 @@ const UnstableIconButton = forwardRef<HTMLButtonElement, UnstableIconButtonProps
   }
 );
 
-UnstableIconButton.displayName = "IconButton";
+IconButton.displayName = "IconButton";
 
-export { iconButtonVariants, UnstableIconButton, type UnstableIconButtonProps };
+export { IconButton, type IconButtonProps, iconButtonVariants };

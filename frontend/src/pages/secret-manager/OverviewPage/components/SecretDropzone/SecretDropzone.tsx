@@ -12,15 +12,15 @@ import {
 } from "@app/components/utilities/parseSecrets";
 import {
   Button,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -131,7 +131,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
     <>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
         {(isAllowed) => (
-          <UnstableEmpty
+          <Empty
             className={twMerge(
               "relative border !pb-20 transition-colors duration-75",
               isAllowed && isDragActive && "bg-container-hover"
@@ -141,18 +141,18 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
             onDragOver={handleDrag}
             onDrop={isAllowed ? handleDrop : undefined}
           >
-            <UnstableEmptyHeader>
+            <EmptyHeader>
               <EmptyMedia variant="icon">
                 <UploadIcon />
               </EmptyMedia>
-              <UnstableEmptyTitle>
+              <EmptyTitle>
                 {isDragActive ? "Drop your file here" : "Upload your secrets"}
-              </UnstableEmptyTitle>
-              <UnstableEmptyDescription>
+              </EmptyTitle>
+              <EmptyDescription>
                 Drag and drop your .env, .json, .yml, or .csv files here or click to browse
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-            <UnstableEmptyContent>
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               {isAllowed && (
                 <input
                   type="file"
@@ -186,8 +186,8 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
                   <TooltipContent>Access Denied</TooltipContent>
                 </Tooltip>
               </div>
-            </UnstableEmptyContent>
-          </UnstableEmpty>
+            </EmptyContent>
+          </Empty>
         )}
       </ProjectPermissionCan>
       <PasteSecretsDialog

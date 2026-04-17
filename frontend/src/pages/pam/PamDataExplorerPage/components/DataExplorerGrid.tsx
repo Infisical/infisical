@@ -4,7 +4,7 @@ import { EyeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
-import { UnstableAlert, UnstableAlertDescription } from "@app/components/v3/generic/Alert";
+import { Alert, AlertDescription } from "@app/components/v3/generic/Alert";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
@@ -705,14 +705,14 @@ export const DataExplorerGrid = ({
 
       {!hasPrimaryKey && (
         <div className="shrink-0 px-3 py-3">
-          <UnstableAlert variant="info" className="py-2">
+          <Alert variant="info" className="py-2">
             <EyeIcon />
-            <UnstableAlertDescription>
+            <AlertDescription>
               {tableType === "view" || tableType === "materialized_view"
                 ? "This view is read-only."
                 : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
-            </UnstableAlertDescription>
-          </UnstableAlert>
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 

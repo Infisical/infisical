@@ -2,15 +2,15 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { MonitorIcon } from "lucide-react";
 
 import {
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource, useListRelatedResources } from "@app/hooks/api/pam";
@@ -46,41 +46,41 @@ export const PamResourceRelatedResourcesSection = ({ resource }: Props) => {
         <p className="text-sm text-muted">Resources that belong to this Active Directory domain</p>
       </div>
       <div className="p-4">
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Resource</UnstableTableHead>
-              <UnstableTableHead>Type</UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Resource</TableHead>
+              <TableHead>Type</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isPending && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={2} className="text-center text-muted">
+              <TableRow>
+                <TableCell colSpan={2} className="text-center text-muted">
                   Loading resources...
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending && (!relatedResources || relatedResources.length === 0) && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={2}>
-                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
-                    <UnstableEmptyHeader>
-                      <UnstableEmptyTitle>No related resources found</UnstableEmptyTitle>
-                    </UnstableEmptyHeader>
-                  </UnstableEmpty>
-                </UnstableTableCell>
-              </UnstableTableRow>
+              <TableRow>
+                <TableCell colSpan={2}>
+                  <Empty className="border-0 bg-transparent py-8 shadow-none">
+                    <EmptyHeader>
+                      <EmptyTitle>No related resources found</EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             )}
             {relatedResources?.map((relatedResource) => {
               const typeInfo = PAM_RESOURCE_TYPE_MAP[relatedResource.resourceType];
               return (
-                <UnstableTableRow
+                <TableRow
                   key={relatedResource.id}
                   className="group cursor-pointer"
                   onClick={() => handleResourceClick(relatedResource)}
                 >
-                  <UnstableTableCell>
+                  <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded bg-foreground/5">
                         {typeInfo ? (
@@ -95,17 +95,17 @@ export const PamResourceRelatedResourcesSection = ({ resource }: Props) => {
                       </div>
                       <span className="font-medium">{relatedResource.name}</span>
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <span className="text-sm text-muted">
                       {typeInfo?.name ?? relatedResource.resourceType}
                     </span>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

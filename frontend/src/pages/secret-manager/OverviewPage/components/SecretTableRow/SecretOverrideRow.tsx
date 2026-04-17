@@ -25,10 +25,10 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -239,14 +239,14 @@ export const SecretOverrideRow = ({
               <div>
                 <Tooltip>
                   <TooltipTrigger>
-                    <UnstableIconButton
+                    <IconButton
                       size="xs"
                       variant="success"
                       isDisabled={isSubmitting || !isAllowed}
                       onClick={handleSubmit(handleFormSubmit)}
                     >
                       <SaveIcon />
-                    </UnstableIconButton>
+                    </IconButton>
                   </TooltipTrigger>
                   <TooltipContent>
                     {isCreatingOverride ? "Create Override" : "Save Override"}
@@ -258,14 +258,14 @@ export const SecretOverrideRow = ({
           <div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <UnstableIconButton
+                <IconButton
                   variant="danger"
                   size="xs"
                   onClick={handleFormReset}
                   isDisabled={isSubmitting}
                 >
                   <Undo2Icon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>
                 {isCreatingOverride ? "Remove Override" : "Undo Changes"}
@@ -307,7 +307,7 @@ export const SecretOverrideRow = ({
         >
           <Tooltip delayDuration={300} disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 onClick={() => {
                   setFocus("value", { shouldSelect: true });
                 }}
@@ -319,14 +319,14 @@ export const SecretOverrideRow = ({
                 )}
               >
                 <EditIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>Edit Override</TooltipContent>
           </Tooltip>
           {!isCreatingOverride && (
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   isDisabled={!canFetchOverrideValue}
                   onClick={handleCopyOverrideToClipboard}
                   variant="ghost"
@@ -337,7 +337,7 @@ export const SecretOverrideRow = ({
                   )}
                 >
                   <CopyIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Copy Override</TooltipContent>
             </Tooltip>
@@ -364,7 +364,7 @@ export const SecretOverrideRow = ({
           </AlertDialog>
           <Tooltip delayDuration={300} disableHoverableContent>
             <TooltipTrigger>
-              <UnstableIconButton
+              <IconButton
                 onClick={
                   isCreatingOverride
                     ? () => {
@@ -381,7 +381,7 @@ export const SecretOverrideRow = ({
                 )}
               >
                 <TrashIcon />
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>
               {isCreatingOverride ? "Cancel Override" : "Remove Override"}

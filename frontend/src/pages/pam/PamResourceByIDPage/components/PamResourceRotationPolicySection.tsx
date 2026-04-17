@@ -7,7 +7,7 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { getObjectFromSeconds } from "@app/helpers/datetime";
@@ -50,9 +50,9 @@ export const PamResourceRotationPolicySection = ({ resource, onEdit }: Props) =>
           a={ProjectPermissionSub.PamResources}
         >
           {(isAllowed) => (
-            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+            <IconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
               <PencilIcon />
-            </UnstableIconButton>
+            </IconButton>
           )}
         </ProjectPermissionCan>
       </div>

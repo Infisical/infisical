@@ -10,10 +10,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -116,14 +116,14 @@ const Page = () => {
                   description="Manage certificate authority"
                   title={data.name}
                 >
-                  <UnstableDropdownMenu>
-                    <UnstableDropdownMenuTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button variant="outline">
                         Options
                         <EllipsisIcon />
                       </Button>
-                    </UnstableDropdownMenuTrigger>
-                    <UnstableDropdownMenuContent align="end">
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateAuthorityActions.Delete}
                         a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -131,17 +131,17 @@ const Page = () => {
                         })}
                       >
                         {(canDelete) => (
-                          <UnstableDropdownMenuItem
+                          <DropdownMenuItem
                             variant="danger"
                             isDisabled={!canDelete}
                             onClick={() => handlePopUpOpen("deleteCa")}
                           >
                             Delete CA
-                          </UnstableDropdownMenuItem>
+                          </DropdownMenuItem>
                         )}
                       </ProjectPermissionCan>
-                    </UnstableDropdownMenuContent>
-                  </UnstableDropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </PageHeader>
                 <div className="flex flex-col gap-5 lg:flex-row">
                   <div className="w-full lg:max-w-[24rem]">

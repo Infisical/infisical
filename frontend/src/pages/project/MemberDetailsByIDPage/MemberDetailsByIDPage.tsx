@@ -19,10 +19,10 @@ import {
 import {
   Badge,
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -166,15 +166,15 @@ export const Page = () => {
                 </Badge>
               </Tooltip>
             ) : (
-              <UnstableDropdownMenu>
-                <UnstableDropdownMenuTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="outline">
                     Options
                     <EllipsisIcon />
                   </Button>
-                </UnstableDropdownMenuTrigger>
-                <UnstableDropdownMenuContent align="end">
-                  <UnstableDropdownMenuItem
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(membershipDetails.user.id);
                       createNotification({
@@ -184,13 +184,13 @@ export const Page = () => {
                     }}
                   >
                     Copy User ID
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                   <ProjectPermissionCan
                     I={ProjectPermissionMemberActions.AssumePrivileges}
                     a={ProjectPermissionSub.Member}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         isDisabled={!isAllowed}
                         onClick={() =>
                           handlePopUpOpen("assumePrivileges", {
@@ -207,7 +207,7 @@ export const Page = () => {
                             <InfoIcon className="text-muted" />
                           </div>
                         </Tooltip>
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
@@ -215,17 +215,17 @@ export const Page = () => {
                     a={ProjectPermissionSub.Member}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         variant="danger"
                         isDisabled={!isAllowed}
                         onClick={() => handlePopUpOpen("removeMember")}
                       >
                         Remove User From Project
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                </UnstableDropdownMenuContent>
-              </UnstableDropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">

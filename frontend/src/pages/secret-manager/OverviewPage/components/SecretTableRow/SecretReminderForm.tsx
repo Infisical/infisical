@@ -17,6 +17,7 @@ import {
   FieldError,
   FieldLabel,
   FilterableSelect,
+  Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -25,8 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TextArea,
-  UnstableInput
+  TextArea
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -293,7 +293,7 @@ export const SecretReminderForm = ({
                 name="repeatDays"
                 render={({ field, fieldState: { error } }) => (
                   <>
-                    <UnstableInput
+                    <Input
                       type="number"
                       placeholder={DEFAULT_REPEAT_DAYS.toString()}
                       value={field.value || ""}

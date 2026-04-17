@@ -9,31 +9,31 @@ import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -125,14 +125,12 @@ export const IdentityRoleDetailsSection = ({
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Project Roles</UnstableCardTitle>
-          <UnstableCardDescription>
-            Manage roles assigned to this machine identity
-          </UnstableCardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Roles</CardTitle>
+          <CardDescription>Manage roles assigned to this machine identity</CardDescription>
           {hasRoles && (
-            <UnstableCardAction>
+            <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.Identity, {
@@ -168,10 +166,10 @@ export const IdentityRoleDetailsSection = ({
                   );
                 }}
               </ProjectPermissionCan>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           {
             /* eslint-disable-next-line no-nested-ternary */
             isMembershipDetailsLoading ? (
@@ -180,15 +178,15 @@ export const IdentityRoleDetailsSection = ({
                 <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
               </div>
             ) : hasRoles ? (
-              <UnstableTable>
-                <UnstableTableHeader>
-                  <UnstableTableRow>
-                    <UnstableTableHead className="w-1/2">Role</UnstableTableHead>
-                    <UnstableTableHead className="w-1/2">Duration</UnstableTableHead>
-                    <UnstableTableHead className="w-5" />
-                  </UnstableTableRow>
-                </UnstableTableHeader>
-                <UnstableTableBody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/2">Role</TableHead>
+                    <TableHead className="w-1/2">Duration</TableHead>
+                    <TableHead className="w-5" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {identityMembershipDetails?.roles?.map((roleDetails) => {
                     const isTemporary = roleDetails?.isTemporary;
                     const isExpired =
@@ -214,13 +212,13 @@ export const IdentityRoleDetailsSection = ({
                     }
 
                     return (
-                      <UnstableTableRow key={`user-project-identity-${roleDetails?.id}`}>
-                        <UnstableTableCell className="max-w-0 truncate">
+                      <TableRow key={`user-project-identity-${roleDetails?.id}`}>
+                        <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
                             ? roleDetails.customRoleName
                             : formatProjectRoleName(roleDetails.role)}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
+                        </TableCell>
+                        <TableCell>
                           {isTemporary ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -237,15 +235,15 @@ export const IdentityRoleDetailsSection = ({
                           ) : (
                             text
                           )}
-                        </UnstableTableCell>
-                        <UnstableTableCell>
-                          <UnstableDropdownMenu>
-                            <UnstableDropdownMenuTrigger asChild>
-                              <UnstableIconButton size="xs" variant="ghost">
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton size="xs" variant="ghost">
                                 <EllipsisIcon />
-                              </UnstableIconButton>
-                            </UnstableDropdownMenuTrigger>
-                            <UnstableDropdownMenuContent align="end">
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
                               <ProjectPermissionCan
                                 I={ProjectPermissionActions.Edit}
                                 a={subject(ProjectPermissionSub.Identity, {
@@ -253,7 +251,7 @@ export const IdentityRoleDetailsSection = ({
                                 })}
                               >
                                 {(isAllowed) => (
-                                  <UnstableDropdownMenuItem
+                                  <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("deleteRole", {
@@ -265,28 +263,24 @@ export const IdentityRoleDetailsSection = ({
                                     variant="danger"
                                   >
                                     Remove Role
-                                  </UnstableDropdownMenuItem>
+                                  </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
-                            </UnstableDropdownMenuContent>
-                          </UnstableDropdownMenu>
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </UnstableTableBody>
-              </UnstableTable>
+                </TableBody>
+              </Table>
             ) : (
-              <UnstableEmpty className="border">
-                <UnstableEmptyHeader>
-                  <UnstableEmptyTitle>
-                    This machine identity doesn&apos;t have any roles
-                  </UnstableEmptyTitle>
-                  <UnstableEmptyDescription>
-                    Give this machine identity one or more roles
-                  </UnstableEmptyDescription>
-                </UnstableEmptyHeader>
-                <UnstableEmptyContent>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>This machine identity doesn&apos;t have any roles</EmptyTitle>
+                  <EmptyDescription>Give this machine identity one or more roles</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={subject(ProjectPermissionSub.Identity, {
@@ -322,12 +316,12 @@ export const IdentityRoleDetailsSection = ({
                       );
                     }}
                   </ProjectPermissionCan>
-                </UnstableEmptyContent>
-              </UnstableEmpty>
+                </EmptyContent>
+              </Empty>
             )
           }
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         deleteKey="remove"

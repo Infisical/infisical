@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { UnstablePageLoader } from "@app/components/v3";
+import { PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -50,7 +50,7 @@ export const DashboardPage = () => {
   );
 
   if (!currentProject) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   return (
@@ -71,7 +71,7 @@ export const DashboardPage = () => {
             a={ProjectPermissionSub.Certificates}
           >
             {isStatsLoading || !stats ? (
-              <UnstablePageLoader />
+              <PageLoader />
             ) : (
               <div className="flex flex-col gap-6">
                 <KpiCards stats={stats} onNavigate={navigateToInventory} />

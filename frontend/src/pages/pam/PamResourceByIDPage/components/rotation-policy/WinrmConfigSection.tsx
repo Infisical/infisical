@@ -4,13 +4,13 @@ import {
   Field,
   FieldContent,
   FieldLabel,
+  Input,
   Label,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 
 type Props = {
@@ -60,7 +60,7 @@ export const WinrmConfigSection = ({
           </Tooltip>
         </FieldLabel>
         <FieldContent>
-          <UnstableInput
+          <Input
             type="number"
             value={winrmPort}
             onChange={(e) => onWinrmPortChange(Number(e.target.value))}
@@ -122,7 +122,7 @@ export const WinrmConfigSection = ({
           </Tooltip>
         </FieldLabel>
         <FieldContent>
-          <UnstableInput
+          <Input
             value={winrmTlsServerName}
             onChange={(e) => onWinrmTlsServerNameChange(e.target.value)}
             placeholder="server.corp.example.com"

@@ -10,17 +10,17 @@ import {
   SecretVersionData
 } from "@app/components/secrets/diff";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Checkbox,
+  IconButton,
   Label,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAccordion,
-  UnstableAccordionContent,
-  UnstableAccordionItem,
-  UnstableAccordionTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 
 export interface Version {
@@ -225,13 +225,13 @@ export const SecretVersionDiffView = ({
   const TypeIcon = isSecret ? KeyRoundIcon : FolderIcon;
 
   return (
-    <UnstableAccordion
+    <Accordion
       {...accordionProps}
       className={twMerge("overflow-clip rounded-md border border-border", viewed && "opacity-60")}
     >
-      <UnstableAccordionItem value={item.id} className="border-b-0">
+      <AccordionItem value={item.id} className="border-b-0">
         {showHeader && (
-          <UnstableAccordionTrigger className="min-h-10 overflow-hidden py-0">
+          <AccordionTrigger className="min-h-10 overflow-hidden py-0">
             {customHeader ?? (
               <>
                 <TypeIcon className="size-4 shrink-0 text-accent" />
@@ -260,7 +260,7 @@ export const SecretVersionDiffView = ({
                 {onDiscard && (
                   <Tooltip delayDuration={300}>
                     <TooltipTrigger asChild>
-                      <UnstableIconButton
+                      <IconButton
                         variant="ghost"
                         size="xs"
                         className="hover:text-danger"
@@ -270,17 +270,17 @@ export const SecretVersionDiffView = ({
                         }}
                       >
                         <TrashIcon />
-                      </UnstableIconButton>
+                      </IconButton>
                     </TooltipTrigger>
                     <TooltipContent side="left">Discard change</TooltipContent>
                   </Tooltip>
                 )}
               </>
             )}
-          </UnstableAccordionTrigger>
+          </AccordionTrigger>
         )}
-        <UnstableAccordionContent className="p-0">{diffContent}</UnstableAccordionContent>
-      </UnstableAccordionItem>
-    </UnstableAccordion>
+        <AccordionContent className="p-0">{diffContent}</AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };

@@ -3,22 +3,15 @@ import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react"
 
 import {
   Badge,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton
 } from "@app/components/v3/generic";
 import { ProjectIcon } from "@app/components/v3/platform";
 
-import {
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
-} from "./Table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./Table";
 
 const identities: {
   name: string;
@@ -69,53 +62,53 @@ const identities: {
 
 function TableDemo() {
   return (
-    <UnstableTable className="w-[800px]">
-      <UnstableTableHeader>
-        <UnstableTableRow>
-          <UnstableTableHead className="w-1/3">Name</UnstableTableHead>
-          <UnstableTableHead className="w-1/3">Role</UnstableTableHead>
-          <UnstableTableHead className="w-1/3">Managed By</UnstableTableHead>
-          <UnstableTableHead className="text-right" />
-        </UnstableTableRow>
-      </UnstableTableHeader>
-      <UnstableTableBody>
+    <Table className="w-[800px]">
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-1/3">Name</TableHead>
+          <TableHead className="w-1/3">Role</TableHead>
+          <TableHead className="w-1/3">Managed By</TableHead>
+          <TableHead className="text-right" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {identities.map((identity) => (
-          <UnstableTableRow key={identity.name}>
-            <UnstableTableCell className="font-medium">{identity.name}</UnstableTableCell>
-            <UnstableTableCell>{identity.role}</UnstableTableCell>
-            <UnstableTableCell>
+          <TableRow key={identity.name}>
+            <TableCell className="font-medium">{identity.name}</TableCell>
+            <TableCell>{identity.role}</TableCell>
+            <TableCell>
               <Badge variant="project">
                 <ProjectIcon />
                 Project
               </Badge>
-            </UnstableTableCell>
-            <UnstableTableCell className="text-right">
-              <UnstableDropdownMenu>
-                <UnstableDropdownMenuTrigger asChild>
-                  <UnstableIconButton variant="ghost" size="xs">
+            </TableCell>
+            <TableCell className="text-right">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="xs">
                     <MoreHorizontalIcon />
-                  </UnstableIconButton>
-                </UnstableDropdownMenuTrigger>
-                <UnstableDropdownMenuContent align="end" className="w-36">
-                  <UnstableDropdownMenuItem>
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem>
                     <CopyIcon />
                     Copy ID
-                  </UnstableDropdownMenuItem>
-                  <UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
                     <EditIcon />
                     Edit Identity
-                  </UnstableDropdownMenuItem>
-                  <UnstableDropdownMenuItem variant="danger">
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="danger">
                     <TrashIcon />
                     Delete Identity
-                  </UnstableDropdownMenuItem>
-                </UnstableDropdownMenuContent>
-              </UnstableDropdownMenu>
-            </UnstableTableCell>
-          </UnstableTableRow>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
         ))}
-      </UnstableTableBody>
-    </UnstableTable>
+      </TableBody>
+    </Table>
   );
 }
 

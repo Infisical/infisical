@@ -1,15 +1,15 @@
 import { format } from "date-fns";
 
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  DetailValue
 } from "@app/components/v3";
 import { TPkiInstallation } from "@app/hooks/api";
 
@@ -23,12 +23,12 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <UnstableCard>
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Details</UnstableCardTitle>
-          <UnstableCardDescription>Installation information</UnstableCardDescription>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Installation information</CardDescription>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>Name</DetailLabel>
@@ -70,8 +70,8 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
               </DetailValue>
             </Detail>
           </DetailGroup>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </div>
   );
 };

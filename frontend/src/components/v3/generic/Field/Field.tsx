@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
 import { Label } from "../Label";
-import { UnstableSeparator as Separator } from "../Separator";
+import { Separator } from "../Separator";
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (

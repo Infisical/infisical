@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
-import { Field, FieldContent, FieldError, FieldLabel, UnstableInput } from "@app/components/v3";
+import { Field, FieldContent, FieldError, FieldLabel, Input } from "@app/components/v3";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
@@ -24,12 +24,7 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
           <Field>
             <FieldLabel>Username</FieldLabel>
             <FieldContent>
-              <UnstableInput
-                {...field}
-                isError={Boolean(error)}
-                autoComplete="off"
-                placeholder="user"
-              />
+              <Input {...field} isError={Boolean(error)} autoComplete="off" placeholder="user" />
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>
@@ -43,7 +38,7 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
           <Field>
             <FieldLabel>Password</FieldLabel>
             <FieldContent>
-              <UnstableInput
+              <Input
                 {...field}
                 placeholder="••••••"
                 isError={Boolean(error)}

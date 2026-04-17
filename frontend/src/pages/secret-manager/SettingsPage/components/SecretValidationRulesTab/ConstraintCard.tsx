@@ -3,13 +3,13 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TrashIcon } from "lucide-react";
 
 import {
+  IconButton,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableIconButton,
-  UnstableInput
+  SelectValue
 } from "@app/components/v3";
 
 import {
@@ -52,14 +52,9 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
             {CONSTRAINT_TYPE_LABELS[constraintType]}
           </span>
         </div>
-        <UnstableIconButton
-          aria-label="Remove constraint"
-          variant="danger"
-          size="xs"
-          onClick={onRemove}
-        >
+        <IconButton aria-label="Remove constraint" variant="danger" size="xs" onClick={onRemove}>
           <TrashIcon className="size-3.5" />
-        </UnstableIconButton>
+        </IconButton>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -100,7 +95,7 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
             name={`enforcement.inputs.constraints.${index}.value`}
             render={({ field, fieldState: { error } }) => (
               <div>
-                <UnstableInput
+                <Input
                   {...field}
                   type={
                     constraintType === ConstraintType.MinLength ||

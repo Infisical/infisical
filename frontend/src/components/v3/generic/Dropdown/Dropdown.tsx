@@ -6,25 +6,23 @@ import { CheckIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
-function UnstableDropdownMenu({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
 
-function UnstableDropdownMenuPortal({
+function DropdownMenuPortal({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
   return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
 
-function UnstableDropdownMenuTrigger({
+function DropdownMenuTrigger({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
   return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
-function UnstableDropdownMenuContent({
+function DropdownMenuContent({
   className,
   sideOffset = 4,
   ...props
@@ -46,9 +44,7 @@ function UnstableDropdownMenuContent({
   );
 }
 
-function UnstableDropdownMenuGroup({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+function DropdownMenuGroup({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
   return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
 }
 
@@ -61,7 +57,7 @@ type DropdownMenuProps = Omit<
   isDisabled?: boolean;
 };
 
-const UnstableDropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
+const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
   ({ className, inset, variant = "default", isDisabled, ...props }, ref): JSX.Element => {
     return (
       <DropdownMenuPrimitive.Item
@@ -84,7 +80,7 @@ const UnstableDropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuPr
   }
 );
 
-function UnstableDropdownMenuCheckboxItem({
+function DropdownMenuCheckboxItem({
   className,
   children,
   checked,
@@ -113,13 +109,13 @@ function UnstableDropdownMenuCheckboxItem({
   );
 }
 
-function UnstableDropdownMenuRadioGroup({
+function DropdownMenuRadioGroup({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
   return <DropdownMenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
 }
 
-function UnstableDropdownMenuRadioItem({
+function DropdownMenuRadioItem({
   className,
   children,
   ...props
@@ -146,7 +142,7 @@ function UnstableDropdownMenuRadioItem({
   );
 }
 
-function UnstableDropdownMenuLabel({
+function DropdownMenuLabel({
   className,
   inset,
   ...props
@@ -163,7 +159,7 @@ function UnstableDropdownMenuLabel({
   );
 }
 
-function UnstableDropdownMenuSeparator({
+function DropdownMenuSeparator({
   className,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
@@ -176,7 +172,7 @@ function UnstableDropdownMenuSeparator({
   );
 }
 
-function UnstableDropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
+function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       data-slot="dropdown-menu-shortcut"
@@ -186,13 +182,11 @@ function UnstableDropdownMenuShortcut({ className, ...props }: React.ComponentPr
   );
 }
 
-function UnstableDropdownMenuSub({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
+function DropdownMenuSub({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
   return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />;
 }
 
-function UnstableDropdownMenuSubTrigger({
+function DropdownMenuSubTrigger({
   className,
   inset,
   children,
@@ -216,7 +210,7 @@ function UnstableDropdownMenuSubTrigger({
   );
 }
 
-function UnstableDropdownMenuSubContent({
+function DropdownMenuSubContent({
   className,
   sideOffset = 8,
   ...props
@@ -234,23 +228,23 @@ function UnstableDropdownMenuSubContent({
   );
 }
 
-type UnstableDropdownMenuChecked = DropdownMenuPrimitive.DropdownMenuCheckboxItemProps["checked"];
+type DropdownMenuChecked = DropdownMenuPrimitive.DropdownMenuCheckboxItemProps["checked"];
 
 export {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  type UnstableDropdownMenuChecked,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuGroup,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuPortal,
-  UnstableDropdownMenuRadioGroup,
-  UnstableDropdownMenuRadioItem,
-  UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuShortcut,
-  UnstableDropdownMenuSub,
-  UnstableDropdownMenuSubContent,
-  UnstableDropdownMenuSubTrigger,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  type DropdownMenuChecked,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
 };

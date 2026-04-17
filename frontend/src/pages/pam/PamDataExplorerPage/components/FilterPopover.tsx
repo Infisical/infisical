@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckIcon, FilterIcon, PlusIcon, XIcon } from "lucide-react";
 
 import { Button } from "@app/components/v3/generic/Button";
-import { UnstableInput } from "@app/components/v3/generic/Input";
+import { Input } from "@app/components/v3/generic/Input";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v3/generic/Popover";
 import {
   Select,
@@ -221,7 +221,7 @@ export const FilterPopover = ({ columns, filters, onFiltersChange }: FilterPopov
                   </Select>
 
                   {opConfig?.needsValue !== false && (
-                    <UnstableInput
+                    <Input
                       value={filter.value}
                       onChange={(e) => updateFilter(index, { value: e.target.value })}
                       placeholder={getFilterPlaceholder(colInfo?.type ?? "", filter.operator)}

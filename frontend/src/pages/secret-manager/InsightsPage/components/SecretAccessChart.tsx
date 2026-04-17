@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 
 import {
-  Skeleton,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetSecretAccessVolume } from "@app/hooks/api";
@@ -49,12 +49,12 @@ export const SecretAccessChart = () => {
   const totalRequests = chartData.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Secret Access Volume</UnstableCardTitle>
-        <UnstableCardDescription>Secret read requests over the past 7 days</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle>Secret Access Volume</CardTitle>
+        <CardDescription>Secret read requests over the past 7 days</CardDescription>
+      </CardHeader>
+      <CardContent>
         {isPending ? (
           <Skeleton className="h-[280px] w-full" />
         ) : (
@@ -77,7 +77,7 @@ export const SecretAccessChart = () => {
             )}
           </div>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

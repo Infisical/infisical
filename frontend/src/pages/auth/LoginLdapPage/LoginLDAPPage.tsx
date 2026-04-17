@@ -7,14 +7,7 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableInput
-} from "@app/components/v3";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
@@ -92,16 +85,16 @@ export const LoginLdapPage = () => {
       </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
-          <UnstableCard className="w-full items-stretch gap-0 p-6">
-            <UnstableCardHeader className="mb-4 gap-4">
-              <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+          <Card className="w-full items-stretch gap-0 p-6">
+            <CardHeader className="mb-4 gap-4">
+              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
                 LDAP Login
-              </UnstableCardTitle>
-            </UnstableCardHeader>
-            <UnstableCardContent>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               {!config.defaultAuthOrgSlug && !passedOrgSlug && (
                 <div className="w-full">
-                  <UnstableInput
+                  <Input
                     value={organizationSlug}
                     onChange={(e) => setOrganizationSlug(e.target.value)}
                     type="text"
@@ -112,7 +105,7 @@ export const LoginLdapPage = () => {
                 </div>
               )}
               <div className="mt-2 w-full">
-                <UnstableInput
+                <Input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   type="text"
@@ -123,7 +116,7 @@ export const LoginLdapPage = () => {
                 />
               </div>
               <div className="mt-2 w-full">
-                <UnstableInput
+                <Input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   type="password"
@@ -145,8 +138,8 @@ export const LoginLdapPage = () => {
                   </span>
                 </button>
               </div>
-            </UnstableCardContent>
-          </UnstableCard>
+            </CardContent>
+          </Card>
         </form>
       </div>
       <AuthPageFooter />

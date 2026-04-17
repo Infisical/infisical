@@ -6,13 +6,13 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  Input,
   Label,
   Switch,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 
 export const SqlResourceFields = () => {
@@ -33,7 +33,7 @@ export const SqlResourceFields = () => {
               <Field>
                 <FieldLabel>Host</FieldLabel>
                 <FieldContent>
-                  <UnstableInput {...field} placeholder="db.example.com" isError={Boolean(error)} />
+                  <Input {...field} placeholder="db.example.com" isError={Boolean(error)} />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
@@ -46,7 +46,7 @@ export const SqlResourceFields = () => {
               <Field>
                 <FieldLabel>Database Name</FieldLabel>
                 <FieldContent>
-                  <UnstableInput {...field} isError={Boolean(error)} />
+                  <Input {...field} isError={Boolean(error)} />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
@@ -59,7 +59,7 @@ export const SqlResourceFields = () => {
               <Field className="w-24">
                 <FieldLabel>Port</FieldLabel>
                 <FieldContent>
-                  <UnstableInput type="number" {...field} isError={Boolean(error)} />
+                  <Input type="number" {...field} isError={Boolean(error)} />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>

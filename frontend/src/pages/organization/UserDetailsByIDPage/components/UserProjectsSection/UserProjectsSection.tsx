@@ -4,12 +4,12 @@ import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@app/components/v3";
 import { useOrganization, useUser } from "@app/context";
 import {
@@ -60,12 +60,12 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Projects</UnstableCardTitle>
-          <UnstableCardDescription>Manage user project memberships</UnstableCardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription>Manage user project memberships</CardDescription>
           {canAddToProject && Boolean(projectMemberships?.length) && (
-            <UnstableCardAction>
+            <CardAction>
               <Button
                 onClick={() => {
                   handlePopUpOpen("addUserToProject", {
@@ -78,18 +78,18 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
                 <PlusIcon />
                 Add to Project
               </Button>
-            </UnstableCardAction>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <UserProjectsTable
             membershipId={membershipId}
             handlePopUpOpen={handlePopUpOpen}
             canAddToProject={canAddToProject}
             username={membership.user.username}
           />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <UserAddToProjectModal
         membershipId={membershipId}
         popUp={popUp}

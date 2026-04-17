@@ -13,13 +13,13 @@ import {
 } from "recharts";
 
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 
@@ -80,16 +80,14 @@ const MandateCountdown = () => {
   );
 
   return (
-    <UnstableCard className="flex h-full flex-col">
-      <UnstableCardHeader className="pb-2">
-        <UnstableCardTitle className="text-base font-semibold">
-          CA/B Forum Mandate Deadlines
-        </UnstableCardTitle>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold">CA/B Forum Mandate Deadlines</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Upcoming reductions in maximum TLS certificate validity
         </p>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 flex-col justify-center pt-2">
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col justify-center pt-2">
         <div className="space-y-2">
           {futurePhases.map((phase) => {
             const daysUntil = Math.ceil((phase.date.getTime() - now) / (1000 * 60 * 60 * 24));
@@ -125,8 +123,8 @@ const MandateCountdown = () => {
             );
           })}
         </div>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -156,16 +154,14 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   if (activeCerts === 0) return null;
 
   return (
-    <UnstableCard className="flex h-full flex-col">
-      <UnstableCardHeader className="pb-0">
-        <UnstableCardTitle className="text-base font-semibold">
-          Projected Annual Renewals
-        </UnstableCardTitle>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="pb-0">
+        <CardTitle className="text-base font-semibold">Projected Annual Renewals</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Estimated yearly renewal volume under each validity regime
         </p>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 flex-col justify-end pt-4">
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col justify-end pt-4">
         <ResponsiveContainer width="100%" height={170}>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -218,8 +214,8 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
         <p className="mt-2 text-center text-xs text-muted">
           Based on {activeCerts.toLocaleString()} active certificate{activeCerts !== 1 ? "s" : ""}
         </p>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -240,16 +236,14 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
   if (total === 0) return null;
 
   return (
-    <UnstableCard className="flex h-full flex-col">
-      <UnstableCardHeader className="pb-0">
-        <UnstableCardTitle className="text-base font-semibold">
-          Certificates by Validity Period
-        </UnstableCardTitle>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="pb-0">
+        <CardTitle className="text-base font-semibold">Certificates by Validity Period</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Active certificates grouped by issuance-to-expiry duration
         </p>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 items-center pt-2">
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-2">
         <div className="flex w-full items-center gap-3">
           <div className="w-[120px] shrink-0">
             <ResponsiveContainer width="100%" height={120}>
@@ -330,8 +324,8 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
             </div>
           </div>
         </div>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };
 

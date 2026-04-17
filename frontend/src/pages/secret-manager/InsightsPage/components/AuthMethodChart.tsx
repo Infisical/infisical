@@ -3,18 +3,18 @@ import { InfoIcon } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   Skeleton,
   Tooltip as V3Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetAuthMethodDistribution } from "@app/hooks/api";
@@ -52,21 +52,21 @@ export const AuthMethodChart = () => {
   const total = useMemo(() => methods.reduce((sum, m) => sum + m.count, 0), [methods]);
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader>
-        <UnstableCardTitle>Authentication Methods</UnstableCardTitle>
-        <UnstableCardDescription>
+    <Card>
+      <CardHeader>
+        <CardTitle>Authentication Methods</CardTitle>
+        <CardDescription>
           Distribution of auth methods used for secret access over the past 30 days
-        </UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {isPending && <Skeleton className="h-[260px] w-full" />}
         {!isPending && methods.length === 0 && (
-          <UnstableEmpty className="border-0">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No secret access data available</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="border-0">
+            <EmptyHeader>
+              <EmptyTitle>No secret access data available</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && methods.length > 0 && (
           <div className="flex items-center gap-8">
@@ -172,7 +172,7 @@ export const AuthMethodChart = () => {
             </div>
           </div>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

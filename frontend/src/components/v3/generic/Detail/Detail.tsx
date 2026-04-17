@@ -14,10 +14,20 @@ function DetailValue({ className, ...props }: React.ComponentProps<"div">) {
   return <div data-slot="detail-value" className={cn("text-sm break-all", className)} {...props} />;
 }
 
+function DetailHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="detail-header"
+      className={cn("-mb-1 flex items-center text-sm font-medium", className)}
+      {...props}
+    />
+  );
+}
+
 function DetailGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div data-slot="detail-group" className={cn("flex flex-col gap-y-4", className)} {...props} />
   );
 }
 
-export { Detail, DetailGroup, DetailLabel, DetailValue };
+export { Detail, DetailGroup, DetailHeader, DetailLabel, DetailValue };

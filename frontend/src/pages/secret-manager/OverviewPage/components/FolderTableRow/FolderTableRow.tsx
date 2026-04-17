@@ -4,12 +4,12 @@ import { twMerge } from "tailwind-merge";
 
 import {
   Checkbox,
+  IconButton,
+  TableCell,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
@@ -57,11 +57,11 @@ export const FolderTableRow = ({
   const isSingleEnvView = environments.length === 1;
 
   return (
-    <UnstableTableRow
+    <TableRow
       className={twMerge("group hover:z-10", pendingActionRowClass(pendingAction))}
       onClick={handleClick}
     >
-      <UnstableTableCell
+      <TableCell
         className={twMerge(
           isSingleEnvView
             ? ""
@@ -92,8 +92,8 @@ export const FolderTableRow = ({
             isSelected && "!hidden"
           )}
         />
-      </UnstableTableCell>
-      <UnstableTableCell
+      </TableCell>
+      <TableCell
         isTruncatable
         colSpan={isSingleEnvView ? 2 : undefined}
         className={
@@ -131,7 +131,7 @@ export const FolderTableRow = ({
           {pendingAction !== PendingAction.Delete && (
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
@@ -141,7 +141,7 @@ export const FolderTableRow = ({
                   }}
                 >
                   <EditIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Edit Folder</TooltipContent>
             </Tooltip>
@@ -149,7 +149,7 @@ export const FolderTableRow = ({
           {pendingAction ? (
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
                   size="xs"
@@ -159,14 +159,14 @@ export const FolderTableRow = ({
                   }}
                 >
                   <Undo2Icon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Discard pending changes</TooltipContent>
             </Tooltip>
           ) : (
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
-                <UnstableIconButton
+                <IconButton
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
@@ -176,13 +176,13 @@ export const FolderTableRow = ({
                   }}
                 >
                   <TrashIcon />
-                </UnstableIconButton>
+                </IconButton>
               </TooltipTrigger>
               <TooltipContent>Delete Folder</TooltipContent>
             </Tooltip>
           )}
         </div>
-      </UnstableTableCell>
+      </TableCell>
       {!isSingleEnvView &&
         environments.map(({ slug }, i) => {
           const isPresent = isFolderPresentInEnv(folderName, slug);
@@ -194,6 +194,6 @@ export const FolderTableRow = ({
             />
           );
         })}
-    </UnstableTableRow>
+    </TableRow>
   );
 };

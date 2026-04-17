@@ -10,14 +10,7 @@ import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import {
-  Button,
-  FieldError,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle
-} from "@app/components/v3";
+import { Button, Card, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
@@ -141,13 +134,13 @@ export const SignupSsoPage = () => {
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <form className="w-full" onSubmit={(e) => e.preventDefault()}>
           <div className="mx-auto flex w-full flex-col items-center justify-center">
-            <UnstableCard className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
-              <UnstableCardHeader className="mb-2 gap-2">
-                <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
+            <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+              <CardHeader className="mb-2 gap-2">
+                <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
                   We&apos;ve sent a verification code to
-                </UnstableCardTitle>
-              </UnstableCardHeader>
-              <UnstableCardContent>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="text-md my-1 flex justify-center font-medium text-foreground">
                   {decoded.email}
                 </p>
@@ -203,8 +196,8 @@ export const SignupSsoPage = () => {
                   </div>
                   <p className="text-label">Make sure to check your spam inbox.</p>
                 </div>
-              </UnstableCardContent>
-            </UnstableCard>
+              </CardContent>
+            </Card>
           </div>
         </form>
       </div>

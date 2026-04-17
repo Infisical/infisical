@@ -3,13 +3,7 @@ import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, PencilIcon } from "lucide-rea
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  Detail,
-  DetailLabel,
-  DetailValue,
-  UnstableIconButton,
-  UnstableInput
-} from "@app/components/v3";
+import { Detail, DetailLabel, DetailValue, IconButton, Input } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
@@ -46,10 +40,10 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput value={value} readOnly className="flex-1 font-mono text-sm" />
-          <UnstableIconButton variant="ghost" onClick={handleCopy} size="sm">
+          <Input value={value} readOnly className="flex-1 font-mono text-sm" />
+          <IconButton variant="ghost" onClick={handleCopy} size="sm">
             <CopyIcon />
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>
@@ -152,17 +146,17 @@ const SensitiveField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput
+          <Input
             value={isVisible ? value : MASKED_VALUE}
             readOnly
             className="flex-1 font-mono text-sm"
           />
-          <UnstableIconButton variant="ghost" size="sm" onClick={toggleVisibility}>
+          <IconButton variant="ghost" size="sm" onClick={toggleVisibility}>
             {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-          </UnstableIconButton>
-          <UnstableIconButton variant="ghost" size="sm" onClick={handleCopy}>
+          </IconButton>
+          <IconButton variant="ghost" size="sm" onClick={handleCopy}>
             {isCopied ? <CheckIcon /> : <CopyIcon />}
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>
@@ -188,9 +182,9 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
       <DetailLabel>
         <div className="flex w-full items-center justify-between">
           {label}
-          <UnstableIconButton variant="ghost" size="sm" onClick={handleCopy}>
+          <IconButton variant="ghost" size="sm" onClick={handleCopy}>
             {isCopied ? <CheckIcon /> : <CopyIcon />}
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailLabel>
       <DetailValue>
@@ -295,9 +289,9 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
           a={ProjectPermissionSub.PamAccounts}
         >
           {(isAllowed) => (
-            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+            <IconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
               <PencilIcon />
-            </UnstableIconButton>
+            </IconButton>
           )}
         </ProjectPermissionCan>
       </div>

@@ -5,7 +5,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { EmptyState, PageHeader } from "@app/components/v2";
-import { Badge, UnstablePageLoader } from "@app/components/v3";
+import { Badge, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -31,7 +31,7 @@ export const SignerDetailPage = () => {
   const { data: signer, isLoading } = useGetSigner(signerId);
 
   if (isLoading) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   if (!signer) {

@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
+  Alert,
+  AlertDescription,
+  ButtonGroup,
   DateRangeFilter,
   type DateRangeFilterResult,
   DateRangeFilterType,
   DateRangeQuickPresets,
-  DocumentationLinkBadge,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableButtonGroup
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
@@ -105,8 +105,8 @@ const LogsSectionComponent = ({
     return (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         {showClickHouseWarning && (
-          <UnstableAlert variant="warning" className="mb-4">
-            <UnstableAlertDescription>
+          <Alert variant="warning" className="mb-4">
+            <AlertDescription>
               <p>
                 Your audit log volume is growing. To keep searches fast and reduce database load, we
                 recommend streaming logs to an{" "}
@@ -129,8 +129,8 @@ const LogsSectionComponent = ({
                 </a>
                 .
               </p>
-            </UnstableAlertDescription>
-          </UnstableAlert>
+            </AlertDescription>
+          </Alert>
         )}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
@@ -141,7 +141,7 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <UnstableButtonGroup>
+              <ButtonGroup>
                 <DateRangeQuickPresets
                   value={activePreset}
                   onChange={(preset, result) => {
@@ -159,7 +159,7 @@ const LogsSectionComponent = ({
                   }}
                   accent={dateRangeAccent}
                 />
-              </UnstableButtonGroup>
+              </ButtonGroup>
             )}
           </div>
         </div>
@@ -212,8 +212,8 @@ const LogsSectionComponent = ({
   return (
     <div className="space-y-2">
       {showClickHouseWarning && (
-        <UnstableAlert variant="warning">
-          <UnstableAlertDescription>
+        <Alert variant="warning">
+          <AlertDescription>
             <p>
               Your audit log volume is growing. To keep searches fast and reduce database load, we
               recommend streaming logs to an{" "}
@@ -236,12 +236,12 @@ const LogsSectionComponent = ({
               </a>
               .
             </p>
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <UnstableButtonGroup>
+          <ButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
               onChange={(preset, result) => {
@@ -259,7 +259,7 @@ const LogsSectionComponent = ({
               }}
               accent={dateRangeAccent}
             />
-          </UnstableButtonGroup>
+          </ButtonGroup>
         )}
         {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
