@@ -182,8 +182,8 @@ export const WebhooksTab = withProjectPermission(
               <THead>
                 <Tr>
                   <Td>URL</Td>
-                  <Td className="min-w-[12rem]">Environment</Td>
-                  <Td className="min-w-[12rem]">Secret Path</Td>
+                  <Td className="min-w-[14rem]">Environment</Td>
+                  <Td className="min-w-[14rem]">Secret Path</Td>
                   <Td>
                     <div className="flex items-center gap-1">
                       <span>Events</span>
