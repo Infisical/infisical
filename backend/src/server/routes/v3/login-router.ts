@@ -6,7 +6,9 @@ import { UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -176,6 +178,15 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           },
           { skipDedup: true }
         );
+
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.UserLoginV2,
+          distinctId: loginDistinctId,
+          properties: {
+            email: user.email ?? "",
+            channel: getUserAgentType(userAgent)
+          }
+        });
       }
 
       void res.setCookie("jid", tokens.refreshToken, {
