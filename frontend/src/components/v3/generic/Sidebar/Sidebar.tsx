@@ -526,11 +526,16 @@ function SidebarCollapsibleGroup({
   const { state, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
   const contentRef = React.useRef<HTMLDivElement>(null);
+  const previousHasActiveChildRef = React.useRef<boolean | undefined>(undefined);
 
   React.useEffect(() => {
-    if (isOpen || isCollapsed) return;
-    const hasActiveChild = contentRef.current?.querySelector('[data-active="true"]');
-    if (hasActiveChild) setIsOpen(true);
+    if (isCollapsed) return;
+    const hasActiveChild = !!contentRef.current?.querySelector('[data-active="true"]');
+    const previous = previousHasActiveChildRef.current;
+    if (hasActiveChild && previous !== true && !isOpen) {
+      setIsOpen(true);
+    }
+    previousHasActiveChildRef.current = hasActiveChild;
   });
 
   const abbreviation =
