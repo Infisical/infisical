@@ -127,7 +127,7 @@ export const GhostCard: Story = {
         <DetailGroup>
           <DetailGroupHeader className="flex items-center justify-between">
             General
-            <IconButton size="xs" variant="ghost-muted">
+            <IconButton size="xs" onClick={(e) => e.preventDefault()} variant="ghost-muted">
               <EditIcon />
             </IconButton>
           </DetailGroupHeader>
@@ -159,7 +159,12 @@ export const GhostCard: Story = {
           <AccordionItem value="configuration">
             <AccordionTrigger className="relative">
               Configuration
-              <IconButton size="xs" className="absolute top-1.5 right-0" variant="ghost-muted">
+              <IconButton
+                size="xs"
+                onClick={(e) => e.preventDefault()}
+                className="absolute top-1.5 right-0"
+                variant="ghost-muted"
+              >
                 <EditIcon />
               </IconButton>
             </AccordionTrigger>
@@ -213,7 +218,12 @@ export const GhostCard: Story = {
           <AccordionItem value="credentials">
             <AccordionTrigger className="relative">
               Credentials
-              <IconButton size="xs" className="absolute top-1.5 right-0" variant="ghost-muted">
+              <IconButton
+                onClick={(e) => e.preventDefault()}
+                size="xs"
+                className="absolute top-1.5 right-0"
+                variant="ghost-muted"
+              >
                 <EditIcon />
               </IconButton>
             </AccordionTrigger>
