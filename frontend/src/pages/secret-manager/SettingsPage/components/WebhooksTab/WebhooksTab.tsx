@@ -182,8 +182,8 @@ export const WebhooksTab = withProjectPermission(
               <THead>
                 <Tr>
                   <Td>URL</Td>
-                  <Td>Environment</Td>
-                  <Td>Secret Path</Td>
+                  <Td className="min-w-[12rem]">Environment</Td>
+                  <Td className="min-w-[12rem]">Secret Path</Td>
                   <Td>
                     <div className="flex items-center gap-1">
                       <span>Events</span>
@@ -234,12 +234,12 @@ export const WebhooksTab = withProjectPermission(
 
                     return (
                       <Tr key={id}>
-                        <Td>
+                        <Td className="w-full max-w-0">
                           <Tooltip
                             className="max-w-md"
                             content={<span className="break-all">{url}</span>}
                           >
-                            <div className="w-[28rem] max-w-full">
+                            <div>
                               <p className="truncate">{url}</p>
                               <p className="truncate text-xs text-mineshaft-400">{id}</p>
                             </div>
