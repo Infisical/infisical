@@ -1,5 +1,9 @@
 import { TAcmeCertificateAuthority, TAcmeCertificateAuthorityInput } from "./acme/acme-certificate-authority-types";
 import {
+  TAwsAcmPublicCaCertificateAuthority,
+  TCreateAwsAcmPublicCaCertificateAuthorityDTO
+} from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-types";
+import {
   TAwsPcaCertificateAuthority,
   TCreateAwsPcaCertificateAuthorityDTO
 } from "./aws-pca/aws-pca-certificate-authority-types";
@@ -17,13 +21,15 @@ export type TCertificateAuthority =
   | TInternalCertificateAuthority
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
-  | TAwsPcaCertificateAuthority;
+  | TAwsPcaCertificateAuthority
+  | TAwsAcmPublicCaCertificateAuthority;
 
 export type TCertificateAuthorityInput =
   | TInternalCertificateAuthorityInput
   | TAcmeCertificateAuthorityInput
   | TCreateAzureAdCsCertificateAuthorityDTO
-  | TCreateAwsPcaCertificateAuthorityDTO;
+  | TCreateAwsPcaCertificateAuthorityDTO
+  | TCreateAwsAcmPublicCaCertificateAuthorityDTO;
 
 export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id" | "enableDirectIssuance">;
 

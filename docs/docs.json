@@ -835,6 +835,7 @@
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/aws-acm-public-ca",
                   "documentation/platform/pki/ca/venafi"
                 ]
               }
@@ -2942,6 +2943,16 @@
                       "api-reference/endpoints/certificate-authorities/aws-pca/read",
                       "api-reference/endpoints/certificate-authorities/aws-pca/update",
                       "api-reference/endpoints/certificate-authorities/aws-pca/delete"
+                    ]
+                  },
+                  {
+                    "group": "AWS ACM Public CA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
                     ]
                   },
                   {

@@ -6,6 +6,7 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
 import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -15,7 +16,8 @@ const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
   AcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
-  AwsPcaCertificateAuthoritySchema
+  AwsPcaCertificateAuthoritySchema,
+  AwsAcmPublicCaCertificateAuthoritySchema
 ]);
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -73,6 +75,14 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
+      const awsAcmPublicCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.AWS_ACM_PUBLIC_CA
+        },
+        req.permission
+      );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.query.projectId,
@@ -83,7 +93,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
-              ...(awsPcaCas ?? []).map((ca) => ca.id)
+              ...(awsPcaCas ?? []).map((ca) => ca.id),
+              ...(awsAcmPublicCas ?? []).map((ca) => ca.id)
             ]
           }
         }
@@ -94,7 +105,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
-          ...(awsPcaCas ?? [])
+          ...(awsPcaCas ?? []),
+          ...(awsAcmPublicCas ?? [])
         ]
       };
     }
