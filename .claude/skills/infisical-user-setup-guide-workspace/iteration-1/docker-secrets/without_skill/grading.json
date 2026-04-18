@@ -1,0 +1,34 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends AWS Auth as the preferred method for ECS (platform-native, zero-secret)",
+      "passed": false,
+      "evidence": "Found 'AWS Auth': False"
+    },
+    {
+      "text": "Uses correct CLI install URL (artifacts-cli.infisical.com, not dl.infisical.com)",
+      "passed": false,
+      "evidence": "Correct URL: False, Wrong URL: False"
+    },
+    {
+      "text": "Shows 'infisical run' pattern for injecting secrets at container startup",
+      "passed": false,
+      "evidence": "Found 'infisical run': False"
+    },
+    {
+      "text": "Does not recommend deprecated Service Tokens for authentication",
+      "passed": false,
+      "evidence": "Service token reference: True"
+    },
+    {
+      "text": "Explicitly warns against baking secrets into Docker images",
+      "passed": true,
+      "evidence": "Warning present: True"
+    },
+    {
+      "text": "Uses machine identity authentication (not API keys or service tokens)",
+      "passed": false,
+      "evidence": "Machine identity: False, Universal Auth: False"
+    }
+  ]
+}

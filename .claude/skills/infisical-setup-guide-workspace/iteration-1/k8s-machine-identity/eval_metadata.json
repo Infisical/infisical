@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "k8s-machine-identity",
+  "prompt": "I need to set up a machine identity so my Kubernetes pods can pull secrets from Infisical. What auth method should I use and how do I configure it?",
+  "assertions": []
+}

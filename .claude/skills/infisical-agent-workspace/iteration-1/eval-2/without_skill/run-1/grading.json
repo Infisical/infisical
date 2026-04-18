@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets",
+      "passed": false,
+      "evidence": "Uses generic placeholder syntax '{{ secrets.api_key }}', '{{ secrets.database_url }}' rather than listSecrets or listSecretsByProjectSlug function"
+    },
+    {
+      "text": "Template uses dynamicSecret function for PostgreSQL credentials",
+      "passed": false,
+      "evidence": "Uses generic placeholder syntax '{{ dynamic.postgres.username }}', '{{ dynamic.postgres.password }}' rather than dynamicSecret function"
+    },
+    {
+      "text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)",
+      "passed": false,
+      "evidence": "Does not use dynamicSecret function at all; uses generic template placeholder syntax"
+    },
+    {
+      "text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output",
+      "passed": true,
+      "evidence": "Shows 'DB_USER={{ dynamic.postgres.username }}' and 'DB_PASSWORD={{ dynamic.postgres.password }}'"
+    },
+    {
+      "text": "Mentions auto-renewal behavior (agent renews before expiration)",
+      "passed": true,
+      "evidence": "\"Auto-renewal Mechanism: The agent monitors credential expiration and automatically renews...Renews when 75% of TTL has elapsed\""
+    },
+    {
+      "text": "Recommends revoke-credentials-on-shutdown: true for cleanup",
+      "passed": false,
+      "evidence": "Does not mention revoke-credentials-on-shutdown configuration"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 4,
+    "total": 6,
+    "pass_rate": 0.33
+  },
+  "timing": {
+    "total_duration_seconds": 29.4
+  }
+}

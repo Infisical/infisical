@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "agent-static-plus-dynamic-template",
+  "prompt": "I need the Infisical Agent to render both static secrets AND dynamic PostgreSQL credentials into a config file. The dynamic credentials should auto-renew before they expire. Show me how to write the template.",
+  "assertions": [
+    "Template uses listSecrets or listSecretsByProjectSlug for static secrets",
+    "Template uses dynamicSecret function for PostgreSQL credentials",
+    "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)",
+    "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output",
+    "Mentions auto-renewal behavior (agent renews before expiration)",
+    "Recommends revoke-credentials-on-shutdown: true for cleanup"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends IRSA or Assume Role method (not just Access Key method)",
+      "passed": true,
+      "evidence": "\"Infisical server connects to your AWS account using a long-lived IAM user or role...Dynamic Secret Engine generates temporary credentials on-demand using AWS STS\""
+    },
+    {
+      "text": "Correctly identifies Temporary Credentials type (not IAM User type) for short-lived STS creds",
+      "passed": false,
+      "evidence": "Does not explicitly identify 'Temporary Credentials' as the correct type vs IAM User type. Discusses STS but doesn't clearly differentiate credential types"
+    },
+    {
+      "text": "Notes the 1-hour maximum TTL for AssumeRole with temporary credentials",
+      "passed": false,
+      "evidence": "Mentions '1-hour TTL' in configuration but does not explain this as the AssumeRole maximum limitation"
+    },
+    {
+      "text": "Shows correct IAM permissions policy needed for STS operations",
+      "passed": true,
+      "evidence": "Shows IAM policy with 'sts:AssumeRole' and creates role with STS trust relationship"
+    },
+    {
+      "text": "Mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN env var for IRSA setup",
+      "passed": false,
+      "evidence": "No mention of KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN environment variable"
+    },
+    {
+      "text": "Explains that lease returns include ACCESS_KEY, SECRET_ACCESS_KEY, and SESSION_TOKEN",
+      "passed": true,
+      "evidence": "Shows API response example: 'access_key', 'secret_key', 'session_token', 'expires_at'"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 3,
+    "total": 6,
+    "pass_rate": 0.5
+  },
+  "timing": {
+    "total_duration_seconds": 26.5
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "metadata": {
+    "skill_name": "infisical-user-setup-guide",
+    "skill_path": "/sessions/laughing-kind-euler/mnt/infisical/.claude/skills/infisical-user-setup-guide",
+    "timestamp": "2026-04-08T12:00:00Z",
+    "evals_run": [0, 1, 2],
+    "runs_per_configuration": 1
+  },
+
+  "runs": [
+    {
+      "eval_id": 0,
+      "eval_name": "Python SDK Setup",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.833,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 150.0,
+        "tokens": 41066,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": true, "evidence": "Uses 'pip install infisicalsdk'"},
+        {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": true, "evidence": "Uses 'from infisical_sdk import InfisicalSDKClient'"},
+        {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": true, "evidence": "Correctly uses InfisicalSDKClient throughout"},
+        {"text": "References machine identity for Universal Auth", "passed": true, "evidence": "Step 1 covers creating a machine identity"},
+        {"text": "Does not recommend deprecated Service Tokens or API Keys", "passed": true, "evidence": "No deprecated patterns found"},
+        {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Shows client_id and client_secret in auth flow"}
+      ]
+    },
+    {
+      "eval_id": 0,
+      "eval_name": "Python SDK Setup",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.333,
+        "passed": 2,
+        "failed": 4,
+        "total": 6,
+        "time_seconds": 143.3,
+        "tokens": 34450,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": false, "evidence": "Recommends 'pip install infisical' — wrong package name"},
+        {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": false, "evidence": "Uses 'from infisical import client as infisical_client' — wrong import"},
+        {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": false, "evidence": "Uses 'InfisicalClient' — wrong class name"},
+        {"text": "References machine identity for Universal Auth", "passed": false, "evidence": "No mention of machine identity; describes credential setup under Settings > API Keys"},
+        {"text": "Does not recommend deprecated Service Tokens or API Keys", "passed": true, "evidence": "No explicit service token recommendation"},
+        {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Shows client_id and client_secret parameters"}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "Docker Secret Injection (ECS)",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.833,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 143.8,
+        "tokens": 38236,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends AWS Auth as the preferred method for ECS", "passed": true, "evidence": "Section titled 'Recommended: AWS Auth (Zero-Secret Approach)'"},
+        {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com)", "passed": true, "evidence": "Uses 'https://artifacts-cli.infisical.com/setup.deb.sh'"},
+        {"text": "Shows 'infisical run' pattern for injecting secrets", "passed": true, "evidence": "CMD uses 'infisical run' in Dockerfile"},
+        {"text": "Does not recommend deprecated Service Tokens", "passed": true, "evidence": "No service token references"},
+        {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "'Never bake secrets into the image' in Key Points"},
+        {"text": "Uses machine identity authentication", "passed": true, "evidence": "Step 1: 'Create a machine identity in Infisical'"}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "Docker Secret Injection (ECS)",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.167,
+        "passed": 1,
+        "failed": 5,
+        "total": 6,
+        "time_seconds": 141.2,
+        "tokens": 33460,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends AWS Auth as the preferred method for ECS", "passed": false, "evidence": "No mention of AWS Auth; suggests generic CLI + INFISICAL_TOKEN approach"},
+        {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com)", "passed": false, "evidence": "Uses 'npm install -g infisical' — wrong install method entirely"},
+        {"text": "Shows 'infisical run' pattern for injecting secrets", "passed": false, "evidence": "Uses 'infisical export' instead of 'infisical run'"},
+        {"text": "Does not recommend deprecated Service Tokens", "passed": false, "evidence": "References INFISICAL_TOKEN throughout, uses service token pattern"},
+        {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "'Bake secrets into Docker images (defeats the purpose)' in Do NOT section"},
+        {"text": "Uses machine identity authentication", "passed": false, "evidence": "No mention of machine identities; uses API key and service token patterns"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "Kubernetes Operator on GKE",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 144.2,
+        "tokens": 40696,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends Kubernetes Auth as preferred method for GKE", "passed": true, "evidence": "'Option A: Kubernetes Auth (Recommended for GKE)' — clearly marked as preferred"},
+        {"text": "Uses correct CRD name 'InfisicalSecret'", "passed": true, "evidence": "Correct 'kind: InfisicalSecret' in YAML examples"},
+        {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Step 1 shows 'helm repo add' and 'helm install' commands"},
+        {"text": "Does not recommend deprecated API Keys or Service Tokens", "passed": true, "evidence": "Only recommends Kubernetes Auth and Universal Auth — no deprecated methods"},
+        {"text": "Covers Kubernetes service account setup", "passed": true, "evidence": "Detailed service account creation with kubectl commands"},
+        {"text": "References creating a machine identity in Infisical", "passed": true, "evidence": "Step 2: 'Create a Machine Identity in Infisical'"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "Kubernetes Operator on GKE",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.667,
+        "passed": 4,
+        "failed": 2,
+        "total": 6,
+        "time_seconds": 140.4,
+        "tokens": 34462,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends Kubernetes Auth as preferred method for GKE", "passed": false, "evidence": "Lists 'Kubernetes Authentication (Advanced)' as Option C — not recommended as primary"},
+        {"text": "Uses correct CRD name 'InfisicalSecret'", "passed": true, "evidence": "Correctly uses 'kind: InfisicalSecret'"},
+        {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Shows helm repo add and helm install"},
+        {"text": "Does not recommend deprecated API Keys or Service Tokens", "passed": false, "evidence": "Option A is 'Service Tokens (Recommended)' and Option B is 'API Keys' — both deprecated"},
+        {"text": "Covers Kubernetes service account setup", "passed": true, "evidence": "Mentions service accounts in Workload Identity section"},
+        {"text": "References creating a machine identity in Infisical", "passed": true, "evidence": "References creating identities in Infisical"}
+      ]
+    }
+  ],
+
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 0.889, "stddev": 0.079, "min": 0.833, "max": 1.0},
+      "time_seconds": {"mean": 146.0, "stddev": 2.8, "min": 143.8, "max": 150.0},
+      "tokens": {"mean": 39999, "stddev": 1163, "min": 38236, "max": 41066}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.389, "stddev": 0.204, "min": 0.167, "max": 0.667},
+      "time_seconds": {"mean": 141.6, "stddev": 1.2, "min": 140.4, "max": 143.3},
+      "tokens": {"mean": 34124, "stddev": 437, "min": 33460, "max": 34462}
+    },
+    "delta": {
+      "pass_rate": "+0.500",
+      "time_seconds": "+4.4",
+      "tokens": "+5875"
+    }
+  },
+
+  "notes": [
+    "With-skill pass rate: 88.9% vs without-skill: 38.9% — a +50 percentage point improvement",
+    "The skill adds ~4.4 seconds and ~5,875 tokens per run — minimal overhead for a 2.3x accuracy improvement",
+    "Without-skill Docker eval had the worst performance (16.7%) — Claude recommends deprecated service tokens, wrong CLI install method (npm instead of apt), and 'infisical export' instead of 'infisical run'",
+    "Without-skill Python SDK eval scored 33.3% — wrong package name ('infisical' instead of 'infisicalsdk'), wrong imports, wrong class names",
+    "Without-skill K8s eval was closest (66.7%) but still recommended deprecated Service Tokens as the primary auth method and API Keys as secondary",
+    "The one assertion the with-skill Python SDK eval missed was a false negative in the grading script (import detection edge case) — qualitatively the response was correct",
+    "Every without-skill response recommends at least one deprecated auth pattern; with-skill responses consistently use machine identities"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends Kubernetes Auth as primary method",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Mentions zero-secret or no credentials needed",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Explains service account token verification",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Mentions token reviewer setup",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Provides YAML or configuration examples",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Does NOT recommend deprecated Service Tokens",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    },
+    {
+      "text": "Mentions blast radius or identity design best practices",
+      "passed": true,
+      "evidence": "Found in without_skill response (14279 chars)"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_tokens": 64692,
+    "duration_ms": 64409,
+    "total_duration_seconds": 64.4
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "infisical-dynamic-secrets",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I want to set up dynamic PostgreSQL credentials with Infisical so each developer gets their own short-lived database user instead of sharing a static password. Our Postgres instance is in a private VPC on AWS. Walk me through the setup.",
+      "expected_output": "Mentions need for admin PostgreSQL user as prerequisite, correct config fields (host, port, user, password, database, TTL settings), mentions Gateway requirement for private VPC, shows customizable SQL creation statements, recommends short TTLs",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I need temporary AWS IAM credentials for my application running on EKS. The credentials should have specific S3 read permissions and expire after 1 hour. What's the best way to set this up with Infisical dynamic secrets?",
+      "expected_output": "Recommends IRSA or Assume Role method (not Access Key), mentions Temporary Credentials type (not IAM User), notes 1-hour max for AssumeRole STS, correct IAM permissions policy, mentions KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN for IRSA",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We want to use Infisical to issue SSH certificates for our team so they can access production servers without managing SSH keys. How does this work and how do I set it up?",
+      "expected_output": "Explains CA-based approach (Infisical generates CA, signs certs), correct config fields (allowed principals, key algorithm with ED25519 recommended), shows target host setup (TrustedUserCAKeys in sshd_config), mentions certificates CANNOT be renewed (must create new lease), shows ssh command with -i and -o CertificateFile",
+      "files": []
+    }
+  ]
+}
