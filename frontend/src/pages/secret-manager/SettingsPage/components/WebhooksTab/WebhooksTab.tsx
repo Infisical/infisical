@@ -1,5 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { faInfoCircle, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEllipsisV,
+  faInfoCircle,
+  faPencil,
+  faPlug,
+  faPlus,
+  faToggleOff,
+  faToggleOn,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -8,12 +17,18 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Table,
   TableContainer,
   TableSkeleton,
   TBody,
   Td,
+  Th,
   THead,
   Tooltip,
   Tr
@@ -167,10 +182,10 @@ export const WebhooksTab = withProjectPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Td>URL</Td>
-                  <Td>Environment</Td>
-                  <Td>Secret Path</Td>
-                  <Td>
+                  <Th className="w-1/3">URL</Th>
+                  <Th className="w-1/5">Environment</Th>
+                  <Th className="w-1/5">Secret Path</Th>
+                  <Th>
                     <div className="flex items-center gap-1">
                       <span>Events</span>
                       <Tooltip content="Events that are configured to trigger this webhook.">
@@ -181,9 +196,9 @@ export const WebhooksTab = withProjectPermission(
                         />
                       </Tooltip>
                     </div>
-                  </Td>
-                  <Td>Status</Td>
-                  <Td className="text-right">Action</Td>
+                  </Th>
+                  <Th>Status</Th>
+                  <Th />
                 </Tr>
               </THead>
               <TBody>
@@ -220,12 +235,23 @@ export const WebhooksTab = withProjectPermission(
 
                     return (
                       <Tr key={id}>
-                        <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                          {url}
-                          <p className="text-xs text-mineshaft-400">{id}</p>
+                        <Td className="max-w-0">
+                          <Tooltip
+                            className="max-w-2xl"
+                            content={<span className="break-all">{url}</span>}
+                          >
+                            <div>
+                              <p className="truncate">{url}</p>
+                              <p className="truncate text-xs text-mineshaft-400">{id}</p>
+                            </div>
+                          </Tooltip>
                         </Td>
-                        <Td>{environment.slug}</Td>
-                        <Td>{secretPath}</Td>
+                        <Td className="max-w-0">
+                          <p className="truncate">{environment.slug}</p>
+                        </Td>
+                        <Td className="max-w-0">
+                          <p className="truncate">{secretPath}</p>
+                        </Td>
                         <Td>
                           <Tooltip
                             content={
@@ -253,7 +279,10 @@ export const WebhooksTab = withProjectPermission(
                           </Tooltip>
                         </Td>
                         <Td>
-                          {!lastStatus ? (
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {isDisabled ? (
+                            <Badge variant="neutral">Disabled</Badge>
+                          ) : !lastStatus ? (
                             "-"
                           ) : (
                             <div className="inline-flex w-min items-center rounded-sm bg-mineshaft-600 px-2 py-0.5 text-sm">
@@ -291,21 +320,6 @@ export const WebhooksTab = withProjectPermission(
                             >
                               {(isAllowed) => (
                                 <Button
-                                  variant="outline_bg"
-                                  size="xs"
-                                  isDisabled={!isAllowed}
-                                  onClick={() => handlePopUpOpen("editWebhook", webhook)}
-                                >
-                                  Edit
-                                </Button>
-                              )}
-                            </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
-                              a={ProjectPermissionSub.Webhooks}
-                            >
-                              {(isAllowed) => (
-                                <Button
                                   variant="star"
                                   size="xs"
                                   onClick={() => handleWebhookTest(id)}
@@ -322,45 +336,74 @@ export const WebhooksTab = withProjectPermission(
                                 </Button>
                               )}
                             </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
-                              a={ProjectPermissionSub.Webhooks}
-                            >
-                              {(isAllowed) => (
-                                <Button
-                                  variant="outline_bg"
-                                  size="xs"
-                                  onClick={() => handleWebhookDisable(id, !isDisabled)}
-                                  isDisabled={
-                                    (isUpdateWebhookSubmitting &&
-                                      updateWebhookVars?.webhookId === id) ||
-                                    !isAllowed
-                                  }
-                                  isLoading={
-                                    isUpdateWebhookSubmitting && updateWebhookVars?.webhookId === id
-                                  }
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  ariaLabel="Options"
+                                  colorSchema="secondary"
+                                  className="w-6"
+                                  variant="plain"
                                 >
-                                  {isDisabled ? "Enable" : "Disable"}
-                                </Button>
-                              )}
-                            </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionActions.Delete}
-                              a={ProjectPermissionSub.Webhooks}
-                            >
-                              {(isAllowed) => (
-                                <Button
-                                  variant="outline_bg"
-                                  className="border-red-800 bg-red-800 hover:border-red-700 hover:bg-red-700"
-                                  colorSchema="danger"
-                                  size="xs"
-                                  isDisabled={!isAllowed}
-                                  onClick={() => handlePopUpOpen("deleteWebhook", id)}
+                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                sideOffset={2}
+                                align="end"
+                                className="min-w-48 p-1"
+                              >
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Webhooks}
                                 >
-                                  Delete
-                                </Button>
-                              )}
-                            </ProjectPermissionCan>
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("editWebhook", webhook)}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faPencil} />}
+                                    >
+                                      Edit
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Webhooks}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handleWebhookDisable(id, !isDisabled)}
+                                      isDisabled={
+                                        (isUpdateWebhookSubmitting &&
+                                          updateWebhookVars?.webhookId === id) ||
+                                        !isAllowed
+                                      }
+                                      icon={
+                                        <FontAwesomeIcon
+                                          icon={isDisabled ? faToggleOn : faToggleOff}
+                                        />
+                                      }
+                                    >
+                                      {isDisabled ? "Enable" : "Disable"}
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Delete}
+                                  a={ProjectPermissionSub.Webhooks}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("deleteWebhook", id)}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faTrash} />}
+                                    >
+                                      Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </Td>
                       </Tr>
