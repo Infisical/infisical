@@ -1,0 +1,57 @@
+---
+title: "PowerDNS"
+description: "Learn how to configure a PowerDNS Connection for Infisical."
+---
+
+Infisical supports connecting to PowerDNS using an API key for secure access to your PowerDNS service. Both a direct PowerDNS Authoritative Server and a [PowerDNS-Admin](https://github.com/PowerDNS-Admin/PowerDNS-Admin) proxy are supported via a configurable base URL.
+
+## Configure an API Key for Infisical
+
+<Steps>
+  <Step title="Locate your PowerDNS API key">
+    The PowerDNS Authoritative Server exposes a REST API protected by a static API key. The key is set in your PowerDNS configuration file (typically `/etc/powerdns/pdns.conf`) via the `api-key` directive:
+
+    ```ini
+    api=yes
+    api-key=your-secret-api-key
+    webserver=yes
+    webserver-address=0.0.0.0
+    webserver-port=8081
+    ```
+
+    If you are using **PowerDNS-Admin**, the API key is the value configured under **Settings → API Keys** in the PowerDNS-Admin web interface.
+
+    <Warning>
+      Keep your API key secure and do not share it. Anyone with access to this key can read and modify all zones managed by your PowerDNS server.
+    </Warning>
+  </Step>
+  <Step title="Note your base URL">
+    The base URL depends on how you are accessing PowerDNS:
+
+    - **Direct PowerDNS server:** `http://your-powerdns-server:8081`
+    - **PowerDNS-Admin proxy:** `https://powerdns-admin.example.com/api/v1`
+
+    Infisical will use this base URL to reach the PowerDNS REST API when creating and removing DNS challenge records during ACME certificate issuance.
+  </Step>
+</Steps>
+
+## Setup PowerDNS Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**. ![App
+    Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **PowerDNS Connection** option from the connection options modal.
+  </Step>
+  <Step title="Input Credentials">
+    Enter the following details and click **Connect to PowerDNS** to establish the connection:
+
+    - **Base URL** — The base URL of your PowerDNS API (e.g. `http://your-powerdns-server:8081` or `https://powerdns-admin.example.com/api/v1`).
+    - **API Key** — The API key used to authenticate requests to the PowerDNS REST API.
+  </Step>
+  <Step title="Connection Created">
+    Your **PowerDNS Connection** is now available for use in your Infisical projects, for example as the DNS provider when configuring an ACME External CA.
+  </Step>
+</Steps>

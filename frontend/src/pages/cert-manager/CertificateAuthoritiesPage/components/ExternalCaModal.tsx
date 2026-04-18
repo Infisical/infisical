@@ -259,6 +259,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availablePowerDNSConnections, isPending: isPowerDNSPending } =
+    useListAvailableAppConnections(AppConnection.PowerDNS, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -283,7 +288,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
+      ...(availableAzureDNSConnections || []),
+      ...(availablePowerDNSConnections || [])
     ];
   }, [
     caType,
@@ -292,7 +298,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availableAzureConnections,
-    availableAwsConnections
+    availableAwsConnections,
+    availablePowerDNSConnections
   ]);
 
   const isPending =
@@ -300,6 +307,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     isCloudflarePending ||
     isDNSMadeEasyPending ||
     isAzureDNSPending ||
+    isPowerDNSPending ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAwsPending && caType === CaType.AWS_PCA);
 
@@ -651,6 +659,24 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
                       />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {dnsProvider === AcmeDnsProvider.PowerDNS && (
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Zone Name"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      isRequired
+                      tooltipText="The name of the DNS zone in PowerDNS (e.g. example.com). A trailing dot will be added automatically if omitted."
+                    >
+                      <Input {...field} placeholder="example.com" />
                     </FormControl>
                   )}
                 />

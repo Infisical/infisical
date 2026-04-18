@@ -23,6 +23,7 @@ import { registerDatabricksConnectionRouter } from "./databricks-connection-rout
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
+import { registerPowerDNSConnectionRouter } from "./powerdns-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
@@ -115,6 +116,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
+    [AppConnection.PowerDNS]: registerPowerDNSConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter
   };

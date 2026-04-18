@@ -35,6 +35,7 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
+import { PowerDNSConnectionForm } from "./PowerDNSConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
@@ -274,6 +275,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.PowerDNS:
+        return <PowerDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
       default:
@@ -485,6 +488,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return (
           <ExternalInfisicalConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
         );
+      case AppConnection.PowerDNS:
+        return <PowerDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:

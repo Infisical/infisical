@@ -150,6 +150,7 @@
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
+                      "integrations/app-connections/powerdns",
                       "integrations/app-connections/railway",
                       "integrations/app-connections/redis",
                       "integrations/app-connections/render",

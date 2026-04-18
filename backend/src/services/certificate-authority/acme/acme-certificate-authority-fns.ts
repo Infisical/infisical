@@ -22,6 +22,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TPowerDNSConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -54,6 +55,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord } from "./dns-providers/powerdns";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const validateDnsResolver = (resolver: string): void => {
@@ -203,7 +205,7 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-const DNS_PROPAGATION_MAX_RETRIES = 5;
+const DNS_PROPAGATION_MAX_RETRIES = 30;
 const DNS_PROPAGATION_INTERVAL_MS = 2000;
 const CNAME_MAX_DEPTH = 10;
 
@@ -257,6 +259,7 @@ const waitForDnsPropagation = async (
       await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
     }
   }
+  throw new Error(`DNS record "${lookupName}" with value "${expectedValue}" not found after ${DNS_PROPAGATION_MAX_RETRIES} attempts`);
 };
 
 const getAcmeChallengeRecord = async (
@@ -457,6 +460,15 @@ export const orderCertificate = async (
           );
           break;
         }
+        case AcmeDnsProvider.PowerDNS: {
+          await powerDnsInsertTxtRecord(
+            connection as TPowerDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -510,6 +522,14 @@ export const orderCertificate = async (
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.PowerDNS: {
+          await powerDnsDeleteTxtRecord(
+            connection as TPowerDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
           );
           break;
         }
@@ -675,6 +695,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDNS && appConnection.app !== AppConnection.PowerDNS) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
+      });
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -786,6 +812,12 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDNS && appConnection.app !== AppConnection.PowerDNS) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
           });
         }
 

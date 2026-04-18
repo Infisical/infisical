@@ -57,6 +57,7 @@ import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-c
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { PowerDNSConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -159,6 +160,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
+  [AppConnection.PowerDNS]: { name: "PowerDNS", image: "PowerDNS.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
 };
@@ -251,6 +253,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
+    case PowerDNSConnectionMethod.APIKey:
+      return { name: "API Key", icon: faKey };
     case AzureDNSConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };

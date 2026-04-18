@@ -53,6 +53,7 @@ export enum AppConnection {
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
   ExternalInfisical = "external-infisical",
+  PowerDNS = "powerdns",
   NetScaler = "netscaler",
   Anthropic = "anthropic"
 }
