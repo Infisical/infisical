@@ -100,12 +100,14 @@ export const ViewSharedSecretByIDPage = () => {
 
   const isUnauthorized = errorStatusCode === 401;
   const isInvalidCredential = errorMessage === "Invalid credentials";
+  const isPasswordRequired = errorMessage === "Password is required to access this secret";
+  const isPasswordError = isInvalidCredential || isPasswordRequired;
   const isForbidden = errorStatusCode === 403;
   const isNotFound = errorStatusCode === 404;
 
   // Redirect to login for org-restricted secrets when not authenticated
   useEffect(() => {
-    if (isUnauthorized && !isInvalidCredential) {
+    if (isUnauthorized && !isPasswordError) {
       sessionStorage.setItem(
         SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
         JSON.stringify({
@@ -123,7 +125,7 @@ export const ViewSharedSecretByIDPage = () => {
       return;
     }
 
-    if (activeError && !isInvalidCredential && !isForbidden && !isNotFound) {
+    if (activeError && !isPasswordError && !isForbidden && !isNotFound) {
       createNotification({ type: "error", text: errorMessage });
     }
   }, [activeError]);
@@ -275,13 +277,14 @@ export const ViewSharedSecretByIDPage = () => {
               </p>
             )}
           </div>
-          {(showPasswordPrompt || isInvalidCredential) && (
+          {(showPasswordPrompt || isPasswordError) && (
             <PasswordContainer
               isSubmitting={accessMutation.isPending}
               onPasswordSubmit={(pwd) => {
                 accessMutation.mutate({ sharedSecretId: id, password: pwd });
               }}
               isInvalidCredential={!accessMutation.isPending && isInvalidCredential}
+              isPasswordRequired={!accessMutation.isPending && isPasswordRequired}
               brandingTheme={brandingTheme}
             />
           )}
