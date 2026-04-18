@@ -3,11 +3,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.fullname" . }}
+  {{- with $infisicalValues.deploymentAnnotations }}
   annotations:
-    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
-    {{- with $infisicalValues.deploymentAnnotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
   labels:
     {{- include "infisical.labels" . | nindent 4 }}
 spec:
@@ -19,11 +18,10 @@ spec:
     metadata:
       labels:
         {{- include "infisical.matchLabels" . | nindent 8 }}
+      {{- with $infisicalValues.podAnnotations }}
       annotations:
-        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
-        {{- with $infisicalValues.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "infisical.serviceAccountName" . }}
     {{- with $infisicalValues.topologySpreadConstraints }}
