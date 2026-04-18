@@ -4,6 +4,10 @@ import { encodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {
+  TCmekBulkExportPrivateKeysDTO,
+  TCmekBulkExportPrivateKeysResponse,
+  TCmekBulkImportKeysDTO,
+  TCmekBulkImportKeysResponse,
   TCmekDecrypt,
   TCmekDecryptResponse,
   TCmekEncrypt,
@@ -127,6 +131,36 @@ export const useCmekDecrypt = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useBulkExportCmekPrivateKeys = () => {
+  return useMutation({
+    mutationFn: async ({ keyIds }: TCmekBulkExportPrivateKeysDTO) => {
+      const { data } = await apiRequest.post<TCmekBulkExportPrivateKeysResponse>(
+        "/api/v1/kms/keys/bulk-export-private-keys",
+        { keyIds }
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useBulkImportCmekKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, keys }: TCmekBulkImportKeysDTO) => {
+      const { data } = await apiRequest.post<TCmekBulkImportKeysResponse>(
+        "/api/v1/kms/keys/bulk-import",
+        { projectId, keys }
+      );
+
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };

@@ -92,6 +92,40 @@ export type TCmekGetPrivateKeyResponse = {
   privateKey: string;
 };
 
+export type TCmekBulkExportPrivateKeysDTO = {
+  keyIds: string[];
+};
+
+export type TCmekBulkExportedKey = {
+  keyId: string;
+  name: string;
+  keyUsage: KmsKeyUsage;
+  algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
+  privateKey: string;
+  publicKey?: string;
+};
+
+export type TCmekBulkExportPrivateKeysResponse = {
+  keys: TCmekBulkExportedKey[];
+};
+
+export type TCmekBulkImportKeyEntry = {
+  name: string;
+  keyUsage: KmsKeyUsage;
+  encryptionAlgorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm;
+  keyMaterial: string;
+};
+
+export type TCmekBulkImportKeysDTO = {
+  projectId: string;
+  keys: TCmekBulkImportKeyEntry[];
+};
+
+export type TCmekBulkImportKeysResponse = {
+  keys: { id: string; name: string }[];
+  errors: { name: string; message: string }[];
+};
+
 export enum CmekOrderBy {
   Name = "name"
 }

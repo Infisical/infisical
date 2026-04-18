@@ -43,6 +43,7 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
   TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
@@ -379,12 +380,40 @@ export const kmsServiceFactory = ({
     return kmsKey;
   };
 
+  const getBulkKeyMaterial = async ({ kmsIds }: TGetBulkKeyMaterialDTO) => {
+    const kmsDocs = await kmsDAL.findByIdsWithAssociatedKms(kmsIds);
+
+    return kmsDocs.map((kmsDoc) => {
+      if (kmsDoc.isReserved) {
+        throw new BadRequestError({ message: `Cannot get key material for reserved key [kmsId=${kmsDoc.id}]` });
+      }
+      if (kmsDoc.externalKms) {
+        throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
+      }
+
+      const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+      return { kmsId: kmsDoc.id, name: kmsDoc.name, keyMaterial };
+    });
+  };
+
   const importKeyMaterial = async (
     { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
-    // daniel: currently we only support imports for encrypt/decrypt keys
-    verifyKeyTypeAndAlgorithm(keyUsage, algorithm, { forceType: KmsKeyUsage.ENCRYPT_DECRYPT });
+    verifyKeyTypeAndAlgorithm(keyUsage, algorithm);
+
+    if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+      const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
+      try {
+        getPublicKeyFromPrivateKey(key);
+      } catch {
+        throw new BadRequestError({
+          message: "Invalid private key material. Expected a PKCS8 PEM-encoded private key."
+        });
+      }
+    }
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
@@ -394,7 +423,7 @@ export const kmsServiceFactory = ({
       const kmsDoc = await kmsDAL.create(
         {
           name: sanitizedName,
-          keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+          keyUsage,
           orgId,
           isReserved,
           projectId,
@@ -1085,6 +1114,7 @@ export const kmsServiceFactory = ({
     getKmsById,
     createCipherPairWithDataKey,
     getKeyMaterial,
+    getBulkKeyMaterial,
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,

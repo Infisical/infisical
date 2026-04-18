@@ -91,9 +91,13 @@ export type TGetKeyMaterialDTO = {
   kmsId: string;
 };
 
+export type TGetBulkKeyMaterialDTO = {
+  kmsIds: string[];
+};
+
 export type TImportKeyMaterialDTO = {
   key: Buffer;
-  algorithm: SymmetricKeyAlgorithm;
+  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
   name?: string;
   isReserved: boolean;
   projectId: string;

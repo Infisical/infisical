@@ -519,6 +519,149 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/keys/bulk-import",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "bulkImportKmsKeys",
+      tags: [ApiDocsTags.KmsKeys],
+      description: "Bulk import KMS keys with provided key material into a project.",
+      body: z.object({
+        projectId: z.string().uuid(),
+        keys: z
+          .array(
+            z
+              .object({
+                name: keyNameSchema,
+                keyUsage: z.nativeEnum(KmsKeyUsage),
+                encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
+                keyMaterial: z.string().min(1)
+              })
+              .superRefine((data, ctx) => {
+                if (
+                  data.keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT &&
+                  !Object.values(SymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as SymmetricKeyAlgorithm)
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `encryptionAlgorithm must be a symmetric algorithm for encrypt-decrypt keys`
+                  });
+                }
+                if (
+                  data.keyUsage === KmsKeyUsage.SIGN_VERIFY &&
+                  !Object.values(AsymmetricKeyAlgorithm).includes(data.encryptionAlgorithm as AsymmetricKeyAlgorithm)
+                ) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `encryptionAlgorithm must be an asymmetric algorithm for sign-verify keys`
+                  });
+                }
+              })
+          )
+          .min(1)
+          .max(100)
+      }),
+      response: {
+        200: z.object({
+          keys: z.array(z.object({ id: z.string(), name: z.string() })),
+          errors: z.array(z.object({ name: z.string(), message: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        body: { projectId, keys },
+        permission
+      } = req;
+
+      const { keys: importedKeys, errors } = await server.services.cmek.bulkImportKeys(
+        {
+          projectId,
+          keys: keys.map((k) => ({
+            name: k.name,
+            algorithm: k.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm,
+            keyUsage: k.keyUsage,
+            keyMaterial: k.keyMaterial
+          }))
+        },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_BULK_IMPORT_KEYS,
+          metadata: {
+            keyNames: importedKeys.map((k) => k.name),
+            failedKeyNames: errors.map((e) => e.name),
+            projectId
+          }
+        }
+      });
+
+      return { keys: importedKeys, errors };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/keys/bulk-export-private-keys",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "bulkExportKmsKeyPrivateKeys",
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Bulk export multiple KMS keys. For asymmetric keys (sign/verify), both private and public keys are returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
+      body: z.object({
+        keyIds: z.array(z.string().uuid().describe(KMS.BULK_EXPORT_PRIVATE_KEYS.keyIds)).min(1).max(100)
+      }),
+      response: {
+        200: z.object({
+          keys: z.array(
+            z.object({
+              keyId: z.string(),
+              name: z.string(),
+              keyUsage: z.string(),
+              algorithm: z.string(),
+              privateKey: z.string(),
+              publicKey: z.string().optional()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        body: { keyIds },
+        permission
+      } = req;
+
+      const { keys, projectId } = await server.services.cmek.bulkGetPrivateKeys({ keyIds }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS,
+          metadata: {
+            keyIds: keys.map((k) => k.keyId),
+            keyNames: keys.map((k) => k.name)
+          }
+        }
+      });
+
+      return { keys };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/keys/:keyId/signing-algorithms",
     config: {
