@@ -22,8 +22,7 @@ import {
   TriangleAlertIcon,
   User,
   UserPlus,
-  Users,
-  Wrench
+  Users
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -135,8 +134,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
   ],
   [Github, "GitHub Issues", () => "https://github.com/Infisical/infisical/issues"],
   [Mail, "Email Support", getFormattedSupportEmailLink],
-  [Users, "Instance Admins", () => "server-admins"],
-  [Wrench, "Version Upgrade Tool", () => "/upgrade-path"]
+  [Users, "Instance Admins", () => "server-admins"]
 ] as const;
 
 export const Navbar = () => {
@@ -633,10 +631,6 @@ export const Navbar = () => {
               if (url === "server-admins" && isInfisicalCloud()) {
                 return null;
               }
-              if (url === "upgrade-path" && isInfisicalCloud()) {
-                return null;
-              }
-
               if (url === "server-admins") {
                 return (
                   <DropdownMenuItem key="server-admins" onSelect={() => setShowAdminsModal(true)}>

@@ -154,7 +154,6 @@ import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
-import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
@@ -391,8 +390,6 @@ declare module "fastify" {
       pamWebAccess: TPamWebAccessServiceFactory;
       pamDiscoverySource: TPamDiscoverySourceServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
-      upgradePath: TUpgradePathService;
-
       membershipUser: TMembershipUserServiceFactory;
       membershipIdentity: TMembershipIdentityServiceFactory;
       membershipGroup: TMembershipGroupServiceFactory;
