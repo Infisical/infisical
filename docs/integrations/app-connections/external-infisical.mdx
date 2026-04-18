@@ -1,10 +1,14 @@
 ---
 title: "Infisical Connection"
-description: "Learn how to configure an Infisical Connection to sync secrets between Infisical instances."
+description: "Learn how to configure an Infisical Connection to sync secrets between Infisical instances or projects on the same instance."
 ---
 
-Infisical supports connecting to a remote Infisical instance using a **Machine Identity** (Universal Auth).
-This enables you to sync secrets from one Infisical project to another — for example, from your cloud instance to a self-hosted deployment.
+Infisical supports connecting to another Infisical deployment using a **Machine Identity** (Universal Auth).
+This enables you to sync secrets from one Infisical project to another — for example, from your cloud instance to a self-hosted deployment. You can also sync between projects on the same instance.
+
+<Tip>
+    For **same-instance** sync, use your deployment’s public base URL as **Instance URL** (the URL you use in the browser; for self-hosted, match [`SITE_URL`](/self-hosting/configuration/envars)). The destination project must be one the Machine Identity in the connection can manage.
+</Tip>
 
 ## Setup Infisical Connection in Infisical
 
@@ -28,11 +32,15 @@ This enables you to sync secrets from one Infisical project to another — for e
                 ![Copy Client Credentials](/images/app-connections/external-infisical/copy-client-credentials.png)
             </Step>
             <Step title="Add the Machine Identity to the target project">
-                Navigate to the project on the remote instance that you want to sync secrets to. Under **Project Settings** > **Access Control** > **Machine Identities**, add the Machine Identity you created and grant it a role with write permission on secrets (e.g. **Member** or a custom role with secret write access).
+                Open the **destination** project that you want to sync secrets to. Under **Project Settings** > **Access Control** > **Machine Identities**, add the Machine Identity you created and grant it a role with write permission on secrets (e.g. **Member** or a custom role with secret write access).
                 ![Add Identity to Project](/images/app-connections/external-infisical/add-identity-to-project.png)
+
+                <Tip>
+                    For sync between projects on the same instance, you only need a Machine Identity with access to the destination project.
+                </Tip>
             </Step>
             <Step title="Navigate to App Connections in Infisical">
-                Switch back to your **source** Infisical instance. Navigate to **Organization** > **App Connections** and click **Add Connection**.
+                Go to the **source** side of the sync: if the source project is on the **same** instance, you are already there; if it is on a **different** deployment, switch to that instance. Navigate to **Organization** > **App Connections** and click **Add Connection**.
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
             <Step title="Select the Infisical Connection option">
@@ -42,7 +50,7 @@ This enables you to sync secrets from one Infisical project to another — for e
             <Step title="Fill in the connection form">
                 Complete the connection form with the following details:
 
-                - **Instance URL**: The base URL of the remote Infisical instance (e.g., `https://infisical.example.com`).
+                - **Instance URL**: The base URL of the Infisical instance that hosts the **destination** project (e.g., `https://infisical.example.com`). For sync between projects on the same instance, use the same base URL you use to access Infisical in the browser (for self-hosted, align with your configured [`SITE_URL`](/self-hosting/configuration/envars)).
                 - **Machine Identity Client ID**: The Client ID copied in a previous step.
                 - **Machine Identity Client Secret**: The Client Secret copied in a previous step.
 

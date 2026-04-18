@@ -118,7 +118,7 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Instance URL"
-              tooltipText="The base URL of the external Infisical instance (e.g., https://app.infisical.com)"
+              tooltipText="The base URL of the Infisical instance (e.g., https://app.infisical.com)"
             >
               <Input
                 value={value}
@@ -137,7 +137,7 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Machine Identity Client ID"
-              tooltipText="The Client ID of the Machine Identity with Universal Auth configured on the external Infisical instance"
+              tooltipText="The Client ID of the Machine Identity with Universal Auth configured on the Infisical instance"
             >
               <Input
                 value={value}
