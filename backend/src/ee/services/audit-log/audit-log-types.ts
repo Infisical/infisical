@@ -3662,6 +3662,7 @@ interface CmekBulkImportKeysEvent {
   type: EventType.CMEK_BULK_IMPORT_KEYS;
   metadata: {
     keyNames: string[];
+    failedKeyNames: string[];
     projectId: string;
   };
 }

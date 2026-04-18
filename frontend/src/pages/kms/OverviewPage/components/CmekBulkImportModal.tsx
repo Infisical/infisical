@@ -55,7 +55,7 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
   const e = entry as Record<string, unknown>;
 
   if (!e.name || typeof e.name !== "string") {
-    return { index, message: `Entry ${index + 1}: "name" is required` };
+    return { index, message: '"name" is required' };
   }
   if (e.keyType !== "encrypt-decrypt" && e.keyType !== "sign-verify") {
     return {
@@ -136,11 +136,24 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     setParseError(null);
     setValidationErrors([]);
     const reader = new FileReader();
+    const handleReadFailure = () => {
+      setParsedKeys(null);
+      setValidationErrors([]);
+      setParseError("Failed to read file. Please try again.");
+    };
+    reader.onerror = handleReadFailure;
+    reader.onabort = handleReadFailure;
     reader.onload = (e) => {
       try {
         const raw = JSON.parse(e.target?.result as string) as unknown;
         if (!Array.isArray(raw)) {
           setParseError("File must contain a JSON array.");
+          return;
+        }
+        if (raw.length > 100) {
+          setParseError(
+            `File contains ${raw.length} keys. A maximum of 100 keys can be imported at once.`
+          );
           return;
         }
         const errors = raw

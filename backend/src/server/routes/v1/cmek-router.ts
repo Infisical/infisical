@@ -589,19 +589,18 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       );
 
-      if (importedKeys.length > 0) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId,
-          event: {
-            type: EventType.CMEK_BULK_IMPORT_KEYS,
-            metadata: {
-              keyNames: importedKeys.map((k) => k.name),
-              projectId
-            }
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_BULK_IMPORT_KEYS,
+          metadata: {
+            keyNames: importedKeys.map((k) => k.name),
+            failedKeyNames: errors.map((e) => e.name),
+            projectId
           }
-        });
-      }
+        }
+      });
 
       return { keys: importedKeys, errors };
     }
