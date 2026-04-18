@@ -115,7 +115,13 @@ export const useRdpSession = ({
         .destination("target:3389")
         .proxyAddress(proxyAddress)
         .authToken(data.ticket)
-        .renderCanvas(canvasRef.current);
+        .renderCanvas(canvasRef.current)
+        // Required callbacks. No-op implementations are fine for POC;
+        // wire these to real behavior later.
+        .setCursorStyleCallback(() => {})
+        .remoteClipboardChangedCallback(() => {})
+        .forceClipboardUpdateCallback(() => {})
+        .canvasResizedCallback(() => {});
 
       const session = await builder.connect();
       // eslint-disable-next-line no-console
