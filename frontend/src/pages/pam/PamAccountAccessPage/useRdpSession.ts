@@ -37,7 +37,12 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import wasmInit, { SessionBuilder, setup as wasmSetup } from "@app/lib/ironrdp-web/ironrdp_web";
+import wasmInit, {
+  IronError,
+  IronErrorKind,
+  SessionBuilder,
+  setup as wasmSetup
+} from "@app/lib/ironrdp-web/ironrdp_web";
 import { apiRequest } from "@app/config/request";
 
 type UseRdpSessionOptions = {
@@ -128,8 +133,33 @@ export const useRdpSession = ({
         onSessionEnd?.();
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[rdp] connect failed:", err);
+      if (err instanceof IronError) {
+        const kindName = IronErrorKind[err.kind()] ?? String(err.kind());
+        // eslint-disable-next-line no-console
+        console.error(`[rdp] IronError kind=${kindName}`);
+        try {
+          // eslint-disable-next-line no-console
+          console.error("[rdp] backtrace:\n" + err.backtrace());
+        } catch {
+          /* backtrace might throw if already freed */
+        }
+        try {
+          const rdcp = err.rdcleanpathDetails();
+          if (rdcp) {
+            // eslint-disable-next-line no-console
+            console.error("[rdp] rdcleanpath details:", {
+              httpStatusCode: rdcp.httpStatusCode,
+              wsaErrorCode: rdcp.wsaErrorCode,
+              tlsAlertCode: rdcp.tlsAlertCode
+            });
+          }
+        } catch {
+          /* details might throw */
+        }
+      } else {
+        // eslint-disable-next-line no-console
+        console.error("[rdp] connect failed:", err);
+      }
       setIsConnected(false);
       onSessionEnd?.();
     }
