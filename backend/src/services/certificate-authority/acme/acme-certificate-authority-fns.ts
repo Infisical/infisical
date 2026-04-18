@@ -54,7 +54,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
-import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
+import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route53";
 
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
