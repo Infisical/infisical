@@ -43,6 +43,7 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
   TGenerateKMSDTO,
+  TGetBulkKeyMaterialDTO,
   TGetKeyMaterialDTO,
   TGetPublicKeyDTO,
   TImportKeyMaterialDTO,
@@ -377,6 +378,24 @@ export const kmsServiceFactory = ({
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
 
     return kmsKey;
+  };
+
+  const getBulkKeyMaterial = async ({ kmsIds }: TGetBulkKeyMaterialDTO) => {
+    const kmsDocs = await kmsDAL.findByIdsWithAssociatedKms(kmsIds);
+
+    return kmsDocs.map((kmsDoc) => {
+      if (kmsDoc.isReserved) {
+        throw new BadRequestError({ message: `Cannot get key material for reserved key [kmsId=${kmsDoc.id}]` });
+      }
+      if (kmsDoc.externalKms) {
+        throw new BadRequestError({ message: `Cannot get key material for external key [kmsId=${kmsDoc.id}]` });
+      }
+
+      const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      const keyMaterial = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+      return { kmsId: kmsDoc.id, name: kmsDoc.name, keyMaterial };
+    });
   };
 
   const importKeyMaterial = async (
@@ -1085,6 +1104,7 @@ export const kmsServiceFactory = ({
     getKmsById,
     createCipherPairWithDataKey,
     getKeyMaterial,
+    getBulkKeyMaterial,
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,

@@ -519,6 +519,61 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/keys/bulk-export-private-keys",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "bulkExportKmsKeyPrivateKeys",
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Bulk export multiple KMS keys. For asymmetric keys (sign/verify), both private and public keys are returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
+      body: z.object({
+        keyIds: z.array(z.string().uuid().describe(KMS.BULK_EXPORT_PRIVATE_KEYS.keyIds)).min(1).max(100)
+      }),
+      response: {
+        200: z.object({
+          keys: z.array(
+            z.object({
+              keyId: z.string(),
+              name: z.string(),
+              keyUsage: z.string(),
+              algorithm: z.string(),
+              privateKey: z.string(),
+              publicKey: z.string().optional()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        body: { keyIds },
+        permission
+      } = req;
+
+      const { keys, projectId } = await server.services.cmek.bulkGetPrivateKeys({ keyIds }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_BULK_EXPORT_PRIVATE_KEYS,
+          metadata: {
+            keyIds: keys.map((k) => k.keyId),
+            keyNames: keys.map((k) => k.name)
+          }
+        }
+      });
+
+      return { keys };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/keys/:keyId/signing-algorithms",
     config: {

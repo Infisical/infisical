@@ -93,6 +93,62 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdsWithAssociatedKms = async (ids: string[], tx?: Knex) => {
+    try {
+      const results = await (tx || db.replicaNode())(TableName.KmsKey)
+        .whereIn(`${TableName.KmsKey}.id`, ids)
+        .join(TableName.Organization, `${TableName.KmsKey}.orgId`, `${TableName.Organization}.id`)
+        .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
+        .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
+        .select(selectAllTableCols(TableName.KmsKey))
+        .select(
+          db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
+          db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
+          db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
+          db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
+        )
+        .select(
+          db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
+          db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
+          db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInput"),
+          db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
+          db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
+        )
+        .select(
+          db.ref("kmsDefaultKeyId").withSchema(TableName.Organization).as("orgKmsDefaultKeyId"),
+          db.ref("kmsEncryptedDataKey").withSchema(TableName.Organization).as("orgKmsEncryptedDataKey")
+        );
+
+      return results.map((result) => ({
+        ...KmsKeysSchema.parse(result),
+        isExternal: Boolean(result?.externalKmsId),
+        orgKms: {
+          id: result?.orgKmsDefaultKeyId,
+          encryptedDataKey: result?.orgKmsEncryptedDataKey
+        },
+        externalKms: result?.externalKmsId
+          ? {
+              id: result.externalKmsId,
+              provider: result.externalKmsProvider,
+              encryptedProviderInput: result.externalKmsEncryptedProviderInput,
+              status: result.externalKmsStatus,
+              statusDetails: result.externalKmsStatusDetails
+            }
+          : undefined,
+        internalKms: result?.internalKmsId
+          ? {
+              id: result.internalKmsId,
+              encryptedKey: result.internalKmsEncryptedKey,
+              encryptionAlgorithm: result.internalKmsEncryptionAlgorithm,
+              version: result.internalKmsVersion
+            }
+          : undefined
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by ids with associated kms" });
+    }
+  };
+
   const findProjectCmeks = async (projectId: string, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.KmsKey)
@@ -180,6 +236,14 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCmeksByIds = async (ids: string[], tx?: Knex) => {
+    try {
+      return await baseCmekQuery({ db, tx }).whereIn(`${TableName.KmsKey}.id`, ids);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find cmeks by IDs" });
+    }
+  };
+
   const findCmekByName = async (keyName: string, projectId: string, tx?: Knex) => {
     try {
       const key = await baseCmekQuery({
@@ -194,5 +258,14 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...kmsOrm, findByIdWithAssociatedKms, listCmeksByProjectId, findCmekById, findCmekByName, findProjectCmeks };
+  return {
+    ...kmsOrm,
+    findByIdWithAssociatedKms,
+    findByIdsWithAssociatedKms,
+    listCmeksByProjectId,
+    findCmekById,
+    findCmeksByIds,
+    findCmekByName,
+    findProjectCmeks
+  };
 };
