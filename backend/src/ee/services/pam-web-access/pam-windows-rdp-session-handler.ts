@@ -66,25 +66,63 @@ export const handleWindowsRdpSession = async (
       }
     }, WS_IDLE_PING_MS);
 
+    // Remove the early-buffer handler installed by the service, replay
+    // anything it captured, then hook up the real forwarder.
+    const bufState = socket as unknown as {
+      _pamEarlyMessages?: { data: Buffer; isBinary: boolean }[];
+      _pamEarlyBufferHandler?: (raw: unknown, isBinary: boolean) => void;
+    };
+    if (bufState._pamEarlyBufferHandler) {
+      socket.off("message", bufState._pamEarlyBufferHandler);
+    }
+    const buffered = bufState._pamEarlyMessages ?? [];
+    bufState._pamEarlyMessages = undefined;
+    bufState._pamEarlyBufferHandler = undefined;
+    for (const msg of buffered) {
+      logger.info(
+        {
+          sessionId,
+          isBinary: msg.isBinary,
+          len: msg.data.length,
+          head: msg.data.subarray(0, Math.min(16, msg.data.length)).toString("hex")
+        },
+        `Windows RDP: replay buffered ws->relay [sessionId=${sessionId}] [len=${msg.data.length}]`
+      );
+      if (msg.isBinary && tcp.writable) tcp.write(msg.data);
+    }
+
     socket.on("message", (raw, isBinary) => {
-      if (!isBinary) return;
       const buf = Buffer.isBuffer(raw)
         ? raw
         : Array.isArray(raw)
           ? Buffer.concat(raw as Buffer[])
           : Buffer.from(raw as ArrayBuffer);
+      logger.info(
+        { sessionId, isBinary, len: buf.length, head: buf.subarray(0, Math.min(16, buf.length)).toString("hex") },
+        `Windows RDP: ws->relay [sessionId=${sessionId}] [isBinary=${isBinary}] [len=${buf.length}]`
+      );
+      if (!isBinary) return;
       if (tcp.writable) tcp.write(buf);
     });
-    socket.on("close", () => {
+    socket.on("close", (code, reason) => {
+      logger.info(
+        { sessionId, code, reason: reason?.toString?.() },
+        `Windows RDP: ws closed [sessionId=${sessionId}] [code=${code}]`
+      );
       clearInterval(ping);
       end(SessionEndReason.UserInitiated);
     });
-    socket.on("error", () => {
+    socket.on("error", (err) => {
+      logger.warn({ sessionId, err }, `Windows RDP: ws error [sessionId=${sessionId}]`);
       clearInterval(ping);
       end(SessionEndReason.UserInitiated);
     });
 
     tcp.on("data", (chunk: Buffer) => {
+      logger.info(
+        { sessionId, len: chunk.length, head: chunk.subarray(0, Math.min(16, chunk.length)).toString("hex") },
+        `Windows RDP: relay->ws [sessionId=${sessionId}] [len=${chunk.length}]`
+      );
       try {
         socket.send(chunk, { binary: true });
       } catch {
@@ -92,11 +130,12 @@ export const handleWindowsRdpSession = async (
       }
     });
     tcp.on("close", () => {
+      logger.info({ sessionId }, `Windows RDP: relay closed [sessionId=${sessionId}]`);
       clearInterval(ping);
       end(SessionEndReason.UserInitiated);
     });
     tcp.on("error", (err) => {
-      logger.warn({ sessionId, err }, "Windows RDP: relay error");
+      logger.warn({ sessionId, err }, `Windows RDP: relay error [sessionId=${sessionId}]`);
       clearInterval(ping);
       end(SessionEndReason.UserInitiated);
     });

@@ -71,8 +71,8 @@ export const PamWindowsRdpPage = ({
           ref={canvasRef}
           width={1920}
           height={1080}
-          className="mx-auto block max-h-full max-w-full bg-black"
-          style={{ imageRendering: "pixelated" }}
+          tabIndex={0}
+          className="mx-auto block max-h-full max-w-full bg-black focus:outline-none"
         />
       </div>
       <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">

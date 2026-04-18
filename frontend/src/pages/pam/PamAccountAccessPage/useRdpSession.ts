@@ -8,8 +8,9 @@
  *
  * - WASM vendored at `@app/lib/ironrdp-web` and initialized below.
  * - SessionBuilder wired up with credentials + proxy address + canvas.
- * - RDP input (keyboard/mouse/resize) is handled internally by the WASM
- *   client once `renderCanvas` is set. We don't wire events ourselves.
+ * - Canvas receives server-rendered frames via `renderCanvas`; input is
+ *   NOT auto-captured — we attach DOM handlers and forward keyboard /
+ *   mouse events through `session.applyInputs(...)`.
  *
  * ### Still TODO for a fully working browser session
  *
@@ -38,12 +39,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import wasmInit, {
+  DeviceEvent,
+  InputTransaction,
   IronError,
   IronErrorKind,
   SessionBuilder,
   setup as wasmSetup
 } from "@app/lib/ironrdp-web/ironrdp_web";
 import { apiRequest } from "@app/config/request";
+
+import { codeToScancode } from "./rdpScancodes";
 
 type UseRdpSessionOptions = {
   accountId: string;
@@ -64,6 +69,126 @@ const ensureWasm = () => {
     })();
   }
   return wasmReady;
+};
+
+type ApplyInputs = { applyInputs: (tx: InputTransaction) => void };
+
+const attachInputHandlers = (canvas: HTMLCanvasElement | null, session: ApplyInputs) => {
+  if (!canvas) return () => {};
+
+  const apply = (ev: DeviceEvent) => {
+    // applyInputs consumes the transaction internally (destroys the Rust
+    // handle), so we must NOT call tx.free() afterwards -- that would
+    // deref a null ptr and throw.
+    const tx = new InputTransaction();
+    try {
+      tx.addEvent(ev);
+      session.applyInputs(tx);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[rdp] applyInputs failed", err);
+    }
+  };
+
+  const canvasCoords = (e: MouseEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    // Canvas intrinsic size vs displayed size: scale back to intrinsic so
+    // mouse coords match what the server rendered (1920x1080 buffer).
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: Math.round((e.clientX - rect.left) * scaleX),
+      y: Math.round((e.clientY - rect.top) * scaleY)
+    };
+  };
+
+  // DOM e.button: 0=left, 1=middle, 2=right.
+  // IronRDP's MouseButton (inferred from common RDP client conventions):
+  // 0=left, 1=right, 2=middle. Swap the DOM values to match.
+  const domToIronRdpButton = (b: number): number => {
+    if (b === 1) return 2;
+    if (b === 2) return 1;
+    return b;
+  };
+
+  const onMouseDown = (e: MouseEvent) => {
+    canvas.focus();
+    const btn = domToIronRdpButton(e.button);
+    const { x, y } = canvasCoords(e);
+    // eslint-disable-next-line no-console
+    console.log("[rdp] mousedown", { domBtn: e.button, ironBtn: btn, x, y });
+    apply(DeviceEvent.mouseMove(x, y));
+    apply(DeviceEvent.mouseButtonPressed(btn));
+    e.preventDefault();
+  };
+  const onMouseUp = (e: MouseEvent) => {
+    const btn = domToIronRdpButton(e.button);
+    // eslint-disable-next-line no-console
+    console.log("[rdp] mouseup", { domBtn: e.button, ironBtn: btn });
+    apply(DeviceEvent.mouseButtonReleased(btn));
+    e.preventDefault();
+  };
+  const onMouseMove = (e: MouseEvent) => {
+    const { x, y } = canvasCoords(e);
+    apply(DeviceEvent.mouseMove(x, y));
+  };
+  const onContextMenu = (e: Event) => {
+    // Suppress the browser's right-click menu so it can reach Windows.
+    e.preventDefault();
+  };
+  const onWheel = (e: WheelEvent) => {
+    // RotationUnit values: 0 = WHEEL_DELTA (120 units/notch), 1 = PIXEL.
+    // deltaY in pixels; forward as PIXEL and let the server translate.
+    apply(DeviceEvent.wheelRotations(true, -Math.round(e.deltaY), 1));
+    if (e.deltaX !== 0) {
+      apply(DeviceEvent.wheelRotations(false, Math.round(e.deltaX), 1));
+    }
+    e.preventDefault();
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const scancode = codeToScancode(e.code);
+    if (scancode !== undefined) {
+      apply(DeviceEvent.keyPressed(scancode));
+      e.preventDefault();
+      return;
+    }
+    // Fallback: forward Unicode for unmapped printable keys.
+    if (e.key.length === 1) {
+      apply(DeviceEvent.unicodePressed(e.key));
+      e.preventDefault();
+    }
+  };
+  const onKeyUp = (e: KeyboardEvent) => {
+    const scancode = codeToScancode(e.code);
+    if (scancode !== undefined) {
+      apply(DeviceEvent.keyReleased(scancode));
+      e.preventDefault();
+      return;
+    }
+    if (e.key.length === 1) {
+      apply(DeviceEvent.unicodeReleased(e.key));
+      e.preventDefault();
+    }
+  };
+
+  canvas.addEventListener("mousedown", onMouseDown);
+  canvas.addEventListener("mouseup", onMouseUp);
+  canvas.addEventListener("mousemove", onMouseMove);
+  canvas.addEventListener("contextmenu", onContextMenu);
+  canvas.addEventListener("wheel", onWheel, { passive: false });
+  canvas.addEventListener("keydown", onKeyDown);
+  canvas.addEventListener("keyup", onKeyUp);
+
+  return () => {
+    canvas.removeEventListener("mousedown", onMouseDown);
+    canvas.removeEventListener("mouseup", onMouseUp);
+    canvas.removeEventListener("mousemove", onMouseMove);
+    canvas.removeEventListener("contextmenu", onContextMenu);
+    canvas.removeEventListener("wheel", onWheel);
+    canvas.removeEventListener("keydown", onKeyDown);
+    canvas.removeEventListener("keyup", onKeyUp);
+  };
 };
 
 export const useRdpSession = ({
@@ -134,11 +259,17 @@ export const useRdpSession = ({
       sessionRef.current = session;
       setIsConnected(true);
 
+      const detachInput = attachInputHandlers(
+        canvasRef.current,
+        session as unknown as { applyInputs: (tx: InputTransaction) => void }
+      );
+
       try {
         const info = await session.run();
         // eslint-disable-next-line no-console
         console.log("[rdp] session ended:", info.reason());
       } finally {
+        detachInput();
         setIsConnected(false);
         sessionRef.current = null;
         onSessionEnd?.();

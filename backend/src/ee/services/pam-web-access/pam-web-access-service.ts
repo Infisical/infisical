@@ -2,6 +2,7 @@ import net from "node:net";
 
 import { ForbiddenError, subject } from "@casl/ability";
 import type WebSocket from "ws";
+import type { RawData as WsRawData } from "ws";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -340,6 +341,25 @@ export const pamWebAccessServiceFactory = ({
     actorIp,
     actorUserAgent
   }: THandleWebSocketConnectionDTO): Promise<void> => {
+    // Buffer any inbound messages that arrive before the resource handler
+    // registers its own listener. Needed because RDP's WASM client sends
+    // its RDCleanPath request immediately on WS open and would otherwise
+    // be dropped during token validation + relay setup (~150ms window).
+    const earlyMessages: { data: Buffer; isBinary: boolean }[] = [];
+    const earlyBufferHandler = (raw: WsRawData, isBinary: boolean) => {
+      const buf = Buffer.isBuffer(raw)
+        ? raw
+        : Array.isArray(raw)
+          ? Buffer.concat(raw as Buffer[])
+          : Buffer.from(raw as ArrayBuffer);
+      earlyMessages.push({ data: buf, isBinary });
+    };
+    socket.on("message", earlyBufferHandler);
+    (socket as unknown as { _pamEarlyMessages?: typeof earlyMessages })._pamEarlyMessages = earlyMessages;
+    (
+      socket as unknown as { _pamEarlyBufferHandler?: typeof earlyBufferHandler }
+    )._pamEarlyBufferHandler = earlyBufferHandler;
+
     let session: { id: string } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;

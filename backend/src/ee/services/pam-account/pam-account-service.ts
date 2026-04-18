@@ -1116,9 +1116,23 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    // Windows resources keep `hostname` as the canonical field in the
+    // resource schema, but the gateway's shared PAMCredentials struct
+    // reads `host`. Rename on the wire here so Windows matches SSH/DB.
+    const connectionDetails =
+      decryptedResource.resourceType === PamResource.Windows
+        ? (() => {
+            const { hostname, ...rest } = decryptedResource.connectionDetails as {
+              hostname: string;
+              [k: string]: unknown;
+            };
+            return { ...rest, host: hostname };
+          })()
+        : decryptedResource.connectionDetails;
+
     return {
       credentials: {
-        ...decryptedResource.connectionDetails,
+        ...connectionDetails,
         ...decryptedAccount.credentials
       },
       policyRules,

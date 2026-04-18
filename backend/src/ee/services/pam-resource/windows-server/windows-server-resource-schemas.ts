@@ -120,7 +120,15 @@ export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWit
   internalMetadata: WindowsAccountMetadataSchema
 });
 
-// Sessions
-export const WindowsSessionCredentialsSchema = WindowsResourceConnectionDetailsSchema.and(
-  WindowsAccountCredentialsSchema
-);
+// Sessions. The gateway's shared PAMCredentials struct reads `host`/`port`
+// -- same field names the SSH / DB session-credentials schemas emit. We
+// keep the Windows resource schema's `hostname` as its canonical field
+// (so the create/update APIs stay stable) and expose it as `host` on
+// the session credentials wire.
+export const WindowsSessionCredentialsSchema = z
+  .object({
+    protocol: z.literal(WindowsProtocol.RDP),
+    host: z.string(),
+    port: z.number()
+  })
+  .and(WindowsAccountCredentialsSchema);
