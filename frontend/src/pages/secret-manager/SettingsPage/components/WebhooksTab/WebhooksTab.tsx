@@ -182,9 +182,9 @@ export const WebhooksTab = withProjectPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Th className="min-w-[20rem]">URL</Th>
-                  <Th className="max-w-[12rem]">Environment</Th>
-                  <Th className="max-w-[14rem]">Secret Path</Th>
+                  <Th className="w-1/3">URL</Th>
+                  <Th className="w-1/5">Environment</Th>
+                  <Th className="w-1/5">Secret Path</Th>
                   <Th>
                     <div className="flex items-center gap-1">
                       <span>Events</span>
@@ -235,7 +235,7 @@ export const WebhooksTab = withProjectPermission(
 
                     return (
                       <Tr key={id}>
-                        <Td className="w-full max-w-0 min-w-[20rem]">
+                        <Td className="max-w-0">
                           <Tooltip
                             className="max-w-2xl"
                             content={<span className="break-all">{url}</span>}
@@ -246,10 +246,10 @@ export const WebhooksTab = withProjectPermission(
                             </div>
                           </Tooltip>
                         </Td>
-                        <Td className="max-w-[12rem]">
+                        <Td className="max-w-0">
                           <p className="truncate">{environment.slug}</p>
                         </Td>
-                        <Td className="max-w-[14rem]">
+                        <Td className="max-w-0">
                           <p className="truncate">{secretPath}</p>
                         </Td>
                         <Td>
@@ -279,7 +279,10 @@ export const WebhooksTab = withProjectPermission(
                           </Tooltip>
                         </Td>
                         <Td>
-                          {!lastStatus ? (
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {isDisabled ? (
+                            <Badge variant="neutral">Disabled</Badge>
+                          ) : !lastStatus ? (
                             "-"
                           ) : (
                             <div className="inline-flex w-min items-center rounded-sm bg-mineshaft-600 px-2 py-0.5 text-sm">
