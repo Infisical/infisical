@@ -83,6 +83,10 @@ import {
   SanitizedDNSMadeEasyConnectionSchema
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
 import {
+  DopplerConnectionListItemSchema,
+  SanitizedDopplerConnectionSchema
+} from "@app/services/app-connection/doppler/doppler-connection-schema";
+import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
@@ -228,6 +232,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureEntraIdConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
+  ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options
 ]);
 
@@ -286,6 +291,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureEntraIdConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
+  DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
   AnthropicConnectionListItemSchema
 ]);

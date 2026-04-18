@@ -382,5 +382,10 @@ export enum EventType {
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
-  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete"
+  SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
+
+  // External Migration
+  EXTERNAL_MIGRATION_CREATE = "external-migration-create",
+  EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
+  EXTERNAL_MIGRATION_DELETE = "external-migration-delete"
 }

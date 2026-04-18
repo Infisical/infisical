@@ -437,6 +437,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect a remote Infisical instance to sync secrets between Infisical projects.",
       category: "Security",
+    },
+    {
+      name: "Doppler",
+      slug: "doppler",
+      path: "/integrations/app-connections/doppler",
+      description:
+        "Learn how to connect Doppler for migrating data from Doppler to Infisical.",
+      category: "DevOps Tools",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -47,6 +47,7 @@ export * from "./email-domains";
 export * from "./external-certificate-authorities";
 export * from "./external-group-org-role-mappings";
 export * from "./external-kms";
+export * from "./external-migration-configs";
 export * from "./folder-checkpoint-resources";
 export * from "./folder-checkpoints";
 export * from "./folder-commit-changes";

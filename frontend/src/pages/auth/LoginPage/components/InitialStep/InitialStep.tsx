@@ -251,6 +251,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
                 <Input
                   {...register("email")}
                   type="email"
+                  id="email"
                   placeholder="Enter your email..."
                   autoComplete="username"
                   className="h-10"

@@ -33,12 +33,14 @@ type Props = {
   onImportSecrets: () => void;
   onReplicateSecrets: () => void;
   onImportFromVault: () => void;
+  onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
+  hasDopplerConnection: boolean;
   isOrgAdmin: boolean;
 };
 
@@ -51,14 +53,22 @@ export function AddResourceButtons({
   onImportSecrets,
   onReplicateSecrets,
   onImportFromVault,
+  onImportFromDoppler,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
+  hasDopplerConnection,
   isOrgAdmin
 }: Props) {
+  const getInPlatformImportTooltip = (platform: string) => {
+    if (!isOrgAdmin) return `Only organization admins can import secrets from ${platform}`;
+    if (!isSingleEnvSelected) return `Select a single environment to import from ${platform}`;
+    return "Access Restricted";
+  };
+
   return (
     <ButtonGroup>
       <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
@@ -206,12 +216,38 @@ export function AddResourceButtons({
                     </DropdownMenuItem>
                   </TooltipTrigger>
                   <TooltipContent side="left">
-                    {/* eslint-disable-next-line no-nested-ternary */}
-                    {!isOrgAdmin
-                      ? "Only organization admins can import secrets from HashiCorp Vault"
-                      : !isSingleEnvSelected
-                        ? "Select a single environment to import from HashiCorp Vault"
-                        : "Access Restricted"}
+                    {getInPlatformImportTooltip("HashiCorp Vault")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </ProjectPermissionCan>
+          )}
+          {hasDopplerConnection && (
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <Tooltip
+                  open={!isAllowed || !isOrgAdmin || !isSingleEnvSelected ? undefined : false}
+                >
+                  <TooltipTrigger className="block w-full">
+                    <UnstableDropdownMenuItem
+                      onClick={onImportFromDoppler}
+                      isDisabled={!isAllowed || !isOrgAdmin || !isSingleEnvSelected}
+                    >
+                      <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
+                        <img
+                          src="/images/integrations/Doppler.png"
+                          alt="Doppler"
+                          className="mt-0.5 h-4 w-4"
+                        />
+                      </div>
+                      Add from Doppler
+                    </UnstableDropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {getInPlatformImportTooltip("Doppler")}
                   </TooltipContent>
                 </Tooltip>
               )}

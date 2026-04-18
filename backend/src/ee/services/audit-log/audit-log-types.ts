@@ -754,6 +754,10 @@ export enum EventType {
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
   SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
 
+  // External Migration
+  EXTERNAL_MIGRATION_CREATE = "external-migration-create",
+  EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
+  EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
@@ -5968,6 +5972,31 @@ interface SecretValidationRuleDeleteEvent {
   };
 }
 
+interface ExternalMigrationCreateEvent {
+  type: EventType.EXTERNAL_MIGRATION_CREATE;
+  metadata: {
+    configId: string;
+    provider: string;
+    connectionId: string | null;
+  };
+}
+
+interface ExternalMigrationUpdateEvent {
+  type: EventType.EXTERNAL_MIGRATION_UPDATE;
+  metadata: {
+    configId: string;
+    provider: string;
+    connectionId: string | null;
+  };
+}
+
+interface ExternalMigrationDeleteEvent {
+  type: EventType.EXTERNAL_MIGRATION_DELETE;
+  metadata: {
+    configId: string;
+    provider: string;
+  };
+}
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -6556,6 +6585,9 @@ export type Event =
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
   | SecretValidationRuleDeleteEvent
+  | ExternalMigrationCreateEvent
+  | ExternalMigrationUpdateEvent
+  | ExternalMigrationDeleteEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

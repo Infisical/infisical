@@ -242,6 +242,7 @@ export enum TableName {
   PamAccountPolicy = "pam_account_policies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
+  ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
   PkiAcmeAccount = "pki_acme_accounts",
