@@ -231,19 +231,19 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
-      return doc;
+      const [folderWithFullPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
+
+      if (!folderWithFullPath) {
+        throw new NotFoundError({
+          message: `Failed to retrieve path for folder with ID '${doc.id}'`
+        });
+      }
+
+      return { ...doc, path: folderWithFullPath.path };
     });
 
-    const [folderWithFullPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id]);
-
-    if (!folderWithFullPath) {
-      throw new NotFoundError({
-        message: `Failed to retrieve path for folder with ID '${folder.id}'`
-      });
-    }
-
     await snapshotService.performSnapshot(folder.parentId as string);
-    return { ...folder, path: folderWithFullPath.path };
+    return folder;
   };
 
   const updateManyFolders = async ({
@@ -461,7 +461,17 @@ export const secretFolderServiceFactory = ({
       }
     }
 
-    const newFolder = await folderDAL.transaction(async (tx) => {
+    const { newFolder, newFolderPath, oldFolderPath } = await folderDAL.transaction(async (tx) => {
+      // Read the old folder path BEFORE the update to capture the original name in the path.
+      // This must be done inside the transaction to ensure read-after-write consistency
+      // when using read replicas, but before the UPDATE to get the old state.
+      const [oldFolderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id], tx);
+      if (!oldFolderWithPath) {
+        throw new NotFoundError({
+          message: `Failed to retrieve path for folder with ID '${folder.id}'`
+        });
+      }
+
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
         { name, description },
@@ -498,30 +508,23 @@ export const secretFolderServiceFactory = ({
         tx
       );
       if (!doc) throw new NotFoundError({ message: `Failed to update folder with ID '${id}'`, name: "UpdateFolder" });
-      return doc;
+
+      // Read the new folder path AFTER the update to get the updated name in the path.
+      const [newFolderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
+      if (!newFolderWithPath) {
+        throw new NotFoundError({
+          message: `Failed to retrieve path for folder with ID '${doc.id}'`
+        });
+      }
+
+      return { newFolder: doc, newFolderPath: newFolderWithPath.path, oldFolderPath: oldFolderWithPath.path };
     });
-
-    const foldersWithFullPaths = await folderDAL.findSecretPathByFolderIds(projectId, [newFolder.id, folder.id]);
-
-    const newFolderWithFullPath = foldersWithFullPaths.find((f) => f?.id === newFolder.id);
-    if (!newFolderWithFullPath) {
-      throw new NotFoundError({
-        message: `Failed to retrieve path for folder with ID '${newFolder.id}'`
-      });
-    }
-
-    const folderWithFullPath = foldersWithFullPaths.find((f) => f?.id === folder.id);
-    if (!folderWithFullPath) {
-      throw new NotFoundError({
-        message: `Failed to retrieve path for folder with ID '${folder.id}'`
-      });
-    }
 
     await snapshotService.performSnapshot(newFolder.parentId as string);
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
-      folder: { ...newFolder, path: newFolderWithFullPath.path },
-      old: { ...folder, path: folderWithFullPath.path }
+      folder: { ...newFolder, path: newFolderPath },
+      old: { ...folder, path: oldFolderPath }
     };
   };
 
