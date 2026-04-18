@@ -73,6 +73,10 @@ export const useRdpSession = ({
 }: UseRdpSessionOptions) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionRef = useRef<unknown>(null);
+  // Guard against React StrictMode's double-invocation of effects in dev:
+  // each connect() fetches a single-use web-access ticket, so running
+  // twice burns the first ticket and the second run gets "Invalid token".
+  const hasStartedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
 
   const disconnect = useCallback(() => {
@@ -174,10 +178,13 @@ export const useRdpSession = ({
 
   const reconnect = useCallback(() => {
     disconnect();
+    hasStartedRef.current = true;
     void connect();
   }, [disconnect, connect]);
 
   useEffect(() => {
+    if (hasStartedRef.current) return undefined;
+    hasStartedRef.current = true;
     void connect();
     return () => {
       disconnect();
