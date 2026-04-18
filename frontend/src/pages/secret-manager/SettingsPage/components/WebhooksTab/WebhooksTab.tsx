@@ -28,6 +28,7 @@ import {
   TableSkeleton,
   TBody,
   Td,
+  Th,
   THead,
   Tooltip,
   Tr
@@ -181,10 +182,10 @@ export const WebhooksTab = withProjectPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Td>URL</Td>
-                  <Td className="min-w-[14rem]">Environment</Td>
-                  <Td className="min-w-[14rem]">Secret Path</Td>
-                  <Td>
+                  <Th className="min-w-[20rem]">URL</Th>
+                  <Th className="max-w-[12rem]">Environment</Th>
+                  <Th className="max-w-[14rem]">Secret Path</Th>
+                  <Th>
                     <div className="flex items-center gap-1">
                       <span>Events</span>
                       <Tooltip content="Events that are configured to trigger this webhook.">
@@ -195,9 +196,9 @@ export const WebhooksTab = withProjectPermission(
                         />
                       </Tooltip>
                     </div>
-                  </Td>
-                  <Td>Status</Td>
-                  <Td className="text-right">Action</Td>
+                  </Th>
+                  <Th>Status</Th>
+                  <Th />
                 </Tr>
               </THead>
               <TBody>
@@ -234,9 +235,9 @@ export const WebhooksTab = withProjectPermission(
 
                     return (
                       <Tr key={id}>
-                        <Td className="w-full max-w-0">
+                        <Td className="w-full max-w-0 min-w-[20rem]">
                           <Tooltip
-                            className="max-w-md"
+                            className="max-w-2xl"
                             content={<span className="break-all">{url}</span>}
                           >
                             <div>
@@ -245,8 +246,12 @@ export const WebhooksTab = withProjectPermission(
                             </div>
                           </Tooltip>
                         </Td>
-                        <Td>{environment.slug}</Td>
-                        <Td>{secretPath}</Td>
+                        <Td className="max-w-[12rem]">
+                          <p className="truncate">{environment.slug}</p>
+                        </Td>
+                        <Td className="max-w-[14rem]">
+                          <p className="truncate">{secretPath}</p>
+                        </Td>
                         <Td>
                           <Tooltip
                             content={
