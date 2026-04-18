@@ -167,6 +167,12 @@ import {
   TGatewayEnrollmentTokens,
   TGatewayEnrollmentTokensInsert,
   TGatewayEnrollmentTokensUpdate,
+  TGatewayPoolMemberships,
+  TGatewayPoolMembershipsInsert,
+  TGatewayPoolMembershipsUpdate,
+  TGatewayPools,
+  TGatewayPoolsInsert,
+  TGatewayPoolsUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -1606,6 +1612,12 @@ declare module "knex/types/tables" {
       TGatewayEnrollmentTokens,
       TGatewayEnrollmentTokensInsert,
       TGatewayEnrollmentTokensUpdate
+    >;
+    [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
+    [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<
+      TGatewayPoolMemberships,
+      TGatewayPoolMembershipsInsert,
+      TGatewayPoolMembershipsUpdate
     >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,

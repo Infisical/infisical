@@ -19,6 +19,7 @@ import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
@@ -369,6 +370,7 @@ declare module "fastify" {
       insights: TInsightsServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;
+      gatewayPool: TGatewayPoolServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;

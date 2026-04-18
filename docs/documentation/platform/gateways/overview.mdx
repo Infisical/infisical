@@ -65,6 +65,10 @@ To monitor their operational status, both gateways and relays transmit hourly he
 
 Infisical automatically notifies all organization admins of unhealthy gateway or relay statuses through email and in-app notifications.
 
+## High Availability with Gateway Pools
+
+For production workloads, you can group multiple gateways into a **Gateway Pool** to provide automatic failover. When a gateway in a pool goes down, the platform routes through a healthy member automatically. See [Gateway Pools](/documentation/platform/gateways/gateway-pools) for details.
+
 ## Getting Started
 
 Ready to set up your gateway? Follow the guides below.
@@ -73,11 +77,14 @@ Ready to set up your gateway? Follow the guides below.
   <Card title="Gateway Deployment" href="/documentation/platform/gateways/gateway-deployment">
     Deploy and configure your gateway within your network infrastructure.
   </Card>
+  <Card title="Gateway Pools" href="/documentation/platform/gateways/gateway-pools">
+    Set up high availability with gateway pools for automatic failover.
+  </Card>
+</Columns>
+<Columns cols={2}>
   <Card title="Relay Deployment" href="/documentation/platform/gateways/relay-deployment">
     Set up relay servers if using self-deployed infrastructure.
   </Card>
-</Columns>
-<Columns cols={1}>
   <Card title="Security Architecture" href="/documentation/platform/gateways/security">
     Learn about the security model and implementation best practices.
   </Card>

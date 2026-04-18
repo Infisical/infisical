@@ -57,6 +57,7 @@ export type SubscriptionPlan = {
   caCrl: boolean;
   instanceUserManagement: boolean;
   gateway: boolean;
+  gatewayPool: boolean;
   externalKms: boolean;
   pkiEst: boolean;
   pkiAcme: boolean;

@@ -207,6 +207,8 @@ In the following steps, we explore how to create and use identities for your app
           <Step title="Configure the Kubernetes Auth authentication method for the identity">
             To configure your Kubernetes Auth method to use the gateway as the token reviewer, set the `Review Method` to "Gateway as Reviewer", and select the gateway you want to use as the token reviewer.
 
+            You can select either an individual gateway or a **Gateway Pool** for automatic failover. When a pool is selected, the platform routes through a healthy member at request time. See [Gateway Pools](/documentation/platform/gateways/gateway-pools) for more details.
+
             ![identities organization create kubernetes auth method](/images/platform/identities/identities-kubernetes-auth-gateway-as-reviewer.png)
           </Step>
         </Steps>

@@ -55,6 +55,8 @@ export * from "./folder-commits";
 export * from "./folder-tree-checkpoint-resources";
 export * from "./folder-tree-checkpoints";
 export * from "./gateway-enrollment-tokens";
+export * from "./gateway-pool-memberships";
+export * from "./gateway-pools";
 export * from "./gateways";
 export * from "./gateways-v2";
 export * from "./git-app-install-sessions";
