@@ -508,10 +508,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <div className="flex items-center gap-2">
-                      {/* Temporarily disable accessing Windows Server accounts */}
                       {/* Disable accessing Active Directory accounts */}
-                      {resource.resourceType !== PamResourceType.Windows &&
-                        resource.resourceType !== PamResourceType.ActiveDirectory && (
+                      {resource.resourceType !== PamResourceType.ActiveDirectory && (
                           <ProjectPermissionCan
                             I={ProjectPermissionPamAccountActions.Access}
                             a={ProjectPermissionSub.PamAccounts}
