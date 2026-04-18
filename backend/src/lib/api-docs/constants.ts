@@ -2701,6 +2701,9 @@ export const AppConnections = {
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
     },
+    DEVIN: {
+      apiKey: "The Devin service-user API key used to authenticate against the Devin v3 API."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -3007,6 +3010,9 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    DEVIN: {
+      orgId: "The Devin organization ID to sync secrets to."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",

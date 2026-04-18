@@ -18,6 +18,7 @@ import { CircleCISyncFields } from "./CircleCISyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
+import { DevinSyncFields } from "./DevinSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
 import { ExternalInfisicalSyncFields } from "./ExternalInfisicalSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
@@ -121,6 +122,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureEntraIdScimSyncFields />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncFields />;
+    case SecretSync.Devin:
+      return <DevinSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

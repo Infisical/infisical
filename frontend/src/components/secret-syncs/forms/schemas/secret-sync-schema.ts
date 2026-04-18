@@ -15,6 +15,7 @@ import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schem
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
+import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
@@ -75,7 +76,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ChefSyncDestinationSchema,
   CircleCISyncDestinationSchema,
   AzureEntraIdScimSyncDestinationSchema,
-  ExternalInfisicalSyncDestinationSchema
+  ExternalInfisicalSyncDestinationSchema,
+  DevinSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

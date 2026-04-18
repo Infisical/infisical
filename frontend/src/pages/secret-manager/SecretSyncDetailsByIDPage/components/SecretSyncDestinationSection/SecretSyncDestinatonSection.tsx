@@ -25,6 +25,7 @@ import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
+import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
 import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { ExternalInfisicalSyncDestinationSection } from "./ExternalInfisicalSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
@@ -174,6 +175,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.ExternalInfisical:
       DestinationComponents = <ExternalInfisicalSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Devin:
+      DestinationComponents = <DevinSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

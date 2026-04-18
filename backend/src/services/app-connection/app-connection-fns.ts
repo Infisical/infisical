@@ -108,6 +108,7 @@ import {
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
+import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
   DigitalOceanConnectionMethod,
   getDigitalOceanConnectionListItem,
@@ -288,6 +289,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
     getAnthropicConnectionListItem(),
+    getDevinConnectionListItem(),
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
@@ -435,6 +437,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Anthropic]: validateAnthropicConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -529,6 +532,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -643,6 +647,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.Anthropic]: platformManagedCredentialsNotSupported,
+  [AppConnection.Devin]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,

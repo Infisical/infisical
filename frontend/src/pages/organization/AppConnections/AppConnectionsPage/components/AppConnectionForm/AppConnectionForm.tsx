@@ -33,6 +33,7 @@ import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
+import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
@@ -266,6 +267,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Devin:
+        return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
@@ -479,6 +482,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Devin:
+        return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ExternalInfisical:

@@ -112,6 +112,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TDevinSync, TDevinSyncInput, TDevinSyncListItem, TDevinSyncWithCredentials } from "./devin/devin-sync-types";
 import {
   TDigitalOceanAppPlatformSyncInput,
   TDigitalOceanAppPlatformSyncListItem,
@@ -227,7 +228,8 @@ export type TSecretSync =
   | TOctopusDeploySync
   | TCircleCISync
   | TAzureEntraIdScimSync
-  | TExternalInfisicalSync;
+  | TExternalInfisicalSync
+  | TDevinSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -266,7 +268,8 @@ export type TSecretSyncWithCredentials =
   | TOctopusDeploySyncWithCredentials
   | TCircleCISyncWithCredentials
   | TAzureEntraIdScimSyncWithCredentials
-  | TExternalInfisicalSyncWithCredentials;
+  | TExternalInfisicalSyncWithCredentials
+  | TDevinSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -305,7 +308,8 @@ export type TSecretSyncInput =
   | TOctopusDeploySyncInput
   | TCircleCISyncInput
   | TAzureEntraIdScimSyncInput
-  | TExternalInfisicalSyncInput;
+  | TExternalInfisicalSyncInput
+  | TDevinSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -344,7 +348,8 @@ export type TSecretSyncListItem =
   | TOctopusDeploySyncListItem
   | TCircleCISyncListItem
   | TAzureEntraIdScimSyncListItem
-  | TExternalInfisicalSyncListItem;
+  | TExternalInfisicalSyncListItem
+  | TDevinSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
