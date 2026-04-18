@@ -427,12 +427,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             : `${TableName.Identity}.${orderBy}`,
           orderDirection
         )
-        .select(`${TableName.Membership}.id`)
-        .select<{ id: string; total_count: string }>(
-          db.raw(
-            `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total_count`
-          )
-        )
+        .distinct(`${TableName.Membership}.id`)
         .as("searchedIdentities");
 
       if (searchFilter) {
@@ -447,6 +442,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           }
         });
       }
+
+      const countQuery = await (tx || db.replicaNode())
+        .count("* as total")
+        .from(searchQuery.clone().as("distinctMemberships"));
 
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
@@ -667,7 +666,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return { docs: formattedDocs, totalCount: Number(formattedDocs?.[0]?.total_count ?? 0) };
+      return { docs: formattedDocs, totalCount: Number((countQuery?.[0] as unknown as { total: number })?.total ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByOrgId" });
     }
