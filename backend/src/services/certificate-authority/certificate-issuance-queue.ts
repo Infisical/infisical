@@ -35,6 +35,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
 
 const base64UrlToBase64 = (base64url: string): string => {
   let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
@@ -167,6 +168,19 @@ export const certificateIssuanceQueueFactory = ({
   });
 
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL
+  });
+
+  const venafiTppFns = VenafiTppCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -449,6 +463,61 @@ export const certificateIssuanceQueueFactory = ({
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
+            });
+
+            logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
+          } catch (attachError) {
+            logger.error(
+              attachError,
+              `Failed to attach certificate to request [certificateRequestId=${certificateRequestId}]`
+            );
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
+              });
+            } catch (statusUpdateError) {
+              logger.error(
+                statusUpdateError,
+                `Failed to update certificate request status [certificateRequestId=${certificateRequestId}]`
+              );
+            }
+          }
+        }
+      } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
+        const venafiTppParams = {
+          caId,
+          profileId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          validity: { ttl },
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          isRenewal,
+          originalCertificateId,
+          ...(csr && { csr }),
+          organization,
+          organizationalUnit,
+          country,
+          state,
+          locality
+        };
+
+        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+
+        if (certificateRequestId && certificateRequestService && venafiTppResult?.certificateId) {
+          try {
+            await certificateRequestService.attachCertificateToRequest({
+              certificateRequestId,
+              certificateId: venafiTppResult.certificateId
+            });
+
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: venafiTppResult.certificateId
             });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);

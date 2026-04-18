@@ -54,6 +54,7 @@ import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVenafiConnection } from "./venafi-connection";
+import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
@@ -110,6 +111,7 @@ export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./venafi-connection";
+export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
@@ -169,6 +171,7 @@ export type TAppConnection =
   | TCircleCIConnection
   | TAzureEntraIdConnection
   | TVenafiConnection
+  | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection;

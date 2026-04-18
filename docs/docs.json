@@ -158,6 +158,7 @@
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/venafi",
+                      "integrations/app-connections/venafi-tpp",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
@@ -835,7 +836,8 @@
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
-                  "documentation/platform/pki/ca/venafi"
+                  "documentation/platform/pki/ca/venafi",
+                  "documentation/platform/pki/ca/venafi-tpp"
                 ]
               }
             ]

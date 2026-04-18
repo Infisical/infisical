@@ -202,6 +202,11 @@ import {
   validateTerraformCloudConnectionCredentials
 } from "./terraform-cloud";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
+import {
+  getVenafiTppConnectionListItem,
+  validateVenafiTppConnectionCredentials,
+  VenafiTppConnectionMethod
+} from "./venafi-tpp";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -233,6 +238,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
   AppConnection.Venafi,
+  AppConnection.VenafiTpp,
   AppConnection.NetScaler
 ];
 
@@ -292,6 +298,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
+    getVenafiTppConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
     getNetScalerConnectionListItem()
@@ -440,6 +447,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.VenafiTpp]: validateVenafiTppConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
       validateExternalInfisicalConnectionCredentials(
@@ -506,6 +514,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureADCSConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case VenafiTppConnectionMethod.UsernamePassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -651,6 +660,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
+  [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported

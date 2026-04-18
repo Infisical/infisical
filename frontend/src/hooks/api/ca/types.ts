@@ -49,6 +49,19 @@ export type TAwsPcaCertificateAuthority = {
   };
 };
 
+export type TVenafiTppCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.VENAFI_TPP;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    policyDN: string;
+  };
+};
+
 export type TInternalCertificateAuthority = {
   id: string;
   projectId: string;
@@ -80,6 +93,7 @@ export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
+  | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;
 
 export type TCreateCertificateAuthorityDTO = Omit<

@@ -68,6 +68,7 @@ import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
+import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
@@ -271,6 +272,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
@@ -492,6 +495,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Venafi:
+        return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.VenafiTpp:
+        return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

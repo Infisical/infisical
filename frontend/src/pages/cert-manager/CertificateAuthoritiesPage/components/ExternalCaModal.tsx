@@ -125,6 +125,14 @@ const awsPcaConfigurationSchema = z.object({
   region: z.string().min(1, "Region is required")
 });
 
+const venafiTppConfigurationSchema = z.object({
+  venafiTppConnection: z.object({
+    id: z.string().min(1, "Venafi TPP Connection is required"),
+    name: z.string()
+  }),
+  policyDN: z.string().trim().min(1, "Policy DN is required")
+});
+
 const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.ACME),
@@ -137,6 +145,10 @@ const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.AWS_PCA),
     configuration: awsPcaConfigurationSchema
+  }),
+  baseSchema.extend({
+    type: z.literal(CaType.VENAFI_TPP),
+    configuration: venafiTppConfigurationSchema
   })
 ]);
 
@@ -150,7 +162,8 @@ type Props = {
 const caTypes = [
   { label: "ACME", value: CaType.ACME },
   { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS },
-  { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA }
+  { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA },
+  { label: "Venafi TPP", value: CaType.VENAFI_TPP }
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -214,6 +227,19 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             region: ""
           }
         });
+      } else if (initialType === CaType.VENAFI_TPP) {
+        reset({
+          type: CaType.VENAFI_TPP,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            venafiTppConnection: {
+              id: "",
+              name: ""
+            },
+            policyDN: ""
+          }
+        });
       } else {
         reset({
           type: CaType.ACME,
@@ -272,12 +298,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   );
 
+  const { data: availableVenafiTppConnections, isPending: isVenafiTppPending } =
+    useListAvailableAppConnections(AppConnection.VenafiTpp, currentProject.id, {
+      enabled: caType === CaType.VENAFI_TPP
+    });
+
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
     if (caType === CaType.AWS_PCA) {
       return availableAwsConnections || [];
+    }
+    if (caType === CaType.VENAFI_TPP) {
+      return availableVenafiTppConnections || [];
     }
     return [
       ...(availableRoute53Connections || []),
@@ -292,7 +326,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availableAzureConnections,
-    availableAwsConnections
+    availableAwsConnections,
+    availableVenafiTppConnections
   ]);
 
   const isPending =
@@ -301,7 +336,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     isDNSMadeEasyPending ||
     isAzureDNSPending ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
-    (isAwsPending && caType === CaType.AWS_PCA);
+    (isAwsPending && caType === CaType.AWS_PCA) ||
+    (isVenafiTppPending && caType === CaType.VENAFI_TPP);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -385,6 +421,23 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             region: ca.configuration.region
           }
         });
+      } else if (ca.type === CaType.VENAFI_TPP && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            venafiTppConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            policyDN: ca.configuration.policyDN
+          }
+        });
       }
     }
   }, [ca, availableConnections, reset, isCaLoading]);
@@ -418,6 +471,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         appConnectionId: formConfiguration.awsConnection.id,
         certificateAuthorityArn: formConfiguration.certificateAuthorityArn,
         region: formConfiguration.region
+      };
+    } else if (type === CaType.VENAFI_TPP && "venafiTppConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.venafiTppConnection.id,
+        policyDN: formConfiguration.policyDN
       };
     } else {
       throw new Error("Invalid certificate authority configuration");
@@ -829,6 +887,51 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isRequired
                   >
                     <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
+                  </FormControl>
+                )}
+              />
+            </>
+          )}
+          {caType === CaType.VENAFI_TPP && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="Venafi TPP App Connection contains the credentials to connect to your Venafi Trust Protection Platform instance."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="Venafi TPP Connection"
+                  >
+                    <FilterableSelect
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.venafiTppConnection"
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.policyDN"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Policy DN"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                    tooltipText="The policy folder path in Venafi TPP where certificates will be managed (e.g., \VED\Policy\Certificates)."
+                  >
+                    <Input {...field} placeholder="\VED\Policy\Certificates" />
                   </FormControl>
                 )}
               />

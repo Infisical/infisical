@@ -4,7 +4,8 @@ export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
   [CaType.INTERNAL]: "Internal",
   [CaType.ACME]: "ACME-compatible CA",
   [CaType.AZURE_AD_CS]: "Active Directory Certificate Service",
-  [CaType.AWS_PCA]: "AWS Private Certificate Authority"
+  [CaType.AWS_PCA]: "AWS Private Certificate Authority",
+  [CaType.VENAFI_TPP]: "Venafi Trust Protection Platform"
 };
 
 export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
@@ -19,7 +20,12 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.RENEW_CERTIFICATES
     // Note: REVOKE_CERTIFICATES intentionally omitted - not supported by ADCS connector
   ],
-  [CaType.AWS_PCA]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
+  [CaType.AWS_PCA]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+  ],
+  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
 };
 
 /**

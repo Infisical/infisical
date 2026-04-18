@@ -10,12 +10,14 @@ import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-auth
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { InternalCertificateAuthoritySchema } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
+import { VenafiTppCertificateAuthoritySchema } from "@app/services/certificate-authority/venafi-tpp/venafi-tpp-certificate-authority-schemas";
 
 const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
   AcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
-  AwsPcaCertificateAuthoritySchema
+  AwsPcaCertificateAuthoritySchema,
+  VenafiTppCertificateAuthoritySchema
 ]);
 
 export const registerCaRouter = async (server: FastifyZodProvider) => {
@@ -73,6 +75,14 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
+      const venafiTppCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId: req.query.projectId,
+          type: CaType.VENAFI_TPP
+        },
+        req.permission
+      );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.query.projectId,
@@ -83,7 +93,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
-              ...(awsPcaCas ?? []).map((ca) => ca.id)
+              ...(awsPcaCas ?? []).map((ca) => ca.id),
+              ...(venafiTppCas ?? []).map((ca) => ca.id)
             ]
           }
         }
@@ -94,7 +105,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
-          ...(awsPcaCas ?? [])
+          ...(awsPcaCas ?? []),
+          ...(venafiTppCas ?? [])
         ]
       };
     }
