@@ -125,6 +125,7 @@
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/dbt",
                       "integrations/app-connections/digital-ocean",
+                      "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
@@ -177,6 +178,7 @@
                 "group": "External Migrations",
                 "pages": [
                   "documentation/platform/external-migrations/overview",
+                  "documentation/platform/external-migrations/doppler",
                   "documentation/platform/external-migrations/envkey",
                   "documentation/platform/external-migrations/vault"
                 ]
@@ -1479,6 +1481,18 @@
                       "api-reference/endpoints/app-connections/digital-ocean/create",
                       "api-reference/endpoints/app-connections/digital-ocean/update",
                       "api-reference/endpoints/app-connections/digital-ocean/delete"
+                    ]
+                  },
+                  {
+                    "group": "Doppler",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/doppler/list",
+                      "api-reference/endpoints/app-connections/doppler/available",
+                      "api-reference/endpoints/app-connections/doppler/get-by-id",
+                      "api-reference/endpoints/app-connections/doppler/get-by-name",
+                      "api-reference/endpoints/app-connections/doppler/create",
+                      "api-reference/endpoints/app-connections/doppler/update",
+                      "api-reference/endpoints/app-connections/doppler/delete"
                     ]
                   },
                   {
@@ -3255,6 +3269,23 @@
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "External Migrations",
+            "pages": [
+              {
+                "group": "Doppler",
+                "pages": [
+                  "api-reference/endpoints/external-migrations/doppler/get-configs",
+                  "api-reference/endpoints/external-migrations/doppler/create-config",
+                  "api-reference/endpoints/external-migrations/doppler/update-config",
+                  "api-reference/endpoints/external-migrations/doppler/delete-config",
+                  "api-reference/endpoints/external-migrations/doppler/get-projects",
+                  "api-reference/endpoints/external-migrations/doppler/get-environments",
+                  "api-reference/endpoints/external-migrations/doppler/import-secrets"
                 ]
               }
             ]

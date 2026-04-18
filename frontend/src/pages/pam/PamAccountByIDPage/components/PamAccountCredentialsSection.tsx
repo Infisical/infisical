@@ -3,19 +3,15 @@ import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, PencilIcon } from "lucide-rea
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  Detail,
-  DetailLabel,
-  DetailValue,
-  UnstableIconButton,
-  UnstableInput
-} from "@app/components/v3";
+import { Detail, DetailLabel, DetailValue, IconButton, Input } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
 import {
+  KubernetesAuthMethod,
   PamResourceType,
   TActiveDirectoryAccount,
+  TKubernetesCredentials,
   TPamAccount,
   TWindowsAccount
 } from "@app/hooks/api/pam";
@@ -46,10 +42,10 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput value={value} readOnly className="flex-1 font-mono text-sm" />
-          <UnstableIconButton variant="ghost" onClick={handleCopy} size="sm">
+          <Input value={value} readOnly className="flex-1 font-mono text-sm" />
+          <IconButton variant="ghost" onClick={handleCopy} size="sm">
             <CopyIcon />
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>
@@ -107,6 +103,20 @@ const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirect
   );
 };
 
+const KubernetesCredentialsContent = ({ credentials }: { credentials: TKubernetesCredentials }) => {
+  if (credentials.authMethod === KubernetesAuthMethod.GatewayKubernetesAuth) {
+    return (
+      <>
+        <CopyableField label="Namespace" value={credentials.namespace} />
+        <CopyableField label="Service Account Name" value={credentials.serviceAccountName} />
+      </>
+    );
+  }
+
+  // ServiceAccountToken: no non-sensitive fields (token is behind the reveal gate)
+  return null;
+};
+
 const CredentialsContent = ({ account }: { account: TPamAccount }) => {
   const { resourceType } = account.resource;
 
@@ -125,6 +135,10 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
       return <WindowsCredentialsContent account={account as TWindowsAccount} />;
     case PamResourceType.ActiveDirectory:
       return <ActiveDirectoryCredentialsContent account={account as TActiveDirectoryAccount} />;
+    case PamResourceType.Kubernetes:
+      return (
+        <KubernetesCredentialsContent credentials={account.credentials as TKubernetesCredentials} />
+      );
     default:
       return null;
   }
@@ -152,17 +166,17 @@ const SensitiveField = ({ label, value }: { label: string; value: string }) => {
       <DetailLabel>{label}</DetailLabel>
       <DetailValue>
         <div className="flex items-center gap-2">
-          <UnstableInput
+          <Input
             value={isVisible ? value : MASKED_VALUE}
             readOnly
             className="flex-1 font-mono text-sm"
           />
-          <UnstableIconButton variant="ghost" size="sm" onClick={toggleVisibility}>
+          <IconButton variant="ghost" size="sm" onClick={toggleVisibility}>
             {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-          </UnstableIconButton>
-          <UnstableIconButton variant="ghost" size="sm" onClick={handleCopy}>
+          </IconButton>
+          <IconButton variant="ghost" size="sm" onClick={handleCopy}>
             {isCopied ? <CheckIcon /> : <CopyIcon />}
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailValue>
     </Detail>
@@ -188,9 +202,9 @@ const MultilineSensitiveField = ({ label, value }: { label: string; value: strin
       <DetailLabel>
         <div className="flex w-full items-center justify-between">
           {label}
-          <UnstableIconButton variant="ghost" size="sm" onClick={handleCopy}>
+          <IconButton variant="ghost" size="sm" onClick={handleCopy}>
             {isCopied ? <CheckIcon /> : <CopyIcon />}
-          </UnstableIconButton>
+          </IconButton>
         </div>
       </DetailLabel>
       <DetailValue>
@@ -229,6 +243,13 @@ const getSensitiveFieldDefs = (account: TPamAccount): SensitiveFieldDef[] => {
       if (authMethod === SSHAuthMethod.Password) return [{ key: "password", label: "Password" }];
       if (authMethod === SSHAuthMethod.PublicKey)
         return [{ key: "privateKey", label: "Private Key", multiline: true }];
+      return [];
+    }
+
+    case PamResourceType.Kubernetes: {
+      const { authMethod } = account.credentials as TKubernetesCredentials;
+      if (authMethod === KubernetesAuthMethod.ServiceAccountToken)
+        return [{ key: "serviceAccountToken", label: "Service Account Token", multiline: true }];
       return [];
     }
 
@@ -277,11 +298,7 @@ const RevealedCredentials = ({
 export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
   const { state, startReveal, reset } = useCredentialsReveal(account.id);
 
-  if (
-    Object.keys(account.credentials).length <= 0 ||
-    [PamResourceType.Kubernetes].includes(account.resource.resourceType)
-  )
-    return null;
+  if (Object.keys(account.credentials).length <= 0) return null;
 
   const sensitiveFieldDefs = getSensitiveFieldDefs(account);
   const hasSensitiveFields = sensitiveFieldDefs.length > 0;
@@ -295,9 +312,9 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
           a={ProjectPermissionSub.PamAccounts}
         >
           {(isAllowed) => (
-            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+            <IconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
               <PencilIcon />
-            </UnstableIconButton>
+            </IconButton>
           )}
         </ProjectPermissionCan>
       </div>

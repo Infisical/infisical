@@ -10,6 +10,7 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./Command";
 export * from "./DataGrid";
+export * from "./DateRangeFilter";
 export * from "./Detail";
 export * from "./Dialog";
 export * from "./Dropdown";

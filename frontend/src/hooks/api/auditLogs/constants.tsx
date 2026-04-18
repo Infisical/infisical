@@ -245,6 +245,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
   [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
 
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR]:
+    "View Secrets Management Calendar Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
+    "View Secrets Management Access Volume Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:
+    "View Secrets Management Access Locations Insights",
+  [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY]: "View Secrets Management Summary Insights",
+
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
   [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
@@ -319,6 +328,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
+  [EventType.SCEP_ENROLLMENT]: "SCEP Certificate Enrollment",
+  [EventType.SCEP_RENEWAL]: "SCEP Certificate Renewal",
+  [EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED]: "SCEP Dynamic Challenge Generated",
+
   [EventType.APPROVAL_POLICY_CREATE]: "Create Approval Policy",
   [EventType.APPROVAL_POLICY_UPDATE]: "Update Approval Policy",
   [EventType.APPROVAL_POLICY_DELETE]: "Delete Approval Policy",
@@ -374,7 +387,12 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.SECRET_VALIDATION_RULE_CREATE]: "Create Secret Validation Rule",
   [EventType.SECRET_VALIDATION_RULE_UPDATE]: "Update Secret Validation Rule",
-  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule"
+  [EventType.SECRET_VALIDATION_RULE_DELETE]: "Delete Secret Validation Rule",
+
+  // External Migration
+  [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
+  [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
+  [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

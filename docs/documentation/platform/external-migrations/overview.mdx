@@ -10,13 +10,19 @@ Infisical supports migrating resources from third-party secrets management platf
 
 Infisical offers two types of migration approaches:
 
-- **In-Platform Migration Tooling**: Configure platform connections to enable granular, on-demand imports of secrets, policies, and configurations directly within the Infisical UI. This allows you to migrate resources incrementally as needed.
+- **In-Platform Migration Tooling**: Connect supported platforms (for example HashiCorp Vault or Doppler) under **Organization Settings > External Migrations**, then run granular, on-demand imports of secrets—and Vault-only features like policies and Kubernetes-related configuration—directly in the Infisical UI. This allows you to migrate resources incrementally as needed.
 
 - **Bulk Data Import**: Perform one-time organization-level migrations to import all resources from external platforms at once. This is ideal for initial migrations when moving entirely to Infisical.
 
 ## Supported Platforms
 
+**Bulk / one-shot organization import**
+
 - [EnvKey](./envkey)
-- [Vault](./vault)
+
+**In-platform migration (per-platform guides)**
+
+- [Vault](./vault) — KV secrets, Kubernetes auth and dynamic secret shapes, policy translation
+- [Doppler](./doppler) — secrets from Doppler projects and environments
 
 We're always looking to add more migration paths for other providers. If we're missing a platform, please open an issue on our [GitHub repository](https://github.com/infisical/infisical/issues).

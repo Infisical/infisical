@@ -14,6 +14,7 @@ import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
+import { registerV3EERoutes } from "@app/ee/routes/v3";
 import {
   accessApprovalPolicyApproverDALFactory,
   accessApprovalPolicyBypasserDALFactory
@@ -58,6 +59,7 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
+import { gatewayEnrollmentTokenDALFactory } from "@app/ee/services/gateway-v2/gateway-enrollment-token-dal";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
@@ -71,6 +73,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { kmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
@@ -127,6 +130,7 @@ import { pkiDiscoveryQueueFactory } from "@app/ee/services/pki-discovery/pki-dis
 import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-scan-history-dal";
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
+import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
@@ -257,6 +261,8 @@ import { certificateCleanupConfigDALFactory } from "@app/services/certificate-cl
 import { certificateCleanupQueueFactory } from "@app/services/certificate-cleanup/certificate-cleanup-queue";
 import { certificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { certificateInventoryViewDALFactory } from "@app/services/certificate-inventory-view/certificate-inventory-view-dal";
+import { certificateInventoryViewServiceFactory } from "@app/services/certificate-inventory-view/certificate-inventory-view-service";
 import { certificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { certificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -278,9 +284,9 @@ import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/e
 import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
+import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
-import { vaultExternalMigrationConfigDALFactory } from "@app/services/external-migration/vault-external-migration-config-dal";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
@@ -675,7 +681,7 @@ export const registerRoutes = async (
 
   const appConnectionCredentialRotationDAL = appConnectionCredentialRotationDALFactory(db);
 
-  const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
+  const externalMigrationConfigDAL = externalMigrationConfigDALFactory(db);
 
   // New event bus for inter-container communication
   const eventBusService = eventBusServiceFactory({ redis: server.redis });
@@ -1256,12 +1262,14 @@ export const registerRoutes = async (
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
   const scepEnrollmentConfigDAL = scepEnrollmentConfigDALFactory(db);
   const scepTransactionDAL = scepTransactionDALFactory(db);
+  const scepDynamicChallengeDAL = scepDynamicChallengeDALFactory(db);
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
   const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
   const acmeChallengeDAL = pkiAcmeChallengeDALFactory(db);
   const certificateCleanupConfigDAL = certificateCleanupConfigDALFactory(db);
+  const certificateInventoryViewDAL = certificateInventoryViewDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -1287,6 +1295,7 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
+  const gatewayEnrollmentTokenDAL = gatewayEnrollmentTokenDALFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
@@ -1374,6 +1383,7 @@ export const registerRoutes = async (
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
+    scepDynamicChallengeDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -1445,6 +1455,7 @@ export const registerRoutes = async (
     relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
+    gatewayEnrollmentTokenDAL,
     relayDAL,
     permissionService,
     orgDAL,
@@ -2104,6 +2115,11 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const certificateInventoryViewService = certificateInventoryViewServiceFactory({
+    certificateInventoryViewDAL,
+    permissionService
+  });
+
   const certificateCleanupQueue = certificateCleanupQueueFactory({
     db,
     queueService,
@@ -2363,6 +2379,19 @@ export const registerRoutes = async (
     appConnectionDAL,
     gatewayService,
     gatewayV2Service
+  });
+
+  const insightsService = insightsServiceFactory({
+    permissionService,
+    licenseService,
+    auditLogDAL,
+    secretRotationV2DAL,
+    reminderDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    projectBotService,
+    userDAL,
+    keyStore
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({
@@ -2634,6 +2663,7 @@ export const registerRoutes = async (
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
+    scepDynamicChallengeDAL,
     scepTransactionDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -2646,7 +2676,8 @@ export const registerRoutes = async (
     certificatePolicyService,
     certificateRequestService,
     certificateIssuanceQueue,
-    auditLogService
+    auditLogService,
+    permissionService
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -3010,7 +3041,7 @@ export const registerRoutes = async (
     gatewayService,
     kmsService,
     appConnectionService,
-    vaultExternalMigrationConfigDAL,
+    externalMigrationConfigDAL,
     secretService,
     auditLogService,
     gatewayV2Service
@@ -3137,6 +3168,7 @@ export const registerRoutes = async (
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
     certificateCleanup: certificateCleanupService,
+    certificateInventoryView: certificateInventoryViewService,
     certificateV3: certificateV3Service,
     certificateRequest: certificateRequestService,
     certificateEstV3: certificateEstV3Service,
@@ -3192,6 +3224,7 @@ export const registerRoutes = async (
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
+    insights: insightsService,
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
@@ -3357,7 +3390,13 @@ export const registerRoutes = async (
     },
     { prefix: "/api/v2" }
   );
-  await server.register(registerV3Routes, { prefix: "/api/v3" });
+  await server.register(
+    async (v3Server) => {
+      await v3Server.register(registerV3EERoutes);
+      await v3Server.register(registerV3Routes);
+    },
+    { prefix: "/api/v3" }
+  );
   await server.register(registerV4Routes, { prefix: "/api/v4" });
 
   // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.

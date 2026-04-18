@@ -1,21 +1,81 @@
 export enum ExternalMigrationProviders {
   Vault = "vault",
-  EnvKey = "env-key"
+  EnvKey = "env-key",
+  Doppler = "doppler"
 }
 
-export enum VaultImportStatus {
-  Imported = "imported",
-  ApprovalRequired = "approval-required"
-}
-
-export type TVaultExternalMigrationConfig = {
+export type TExternalMigrationConfig = {
   id: string;
   orgId: string;
-  namespace: string;
+  provider: string;
   connectionId: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+export type TExternalMigrationVaultInput = {
+  provider: ExternalMigrationProviders.Vault;
+  config: { namespace: string };
+};
+
+export type TExternalMigrationDopplerInput = {
+  provider: ExternalMigrationProviders.Doppler;
+  config: Record<string, never>;
+};
+
+export type TExternalMigrationInput = TExternalMigrationVaultInput | TExternalMigrationDopplerInput;
+
+export type TCreateExternalMigrationConfigDTO = {
+  connectionId: string;
+  input: TExternalMigrationInput;
+};
+
+export type TUpdateExternalMigrationConfigDTO = {
+  id: string;
+  connectionId: string | null;
+  input: TExternalMigrationInput;
+};
+
+export type TDeleteExternalMigrationConfigDTO = {
+  provider: ExternalMigrationProviders;
+  id: string;
+};
+
+export type TDopplerProject = {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+};
+
+export type TDopplerEnvironment = {
+  id: string;
+  slug: string;
+  name: string;
+  project: string;
+};
+
+export type TDopplerConfig = {
+  name: string;
+  root: boolean;
+  locked: boolean;
+  environment: string;
+  project: string;
+};
+
+export type TImportDopplerSecretsDTO = {
+  configId: string;
+  dopplerProject: string;
+  dopplerEnvironment: string;
+  targetProjectId: string;
+  targetEnvironment: string;
+  targetSecretPath: string;
+};
+
+export enum ExternalMigrationImportStatus {
+  Imported = "imported",
+  ApprovalRequired = "approval-required"
+}
 
 export type TImportVaultSecretsDTO = {
   projectId: string;

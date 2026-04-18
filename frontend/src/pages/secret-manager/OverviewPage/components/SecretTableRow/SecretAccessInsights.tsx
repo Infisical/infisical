@@ -26,7 +26,17 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   FilterableSelect,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -41,25 +51,15 @@ import {
   SheetTitle,
   Skeleton,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -616,20 +616,20 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               placeholder="Search by name..."
             />
           </InputGroup>
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger asChild>
-              <UnstableIconButton
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
                 variant={isFilterActive ? "project" : "outline"}
                 aria-label="Filter by type"
               >
                 <FilterIcon />
-              </UnstableIconButton>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="end">
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               {ALL_TYPE_FILTERS.map((type) => {
                 const { icon: TypeIcon, label } = TYPE_CONFIG[type];
                 return (
-                  <UnstableDropdownMenuCheckboxItem
+                  <DropdownMenuCheckboxItem
                     key={type}
                     checked={typeFilters.has(type)}
                     onCheckedChange={() => toggleTypeFilter(type)}
@@ -637,11 +637,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                   >
                     <TypeIcon className="size-4" />
                     {label}
-                  </UnstableDropdownMenuCheckboxItem>
+                  </DropdownMenuCheckboxItem>
                 );
               })}
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <AddMemberPopover
             secretKey={secretKey}
             environment={environment}
@@ -650,61 +650,61 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
         </div>
         {/* eslint-disable-next-line no-nested-ternary */}
         {isLoading ? (
-          <UnstableTable>
-            <UnstableTableHeader>
-              <UnstableTableRow>
-                <UnstableTableHead>Type</UnstableTableHead>
-                <UnstableTableHead>Name</UnstableTableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Name</TableHead>
                 {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                  <UnstableTableHead key={col.action} className="w-[100px] text-center">
+                  <TableHead key={col.action} className="w-[100px] text-center">
                     {col.label}
-                  </UnstableTableHead>
+                  </TableHead>
                 ))}
-                <UnstableTableHead className="w-10" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {Array.from({ length: 10 }).map((_, i) => (
-                <UnstableTableRow key={`skeleton-row-${String(i)}`}>
-                  <UnstableTableCell>
+                <TableRow key={`skeleton-row-${String(i)}`}>
+                  <TableCell>
                     <Skeleton className="h-4 w-16 rounded" />
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-24 rounded" />
-                  </UnstableTableCell>
+                  </TableCell>
                   {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
-                    <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                    <TableCell key={col.action} className="w-[100px] text-center">
                       <Skeleton className="mx-auto h-4 w-4 rounded" />
-                    </UnstableTableCell>
+                    </TableCell>
                   ))}
-                  <UnstableTableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-6 rounded" />
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               ))}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
         ) : filteredRows.length === 0 ? (
-          <UnstableEmpty className="border">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No Results Found</UnstableEmptyTitle>
-              <UnstableEmptyDescription>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No Results Found</EmptyTitle>
+              <EmptyDescription>
                 No users, groups, or identities match your search.
-              </UnstableEmptyDescription>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          <UnstableTable containerClassName="overflow-auto">
-            <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-              <UnstableTableRow>
-                <UnstableTableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+          <Table containerClassName="overflow-auto">
+            <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+              <TableRow>
+                <TableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
                   Type
-                </UnstableTableHead>
-                <UnstableTableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                </TableHead>
+                <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
                   Name
-                </UnstableTableHead>
+                </TableHead>
                 {visibleColumns.map((col) => (
-                  <UnstableTableHead
+                  <TableHead
                     key={col.action}
                     className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
                   >
@@ -724,23 +724,23 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                     ) : (
                       col.label
                     )}
-                  </UnstableTableHead>
+                  </TableHead>
                 ))}
-                <UnstableTableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
-              </UnstableTableRow>
-            </UnstableTableHeader>
-            <UnstableTableBody>
+                <TableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredRows.map((row) => {
                 const { icon: TypeIcon, label: typeLabel } = TYPE_CONFIG[row.type];
                 return (
-                  <UnstableTableRow key={`${row.type}-${row.entry.id}`}>
-                    <UnstableTableCell>
+                  <TableRow key={`${row.type}-${row.entry.id}`}>
+                    <TableCell>
                       <span className="flex items-center gap-2">
                         <TypeIcon className="size-4 text-accent" />
                         {typeLabel}
                       </span>
-                    </UnstableTableCell>
-                    <UnstableTableCell isTruncatable className="max-w-[180px] font-medium">
+                    </TableCell>
+                    <TableCell isTruncatable className="max-w-[180px] font-medium">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate">{row.entry.name}</span>
                         {row.inheritedFromGroups && row.inheritedFromGroups.length > 0 && (
@@ -760,12 +760,12 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                           </Tooltip>
                         )}
                       </div>
-                    </UnstableTableCell>
+                    </TableCell>
                     {visibleColumns.map((col) => {
                       const hasDirect = row.entry.allowedActions.includes(col.action);
                       const hasInherited = row.inheritedActions?.has(col.action);
                       return (
-                        <UnstableTableCell key={col.action} className="w-[100px] text-center">
+                        <TableCell key={col.action} className="w-[100px] text-center">
                           {/* eslint-disable-next-line no-nested-ternary */}
                           {hasDirect ? (
                             <CheckIcon className="mx-auto size-4 text-success" />
@@ -779,27 +779,27 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                           ) : (
                             <BanIcon className="mx-auto size-4 text-muted" />
                           )}
-                        </UnstableTableCell>
+                        </TableCell>
                       );
                     })}
-                    <UnstableTableCell className="text-right">
-                      <UnstableDropdownMenu>
-                        <UnstableDropdownMenuTrigger asChild>
-                          <UnstableIconButton size="xs" variant="ghost">
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton size="xs" variant="ghost">
                             <MoreHorizontalIcon />
-                          </UnstableIconButton>
-                        </UnstableDropdownMenuTrigger>
-                        <UnstableDropdownMenuContent align="end">
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                           {row.onEdit && (
                             <Tooltip open={row.canEdit ? false : undefined}>
                               <TooltipTrigger>
-                                <UnstableDropdownMenuItem
+                                <DropdownMenuItem
                                   isDisabled={!row.canEdit}
                                   onClick={() => row.onEdit?.()}
                                 >
                                   <PlusIcon />
                                   Add Additional Privilege
-                                </UnstableDropdownMenuItem>
+                                </DropdownMenuItem>
                               </TooltipTrigger>
                               <TooltipContent side="left">
                                 {row.isSelf
@@ -808,20 +808,20 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                               </TooltipContent>
                             </Tooltip>
                           )}
-                          <UnstableDropdownMenuItem asChild>
+                          <DropdownMenuItem asChild>
                             <Link to={row.linkTo as "."} params={row.linkParams} target="_blank">
                               <ExternalLinkIcon />
                               {row.isSelf ? "View" : "Manage"} Access
                             </Link>
-                          </UnstableDropdownMenuItem>
-                        </UnstableDropdownMenuContent>
-                      </UnstableDropdownMenu>
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </UnstableTableBody>
-          </UnstableTable>
+            </TableBody>
+          </Table>
         )}
       </div>
 

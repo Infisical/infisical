@@ -10,14 +10,14 @@ import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
+import { TDopplerConnection } from "../app-connection/doppler";
 import {
   convertVaultValueToString,
   getHCVaultAuthMounts,
@@ -36,28 +36,34 @@ import {
   THCVaultConnection
 } from "../app-connection/hc-vault";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
+import { TExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
   decryptEnvKeyDataFn,
+  getDopplerSecrets,
   importVaultDataFn,
+  listDopplerConfigs,
+  listDopplerEnvironments,
+  listDopplerProjects,
   parseEnvKeyDataFn,
   vaultMigrationTransformMappings
 } from "./external-migration-fns";
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
+import { ExternalMigrationConfigVaultConfigSchema, ExternalMigrationProviders } from "./external-migration-schemas";
 import {
-  ExternalMigrationProviders,
+  ExternalMigrationImportStatus,
   ExternalPlatforms,
-  TCreateVaultExternalMigrationDTO,
-  TDeleteVaultExternalMigrationDTO,
+  TCreateExternalMigrationDTO,
+  TDeleteExternalMigrationDTO,
   THasCustomVaultMigrationDTO,
+  TImportDopplerSecretsDTO,
   TImportEnvKeyDataDTO,
   TImportVaultDataDTO,
-  TUpdateVaultExternalMigrationDTO,
-  VaultImportStatus
+  TUpdateExternalMigrationDTO
 } from "./external-migration-types";
-import { TVaultExternalMigrationConfigDALFactory } from "./vault-external-migration-config-dal";
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
@@ -65,9 +71,9 @@ type TExternalMigrationServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   externalMigrationQueue: TExternalMigrationQueueFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
-  vaultExternalMigrationConfigDAL: Pick<
-    TVaultExternalMigrationConfigDALFactory,
-    "create" | "findOne" | "transaction" | "find" | "updateById" | "deleteById" | "findById"
+  externalMigrationConfigDAL: Pick<
+    TExternalMigrationConfigDALFactory,
+    "create" | "findOne" | "transaction" | "find" | "updateById" | "deleteById" | "findById" | "findWithConnection"
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
@@ -86,7 +92,7 @@ export const externalMigrationServiceFactory = ({
   secretService,
   auditLogService,
   appConnectionService,
-  vaultExternalMigrationConfigDAL,
+  externalMigrationConfigDAL,
   kmsService
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
@@ -153,28 +159,44 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: `Only admins can ${action}` });
     }
 
-    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
+    const existingConfig = await externalMigrationConfigDAL.findWithConnection({
       orgId: actor.orgId,
-      namespace
+      provider: ExternalMigrationProviders.Vault
     });
 
-    if (!vaultConfig) {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actor.orgId
+    });
+
+    const migrationConfig = existingConfig
+      .map((config) => {
+        const decryptedConfig = decryptor({ cipherTextBlob: config.encryptedConfig });
+
+        return {
+          ...config,
+          config: ExternalMigrationConfigVaultConfigSchema.parse(JSON.parse(decryptedConfig.toString()))
+        };
+      })
+      .find((config) => config.config.namespace === namespace);
+
+    if (!migrationConfig) {
       throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
-    if (!vaultConfig.connection) {
+    if (!migrationConfig.connection) {
       throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
-      orgId: vaultConfig.orgId,
-      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      orgId: migrationConfig.orgId,
+      encryptedCredentials: migrationConfig.connection?.encryptedCredentials,
       kmsService,
       projectId: null
     });
 
     return {
-      ...vaultConfig.connection,
+      ...migrationConfig.connection,
       credentials
     } as THCVaultConnection;
   };
@@ -356,59 +378,11 @@ export const externalMigrationServiceFactory = ({
     }
   };
 
-  const createVaultExternalMigration = async ({ namespace, connectionId, actor }: TCreateVaultExternalMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
-      orgId: actor.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
-
-    if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can configure vault external migration" });
-    }
-
-    const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
-      AppConnection.HCVault,
-      connectionId,
-      actor
-    );
-
-    await validateVaultExternalMigrationConnection({
-      connection,
-      namespace
-    });
-
-    try {
-      const config = await vaultExternalMigrationConfigDAL.create({
-        namespace,
-        connectionId,
-        orgId: actor.orgId
-      });
-
-      return config;
-    } catch (error) {
-      if (
-        error instanceof DatabaseError &&
-        (error.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
-      ) {
-        throw new BadRequestError({
-          message: `Vault external migration already exists for this namespace`
-        });
-      }
-
-      throw error;
-    }
-  };
-
-  const updateVaultExternalMigration = async ({
-    id,
-    namespace,
+  const createExternalMigration = async ({
+    config: migrationConfig,
     connectionId,
     actor
-  }: TUpdateVaultExternalMigrationDTO) => {
+  }: TCreateExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -419,39 +393,68 @@ export const externalMigrationServiceFactory = ({
     });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can update vault external migration" });
+      throw new ForbiddenRequestError({ message: "Only admins can create external migration" });
     }
 
-    const existingConfig = await vaultExternalMigrationConfigDAL.findById(id);
-    const configDoesNotExist = !existingConfig;
-    const configBelongsToDifferentOrg = existingConfig?.orgId !== actor.orgId;
+    const existingConfigs = await externalMigrationConfigDAL.find({
+      orgId: actor.orgId,
+      provider: migrationConfig.provider
+    });
 
-    if (configDoesNotExist || configBelongsToDifferentOrg) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
-    }
+    const { decryptor, encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actor.orgId
+    });
 
-    if (connectionId) {
+    if (migrationConfig.provider === ExternalMigrationProviders.Vault) {
+      if (existingConfigs?.length) {
+        const parsedConfigs = existingConfigs.map((cfg) => {
+          const decryptedConfig = decryptor({ cipherTextBlob: cfg.encryptedConfig });
+          return ExternalMigrationConfigVaultConfigSchema.parse(JSON.parse(decryptedConfig.toString()));
+        });
+
+        if (parsedConfigs.some((cfg) => cfg.namespace === migrationConfig.config.namespace)) {
+          throw new BadRequestError({ message: "A Vault external migration already exists for this namespace" });
+        }
+      }
+
       const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
         AppConnection.HCVault,
         connectionId,
         actor
       );
-
       await validateVaultExternalMigrationConnection({
         connection,
-        namespace
+        namespace: migrationConfig.config.namespace
       });
+    } else if (migrationConfig.provider === ExternalMigrationProviders.Doppler) {
+      await appConnectionService.connectAppConnectionById(AppConnection.Doppler, connectionId, actor);
+
+      if (existingConfigs?.length) {
+        if (existingConfigs.some((cfg) => cfg.connectionId === connectionId)) {
+          throw new BadRequestError({
+            message: "A Doppler external migration already exists with the same app connection"
+          });
+        }
+      }
     }
 
-    const config = await vaultExternalMigrationConfigDAL.updateById(id, {
-      namespace,
+    const externalMigrationConfig = await externalMigrationConfigDAL.create({
+      orgId: actor.orgId,
+      provider: migrationConfig.provider,
+      encryptedConfig: encryptor({ plainText: Buffer.from(JSON.stringify(migrationConfig.config)) }).cipherTextBlob,
       connectionId
     });
 
-    return config;
+    return externalMigrationConfig;
   };
 
-  const getVaultExternalMigrationConfigs = async ({ actor }: { actor: OrgServiceActor }) => {
+  const updateExternalMigration = async ({
+    id,
+    config: migrationConfig,
+    connectionId,
+    actor
+  }: TUpdateExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -462,14 +465,74 @@ export const externalMigrationServiceFactory = ({
     });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can view vault external migration configs" });
+      throw new ForbiddenRequestError({ message: "Only admins can update external migration" });
     }
 
-    const configs = await vaultExternalMigrationConfigDAL.find({
+    const existing = await externalMigrationConfigDAL.findById(id);
+    if (!existing || existing.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: "External migration config not found" });
+    }
+
+    if (existing.provider !== migrationConfig.provider) {
+      throw new BadRequestError({ message: "Cannot change provider of an existing migration config" });
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
       orgId: actor.orgId
     });
 
-    return configs;
+    if (migrationConfig.provider === ExternalMigrationProviders.Vault) {
+      if (connectionId) {
+        const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
+          AppConnection.HCVault,
+          connectionId,
+          actor
+        );
+
+        await validateVaultExternalMigrationConnection({
+          connection,
+          namespace: migrationConfig.config.namespace
+        });
+      }
+    } else if (migrationConfig.provider === ExternalMigrationProviders.Doppler) {
+      if (connectionId) {
+        await appConnectionService.connectAppConnectionById(AppConnection.Doppler, connectionId, actor);
+      }
+    }
+
+    const updatedConfig = await externalMigrationConfigDAL.updateById(id, {
+      encryptedConfig: encryptor({ plainText: Buffer.from(JSON.stringify(migrationConfig.config)) }).cipherTextBlob,
+      connectionId
+    });
+
+    return updatedConfig;
+  };
+
+  const getExternalMigrationConfigs = async ({
+    actor,
+    provider
+  }: {
+    actor: OrgServiceActor;
+    provider: ExternalMigrationProviders;
+  }) => {
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can view external migration configs" });
+    }
+
+    return externalMigrationConfigDAL.findWithConnection({
+      orgId: actor.orgId,
+      provider
+    });
   };
 
   const getVaultNamespaces = async ({ actor }: { actor: OrgServiceActor }) => {
@@ -487,16 +550,28 @@ export const externalMigrationServiceFactory = ({
     }
 
     // Get all configured namespaces for this org
-    const vaultConfigs = await vaultExternalMigrationConfigDAL.find({
+    const vaultConfigs = await externalMigrationConfigDAL.find({
+      orgId: actor.orgId,
+      provider: ExternalMigrationProviders.Vault
+    });
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
       orgId: actor.orgId
     });
 
     // Return the configured namespaces as an array of objects with id and name
     // where both id and name are the namespace path
-    const namespaces = vaultConfigs.map((config) => ({
-      id: config.namespace,
-      name: config.namespace
-    }));
+    const namespaces = vaultConfigs.map((config) => {
+      const decryptedConfig = decryptor({ cipherTextBlob: config.encryptedConfig });
+
+      const parsedConfig = ExternalMigrationConfigVaultConfigSchema.parse(JSON.parse(decryptedConfig.toString()));
+
+      return {
+        id: parsedConfig.namespace,
+        name: parsedConfig.namespace
+      };
+    });
 
     return namespaces;
   };
@@ -594,10 +669,10 @@ export const externalMigrationServiceFactory = ({
           }
         });
 
-        return { status: VaultImportStatus.ApprovalRequired };
+        return { status: ExternalMigrationImportStatus.ApprovalRequired };
       }
 
-      return { status: VaultImportStatus.Imported };
+      return { status: ExternalMigrationImportStatus.Imported };
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to import Vault secrets. ${error instanceof Error ? error.message : "Unknown error"}`
@@ -605,7 +680,7 @@ export const externalMigrationServiceFactory = ({
     }
   };
 
-  const deleteVaultExternalMigration = async ({ id, actor }: TDeleteVaultExternalMigrationDTO) => {
+  const deleteExternalMigration = async ({ id, actor }: TDeleteExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -616,22 +691,16 @@ export const externalMigrationServiceFactory = ({
     });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can delete vault external migration configs" });
+      throw new ForbiddenRequestError({ message: "Only admins can delete external migration configs" });
     }
 
-    const config = await vaultExternalMigrationConfigDAL.findById(id);
+    const config = await externalMigrationConfigDAL.findById(id);
 
-    if (!config) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+    if (!config || config.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: "External migration config not found" });
     }
 
-    if (config.orgId !== actor.orgId) {
-      throw new ForbiddenRequestError({ message: "Config does not belong to this organization" });
-    }
-
-    const deletedConfig = await vaultExternalMigrationConfigDAL.deleteById(id);
-
-    return deletedConfig;
+    return externalMigrationConfigDAL.deleteById(id);
   };
 
   const getVaultAuthMounts = async ({
@@ -699,14 +768,142 @@ export const externalMigrationServiceFactory = ({
     return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
   };
 
+  // ─── Doppler In-Platform Migration ──────────────────────────────────────────
+
+  const getDopplerConnectionForConfig = async (configId: string, actor: OrgServiceActor) => {
+    const { hasRole } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can use Doppler migration" });
+    }
+
+    const config = await externalMigrationConfigDAL.findById(configId);
+
+    if (!config || config.orgId !== actor.orgId || config.provider !== ExternalMigrationProviders.Doppler) {
+      throw new NotFoundError({ message: "Doppler migration config not found" });
+    }
+
+    if (!config.connectionId) {
+      throw new BadRequestError({ message: "Doppler migration config has no connection configured" });
+    }
+
+    const appConnection = await appConnectionService.connectAppConnectionById<TDopplerConnection>(
+      AppConnection.Doppler,
+      config.connectionId,
+      actor
+    );
+
+    return appConnection;
+  };
+
+  const getDopplerProjects = async ({ configId, actor }: { configId: string; actor: OrgServiceActor }) => {
+    const appConnection = await getDopplerConnectionForConfig(configId, actor);
+    return listDopplerProjects(appConnection);
+  };
+
+  const getDopplerEnvironments = async ({
+    configId,
+    projectSlug,
+    actor
+  }: {
+    configId: string;
+    projectSlug: string;
+    actor: OrgServiceActor;
+  }) => {
+    const appConnection = await getDopplerConnectionForConfig(configId, actor);
+    return listDopplerEnvironments(appConnection, projectSlug);
+  };
+
+  const getDopplerConfigs = async ({
+    configId,
+    projectSlug,
+    actor
+  }: {
+    configId: string;
+    projectSlug: string;
+    actor: OrgServiceActor;
+  }) => {
+    const appConnection = await getDopplerConnectionForConfig(configId, actor);
+    return listDopplerConfigs(appConnection, projectSlug);
+  };
+
+  const importDopplerSecrets = async ({
+    configId,
+    dopplerProject,
+    dopplerEnvironment,
+    targetProjectId,
+    targetEnvironment,
+    targetSecretPath,
+    actor,
+    auditLogInfo
+  }: TImportDopplerSecretsDTO) => {
+    const appConnection = await getDopplerConnectionForConfig(configId, actor);
+
+    const dopplerSecrets = await getDopplerSecrets(appConnection, dopplerProject, dopplerEnvironment);
+
+    try {
+      const secretOperation = await secretService.createManySecretsRaw({
+        actorId: actor.id,
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        projectId: targetProjectId,
+        environment: targetEnvironment,
+        secretPath: targetSecretPath,
+        secrets: Object.entries(dopplerSecrets).map(([secretKey, secretValue]) => ({
+          secretKey,
+          secretValue
+        }))
+      });
+
+      if (secretOperation.type === SecretProtectionType.Approval) {
+        await auditLogService.createAuditLog({
+          projectId: targetProjectId,
+          ...auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath: targetSecretPath,
+              environment: targetEnvironment,
+              secrets: Object.entries(dopplerSecrets).map(([secretKey]) => ({
+                secretKey
+              })),
+              eventType: SecretApprovalEvent.CreateMany
+            }
+          }
+        });
+
+        return { status: ExternalMigrationImportStatus.ApprovalRequired, imported: 0 };
+      }
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to import Doppler secrets. ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
+
+    return { status: ExternalMigrationImportStatus.Imported, imported: Object.keys(dopplerSecrets).length };
+  };
+
   return {
     importEnvKeyData,
     importVaultData,
     hasCustomVaultMigration,
-    createVaultExternalMigration,
-    getVaultExternalMigrationConfigs,
-    updateVaultExternalMigration,
-    deleteVaultExternalMigration,
+
+    createExternalMigration,
+    updateExternalMigration,
+    deleteExternalMigration,
+    getExternalMigrationConfigs,
+
     getVaultNamespaces,
     getVaultPolicies,
     getVaultMounts,
@@ -716,6 +913,11 @@ export const externalMigrationServiceFactory = ({
     getVaultKubernetesAuthRoles,
     getVaultKubernetesRoles,
     getVaultDatabaseRoles,
-    getVaultLdapRoles
+    getVaultLdapRoles,
+
+    getDopplerProjects,
+    getDopplerEnvironments,
+    getDopplerConfigs,
+    importDopplerSecrets
   };
 };

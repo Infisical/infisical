@@ -3,15 +3,15 @@ import { SearchIcon, TagsIcon, XIcon } from "lucide-react";
 
 import {
   Badge,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuLabel,
-  UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuSub,
-  UnstableDropdownMenuSubContent,
-  UnstableDropdownMenuSubTrigger
+  TooltipTrigger
 } from "@app/components/v3";
 import { WsTag } from "@app/hooks/api/tags/types";
 
@@ -52,9 +52,9 @@ export function ResourceFilterMenuContent({
 
   return (
     <>
-      <UnstableDropdownMenuLabel>{menuLabel}</UnstableDropdownMenuLabel>
+      <DropdownMenuLabel>{menuLabel}</DropdownMenuLabel>
       {resourceTypes.map((rt) => (
-        <UnstableDropdownMenuCheckboxItem
+        <DropdownMenuCheckboxItem
           key={rt.type}
           onClick={(e) => {
             e.preventDefault();
@@ -64,11 +64,11 @@ export function ResourceFilterMenuContent({
         >
           {rt.icon}
           {rt.label}
-        </UnstableDropdownMenuCheckboxItem>
+        </DropdownMenuCheckboxItem>
       ))}
-      <UnstableDropdownMenuSeparator />
-      <UnstableDropdownMenuSub onOpenChange={(open) => !open && setTagSearch("")}>
-        <UnstableDropdownMenuSubTrigger className="gap-2">
+      <DropdownMenuSeparator />
+      <DropdownMenuSub onOpenChange={(open) => !open && setTagSearch("")}>
+        <DropdownMenuSubTrigger className="gap-2">
           <TagsIcon className="size-4 shrink-0 text-muted" />
           <span className="flex-1">Tags</span>
           {tagCount > 0 && (
@@ -90,8 +90,8 @@ export function ResourceFilterMenuContent({
               <TooltipContent>Clear tag filters</TooltipContent>
             </Tooltip>
           )}
-        </UnstableDropdownMenuSubTrigger>
-        <UnstableDropdownMenuSubContent
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent
           alignOffset={-5}
           className="flex max-h-72 flex-col overflow-hidden p-0"
         >
@@ -113,7 +113,7 @@ export function ResourceFilterMenuContent({
               <p className="px-2 py-1.5 text-sm text-muted">No tags found</p>
             )}
             {filteredTags?.map((tag) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 key={tag.id}
                 onClick={(e) => {
                   e.preventDefault();
@@ -122,11 +122,11 @@ export function ResourceFilterMenuContent({
                 checked={Boolean(selectedTagSlugs[tag.slug])}
               >
                 {tag.slug}
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
           </div>
-        </UnstableDropdownMenuSubContent>
-      </UnstableDropdownMenuSub>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
     </>
   );
 }

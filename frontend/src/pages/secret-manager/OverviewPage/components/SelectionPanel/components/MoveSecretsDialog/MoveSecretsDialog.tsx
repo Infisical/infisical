@@ -12,6 +12,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Checkbox,
   Dialog,
@@ -29,9 +31,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableAlert,
-  UnstableAlertDescription
+  SelectValue
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -562,12 +562,12 @@ const MultiEnvContent = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
-      <UnstableAlert variant="info" className="mb-4">
+      <Alert variant="info" className="mb-4">
         <InfoIcon />
-        <UnstableAlertDescription>
+        <AlertDescription>
           Select a single environment to move secrets across environments.
-        </UnstableAlertDescription>
-      </UnstableAlert>
+        </AlertDescription>
+      </Alert>
       <Field>
         <FieldLabel>Secret Path</FieldLabel>
         <FieldContent>

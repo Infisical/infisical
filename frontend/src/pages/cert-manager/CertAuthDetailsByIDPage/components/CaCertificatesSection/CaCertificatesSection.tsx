@@ -4,15 +4,15 @@ import { ArrowDownToLineIcon, RefreshCcwIcon } from "lucide-react";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import {
@@ -163,15 +163,15 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
   };
 
   return (
-    <UnstableCard className="w-full">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>CA Certificates</UnstableCardTitle>
-        <UnstableCardDescription>Issued and active certificates</UnstableCardDescription>
-        <UnstableCardAction>{renderActionButton()}</UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card className="w-full">
+      <CardHeader className="border-b">
+        <CardTitle>CA Certificates</CardTitle>
+        <CardDescription>Issued and active certificates</CardDescription>
+        <CardAction>{renderActionButton()}</CardAction>
+      </CardHeader>
+      <CardContent>
         <CaCertificatesTable caId={caId} caName={caName} />
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

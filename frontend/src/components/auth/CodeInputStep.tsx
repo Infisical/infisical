@@ -4,14 +4,7 @@ import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
-import {
-  Button,
-  FieldError,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle
-} from "@app/components/v3";
+import { Button, Card, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
 import SecurityClient from "../utilities/SecurityClient";
@@ -77,13 +70,13 @@ export default function CodeInputStep({ email, onComplete }: CodeInputStepProps)
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <UnstableCard className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
-        <UnstableCardHeader className="mb-2 gap-2">
-          <UnstableCardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
+      <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+        <CardHeader className="mb-2 gap-2">
+          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
             {t("signup.step2-message")}
-          </UnstableCardTitle>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <p className="text-md my-1 flex justify-center font-medium text-foreground">{email}</p>
           <div className="mx-auto hidden w-max min-w-[20rem] md:block">
             <ReactCodeInput
@@ -139,8 +132,8 @@ export default function CodeInputStep({ email, onComplete }: CodeInputStepProps)
               Have an account? Log in
             </Link>
           </div>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </div>
   );
 }

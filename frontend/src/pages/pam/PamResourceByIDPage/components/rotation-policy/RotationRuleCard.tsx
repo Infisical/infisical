@@ -5,13 +5,13 @@ import {
   Field,
   FieldContent,
   FieldLabel,
+  IconButton,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  UnstableIconButton,
-  UnstableInput
+  SelectValue
 } from "@app/components/v3";
 
 const formatIntervalDays = (seconds: number) => {
@@ -103,7 +103,7 @@ export const RotationRuleCard = ({
         <Field>
           <FieldLabel>Rule Name</FieldLabel>
           <FieldContent>
-            <UnstableInput
+            <Input
               value={localName}
               onChange={(e) => setLocalName(e.target.value)}
               onBlur={handleNameBlur}
@@ -115,7 +115,7 @@ export const RotationRuleCard = ({
           <Field className="flex-1">
             <FieldLabel>Account Name Pattern</FieldLabel>
             <FieldContent>
-              <UnstableInput
+              <Input
                 value={localPattern}
                 onChange={(e) => setLocalPattern(e.target.value)}
                 onBlur={handlePatternBlur}
@@ -128,7 +128,7 @@ export const RotationRuleCard = ({
             <Field className="w-40">
               <FieldLabel>Interval (days)</FieldLabel>
               <FieldContent>
-                <UnstableInput
+                <Input
                   value={localInterval}
                   onChange={(e) => setLocalInterval(e.target.value)}
                   onBlur={handleIntervalBlur}
@@ -140,20 +140,20 @@ export const RotationRuleCard = ({
       </div>
 
       <div className="flex flex-col items-center justify-center gap-1">
-        <UnstableIconButton variant="ghost" size="xs" onClick={onDelete}>
+        <IconButton variant="ghost" size="xs" onClick={onDelete}>
           <TrashIcon className="text-danger" />
-        </UnstableIconButton>
-        <UnstableIconButton variant="ghost" size="xs" onClick={onMoveUp} isDisabled={index === 0}>
+        </IconButton>
+        <IconButton variant="ghost" size="xs" onClick={onMoveUp} isDisabled={index === 0}>
           <ArrowUpIcon />
-        </UnstableIconButton>
-        <UnstableIconButton
+        </IconButton>
+        <IconButton
           variant="ghost"
           size="xs"
           onClick={onMoveDown}
           isDisabled={index >= totalRules - 1}
         >
           <ArrowDownIcon />
-        </UnstableIconButton>
+        </IconButton>
       </div>
     </div>
   );

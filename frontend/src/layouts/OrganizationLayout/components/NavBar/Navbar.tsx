@@ -35,6 +35,7 @@ import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
+  ButtonGroup,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -42,6 +43,12 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton,
   InstanceIcon,
   OrgIcon,
   Popover,
@@ -51,14 +58,7 @@ import {
   SubOrgIcon,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableButtonGroup,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuSeparator,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
@@ -436,9 +436,9 @@ export const Navbar = () => {
                   )}
                 </div>
                 <PopoverTrigger asChild>
-                  <UnstableIconButton variant="ghost" size="xs" aria-label="switch-org">
+                  <IconButton variant="ghost" size="xs" aria-label="switch-org">
                     <ChevronsUpDown />
-                  </UnstableIconButton>
+                  </IconButton>
                 </PopoverTrigger>
                 <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
                   <Command>
@@ -612,14 +612,14 @@ export const Navbar = () => {
           }
         </OrgPermissionCan>
       )}
-      <UnstableButtonGroup className="mr-2">
-        <UnstableDropdownMenu modal={false}>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant="outline" size="sm" aria-label="Help">
+      <ButtonGroup className="mr-2">
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="outline" size="sm" aria-label="Help">
               <CircleHelp />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end" side="bottom" sideOffset={8}>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
             {INFISICAL_SUPPORT_OPTIONS.map(([Icon, text, getUrl]) => {
               const url =
                 text === "Email Support"
@@ -639,61 +639,58 @@ export const Navbar = () => {
 
               if (url === "server-admins") {
                 return (
-                  <UnstableDropdownMenuItem
-                    key="server-admins"
-                    onSelect={() => setShowAdminsModal(true)}
-                  >
+                  <DropdownMenuItem key="server-admins" onSelect={() => setShowAdminsModal(true)}>
                     <Icon className="size-4" />
                     {text}
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 );
               }
 
               return (
-                <UnstableDropdownMenuItem key={url as string} asChild>
+                <DropdownMenuItem key={url as string} asChild>
                   <a target="_blank" rel="noopener noreferrer" href={String(url)}>
                     <Icon />
                     {text}
                   </a>
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
               );
             })}
             {envConfig.PLATFORM_VERSION && (
               <>
-                <UnstableDropdownMenuSeparator />
+                <DropdownMenuSeparator />
                 <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
                   <Info className="size-3.5" />
                   Version: {envConfig.PLATFORM_VERSION}
                 </div>
               </>
             )}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <NotificationDropdown />
-        <UnstableDropdownMenu modal={false}>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant="outline" size="sm" aria-label="User menu">
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="outline" size="sm" aria-label="User menu">
               <User />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent side="bottom" align="end" sideOffset={8}>
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
             <div className="cursor-default px-3 py-2">
               <div className="text-sm font-medium capitalize">
                 {user?.firstName} {user?.lastName}
               </div>
               <div className="text-muted-foreground text-xs">{user.email}</div>
             </div>
-            <UnstableDropdownMenuSeparator />
-            <UnstableDropdownMenuItem asChild>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
               <Link to="/personal-settings">
                 <Settings className="size-4" />
                 Personal Settings
               </Link>
-            </UnstableDropdownMenuItem>
+            </DropdownMenuItem>
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
               {(isAllowed) =>
                 isAllowed ? (
-                  <UnstableDropdownMenuItem asChild>
+                  <DropdownMenuItem asChild>
                     <Link
                       to="/organizations/$orgId/access-management"
                       params={{ orgId: currentOrg.id }}
@@ -705,12 +702,12 @@ export const Navbar = () => {
                       <UserPlus />
                       Invite Users
                     </Link>
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                 ) : null
               }
             </OrgPermissionCan>
-            <UnstableDropdownMenuSeparator />
-            <UnstableDropdownMenuItem asChild>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
               <a
                 href="https://infisical.com/docs/documentation/getting-started/introduction"
                 target="_blank"
@@ -720,16 +717,16 @@ export const Navbar = () => {
                 Documentation
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
-            </UnstableDropdownMenuItem>
-            <UnstableDropdownMenuItem asChild>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
                 <Slack />
                 Join Slack Community
                 <ExternalLink className="ml-auto size-3.5 opacity-50" />
               </a>
-            </UnstableDropdownMenuItem>
-            <UnstableDropdownMenuSeparator />
-            <UnstableDropdownMenuItem onSelect={handleCopyToken}>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={handleCopyToken}>
               <Clipboard />
               Copy Token
               <Tooltip>
@@ -741,15 +738,15 @@ export const Navbar = () => {
                   within the organization you&apos;re currently logged into.
                 </TooltipContent>
               </Tooltip>
-            </UnstableDropdownMenuItem>
-            <UnstableDropdownMenuSeparator />
-            <UnstableDropdownMenuItem onSelect={logOutUser}>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={logOutUser}>
               <LogOut />
               Log Out
-            </UnstableDropdownMenuItem>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableButtonGroup>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ButtonGroup>
 
       <Modal
         isOpen={showCardDeclinedModal}

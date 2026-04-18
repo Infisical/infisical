@@ -5,11 +5,11 @@ import { MoreHorizontal } from "lucide-react";
 import {
   BreadcrumbLink,
   BreadcrumbPage,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton
 } from "@app/components/v3/generic";
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "./Breadcrumb";
@@ -52,17 +52,17 @@ export const SecretsManagement: Story = {
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
-          <UnstableDropdownMenu>
-            <UnstableDropdownMenuTrigger asChild>
-              <UnstableIconButton size="xs" variant="ghost">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton size="xs" variant="ghost">
                 <MoreHorizontal />
-              </UnstableIconButton>
-            </UnstableDropdownMenuTrigger>
-            <UnstableDropdownMenuContent align="start">
-              <UnstableDropdownMenuItem>/logging</UnstableDropdownMenuItem>
-              <UnstableDropdownMenuItem>/data-dog</UnstableDropdownMenuItem>
-            </UnstableDropdownMenuContent>
-          </UnstableDropdownMenu>
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem>/logging</DropdownMenuItem>
+              <DropdownMenuItem>/data-dog</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>

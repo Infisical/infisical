@@ -5,13 +5,13 @@ import { MoreHorizontalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -54,7 +54,7 @@ export const IdentityProjectRow = ({
   }, [workspaces, project]);
 
   return (
-    <UnstableTableRow
+    <TableRow
       key={`identity-project-membership-${id}`}
       onClick={() => {
         if (isAccessible) {
@@ -77,20 +77,20 @@ export const IdentityProjectRow = ({
         });
       }}
     >
-      <UnstableTableCell className="max-w-0 truncate">{project.name}</UnstableTableCell>
-      <UnstableTableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
+      <TableCell className="max-w-0 truncate">{project.name}</TableCell>
+      <TableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
-      }`}</UnstableTableCell>
-      <UnstableTableCell>{format(new Date(createdAt), "yyyy-MM-dd")}</UnstableTableCell>
-      <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger>
-            <UnstableIconButton variant="ghost" size="xs">
+      }`}</TableCell>
+      <TableCell>{format(new Date(createdAt), "yyyy-MM-dd")}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <IconButton variant="ghost" size="xs">
               <MoreHorizontalIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <UnstableDropdownMenuItem
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               isDisabled={!isAccessible}
               onClick={(e) => {
                 e.stopPropagation();
@@ -107,8 +107,8 @@ export const IdentityProjectRow = ({
               }}
             >
               Access Project
-            </UnstableDropdownMenuItem>
-            <UnstableDropdownMenuItem
+            </DropdownMenuItem>
+            <DropdownMenuItem
               variant="danger"
               isDisabled={!isAccessible}
               onClick={(e) => {
@@ -122,10 +122,10 @@ export const IdentityProjectRow = ({
               }}
             >
               Remove From Project
-            </UnstableDropdownMenuItem>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
-      </UnstableTableCell>
-    </UnstableTableRow>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -271,6 +271,7 @@ describe("CertificateProfileService", () => {
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       acmeEnrollmentConfigDAL: mockAcmeEnrollmentConfigDAL,
       scepEnrollmentConfigDAL: mockScepEnrollmentConfigDAL,
+      scepDynamicChallengeDAL: { deleteByConfigId: vi.fn() },
       certificateBodyDAL: mockCertificateBodyDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,

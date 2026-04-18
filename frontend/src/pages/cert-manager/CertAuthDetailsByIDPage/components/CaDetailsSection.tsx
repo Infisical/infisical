@@ -27,23 +27,23 @@ import {
   Tooltip as TooltipV2
 } from "@app/components/v2";
 import {
+  Alert,
+  AlertTitle,
   Badge,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  IconButton,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAlert,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -199,23 +199,23 @@ export const CaDetailsSection = ({ caId }: Props) => {
 
   return (
     <>
-      <UnstableCard className="w-full">
-        <UnstableCardHeader className="border-b">
-          <UnstableCardTitle>Details</UnstableCardTitle>
-          <UnstableCardDescription>Certificate authority details</UnstableCardDescription>
+      <Card className="w-full">
+        <CardHeader className="border-b">
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Certificate authority details</CardDescription>
           {showAutoRenewal && (
-            <UnstableCardAction>
-              <UnstableIconButton
+            <CardAction>
+              <IconButton
                 variant="outline"
                 size="xs"
                 onClick={() => handlePopUpToggle("editAutoRenewal", true)}
               >
                 <PencilIcon />
-              </UnstableIconButton>
-            </UnstableCardAction>
+              </IconButton>
+            </CardAction>
           )}
-        </UnstableCardHeader>
-        <UnstableCardContent>
+        </CardHeader>
+        <CardContent>
           <DetailGroup>
             <Detail>
               <DetailLabel>CA Type</DetailLabel>
@@ -228,7 +228,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 <span className="break-all">{ca.id}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <UnstableIconButton
+                    <IconButton
                       variant="ghost"
                       size="xs"
                       onClick={() => {
@@ -237,7 +237,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
                       }}
                     >
                       {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                    </UnstableIconButton>
+                    </IconButton>
                   </TooltipTrigger>
                   <TooltipContent>{isCopyingId ? "Copied" : "Copy ID to clipboard"}</TooltipContent>
                 </Tooltip>
@@ -344,10 +344,10 @@ export const CaDetailsSection = ({ caId }: Props) => {
           </DetailGroup>
 
           {showAutoRenewal && autoRenewal.lastRenewalStatus === CaRenewalStatus.PENDING && (
-            <UnstableAlert variant="info" className="mt-2">
+            <Alert variant="info" className="mt-2">
               <LoaderIcon className="animate-spin" />
-              <UnstableAlertTitle>Certificate installation in progress...</UnstableAlertTitle>
-            </UnstableAlert>
+              <AlertTitle>Certificate installation in progress...</AlertTitle>
+            </Alert>
           )}
 
           {showAutoRenewal &&
@@ -355,28 +355,26 @@ export const CaDetailsSection = ({ caId }: Props) => {
             autoRenewal.autoRenewalEnabled &&
             (autoRenewal.lastRenewalStatus === CaRenewalStatus.FAILED &&
             autoRenewal.lastRenewalMessage ? (
-              <UnstableAlert className="mt-2 border-warning/20 bg-warning/5 text-warning">
+              <Alert className="mt-2 border-warning/20 bg-warning/5 text-warning">
                 <AlertTriangleIcon />
-                <UnstableAlertTitle>
-                  Last renewal failed: {autoRenewal.lastRenewalMessage}
-                </UnstableAlertTitle>
-              </UnstableAlert>
+                <AlertTitle>Last renewal failed: {autoRenewal.lastRenewalMessage}</AlertTitle>
+              </Alert>
             ) : (
               (() => {
                 const nextRenewalDate = getNextRenewalDate();
                 if (!nextRenewalDate) return null;
                 return (
-                  <UnstableAlert variant="info" className="mt-2">
+                  <Alert variant="info" className="mt-2">
                     <InfoIcon />
-                    <UnstableAlertTitle>
+                    <AlertTitle>
                       Next auto-renewal: {format(nextRenewalDate, "MMM d, yyyy")}
-                    </UnstableAlertTitle>
-                  </UnstableAlert>
+                    </AlertTitle>
+                  </Alert>
                 );
               })()
             ))}
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
 
       <Modal
         isOpen={popUp.editAutoRenewal.isOpen}

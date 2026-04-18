@@ -9,18 +9,19 @@ import { z } from "zod";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
   FieldError,
+  Input,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
+import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
@@ -59,6 +60,7 @@ export default function InitialSignupStep({
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
+    preserveHubSpotUtk();
     const popup = window.open(`/api/v1/sso/redirect/${method}`);
     if (popup) {
       window.close();
@@ -67,20 +69,20 @@ export default function InitialSignupStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <UnstableCard className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
-        <UnstableCardHeader className="mb-4 gap-4">
-          <UnstableCardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <CardHeader className="mb-4 gap-4">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
             {t("signup.initial-title")}
-          </UnstableCardTitle>
-          <UnstableCardAction className="-mr-2">
+          </CardTitle>
+          <CardAction className="-mr-2">
             <RegionSelect compact />
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           {shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
             <>
               <div className="w-full">
-                <UnstableInput
+                <Input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
@@ -214,8 +216,8 @@ export default function InitialSignupStep({
             </span>
             <CircleChevronRightIcon className="size-4.5 opacity-75" />
           </a>
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
     </div>
   );
 }

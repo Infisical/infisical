@@ -1,0 +1,80 @@
+---
+title: "Migrating from Doppler to Infisical"
+sidebarTitle: "Doppler"
+description: "Learn how to migrate secrets from Doppler to Infisical using in-platform migration."
+---
+
+This guide helps you bring secrets from **Doppler** into Infisical. Register a Doppler **App Connection** once, link it under **External Migrations**, then import secrets on demand — from the organization settings or directly from a project’s secret overview — into any Infisical project, environment, and folder you choose.
+
+**What you can migrate:**
+
+- **Secrets** — Key/value pairs from a Doppler **project** and **config** (root or branch) are imported into a chosen Infisical **project**, **environment**, and **secret path** (folder). Both root configs and branched configs are supported.
+
+<Warning>
+  Organization Admin Access Required: Creating and managing Doppler migration
+  configurations, listing Doppler projects and environments, and running
+  in-platform imports are limited to organization administrators, matching
+  the Vault in-platform migration model.
+</Warning>
+
+## Set Up Your Doppler Connection
+
+<Steps>
+  <Step title="Create a Doppler token">
+    In **Doppler**, create an API token that can read the projects and configs you plan to import (for example a **Personal** or **Service** token with access to the right projects).
+
+    Store the token securely; you will paste it into Infisical in the next step.
+
+  </Step>
+
+  <Step title="Create a Doppler App Connection in Infisical">
+    In Infisical, open **Organization Settings > App Connections** and add a new connection with the **Doppler** type.
+
+    Provide the token and complete the connection flow. The connection is reused anywhere Infisical needs to talk to Doppler for migration.
+
+  </Step>
+
+  <Step title="Add a Doppler migration configuration">
+    Go to **Organization Settings > External Migrations**.
+
+    Under **In-Platform Migration Tooling**, click **Add configuration**. In the provider chooser, select **Doppler**.
+
+    ![Choose Doppler in the in-platform migration provider modal](/images/platform/external-migrations/doppler-in-platform/select-doppler-provider.png)
+
+    Pick the **App Connection** you created (each row in the table is one linked connection).
+
+    ![Doppler migration configuration modal](/images/platform/external-migrations/doppler-in-platform/doppler-connection-modal.png)
+
+    <Note>
+    If you need several Doppler sources (for example different credentials), add multiple **Doppler** rows from **Add configuration**; each row can use a different App Connection.
+    </Note>
+
+    The **In-Platform Migration Tooling** table lists all configured platforms (Vault and Doppler) together: **Platform**, **Namespace** (Vault shows the namespace path; Doppler shows **—**), and **Connection**.
+
+  </Step>
+</Steps>
+
+## Migrating Secrets from Doppler to Infisical
+
+When you are already in a **Secret Manager** project and have **one** environment selected (not “all environments”):
+
+1. Open the **Secret overview** for the folder path where you want the secrets.
+2. Open the **Add Secret** split button (caret next to **Add Secret**).
+3. Choose **Add from Doppler**.
+
+![Add from Doppler on the secret overview](/images/platform/external-migrations/doppler-in-platform/import-doppler-secret-overview-option.png)
+
+4. Select the **Doppler project** and **config**; Infisical lists all configs including root configs and branch configs. Root configs are labeled with **(root)** for clarity. Infisical uses your linked migration configuration and imports into the **current** environment and path.
+
+![Import from Doppler modal on secret overview](/images/platform/external-migrations/doppler-in-platform/import-doppler-secret-overview-modal.png)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Projects and environments" icon="folder" href="/documentation/platform/project">
+    Structure Infisical projects to mirror how you used Doppler projects and configs
+  </Card>
+  <Card title="SDKs and agents" icon="code" href="/sdks/overview">
+    Read imported secrets from applications using Infisical clients
+  </Card>
+</CardGroup>

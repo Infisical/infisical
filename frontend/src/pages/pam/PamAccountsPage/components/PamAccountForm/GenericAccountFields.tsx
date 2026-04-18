@@ -8,11 +8,11 @@ import {
   FieldError,
   FieldLabel,
   FilterableSelect,
+  Input,
   TextArea,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableInput
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useListPamAccountPolicies } from "@app/hooks/api/pam";
@@ -105,7 +105,7 @@ export const GenericAccountFields = () => {
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
               <div className="relative">
-                <UnstableInput
+                <Input
                   {...field}
                   autoFocus
                   isError={Boolean(error)}

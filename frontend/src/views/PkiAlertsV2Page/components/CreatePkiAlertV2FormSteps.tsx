@@ -45,11 +45,11 @@ import {
   Tr
 } from "@app/components/v2";
 import {
-  Badge,
-  UnstableAccordion as Accordion,
-  UnstableAccordionContent as AccordionContent,
-  UnstableAccordionItem as AccordionItem,
-  UnstableAccordionTrigger as AccordionTrigger
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {

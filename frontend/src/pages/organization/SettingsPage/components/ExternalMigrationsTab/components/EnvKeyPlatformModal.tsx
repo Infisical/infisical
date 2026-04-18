@@ -4,7 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  UnstableInput
+} from "@app/components/v3";
 import { useImportEnvKey } from "@app/hooks/api/migration/mutations";
 
 import { GenericDropzone } from "./GenericDropzone";
@@ -76,19 +83,18 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
+    <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-4">
       <Controller
         control={control}
         name="encryptionKey"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Encryption key"
-            isRequired
-            errorText={error?.message}
-            isError={Boolean(error)}
-          >
-            <Input type="password" placeholder="" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel>Encryption key</FieldLabel>
+            <FieldContent>
+              <UnstableInput type="password" placeholder="" {...field} isError={Boolean(error)} />
+            </FieldContent>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       <GenericDropzone
@@ -97,15 +103,16 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
         onData={onImportFileDrop}
         isSmaller
       />
-      <div className="mt-6 flex items-center space-x-4">
+      <div className="flex items-center gap-2 pt-2">
         <Button
           type="submit"
-          isLoading={isLoading}
+          variant="project"
+          isPending={isLoading || isSubmitting}
           isDisabled={!isDirty || isSubmitting || isLoading || !isValid}
         >
           Import data
         </Button>
-        <Button variant="outline_bg" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
       </div>

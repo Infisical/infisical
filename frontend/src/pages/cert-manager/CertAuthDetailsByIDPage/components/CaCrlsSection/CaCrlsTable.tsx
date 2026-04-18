@@ -3,20 +3,20 @@ import { ClipboardListIcon, DownloadIcon, EllipsisIcon } from "lucide-react";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useGetCaCrls } from "@app/hooks/api";
 
@@ -42,36 +42,36 @@ export const CaCrlsTable = ({ caId }: Props) => {
 
   if (!caCrls?.length) {
     return (
-      <UnstableEmpty className="border">
-        <UnstableEmptyHeader>
-          <UnstableEmptyTitle>This CA does not have any CRLs</UnstableEmptyTitle>
-        </UnstableEmptyHeader>
-      </UnstableEmpty>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>This CA does not have any CRLs</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <UnstableTable>
-      <UnstableTableHeader>
-        <UnstableTableRow>
-          <UnstableTableHead>Distribution Point URL</UnstableTableHead>
-          <UnstableTableHead className="w-5" />
-        </UnstableTableRow>
-      </UnstableTableHeader>
-      <UnstableTableBody>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Distribution Point URL</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {caCrls.map(({ id, crl }) => {
           return (
-            <UnstableTableRow key={`ca-crl-${id}`}>
-              <UnstableTableCell>{`${window.origin}/api/v1/cert-manager/crl/${id}`}</UnstableTableCell>
-              <UnstableTableCell>
-                <UnstableDropdownMenu>
-                  <UnstableDropdownMenuTrigger asChild>
-                    <UnstableIconButton variant="ghost" size="xs">
+            <TableRow key={`ca-crl-${id}`}>
+              <TableCell>{`${window.origin}/api/v1/cert-manager/crl/${id}`}</TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant="ghost" size="xs">
                       <EllipsisIcon />
-                    </UnstableIconButton>
-                  </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuItem
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
                         navigator.clipboard.writeText(
@@ -81,8 +81,8 @@ export const CaCrlsTable = ({ caId }: Props) => {
                     >
                       <ClipboardListIcon />
                       Copy CRL URL
-                    </UnstableDropdownMenuItem>
-                    <UnstableDropdownMenuItem
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
                         downloadTxtFile("crl.pem", crl);
@@ -90,14 +90,14 @@ export const CaCrlsTable = ({ caId }: Props) => {
                     >
                       <DownloadIcon />
                       Download CRL
-                    </UnstableDropdownMenuItem>
-                  </UnstableDropdownMenuContent>
-                </UnstableDropdownMenu>
-              </UnstableTableCell>
-            </UnstableTableRow>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
           );
         })}
-      </UnstableTableBody>
-    </UnstableTable>
+      </TableBody>
+    </Table>
   );
 };

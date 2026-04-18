@@ -143,6 +143,12 @@ import {
   TValidateDNSMadeEasyConnectionCredentialsSchema
 } from "./dns-made-easy/dns-made-easy-connection-types";
 import {
+  TDopplerConnection,
+  TDopplerConnectionConfig,
+  TDopplerConnectionInput,
+  TValidateDopplerConnectionCredentialsSchema
+} from "./doppler/doppler-connection-types";
+import {
   TExternalInfisicalConnection,
   TExternalInfisicalConnectionConfig,
   TExternalInfisicalConnectionInput,
@@ -385,6 +391,7 @@ export type TAppConnection = { id: string } & (
   | TAzureEntraIdConnection
   | TVenafiConnection
   | TExternalInfisicalConnection
+  | TDopplerConnection
   | TNetScalerConnection
   | TAnthropicConnection
 );
@@ -452,6 +459,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureEntraIdConnectionInput
   | TVenafiConnectionInput
   | TExternalInfisicalConnectionInput
+  | TDopplerConnectionInput
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
 );
@@ -548,6 +556,7 @@ export type TAppConnectionConfig =
   | TAzureEntraIdConnectionConfig
   | TVenafiConnectionConfig
   | TExternalInfisicalConnectionConfig
+  | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
   | TAnthropicConnectionConfig;
 
@@ -606,6 +615,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureEntraIdConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
+  | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema;
 

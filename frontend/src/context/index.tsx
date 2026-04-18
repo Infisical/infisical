@@ -25,6 +25,7 @@ export {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,

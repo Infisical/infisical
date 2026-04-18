@@ -41,6 +41,7 @@ import {
   PageHeader
 } from "@app/components/v2";
 import {
+  Alert,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -50,39 +51,38 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
   Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Pagination,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableAlert,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -142,10 +142,14 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  useGetVaultExternalMigrationConfigs,
+  useGetExternalMigrationConfigs,
+  useImportDopplerSecrets,
   useImportVaultSecrets
 } from "@app/hooks/api/migration";
-import { VaultImportStatus } from "@app/hooks/api/migration/types";
+import {
+  ExternalMigrationImportStatus,
+  ExternalMigrationProviders
+} from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
@@ -178,6 +182,7 @@ import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPag
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
+import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
@@ -287,9 +292,20 @@ const OverviewPageContent = () => {
   const { subscription } = useSubscription();
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { data: dopplerConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Doppler
+  );
+  const dopplerImportConfigs = useMemo(
+    () => dopplerConfigs.filter((c) => c.connectionId),
+    [dopplerConfigs]
+  );
+  const hasDopplerConnection = dopplerImportConfigs.length > 0;
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
+  const { mutateAsync: importDopplerSecrets } = useImportDopplerSecrets();
   const prevPageSize = useRef(0);
 
   const canReadCommits = permission.can(
@@ -746,6 +762,7 @@ const OverviewPageContent = () => {
     "deleteEnv",
     "requestAccess",
     "importFromVault",
+    "importFromDoppler",
     "confirmDisableBatchMode"
   ] as const);
 
@@ -827,7 +844,7 @@ const OverviewPageContent = () => {
       vaultSecretPath: vaultPath
     });
 
-    if (result.status === VaultImportStatus.ApprovalRequired) {
+    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
         text: "Secret change request created successfully. Awaiting approval."
@@ -838,6 +855,26 @@ const OverviewPageContent = () => {
         text: "Successfully imported secrets from HashiCorp Vault"
       });
     }
+  };
+
+  const handleDopplerImport = async (
+    dopplerProject: string,
+    dopplerEnvironment: string,
+    configId: string
+  ) => {
+    await importDopplerSecrets({
+      configId,
+      dopplerProject,
+      dopplerEnvironment,
+      targetProjectId: projectId,
+      targetEnvironment: singleEnvSlug,
+      targetSecretPath: secretPath
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully imported secrets from Doppler"
+    });
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -2367,8 +2404,8 @@ const OverviewPageContent = () => {
           visibleEnvs={visibleEnvs}
         />
 
-        <UnstableCard>
-          <UnstableCardHeader>
+        <Card>
+          <CardHeader>
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
                 <EnvironmentSelect
@@ -2440,21 +2477,23 @@ const OverviewPageContent = () => {
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
+                    hasDopplerConnection={hasDopplerConnection}
                     isOrgAdmin={isOrgAdmin}
                     onImportFromVault={() => handlePopUpOpen("importFromVault")}
+                    onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
                   />
                 )}
               </div>
             </div>
-          </UnstableCardHeader>
-          <UnstableCardContent>
+          </CardHeader>
+          <CardContent>
             {isSingleEnvView &&
               hasPathPolicies &&
               // eslint-disable-next-line no-nested-ternary
               (!canReadSecrets ? (
-                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                <Alert variant="info" className="mb-6 py-1.5">
                   <InfoIcon className="mt-1" />
-                  <UnstableAlertTitle className="flex items-center">
+                  <AlertTitle className="flex items-center">
                     <span>You do not have permission to read secrets in this folder</span>
                     <Button
                       variant="outline"
@@ -2466,12 +2505,12 @@ const OverviewPageContent = () => {
                     >
                       Request Access
                     </Button>
-                  </UnstableAlertTitle>
-                </UnstableAlert>
+                  </AlertTitle>
+                </Alert>
               ) : !canCreateSecrets || !canEditSecrets || !canDeleteSecrets ? (
-                <UnstableAlert variant="info" className="mb-6 py-1.5">
+                <Alert variant="info" className="mb-6 py-1.5">
                   <InfoIcon className="mt-1" />
-                  <UnstableAlertTitle className="flex items-center">
+                  <AlertTitle className="flex items-center">
                     <span>
                       You do not have permission to{" "}
                       {(() => {
@@ -2499,8 +2538,8 @@ const OverviewPageContent = () => {
                     >
                       Request Access
                     </Button>
-                  </UnstableAlertTitle>
-                </UnstableAlert>
+                  </AlertTitle>
+                </Alert>
               ) : null)}
             {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
             {tableView === "filter-empty" && (
@@ -2580,10 +2619,10 @@ const OverviewPageContent = () => {
             {tableView === "table" && (
               <>
                 <DragDropProvider onDragEnd={handleSecretImportReorder}>
-                  <UnstableTable ref={tableRef} className="border-separate border-spacing-0">
-                    <UnstableTableHeader>
-                      <UnstableTableRow className="h-10">
-                        <UnstableTableHead
+                  <Table ref={tableRef} className="border-separate border-spacing-0">
+                    <TableHeader>
+                      <TableRow className="h-10">
+                        <TableHead
                           className={twMerge(
                             !isSingleEnvView && "sticky",
                             "left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container"
@@ -2597,8 +2636,8 @@ const OverviewPageContent = () => {
                             isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
                             onCheckedChange={toggleSelectAllRows}
                           />
-                        </UnstableTableHead>
-                        <UnstableTableHead
+                        </TableHead>
+                        <TableHead
                           className={twMerge(
                             !isSingleEnvView && "sticky",
                             "left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
@@ -2618,29 +2657,29 @@ const OverviewPageContent = () => {
                               "transition-transform"
                             )}
                           />
-                        </UnstableTableHead>
+                        </TableHead>
                         {visibleEnvs.length > 1 ? (
                           visibleEnvs?.map(({ name, slug, id }, index) => {
                             return (
-                              <UnstableTableHead
+                              <TableHead
                                 className="w-40 max-w-40 border-r p-0 text-center last:border-r-0"
                                 isTruncatable
                                 key={`secret-overview-${name}-${index + 1}`}
                               >
-                                <UnstableDropdownMenu>
+                                <DropdownMenu>
                                   <Tooltip>
                                     <TooltipTrigger className="h-full">
-                                      <UnstableDropdownMenuTrigger asChild>
+                                      <DropdownMenuTrigger asChild>
                                         <div className="flex h-full w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
                                           <span className="truncate">{name}</span>
                                           <SettingsIcon className="size-3.5 shrink-0" />
                                         </div>
-                                      </UnstableDropdownMenuTrigger>
+                                      </DropdownMenuTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent>{name}</TooltipContent>
                                   </Tooltip>
-                                  <UnstableDropdownMenuContent align="end">
-                                    <UnstableDropdownMenuItem
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
                                       onClick={() => {
                                         navigator.clipboard.writeText(slug);
                                         createNotification({
@@ -2651,8 +2690,8 @@ const OverviewPageContent = () => {
                                     >
                                       <CopyIcon />
                                       Copy Environment Slug
-                                    </UnstableDropdownMenuItem>
-                                    <UnstableDropdownMenuItem
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
                                       onClick={async () => {
                                         try {
                                           const { secrets: envSecrets, imports: importedSecrets } =
@@ -2690,13 +2729,11 @@ const OverviewPageContent = () => {
                                     >
                                       <DownloadIcon />
                                       Download as .env
-                                    </UnstableDropdownMenuItem>
-                                    <UnstableDropdownMenuItem
-                                      onClick={() => handleViewCommitHistory(slug)}
-                                    >
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleViewCommitHistory(slug)}>
                                       <GitCommitIcon />
                                       View Commit History
-                                    </UnstableDropdownMenuItem>
+                                    </DropdownMenuItem>
                                     <ProjectPermissionCan
                                       I={ProjectPermissionActions.Delete}
                                       a={ProjectPermissionSub.Environments}
@@ -2704,7 +2741,7 @@ const OverviewPageContent = () => {
                                       {(isAllowed) => (
                                         <Tooltip open={!isAllowed ? undefined : false}>
                                           <TooltipTrigger className="block w-full">
-                                            <UnstableDropdownMenuItem
+                                            <DropdownMenuItem
                                               isDisabled={!isAllowed}
                                               onClick={() =>
                                                 handlePopUpOpen("deleteEnv", {
@@ -2716,7 +2753,7 @@ const OverviewPageContent = () => {
                                             >
                                               <TrashIcon />
                                               Delete Environment
-                                            </UnstableDropdownMenuItem>
+                                            </DropdownMenuItem>
                                           </TooltipTrigger>
                                           <TooltipContent side="left">
                                             Access Restricted
@@ -2724,13 +2761,13 @@ const OverviewPageContent = () => {
                                         </Tooltip>
                                       )}
                                     </ProjectPermissionCan>
-                                  </UnstableDropdownMenuContent>
-                                </UnstableDropdownMenu>
-                              </UnstableTableHead>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableHead>
                             );
                           })
                         ) : (
-                          <UnstableTableHead className="w-full">
+                          <TableHead className="w-full">
                             <div className="flex w-full items-center justify-between">
                               Value
                               <div className="flex items-center gap-2">
@@ -2816,41 +2853,41 @@ const OverviewPageContent = () => {
                                 />
                               </div>
                             </div>
-                          </UnstableTableHead>
+                          </TableHead>
                         )}
-                      </UnstableTableRow>
-                    </UnstableTableHeader>
-                    <UnstableTableBody className="transition-all duration-500">
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="transition-all duration-500">
                       {isOverviewLoading || isPlaceholderData ? (
                         Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
-                          <UnstableTableRow className="group" key={`loading-row-${index + 1}`}>
-                            <UnstableTableCell
+                          <TableRow className="group" key={`loading-row-${index + 1}`}>
+                            <TableCell
                               className={twMerge(
                                 !isSingleEnvView && "sticky",
                                 "left-0 z-10 bg-container group-hover:bg-container-hover"
                               )}
                             >
                               <Skeleton className="h-4 w-full" />
-                            </UnstableTableCell>
-                            <UnstableTableCell
+                            </TableCell>
+                            <TableCell
                               className={twMerge(
                                 !isSingleEnvView && "sticky",
                                 "left-10 z-10 border-r bg-container group-hover:bg-container-hover"
                               )}
                             >
                               <Skeleton className="h-4 w-full" />
-                            </UnstableTableCell>
+                            </TableCell>
                             {visibleEnvs.map((env) => {
                               return (
-                                <UnstableTableCell
+                                <TableCell
                                   className="border-r last:border-r-0"
                                   key={`loading-env-row-${env.slug}+${index + 1}`}
                                 >
                                   <Skeleton className="h-4 w-full" />
-                                </UnstableTableCell>
+                                </TableCell>
                               );
                             })}
-                          </UnstableTableRow>
+                          </TableRow>
                         ))
                       ) : (
                         <>
@@ -3029,8 +3066,8 @@ const OverviewPageContent = () => {
                           />
                         </>
                       )}
-                    </UnstableTableBody>
-                  </UnstableTable>
+                    </TableBody>
+                  </Table>
                   <DragOverlay
                     tag="table"
                     className="w-full caption-bottom text-sm"
@@ -3039,7 +3076,7 @@ const OverviewPageContent = () => {
                     {null}
                   </DragOverlay>
                 </DragDropProvider>
-                <UnstablePagination
+                <Pagination
                   startAdornment={
                     <ResourceCount
                       dynamicSecretCount={totalDynamicSecretCount}
@@ -3057,8 +3094,8 @@ const OverviewPageContent = () => {
                 />
               </>
             )}
-          </UnstableCardContent>
-        </UnstableCard>
+          </CardContent>
+        </Card>
       </div>
       <Sheet
         modal={false}
@@ -3397,6 +3434,16 @@ const OverviewPageContent = () => {
         secretPath={secretPath}
         onImport={handleVaultImport}
       />
+      {dopplerImportConfigs.length > 0 && (
+        <DopplerSecretImportModal
+          isOpen={popUp.importFromDoppler.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("importFromDoppler", isOpen)}
+          configs={dopplerImportConfigs}
+          environment={singleEnvSlug}
+          secretPath={secretPath}
+          onImport={handleDopplerImport}
+        />
+      )}
       <AlertDialog
         open={popUp.deleteFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}

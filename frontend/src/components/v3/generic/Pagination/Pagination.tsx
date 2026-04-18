@@ -9,14 +9,14 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import {
-  UnstableDropdownMenu,
-  UnstableDropdownMenuCheckboxItem,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger
 } from "../Dropdown";
-import { UnstableIconButton } from "../IconButton";
+import { IconButton } from "../IconButton";
 
-type UnstablePaginationProps = {
+type PaginationProps = {
   count: number;
   page: number;
   perPage?: number;
@@ -27,7 +27,7 @@ type UnstablePaginationProps = {
   startAdornment?: ReactElement;
 };
 
-const UnstablePagination = ({
+const Pagination = ({
   count,
   page = 1,
   perPage = 20,
@@ -36,7 +36,7 @@ const UnstablePagination = ({
   perPageList = [10, 20, 50, 100],
   className,
   startAdornment
-}: UnstablePaginationProps) => {
+}: PaginationProps) => {
   const prevPageNumber = Math.max(1, page - 1);
   const canGoPrev = page > 1;
 
@@ -53,15 +53,15 @@ const UnstablePagination = ({
         <div className="text-xs">
           {(page - 1) * perPage + 1} - {Math.min((page - 1) * perPage + perPage, count)} of {count}
         </div>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant="ghost" size="xs">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs">
               <ChevronDownIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
             {perPageList.map((perPageOption) => (
-              <UnstableDropdownMenuCheckboxItem
+              <DropdownMenuCheckboxItem
                 checked={perPageOption === perPage}
                 key={`pagination-per-page-options-${perPageOption}`}
                 onClick={() => {
@@ -75,47 +75,47 @@ const UnstablePagination = ({
                 }}
               >
                 {perPageOption} rows per page
-              </UnstableDropdownMenuCheckboxItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="flex items-center space-x-2">
-        <UnstableIconButton
+        <IconButton
           variant="ghost"
           size="xs"
           onClick={() => onChangePage(1)}
           isDisabled={!canGoFirst}
         >
           <ChevronFirstIcon />
-        </UnstableIconButton>
-        <UnstableIconButton
+        </IconButton>
+        <IconButton
           variant="ghost"
           size="xs"
           onClick={() => onChangePage(prevPageNumber)}
           isDisabled={!canGoPrev}
         >
           <ChevronLeftIcon />
-        </UnstableIconButton>
-        <UnstableIconButton
+        </IconButton>
+        <IconButton
           variant="ghost"
           size="xs"
           onClick={() => onChangePage(nextPageNumber)}
           isDisabled={!canGoNext}
         >
           <ChevronRightIcon />
-        </UnstableIconButton>
-        <UnstableIconButton
+        </IconButton>
+        <IconButton
           variant="ghost"
           size="xs"
           onClick={() => onChangePage(upperLimit)}
           isDisabled={!canGoLast}
         >
           <ChevronLastIcon />
-        </UnstableIconButton>
+        </IconButton>
       </div>
     </div>
   );
 };
 
-export { UnstablePagination, type UnstablePaginationProps };
+export { Pagination, type PaginationProps };

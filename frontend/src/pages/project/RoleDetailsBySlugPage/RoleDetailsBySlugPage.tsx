@@ -9,10 +9,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -108,15 +108,15 @@ const Page = () => {
             }
           >
             {isCustomRole && (
-              <UnstableDropdownMenu>
-                <UnstableDropdownMenuTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="outline">
                     Options
                     <EllipsisIcon />
                   </Button>
-                </UnstableDropdownMenuTrigger>
-                <UnstableDropdownMenuContent align="end">
-                  <UnstableDropdownMenuItem
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.id);
                       createNotification({
@@ -127,8 +127,8 @@ const Page = () => {
                   >
                     <CopyIcon />
                     Copy ID
-                  </UnstableDropdownMenuItem>
-                  <UnstableDropdownMenuItem
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => {
                       navigator.clipboard.writeText(data.slug);
                       createNotification({
@@ -139,13 +139,13 @@ const Page = () => {
                   >
                     <CopyIcon />
                     Copy Slug
-                  </UnstableDropdownMenuItem>
+                  </DropdownMenuItem>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         className={twMerge(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
@@ -158,7 +158,7 @@ const Page = () => {
                       >
                         <PencilIcon />
                         Edit Role
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
@@ -166,7 +166,7 @@ const Page = () => {
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         className={twMerge(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
@@ -177,7 +177,7 @@ const Page = () => {
                       >
                         <CopyIcon />
                         Duplicate Role
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
@@ -185,18 +185,18 @@ const Page = () => {
                     a={ProjectPermissionSub.Role}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         variant="danger"
                         onClick={() => handlePopUpOpen("deleteRole")}
                         isDisabled={!isAllowed}
                       >
                         <TrashIcon />
                         Delete Role
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
-                </UnstableDropdownMenuContent>
-              </UnstableDropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </PageHeader>
           <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />

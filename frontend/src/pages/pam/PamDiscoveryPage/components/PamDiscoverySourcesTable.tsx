@@ -10,21 +10,21 @@ import { DeleteActionModal, Input } from "@app/components/v2";
 import {
   Badge,
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
@@ -132,44 +132,44 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
       </div>
 
       <div className="mt-4">
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead>Name</UnstableTableHead>
-              <UnstableTableHead>Domain</UnstableTableHead>
-              <UnstableTableHead>Schedule</UnstableTableHead>
-              <UnstableTableHead>Resources</UnstableTableHead>
-              <UnstableTableHead>Accounts</UnstableTableHead>
-              <UnstableTableHead>Dependencies</UnstableTableHead>
-              <UnstableTableHead>Status</UnstableTableHead>
-              <UnstableTableHead>Last Run</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Domain</TableHead>
+              <TableHead>Schedule</TableHead>
+              <TableHead>Resources</TableHead>
+              <TableHead>Accounts</TableHead>
+              <TableHead>Dependencies</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Last Run</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isPending && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={9} className="text-center text-muted">
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-muted">
                   Loading discovery sources...
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending && sources.length === 0 && (
-              <UnstableTableRow>
-                <UnstableTableCell colSpan={9}>
-                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
-                    <UnstableEmptyHeader>
-                      <UnstableEmptyTitle>
+              <TableRow>
+                <TableCell colSpan={9}>
+                  <Empty className="border-0 bg-transparent py-8 shadow-none">
+                    <EmptyHeader>
+                      <EmptyTitle>
                         {search ? "No discovery sources match search" : "No discovery sources"}
-                      </UnstableEmptyTitle>
-                    </UnstableEmptyHeader>
-                  </UnstableEmpty>
-                </UnstableTableCell>
-              </UnstableTableRow>
+                      </EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             )}
             {!isPending &&
               sources.map((source) => (
-                <UnstableTableRow
+                <TableRow
                   key={source.id}
                   className="group cursor-pointer"
                   onClick={() =>
@@ -184,50 +184,38 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                     })
                   }
                 >
-                  <UnstableTableCell className="font-medium">{source.name}</UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
+                  <TableCell className="font-medium">{source.name}</TableCell>
+                  <TableCell className="text-muted">
                     {(source.discoveryConfiguration?.domainFQDN as string) || "-"}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted capitalize">
-                    {source.schedule ?? "-"}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
-                    {source.totalResources}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
-                    {source.totalAccounts}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
-                    {source.totalDependencies}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell className="text-muted capitalize">{source.schedule ?? "-"}</TableCell>
+                  <TableCell className="text-muted">{source.totalResources}</TableCell>
+                  <TableCell className="text-muted">{source.totalAccounts}</TableCell>
+                  <TableCell className="text-muted">{source.totalDependencies}</TableCell>
+                  <TableCell>
                     <Badge variant={STATUS_BADGE_MAP[source.status] || "info"}>
                       {source.status}
                     </Badge>
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
+                  </TableCell>
+                  <TableCell className="text-muted">
                     {source.lastRunAt
                       ? format(new Date(source.lastRunAt), "MMM d, yyyy HH:mm")
                       : "Never"}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <UnstableDropdownMenu>
-                      <UnstableDropdownMenuTrigger asChild>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
                           <EllipsisVerticalIcon />
-                        </UnstableIconButton>
-                      </UnstableDropdownMenuTrigger>
-                      <UnstableDropdownMenuContent sideOffset={2} align="end">
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent sideOffset={2} align="end">
                         <ProjectPermissionCan
                           I={ProjectPermissionPamDiscoveryActions.RunScan}
                           a={ProjectPermissionSub.PamDiscovery}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               isDisabled={!isAllowed}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -236,7 +224,7 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                             >
                               <PlayIcon className="size-4" />
                               Trigger Scan
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
@@ -244,7 +232,7 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                           a={ProjectPermissionSub.PamDiscovery}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               isDisabled={!isAllowed}
                               variant="danger"
                               onClick={(e) => {
@@ -254,18 +242,18 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                             >
                               <TrashIcon className="size-4" />
                               Delete
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                      </UnstableDropdownMenuContent>
-                    </UnstableDropdownMenu>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
               ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
         {Boolean(totalCount) && !isPending && (
-          <UnstablePagination
+          <Pagination
             count={totalCount}
             page={page}
             perPage={perPage}

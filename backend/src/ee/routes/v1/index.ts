@@ -22,6 +22,7 @@ import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerIdentityTemplateRouter } from "./identity-template-router";
+import { registerInsightsRouter } from "./insights-router";
 import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
@@ -116,6 +117,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
+
+  await server.register(registerInsightsRouter, { prefix: "/insights" });
 
   await server.register(
     async (pkiRouter) => {

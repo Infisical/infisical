@@ -469,6 +469,88 @@ export const secretRotationV2DALFactory = (
     }
   };
 
+  const findByProjectAndDateRange = async (
+    {
+      projectId,
+      startDate,
+      endDate
+    }: {
+      projectId: string;
+      startDate: Date;
+      endDate: Date;
+    },
+    tx?: Knex
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
+        .join(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretRotationV2SecretMapping}.rotationId`,
+          `${TableName.SecretRotationV2}.id`
+        )
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretRotationV2SecretMapping}.secretId`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNotNull(`${TableName.SecretRotationV2}.nextRotationAt`);
+
+      const rawRotations = await query
+        .whereBetween(`${TableName.SecretRotationV2}.nextRotationAt`, [startDate, endDate])
+        .select(
+          selectAllTableCols(TableName.SecretRotationV2),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("id").withSchema(TableName.AppConnection).as("connectionAppId"),
+          db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
+          db.ref("id").withSchema(TableName.SecretV2).as("secretId")
+        );
+
+      if (!rawRotations.length) return [];
+
+      const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
+        projectId,
+        rawRotations.map((r) => r.folderId),
+        tx
+      );
+
+      const folderRecord: Record<string, (typeof foldersWithPath)[number]> = {};
+      foldersWithPath.forEach((folder) => {
+        if (folder) folderRecord[folder.id] = folder;
+      });
+
+      return sqlNestRelationships({
+        data: rawRotations,
+        key: "id",
+        parentMapper: (rotation) => ({
+          id: rotation.id,
+          name: rotation.name,
+          type: rotation.type,
+          nextRotationAt: rotation.nextRotationAt,
+          rotationInterval: rotation.rotationInterval,
+          rotationStatus: rotation.rotationStatus,
+          isAutoRotationEnabled: rotation.isAutoRotationEnabled,
+          environment: { slug: rotation.envSlug, name: rotation.envName, id: rotation.envId },
+          folder: {
+            id: rotation.folderId,
+            path: folderRecord[rotation.folderId]?.path ?? "/"
+          },
+          connection: { id: rotation.connectionAppId }
+        }),
+        childrenMapper: [
+          {
+            key: "secretKey",
+            label: "secretKeys" as const,
+            mapper: ({ secretKey }) => secretKey
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Calendar Rotations - Secret Rotation V2" });
+    }
+  };
+
   const findSecretRotationsToQueue = async (rotateBy: Date, tx?: Knex) => {
     const secretRotations = await (tx || db.replicaNode())(TableName.SecretRotationV2)
       .where(`${TableName.SecretRotationV2}.isAutoRotationEnabled`, true)
@@ -477,6 +559,73 @@ export const secretRotationV2DALFactory = (
       .select(selectAllTableCols(TableName.SecretRotationV2));
 
     return secretRotations;
+  };
+
+  const findByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const rawRotations = await (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.AppConnection, `${TableName.SecretRotationV2}.connectionId`, `${TableName.AppConnection}.id`)
+        .join(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretRotationV2SecretMapping}.rotationId`,
+          `${TableName.SecretRotationV2}.id`
+        )
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretRotationV2SecretMapping}.secretId`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .select(
+          selectAllTableCols(TableName.SecretRotationV2),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("id").withSchema(TableName.AppConnection).as("connectionAppId"),
+          db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
+          db.ref("id").withSchema(TableName.SecretV2).as("secretId")
+        );
+
+      if (!rawRotations.length) return [];
+
+      const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
+        projectId,
+        rawRotations.map((r) => r.folderId),
+        tx
+      );
+
+      const folderRecord: Record<string, (typeof foldersWithPath)[number]> = {};
+      foldersWithPath.forEach((folder) => {
+        if (folder) folderRecord[folder.id] = folder;
+      });
+
+      return sqlNestRelationships({
+        data: rawRotations,
+        key: "id",
+        parentMapper: (rotation) => ({
+          id: rotation.id,
+          name: rotation.name,
+          type: rotation.type,
+          nextRotationAt: rotation.nextRotationAt,
+          rotationInterval: rotation.rotationInterval,
+          rotationStatus: rotation.rotationStatus,
+          isAutoRotationEnabled: rotation.isAutoRotationEnabled,
+          environment: { slug: rotation.envSlug, name: rotation.envName, id: rotation.envId },
+          folder: {
+            id: rotation.folderId,
+            path: folderRecord[rotation.folderId]?.path ?? "/"
+          },
+          connection: { id: rotation.connectionAppId }
+        }),
+        childrenMapper: [
+          {
+            key: "secretKey",
+            label: "secretKeys" as const,
+            mapper: ({ secretKey }) => secretKey
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by Project - Secret Rotation V2" });
+    }
   };
 
   return {
@@ -490,6 +639,8 @@ export const secretRotationV2DALFactory = (
     insertSecretMappings: secretRotationV2SecretMappingOrm.insertMany,
     findWithMappedSecrets,
     findWithMappedSecretsCount,
+    findByProjectAndDateRange,
+    findByProject,
     findSecretRotationsToQueue
   };
 };

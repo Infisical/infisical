@@ -23,6 +23,15 @@ The header will be in the format `t=<timestamp>;<signature>`. You can then gener
 
 If the signature in the header matches the signature that you generated, then you can be sure that the request was sent by Infisical and is intended for your integration. The timestamp in the header ensures that the request is not replayed.
 
+## Event Filtering
+
+By default, webhooks trigger on every supported event. You can narrow this down under **Advanced Settings** when creating a webhook, and only receive the events you care about. You can also change the events on existing webhooks by clicking **Edit** and selecting the events you want.
+
+Supported events:
+
+- **Secret Modified** (`secrets.modified`) — triggered when secrets in the configured scope are created, updated, or deleted.
+- **Secret Rotation Failed** (`secrets.rotation-failed`) — triggered when a secret rotation in the configured scope fails.
+
 ### Webhook Payload Format
 
 ```json
@@ -39,20 +48,6 @@ If the signature in the header matches the signature that you generated, then yo
 }
 ```
 
-```json
-{
-	"event": "secrets.reminder-expired",
-	"project": {
-		"workspaceId": "the workspace id",
-		"environment": "project environment",
-		"secretPath": "project folder path",
-		"secretName": "name of the secret",
-		"secretId": "id of the secret",
-		"reminderNote": "reminder note of the secret"
-	},
-	"timestamp": ""
-}
-```
 
 ```json
 {

@@ -110,6 +110,9 @@ import {
   TCertificateCleanupConfigs,
   TCertificateCleanupConfigsInsert,
   TCertificateCleanupConfigsUpdate,
+  TCertificateInventoryViews,
+  TCertificateInventoryViewsInsert,
+  TCertificateInventoryViewsUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -140,6 +143,9 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
+  TExternalMigrationConfigs,
+  TExternalMigrationConfigsInsert,
+  TExternalMigrationConfigsUpdate,
   TFolderCheckpointResources,
   TFolderCheckpointResourcesInsert,
   TFolderCheckpointResourcesUpdate,
@@ -158,6 +164,9 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
+  TGatewayEnrollmentTokens,
+  TGatewayEnrollmentTokensInsert,
+  TGatewayEnrollmentTokensUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -368,6 +377,9 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiScepDynamicChallenges,
+  TPkiScepDynamicChallengesInsert,
+  TPkiScepDynamicChallengesUpdate,
   TPkiScepEnrollmentConfigs,
   TPkiScepEnrollmentConfigsInsert,
   TPkiScepEnrollmentConfigsUpdate,
@@ -880,6 +892,11 @@ declare module "knex/types/tables" {
       TPkiScepTransactions,
       TPkiScepTransactionsInsert,
       TPkiScepTransactionsUpdate
+    >;
+    [TableName.PkiScepDynamicChallenge]: KnexOriginal.CompositeTableType<
+      TPkiScepDynamicChallenges,
+      TPkiScepDynamicChallengesInsert,
+      TPkiScepDynamicChallengesUpdate
     >;
     [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiApiEnrollmentConfigs,
@@ -1585,6 +1602,11 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TGatewayEnrollmentTokens,
+      TGatewayEnrollmentTokensInsert,
+      TGatewayEnrollmentTokensUpdate
+    >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,
@@ -1662,10 +1684,10 @@ declare module "knex/types/tables" {
       TAdditionalPrivilegesInsert,
       TAdditionalPrivilegesUpdate
     >;
-    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TVaultExternalMigrationConfigs,
-      TVaultExternalMigrationConfigsInsert,
-      TVaultExternalMigrationConfigsUpdate
+    [TableName.ExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TExternalMigrationConfigs,
+      TExternalMigrationConfigsInsert,
+      TExternalMigrationConfigsUpdate
     >;
     [TableName.WebAuthnCredential]: KnexOriginal.CompositeTableType<
       TWebauthnCredentials,
@@ -1769,10 +1791,20 @@ declare module "knex/types/tables" {
       TCertificateCleanupConfigsInsert,
       TCertificateCleanupConfigsUpdate
     >;
+    [TableName.CertificateInventoryView]: KnexOriginal.CompositeTableType<
+      TCertificateInventoryViews,
+      TCertificateInventoryViewsInsert,
+      TCertificateInventoryViewsUpdate
+    >;
     [TableName.SecretValidationRule]: KnexOriginal.CompositeTableType<
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
+    >;
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

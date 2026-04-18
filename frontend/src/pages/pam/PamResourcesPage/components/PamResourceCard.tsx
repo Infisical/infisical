@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, UnstableIconButton } from "@app/components/v3";
+import { Badge, IconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
@@ -86,7 +86,7 @@ export const PamResourceCard = ({
               <HighlightText text={name} highlight={search} />
             </p>
             <div className="flex items-center gap-0.5">
-              <UnstableIconButton
+              <IconButton
                 size="xs"
                 variant="ghost"
                 onClick={(e) => {
@@ -99,16 +99,12 @@ export const PamResourceCard = ({
                   fill={resource.isFavorite ? "currentColor" : "none"}
                   size={14}
                 />
-              </UnstableIconButton>
+              </IconButton>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <UnstableIconButton
-                    size="xs"
-                    variant="ghost"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <IconButton size="xs" variant="ghost" onClick={(e) => e.stopPropagation()}>
                     <EllipsisIcon />
-                  </UnstableIconButton>
+                  </IconButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent sideOffset={2} align="end">
                   <DropdownMenuItem

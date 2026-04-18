@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { GlobeIcon, SearchIcon, XIcon } from "lucide-react";
 
 import {
+  ButtonGroup,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -10,9 +12,7 @@ import {
   PopoverTrigger,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableButtonGroup,
-  UnstableIconButton
+  TooltipTrigger
 } from "@app/components/v3";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
@@ -39,12 +39,12 @@ export const ResourceSearchInput = ({
 
   return (
     <>
-      <UnstableButtonGroup>
+      <ButtonGroup>
         <Tooltip>
           <TooltipTrigger asChild>
-            <UnstableIconButton variant="outline" onClick={() => setIsOpen(true)}>
+            <IconButton variant="outline" onClick={() => setIsOpen(true)}>
               <SearchIcon />
-            </UnstableIconButton>
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent>Search All Folders</TooltipContent>
         </Tooltip>
@@ -90,9 +90,9 @@ export const ResourceSearchInput = ({
                 />
                 {hasSearch && (
                   <InputGroupAddon align="inline-end">
-                    <UnstableIconButton variant="ghost" size="xs" onClick={() => onChange("")}>
+                    <IconButton variant="ghost" size="xs" onClick={() => onChange("")}>
                       <XIcon />
-                    </UnstableIconButton>
+                    </IconButton>
                   </InputGroupAddon>
                 )}
               </InputGroup>
@@ -119,7 +119,7 @@ export const ResourceSearchInput = ({
             </button>
           </PopoverContent>
         </Popover>
-      </UnstableButtonGroup>
+      </ButtonGroup>
       <QuickSearchModal
         isSingleEnv={isSingleEnv}
         isOpen={isOpen}

@@ -3,16 +3,16 @@ import { CheckIcon, ClipboardListIcon } from "lucide-react";
 
 import { Tooltip } from "@app/components/v2";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableIconButton
+  IconButton
 } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { TWorkspaceUser } from "@app/hooks/api/types";
@@ -39,12 +39,12 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
   const name = firstName || lastName ? `${firstName} ${lastName}`.trim() : null;
 
   return (
-    <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Details</UnstableCardTitle>
-        <UnstableCardDescription>User membership details</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card className="w-full lg:max-w-[24rem]">
+      <CardHeader className="border-b">
+        <CardTitle>Details</CardTitle>
+        <CardDescription>User membership details</CardDescription>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
@@ -55,7 +55,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             <DetailValue className="flex items-center gap-x-1">
               {membership.user.id}
               <Tooltip content="Copy user ID to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(userId);
                     setCopyTextId("Copied");
@@ -65,7 +65,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
                 >
                   {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -74,7 +74,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             <DetailValue className="flex items-center gap-x-1">
               {email}
               <Tooltip content="Copy user email to clipboard">
-                <UnstableIconButton
+                <IconButton
                   onClick={() => {
                     navigator.clipboard.writeText(email);
                     setCopyEmail("Copied");
@@ -84,7 +84,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
                 >
                   {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingEmail ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+                </IconButton>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -99,7 +99,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

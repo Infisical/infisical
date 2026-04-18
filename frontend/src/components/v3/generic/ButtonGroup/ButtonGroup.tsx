@@ -2,7 +2,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
-import { UnstableSeparator } from "../Separator";
+import { Separator } from "../Separator";
 
 const buttonGroupVariants = cva(
   "flex w-fit items-stretch [&>*]:focus-visible:z-10 [&>*]:focus-visible:relative [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md has-[>[data-slot=button-group]]:gap-2",
@@ -21,7 +21,7 @@ const buttonGroupVariants = cva(
   }
 );
 
-function UnstableButtonGroup({
+function ButtonGroup({
   className,
   orientation,
   ...props
@@ -37,7 +37,7 @@ function UnstableButtonGroup({
   );
 }
 
-function UnstableButtonGroupText({
+function ButtonGroupText({
   className,
   asChild = false,
   ...props
@@ -57,13 +57,13 @@ function UnstableButtonGroupText({
   );
 }
 
-function UnstableButtonGroupSeparator({
+function ButtonGroupSeparator({
   className,
   orientation = "vertical",
   ...props
-}: React.ComponentProps<typeof UnstableSeparator>) {
+}: React.ComponentProps<typeof Separator>) {
   return (
-    <UnstableSeparator
+    <Separator
       data-slot="button-group-separator"
       orientation={orientation}
       className={cn(
@@ -75,9 +75,4 @@ function UnstableButtonGroupSeparator({
   );
 }
 
-export {
-  buttonGroupVariants,
-  UnstableButtonGroup,
-  UnstableButtonGroupSeparator,
-  UnstableButtonGroupText
-};
+export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText, buttonGroupVariants };

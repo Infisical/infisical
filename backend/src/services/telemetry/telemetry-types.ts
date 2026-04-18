@@ -3,6 +3,7 @@ import {
   AcmeAccountActor,
   AcmeProfileActor,
   EstAccountActor,
+  GatewayActor,
   IdentityActor,
   KmipClientActor,
   PlatformActor,
@@ -28,6 +29,7 @@ export enum PostHogEventTypes {
   SecretDeleted = "secrets deleted",
   AdminInit = "admin initialization",
   UserSignedUp = "User Signed Up",
+  UserLoginV2 = "User Login V2",
   SecretRotated = "secrets rotated",
   SecretScannerFull = "historical cloud secret scan",
   SecretScannerPush = "cloud secret scan",
@@ -132,7 +134,8 @@ export type TSecretModifiedEvent = {
       | AcmeProfileActor
       | KmipClientActor
       | EstAccountActor
-      | ScepAccountActor;
+      | ScepAccountActor
+      | GatewayActor;
   };
 };
 
@@ -152,6 +155,14 @@ export type TUserSignedUpEvent = {
     username: string;
     email: string;
     attributionSource?: string;
+  };
+};
+
+export type TUserLoginV2Event = {
+  event: PostHogEventTypes.UserLoginV2;
+  properties: {
+    email: string;
+    channel: string;
   };
 };
 
@@ -814,6 +825,7 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string; organ
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
+  | TUserLoginV2Event
   | TSecretScannerEvent
   | TUserOrgInvitedEvent
   | TMachineIdentityCreatedEvent

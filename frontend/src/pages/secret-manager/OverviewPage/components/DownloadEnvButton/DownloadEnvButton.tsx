@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import { DownloadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Tooltip, TooltipContent, TooltipTrigger, UnstableIconButton } from "@app/components/v3";
+import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, ProjectEnv, TApiErrors } from "@app/hooks/api/types";
@@ -59,7 +59,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
   return (
     <Tooltip>
       <TooltipTrigger>
-        <UnstableIconButton
+        <IconButton
           variant="outline"
           size="md"
           isDisabled={environments.length !== 1}
@@ -67,7 +67,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
           isPending={isDownloading}
         >
           <DownloadIcon />
-        </UnstableIconButton>
+        </IconButton>
       </TooltipTrigger>
       <TooltipContent>
         {environments.length !== 1

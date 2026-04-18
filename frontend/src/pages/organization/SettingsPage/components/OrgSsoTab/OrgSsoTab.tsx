@@ -1,7 +1,9 @@
+import { InfoIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { Alert, AlertDescription, Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSsoActions,
@@ -92,9 +94,12 @@ export const OrgSsoTab = withPermission(
                 OIDC, and LDAP.
               </p>
               {subscription?.emailDomainVerification && !isPending && !emailDomains?.length && (
-                <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
+                <Alert variant="info" className="mt-3 bg-info/10">
+                  <InfoIcon />
+                  <AlertTitle>Email domain verification required</AlertTitle>
                   <AlertDescription>
-                    Email domain verification is required to use an identity provider.
+                    You must verify at least one email domain before configuring an identity
+                    provider. Add a domain in the Email Domains section above.
                   </AlertDescription>
                 </Alert>
               )}
@@ -224,9 +229,12 @@ export const OrgSsoTab = withPermission(
                 ) &&
                 !isPending &&
                 !emailDomains?.length && (
-                  <Alert hideTitle iconClassName="text-yellow-500" variant="warning">
+                  <Alert variant="info" className="mt-3 bg-info/10">
+                    <InfoIcon />
+                    <AlertTitle>Email domain verification required</AlertTitle>
                     <AlertDescription>
-                      Email domain verification is required to use an identity provider.
+                      You must verify at least one email domain before configuring an identity
+                      provider. Add a domain in the Email Domains section above.
                     </AlertDescription>
                   </Alert>
                 )}

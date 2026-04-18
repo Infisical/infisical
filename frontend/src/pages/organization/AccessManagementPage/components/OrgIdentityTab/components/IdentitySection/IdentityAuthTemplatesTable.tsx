@@ -11,27 +11,27 @@ import { twMerge } from "tailwind-merge";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstableEmpty,
-  UnstableEmptyContent,
-  UnstableEmptyDescription,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstablePagination,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { INFISICAL_SCHEDULE_DEMO_LINK } from "@app/const/links";
 import { OrgPermissionSubjects, useOrganization, useSubscription } from "@app/context";
@@ -124,47 +124,45 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
   const renderContent = () => {
     if (!subscription.machineIdentityAuthTemplates) {
       return (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
-              This feature has not been activated for your license.
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>Contact us to learn more.</UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-          <UnstableEmptyContent>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>This feature has not been activated for your license.</EmptyTitle>
+            <EmptyDescription>Contact us to learn more.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
             <Button size="sm" variant={isSubOrganization ? "sub-org" : "org"} asChild>
               <a href={INFISICAL_SCHEDULE_DEMO_LINK} target="_blank" rel="noopener noreferrer">
                 Talk to Us
               </a>
             </Button>
-          </UnstableEmptyContent>
-        </UnstableEmpty>
+          </EmptyContent>
+        </Empty>
       );
     }
 
     if (!isPending && !templates.length) {
       return (
-        <UnstableEmpty className="border">
-          <UnstableEmptyHeader>
-            <UnstableEmptyTitle>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
               {isFiltered
                 ? "No templates match search filter"
                 : "No identity auth templates have been added"}
-            </UnstableEmptyTitle>
-            <UnstableEmptyDescription>
+            </EmptyTitle>
+            <EmptyDescription>
               {isFiltered ? "Adjust your search criteria." : "Create a template to get started."}
-            </UnstableEmptyDescription>
-          </UnstableEmptyHeader>
-        </UnstableEmpty>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       );
     }
 
     return (
       <>
-        <UnstableTable>
-          <UnstableTableHeader>
-            <UnstableTableRow>
-              <UnstableTableHead
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
                 className="w-1/4 cursor-pointer"
                 onClick={() => handleSort(TemplatesOrderBy.Name)}
               >
@@ -178,8 +176,8 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                     orderBy !== TemplatesOrderBy.Name && "opacity-30"
                   )}
                 />
-              </UnstableTableHead>
-              <UnstableTableHead
+              </TableHead>
+              <TableHead
                 className="w-1/4 cursor-pointer"
                 onClick={() => handleSort(TemplatesOrderBy.AuthMethod)}
               >
@@ -193,50 +191,46 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                     orderBy !== TemplatesOrderBy.AuthMethod && "opacity-30"
                   )}
                 />
-              </UnstableTableHead>
-              <UnstableTableHead>URL</UnstableTableHead>
-              <UnstableTableHead className="w-5" />
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+              <TableHead>URL</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isPending &&
               Array.from({ length: perPage }).map((_, i) => (
-                <UnstableTableRow key={`skeleton-${i + 1}`}>
-                  <UnstableTableCell>
+                <TableRow key={`skeleton-${i + 1}`}>
+                  <TableCell>
                     <Skeleton className="h-4 w-full" />
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-full" />
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-full" />
-                  </UnstableTableCell>
-                  <UnstableTableCell>
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-4" />
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                  </TableCell>
+                </TableRow>
               ))}
             {!isPending &&
               templates?.map((template) => (
-                <UnstableTableRow key={`template-${template.id}`}>
-                  <UnstableTableCell isTruncatable>{template.name}</UnstableTableCell>
-                  <UnstableTableCell>
+                <TableRow key={`template-${template.id}`}>
+                  <TableCell isTruncatable>{template.name}</TableCell>
+                  <TableCell>
                     <span className="uppercase">{template.authMethod}</span>
-                  </UnstableTableCell>
-                  <UnstableTableCell isTruncatable>{template.templateFields.url}</UnstableTableCell>
-                  <UnstableTableCell>
-                    <UnstableDropdownMenu>
-                      <UnstableDropdownMenuTrigger asChild>
-                        <UnstableIconButton
-                          variant="ghost"
-                          size="xs"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                  </TableCell>
+                  <TableCell isTruncatable>{template.templateFields.url}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
                           <MoreHorizontalIcon />
-                        </UnstableIconButton>
-                      </UnstableDropdownMenuTrigger>
-                      <UnstableDropdownMenuContent align="end">
-                        <UnstableDropdownMenuItem
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePopUpOpen("viewUsages", { template });
@@ -244,13 +238,13 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                         >
                           <EyeIcon />
                           {TEMPLATE_UI_LABELS.VIEW_USAGES}
-                        </UnstableDropdownMenuItem>
+                        </DropdownMenuItem>
                         <OrgPermissionCan
                           I={OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates}
                           a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePopUpOpen("editTemplate", { template });
@@ -259,7 +253,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                             >
                               <EditIcon />
                               {TEMPLATE_UI_LABELS.EDIT_TEMPLATE}
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
                         <OrgPermissionCan
@@ -267,7 +261,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                           a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
                         >
                           {(isAllowed) => (
-                            <UnstableDropdownMenuItem
+                            <DropdownMenuItem
                               variant="danger"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -280,18 +274,18 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                             >
                               <TrashIcon />
                               {TEMPLATE_UI_LABELS.DELETE_TEMPLATE}
-                            </UnstableDropdownMenuItem>
+                            </DropdownMenuItem>
                           )}
                         </OrgPermissionCan>
-                      </UnstableDropdownMenuContent>
-                    </UnstableDropdownMenu>
-                  </UnstableTableCell>
-                </UnstableTableRow>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
               ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
         {totalCount > 0 && (
-          <UnstablePagination
+          <Pagination
             count={totalCount}
             page={page}
             perPage={perPage}

@@ -1,14 +1,14 @@
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  DetailValue
 } from "@app/components/v3";
 import { TPkiDiscovery } from "@app/hooks/api";
 import { parsePorts } from "@app/pages/cert-manager/pki-discovery-utils";
@@ -26,12 +26,12 @@ export const DiscoveryTargetSection = ({ discovery }: Props) => {
   const ports = parsePorts(portsStr);
 
   return (
-    <UnstableCard>
-      <UnstableCardHeader className="border-b">
-        <UnstableCardTitle>Target Configuration</UnstableCardTitle>
-        <UnstableCardDescription>Targets scanned by this discovery job</UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Target Configuration</CardTitle>
+        <CardDescription>Targets scanned by this discovery job</CardDescription>
+      </CardHeader>
+      <CardContent>
         <DetailGroup>
           {domains.length > 0 && (
             <Detail>
@@ -78,7 +78,7 @@ export const DiscoveryTargetSection = ({ discovery }: Props) => {
             </DetailValue>
           </Detail>
         </DetailGroup>
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

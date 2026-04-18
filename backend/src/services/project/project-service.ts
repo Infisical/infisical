@@ -41,6 +41,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -91,6 +92,8 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TGetActivityTrendDTO,
+  TGetDashboardStatsDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
   TGetProjectSshConfig,
@@ -119,6 +122,8 @@ import {
   TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
 } from "./project-types";
+
+const DASHBOARD_CACHE_TTL = 600;
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -162,6 +167,8 @@ type TProjectServiceFactoryDep = {
     | "findWithPrivateKeyInfo"
     | "findActiveCertificatesForSync"
     | "countActiveCertificatesForSync"
+    | "getDashboardStats"
+    | "getActivityTrend"
   >;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
@@ -176,7 +183,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -1212,6 +1219,18 @@ export const projectServiceFactory = ({
     toDate,
     metadataFilter,
     extendedKeyUsage,
+    keyAlgorithm,
+    signatureAlgorithm,
+    keySizes,
+    caIds,
+    enrollmentTypes,
+    source,
+    notAfterFrom,
+    notAfterTo,
+    notBeforeFrom,
+    notBeforeTo,
+    sortBy,
+    sortOrder,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1240,18 +1259,42 @@ export const projectServiceFactory = ({
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName }),
       ...(search && { search }),
-      ...(status && { status: Array.isArray(status) ? status[0] : status }),
+      ...(status && {
+        status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
+      }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
       ...(metadataFilter && { metadataFilter }),
-      ...(extendedKeyUsage && { extendedKeyUsage })
+      ...(extendedKeyUsage && { extendedKeyUsage }),
+      ...(keyAlgorithm && { keyAlgorithm }),
+      ...(signatureAlgorithm && { signatureAlgorithm }),
+      ...(keySizes && keySizes.length > 0 && { keySizes }),
+      ...(caIds && { caIds }),
+      ...(enrollmentTypes && { enrollmentTypes }),
+      ...(source && { source }),
+      ...(notAfterFrom && { notAfterFrom }),
+      ...(notAfterTo && { notAfterTo }),
+      ...(notBeforeFrom && { notBeforeFrom }),
+      ...(notBeforeTo && { notBeforeTo })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
+
+    const ALLOWED_SORT_COLUMNS = new Set([
+      "notAfter",
+      "notBefore",
+      "createdAt",
+      "commonName",
+      "serialNumber",
+      "keyAlgorithm",
+      "status"
+    ]);
+    const validatedSortBy = sortBy && ALLOWED_SORT_COLUMNS.has(sortBy) ? sortBy : "notAfter";
+    const validatedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
     const certificates = forPkiSync
       ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
@@ -1260,7 +1303,7 @@ export const projectServiceFactory = ({
           {
             offset,
             limit,
-            sort: [["notAfter", "desc"]]
+            sort: [[validatedSortBy, validatedSortOrder]]
           },
           permissionFilters
         );
@@ -1270,22 +1313,94 @@ export const projectServiceFactory = ({
       ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
       ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
       ...(regularFilters.search && { search: String(regularFilters.search) }),
-      ...(regularFilters.status && { status: String(regularFilters.status) }),
+      ...(regularFilters.status && { status: regularFilters.status }),
       ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
       ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
       ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
       ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
-      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) })
+      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
+      ...(regularFilters.keyAlgorithm && { keyAlgorithm: regularFilters.keyAlgorithm }),
+      ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
+      ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
+      ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
+      ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
+      ...(regularFilters.source && { source: regularFilters.source }),
+      ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
+      ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
+      ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
+      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo })
     };
 
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(countFilter)
-      : await certificateDAL.countCertificatesInProject(countFilter);
+      : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
 
     return {
       certificates,
       totalCount: count
     };
+  };
+
+  const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.CertDashboardStats(projectId),
+      ttlSeconds: DASHBOARD_CACHE_TTL,
+      fetcher: () => certificateDAL.getDashboardStats(projectId)
+    });
+  };
+
+  const getActivityTrend = async ({
+    filter,
+    range = "30d",
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    actor
+  }: TGetActivityTrendDTO) => {
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
+    const daysBack = rangeDaysMap[range];
+
+    return withCache({
+      keyStore,
+      key: KeyStorePrefixes.CertActivityTrend(projectId, range),
+      ttlSeconds: DASHBOARD_CACHE_TTL,
+      fetcher: () => certificateDAL.getActivityTrend(projectId, daysBack)
+    });
   };
 
   /**
@@ -2316,6 +2431,8 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    getDashboardStats,
+    getActivityTrend,
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,

@@ -66,11 +66,12 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
     actorEmail,
     createdAt,
     endedAt,
-    gatewayIdentityId
+    gatewayIdentityId,
+    gatewayId
   } = session;
 
   const isActive = status === PamSessionStatus.Active || status === PamSessionStatus.Starting;
-  const isGatewaySession = !!gatewayIdentityId;
+  const isGatewaySession = !!gatewayIdentityId || !!gatewayId;
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
 

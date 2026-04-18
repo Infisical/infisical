@@ -8,10 +8,10 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader, Spinner } from "@app/components/v2";
 import {
   Button,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -100,15 +100,15 @@ const Page = () => {
             description={`Configure and manage ${isSubOrganization ? "sub-" : ""}organization group`}
             title={data.group.name}
           >
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Options
                   <EllipsisIcon />
                 </Button>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
-                <UnstableDropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                   onClick={() => {
                     navigator.clipboard.writeText(groupId);
                     createNotification({
@@ -118,14 +118,14 @@ const Page = () => {
                   }}
                 >
                   Copy Group ID
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
                 {canEditGroup && (
                   <OrgPermissionCan
                     I={OrgPermissionGroupActions.Edit}
                     a={OrgPermissionSubjects.Groups}
                   >
                     {(isAllowed) => (
-                      <UnstableDropdownMenuItem
+                      <DropdownMenuItem
                         isDisabled={!isAllowed}
                         onClick={() => {
                           handlePopUpOpen("groupCreateUpdate", {
@@ -137,7 +137,7 @@ const Page = () => {
                         }}
                       >
                         Edit Group
-                      </UnstableDropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
                 )}
@@ -146,7 +146,7 @@ const Page = () => {
                   a={OrgPermissionSubjects.Groups}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       isDisabled={!isAllowed}
                       onClick={() => {
@@ -158,11 +158,11 @@ const Page = () => {
                       }}
                     >
                       {isLinkedGroup ? "Unlink Group" : "Delete Group"}
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </OrgPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <GroupDetailsSection

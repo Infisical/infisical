@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "@app/components/v3/generic/Badge";
 import { Button } from "@app/components/v3/generic/Button";
-import { UnstableInput } from "@app/components/v3/generic/Input";
+import { Input } from "@app/components/v3/generic/Input";
 import {
   Sheet,
   SheetContent,
@@ -115,7 +115,7 @@ export const DataExplorerRowEditor = ({
                     rows={4}
                   />
                 ) : (
-                  <UnstableInput
+                  <Input
                     value={value}
                     onChange={(e) =>
                       setFormValues((prev) => ({ ...prev, [col.name]: e.target.value }))

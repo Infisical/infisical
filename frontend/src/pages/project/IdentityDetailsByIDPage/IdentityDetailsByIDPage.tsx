@@ -15,22 +15,22 @@ import {
   Tooltip
 } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   OrgIcon,
-  SubOrgIcon,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger,
-  UnstablePageLoader
+  PageLoader,
+  SubOrgIcon
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -162,7 +162,7 @@ const Page = () => {
   };
 
   if (isMembershipDetailsLoading || (isProjectIdentity && isProjectIdentityPending)) {
-    return <UnstablePageLoader />;
+    return <PageLoader />;
   }
 
   const isOrgIdentity = !isProjectIdentity;
@@ -194,15 +194,15 @@ const Page = () => {
             description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
             title={identityMembershipDetails.identity.name}
           >
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Options
                   <EllipsisIcon />
                 </Button>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
-                <UnstableDropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                   onClick={() => {
                     navigator.clipboard.writeText(identityMembershipDetails.identity.id);
                     createNotification({
@@ -212,7 +212,7 @@ const Page = () => {
                   }}
                 >
                   Copy Machine Identity ID
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
                 <ProjectPermissionCan
                   I={ProjectPermissionIdentityActions.AssumePrivileges}
                   a={subject(ProjectPermissionSub.Identity, {
@@ -220,7 +220,7 @@ const Page = () => {
                   })}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       isDisabled={!isAllowed}
                       onClick={() => handlePopUpOpen("assumePrivileges")}
                     >
@@ -233,7 +233,7 @@ const Page = () => {
                           <InfoIcon className="text-muted" />
                         </div>
                       </Tooltip>
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
@@ -243,7 +243,7 @@ const Page = () => {
                   })}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       isDisabled={!isAllowed}
                       onClick={() =>
@@ -253,11 +253,11 @@ const Page = () => {
                       }
                     >
                       {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
@@ -274,20 +274,18 @@ const Page = () => {
                   refetchIdentity={() => refetchIdentity()}
                 />
               ) : (
-                <UnstableCard>
-                  <UnstableCardHeader>
-                    <UnstableCardTitle>Authentication</UnstableCardTitle>
-                    <UnstableCardDescription>
-                      Configure authentication methods
-                    </UnstableCardDescription>
-                  </UnstableCardHeader>
-                  <UnstableCardContent>
-                    <UnstableAlert variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Authentication</CardTitle>
+                    <CardDescription>Configure authentication methods</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Alert variant={isSubOrgIdentity ? "sub-org" : "org"}>
                       {isSubOrgIdentity ? <SubOrgIcon /> : <OrgIcon />}
-                      <UnstableAlertTitle>
+                      <AlertTitle>
                         Machine identity managed by {isSubOrgIdentity ? "sub-" : ""}organization
-                      </UnstableAlertTitle>
-                      <UnstableAlertDescription>
+                      </AlertTitle>
+                      <AlertDescription>
                         <p>
                           This machine identity&apos;s authentication methods are managed by your{" "}
                           {isSubOrgIdentity ? "sub-" : ""}organization
@@ -318,10 +316,10 @@ const Page = () => {
                           </OrgPermissionCan>
                           .
                         </p>
-                      </UnstableAlertDescription>
-                    </UnstableAlert>
-                  </UnstableCardContent>
-                </UnstableCard>
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
               )}
               <IdentityRoleDetailsSection
                 identityMembershipDetails={identityMembershipDetails}

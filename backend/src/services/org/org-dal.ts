@@ -816,7 +816,13 @@ export const orgDALFactory = (db: TDbClient) => {
     tx?: Knex;
   }): Promise<TMemberships | null> => {
     const list = await findEffectiveOrgMemberships(dto);
-    return list[0] ?? null;
+    const directMembership = list.find((membership) =>
+      dto.actorType === ActorType.USER
+        ? membership.actorUserId === dto.actorId
+        : membership.actorIdentityId === dto.actorId
+    );
+
+    return directMembership ?? list[0] ?? null;
   };
 
   const findMembershipWithScimFilter = async (

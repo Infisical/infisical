@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PermissionDeniedBanner } from "@app/components/permissions";
-import { ContentLoader, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -31,12 +32,76 @@ export const PoliciesPage = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
-  const { selectedTab } = useSearch({
+  const searchParams = useSearch({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies"
   });
 
-  const activeTab = (selectedTab as TabSections) || TabSections.Certificates;
+  const activeTab = (searchParams.selectedTab as TabSections) || TabSections.Certificates;
   const [certificateFilter, setCertificateFilter] = useState<{ search?: string }>({});
+
+  const dashboardFilters = useMemo(() => {
+    const filters: Array<{
+      id: string;
+      field: string;
+      operator: string;
+      value: string | string[];
+    }> = [];
+    if (searchParams.filterStatus) {
+      filters.push({
+        id: "dash-status",
+        field: "status",
+        operator: "in",
+        value: [searchParams.filterStatus]
+      });
+    }
+    if (searchParams.filterEnrollmentType) {
+      filters.push({
+        id: "dash-enrollment",
+        field: "enrollmentType",
+        operator: "in",
+        value: [searchParams.filterEnrollmentType]
+      });
+    }
+    if (searchParams.filterKeyAlgorithm) {
+      filters.push({
+        id: "dash-algorithm",
+        field: "keyAlgorithm",
+        operator: "is",
+        value: searchParams.filterKeyAlgorithm
+      });
+    }
+    if (searchParams.filterCaId) {
+      filters.push({
+        id: "dash-ca",
+        field: "caId",
+        operator: "in",
+        value: [searchParams.filterCaId]
+      });
+    }
+    if (searchParams.filterExpiresDays) {
+      const days = Number(searchParams.filterExpiresDays);
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + days);
+      filters.push({
+        id: "dash-expires",
+        field: "notAfter",
+        operator: "before",
+        value: futureDate.toISOString().split("T")[0]
+      });
+    }
+    if (searchParams.filterExpiresAfterDays) {
+      const days = Number(searchParams.filterExpiresAfterDays);
+      const afterDate = new Date();
+      afterDate.setDate(afterDate.getDate() + days);
+      filters.push({
+        id: "dash-expires-after",
+        field: "notAfter",
+        operator: "after",
+        value: afterDate.toISOString().split("T")[0]
+      });
+    }
+    return filters;
+  }, [searchParams]);
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
     setCertificateFilter({ search: certificateId });
@@ -60,7 +125,7 @@ export const PoliciesPage = () => {
   );
 
   if (!currentProject) {
-    return <ContentLoader />;
+    return <PageLoader />;
   }
 
   return (
@@ -77,7 +142,10 @@ export const PoliciesPage = () => {
         <div>
           {activeTab === TabSections.Certificates &&
             (canReadCertificates ? (
-              <CertificatesTab externalFilter={certificateFilter} />
+              <CertificatesTab
+                externalFilter={certificateFilter}
+                dashboardFilters={dashboardFilters}
+              />
             ) : (
               <PermissionDeniedBanner />
             ))}

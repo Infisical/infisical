@@ -56,7 +56,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { credentials, policyRules, projectId, account, sessionStarted } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
@@ -130,7 +130,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { session, projectId } = await server.services.pamSession.updateLogsById(
         {
@@ -177,7 +177,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { session, projectId, alreadyEnded } = await server.services.pamSession.endSessionById(
         req.params.sessionId,
@@ -384,7 +384,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         200: z.object({ ok: z.literal(true) })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const EventBatchSchema = z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]));
       try {

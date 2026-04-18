@@ -13,9 +13,9 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
-  Switch,
-  UnstableIconButton,
-  UnstableInput
+  IconButton,
+  Input,
+  Switch
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -176,7 +176,7 @@ export const SecretMetadataForm = ({
                   name={`metadata.${index}.key`}
                   render={({ field: inputField, fieldState: { error } }) => (
                     <>
-                      <UnstableInput
+                      <Input
                         {...inputField}
                         placeholder="Enter key"
                         className="h-8"
@@ -197,7 +197,7 @@ export const SecretMetadataForm = ({
                   name={`metadata.${index}.value`}
                   render={({ field: inputField, fieldState: { error } }) => (
                     <>
-                      <UnstableInput
+                      <Input
                         {...inputField}
                         placeholder="Enter value"
                         className="h-8"
@@ -228,7 +228,7 @@ export const SecretMetadataForm = ({
               />
             </Field>
 
-            <UnstableIconButton
+            <IconButton
               variant="ghost"
               size="xs"
               type="button"
@@ -240,7 +240,7 @@ export const SecretMetadataForm = ({
               isDisabled={!canEditSecret}
             >
               <TrashIcon className="size-4" />
-            </UnstableIconButton>
+            </IconButton>
           </div>
         ))}
       </div>

@@ -3,14 +3,14 @@ import React, { useMemo } from "react";
 import { AlertTriangleIcon, ImportIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
 
 import {
-  UnstableAlert,
-  UnstableAlertTitle,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Alert,
+  AlertTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
@@ -228,30 +228,28 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
 
   return (
     <div className="mb-4 w-full">
-      <UnstableAlert className="mb-4" variant="warning">
+      <Alert className="mb-4" variant="warning">
         <AlertTriangleIcon className="size-4" />
-        <UnstableAlertTitle>
-          The following resources will be affected by this change
-        </UnstableAlertTitle>
-      </UnstableAlert>
+        <AlertTitle>The following resources will be affected by this change</AlertTitle>
+      </Alert>
 
-      <UnstableTable containerClassName="max-h-64 overflow-y-auto">
-        <UnstableTableHeader className="sticky -top-px z-10 bg-container [&_tr]:border-b-0">
-          <UnstableTableRow>
-            <UnstableTableHead className="w-1/4 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+      <Table containerClassName="max-h-64 overflow-y-auto">
+        <TableHeader className="sticky -top-px z-10 bg-container [&_tr]:border-b-0">
+          <TableRow>
+            <TableHead className="w-1/4 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Resource
-            </UnstableTableHead>
-            <UnstableTableHead className="w-1/3 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+            </TableHead>
+            <TableHead className="w-1/3 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Environment
-            </UnstableTableHead>
-            <UnstableTableHead className="w-1/3 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+            </TableHead>
+            <TableHead className="w-1/3 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Path
-            </UnstableTableHead>
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {flattenedItems.map((item) => (
-            <UnstableTableRow
+            <TableRow
               key={item.id}
               onClick={() => handlePathClick(item)}
               title={
@@ -260,17 +258,17 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
                   : `Navigate to ${item.path}`
               }
             >
-              <UnstableTableCell className="border-r" isTruncatable>
+              <TableCell className="border-r" isTruncatable>
                 {getResourceLabel(item)}
-              </UnstableTableCell>
-              <UnstableTableCell isTruncatable className="border-r">
+              </TableCell>
+              <TableCell isTruncatable className="border-r">
                 {item.environment.name}
-              </UnstableTableCell>
-              <UnstableTableCell isTruncatable>{truncatePath(item.path)}</UnstableTableCell>
-            </UnstableTableRow>
+              </TableCell>
+              <TableCell isTruncatable>{truncatePath(item.path)}</TableCell>
+            </TableRow>
           ))}
-        </UnstableTableBody>
-      </UnstableTable>
+        </TableBody>
+      </Table>
     </div>
   );
 };

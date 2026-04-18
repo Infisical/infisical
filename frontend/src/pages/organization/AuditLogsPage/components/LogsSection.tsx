@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
-  DocumentationLinkBadge,
-  UnstableAlert,
-  UnstableAlertDescription
+  Alert,
+  AlertDescription,
+  ButtonGroup,
+  DateRangeFilter,
+  type DateRangeFilterResult,
+  DateRangeFilterType,
+  DateRangeQuickPresets,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
@@ -27,15 +31,9 @@ import {
   AuditSearchFilter,
   logFilterToAppliedFilters
 } from "./AuditSearchFilter";
-import { LogsDateFilter } from "./LogsDateFilter";
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
-import {
-  AuditLogDateFilterType,
-  Presets,
-  TAuditLogDateFilterFormData,
-  TAuditLogFilterFormData
-} from "./types";
+import { Presets, TAuditLogFilterFormData } from "./types";
 
 type Props = {
   presets?: Presets;
@@ -70,8 +68,6 @@ const LogsSectionComponent = ({
     actor: presets?.actorId,
     eventMetadata: presets?.eventMetadata
   });
-  const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
-
   const [searchFilters, setSearchFilters] = useState<AppliedFilter[]>(() =>
     logFilterToAppliedFilters({
       eventType: presets?.eventType,
@@ -81,20 +77,23 @@ const LogsSectionComponent = ({
 
   const searchDerived = useMemo(() => appliedFiltersToLogFilter(searchFilters), [searchFilters]);
 
-  const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>(
-    presets?.endDate || presets?.startDate
-      ? {
-          type: AuditLogDateFilterType.Absolute,
-          startDate: presets?.startDate || new Date(Number(new Date()) - ms("1h")),
-          endDate: presets?.endDate || new Date()
-        }
-      : {
-          startDate: new Date(Number(new Date()) - ms("1h")),
-          endDate: new Date(),
-          type: AuditLogDateFilterType.Relative,
-          relativeModeValue: "1h"
-        }
-  );
+  const hasPresetDates = Boolean(presets?.startDate || presets?.endDate);
+  const defaultCustomValue = hasPresetDates
+    ? {
+        type: DateRangeFilterType.Fixed as const,
+        startDate: presets?.startDate ?? new Date(Date.now() - 60 * 60 * 1000),
+        endDate: presets?.endDate ?? new Date()
+      }
+    : undefined;
+  const [activePreset, setActivePreset] = useState<string>(hasPresetDates ? "" : "1h");
+  const [dateRange, setDateRange] = useState<DateRangeFilterResult>({
+    startDate: presets?.startDate ?? new Date(Date.now() - 60 * 60 * 1000),
+    endDate: presets?.endDate ?? new Date(),
+    isUtc: false
+  });
+
+  const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
+  const dateRangeAccent = project ? "primary" : "secondary";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -106,8 +105,8 @@ const LogsSectionComponent = ({
     return (
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         {showClickHouseWarning && (
-          <UnstableAlert variant="warning" className="mb-4">
-            <UnstableAlertDescription>
+          <Alert variant="warning" className="mb-4">
+            <AlertDescription>
               <p>
                 Your audit log volume is growing. To keep searches fast and reduce database load, we
                 recommend streaming logs to an{" "}
@@ -130,8 +129,8 @@ const LogsSectionComponent = ({
                 </a>
                 .
               </p>
-            </UnstableAlertDescription>
-          </UnstableAlert>
+            </AlertDescription>
+          </Alert>
         )}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
@@ -142,12 +141,25 @@ const LogsSectionComponent = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             {showFilters && (
-              <LogsDateFilter
-                filter={dateFilter}
-                setFilter={setDateFilter}
-                timezone={timezone}
-                setTimezone={setTimezone}
-              />
+              <ButtonGroup>
+                <DateRangeQuickPresets
+                  value={activePreset}
+                  onChange={(preset, result) => {
+                    setActivePreset(preset);
+                    setDateRange(result);
+                  }}
+                  accent={dateRangeAccent}
+                />
+                <DateRangeFilter
+                  defaultValue={defaultCustomValue}
+                  isActive={!activePreset}
+                  onChange={(result) => {
+                    setActivePreset("");
+                    setDateRange(result);
+                  }}
+                  accent={dateRangeAccent}
+                />
+              </ButtonGroup>
             )}
           </div>
         </div>
@@ -180,8 +192,8 @@ const LogsSectionComponent = ({
               environment: searchDerived.environment || logFilter?.environment?.slug,
               secretPath: searchDerived.secretPath,
               secretKey: searchDerived.secretKey,
-              startDate: dateFilter?.startDate,
-              endDate: dateFilter?.endDate,
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
               limit: 15
             }}
             timezone={timezone}
@@ -200,8 +212,8 @@ const LogsSectionComponent = ({
   return (
     <div className="space-y-2">
       {showClickHouseWarning && (
-        <UnstableAlert variant="warning">
-          <UnstableAlertDescription>
+        <Alert variant="warning">
+          <AlertDescription>
             <p>
               Your audit log volume is growing. To keep searches fast and reduce database load, we
               recommend streaming logs to an{" "}
@@ -224,17 +236,30 @@ const LogsSectionComponent = ({
               </a>
               .
             </p>
-          </UnstableAlertDescription>
-        </UnstableAlert>
+          </AlertDescription>
+        </Alert>
       )}
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {showFilters && (
-          <LogsDateFilter
-            filter={dateFilter}
-            setFilter={setDateFilter}
-            timezone={timezone}
-            setTimezone={setTimezone}
-          />
+          <ButtonGroup>
+            <DateRangeQuickPresets
+              value={activePreset}
+              onChange={(preset, result) => {
+                setActivePreset(preset);
+                setDateRange(result);
+              }}
+              accent={dateRangeAccent}
+            />
+            <DateRangeFilter
+              defaultValue={defaultCustomValue}
+              isActive={!activePreset}
+              onChange={(result) => {
+                setActivePreset("");
+                setDateRange(result);
+              }}
+              accent={dateRangeAccent}
+            />
+          </ButtonGroup>
         )}
         {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
@@ -251,8 +276,8 @@ const LogsSectionComponent = ({
           limit: 15,
           eventType: logFilter?.eventType,
           userAgentType: logFilter?.userAgentType,
-          startDate: dateFilter?.startDate,
-          endDate: dateFilter?.endDate,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
           environment: logFilter?.environment?.slug,
           actor: logFilter?.actor
         }}

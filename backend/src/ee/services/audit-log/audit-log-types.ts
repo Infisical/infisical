@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -88,7 +89,8 @@ export type TCreateAuditLogDTO = {
     | AcmeProfileActor
     | AcmeAccountActor
     | EstAccountActor
-    | ScepAccountActor;
+    | ScepAccountActor
+    | GatewayActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -386,6 +388,9 @@ export enum EventType {
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
   DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_CERTIFICATE_INVENTORY_VIEW = "create-certificate-inventory-view",
+  UPDATE_CERTIFICATE_INVENTORY_VIEW = "update-certificate-inventory-view",
+  DELETE_CERTIFICATE_INVENTORY_VIEW = "delete-certificate-inventory-view",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -596,6 +601,12 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
+
   PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
@@ -736,16 +747,26 @@ export enum EventType {
   PKI_SIGNER_SIGN = "pki-signer-sign",
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
+  SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",
 
   // Secret Validation Rules
   SECRET_VALIDATION_RULE_CREATE = "secret-validation-rule-create",
   SECRET_VALIDATION_RULE_UPDATE = "secret-validation-rule-update",
   SECRET_VALIDATION_RULE_DELETE = "secret-validation-rule-delete",
 
+  // External Migration
+  EXTERNAL_MIGRATION_CREATE = "external-migration-create",
+  EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
+  EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
-  DELETE_EMAIL_DOMAIN = "delete-email-domain"
+  DELETE_EMAIL_DOMAIN = "delete-email-domain",
+
+  // Gateway Enrollment Tokens
+  GATEWAY_CREATE = "gateway-create",
+  GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
+  GATEWAY_ENROLL = "gateway-enroll"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -760,7 +781,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.ACME_PROFILE]: "profileId",
   [ActorType.ACME_ACCOUNT]: "accountId",
   [ActorType.EST_ACCOUNT]: "profileId",
-  [ActorType.SCEP_ACCOUNT]: "profileId"
+  [ActorType.SCEP_ACCOUNT]: "profileId",
+  [ActorType.GATEWAY]: "gatewayId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -790,7 +812,7 @@ interface IdentityActorMetadata {
   identityId: string;
   name: string;
   permission?: Record<string, unknown>;
-
+  authMethod?: string;
   aws?: TAWSAuthDetails;
   kubernetes?: TKubernetesAuthDetails;
   oidc?: TOidcAuthDetails;
@@ -823,6 +845,10 @@ interface ScepAccountActorMetadata {
 }
 
 interface UnknownUserActorMetadata {}
+
+interface GatewayActorMetadata {
+  gatewayId: string;
+}
 
 export interface UserActor {
   type: ActorType.USER;
@@ -877,6 +903,12 @@ export interface ScepAccountActor {
   type: ActorType.SCEP_ACCOUNT;
   metadata: ScepAccountActorMetadata;
 }
+
+export interface GatewayActor {
+  type: ActorType.GATEWAY;
+  metadata: GatewayActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -887,7 +919,8 @@ export type Actor =
   | AcmeProfileActor
   | AcmeAccountActor
   | EstAccountActor
-  | ScepAccountActor;
+  | ScepAccountActor
+  | GatewayActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -3013,6 +3046,36 @@ interface DeletePkiCollectionItem {
   };
 }
 
+interface CreateCertificateInventoryView {
+  type: EventType.CREATE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
+  };
+}
+
+interface UpdateCertificateInventoryView {
+  type: EventType.UPDATE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name?: string;
+    filters?: Record<string, unknown>;
+    columns?: string[];
+    isShared?: boolean;
+  };
+}
+
+interface DeleteCertificateInventoryView {
+  type: EventType.DELETE_CERTIFICATE_INVENTORY_VIEW;
+  metadata: {
+    viewId: string;
+    name: string;
+  };
+}
+
 interface CreatePkiSubscriber {
   type: EventType.CREATE_PKI_SUBSCRIBER;
   metadata: {
@@ -4653,6 +4716,45 @@ interface DashboardGetSecretVersionValueEvent {
   };
 }
 
+interface ViewSecretManagementInsightsCalendarEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR;
+  metadata: {
+    projectId: string;
+    month: number;
+    year: number;
+  };
+}
+
+interface ViewSecretManagementInsightsAccessVolumeEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface ViewSecretManagementInsightsAccessLocationsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS;
+  metadata: {
+    projectId: string;
+    days: number;
+  };
+}
+
+interface ViewInsightsAuthMethodsEvent {
+  type: EventType.VIEW_INSIGHTS_AUTH_METHODS;
+  metadata: {
+    projectId: string;
+    days: number;
+  };
+}
+
+interface ViewSecretManagementInsightsSummaryEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY;
+  metadata: {
+    projectId: string;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -5805,7 +5907,7 @@ interface ScepEnrollmentEvent {
     profileSlug: string;
     transactionId: string;
     csrSubject: string;
-    challengeType: "static";
+    challengeType: ScepChallengeType;
     status: "success" | "pending" | "failure";
     failReason?: string;
     issuedCertificateId?: string;
@@ -5827,6 +5929,15 @@ interface ScepRenewalEvent {
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
     clientIp: string;
+  };
+}
+
+interface ScepDynamicChallengeGeneratedEvent {
+  type: EventType.SCEP_DYNAMIC_CHALLENGE_GENERATED;
+  metadata: {
+    profileId: string;
+    profileSlug: string;
+    expiresAt: string;
   };
 }
 
@@ -5861,6 +5972,31 @@ interface SecretValidationRuleDeleteEvent {
   };
 }
 
+interface ExternalMigrationCreateEvent {
+  type: EventType.EXTERNAL_MIGRATION_CREATE;
+  metadata: {
+    configId: string;
+    provider: string;
+    connectionId: string | null;
+  };
+}
+
+interface ExternalMigrationUpdateEvent {
+  type: EventType.EXTERNAL_MIGRATION_UPDATE;
+  metadata: {
+    configId: string;
+    provider: string;
+    connectionId: string | null;
+  };
+}
+
+interface ExternalMigrationDeleteEvent {
+  type: EventType.EXTERNAL_MIGRATION_DELETE;
+  metadata: {
+    configId: string;
+    provider: string;
+  };
+}
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -5882,6 +6018,30 @@ interface DeleteEmailDomainEvent {
   metadata: {
     emailDomainId: string;
     domain: string;
+  };
+}
+
+interface GatewayCreateEvent {
+  type: EventType.GATEWAY_CREATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
+interface GatewayEnrollmentTokenCreateEvent {
+  type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface GatewayEnrollEvent {
+  type: EventType.GATEWAY_ENROLL;
+  metadata: {
+    gatewayId: string;
+    name: string;
   };
 }
 
@@ -6095,6 +6255,9 @@ export type Event =
   | GetPkiCollectionItems
   | AddPkiCollectionItem
   | DeletePkiCollectionItem
+  | CreateCertificateInventoryView
+  | UpdateCertificateInventoryView
+  | DeleteCertificateInventoryView
   | CreatePkiSubscriber
   | UpdatePkiSubscriber
   | DeletePkiSubscriber
@@ -6287,6 +6450,11 @@ export type Event =
   | DashboardListSecretsEvent
   | DashboardGetSecretValueEvent
   | DashboardGetSecretVersionValueEvent
+  | ViewSecretManagementInsightsCalendarEvent
+  | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsAccessLocationsEvent
+  | ViewInsightsAuthMethodsEvent
+  | ViewSecretManagementInsightsSummaryEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -6413,9 +6581,16 @@ export type Event =
   | CertificateCleanupCompletedEvent
   | ScepEnrollmentEvent
   | ScepRenewalEvent
+  | ScepDynamicChallengeGeneratedEvent
   | SecretValidationRuleCreateEvent
   | SecretValidationRuleUpdateEvent
   | SecretValidationRuleDeleteEvent
+  | ExternalMigrationCreateEvent
+  | ExternalMigrationUpdateEvent
+  | ExternalMigrationDeleteEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
-  | DeleteEmailDomainEvent;
+  | DeleteEmailDomainEvent
+  | GatewayCreateEvent
+  | GatewayEnrollmentTokenCreateEvent
+  | GatewayEnrollEvent;

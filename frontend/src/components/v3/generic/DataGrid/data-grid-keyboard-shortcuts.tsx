@@ -10,8 +10,8 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3/generic/Dialog";
-import { UnstableInput as Input } from "@app/components/v3/generic/Input";
-import { UnstableSeparator as Separator } from "@app/components/v3/generic/Separator";
+import { Input } from "@app/components/v3/generic/Input";
+import { Separator } from "@app/components/v3/generic/Separator";
 
 import { Kbd, KbdGroup } from "./ui/kbd";
 

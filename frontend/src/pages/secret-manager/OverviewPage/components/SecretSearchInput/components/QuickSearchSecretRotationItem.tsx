@@ -1,13 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRightIcon, RefreshCwIcon } from "lucide-react";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  UnstableTableCell,
-  UnstableTableRow
-} from "@app/components/v3";
+import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
 type Props = {
@@ -35,24 +29,24 @@ export const QuickSearchSecretRotationItem = ({ secretRotation, envSlug, onClose
   };
 
   return (
-    <UnstableTableRow className="group cursor-pointer" onClick={handleNavigate}>
-      <UnstableTableCell>
+    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+      <TableCell>
         <RefreshCwIcon className="text-secret-rotation" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <span className="truncate font-medium">{secretRotation.name}</span>
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>
           <TooltipTrigger asChild>
             <span className="truncate text-foreground">{secretRotation.folder.path}</span>
           </TooltipTrigger>
           <TooltipContent className="max-w-lg">{secretRotation.folder.path}</TooltipContent>
         </Tooltip>
-      </UnstableTableCell>
-      <UnstableTableCell className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <ChevronRightIcon className="ml-auto size-4 text-muted" />
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

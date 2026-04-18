@@ -8,20 +8,20 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  OrgIcon,
-  UnstableAlert,
-  UnstableAlertDescription,
-  UnstableAlertTitle,
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableDropdownMenu,
-  UnstableDropdownMenuContent,
-  UnstableDropdownMenuItem,
-  UnstableDropdownMenuTrigger
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  OrgIcon
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -105,15 +105,15 @@ const Page = () => {
             description={`Configure and manage${isScopeIdentity ? " machine identity and " : " "}${isSubOrganization ? "sub-" : ""}organization access control`}
             title={data.identity.name}
           >
-            <UnstableDropdownMenu>
-              <UnstableDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Options
                   <EllipsisIcon />
                 </Button>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
-                <UnstableDropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                   onClick={() => {
                     navigator.clipboard.writeText(data.identity.id);
                     createNotification({
@@ -123,13 +123,13 @@ const Page = () => {
                   }}
                 >
                   Copy Machine Identity ID
-                </UnstableDropdownMenuItem>
+                </DropdownMenuItem>
                 <OrgPermissionCan
                   I={OrgPermissionActions.Delete}
                   a={OrgPermissionSubjects.Identity}
                 >
                   {(isAllowed) => (
-                    <UnstableDropdownMenuItem
+                    <DropdownMenuItem
                       variant="danger"
                       isDisabled={!isAllowed}
                       onClick={() =>
@@ -140,11 +140,11 @@ const Page = () => {
                       }
                     >
                       {isScopeIdentity ? "Delete Machine Identity" : "Remove From Sub-Organization"}
-                    </UnstableDropdownMenuItem>
+                    </DropdownMenuItem>
                   )}
                 </OrgPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <IdentityDetailsSection
@@ -154,20 +154,16 @@ const Page = () => {
             />
             <div className="flex flex-1 flex-col gap-y-5">
               {isAuthHidden ? (
-                <UnstableCard>
-                  <UnstableCardHeader>
-                    <UnstableCardTitle>Authentication</UnstableCardTitle>
-                    <UnstableCardDescription>
-                      Configure authentication methods
-                    </UnstableCardDescription>
-                  </UnstableCardHeader>
-                  <UnstableCardContent>
-                    <UnstableAlert variant="org">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Authentication</CardTitle>
+                    <CardDescription>Configure authentication methods</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Alert variant="org">
                       <OrgIcon />
-                      <UnstableAlertTitle>
-                        Machine identity managed by organization
-                      </UnstableAlertTitle>
-                      <UnstableAlertDescription>
+                      <AlertTitle>Machine identity managed by organization</AlertTitle>
+                      <AlertDescription>
                         <p>
                           This machine identity&apos;s authentication methods are managed by your{" "}
                           organization
@@ -197,10 +193,10 @@ const Page = () => {
                           </OrgPermissionCan>
                           .
                         </p>
-                      </UnstableAlertDescription>
-                    </UnstableAlert>
-                  </UnstableCardContent>
-                </UnstableCard>
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
               ) : (
                 <IdentityAuthenticationSection
                   identityId={identityId}

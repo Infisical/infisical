@@ -4,12 +4,12 @@ import { CheckIcon, ChevronRightIcon, CopyIcon, KeyIcon, SearchIcon } from "luci
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
+  IconButton,
+  TableCell,
+  TableRow,
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
-  UnstableIconButton,
-  UnstableTableCell,
-  UnstableTableRow
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -87,22 +87,22 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
     );
 
   return (
-    <UnstableTableRow className="group cursor-pointer" onClick={handleNavigate}>
-      <UnstableTableCell>
+    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+      <TableCell>
         <KeyIcon className="text-secret" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <span className="truncate font-medium">{secret.key}</span>
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>
           <TooltipTrigger asChild>
             <span className="truncate text-foreground">{secret.path}</span>
           </TooltipTrigger>
           <TooltipContent className="max-w-lg">{secret.path}</TooltipContent>
         </Tooltip>
-      </UnstableTableCell>
-      <UnstableTableCell className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
           {tagMatch && (
             <Tooltip>
@@ -128,7 +128,7 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <UnstableIconButton
+              <IconButton
                 variant="ghost"
                 className="mr-2"
                 size="xs"
@@ -140,7 +140,7 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
                 }}
               >
                 {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
-              </UnstableIconButton>
+              </IconButton>
             </TooltipTrigger>
             <TooltipContent>
               {secret.secretValueHidden
@@ -150,7 +150,7 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
           </Tooltip>
           <ChevronRightIcon className="size-4 text-muted" />
         </div>
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

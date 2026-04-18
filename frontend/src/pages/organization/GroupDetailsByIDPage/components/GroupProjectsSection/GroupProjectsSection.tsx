@@ -5,12 +5,12 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useDeleteGroupFromWorkspace as useRemoveProjectFromGroup } from "@app/hooks/api";
@@ -49,11 +49,11 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
 
   return (
     <>
-      <UnstableCard>
-        <UnstableCardHeader>
-          <UnstableCardTitle>Projects</UnstableCardTitle>
-          <UnstableCardDescription>Manage group project memberships</UnstableCardDescription>
-          <UnstableCardAction>
+      <Card>
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription>Manage group project memberships</CardDescription>
+          <CardAction>
             {!hideAddToProject && (
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
@@ -74,17 +74,17 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
                 )}
               </OrgPermissionCan>
             )}
-          </UnstableCardAction>
-        </UnstableCardHeader>
-        <UnstableCardContent>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <GroupProjectsTable
             groupId={groupId}
             groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
             hideAddToProject={hideAddToProject}
           />
-        </UnstableCardContent>
-      </UnstableCard>
+        </CardContent>
+      </Card>
       <AddGroupProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeProjectFromGroup.isOpen}

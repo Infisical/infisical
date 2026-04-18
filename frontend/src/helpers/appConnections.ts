@@ -57,6 +57,7 @@ import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-c
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -159,6 +160,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.AzureEntraId]: { name: "Azure Entra ID", image: "Microsoft Azure.png" },
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
+  [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
   [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
 };
@@ -202,6 +204,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case DopplerConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };

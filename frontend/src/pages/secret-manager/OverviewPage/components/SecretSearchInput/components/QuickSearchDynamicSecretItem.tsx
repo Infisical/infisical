@@ -1,13 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRightIcon, FingerprintIcon } from "lucide-react";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  UnstableTableCell,
-  UnstableTableRow
-} from "@app/components/v3";
+import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 type Props = {
@@ -35,24 +29,24 @@ export const QuickSearchDynamicSecretItem = ({ dynamicSecret, envSlug, onClose }
   };
 
   return (
-    <UnstableTableRow className="group cursor-pointer" onClick={handleNavigate}>
-      <UnstableTableCell>
+    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+      <TableCell>
         <FingerprintIcon className="text-dynamic-secret" />
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <span className="truncate font-medium">{dynamicSecret.name}</span>
-      </UnstableTableCell>
-      <UnstableTableCell isTruncatable>
+      </TableCell>
+      <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>
           <TooltipTrigger asChild>
             <span className="truncate text-foreground">{dynamicSecret.path}</span>
           </TooltipTrigger>
           <TooltipContent className="max-w-lg">{dynamicSecret.path}</TooltipContent>
         </Tooltip>
-      </UnstableTableCell>
-      <UnstableTableCell className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <ChevronRightIcon className="ml-auto size-4 text-muted" />
-      </UnstableTableCell>
-    </UnstableTableRow>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -4,14 +4,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Tooltip } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
-import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration";
+import { useGetExternalMigrationConfigs } from "@app/hooks/api/migration";
+import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 
 type Props = {
   onClick: () => void;
 };
 
 export const LoadFromVaultBanner = ({ onClick }: Props) => {
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const { data: vaultConfigs = [] } = useGetExternalMigrationConfigs(
+    ExternalMigrationProviders.Vault
+  );
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const { hasOrgRole } = useOrgPermission();

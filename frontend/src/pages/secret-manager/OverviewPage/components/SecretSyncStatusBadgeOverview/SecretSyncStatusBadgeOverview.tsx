@@ -8,12 +8,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
@@ -130,34 +130,32 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
       </PopoverTrigger>
       <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg">
         <div className="mb-3 text-xs font-medium">{popoverTitle}</div>
-        <UnstableTable containerClassName="max-h-[300px] overflow-y-auto">
-          <UnstableTableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-            <UnstableTableRow>
-              <UnstableTableHead className="w-[15%] shadow-[inset_0_-1px_0_var(--color-border)]" />
-              <UnstableTableHead className="w-[85%] shadow-[inset_0_-1px_0_var(--color-border)]">
+        <Table containerClassName="max-h-[300px] overflow-y-auto">
+          <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+            <TableRow>
+              <TableHead className="w-[15%] shadow-[inset_0_-1px_0_var(--color-border)]" />
+              <TableHead className="w-[85%] shadow-[inset_0_-1px_0_var(--color-border)]">
                 Name
-              </UnstableTableHead>
-              <UnstableTableHead className="shadow-[inset_0_-1px_0_var(--color-border)]">
-                Status
-              </UnstableTableHead>
-            </UnstableTableRow>
-          </UnstableTableHeader>
-          <UnstableTableBody>
+              </TableHead>
+              <TableHead className="shadow-[inset_0_-1px_0_var(--color-border)]">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredSyncs.map((sync) => (
-              <UnstableTableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
-                <UnstableTableCell>
+              <TableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
+                <TableCell>
                   <img
                     alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
                     src={`/images/integrations/${SECRET_SYNC_MAP[sync.destination].image}`}
                     className="h-5 w-5"
                   />
-                </UnstableTableCell>
-                <UnstableTableCell className="max-w-0 min-w-32!">
+                </TableCell>
+                <TableCell className="max-w-0 min-w-32!">
                   <div className="flex items-center gap-2">
                     <span className="truncate">{sync.name}</span>
                   </div>
-                </UnstableTableCell>
-                <UnstableTableCell>
+                </TableCell>
+                <TableCell>
                   {sync.syncStatus && (
                     <SecretSyncStatusBadge
                       status={sync.syncStatus}
@@ -165,11 +163,11 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
                       lastSyncMessage={sync.lastSyncMessage}
                     />
                   )}
-                </UnstableTableCell>
-              </UnstableTableRow>
+                </TableCell>
+              </TableRow>
             ))}
-          </UnstableTableBody>
-        </UnstableTable>
+          </TableBody>
+        </Table>
       </PopoverContent>
     </Popover>
   );

@@ -1,10 +1,18 @@
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ArrowRightIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -21,15 +29,19 @@ import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
+import type { FilterRule } from "./inventory-types";
 
 type CertificatesSectionProps = {
   externalFilter?: {
-    certificateId?: string;
     search?: string;
   };
+  dashboardFilters?: FilterRule[];
 };
 
-export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps) => {
+export const CertificatesSection = ({
+  externalFilter,
+  dashboardFilters
+}: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
@@ -98,9 +110,9 @@ export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps
           text: "PKCS12 certificate downloaded successfully",
           type: "success"
         });
-      } catch (error: any) {
+      } catch (error) {
         createNotification({
-          text: error?.message || "Failed to download PKCS12 certificate",
+          text: error instanceof Error ? error.message : "Failed to download PKCS12 certificate",
           type: "error"
         });
       }
@@ -108,58 +120,67 @@ export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
-        <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-x-2">
+          Certificates
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
-        </div>
-        <div className="flex gap-2">
+        </CardTitle>
+        <CardDescription>
+          View, filter, and manage all certificates across your project.
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionCertificateActions.Import}
             a={ProjectPermissionSub.Certificates}
           >
             {(isAllowed) => (
               <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
+                variant="outline"
                 onClick={() => handlePopUpOpen("certificateImport")}
-                isDisabled={!isAllowed}
+                disabled={!isAllowed}
               >
+                <ArrowRightIcon className="mr-1.5 size-4" />
                 Import
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
-      </div>
-      <CertificatesTable handlePopUpOpen={handlePopUpOpen} externalFilter={externalFilter} />
-      <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateExportModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        onFormatSelected={handleCertificateExport}
-      />
-      <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateManagePkiSyncsModal
-        popUp={popUp.managePkiSyncs}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-      <DeleteActionModal
-        isOpen={popUp.deleteCertificate.isOpen}
-        title={`Are you sure you want to remove the certificate ${
-          (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-        } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
-          )
-        }
-      />
-    </div>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <CertificatesTable
+          handlePopUpOpen={handlePopUpOpen}
+          externalFilter={externalFilter}
+          dashboardFilters={dashboardFilters}
+        />
+        <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateExportModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          onFormatSelected={handleCertificateExport}
+        />
+        <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateManagePkiSyncsModal
+          popUp={popUp.managePkiSyncs}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+        <DeleteActionModal
+          isOpen={popUp.deleteCertificate.isOpen}
+          title={`Are you sure you want to remove the certificate ${
+            (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
+          } from the project?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          deleteKey="confirm"
+          onDeleteApproved={() =>
+            onRemoveCertificateSubmit(
+              (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
+            )
+          }
+        />
+      </CardContent>
+    </Card>
   );
 };
