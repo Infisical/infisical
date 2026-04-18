@@ -67,6 +67,7 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { ServiceNowConnectionMethod } from "@app/hooks/api/appConnections/types/service-now-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
@@ -160,7 +161,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
-  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.ServiceNow]: { name: "ServiceNow", image: "ServiceNow.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -265,6 +267,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);

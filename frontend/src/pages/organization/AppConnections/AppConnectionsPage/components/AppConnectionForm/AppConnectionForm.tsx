@@ -51,6 +51,7 @@ import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
 import { NetScalerConnectionForm } from "./NetScalerConnectionForm";
+import { ServiceNowConnectionForm } from "./ServiceNowConnectionForm";
 import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
@@ -276,6 +277,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -487,6 +490,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

@@ -2790,6 +2790,11 @@ export const AppConnections = {
     VENAFI: {
       apiKey: "The API key used to authenticate with Venafi TLS Protect Cloud.",
       region: "The region of your Venafi TLS Protect Cloud instance (e.g., 'us', 'eu')."
+    },
+    SERVICE_NOW: {
+      instanceUrl: "The ServiceNow instance URL (e.g., 'https://your-instance.service-now.com').",
+      username: "The username for ServiceNow authentication.",
+      password: "The password for ServiceNow authentication."
     }
   }
 };

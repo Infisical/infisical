@@ -276,6 +276,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./service-now";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -387,6 +393,7 @@ export type TAppConnection = { id: string } & (
   | TExternalInfisicalConnection
   | TNetScalerConnection
   | TAnthropicConnection
+  | TServiceNowConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -454,6 +461,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
+  | TServiceNowConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -549,7 +557,8 @@ export type TAppConnectionConfig =
   | TVenafiConnectionConfig
   | TExternalInfisicalConnectionConfig
   | TNetScalerConnectionConfig
-  | TAnthropicConnectionConfig;
+  | TAnthropicConnectionConfig
+  | TServiceNowConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -607,7 +616,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
-  | TValidateAnthropicConnectionCredentialsSchema;
+  | TValidateAnthropicConnectionCredentialsSchema
+  | TValidateServiceNowConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
