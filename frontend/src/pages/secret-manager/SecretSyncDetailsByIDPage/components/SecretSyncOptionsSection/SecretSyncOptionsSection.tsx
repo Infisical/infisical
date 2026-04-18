@@ -13,6 +13,7 @@ import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
@@ -47,6 +48,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Flyio:
       AdditionalSyncOptionsComponent = <FlyioSyncOptionsSection secretSync={secretSync} />;
       break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -80,6 +84,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.CircleCI:
     case SecretSync.AzureEntraIdScim:
     case SecretSync.ExternalInfisical:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

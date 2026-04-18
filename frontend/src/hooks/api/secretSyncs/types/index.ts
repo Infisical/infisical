@@ -15,6 +15,7 @@ import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
+import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TExternalInfisicalSync } from "./external-infisical-sync";
@@ -86,7 +87,8 @@ export type TSecretSync =
   | TOctopusDeploySync
   | TCircleCISync
   | TAzureEntraIdScimSync
-  | TExternalInfisicalSync;
+  | TExternalInfisicalSync
+  | TCoolifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

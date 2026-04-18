@@ -81,6 +81,8 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
@@ -219,7 +221,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
-  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema
+  [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -659,11 +662,11 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-              credentials: connectionCredentials,
-              orgId: actor.orgId,
-              kmsService,
-              projectId: appConnection.projectId
-            })
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId: appConnection.projectId
+          })
           : undefined;
 
         return appConnectionDAL.updateById(
@@ -1097,6 +1100,7 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

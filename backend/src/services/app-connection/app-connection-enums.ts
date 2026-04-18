@@ -54,7 +54,8 @@ export enum AppConnection {
   Venafi = "venafi",
   ExternalInfisical = "external-infisical",
   NetScaler = "netscaler",
-  Anthropic = "anthropic"
+  Anthropic = "anthropic",
+  Coolify = "coolify"
 }
 
 export enum AWSRegion {

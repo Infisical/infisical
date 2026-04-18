@@ -52,6 +52,7 @@ import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import { COOLIFY_SYNC_LIST_OPTION, CoolifySyncFns } from "./coolify";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
   DigitalOceanAppPlatformSyncFns
@@ -117,7 +118,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
   [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
   [SecretSync.AzureEntraIdScim]: AZURE_ENTRA_ID_SCIM_SYNC_LIST_OPTION,
-  [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION
+  [SecretSync.ExternalInfisical]: EXTERNAL_INFISICAL_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -378,6 +380,8 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -518,6 +522,9 @@ export const SecretSyncFns = {
       case SecretSync.ExternalInfisical:
         secretMap = await ExternalInfisicalSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Coolify:
+        secretMap = await CoolifySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -627,6 +634,8 @@ export const SecretSyncFns = {
         // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
         // infinite sync loops where the prefixed key triggers another sync cycle.
         return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

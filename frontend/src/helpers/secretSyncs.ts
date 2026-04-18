@@ -141,6 +141,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.ExternalInfisical]: {
     name: "Infisical",
     image: "Infisical.png"
+  },
+  [SecretSync.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png"
   }
 };
 
@@ -181,7 +185,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy,
   [SecretSync.CircleCI]: AppConnection.CircleCI,
   [SecretSync.AzureEntraIdScim]: AppConnection.AzureEntraId,
-  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical
+  [SecretSync.ExternalInfisical]: AppConnection.ExternalInfisical,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

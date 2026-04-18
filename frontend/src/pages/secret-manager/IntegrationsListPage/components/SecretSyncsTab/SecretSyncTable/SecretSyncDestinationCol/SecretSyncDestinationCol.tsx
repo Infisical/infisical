@@ -14,6 +14,7 @@ import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
+import { CoolifySyncDestinationCol } from "./CoolifySyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlatformSyncDestinationCol";
 import { ExternalInfisicalSyncDestinationCol } from "./ExternalInfisicalSyncDestinationCol";
@@ -118,6 +119,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureEntraIdScimSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Coolify:
+      return <CoolifySyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

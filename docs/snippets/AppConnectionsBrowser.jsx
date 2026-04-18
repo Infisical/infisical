@@ -437,8 +437,15 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect a remote Infisical instance to sync secrets between Infisical projects.",
       category: "Security",
+    },
+    {
+      name: "Coolify",
+      slug: "coolify",
+      path: "/integrations/app-connections/coolify",
+      description: "Learn how to connect your coolify applications to pull secrets from Infisical.",
+      category: "Hosting",
     }
-  ].sort(function (a, b) {
+  ].sort(function(a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
 
@@ -502,11 +509,10 @@ export const AppConnectionsBrowser = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
-                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200"
-              }`}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${selectedCategory === category
+                ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200"
+                }`}
             >
               {category}
             </button>

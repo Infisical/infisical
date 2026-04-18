@@ -22,6 +22,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   DbtConnectionMethod,
   FlyioConnectionMethod,
@@ -160,7 +161,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
-  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.Coolify]: { name: "Coolify", image: "Coolify.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -202,6 +204,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
