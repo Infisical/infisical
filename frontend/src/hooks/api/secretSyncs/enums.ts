@@ -35,7 +35,8 @@ export enum SecretSync {
   OctopusDeploy = "octopus-deploy",
   CircleCI = "circleci",
   AzureEntraIdScim = "azure-entra-id-scim",
-  ExternalInfisical = "external-infisical"
+  ExternalInfisical = "external-infisical",
+  Devin = "devin"
 }
 
 export enum SecretSyncStatus {

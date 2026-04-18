@@ -24,6 +24,7 @@ import {
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   DbtConnectionMethod,
+  DevinConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -160,7 +161,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Venafi]: { name: "Venafi TLS Protect Cloud", image: "Venafi.png" },
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
-  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.Devin]: { name: "Devin", image: "Devin.png", size: 55 }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -239,6 +241,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DevinConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

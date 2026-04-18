@@ -54,5 +54,6 @@ export enum AppConnection {
   Venafi = "venafi",
   ExternalInfisical = "external-infisical",
   NetScaler = "netscaler",
-  Anthropic = "anthropic"
+  Anthropic = "anthropic",
+  Devin = "devin"
 }

@@ -99,6 +99,7 @@ export enum IntegrationUrls {
   AZURE_DEVOPS_API_URL = "https://dev.azure.com",
   HUMANITEC_API_URL = "https://api.humanitec.io",
   CAMUNDA_API_URL = "https://api.cloud.camunda.io",
+  DEVIN_API_URL = "https://api.devin.ai",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,

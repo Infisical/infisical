@@ -131,6 +131,12 @@ import {
   TValidateDbtConnectionCredentialsSchema
 } from "./dbt";
 import {
+  TDevinConnection,
+  TDevinConnectionConfig,
+  TDevinConnectionInput,
+  TValidateDevinConnectionCredentialsSchema
+} from "./devin";
+import {
   TDigitalOceanConnection,
   TDigitalOceanConnectionConfig,
   TDigitalOceanConnectionInput,
@@ -387,6 +393,7 @@ export type TAppConnection = { id: string } & (
   | TExternalInfisicalConnection
   | TNetScalerConnection
   | TAnthropicConnection
+  | TDevinConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -454,6 +461,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
+  | TDevinConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -549,7 +557,8 @@ export type TAppConnectionConfig =
   | TVenafiConnectionConfig
   | TExternalInfisicalConnectionConfig
   | TNetScalerConnectionConfig
-  | TAnthropicConnectionConfig;
+  | TAnthropicConnectionConfig
+  | TDevinConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -607,7 +616,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
-  | TValidateAnthropicConnectionCredentialsSchema;
+  | TValidateAnthropicConnectionCredentialsSchema
+  | TValidateDevinConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

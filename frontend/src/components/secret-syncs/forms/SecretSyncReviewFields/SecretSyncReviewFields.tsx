@@ -30,6 +30,7 @@ import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
+import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { ExternalInfisicalSyncReviewFields } from "./ExternalInfisicalSyncReviewFields";
 import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
@@ -197,6 +198,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.ExternalInfisical:
       DestinationFieldsComponent = <ExternalInfisicalSyncReviewFields />;
+      break;
+    case SecretSync.Devin:
+      DestinationFieldsComponent = <DevinSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
