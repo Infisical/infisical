@@ -342,7 +342,6 @@
               "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
-              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
@@ -2491,9 +2490,7 @@
                       "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                       "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                       "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                      "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                     ]
                   },
                   {
