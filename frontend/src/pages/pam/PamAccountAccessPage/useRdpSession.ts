@@ -84,39 +84,52 @@ export const useRdpSession = ({
   const connect = useCallback(async () => {
     try {
       await ensureWasm();
-      if (!canvasRef.current) return;
+      if (!canvasRef.current) {
+        // eslint-disable-next-line no-console
+        console.warn("[rdp] canvas ref not ready");
+        return;
+      }
 
+      // eslint-disable-next-line no-console
+      console.log("[rdp] fetching web-access ticket");
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
         { projectId }
       );
 
       const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-      // NOTE: the backend endpoint here must speak RDCleanPath for the
-      // WASM client to work. Currently a scaffold; see module-doc TODOs.
-      const proxyAddress = `${wsProtocol}://${window.location.host}/api/v1/pam/accounts/${accountId}/web-access`;
+      const proxyAddress = `${wsProtocol}://${window.location.host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(data.ticket)}`;
+
+      // eslint-disable-next-line no-console
+      console.log("[rdp] opening SessionBuilder against", proxyAddress);
 
       const builder = new SessionBuilder();
       builder
-        .username("infisical-placeholder")
-        .password("infisical-placeholder")
+        .username("infisical")
+        .password("infisical")
         .destination("target:3389")
         .proxyAddress(proxyAddress)
         .authToken(data.ticket)
         .renderCanvas(canvasRef.current);
 
       const session = await builder.connect();
+      // eslint-disable-next-line no-console
+      console.log("[rdp] session connected, entering run()");
       sessionRef.current = session;
       setIsConnected(true);
 
       try {
-        await session.run();
+        const info = await session.run();
+        // eslint-disable-next-line no-console
+        console.log("[rdp] session ended:", info.reason());
       } finally {
         setIsConnected(false);
         sessionRef.current = null;
         onSessionEnd?.();
       }
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[rdp] connect failed:", err);
       setIsConnected(false);
       onSessionEnd?.();
     }
