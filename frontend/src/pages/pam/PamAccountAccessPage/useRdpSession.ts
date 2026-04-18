@@ -38,6 +38,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { apiRequest } from "@app/config/request";
 import wasmInit, {
   DeviceEvent,
   InputTransaction,
@@ -46,7 +47,6 @@ import wasmInit, {
   SessionBuilder,
   setup as wasmSetup
 } from "@app/lib/ironrdp-web/ironrdp_web";
-import { apiRequest } from "@app/config/request";
 
 import { codeToScancode } from "./rdpScancodes";
 
@@ -191,11 +191,7 @@ const attachInputHandlers = (canvas: HTMLCanvasElement | null, session: ApplyInp
   };
 };
 
-export const useRdpSession = ({
-  accountId,
-  projectId,
-  onSessionEnd
-}: UseRdpSessionOptions) => {
+export const useRdpSession = ({ accountId, projectId, onSessionEnd }: UseRdpSessionOptions) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionRef = useRef<unknown>(null);
   // Guard against React StrictMode's double-invocation of effects in dev:
@@ -281,7 +277,7 @@ export const useRdpSession = ({
         console.error(`[rdp] IronError kind=${kindName}`);
         try {
           // eslint-disable-next-line no-console
-          console.error("[rdp] backtrace:\n" + err.backtrace());
+          console.error(`[rdp] backtrace:\n${err.backtrace()}`);
         } catch {
           /* backtrace might throw if already freed */
         }

@@ -510,25 +510,25 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                     <div className="flex items-center gap-2">
                       {/* Disable accessing Active Directory accounts */}
                       {resource.resourceType !== PamResourceType.ActiveDirectory && (
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPamAccountActions.Access}
-                            a={ProjectPermissionSub.PamAccounts}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPamAccountActions.Access}
+                          a={ProjectPermissionSub.PamAccounts}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              accessAccount(account);
+                            }}
+                            isPending={loadingAccountId === account.id}
+                            isDisabled={loadingAccountId === account.id}
                           >
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                accessAccount(account);
-                              }}
-                              isPending={loadingAccountId === account.id}
-                              isDisabled={loadingAccountId === account.id}
-                            >
-                              <LogInIcon />
-                              Connect
-                            </Button>
-                          </ProjectPermissionCan>
-                        )}
+                            <LogInIcon />
+                            Connect
+                          </Button>
+                        </ProjectPermissionCan>
+                      )}
                       <UnstableDropdownMenu>
                         <UnstableDropdownMenuTrigger asChild>
                           <UnstableIconButton variant="ghost" size="xs">
