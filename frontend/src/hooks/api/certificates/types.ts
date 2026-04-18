@@ -283,3 +283,13 @@ export type TActivityTrendPoint = {
 export type TActivityTrendResponse = {
   periods: TActivityTrendPoint[];
 };
+
+export type TPqcTrendPoint = {
+  period: string;
+  pqc: number;
+  nonPqc: number;
+};
+
+export type TPqcTrendResponse = {
+  periods: TPqcTrendPoint[];
+};

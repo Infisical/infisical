@@ -9,7 +9,8 @@ import {
   TCertificateRequestDetails,
   TDashboardStats,
   TListCertificateRequestsParams,
-  TListCertificateRequestsResponse
+  TListCertificateRequestsResponse,
+  TPqcTrendResponse
 } from "./types";
 
 export const certKeys = {
@@ -38,7 +39,9 @@ export const certKeys = {
   ],
   getDashboardStats: (projectId: string) => ["cert-dashboard-stats", { projectId }] as const,
   getActivityTrend: (projectId: string, range: string) =>
-    ["cert-activity-trend", { projectId }, { range }] as const
+    ["cert-activity-trend", { projectId }, { range }] as const,
+  getPqcTrend: (projectId: string, range: string) =>
+    ["cert-pqc-trend", { projectId }, { range }] as const
 };
 
 export const useGetCert = (serialNumber: string) => {
@@ -167,6 +170,21 @@ export const useGetCertActivityTrend = (projectId: string, range = "6m") => {
     queryFn: async () => {
       const { data } = await apiRequest.get<TActivityTrendResponse>(
         `/api/v1/projects/${projectId}/certificates/activity-trend`,
+        { params: { range } }
+      );
+      return data;
+    },
+    enabled: Boolean(projectId),
+    staleTime: DASHBOARD_STALE_TIME
+  });
+};
+
+export const useGetCertPqcTrend = (projectId: string, range = "30d") => {
+  return useQuery({
+    queryKey: certKeys.getPqcTrend(projectId, range),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPqcTrendResponse>(
+        `/api/v1/projects/${projectId}/certificates/pqc-trend`,
         { params: { range } }
       );
       return data;

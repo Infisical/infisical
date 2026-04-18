@@ -29,7 +29,9 @@ export const TREND_COLORS = {
   issued: "var(--color-org)",
   expired: "var(--color-danger)",
   revoked: "var(--color-neutral)",
-  renewed: "var(--color-success)"
+  renewed: "var(--color-success)",
+  pqc: "var(--color-info)",
+  nonPqc: "var(--color-warning)"
 };
 
 export const formatTickLabel = (value: string) => {
