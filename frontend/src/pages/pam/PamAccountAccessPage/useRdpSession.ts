@@ -119,6 +119,7 @@ export const useRdpSession = ({
         // Required callbacks. No-op implementations are fine for POC;
         // wire these to real behavior later.
         .setCursorStyleCallback(() => {})
+        .setCursorStyleCallbackContext(null)
         .remoteClipboardChangedCallback(() => {})
         .forceClipboardUpdateCallback(() => {})
         .canvasResizedCallback(() => {});
