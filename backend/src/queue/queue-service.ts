@@ -61,6 +61,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   FrequentResourceCleanUp = "frequent-resource-cleanup",
+  WeeklyResourceCleanUp = "weekly-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -116,6 +117,7 @@ export enum QueueJobs {
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
   FrequentResourceCleanUp = "frequent-resource-cleanup-job",
+  WeeklyResourceCleanUp = "weekly-resource-cleanup-job",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiAlertV2ProcessEvent = "pki-alert-v2-process-event",
@@ -497,6 +499,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.FrequentResourceCleanUp]: {
     name: QueueJobs.FrequentResourceCleanUp;
+    payload: undefined;
+  };
+  [QueueName.WeeklyResourceCleanUp]: {
+    name: QueueJobs.WeeklyResourceCleanUp;
     payload: undefined;
   };
   [QueueName.PkiDiscoveryScan]:
