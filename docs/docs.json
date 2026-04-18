@@ -21,6 +21,8 @@
             "pages": [
               "documentation/getting-started/overview",
               "documentation/getting-started/introduction",
+              "documentation/getting-started/quickstart",
+              "documentation/getting-started/self-hosted-quickstart",
               {
                 "group": "Concepts",
                 "pages": [
@@ -350,6 +352,7 @@
                   "self-hosting/guides/mongo-to-postgres",
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
+                  "self-hosting/guides/end-to-end-automation",
                   "self-hosting/guides/production-hardening",
                   "self-hosting/guides/monitoring-telemetry"
                 ]
