@@ -97,7 +97,7 @@ export type TGetBulkKeyMaterialDTO = {
 
 export type TImportKeyMaterialDTO = {
   key: Buffer;
-  algorithm: SymmetricKeyAlgorithm;
+  algorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
   name?: string;
   isReserved: boolean;
   projectId: string;

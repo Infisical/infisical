@@ -7,6 +7,7 @@ import {
   faDownload,
   faEdit,
   faEllipsis,
+  faFileImport,
   faFileSignature,
   faLock,
   faLockOpen,
@@ -34,6 +35,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableButtonGroup,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -84,6 +86,7 @@ import {
 } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
+import { CmekBulkImportModal } from "./CmekBulkImportModal";
 import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekExportKeyModal } from "./CmekExportKeyModal";
@@ -159,7 +162,8 @@ export const CmekTable = () => {
     "decryptData",
     "signData",
     "verifyData",
-    "exportKey"
+    "exportKey",
+    "importKeys"
   ] as const);
 
   const handleSort = () => {
@@ -300,18 +304,57 @@ export const CmekTable = () => {
             Manage keys and perform cryptographic operations.
           </UnstableCardDescription>
           <UnstableCardAction>
-            <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Cmek}>
-              {(isAllowed) => (
-                <Button
-                  variant="project"
-                  onClick={() => handlePopUpOpen("upsertKey", null)}
-                  isDisabled={!isAllowed}
-                >
-                  <FontAwesomeIcon icon={faPlus} className="mr-2" />
-                  Add Key
-                </Button>
-              )}
-            </ProjectPermissionCan>
+            <UnstableButtonGroup>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={ProjectPermissionSub.Cmek}
+              >
+                {(isAllowed) => (
+                  <Tooltip open={!isAllowed ? undefined : false}>
+                    <TooltipTrigger>
+                      <Button
+                        className="rounded-r-none"
+                        variant="project"
+                        onClick={() => handlePopUpOpen("upsertKey", null)}
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                        Add Key
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Access Denied</TooltipContent>
+                  </Tooltip>
+                )}
+              </ProjectPermissionCan>
+              <UnstableDropdownMenu>
+                <UnstableDropdownMenuTrigger asChild>
+                  <UnstableIconButton variant="project">
+                    <ChevronDownIcon />
+                  </UnstableIconButton>
+                </UnstableDropdownMenuTrigger>
+                <UnstableDropdownMenuContent align="end">
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={ProjectPermissionSub.Cmek}
+                  >
+                    {(isAllowed) => (
+                      <Tooltip open={!isAllowed ? undefined : false}>
+                        <TooltipTrigger className="block w-full">
+                          <UnstableDropdownMenuItem
+                            onClick={() => handlePopUpOpen("importKeys")}
+                            isDisabled={!isAllowed}
+                          >
+                            <FontAwesomeIcon icon={faFileImport} />
+                            Import Keys
+                          </UnstableDropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">Access Restricted</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ProjectPermissionCan>
+                </UnstableDropdownMenuContent>
+              </UnstableDropdownMenu>
+            </UnstableButtonGroup>
           </UnstableCardAction>
         </UnstableCardHeader>
         <UnstableCardContent>
@@ -637,6 +680,11 @@ export const CmekTable = () => {
         isOpen={popUp.exportKey.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("exportKey", isOpen)}
         cmek={popUp.exportKey.data as TCmek}
+      />
+      <CmekBulkImportModal
+        isOpen={popUp.importKeys.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importKeys", isOpen)}
+        projectId={projectId}
       />
     </motion.div>
   );

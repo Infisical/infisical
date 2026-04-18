@@ -6,6 +6,8 @@ import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {
   TCmekBulkExportPrivateKeysDTO,
   TCmekBulkExportPrivateKeysResponse,
+  TCmekBulkImportKeysDTO,
+  TCmekBulkImportKeysResponse,
   TCmekDecrypt,
   TCmekDecryptResponse,
   TCmekEncrypt,
@@ -142,6 +144,23 @@ export const useBulkExportCmekPrivateKeys = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useBulkImportCmekKeys = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, keys }: TCmekBulkImportKeysDTO) => {
+      const { data } = await apiRequest.post<TCmekBulkImportKeysResponse>(
+        "/api/v1/kms/keys/bulk-import",
+        { projectId, keys }
+      );
+
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
     }
   });
 };

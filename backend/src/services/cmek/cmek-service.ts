@@ -9,6 +9,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekBulkGetPrivateKeysDTO,
+  TCmekBulkImportKeysDTO,
   TCmekDecryptDTO,
   TCmekEncryptDTO,
   TCmekGetPrivateKeyDTO,
@@ -496,6 +497,59 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     };
   };
 
+  const bulkImportKeys = async ({ projectId, keys }: TCmekBulkImportKeysDTO, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
+
+    const results = await Promise.allSettled(
+      keys.map(async (entry): Promise<{ id: string; name: string }> => {
+        const imported = await kmsService.importKeyMaterial({
+          key: Buffer.from(entry.keyMaterial, "base64"),
+          algorithm: entry.algorithm,
+          name: entry.name,
+          isReserved: false,
+          projectId,
+          orgId: actor.orgId,
+          keyUsage: entry.keyUsage
+        });
+        return { id: imported.id, name: imported.name };
+      })
+    );
+
+    const importedKeys: { id: string; name: string }[] = [];
+    const errors: { name: string; message: string }[] = [];
+
+    results.forEach((result, i) => {
+      const entry = keys[i];
+      if (!entry) return;
+      if (result.status === "fulfilled") {
+        importedKeys.push(result.value);
+      } else {
+        const reason = result.reason as Error;
+        let message = "Failed to import key";
+        if (
+          reason instanceof DatabaseError &&
+          (reason.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          message = `A key with the name "${entry.name}" already exists in this project`;
+        } else if (reason instanceof BadRequestError) {
+          message = reason.message;
+        }
+        errors.push({ name: entry.name, message });
+      }
+    });
+
+    return { keys: importedKeys, errors, projectId };
+  };
+
   return {
     createCmek,
     updateCmekById,
@@ -510,6 +564,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     listSigningAlgorithms,
     getPublicKey,
     getPrivateKey,
-    bulkGetPrivateKeys
+    bulkGetPrivateKeys,
+    bulkImportKeys
   };
 };
