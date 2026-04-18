@@ -3255,6 +3255,17 @@ export const secretV2BridgeServiceFactory = ({
           tx
         );
 
+        const movedSecretKeys = decryptedSourceSecrets.map((s) => s.key);
+
+        // Keep personal overrides aligned with shared-secret move semantics.
+        // If destination updated directly, move overrides with the shared secrets.
+        // If destination is approval-gated, remove source overrides to avoid orphaned records.
+        if (isDestinationUpdated) {
+          await secretDAL.movePersonalOverrides(sourceFolder.id, destinationFolder.id, movedSecretKeys, tx);
+        } else {
+          await secretDAL.deletePersonalOverridesByKeys(sourceFolder.id, movedSecretKeys, tx);
+        }
+
         isSourceUpdated = true;
       }
 
