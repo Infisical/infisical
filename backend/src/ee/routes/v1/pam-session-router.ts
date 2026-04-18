@@ -9,6 +9,7 @@ import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mys
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import { WindowsSessionCredentialsSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import {
   HttpEventSchema,
   PamSessionCommandLogSchema,
@@ -29,7 +30,8 @@ const SessionCredentialsSchema = z.union([
   MySQLSessionCredentialsSchema,
   MongoDBSessionCredentialsSchema,
   KubernetesSessionCredentialsSchema,
-  RedisSessionCredentialsSchema
+  RedisSessionCredentialsSchema,
+  WindowsSessionCredentialsSchema
 ]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
