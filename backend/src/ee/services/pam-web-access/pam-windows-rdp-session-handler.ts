@@ -1,4 +1,4 @@
-import { Socket as NetSocket, createConnection } from "node:net";
+import { createConnection, Socket as NetSocket } from "node:net";
 
 import {
   TWindowsAccountCredentials,

@@ -51,7 +51,6 @@ import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { handlePostgresSession } from "./pam-postgres-session-handler";
 import { handleRedisSession } from "./pam-redis-session-handler";
 import { handleSSHSession } from "./pam-ssh-session-handler";
-import { handleWindowsRdpSession } from "./pam-windows-rdp-session-handler";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
@@ -65,13 +64,9 @@ import {
   WS_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS
 } from "./pam-web-access-types";
+import { handleWindowsRdpSession } from "./pam-windows-rdp-session-handler";
 
-const SUPPORTED_WEB_ACCESS_RESOURCES = [
-  PamResource.Postgres,
-  PamResource.SSH,
-  PamResource.Redis,
-  PamResource.Windows
-];
+const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, PamResource.Redis, PamResource.Windows];
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
@@ -356,9 +351,8 @@ export const pamWebAccessServiceFactory = ({
     };
     socket.on("message", earlyBufferHandler);
     (socket as unknown as { _pamEarlyMessages?: typeof earlyMessages })._pamEarlyMessages = earlyMessages;
-    (
-      socket as unknown as { _pamEarlyBufferHandler?: typeof earlyBufferHandler }
-    )._pamEarlyBufferHandler = earlyBufferHandler;
+    (socket as unknown as { _pamEarlyBufferHandler?: typeof earlyBufferHandler })._pamEarlyBufferHandler =
+      earlyBufferHandler;
 
     let session: { id: string } | null = null;
     let cleanedUp = false;
