@@ -1433,6 +1433,7 @@ export const secretServiceFactory = ({
     expandPersonalOverrides,
     recursive,
     tagSlugs = [],
+    filterInaccessibleSecrets = false,
     throwOnMissingReadValuePermission = true,
     ifNoneMatch,
     ...paramsV2
@@ -1449,7 +1450,8 @@ export const secretServiceFactory = ({
         actor,
         actorOrgId,
         viewSecretValue,
-        throwOnMissingReadValuePermission,
+        filterInaccessibleSecrets,
+        throwOnMissingReadValuePermission: filterInaccessibleSecrets ? false : throwOnMissingReadValuePermission,
         environment,
         path,
         recursive,

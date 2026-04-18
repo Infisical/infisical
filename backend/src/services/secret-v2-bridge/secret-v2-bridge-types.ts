@@ -46,6 +46,7 @@ export type TGetSecretsDTO = {
   recursive?: boolean;
   tagSlugs?: string[];
   viewSecretValue: boolean;
+  filterInaccessibleSecrets?: boolean;
   throwOnMissingReadValuePermission?: boolean;
   metadataFilter?: {
     key?: string;
