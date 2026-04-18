@@ -123,8 +123,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         </Button>
       </AuthPageHeader>
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          {renderView()}
+        <form className="w-full" onSubmit={(e) => e.preventDefault()} noValidate>
+          {renderView(step)}
         </form>
       </div>
       <AuthPageFooter />
