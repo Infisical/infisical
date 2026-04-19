@@ -46,6 +46,18 @@ const VercelSyncDestinationConfigSchema = z
         path: ["sensitive"]
       });
     }
+
+    if (
+      config.scope === VercelSyncScope.Team &&
+      config.targetEnvironments.every((env) => env === VercelEnvironmentType.Development)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Marking secrets as sensitive in Vercel is not supported for development environments. Add another target environment or disable Sensitive.",
+        path: ["sensitive"]
+      });
+    }
   });
 
 const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
