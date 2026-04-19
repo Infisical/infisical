@@ -380,4 +380,62 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       return { approval: request };
     }
   });
+
+  server.route({
+    url: "/:requestId/external-review",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      body: z.object({
+        externalRequestId: z.string().min(1),
+        status: z.enum(["approved", "rejected"]),
+        approverEmail: z.string().email().optional(),
+        rejectionReason: z.string().max(1000).optional(),
+        metadata: z.record(z.unknown()).optional()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.handleExternalReview({
+        requestId: req.params.requestId,
+        externalRequestId: req.body.externalRequestId,
+        status: req.body.status,
+        approverEmail: req.body.approverEmail,
+        rejectionReason: req.body.rejectionReason,
+        metadata: req.body.metadata,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW,
+          metadata: {
+            requestId: result.request.id,
+            externalRequestId: req.body.externalRequestId,
+            status: req.body.status,
+            policyId: result.request.policyId
+          }
+        }
+      });
+
+      return { success: true, request: result.request };
+    }
+  });
 };

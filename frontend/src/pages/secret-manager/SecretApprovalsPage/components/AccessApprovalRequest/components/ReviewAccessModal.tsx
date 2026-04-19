@@ -3,6 +3,7 @@ import {
   faBan,
   faCheck,
   faEdit,
+  faExternalLinkAlt,
   faHourglass,
   faTriangleExclamation,
   faUser,
@@ -46,6 +47,7 @@ import {
 import {
   Approver,
   ApproverType,
+  ExternalApprovalType,
   TAccessApprovalPolicy,
   TAccessApprovalRequest
 } from "@app/hooks/api/accessApproval/types";
@@ -337,8 +339,10 @@ export const ReviewAccessRequestModal = ({
     request.expiresAt &&
     new Date(request.expiresAt) < new Date();
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
+  const isExternalApproval = Boolean(request.policy.externalApprovalType);
 
   const shouldBlockRequestActions =
+    isExternalApproval ||
     hasRejected ||
     hasApproved ||
     hasRevoked ||
@@ -347,6 +351,11 @@ export const ReviewAccessRequestModal = ({
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
 
   const renderCompletedMessages = () => {
+    if (isExternalApproval) {
+      if (request.externalStatus === "approved") return "This request has been approved externally.";
+      if (request.externalStatus === "rejected") return "This request has been rejected externally.";
+      return "This request is pending review in the external approval system.";
+    }
     if (hasExpired) return "This request has expired.";
     if (hasRejected) return "This request has been rejected.";
     if (hasRevoked) {
@@ -468,186 +477,256 @@ export const ReviewAccessRequestModal = ({
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-b-2 border-mineshaft-500 py-2">
-            <span>Approvers</span>
-            {approverSequence.isMyReviewInThisSequence &&
-              request.status === ApprovalStatus.PENDING &&
-              !hasExpired && <Badge variant="warning">Awaiting Your Review</Badge>}
-          </div>
-          <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
-            {approverSequence?.approvers &&
-              approverSequence.approvers.map((approver, index) => {
-                const isInactive =
-                  approverSequence?.currentSequence <
-                  (approver.sequence ?? approverSequence.approvers!.length);
-
-                const isPending = approverSequence?.currentSequence === approver.sequence;
-
-                let StepComponent: ReactNode;
-                let BadgeComponent: ReactNode = null;
-                if (approver.hasRejected) {
-                  StepComponent = (
-                    <Badge isSquare variant="danger">
-                      <BanIcon />
-                    </Badge>
-                  );
-                  BadgeComponent = <Badge variant="danger">Rejected</Badge>;
-                } else if (approver.hasApproved) {
-                  StepComponent = (
-                    <Badge isSquare variant="success">
-                      <CheckIcon />
-                    </Badge>
-                  );
-                  BadgeComponent = <Badge variant="success">Approved</Badge>;
-                } else if (isPending && !hasExpired) {
-                  StepComponent = (
-                    <Badge isSquare variant="warning">
-                      <HourglassIcon />
-                    </Badge>
-                  );
-                  BadgeComponent = <Badge variant="warning">Pending</Badge>;
-                } else {
-                  StepComponent = (
-                    <Badge isSquare variant="neutral">
-                      <span>{index + 1}</span>
-                    </Badge>
-                  );
-                }
-
-                return (
-                  <div
-                    key={`approval-list-${index + 1}`}
-                    className={twMerge("flex", isInactive && "opacity-50")}
-                  >
-                    {approverSequence.approvers!.length > 1 && (
-                      <div className="flex w-12 flex-col items-center gap-2 pr-4">
-                        <div
-                          className={twMerge(
-                            "grow border-mineshaft-600",
-                            index !== 0 && "border-r"
-                          )}
-                        />
-                        {StepComponent}
-                        <div
-                          className={twMerge(
-                            "grow border-mineshaft-600",
-                            index < approverSequence.approvers!.length - 1 && "border-r"
-                          )}
-                        />
-                      </div>
+          {request.policy.externalApprovalType ? (
+            <>
+              <div className="mt-4 flex items-center justify-between border-b-2 border-mineshaft-500 py-2">
+                <span className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faExternalLinkAlt} className="text-primary-500" />
+                  External Approval
+                </span>
+                {request.externalStatus === "pending" && (
+                  <Badge variant="warning">Pending External Review</Badge>
+                )}
+                {request.externalStatus === "approved" && (
+                  <Badge variant="success">Externally Approved</Badge>
+                )}
+                {request.externalStatus === "rejected" && (
+                  <Badge variant="danger">Externally Rejected</Badge>
+                )}
+              </div>
+              <div className="rounded-sm py-4">
+                <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800/50 p-4">
+                  <div className="flex flex-wrap gap-x-8 gap-y-4">
+                    <GenericFieldLabel label="Approval System">
+                      {request.policy.externalApprovalType === ExternalApprovalType.ServiceNow
+                        ? "ServiceNow"
+                        : request.policy.externalApprovalType}
+                    </GenericFieldLabel>
+                    {request.externalRequestId && (
+                      <GenericFieldLabel label="External Request ID">
+                        <code className="rounded bg-mineshaft-700 px-2 py-0.5 text-xs">
+                          {request.externalRequestId}
+                        </code>
+                      </GenericFieldLabel>
                     )}
-                    <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                      <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                        {Boolean(approver.user.length) && (
-                          <div className="flex flex-row flex-wrap gap-2">
-                            {approver?.user?.map((el, idx) => {
-                              const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+                    <GenericFieldLabel label="Status">
+                      {request.externalStatus === "pending" && (
+                        <span className="flex items-center gap-2 text-yellow-500">
+                          <FontAwesomeIcon icon={faHourglass} size="sm" />
+                          Awaiting external review
+                        </span>
+                      )}
+                      {request.externalStatus === "approved" && (
+                        <span className="flex items-center gap-2 text-green-500">
+                          <FontAwesomeIcon icon={faCheck} size="sm" />
+                          Approved by external system
+                        </span>
+                      )}
+                      {request.externalStatus === "rejected" && (
+                        <span className="flex items-center gap-2 text-red-500">
+                          <FontAwesomeIcon icon={faBan} size="sm" />
+                          Rejected by external system
+                        </span>
+                      )}
+                      {!request.externalStatus && (
+                        <span className="text-mineshaft-400">Not yet submitted</span>
+                      )}
+                    </GenericFieldLabel>
+                  </div>
+                  <p className="mt-4 text-sm text-mineshaft-400">
+                    This request is being reviewed through an external approval system. The approval
+                    decision will be made externally and synchronized back to Infisical.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-4 flex items-center justify-between border-b-2 border-mineshaft-500 py-2">
+                <span>Approvers</span>
+                {approverSequence.isMyReviewInThisSequence &&
+                  request.status === ApprovalStatus.PENDING &&
+                  !hasExpired && <Badge variant="warning">Awaiting Your Review</Badge>}
+              </div>
+              <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
+                {approverSequence?.approvers &&
+                  approverSequence.approvers.map((approver, index) => {
+                    const isInactive =
+                      approverSequence?.currentSequence <
+                      (approver.sequence ?? approverSequence.approvers!.length);
 
-                              if (!member) {
-                                const policyApprover = request.policy.approvers.find(
-                                  (a) => a.userId === el.id
-                                );
-                                return (
-                                  <div className="flex items-center" key={el.id}>
-                                    <span className="flex items-center gap-2 opacity-40">
-                                      {policyApprover?.email || policyApprover?.username || el.id}
-                                      <span className="text-xs">
-                                        <Tooltip content="This user has been removed from the project.">
-                                          <Badge variant="neutral">
-                                            <BanIcon />
-                                            Removed
-                                          </Badge>
-                                        </Tooltip>
-                                      </span>
-                                    </span>
-                                    {idx < approver.user.length - 1 && ","}
-                                  </div>
-                                );
-                              }
+                    const isPending = approverSequence?.currentSequence === approver.sequence;
 
-                              return member.user.isOrgMembershipActive ? (
-                                <div className="flex items-center" key={member.user.id}>
-                                  <span>{member.user.username}</span>
-                                  {idx < approver.user.length - 1 && ","}
-                                </div>
-                              ) : (
-                                <div className="flex items-center" key={member.user.id}>
-                                  <span className="flex items-center gap-2 opacity-40">
-                                    {member.user.username}
-                                    <span className="text-xs">
-                                      <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                        <Badge variant="neutral">
-                                          <BanIcon />
-                                          Inactive
-                                        </Badge>
-                                      </Tooltip>
-                                    </span>
-                                  </span>
-                                  {idx < approver.user.length - 1 && ","}
-                                </div>
-                              );
-                            })}
+                    let StepComponent: ReactNode;
+                    let BadgeComponent: ReactNode = null;
+                    if (approver.hasRejected) {
+                      StepComponent = (
+                        <Badge isSquare variant="danger">
+                          <BanIcon />
+                        </Badge>
+                      );
+                      BadgeComponent = <Badge variant="danger">Rejected</Badge>;
+                    } else if (approver.hasApproved) {
+                      StepComponent = (
+                        <Badge isSquare variant="success">
+                          <CheckIcon />
+                        </Badge>
+                      );
+                      BadgeComponent = <Badge variant="success">Approved</Badge>;
+                    } else if (isPending && !hasExpired) {
+                      StepComponent = (
+                        <Badge isSquare variant="warning">
+                          <HourglassIcon />
+                        </Badge>
+                      );
+                      BadgeComponent = <Badge variant="warning">Pending</Badge>;
+                    } else {
+                      StepComponent = (
+                        <Badge isSquare variant="neutral">
+                          <span>{index + 1}</span>
+                        </Badge>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={`approval-list-${index + 1}`}
+                        className={twMerge("flex", isInactive && "opacity-50")}
+                      >
+                        {approverSequence.approvers!.length > 1 && (
+                          <div className="flex w-12 flex-col items-center gap-2 pr-4">
+                            <div
+                              className={twMerge(
+                                "grow border-mineshaft-600",
+                                index !== 0 && "border-r"
+                              )}
+                            />
+                            {StepComponent}
+                            <div
+                              className={twMerge(
+                                "grow border-mineshaft-600",
+                                index < approverSequence.approvers!.length - 1 && "border-r"
+                              )}
+                            />
                           </div>
                         )}
-                      </GenericFieldLabel>
-                      <GenericFieldLabel className="col-span-2" label="Groups">
-                        {approver?.group
-                          ?.map(
-                            (el) =>
-                              approverSequence?.projectGroupsGroupById?.[el.id]?.[0]?.group?.name
-                          )
-                          .join(", ")}
-                      </GenericFieldLabel>
-                      <GenericFieldLabel label="Approvals Required">
-                        <div className="flex items-center">
-                          <span className="mr-2">{approver.approvals}</span>
-                          {BadgeComponent && (
-                            <Tooltip
-                              className="max-w-lg"
-                              content={
-                                <div>
-                                  <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
-                                  <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-mineshaft-500 overflow-y-auto rounded-sm">
-                                    {approver.reviewers.map((el, idx) => (
-                                      <div
-                                        key={`reviewer-${idx + 1}`}
-                                        className="flex items-center gap-2 px-2 py-2 text-sm"
-                                      >
-                                        <div
-                                          className={twMerge(
-                                            "flex-1",
-                                            !el.isOrgMembershipActive && "opacity-40"
-                                          )}
-                                        >
-                                          {el.username}
-                                        </div>
-                                        {getReviewedStatusSymbol(
-                                          el?.status as ApprovalStatus,
-                                          el.isOrgMembershipActive
-                                        )}
+                        <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
+                          <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
+                            {Boolean(approver.user.length) && (
+                              <div className="flex flex-row flex-wrap gap-2">
+                                {approver?.user?.map((el, idx) => {
+                                  const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+
+                                  if (!member) {
+                                    const policyApprover = request.policy.approvers.find(
+                                      (a) => a.userId === el.id
+                                    );
+                                    return (
+                                      <div className="flex items-center" key={el.id}>
+                                        <span className="flex items-center gap-2 opacity-40">
+                                          {policyApprover?.email || policyApprover?.username || el.id}
+                                          <span className="text-xs">
+                                            <Tooltip content="This user has been removed from the project.">
+                                              <Badge variant="neutral">
+                                                <BanIcon />
+                                                Removed
+                                              </Badge>
+                                            </Tooltip>
+                                          </span>
+                                        </span>
+                                        {idx < approver.user.length - 1 && ","}
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              }
-                            >
-                              <div>{BadgeComponent}</div>
-                            </Tooltip>
-                          )}
+                                    );
+                                  }
+
+                                  return member.user.isOrgMembershipActive ? (
+                                    <div className="flex items-center" key={member.user.id}>
+                                      <span>{member.user.username}</span>
+                                      {idx < approver.user.length - 1 && ","}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center" key={member.user.id}>
+                                      <span className="flex items-center gap-2 opacity-40">
+                                        {member.user.username}
+                                        <span className="text-xs">
+                                          <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                            <Badge variant="neutral">
+                                              <BanIcon />
+                                              Inactive
+                                            </Badge>
+                                          </Tooltip>
+                                        </span>
+                                      </span>
+                                      {idx < approver.user.length - 1 && ","}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </GenericFieldLabel>
+                          <GenericFieldLabel className="col-span-2" label="Groups">
+                            {approver?.group
+                              ?.map(
+                                (el) =>
+                                  approverSequence?.projectGroupsGroupById?.[el.id]?.[0]?.group?.name
+                              )
+                              .join(", ")}
+                          </GenericFieldLabel>
+                          <GenericFieldLabel label="Approvals Required">
+                            <div className="flex items-center">
+                              <span className="mr-2">{approver.approvals}</span>
+                              {BadgeComponent && (
+                                <Tooltip
+                                  className="max-w-lg"
+                                  content={
+                                    <div>
+                                      <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
+                                      <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-mineshaft-500 overflow-y-auto rounded-sm">
+                                        {approver.reviewers.map((el, idx) => (
+                                          <div
+                                            key={`reviewer-${idx + 1}`}
+                                            className="flex items-center gap-2 px-2 py-2 text-sm"
+                                          >
+                                            <div
+                                              className={twMerge(
+                                                "flex-1",
+                                                !el.isOrgMembershipActive && "opacity-40"
+                                              )}
+                                            >
+                                              {el.username}
+                                            </div>
+                                            {getReviewedStatusSymbol(
+                                              el?.status as ApprovalStatus,
+                                              el.isOrgMembershipActive
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  }
+                                >
+                                  <div>{BadgeComponent}</div>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </GenericFieldLabel>
                         </div>
-                      </GenericFieldLabel>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </>
+          )}
           {shouldBlockRequestActions ? (
             <div
               className={twMerge(
                 "mt-2 rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm",
-                isReviewedByMe && "border-l-green-400",
-                !approverSequence.isMyReviewInThisSequence && "border-l-primary-400",
-                hasRejected && "border-l-red-500",
+                isExternalApproval && request.externalStatus !== "rejected" && "border-l-primary-500",
+                isExternalApproval && request.externalStatus === "approved" && "border-l-green-400",
+                isExternalApproval && request.externalStatus === "rejected" && "border-l-red-500",
+                isReviewedByMe && !isExternalApproval && "border-l-green-400",
+                !approverSequence.isMyReviewInThisSequence && !isExternalApproval && "border-l-primary-400",
+                hasRejected && !isExternalApproval && "border-l-red-500",
                 hasRevoked && "border-l-red-500",
                 hasExpired && "border-l-red-500"
               )}

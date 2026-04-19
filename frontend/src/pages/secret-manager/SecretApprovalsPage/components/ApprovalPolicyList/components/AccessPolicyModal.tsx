@@ -39,8 +39,11 @@ import {
   Approver,
   ApproverType,
   BypasserType,
+  ExternalApprovalType,
   TAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval/types";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -145,7 +148,9 @@ const formSchema = z
       .default([])
       .optional(),
     maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
+    requestExpirationTime: durationSchema,
+    externalApprovalType: z.nativeEnum(ExternalApprovalType).nullable().optional(),
+    appConnectionId: z.string().nullable().optional()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -159,6 +164,15 @@ const formSchema = z
           path: ["groupApprovers"],
           code: z.ZodIssueCode.custom,
           message: "At least one approver should be provided"
+        });
+      }
+    }
+    if (data.policyType === PolicyType.AccessPolicy && data.externalApprovalType) {
+      if (!data.appConnectionId) {
+        ctx.addIssue({
+          path: ["appConnectionId"],
+          code: z.ZodIssueCode.custom,
+          message: "App connection is required for external approval"
         });
       }
     }
@@ -213,6 +227,8 @@ const Form = ({
           allowedSelfApprovals: editValues?.allowedSelfApprovals,
           maxTimePeriod: editValues?.maxTimePeriod,
           requestExpirationTime: editValues?.requestExpirationTime,
+          externalApprovalType: editValues?.externalApprovalType ?? null,
+          appConnectionId: editValues?.appConnectionId ?? null,
           sequenceApprovers: editValues.approvers?.reduce(
             (acc, curr) => {
               if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
@@ -239,7 +255,9 @@ const Form = ({
     defaultValues: !editValues
       ? {
           secretPath: "/",
-          sequenceApprovers: [{ approvals: 1 }]
+          sequenceApprovers: [{ approvals: 1 }],
+          externalApprovalType: null,
+          appConnectionId: null
         }
       : undefined
   });
@@ -253,6 +271,16 @@ const Form = ({
 
   const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
+  const externalApprovalType = watch("externalApprovalType");
+  const isExternalApproval = Boolean(externalApprovalType);
+
+  const { data: serviceNowConnections = [] } = useListAvailableAppConnections(
+    AppConnection.ServiceNow,
+    projectId,
+    {
+      enabled: isAccessPolicyType
+    }
+  );
 
   const { mutateAsync: createAccessApprovalPolicy } = useCreateAccessApprovalPolicy();
   const { mutateAsync: updateAccessApprovalPolicy } = useUpdateAccessApprovalPolicy();
@@ -597,13 +625,80 @@ const Form = ({
             )}
           />
         </div>
-        <div className="mb-2">
-          <p>Approvers</p>
-          <p className="font-inter text-xs text-mineshaft-300 opacity-90">
-            Select members or groups that are allowed to approve requests from this policy.
-          </p>
-        </div>
-        {isAccessPolicyType ? (
+        {isAccessPolicyType && (
+          <div className="mb-4 flex items-start gap-x-3">
+            <Controller
+              control={control}
+              name="externalApprovalType"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Approval Flow"
+                  tooltipText="Choose whether approvals are handled internally by users/groups or externally via an integrated system like ServiceNow."
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="flex-1"
+                >
+                  <Select
+                    value={value ?? "internal"}
+                    onValueChange={(val) => onChange(val === "internal" ? null : val)}
+                    className="w-full border border-mineshaft-500"
+                  >
+                    <SelectItem value="internal">Internal Approvers</SelectItem>
+                    <SelectItem value={ExternalApprovalType.ServiceNow}>
+                      External - ServiceNow
+                    </SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {isExternalApproval && (
+              <Controller
+                control={control}
+                name="appConnectionId"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="ServiceNow Connection"
+                    isRequired
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    className="flex-1"
+                  >
+                    <Select
+                      value={value ?? ""}
+                      onValueChange={onChange}
+                      className="w-full border border-mineshaft-500"
+                      placeholder="Select a connection..."
+                    >
+                      {serviceNowConnections.map((connection) => (
+                        <SelectItem key={connection.id} value={connection.id}>
+                          {connection.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            )}
+          </div>
+        )}
+        {isExternalApproval && (
+          <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3 text-sm text-mineshaft-200">
+            <p className="font-medium text-mineshaft-100">External Approval via ServiceNow</p>
+            <p className="mt-1">
+              Access requests will be sent to ServiceNow for approval. Once approved or rejected in
+              ServiceNow, the status will be synced back to Infisical automatically.
+            </p>
+          </div>
+        )}
+        {!isExternalApproval && (
+          <div className="mb-2">
+            <p>Approvers</p>
+            <p className="font-inter text-xs text-mineshaft-300 opacity-90">
+              Select members or groups that are allowed to approve requests from this policy.
+            </p>
+          </div>
+        )}
+        {isAccessPolicyType && !isExternalApproval && (
           <>
             <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
               {sequenceApproversFieldArray.fields.map((el, index) => (
@@ -739,7 +834,8 @@ const Form = ({
               </Button>
             </div>
           </>
-        ) : (
+        )}
+        {!isAccessPolicyType && (
           <div className="flex gap-2">
             <Controller
               control={control}
@@ -799,46 +895,56 @@ const Form = ({
             />
           </div>
         )}
-        <Controller
-          control={control}
-          name="allowedSelfApprovals"
-          defaultValue
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl label="Self Approvals" isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                id="self-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
-                onCheckedChange={onChange}
-              >
-                Allow approvers to review their own requests
-              </Switch>
-            </FormControl>
-          )}
-        />
-        <Controller
-          control={control}
-          name="enforcementLevel"
-          defaultValue={EnforcementLevel.Hard}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Bypass Approvals"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              className="mb-3"
-            >
-              <Switch
-                id="bypass-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value === EnforcementLevel.Soft}
-                onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
-              >
-                Allow certain users to bypass policy in break-glass situations
-              </Switch>
-            </FormControl>
-          )}
-        />
-        {enforcementLevel === EnforcementLevel.Soft && (
+        {!isExternalApproval && (
+          <>
+            <Controller
+              control={control}
+              name="allowedSelfApprovals"
+              defaultValue
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Self Approvals"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Switch
+                    id="self-approvals"
+                    thumbClassName="bg-mineshaft-800"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                  >
+                    Allow approvers to review their own requests
+                  </Switch>
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="enforcementLevel"
+              defaultValue={EnforcementLevel.Hard}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Bypass Approvals"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="mb-3"
+                >
+                  <Switch
+                    id="bypass-approvals"
+                    thumbClassName="bg-mineshaft-800"
+                    isChecked={value === EnforcementLevel.Soft}
+                    onCheckedChange={(v) =>
+                      onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)
+                    }
+                  >
+                    Allow certain users to bypass policy in break-glass situations
+                  </Switch>
+                </FormControl>
+              )}
+            />
+          </>
+        )}
+        {!isExternalApproval && enforcementLevel === EnforcementLevel.Soft && (
           <>
             <div className="flex gap-2">
               <Controller

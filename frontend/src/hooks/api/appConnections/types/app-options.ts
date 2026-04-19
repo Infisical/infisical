@@ -240,6 +240,10 @@ export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
 
+export type TServiceNowConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ServiceNow;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -296,7 +300,8 @@ export type TAppConnectionOption =
   | TVenafiConnectionOption
   | TExternalInfisicalConnectionOption
   | TNetScalerConnectionOption
-  | TAnthropicConnectionOption;
+  | TAnthropicConnectionOption
+  | TServiceNowConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -355,4 +360,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
+  [AppConnection.ServiceNow]: TServiceNowConnectionOption;
 };

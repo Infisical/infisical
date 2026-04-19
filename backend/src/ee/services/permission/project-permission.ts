@@ -297,7 +297,8 @@ export enum ProjectPermissionApprovalRequestActions {
 
 export enum ProjectPermissionApprovalRequestGrantActions {
   Read = "read",
-  Revoke = "revoke"
+  Revoke = "revoke",
+  ExternalReview = "external-review"
 }
 
 export enum ProjectPermissionSecretApprovalRequestActions {

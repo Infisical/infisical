@@ -47,6 +47,15 @@ export type TListApprovalRequestsDTO = {
   envSlug?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type THandleExternalReviewDTO = {
+  requestId: string;
+  externalRequestId: string;
+  status: "approved" | "rejected";
+  approverEmail?: string;
+  rejectionReason?: string;
+  metadata?: Record<string, unknown>;
+} & Omit<TProjectPermission, "projectId">;
+
 export interface TAccessApprovalRequestServiceFactory {
   createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{
     request: {
@@ -229,6 +238,30 @@ export interface TAccessApprovalRequestServiceFactory {
       expiresAt?: Date | null | undefined;
       revokedAt?: Date | null | undefined;
       revokedByUserId?: string | null | undefined;
+    };
+    projectId: string;
+  }>;
+  handleExternalReview: (arg: THandleExternalReviewDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      requestedBy?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      privilegeDeletedAt?: Date | null | undefined;
+      expiresAt?: Date | null | undefined;
+      externalRequestId?: string | null | undefined;
+      externalStatus?: string | null | undefined;
+      externalApprovedAt?: Date | null | undefined;
+      externalApprovedByIdentityId?: string | null | undefined;
+      externalMetadata?: unknown;
     };
     projectId: string;
   }>;

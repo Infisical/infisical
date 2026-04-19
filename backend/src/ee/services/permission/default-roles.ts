@@ -444,7 +444,11 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [ProjectPermissionApprovalRequestGrantActions.Read, ProjectPermissionApprovalRequestGrantActions.Revoke],
+    [
+      ProjectPermissionApprovalRequestGrantActions.Read,
+      ProjectPermissionApprovalRequestGrantActions.Revoke,
+      ProjectPermissionApprovalRequestGrantActions.ExternalReview
+    ],
     ProjectPermissionSub.ApprovalRequestGrants
   );
 

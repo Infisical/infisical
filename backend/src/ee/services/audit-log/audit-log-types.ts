@@ -671,6 +671,7 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW = "access-approval-request-external-review",
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
@@ -5478,6 +5479,16 @@ interface AccessApprovalRequestUpdateEvent {
   };
 }
 
+interface AccessApprovalRequestExternalReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW;
+  metadata: {
+    requestId: string;
+    externalRequestId: string;
+    status: string;
+    policyId: string;
+  };
+}
+
 interface CreateAcmeAccountEvent {
   type: EventType.CREATE_ACME_ACCOUNT;
   metadata: {
@@ -6508,6 +6519,7 @@ export type Event =
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
   | AccessApprovalRequestUpdateEvent
+  | AccessApprovalRequestExternalReviewEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
   | CreateAcmeOrderEvent

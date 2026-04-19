@@ -6,6 +6,8 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -20,11 +22,13 @@ import {
   TAccessApprovalPolicyBypasserDALFactory
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
+import { ExternalApprovalType } from "./access-approval-policy-enums";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
 import {
   ApproverType,
   BypasserType,
   TAccessApprovalPolicyServiceFactory,
+  TCreateAccessApprovalPolicy,
   TDeleteAccessApprovalPolicy,
   TGetAccessPolicyCountByEnvironmentDTO,
   TListAccessApprovalPoliciesDTO,
@@ -45,6 +49,7 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
@@ -60,7 +65,8 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  projectMembershipDAL
+  projectMembershipDAL,
+  appConnectionDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -115,20 +121,22 @@ export const accessApprovalPolicyServiceFactory = ({
     allowedSelfApprovals,
     approvalsRequired,
     maxTimePeriod,
-    requestExpirationTime
-  }) => {
+    requestExpirationTime,
+    externalApprovalType,
+    appConnectionId
+  }: TCreateAccessApprovalPolicy) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // If there is a group approver people might be added to the group later to meet the approvers quota
-    const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
+    const groupApprovers = (approvers ?? []).filter((approver) => approver.type === ApproverType.Group);
 
-    const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
+    const userApprovers = (approvers ?? []).filter((approver) => approver.type === ApproverType.User && approver.id) as {
       id: string;
       sequence?: number;
     }[];
 
-    const userApproverNames = approvers.filter(
+    const userApproverNames = (approvers ?? []).filter(
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
 
@@ -160,6 +168,26 @@ export const accessApprovalPolicyServiceFactory = ({
       if (await $policyExists({ envId: env.id, secretPath })) {
         throw new BadRequestError({
           message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
+    }
+
+    // Validate external approval configuration
+    if (externalApprovalType) {
+      if (!appConnectionId) {
+        throw new BadRequestError({
+          message: "App connection is required when external approval type is specified"
+        });
+      }
+
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      }
+
+      if (externalApprovalType === ExternalApprovalType.ServiceNow && appConnection.app !== AppConnection.ServiceNow) {
+        throw new BadRequestError({
+          message: "App connection must be a ServiceNow connection for ServiceNow external approval"
         });
       }
     }
@@ -244,7 +272,9 @@ export const accessApprovalPolicyServiceFactory = ({
           enforcementLevel,
           allowedSelfApprovals,
           maxTimePeriod,
-          requestExpirationTime
+          requestExpirationTime,
+          externalApprovalType,
+          appConnectionId
         },
         tx
       );
@@ -347,15 +377,17 @@ export const accessApprovalPolicyServiceFactory = ({
     approvalsRequired,
     environments,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    externalApprovalType,
+    appConnectionId
   }: TUpdateAccessApprovalPolicy) => {
-    const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
+    const groupApprovers = (approvers ?? []).filter((approver) => approver.type === ApproverType.Group);
 
-    const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
+    const userApprovers = (approvers ?? []).filter((approver) => approver.type === ApproverType.User && approver.id) as {
       id: string;
       sequence?: number;
     }[];
-    const userApproverNames = approvers.filter(
+    const userApproverNames = (approvers ?? []).filter(
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
 
@@ -395,6 +427,31 @@ export const accessApprovalPolicyServiceFactory = ({
         throw new BadRequestError({
           message: `A policy for secret path '${secretPath || accessApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
         });
+      }
+    }
+
+    // Validate external approval configuration if being updated
+    if (externalApprovalType !== undefined) {
+      if (externalApprovalType && !appConnectionId) {
+        throw new BadRequestError({
+          message: "App connection is required when external approval type is specified"
+        });
+      }
+
+      if (externalApprovalType && appConnectionId) {
+        const appConnection = await appConnectionDAL.findById(appConnectionId);
+        if (!appConnection) {
+          throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+        }
+
+        if (
+          externalApprovalType === ExternalApprovalType.ServiceNow &&
+          appConnection.app !== AppConnection.ServiceNow
+        ) {
+          throw new BadRequestError({
+            message: "App connection must be a ServiceNow connection for ServiceNow external approval"
+          });
+        }
       }
     }
 
@@ -476,7 +533,9 @@ export const accessApprovalPolicyServiceFactory = ({
           enforcementLevel,
           allowedSelfApprovals,
           maxTimePeriod,
-          requestExpirationTime
+          requestExpirationTime,
+          externalApprovalType,
+          appConnectionId
         },
         tx
       );

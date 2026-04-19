@@ -1777,7 +1777,8 @@ export const registerRoutes = async (
     accessApprovalRequestDAL,
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    appConnectionDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -1796,7 +1797,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     notificationService,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    appConnectionDAL
   });
 
   const secretReplicationService = secretReplicationServiceFactory({

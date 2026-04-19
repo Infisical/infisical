@@ -2,6 +2,7 @@ import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ExternalApprovalType } from "./access-approval-policy-enums";
 
 export type TIsApproversValid = {
   userIds: string[];
@@ -28,7 +29,7 @@ export type TCreateAccessApprovalPolicy = {
   secretPath: string;
   environment?: string;
   environments?: string[];
-  approvers: (
+  approvers?: (
     | { type: ApproverType.Group; id: string; sequence?: number }
     | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
   )[];
@@ -43,12 +44,14 @@ export type TCreateAccessApprovalPolicy = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalType?: ExternalApprovalType | null;
+  appConnectionId?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers: (
+  approvers?: (
     | { type: ApproverType.Group; id: string; sequence?: number }
     | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
   )[];
@@ -64,6 +67,8 @@ export type TUpdateAccessApprovalPolicy = {
   environments?: string[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalType?: ExternalApprovalType | null;
+  appConnectionId?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {

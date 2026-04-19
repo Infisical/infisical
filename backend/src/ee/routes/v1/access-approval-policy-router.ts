@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+import { ExternalApprovalType } from "@app/ee/services/access-approval-policy/access-approval-policy-enums";
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -105,12 +106,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             ])
             .array()
             .max(100, "Cannot have more than 100 approvers")
-            .min(1, { message: "At least one approver should be provided" })
             .refine(
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
               "Must provide either username or id"
-            ),
+            )
+            .optional(),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -134,12 +135,22 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
           maxTimePeriod: maxTimePeriodSchema,
-          requestExpirationTime: requestExpirationTimeSchema
+          requestExpirationTime: requestExpirationTimeSchema,
+          externalApprovalType: z.nativeEnum(ExternalApprovalType).nullable().optional(),
+          appConnectionId: z.string().uuid().nullable().optional()
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
           "Must provide either environment or environments"
-        ),
+        )
+        .refine((val) => val.externalApprovalType || (val.approvers && val.approvers.length >= 1), {
+          message: "At least one approver should be provided",
+          path: ["approvers"]
+        })
+        .refine((val) => !val.externalApprovalType || val.appConnectionId, {
+          message: "App connection is required for external approval",
+          path: ["appConnectionId"]
+        }),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -208,7 +219,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .optional(),
               bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array(),
               maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              requestExpirationTime: z.string().nullable().optional(),
+              externalApprovalType: z.string().nullable().optional(),
+              appConnectionId: z.string().uuid().nullable().optional()
             })
             .array()
             .nullable()
@@ -292,13 +305,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             })
           ])
           .array()
-          .min(1, { message: "At least one approver should be provided" })
           .max(100, "Cannot have more than 100 approvers")
           .refine(
             // @ts-expect-error this is ok
             (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
             "Must provide either username or id"
-          ),
+          )
+          .optional(),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -319,7 +332,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
-        requestExpirationTime: requestExpirationTimeSchema
+        requestExpirationTime: requestExpirationTimeSchema,
+        externalApprovalType: z.nativeEnum(ExternalApprovalType).nullable().optional(),
+        appConnectionId: z.string().uuid().nullable().optional()
       }),
       response: {
         200: z.object({
@@ -416,7 +431,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               .nullable()
               .optional(),
             maxTimePeriod: z.string().nullable().optional(),
-            requestExpirationTime: z.string().nullable().optional()
+            requestExpirationTime: z.string().nullable().optional(),
+            externalApprovalType: z.string().nullable().optional(),
+            appConnectionId: z.string().uuid().nullable().optional()
           })
         })
       }

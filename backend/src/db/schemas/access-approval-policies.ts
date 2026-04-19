@@ -19,7 +19,9 @@ export const AccessApprovalPoliciesSchema = z.object({
   deletedAt: z.date().nullable().optional(),
   allowedSelfApprovals: z.boolean().default(true),
   maxTimePeriod: z.string().nullable().optional(),
-  requestExpirationTime: z.string().nullable().optional()
+  requestExpirationTime: z.string().nullable().optional(),
+  externalApprovalType: z.string().nullable().optional(),
+  appConnectionId: z.string().uuid().nullable().optional()
 });
 
 export type TAccessApprovalPolicies = z.infer<typeof AccessApprovalPoliciesSchema>;

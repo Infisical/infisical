@@ -17,6 +17,7 @@ import {
   BanIcon,
   CheckIcon,
   ClipboardCheckIcon,
+  ExternalLinkIcon,
   LucideIcon,
   ShieldBanIcon,
   TimerIcon
@@ -564,6 +565,14 @@ export const AccessApprovalRequest = ({
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
+                      {request.externalRequestId && (
+                        <Tooltip content="This request is being reviewed via an external system">
+                          <Badge variant="info">
+                            <ExternalLinkIcon className="h-3 w-3" />
+                            <span>External Review</span>
+                          </Badge>
+                        </Tooltip>
+                      )}
                       {request.requestedByUserId === user.id && (
                         <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
                           <FontAwesomeIcon icon={faUser} size="sm" />

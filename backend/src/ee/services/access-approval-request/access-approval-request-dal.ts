@@ -184,6 +184,8 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        externalApprovalType?: string | null;
+        appConnectionId?: string | null;
       };
       projectId: string;
       environment: string;
@@ -369,7 +371,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
             db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
             db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
-            db.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
+            db.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime"),
+            db.ref("externalApprovalType").withSchema(TableName.AccessApprovalPolicy).as("policyExternalApprovalType"),
+            db.ref("appConnectionId").withSchema(TableName.AccessApprovalPolicy).as("policyAppConnectionId")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -448,7 +452,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               envId: doc.policyEnvId,
               deletedAt: doc.policyDeletedAt,
               maxTimePeriod: doc.policyMaxTimePeriod,
-              requestExpirationTime: doc.policyRequestExpirationTime
+              requestExpirationTime: doc.policyRequestExpirationTime,
+              externalApprovalType: doc.policyExternalApprovalType,
+              appConnectionId: doc.policyAppConnectionId
             },
             requestedByUser: {
               userId: doc.requestedByUserId,

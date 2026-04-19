@@ -29,7 +29,7 @@ import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { useToggle } from "@app/hooks";
-import { Approver } from "@app/hooks/api/accessApproval/types";
+import { Approver, ExternalApprovalType } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ApproverType } from "@app/hooks/api/secretApproval/types";
@@ -47,6 +47,7 @@ interface IPolicy {
   updatedAt: Date;
   policyType: PolicyType;
   enforcementLevel: EnforcementLevel;
+  externalApprovalType?: ExternalApprovalType | null;
 }
 
 type Props = {
@@ -187,89 +188,108 @@ export const ApprovalPolicyRow = ({
             }`}
           >
             <div className="p-4">
-              <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
-              {labels?.map((el, index) => (
-                <div key={`approval-list-${index + 1}`} className="flex">
-                  {labels.length > 1 && (
-                    <div className="flex w-12 flex-col items-center gap-2 pr-4">
-                      <div
-                        className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
-                      />
+              {policy.externalApprovalType ? (
+                <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+                  <div className="flex items-center gap-2 text-mineshaft-100">
+                    <FontAwesomeIcon icon={faClipboardCheck} className="text-primary" />
+                    <span className="font-medium">External Approval</span>
+                  </div>
+                  <p className="mt-2 text-sm text-mineshaft-300">
+                    {policy.externalApprovalType === ExternalApprovalType.ServiceNow
+                      ? "Approvals are handled via ServiceNow integration"
+                      : `Approvals are handled via ${policy.externalApprovalType}`}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
+                  {labels?.map((el, index) => (
+                    <div key={`approval-list-${index + 1}`} className="flex">
                       {labels.length > 1 && (
-                        <Badge variant="neutral">
-                          <span>{index + 1}</span>
-                        </Badge>
-                      )}
-                      <div
-                        className={twMerge(
-                          "grow border-mineshaft-600",
-                          index < labels.length - 1 && "border-r"
-                        )}
-                      />
-                    </div>
-                  )}
-                  <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                    <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                      {Boolean(el.users.length) && (
-                        <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map(({ member, approver }, idx) => {
-                            if (!member) {
-                              return (
-                                <div className="flex items-center" key={approver.id}>
-                                  <span className="flex items-center gap-2 opacity-40">
-                                    {approver.name || approver.id}
-                                    <span className="text-xs">
-                                      <Tooltip content="This user has been removed from the project.">
-                                        <div>
-                                          <Badge variant="neutral">
-                                            <BanIcon />
-                                            Removed
-                                          </Badge>
-                                        </div>
-                                      </Tooltip>
-                                    </span>
-                                  </span>
-                                  {idx < el.users.length - 1 && ","}
-                                </div>
-                              );
-                            }
-
-                            return member.user.isOrgMembershipActive ? (
-                              <div className="flex items-center" key={member.id}>
-                                <span>{getMemberLabel(member)}</span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            ) : (
-                              <div className="flex items-center" key={member.id}>
-                                <span className="flex items-center gap-2 opacity-40">
-                                  {getMemberLabel(member)}
-                                  <span className="text-xs">
-                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                      <div>
-                                        <Badge variant="neutral">
-                                          <BanIcon />
-                                          Inactive
-                                        </Badge>
-                                      </div>
-                                    </Tooltip>
-                                  </span>
-                                </span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            );
-                          })}
+                        <div className="flex w-12 flex-col items-center gap-2 pr-4">
+                          <div
+                            className={twMerge(
+                              "grow border-mineshaft-600",
+                              index !== 0 && "border-r"
+                            )}
+                          />
+                          {labels.length > 1 && (
+                            <Badge variant="neutral">
+                              <span>{index + 1}</span>
+                            </Badge>
+                          )}
+                          <div
+                            className={twMerge(
+                              "grow border-mineshaft-600",
+                              index < labels.length - 1 && "border-r"
+                            )}
+                          />
                         </div>
                       )}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
-                      {el.groupLabels}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel icon={faClipboardCheck} label="Approvals Required">
-                      {el.approvals}
-                    </GenericFieldLabel>
-                  </div>
-                </div>
-              ))}
+                      <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
+                        <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
+                          {Boolean(el.users.length) && (
+                            <div className="flex flex-row flex-wrap gap-2">
+                              {el.users.map(({ member, approver }, idx) => {
+                                if (!member) {
+                                  return (
+                                    <div className="flex items-center" key={approver.id}>
+                                      <span className="flex items-center gap-2 opacity-40">
+                                        {approver.name || approver.id}
+                                        <span className="text-xs">
+                                          <Tooltip content="This user has been removed from the project.">
+                                            <div>
+                                              <Badge variant="neutral">
+                                                <BanIcon />
+                                                Removed
+                                              </Badge>
+                                            </div>
+                                          </Tooltip>
+                                        </span>
+                                      </span>
+                                      {idx < el.users.length - 1 && ","}
+                                    </div>
+                                  );
+                                }
+
+                                return member.user.isOrgMembershipActive ? (
+                                  <div className="flex items-center" key={member.id}>
+                                    <span>{getMemberLabel(member)}</span>
+                                    {idx < el.users.length - 1 && ","}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center" key={member.id}>
+                                    <span className="flex items-center gap-2 opacity-40">
+                                      {getMemberLabel(member)}
+                                      <span className="text-xs">
+                                        <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                          <div>
+                                            <Badge variant="neutral">
+                                              <BanIcon />
+                                              Inactive
+                                            </Badge>
+                                          </div>
+                                        </Tooltip>
+                                      </span>
+                                    </span>
+                                    {idx < el.users.length - 1 && ","}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </GenericFieldLabel>
+                        <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
+                          {el.groupLabels}
+                        </GenericFieldLabel>
+                        <GenericFieldLabel icon={faClipboardCheck} label="Approvals Required">
+                          {el.approvals}
+                        </GenericFieldLabel>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         </Td>

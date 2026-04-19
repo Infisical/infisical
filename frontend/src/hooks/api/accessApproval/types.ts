@@ -3,6 +3,10 @@ import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
 import { ApprovalStatus } from "../secretApprovalRequest/types";
 
+export enum ExternalApprovalType {
+  ServiceNow = "servicenow"
+}
+
 export type TAccessApprovalPolicy = {
   id: string;
   name: string;
@@ -20,6 +24,8 @@ export type TAccessApprovalPolicy = {
   allowedSelfApprovals: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalType?: ExternalApprovalType | null;
+  appConnectionId?: string | null;
 };
 
 export enum ApproverType {
@@ -100,6 +106,8 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    externalApprovalType?: ExternalApprovalType | null;
+    appConnectionId?: string | null;
   };
 
   reviewers: {
@@ -130,6 +138,9 @@ export type TAccessApprovalRequest = {
     userId: string;
     username: string;
   } | null;
+  externalRequestId?: string | null;
+  externalStatus?: string | null;
+  externalApprovedAt?: Date | null;
 };
 
 export type TAccessApproval = {
@@ -211,6 +222,8 @@ export type TCreateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalType?: ExternalApprovalType | null;
+  appConnectionId?: string | null;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -228,6 +241,8 @@ export type TUpdateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalType?: ExternalApprovalType | null;
+  appConnectionId?: string | null;
 };
 
 export type TDeleteSecretPolicyDTO = {

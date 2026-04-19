@@ -26,7 +26,12 @@ export const AccessApprovalRequestsSchema = z.object({
   approvedAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),
   approvedByUserId: z.string().uuid().nullable().optional(),
-  revokedByUserId: z.string().uuid().nullable().optional()
+  revokedByUserId: z.string().uuid().nullable().optional(),
+  externalRequestId: z.string().nullable().optional(),
+  externalStatus: z.string().nullable().optional(),
+  externalApprovedAt: z.date().nullable().optional(),
+  externalApprovedByIdentityId: z.string().uuid().nullable().optional(),
+  externalMetadata: z.unknown().nullable().optional()
 });
 
 export type TAccessApprovalRequests = z.infer<typeof AccessApprovalRequestsSchema>;

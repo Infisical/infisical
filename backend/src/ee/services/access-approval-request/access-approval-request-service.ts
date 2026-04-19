@@ -21,17 +21,28 @@ import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAppConnectionDALFactory } from "../../../services/app-connection/app-connection-dal";
 import { TNotificationServiceFactory } from "../../../services/notification/notification-service";
 import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
+import { ExternalApprovalType } from "../access-approval-policy/access-approval-policy-enums";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionApprovalRequestGrantActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
+import { sendAccessRequestToServiceNow } from "./access-approval-request-external-fns";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
-import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
+import {
+  ApprovalStatus,
+  TAccessApprovalRequestServiceFactory,
+  THandleExternalReviewDTO
+} from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
@@ -69,6 +80,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -87,7 +99,8 @@ export const accessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL,
-  notificationService
+  notificationService,
+  appConnectionDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
@@ -213,9 +226,19 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
+    // Check if this is an external approval policy
+    const policyWithExternal = policy as typeof policy & {
+      externalApprovalType?: string | null;
+      appConnectionId?: string | null;
+    };
+    const isExternalApproval = Boolean(policyWithExternal.externalApprovalType);
+
     const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
       const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
       const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
+
+      // Generate external request ID if this is an external approval
+      const externalRequestId = isExternalApproval ? alphaNumericNanoId(32) : null;
 
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
@@ -225,10 +248,50 @@ export const accessApprovalRequestServiceFactory = ({
           permissions: JSON.stringify(requestedPermissions),
           isTemporary,
           note: note || null,
-          expiresAt
+          expiresAt,
+          externalRequestId,
+          externalStatus: isExternalApproval ? "pending" : null
         },
         tx
       );
+
+      // If external approval, send to external system
+      if (
+        isExternalApproval &&
+        policyWithExternal.externalApprovalType === ExternalApprovalType.ServiceNow &&
+        policyWithExternal.appConnectionId
+      ) {
+        const appConnection = await appConnectionDAL.findById(policyWithExternal.appConnectionId);
+        if (appConnection && appConnection.encryptedCredentials) {
+          const callbackUrl = `${cfg.SITE_URL}/api/v1/access-approvals/requests/${approvalRequest.id}/external-review`;
+          const requesterName = `${requestedByUser.firstName || ""} ${requestedByUser.lastName || ""}`.trim();
+
+          await sendAccessRequestToServiceNow({
+            encryptedCredentials: appConnection.encryptedCredentials,
+            orgId: project.orgId,
+            projectId: appConnection.projectId,
+            payload: {
+              request_id: approvalRequest.id,
+              external_request_id: externalRequestId!,
+              callback_url: callbackUrl,
+              request_type: "secret_access",
+              project_id: project.id,
+              project_name: project.name,
+              environment: envSlug,
+              secret_path: secretPath,
+              permissions: JSON.stringify(requestedPermissions, null, 4),
+              requestor_email: requestedByUser.email || "",
+              requestor_name: requesterName || requestedByUser.email || "",
+              justification: note || null,
+              is_temporary: isTemporary,
+              temporary_range: temporaryRange || null
+            },
+            kmsService
+          });
+        }
+
+        return approvalRequest;
+      }
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
@@ -915,12 +978,157 @@ export const accessApprovalRequestServiceFactory = ({
     return { count };
   };
 
+  const handleExternalReview = async ({
+    requestId,
+    externalRequestId,
+    status,
+    approverEmail,
+    rejectionReason,
+    metadata,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: THandleExternalReviewDTO) => {
+    const accessApprovalRequestRaw = await accessApprovalRequestDAL.findById(requestId);
+    if (!accessApprovalRequestRaw) {
+      throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+    }
+
+    // Type assertion for external fields
+    const accessApprovalRequest = accessApprovalRequestRaw as typeof accessApprovalRequestRaw & {
+      externalRequestId?: string | null;
+      externalStatus?: string | null;
+    };
+
+    // Validate external request ID matches
+    if (accessApprovalRequest.externalRequestId !== externalRequestId) {
+      throw new BadRequestError({ message: "External request ID mismatch" });
+    }
+
+    // Validate policy is external type
+    const policyRaw = await accessApprovalPolicyDAL.findOne({ id: accessApprovalRequest.policyId });
+    const policy = policyRaw as typeof policyRaw & { externalApprovalType?: string | null };
+    if (!policy || !policy.externalApprovalType) {
+      throw new BadRequestError({ message: "This policy does not use external approval" });
+    }
+
+    // Check permission: actor must have ExternalReview permission
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (
+      !permission.can(
+        ProjectPermissionApprovalRequestGrantActions.ExternalReview,
+        ProjectPermissionSub.ApprovalRequestGrants
+      )
+    ) {
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to review external access requests"
+      });
+    }
+
+    // Check idempotency: if already processed, return existing state
+    if (accessApprovalRequest.externalStatus !== "pending") {
+      return { request: accessApprovalRequest, projectId: accessApprovalRequest.projectId };
+    }
+
+    // Get project and environment for privilege creation
+    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
+
+    const updatedRequest = await accessApprovalRequestDAL.transaction(async (tx) => {
+      if (status === "approved") {
+        // Parse permissions and create privilege
+        const parsedPermissions = accessApprovalRequest.permissions;
+        const { envSlug } = verifyRequestedPermissions({ permissions: parsedPermissions });
+        const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
+
+        if (!environment) {
+          throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
+        }
+
+        // Create additional privilege (similar to internal approval logic)
+        let privilege;
+        if (accessApprovalRequest.isTemporary && accessApprovalRequest.temporaryRange) {
+          const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange);
+          const startTime = new Date();
+
+          privilege = await additionalPrivilegeDAL.create(
+            {
+              actorUserId: accessApprovalRequest.requestedByUserId,
+              projectId: project.id,
+              name: `external-approval-${slugify(alphaNumericNanoId(12))}`,
+              permissions: JSON.stringify(parsedPermissions),
+              isTemporary: true,
+              temporaryMode: TemporaryPermissionMode.Relative,
+              temporaryRange: accessApprovalRequest.temporaryRange,
+              temporaryAccessStartTime: startTime,
+              temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
+            },
+            tx
+          );
+        } else {
+          privilege = await additionalPrivilegeDAL.create(
+            {
+              actorUserId: accessApprovalRequest.requestedByUserId,
+              projectId: project.id,
+              name: `external-approval-${slugify(alphaNumericNanoId(12))}`,
+              permissions: JSON.stringify(parsedPermissions)
+            },
+            tx
+          );
+        }
+
+        return accessApprovalRequestDAL.updateById(
+          requestId,
+          {
+            status: ApprovalStatus.APPROVED,
+            externalStatus: "approved",
+            externalApprovedAt: new Date(),
+            externalApprovedByIdentityId: actorId,
+            externalMetadata: metadata ? JSON.stringify(metadata) : null,
+            privilegeId: privilege.id,
+            approvedAt: new Date()
+          },
+          tx
+        );
+      }
+
+      // Handle rejection
+      return accessApprovalRequestDAL.updateById(
+        requestId,
+        {
+          status: ApprovalStatus.REJECTED,
+          externalStatus: "rejected",
+          externalApprovedAt: new Date(),
+          externalApprovedByIdentityId: actorId,
+          externalMetadata: metadata
+            ? JSON.stringify({ ...metadata, rejectionReason, approverEmail })
+            : JSON.stringify({ rejectionReason, approverEmail })
+        },
+        tx
+      );
+    });
+
+    return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
+  };
+
   return {
     createAccessApprovalRequest,
     updateAccessApprovalRequest,
     listApprovalRequests,
     reviewAccessRequest,
     revokeAccessRequest,
-    getCount
+    getCount,
+    handleExternalReview
   };
 };
