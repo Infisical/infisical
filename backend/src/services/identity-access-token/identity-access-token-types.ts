@@ -25,7 +25,8 @@ export type TKubernetesAuthDetails = {
 
 export type TIdentityAccessTokenJwtPayload = {
   identityId: string;
-  clientSecretId: string;
+  /** Only present for Universal Auth tokens — carried through renewal without being validated */
+  clientSecretId?: string;
   identityAccessTokenId: string;
   authTokenType: string;
   identityAuth: {
