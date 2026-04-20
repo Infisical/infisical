@@ -98,6 +98,8 @@ export interface TAccessApprovalPolicyDALFactory
         secretPath: string;
         deletedAt?: Date | null | undefined;
         maxTimePeriod?: string | null;
+        externalApprovalType?: string | null;
+        appConnectionId?: string | null;
         environments: {
           id: string;
           name: string;

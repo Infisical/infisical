@@ -170,6 +170,7 @@ export const AccessApprovalRequest = ({
           !request.policy.deletedAt &&
           !request.isApproved &&
           request.status !== ApprovalStatus.REVOKED &&
+          request.status !== ApprovalStatus.REJECTED &&
           !request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) &&
           !isRequestExpired(request)
       );
@@ -179,6 +180,7 @@ export const AccessApprovalRequest = ({
           request.policy.deletedAt ||
           request.isApproved ||
           request.status === ApprovalStatus.REVOKED ||
+          request.status === ApprovalStatus.REJECTED ||
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
           isRequestExpired(request)
       );

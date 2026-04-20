@@ -399,7 +399,12 @@ export const accessApprovalPolicyServiceFactory = ({
     }
 
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
+    const isExternalApproval = externalApprovalType !== undefined
+      ? Boolean(externalApprovalType)
+      : Boolean(accessApprovalPolicy.externalApprovalType);
+
     if (
+      !isExternalApproval &&
       groupApprovers?.length === 0 &&
       userApprovers &&
       currentApprovals > userApprovers.length + userApproverNames.length
