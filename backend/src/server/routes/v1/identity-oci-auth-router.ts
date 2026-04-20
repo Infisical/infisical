@@ -65,6 +65,13 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityOciAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_OCI_AUTH,

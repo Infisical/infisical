@@ -124,6 +124,13 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identityJwtAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_JWT_AUTH,
