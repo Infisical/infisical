@@ -370,6 +370,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:sessionId/event-batches",
+    // RDP sessions pack full PDU bytes (base64) into target_frame events,
+    // so batches can run into several MB. Fastify's default 1MB body
+    // limit causes 413s. 50MB is roomy enough for current RDP payloads
+    // without being irresponsible.
+    bodyLimit: 50 * 1024 * 1024,
     config: {
       rateLimit: writeLimit
     },

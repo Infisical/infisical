@@ -65,13 +65,16 @@ const ensureWasm = () => {
   if (!wasmReady) {
     wasmReady = (async () => {
       await wasmInit();
-      wasmSetup("info");
+      wasmSetup("debug");
     })();
   }
   return wasmReady;
 };
 
-type ApplyInputs = { applyInputs: (tx: InputTransaction) => void };
+type ApplyInputs = {
+  applyInputs: (tx: InputTransaction) => void;
+  releaseAllInputs: () => void;
+};
 
 const attachInputHandlers = (canvas: HTMLCanvasElement | null, session: ApplyInputs) => {
   if (!canvas) return () => {};
@@ -172,13 +175,29 @@ const attachInputHandlers = (canvas: HTMLCanvasElement | null, session: ApplyInp
     }
   };
 
+  const releaseAll = () => {
+    try {
+      session.releaseAllInputs();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[rdp] releaseAllInputs failed", err);
+    }
+  };
+  const onVisibilityChange = () => {
+    if (document.hidden) releaseAll();
+  };
+
   canvas.addEventListener("mousedown", onMouseDown);
   canvas.addEventListener("mouseup", onMouseUp);
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("contextmenu", onContextMenu);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("keydown", onKeyDown);
-  canvas.addEventListener("keyup", onKeyUp);
+  // keyup on window so we don't miss a release when focus shifts off the
+  // canvas mid-press (classic cause of stuck Shift / Ctrl / Alt on VMs).
+  window.addEventListener("keyup", onKeyUp);
+  canvas.addEventListener("blur", releaseAll);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 
   return () => {
     canvas.removeEventListener("mousedown", onMouseDown);
@@ -187,7 +206,9 @@ const attachInputHandlers = (canvas: HTMLCanvasElement | null, session: ApplyInp
     canvas.removeEventListener("contextmenu", onContextMenu);
     canvas.removeEventListener("wheel", onWheel);
     canvas.removeEventListener("keydown", onKeyDown);
-    canvas.removeEventListener("keyup", onKeyUp);
+    window.removeEventListener("keyup", onKeyUp);
+    canvas.removeEventListener("blur", releaseAll);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
   };
 };
 

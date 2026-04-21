@@ -224,6 +224,19 @@ export const setupRelayServer = async ({
             clientConn.destroy();
             relayConn.destroy();
           });
+
+          // Swallow socket errors (EPIPE when a side FINs mid-write, etc.)
+          // and tear the trio down instead of letting Node crash on an
+          // unhandled 'error' event. Same tear-down path as 'close'.
+          const onSocketError = (err: Error) => {
+            logger.debug({ err }, "gateway relay socket error; tearing down");
+            clientConn.destroy();
+            relayConn.destroy();
+            gatewayConn.destroy();
+          };
+          clientConn.on("error", onSocketError);
+          relayConn.on("error", onSocketError);
+          gatewayConn.on("error", onSocketError);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           relayErrorMsg.push(errorMsg);

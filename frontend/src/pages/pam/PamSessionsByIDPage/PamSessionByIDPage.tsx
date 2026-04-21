@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { faChevronLeft, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faEllipsisV, faPlay } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
 import { GavelIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,7 +19,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
+import { PamResourceType, PamSessionStatus, useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamTerminateSessionModal } from "../components/PamTerminateSessionModal";
@@ -80,6 +81,23 @@ const Page = () => {
             title={`${session.accountName} Session`}
             description={`View details for this ${session.accountName} session.`}
           >
+            {session.resourceType === PamResourceType.Windows && (
+              <Link
+                to="/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId/replay"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  sessionId: session.id
+                }}
+              >
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlay} />}
+                >
+                  Replay
+                </Button>
+              </Link>
+            )}
             {isGatewaySession && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

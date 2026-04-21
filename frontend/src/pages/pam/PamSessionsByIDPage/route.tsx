@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { PamSessionByIDPage } from "./PamSessionByIDPage";
+import { PamSessionByIDPage } from './PamSessionByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId/',
 )({
   component: PamSessionByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,16 +11,16 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Sessions",
+          label: 'Sessions',
           link: linkOptions({
-            to: "/organizations/$orgId/projects/pam/$projectId/sessions",
-            params
-          })
+            to: '/organizations/$orgId/projects/pam/$projectId/sessions',
+            params,
+          }),
         },
         {
-          label: "Details"
-        }
-      ]
-    };
-  }
-});
+          label: 'Details',
+        },
+      ],
+    }
+  },
+})
