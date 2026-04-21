@@ -808,6 +808,18 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         message: `Certificate with serial number '${serialNumber}' not found under CA '${caId}'`
       });
     }
+
+    // If this certificate has been superseded by a renewal, the ARN now points at the renewed
+    // cert body in AWS — hitting AWS RevokeCertificate would revoke the actively-served cert.
+    // The superseded cert body is already gone from AWS, so skip the AWS call and let the caller
+    // mark the DB row as REVOKED on its own.
+    if (cert.renewedByCertificateId) {
+      logger.info(
+        `Skipping AWS ACM revoke for superseded certificate — ARN now points at renewed cert [certificateId=${cert.id}] [renewedByCertificateId=${cert.renewedByCertificateId}]`
+      );
+      return;
+    }
+
     const parsedMetadata = ExternalMetadataSchema.safeParse(cert.externalMetadata);
     if (!parsedMetadata.success || parsedMetadata.data.type !== CaType.AWS_ACM_PUBLIC_CA || !parsedMetadata.data.arn) {
       throw new BadRequestError({
