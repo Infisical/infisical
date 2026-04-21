@@ -132,12 +132,12 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
 
   const findGroups = async ({ scopeData, tx, filter }: TFindGroupArg) => {
     try {
-      const paginatedGroups = (tx || db.replicaNode())(TableName.Membership)
+      // Base filtered query (no pagination) — shared for count and ID subquery
+      const baseFilterQuery = (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where((qb) => {
           if (filter.groupId) {
@@ -153,15 +153,12 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedGroups.limit(filter.limit);
-      if (filter.offset) void paginatedGroups.offset(filter.offset);
-
       if (filter.name || filter.role) {
         buildKnexFilterForSearchResource(
-          paginatedGroups,
+          baseFilterQuery,
           {
-            name: filter.name!,
-            role: filter.role!
+            ...(filter.name && { name: filter.name }),
+            ...(filter.role && { role: filter.role })
           },
           (attr) => {
             switch (attr) {
@@ -176,14 +173,30 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         );
       }
 
+      // Count total matching groups (without pagination)
+      const [countResult] = await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`);
+      const totalCount = Number(countResult?.count ?? 0);
+
+      // Paginated IDs subquery
+      const paginatedGroups = baseFilterQuery
+        .clone()
+        .clearSelect()
+        .select(`${TableName.Membership}.id`)
+        .groupBy(`${TableName.Membership}.id`, `${TableName.Groups}.name`)
+        .orderByRaw(`LOWER("${TableName.Groups}"."name") ASC`)
+        .orderBy(`${TableName.Membership}.id`, "asc");
+      if (filter.limit) void paginatedGroups.limit(filter.limit);
+      if (filter.offset) void paginatedGroups.offset(filter.offset);
+
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .whereIn(`${TableName.Membership}.id`, paginatedGroups)
+        .orderByRaw(`LOWER("${TableName.Groups}"."name") ASC`)
+        .orderBy(`${TableName.Membership}.id`, "asc")
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
@@ -208,11 +221,6 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
             .as("membershipRoleTemporaryAccessEndTime"),
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorGroupId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
 
       const data = sqlNestRelationships({
@@ -262,7 +270,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindGroup" });
     }

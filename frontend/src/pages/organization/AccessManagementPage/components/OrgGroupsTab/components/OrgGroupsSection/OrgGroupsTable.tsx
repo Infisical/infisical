@@ -53,7 +53,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
+import { useGetOrgRoles, useSearchOrganizationGroups, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -88,7 +88,6 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { isPending, data: groups = [] } = useGetOrganizationGroups(orgId);
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
 
   const { data: roles } = useGetOrgRoles(orgId);
@@ -118,7 +117,8 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     orderBy,
     setOrderBy,
     setOrderDirection,
-    toggleOrderDirection
+    toggleOrderDirection,
+    debouncedSearch
   } = usePagination<GroupsOrderBy>(GroupsOrderBy.Name, {
     initPerPage: getUserTablePreference("orgGroupsTable", PreferenceKey.PerPage, 20)
   });
@@ -147,39 +147,30 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
 
   const isTableFiltered = Boolean(filter.roles.length);
 
-  const filteredGroups = useMemo(() => {
-    const filtered = groups?.filter(({ name, slug, role, customRole }) => {
-      if (filter.roles.length) {
-        const effectiveRole = role === "custom" ? customRole?.slug : role;
-        if (!effectiveRole || !filter.roles.includes(effectiveRole)) {
-          return false;
-        }
-      }
+  const { isPending, data } = useSearchOrganizationGroups({
+    organizationId: orgId,
+    offset,
+    limit: perPage,
+    search: debouncedSearch,
+    roles: filter.roles.length ? filter.roles : undefined
+  });
 
-      if (search) {
-        return (
-          name.toLowerCase().includes(search.toLowerCase()) ||
-          slug.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-      return true;
-    });
+  const { groups = [], totalCount = 0 } = data ?? {};
 
-    const ordered = filtered?.sort((a, b) => {
+  const sortedGroups = useMemo(() => {
+    const sorted = [...groups].sort((a, b) => {
       switch (orderBy) {
         case GroupsOrderBy.Role: {
           const aValue = a.role === "custom" ? (a.customRole?.name as string) : a.role;
           const bValue = b.role === "custom" ? (b.customRole?.name as string) : b.role;
-
           return aValue.toLowerCase().localeCompare(bValue.toLowerCase());
         }
         default:
           return a[orderBy].toLowerCase().localeCompare(b[orderBy].toLowerCase());
       }
     });
-
-    return orderDirection === OrderByDirection.ASC ? ordered : ordered?.reverse();
-  }, [search, groups, orderBy, orderDirection, filter]);
+    return orderDirection === OrderByDirection.ASC ? sorted : sorted.reverse();
+  }, [groups, orderBy, orderDirection]);
 
   const handleSort = (column: GroupsOrderBy) => {
     if (column === orderBy) {
@@ -192,12 +183,10 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   };
 
   useResetPageHelper({
-    totalCount: filteredGroups.length,
+    totalCount,
     offset,
     setPage
   });
-
-  const filteredGroupsPage = filteredGroups.slice(offset, perPage * page);
 
   return (
     <div>
@@ -243,16 +232,16 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {!isPending && !filteredGroups?.length ? (
+      {!isPending && !sortedGroups.length ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {groups.length
-                ? `No ${isSubOrganization ? "sub-" : ""}organization groups match ${search ? "search" : "filter criteria"}`
+              {debouncedSearch || isTableFiltered
+                ? `No ${isSubOrganization ? "sub-" : ""}organization groups match ${debouncedSearch ? "search" : "filter criteria"}`
                 : `No ${isSubOrganization ? "sub-" : ""}organization groups found`}
             </EmptyTitle>
             <EmptyDescription>
-              {groups.length
+              {debouncedSearch || isTableFiltered
                 ? "Adjust your search or filter criteria."
                 : "Create a group to get started."}
             </EmptyDescription>
@@ -330,7 +319,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   </TableRow>
                 ))}
               {!isPending &&
-                filteredGroupsPage.map(
+                sortedGroups.map(
                   ({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
                     const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                     const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
@@ -506,9 +495,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                 )}
             </TableBody>
           </Table>
-          {Boolean(filteredGroups.length) && (
+          {Boolean(totalCount) && (
             <Pagination
-              count={filteredGroups.length}
+              count={totalCount}
               page={page}
               perPage={perPage}
               onChangePage={setPage}

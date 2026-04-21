@@ -11,6 +11,7 @@ export {
   useDeleteOrgTaxId,
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
+  useSearchOrganizationGroups,
   useGetOrganizations,
   useGetOrganizationsWithSubOrgs,
   useGetOrgBillingDetails,
