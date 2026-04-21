@@ -43,6 +43,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { AcmeDnsProvider } from "./acme-certificate-authority-enums";
 import { AcmeCertificateAuthorityCredentialsSchema } from "./acme-certificate-authority-schemas";
@@ -54,7 +55,6 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
-import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const validateDnsResolver = (resolver: string): void => {
   const appCfg = getConfig();
@@ -422,12 +422,13 @@ export const orderCertificate = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53InsertTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await route53UpsertRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+            name: recordName,
+            type: "TXT",
+            value: recordValue,
+            ttl: 30,
+            comment: "Set ACME challenge TXT record"
+          });
           break;
         }
         case AcmeDnsProvider.Cloudflare: {
@@ -478,12 +479,13 @@ export const orderCertificate = async (
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
-          await route53DeleteTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+          await route53DeleteRecord(connection as TAwsConnection, acmeCa.configuration.dnsProviderConfig.hostedZoneId, {
+            name: recordName,
+            type: "TXT",
+            value: recordValue,
+            ttl: 30,
+            comment: "Delete ACME challenge TXT record"
+          });
           break;
         }
         case AcmeDnsProvider.Cloudflare: {

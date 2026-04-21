@@ -125,18 +125,4 @@ export const generateAcmPassphrase = (): string => generateAcmPassphraseInternal
 
 // Strip hyphens from the certificate UUID to produce a 32-char token that
 // satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
-export const buildIdempotencyToken = (certificateId: string) => certificateId.replace(/-/g, "").slice(0, 32);
-
-export class AcmValidationPendingError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AcmValidationPendingError";
-  }
-}
-
-// Use the same class shape for a terminal validation failure — signal via name.
-export const acmValidationFailedError = (message: string) => {
-  const err = new Error(message);
-  err.name = "AcmValidationFailedError";
-  return err;
-};
+export const buildIdempotencyToken = (certificateId: string) => certificateId.split("-").join("").slice(0, 32);

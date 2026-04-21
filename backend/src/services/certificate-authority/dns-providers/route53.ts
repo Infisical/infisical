@@ -11,6 +11,7 @@ export type TRoute53Record = {
   type: "CNAME" | "TXT" | "A" | "AAAA";
   value: string;
   ttl?: number;
+  comment?: string;
 };
 
 const buildClient = async (connection: TAwsConnectionConfig) => {
@@ -25,20 +26,21 @@ const buildClient = async (connection: TAwsConnectionConfig) => {
   });
 };
 
-export const route53UpsertRecord = async (
+const changeRecord = async (
   connection: TAwsConnectionConfig,
   hostedZoneId: string,
+  action: "UPSERT" | "DELETE",
   record: TRoute53Record
 ) => {
   const route53Client = await buildClient(connection);
-
+  const defaultComment = `${action === "UPSERT" ? "Upsert" : "Delete"} ${record.type} record for ${record.name}`;
   const command = new ChangeResourceRecordSetsCommand({
     HostedZoneId: hostedZoneId,
     ChangeBatch: {
-      Comment: `Upsert ${record.type} record for ${record.name}`,
+      Comment: record.comment ?? defaultComment,
       Changes: [
         {
-          Action: "UPSERT",
+          Action: action,
           ResourceRecordSet: {
             Name: record.name,
             Type: record.type,
@@ -49,9 +51,14 @@ export const route53UpsertRecord = async (
       ]
     }
   });
-
   await route53Client.send(command);
 };
+
+export const route53UpsertRecord = (connection: TAwsConnectionConfig, hostedZoneId: string, record: TRoute53Record) =>
+  changeRecord(connection, hostedZoneId, "UPSERT", record);
+
+export const route53DeleteRecord = (connection: TAwsConnectionConfig, hostedZoneId: string, record: TRoute53Record) =>
+  changeRecord(connection, hostedZoneId, "DELETE", record);
 
 export const route53GetHostedZone = async (connection: TAwsConnectionConfig, hostedZoneId: string) => {
   const route53Client = await buildClient(connection);

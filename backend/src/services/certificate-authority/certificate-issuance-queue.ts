@@ -30,10 +30,8 @@ import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
-import {
-  AcmValidationPendingError,
-  AwsAcmPublicCaCertificateAuthorityFns
-} from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
+import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
@@ -567,12 +565,12 @@ export const certificateIssuanceQueueFactory = ({
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
       }
     } catch (error: unknown) {
-      // AcmValidationPendingError is a retryable signal for ACM's long-running DNS validation.
-      // Don't mark the request as FAILED on every poll — only after the queue exhausts attempts.
-      const isRetryable = error instanceof AcmValidationPendingError;
+      // AcmPendingError signals that an ACM operation (DNS validation, renewal, export) is still
+      // in flight. Don't mark the request as FAILED on every poll — only after the queue exhausts attempts.
+      const isRetryable = error instanceof AcmPendingError;
       if (isRetryable) {
         logger.info(
-          `Certificate issuance pending validation — will retry [certificateId=${certificateId}] [caId=${caId}]`
+          `Certificate issuance pending ACM operation — will retry [certificateId=${certificateId}] [caId=${caId}]`
         );
         throw error;
       }
@@ -612,11 +610,11 @@ export const certificateIssuanceQueueFactory = ({
     try {
       await processCertificateIssuanceJobs(job.data);
     } catch (error) {
-      // AcmValidationPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
+      // AcmPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
       // FAILED-update branch never runs for it. On the final attempt we still need to flip the request
       // row to FAILED ourselves — BullMQ will move the job to the failed state but has no hook to
       // update our DB, and no queue-level "failed" listener is wired for CertificateIssuance.
-      if (error instanceof AcmValidationPendingError) {
+      if (error instanceof AcmPendingError) {
         const attemptsMade = job.attemptsMade ?? 0;
         const maxAttempts = job.opts?.attempts ?? 1;
         const isFinalAttempt = attemptsMade + 1 >= maxAttempts;

@@ -13,6 +13,7 @@ import {
   ValidationMethod
 } from "@aws-sdk/client-acm";
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -45,23 +46,22 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { route53GetHostedZone, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createAcmClient, resolveDnsAwsConnection } from "./aws-acm-public-ca-certificate-authority-client";
 import { AwsAcmValidationMethod } from "./aws-acm-public-ca-certificate-authority-enums";
+import { AcmPendingError, AcmTerminalError } from "./aws-acm-public-ca-certificate-authority-errors";
 import {
   TAwsAcmPublicCaCertificateAuthority,
   TCreateAwsAcmPublicCaCertificateAuthorityDTO,
   TUpdateAwsAcmPublicCaCertificateAuthorityDTO
 } from "./aws-acm-public-ca-certificate-authority-types";
 import {
-  acmValidationFailedError,
-  AcmValidationPendingError,
   buildIdempotencyToken,
   generateAcmPassphrase,
   mapCertKeyAlgorithmToAcm,
   validateAcmIssuanceInputs
 } from "./aws-acm-public-ca-certificate-authority-validators";
-import { route53GetHostedZone, route53UpsertRecord } from "./dns-providers/route53";
 
 const CRL_REASON_TO_ACM_REVOCATION_REASON_MAP: Record<CrlReason, RevocationReason> = {
   [CrlReason.UNSPECIFIED]: RevocationReason.UNSPECIFIED,
@@ -382,7 +382,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
    * AWS's 1-hour window returns the same certificate ARN, so we don't need to persist
    * intermediate state across retries. The cert record is only created when everything
    * completes, in a single DB transaction. If DNS validation is still pending, this
-   * function throws AcmValidationPendingError and the queue retries.
+   * function throws AcmPendingError and the queue retries.
    */
   const orderCertificateFromProfile = async ({
     caId,
@@ -499,7 +499,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
       // ACM serials may come back colon-separated hex (e.g., "0a:1b:..."), our DB stores plain hex —
       // normalize both before comparing.
-      const normalizeSerial = (s?: string | null) => s?.replace(/:/g, "").toLowerCase() ?? "";
+      const normalizeSerial = (s?: string | null) => s?.split(":").join("").toLowerCase() ?? "";
       const storedSerial = normalizeSerial(originalCert.serialNumber);
       const awsSerial = normalizeSerial(detail.Serial);
       const alreadyRenewedByAws = Boolean(awsSerial && storedSerial && awsSerial !== storedSerial);
@@ -530,7 +530,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         const afterRenew = await acmClient.send(new DescribeCertificateCommand({ CertificateArn: certificateArn }));
         const renewStatus = afterRenew.Certificate?.RenewalSummary?.RenewalStatus;
         if (renewStatus === "FAILED") {
-          throw acmValidationFailedError(`AWS ACM renewal failed for ${certificateArn}`);
+          throw new AcmTerminalError(`AWS ACM renewal failed for ${certificateArn}`);
         }
         // ExportCertificate keeps returning the original cert until ACM has fully re-issued the
         // renewed one. Serial number changing is the ground-truth signal that a new cert body
@@ -538,7 +538,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         const newSerial = normalizeSerial(afterRenew.Certificate?.Serial);
         const renewalComplete = Boolean(newSerial && storedSerial && newSerial !== storedSerial);
         if (!renewalComplete) {
-          throw new AcmValidationPendingError(
+          throw new AcmPendingError(
             `AWS ACM renewal for ${certificateArn} has not completed yet (status=${renewStatus ?? "unknown"}) — will retry`
           );
         }
@@ -595,9 +595,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
 
       if (detail.Status === CertificateStatus.PENDING_VALIDATION) {
-        throw new AcmValidationPendingError(
-          `AWS ACM certificate ${certificateArn} is still pending DNS validation — will retry`
-        );
+        throw new AcmPendingError(`AWS ACM certificate ${certificateArn} is still pending DNS validation — will retry`);
       }
       if (
         detail.Status === CertificateStatus.FAILED ||
@@ -605,7 +603,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         detail.Status === CertificateStatus.REVOKED ||
         detail.Status === CertificateStatus.EXPIRED
       ) {
-        throw acmValidationFailedError(`AWS ACM certificate ${certificateArn} is in terminal status: ${detail.Status}`);
+        throw new AcmTerminalError(`AWS ACM certificate ${certificateArn} is in terminal status: ${detail.Status}`);
       }
     }
 
@@ -622,8 +620,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // Right after RenewCertificate succeeds, ACM sometimes hasn't fully established the export
       // relation for the renewed cert body yet and returns "must have at least one relation of type
       // EXPORT". This is transient — let the queue retry loop handle it.
-      if (error instanceof Error && /relation of type EXPORT/i.test(error.message)) {
-        throw new AcmValidationPendingError(
+      if (error instanceof Error && new RE2("relation of type EXPORT", "i").test(error.message)) {
+        throw new AcmPendingError(
           `AWS ACM export not yet available for ${certificateArn} (${error.message}) — will retry`
         );
       }
@@ -852,4 +850,4 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 };
 
 // Re-export for existing callers (queue, v3 service, approval fns, etc.).
-export { acmValidationFailedError, AcmValidationPendingError, validateAcmIssuanceInputs };
+export { validateAcmIssuanceInputs };
