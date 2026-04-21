@@ -46,10 +46,10 @@ export type TValidateResult = {
   onBeforeTokenCreate?: (tx: Knex) => Promise<Record<string, unknown> | void>;
 };
 
-export type TIdentityAuthLoginStrategy<TPayload = unknown> = {
+export type TIdentityAuthLoginStrategy<TPayload = unknown, TAuthConfig = undefined> = {
   authMethod: IdentityAuthMethod;
   telemetryAuthMethod: AuthAttemptAuthMethod;
-  validate(payload: TPayload, ctx: TLoginCtx): Promise<TValidateResult>;
+  validate(payload: TPayload, ctx: TLoginCtx): Promise<TValidateResult & { authConfig: TAuthConfig }>;
 };
 
 export type TLoginDeps = {
@@ -59,10 +59,11 @@ export type TLoginDeps = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "update">;
 };
 
-export type TLoginResult = {
+export type TLoginResult<TAuthConfig = undefined> = {
   accessToken: string;
   identity: TIdentities;
   identityAccessToken: TIdentityAccessTokens;
+  authConfig: TAuthConfig;
 };
 
 export const loadLoginContext = async (identityId: string, deps: Pick<TLoginDeps, "identityDAL" | "orgDAL">) => {
@@ -112,16 +113,17 @@ export const resolveSubOrg = async (
   return subOrganizationId;
 };
 
-export const runIdentityLogin = async <TPayload>(
+export const runIdentityLogin = async <TPayload, TAuthConfig = undefined>(
   params: { identityId: string; organizationSlug?: string; payload: TPayload },
-  strategy: TIdentityAuthLoginStrategy<TPayload>,
+  strategy: TIdentityAuthLoginStrategy<TPayload, TAuthConfig>,
   deps: TLoginDeps
-): Promise<TLoginResult> => {
+): Promise<TLoginResult<TAuthConfig>> => {
   const appCfg = getConfig();
 
   try {
     const { identity, org } = await loadLoginContext(params.identityId, deps);
     const validateResult = await strategy.validate(params.payload, { identity, org });
+    const { authConfig } = validateResult;
     const subOrganizationId = await resolveSubOrg(identity, org, params.organizationSlug, deps);
 
     const identityAccessToken = await deps.identityAccessTokenDAL.transaction(async (tx) => {
@@ -191,7 +193,7 @@ export const runIdentityLogin = async <TPayload>(
       });
     }
 
-    return { accessToken, identity, identityAccessToken };
+    return { accessToken, identity, identityAccessToken, authConfig };
   } catch (error) {
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       authAttemptCounter.add(1, {

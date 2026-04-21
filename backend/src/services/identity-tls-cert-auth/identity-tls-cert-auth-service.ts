@@ -75,9 +75,8 @@ export const identityTlsCertAuthServiceFactory = ({
     clientCertificate: string;
     organizationSlug?: string;
   }) => {
-    let capturedIdentityTlsCertAuth: Awaited<ReturnType<typeof identityTlsCertAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ clientCertificate: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityTlsCertAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ clientCertificate: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.TLS_CERT_AUTH,
       validate: async (payload, ctx) => {
@@ -87,8 +86,6 @@ export const identityTlsCertAuthServiceFactory = ({
             message: "TLS Certificate auth method not found for identity, did you configure TLS Certificate auth?"
           });
         }
-        capturedIdentityTlsCertAuth = identityTlsCertAuth;
-
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: ctx.identity.orgId
@@ -161,19 +158,19 @@ export const identityTlsCertAuthServiceFactory = ({
         return {
           accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
           accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
+          authConfig: identityTlsCertAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { clientCertificate } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityTlsCertAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { clientCertificate } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityTlsCertAuth: capturedIdentityTlsCertAuth! };
+    return { ...result, identityTlsCertAuth };
   };
 
   const attachTlsCertAuth: TIdentityTlsCertAuthServiceFactory["attachTlsCertAuth"] = async ({

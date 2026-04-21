@@ -63,17 +63,14 @@ export const identityOciAuthServiceFactory = ({
   orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, organizationSlug, headers, userOcid }: TLoginOciAuthDTO) => {
-    let capturedIdentityOciAuth: Awaited<ReturnType<typeof identityOciAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ headers: TLoginOciAuthDTO["headers"]; userOcid: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityOciAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ headers: TLoginOciAuthDTO["headers"]; userOcid: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.OCI_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.OCI_AUTH,
       validate: async (payload, ctx) => {
         const identityOciAuth = await identityOciAuthDAL.findOne({ identityId: ctx.identity.id });
         if (!identityOciAuth)
           throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
-        capturedIdentityOciAuth = identityOciAuth;
-
         // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
         if (
           !payload.headers.host ||
@@ -125,19 +122,19 @@ export const identityOciAuthServiceFactory = ({
         return {
           accessTokenTTL: identityOciAuth.accessTokenTTL,
           accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
+          authConfig: identityOciAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { headers, userOcid } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityOciAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { headers, userOcid } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityOciAuth: capturedIdentityOciAuth! };
+    return { ...result, identityOciAuth };
   };
 
   const attachOciAuth = async ({

@@ -279,9 +279,8 @@ export const identitySpiffeAuthServiceFactory = ({
   };
 
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginSpiffeAuthDTO) => {
-    let capturedIdentitySpiffeAuth: Awaited<ReturnType<typeof identitySpiffeAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identitySpiffeAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.SPIFFE_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.SPIFFE_AUTH,
       validate: async (payload, ctx) => {
@@ -291,8 +290,6 @@ export const identitySpiffeAuthServiceFactory = ({
             message: "SPIFFE auth method not found for identity, did you configure SPIFFE auth?"
           });
         }
-        capturedIdentitySpiffeAuth = identitySpiffeAuth;
-
         // Resolve JWKS (lazy fetch for remote, decrypt for static)
         let { jwksJson, fromCache } = await $resolveJwks({ config: identitySpiffeAuth, orgId: ctx.identity.orgId });
 
@@ -353,19 +350,19 @@ export const identitySpiffeAuthServiceFactory = ({
         return {
           accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
           accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identitySpiffeAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identitySpiffeAuth.accessTokenNumUsesLimit,
+          authConfig: identitySpiffeAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identitySpiffeAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { jwt: jwtValue } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identitySpiffeAuth: capturedIdentitySpiffeAuth! };
+    return { ...result, identitySpiffeAuth };
   };
 
   const attachSpiffeAuth = async ({

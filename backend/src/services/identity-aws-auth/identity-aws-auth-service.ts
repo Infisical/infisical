@@ -105,21 +105,17 @@ export const identityAwsAuthServiceFactory = ({
     iamRequestHeaders,
     organizationSlug
   }: TLoginAwsAuthDTO) => {
-    let capturedIdentityAwsAuth: Awaited<ReturnType<typeof identityAwsAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{
-      iamHttpRequestMethod: string;
-      iamRequestBody: string;
-      iamRequestHeaders: string;
-    }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityAwsAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<
+      { iamHttpRequestMethod: string; iamRequestBody: string; iamRequestHeaders: string },
+      TLoginAuthConfig
+    > = {
       authMethod: IdentityAuthMethod.AWS_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.AWS_AUTH,
       validate: async (payload, ctx) => {
         const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId: ctx.identity.id });
         if (!identityAwsAuth)
           throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
-        capturedIdentityAwsAuth = identityAwsAuth;
-
         const headers: TAwsGetCallerIdentityHeaders = JSON.parse(
           Buffer.from(payload.iamRequestHeaders, "base64").toString()
         );
@@ -215,18 +211,19 @@ export const identityAwsAuthServiceFactory = ({
               resourceType: splitArn.Type,
               resourceName: splitArn.FriendlyName
             }
-          }
+          },
+          authConfig: identityAwsAuth
         };
       }
     };
 
-    const result = await runIdentityLogin(
+    const { authConfig: identityAwsAuth, ...result } = await runIdentityLogin(
       { identityId, organizationSlug, payload: { iamHttpRequestMethod, iamRequestBody, iamRequestHeaders } },
       strategy,
       { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
     );
 
-    return { ...result, identityAwsAuth: capturedIdentityAwsAuth! };
+    return { ...result, identityAwsAuth };
   };
 
   const attachAwsAuth = async ({

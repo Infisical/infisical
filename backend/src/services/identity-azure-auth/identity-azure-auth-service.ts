@@ -61,9 +61,8 @@ export const identityAzureAuthServiceFactory = ({
   orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginAzureAuthDTO) => {
-    let capturedIdentityAzureAuth: Awaited<ReturnType<typeof identityAzureAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityAzureAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.AZURE_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.AZURE_AUTH,
       validate: async (payload, ctx) => {
@@ -72,8 +71,6 @@ export const identityAzureAuthServiceFactory = ({
           throw new NotFoundError({
             message: "Azure auth method not found for identity, did you configure Azure auth?"
           });
-        capturedIdentityAzureAuth = identityAzureAuth;
-
         const azureIdentity = await validateAzureIdentity({
           tenantId: identityAzureAuth.tenantId,
           resource: identityAzureAuth.resource,
@@ -114,19 +111,19 @@ export const identityAzureAuthServiceFactory = ({
         return {
           accessTokenTTL: identityAzureAuth.accessTokenTTL,
           accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit,
+          authConfig: identityAzureAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityAzureAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { jwt: jwtValue } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityAzureAuth: capturedIdentityAzureAuth! };
+    return { ...result, identityAzureAuth };
   };
 
   const attachAzureAuth = async ({

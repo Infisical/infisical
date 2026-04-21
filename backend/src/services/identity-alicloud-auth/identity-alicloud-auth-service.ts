@@ -65,9 +65,8 @@ export const identityAliCloudAuthServiceFactory = ({
   orgDAL
 }: TIdentityAliCloudAuthServiceFactoryDep) => {
   const login = async ({ identityId, organizationSlug, ...alicloudParams }: TLoginAliCloudAuthDTO) => {
-    let capturedIdentityAliCloudAuth: Awaited<ReturnType<typeof identityAliCloudAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<typeof alicloudParams> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityAliCloudAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<typeof alicloudParams, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.ALICLOUD_AUTH,
       validate: async (payload, ctx) => {
@@ -76,8 +75,6 @@ export const identityAliCloudAuthServiceFactory = ({
           throw new NotFoundError({
             message: "AliCloud auth method not found for identity, did you configure AliCloud auth?"
           });
-        capturedIdentityAliCloudAuth = identityAliCloudAuth;
-
         const requestUrl = new URL("https://sts.aliyuncs.com");
 
         for (const key of Object.keys(payload)) {
@@ -108,19 +105,19 @@ export const identityAliCloudAuthServiceFactory = ({
         return {
           accessTokenTTL: identityAliCloudAuth.accessTokenTTL,
           accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit,
+          authConfig: identityAliCloudAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: alicloudParams }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityAliCloudAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: alicloudParams },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityAliCloudAuth: capturedIdentityAliCloudAuth! };
+    return { ...result, identityAliCloudAuth };
   };
 
   const attachAliCloudAuth = async ({

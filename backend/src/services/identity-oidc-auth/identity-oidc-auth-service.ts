@@ -78,18 +78,17 @@ export const identityOidcAuthServiceFactory = ({
   orgDAL
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginOidcAuthDTO) => {
-    let capturedIdentityOidcAuth: Awaited<ReturnType<typeof identityOidcAuthDAL.findOne>> | undefined;
-    let capturedOidcTokenData: Record<string, string> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+    type TLoginAuthConfig = {
+      identityOidcAuth: NonNullable<Awaited<ReturnType<typeof identityOidcAuthDAL.findOne>>>;
+      oidcTokenData: Record<string, string>;
+    };
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.OIDC_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.OIDC_AUTH,
       validate: async (payload, ctx) => {
         const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId: ctx.identity.id });
         if (!identityOidcAuth)
           throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
-        capturedIdentityOidcAuth = identityOidcAuth;
-
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: ctx.identity.orgId
@@ -303,7 +302,6 @@ export const identityOidcAuthServiceFactory = ({
         }
 
         const verifiedTokenData: Record<string, string> = tokenData;
-        capturedOidcTokenData = verifiedTokenData;
 
         if (identityOidcAuth.boundSubject) {
           if (!doesFieldValueMatchOidcPolicy(verifiedTokenData.sub, identityOidcAuth.boundSubject)) {
@@ -389,19 +387,19 @@ export const identityOidcAuthServiceFactory = ({
           accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
           identityAuth: {
             oidc: { claims: filteredClaims }
-          }
+          },
+          authConfig: { identityOidcAuth, oidcTokenData: verifiedTokenData }
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: { identityOidcAuth, oidcTokenData }, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { jwt: jwtValue } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityOidcAuth: capturedIdentityOidcAuth!, oidcTokenData: capturedOidcTokenData! };
+    return { ...result, identityOidcAuth, oidcTokenData };
   };
 
   const attachOidcAuth = async ({

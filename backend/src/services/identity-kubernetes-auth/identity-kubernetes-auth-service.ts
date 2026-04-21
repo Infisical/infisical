@@ -246,9 +246,8 @@ export const identityKubernetesAuthServiceFactory = ({
   };
 
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
-    let capturedIdentityK8sAuth: Awaited<ReturnType<typeof identityKubernetesAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ serviceAccountJwt: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityKubernetesAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ serviceAccountJwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.KUBERNETES_AUTH,
       validate: async (payload, ctx) => {
@@ -257,8 +256,6 @@ export const identityKubernetesAuthServiceFactory = ({
           throw new NotFoundError({
             message: "Kubernetes auth method not found for identity, did you configure Kubernetes auth?"
           });
-        capturedIdentityK8sAuth = identityKubernetesAuth;
-
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: ctx.identity.orgId
@@ -570,19 +567,19 @@ export const identityKubernetesAuthServiceFactory = ({
               namespace: targetNamespace,
               name: targetName
             }
-          }
+          },
+          authConfig: identityKubernetesAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { serviceAccountJwt } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityKubernetesAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { serviceAccountJwt } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityKubernetesAuth: capturedIdentityK8sAuth! };
+    return { ...result, identityKubernetesAuth };
   };
 
   const attachKubernetesAuth = async ({

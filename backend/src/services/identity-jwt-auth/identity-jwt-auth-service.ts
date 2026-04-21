@@ -75,9 +75,8 @@ export const identityJwtAuthServiceFactory = ({
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
-    let capturedIdentityJwtAuth: Awaited<ReturnType<typeof identityJwtAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityJwtAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.JWT_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.JWT_AUTH,
       validate: async (payload, ctx) => {
@@ -85,8 +84,6 @@ export const identityJwtAuthServiceFactory = ({
         if (!identityJwtAuth) {
           throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
         }
-        capturedIdentityJwtAuth = identityJwtAuth;
-
         const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: ctx.identity.orgId
@@ -274,19 +271,19 @@ export const identityJwtAuthServiceFactory = ({
         return {
           accessTokenTTL: identityJwtAuth.accessTokenTTL,
           accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
+          authConfig: identityJwtAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityJwtAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { jwt: jwtValue } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityJwtAuth: capturedIdentityJwtAuth! };
+    return { ...result, identityJwtAuth };
   };
 
   const attachJwtAuth = async ({

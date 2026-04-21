@@ -89,9 +89,8 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    let capturedValidClientSecretInfo: { id: string } | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ clientSecret: string; ip: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityUaClientSecretDAL.find>>[number]>;
+    const strategy: TIdentityAuthLoginStrategy<{ clientSecret: string; ip: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.UNIVERSAL_AUTH,
       validate: async (payload, ctx) => {
@@ -252,8 +251,6 @@ export const identityUaServiceFactory = ({
           });
         }
 
-        capturedValidClientSecretInfo = validClientSecretInfo;
-
         // Compute TTL params (handles periodic tokens)
         const accessTokenTTLParams =
           Number(identityUa.accessTokenPeriod) === 0
@@ -276,22 +273,19 @@ export const identityUaServiceFactory = ({
           onBeforeTokenCreate: async (tx) => {
             const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
             return { identityUAClientSecretId: uaClientSecretDoc.id };
-          }
+          },
+          authConfig: validClientSecretInfo
         };
       }
     };
 
-    const result = await runIdentityLogin(
+    const { authConfig: validClientSecretInfo, ...result } = await runIdentityLogin(
       { identityId: identityUa.identityId, organizationSlug, payload: { clientSecret, ip } },
       strategy,
       { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
     );
 
-    return {
-      ...result,
-      identityUa,
-      validClientSecretInfo: capturedValidClientSecretInfo!
-    };
+    return { ...result, identityUa, validClientSecretInfo };
   };
 
   const attachUniversalAuth = async ({

@@ -59,16 +59,14 @@ export const identityGcpAuthServiceFactory = ({
   orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginGcpAuthDTO) => {
-    let capturedIdentityGcpAuth: Awaited<ReturnType<typeof identityGcpAuthDAL.findOne>> | undefined;
-
-    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityGcpAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }, TLoginAuthConfig> = {
       authMethod: IdentityAuthMethod.GCP_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.GCP_AUTH,
       validate: async (payload, ctx) => {
         const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId: ctx.identity.id });
         if (!identityGcpAuth)
           throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
-        capturedIdentityGcpAuth = identityGcpAuth;
 
         let gcpIdentityDetails: TGcpIdentityDetails;
         switch (identityGcpAuth.type) {
@@ -154,19 +152,19 @@ export const identityGcpAuthServiceFactory = ({
         return {
           accessTokenTTL: identityGcpAuth.accessTokenTTL,
           accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
-          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit
+          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
+          authConfig: identityGcpAuth
         };
       }
     };
 
-    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
-      identityDAL,
-      orgDAL,
-      identityAccessTokenDAL,
-      membershipIdentityDAL
-    });
+    const { authConfig: identityGcpAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { jwt: jwtValue } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-    return { ...result, identityGcpAuth: capturedIdentityGcpAuth! };
+    return { ...result, identityGcpAuth };
   };
 
   const attachGcpAuth = async ({
