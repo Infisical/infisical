@@ -5,9 +5,9 @@ description: "Issue and manage publicly-trusted certificates using AWS Certifica
 
 ## Overview
 
-AWS Certificate Manager (ACM) is Amazon's managed public certificate authority. Certificates are issued by [Amazon Trust Services](https://www.amazontrust.com/repository/), whose roots are trusted by all major browsers and operating systems out of the box — so you can use these certificates on the public internet without users having to install anything.
+Infisical integrates with AWS Certificate Manager (ACM) to issue **public certificates** signed by [Amazon Trust Services](https://www.amazontrust.com/repository/). These certificates are trusted by all major browsers and operating systems out of the box, so they can be used on the public internet without users having to install anything.
 
-ACM is distinct from [**AWS Private CA (PCA)**](/documentation/platform/pki/ca/aws-pca), which Infisical also supports separately. PCA issues certificates from a private root you control, intended for internal use; ACM Public CA issues from Amazon's public roots, intended for public-facing services.
+Common use cases include securing public-facing websites and APIs, terminating TLS on internet-facing load balancers, and issuing certificates for SaaS applications exposed to external users.
 
 Each certificate has a fixed 198-day validity and is generated and stored by AWS. Infisical orchestrates the full lifecycle on top: domain validation via Route 53, saving the certificate and private key into Infisical, scheduled auto-renewal, and revocation.
 
@@ -165,7 +165,7 @@ In both cases the renewed certificate is stored as a new entry linked to the ori
   </Accordion>
 
   <Accordion title="Which enrollment methods are supported?">
-    Certificate profiles backed by AWS ACM Public CA must use the API enrollment method.
+    Certificate profiles backed by AWS ACM Public CA support only **API** enrollment. EST, SCEP, and ACME rely on submitting a CSR for the CA to sign, but ACM generates the private key itself and does not accept a CSR.
   </Accordion>
 
   <Accordion title="Can I issue a CA / intermediate certificate?">
