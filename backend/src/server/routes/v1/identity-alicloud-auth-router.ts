@@ -85,13 +85,12 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           identityAliCloudAuth,
           accessToken,
           identity,
-          org,
           identityAccessToken
         } = await server.services.identityAliCloudAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: org.id,
+          orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
             metadata: {
@@ -106,10 +105,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
             distinctId: `identity-${identity.id}`,
-            organizationId: org.id,
+            organizationId: identity.orgId,
             properties: {
               identityId: identity.id,
-              orgId: org.id,
+              orgId: identity.orgId,
               authMethod: IdentityAuthMethod.ALICLOUD_AUTH
             }
           })

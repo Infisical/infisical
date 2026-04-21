@@ -68,13 +68,12 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           identityKubernetesAuth,
           accessToken,
           identity,
-          org,
           identityAccessToken
         } = await server.services.identityKubernetesAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: org.id,
+          orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
             metadata: {
@@ -89,10 +88,10 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
             distinctId: `identity-${identity.id}`,
-            organizationId: org.id,
+            organizationId: identity.orgId,
             properties: {
               identityId: identity.id,
-              orgId: org.id,
+              orgId: identity.orgId,
               authMethod: IdentityAuthMethod.KUBERNETES_AUTH
             }
           })

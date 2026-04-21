@@ -62,7 +62,6 @@ export type TLoginDeps = {
 export type TLoginResult = {
   accessToken: string;
   identity: TIdentities;
-  org: TOrganizations;
   identityAccessToken: TIdentityAccessTokens;
 };
 
@@ -192,7 +191,7 @@ export const runIdentityLogin = async <TPayload>(
       });
     }
 
-    return { accessToken, identity, org, identityAccessToken };
+    return { accessToken, identity, identityAccessToken };
   } catch (error) {
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       authAttemptCounter.add(1, {

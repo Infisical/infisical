@@ -75,7 +75,6 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           identityTlsCertAuth,
           accessToken,
           identity,
-          org,
           identityAccessToken
         } = await server.services.identityTlsCertAuth.login({
           ...req.body,
@@ -84,7 +83,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: org.id,
+          orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
             metadata: {
@@ -99,10 +98,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
             distinctId: `identity-${identity.id}`,
-            organizationId: org.id,
+            organizationId: identity.orgId,
             properties: {
               identityId: identity.id,
-              orgId: org.id,
+              orgId: identity.orgId,
               authMethod: IdentityAuthMethod.TLS_CERT_AUTH
             }
           })

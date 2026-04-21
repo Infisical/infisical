@@ -60,7 +60,6 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           accessToken,
           validClientSecretInfo,
           identity,
-          org,
           identityAccessToken
         } = await server.services.identityUa.login({
           ...req.body,
@@ -71,7 +70,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: org.id,
+          orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
             metadata: {
@@ -87,10 +86,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
             distinctId: `identity-${identity.id}`,
-            organizationId: org.id,
+            organizationId: identity.orgId,
             properties: {
               identityId: identity.id,
-              orgId: org.id,
+              orgId: identity.orgId,
               authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
             }
           })

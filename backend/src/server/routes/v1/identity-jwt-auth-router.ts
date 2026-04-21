@@ -119,12 +119,12 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const { identityJwtAuth, accessToken, identity, org, identityAccessToken } =
+        const { identityJwtAuth, accessToken, identity, identityAccessToken } =
           await server.services.identityJwtAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: org.id,
+          orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_JWT_AUTH,
             metadata: {
@@ -139,10 +139,10 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
             distinctId: `identity-${identity.id}`,
-            organizationId: org.id,
+            organizationId: identity.orgId,
             properties: {
               identityId: identity.id,
-              orgId: org.id,
+              orgId: identity.orgId,
               authMethod: IdentityAuthMethod.JWT_AUTH
             }
           })
