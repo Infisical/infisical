@@ -51,7 +51,7 @@ export const organizationKeys = {
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
   getOrgGroupsWithParams: (
     orgId: string,
-    params: { offset?: number; limit?: number; search?: string; roles?: string[] }
+    params: { offset?: number; limit?: number; search?: string; roles?: string[]; orderBy?: string; orderDirection?: string }
   ) => [...organizationKeys.getOrgGroups(orgId), params] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
   getOrgById: (orgId: string) => ["organization", { orgId }],
@@ -652,16 +652,20 @@ export const useSearchOrganizationGroups = ({
   offset,
   limit,
   search,
-  roles
+  roles,
+  orderBy,
+  orderDirection
 }: {
   organizationId: string;
   offset?: number;
   limit?: number;
   search?: string;
   roles?: string[];
+  orderBy?: string;
+  orderDirection?: string;
 }) => {
   return useQuery({
-    queryKey: organizationKeys.getOrgGroupsWithParams(organizationId, { offset, limit, search, roles }),
+    queryKey: organizationKeys.getOrgGroupsWithParams(organizationId, { offset, limit, search, roles, orderBy, orderDirection }),
     enabled: Boolean(organizationId),
     placeholderData: (prev) => prev,
     queryFn: async () => {
@@ -669,7 +673,7 @@ export const useSearchOrganizationGroups = ({
         data: { groupMemberships, totalCount }
       } = await apiRequest.get<OrgGroupMembershipResponse>(
         "/api/v1/organizations/memberships/groups",
-        { params: { limit, offset, groupName: search || undefined, roles: roles?.length ? roles : undefined } }
+        { params: { limit, offset, groupName: search || undefined, roles: roles?.length ? roles : undefined, orderBy, orderDirection } }
       );
       return { groups: groupMemberships.map(mapOrgMembershipToGroup), totalCount };
     }

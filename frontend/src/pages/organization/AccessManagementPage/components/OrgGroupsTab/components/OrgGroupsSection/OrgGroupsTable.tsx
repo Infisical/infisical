@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -152,25 +152,12 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
     offset,
     limit: perPage,
     search: debouncedSearch,
-    roles: filter.roles.length ? filter.roles : undefined
+    roles: filter.roles.length ? filter.roles : undefined,
+    orderBy,
+    orderDirection
   });
 
-  const { groups = [], totalCount = 0 } = data ?? {};
-
-  const sortedGroups = useMemo(() => {
-    const sorted = [...groups].sort((a, b) => {
-      switch (orderBy) {
-        case GroupsOrderBy.Role: {
-          const aValue = a.role === "custom" ? (a.customRole?.name as string) : a.role;
-          const bValue = b.role === "custom" ? (b.customRole?.name as string) : b.role;
-          return aValue.toLowerCase().localeCompare(bValue.toLowerCase());
-        }
-        default:
-          return a[orderBy].toLowerCase().localeCompare(b[orderBy].toLowerCase());
-      }
-    });
-    return orderDirection === OrderByDirection.ASC ? sorted : sorted.reverse();
-  }, [groups, orderBy, orderDirection]);
+  const { groups: sortedGroups = [], totalCount = 0 } = data ?? {};
 
   const handleSort = (column: GroupsOrderBy) => {
     if (column === orderBy) {

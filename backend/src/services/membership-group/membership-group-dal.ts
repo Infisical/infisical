@@ -6,6 +6,9 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
+import { OrderByDirection } from "@app/lib/types";
+
+import { OrgGroupsOrderBy } from "./membership-group-types";
 
 export type TMembershipGroupDALFactory = ReturnType<typeof membershipGroupDALFactory>;
 
@@ -18,6 +21,8 @@ type TFindGroupArg = {
     groupId: string;
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
+    orderBy: OrgGroupsOrderBy;
+    orderDirection: OrderByDirection;
   }>;
 };
 
@@ -177,13 +182,34 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
       const [countResult] = await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`);
       const totalCount = Number(countResult?.count ?? 0);
 
+      const dir = filter.orderDirection === OrderByDirection.DESC ? "DESC" : "ASC";
+
+      let paginatedGroupByColumns = [`${TableName.Membership}.id`, `${TableName.Groups}.name`];
+      let paginatedOrderByRaw: string;
+      let outerOrderByRaw: string;
+
+      switch (filter.orderBy) {
+        case OrgGroupsOrderBy.Slug:
+          paginatedGroupByColumns.push(`${TableName.Groups}.slug`);
+          paginatedOrderByRaw = `LOWER("${TableName.Groups}"."slug") ${dir}`;
+          outerOrderByRaw = `LOWER("${TableName.Groups}"."slug") ${dir}`;
+          break;
+        case OrgGroupsOrderBy.Role:
+          paginatedOrderByRaw = `MIN(LOWER(COALESCE("${TableName.Role}"."slug", "${TableName.MembershipRole}"."role"))) ${dir}`;
+          outerOrderByRaw = `LOWER(COALESCE("${TableName.Role}"."slug", "${TableName.MembershipRole}"."role")) ${dir}`;
+          break;
+        default:
+          paginatedOrderByRaw = `LOWER("${TableName.Groups}"."name") ${dir}`;
+          outerOrderByRaw = `LOWER("${TableName.Groups}"."name") ${dir}`;
+      }
+
       // Paginated IDs subquery
       const paginatedGroups = baseFilterQuery
         .clone()
         .clearSelect()
         .select(`${TableName.Membership}.id`)
-        .groupBy(`${TableName.Membership}.id`, `${TableName.Groups}.name`)
-        .orderByRaw(`LOWER("${TableName.Groups}"."name") ASC`)
+        .groupBy(...paginatedGroupByColumns)
+        .orderByRaw(paginatedOrderByRaw)
         .orderBy(`${TableName.Membership}.id`, "asc");
       if (filter.limit) void paginatedGroups.limit(filter.limit);
       if (filter.offset) void paginatedGroups.offset(filter.offset);
@@ -195,7 +221,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .whereIn(`${TableName.Membership}.id`, paginatedGroups)
-        .orderByRaw(`LOWER("${TableName.Groups}"."name") ASC`)
+        .orderByRaw(outerOrderByRaw)
         .orderBy(`${TableName.Membership}.id`, "asc")
         .select(selectAllTableCols(TableName.Membership))
         .select(

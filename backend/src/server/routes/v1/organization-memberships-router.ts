@@ -3,9 +3,11 @@ import { z } from "zod";
 import { AccessScope, GroupsSchema, TemporaryPermissionMode } from "@app/db/schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { OrgGroupsOrderBy } from "@app/services/membership-group/membership-group-types";
 
 /**
  * Organization group memberships.
@@ -59,7 +61,9 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         roles: z
           .union([z.string(), z.array(z.string())])
           .transform((v) => (typeof v === "string" ? [v] : v))
-          .optional()
+          .optional(),
+        orderBy: z.nativeEnum(OrgGroupsOrderBy).optional(),
+        orderDirection: z.nativeEnum(OrderByDirection).optional()
       }),
       response: {
         200: z.object({
@@ -79,7 +83,9 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
           limit: req.query.limit,
           offset: req.query.offset,
           groupName: req.query.groupName,
-          roles: req.query.roles
+          roles: req.query.roles,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection
         }
       });
 
