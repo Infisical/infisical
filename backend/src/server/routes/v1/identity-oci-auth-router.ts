@@ -60,17 +60,24 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const { identityOciAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityOciAuth.login(req.body);
+        const {
+          identityOciAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityOciAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_OCI_AUTH,
             metadata: {
-              identityId: identityOciAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityOciAuthId: identityOciAuth.id
             }
           }
@@ -79,23 +86,23 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityOciAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityOciAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.OCI_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityOciAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityOciAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

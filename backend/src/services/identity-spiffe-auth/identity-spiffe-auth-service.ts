@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import { createLocalJWKSet, errors as joseErrors, JSONWebKeySet, jwtVerify } from "jose";
 
 import {
@@ -18,8 +17,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -29,14 +26,13 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -65,7 +61,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identitySpiffeAuthDAL: TIdentitySpiffeAuthDALFactory;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -283,194 +279,93 @@ export const identitySpiffeAuthServiceFactory = ({
   };
 
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginSpiffeAuthDTO) => {
-    const appCfg = getConfig();
-    const identitySpiffeAuth = await identitySpiffeAuthDAL.findOne({ identityId });
-    if (!identitySpiffeAuth) {
-      throw new NotFoundError({
-        message: "SPIFFE auth method not found for identity, did you configure SPIFFE auth?"
-      });
-    }
+    let capturedIdentitySpiffeAuth: Awaited<ReturnType<typeof identitySpiffeAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identitySpiffeAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+      authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.SPIFFE_AUTH,
+      validate: async (payload, ctx) => {
+        const identitySpiffeAuth = await identitySpiffeAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identitySpiffeAuth) {
+          throw new NotFoundError({
+            message: "SPIFFE auth method not found for identity, did you configure SPIFFE auth?"
+          });
+        }
+        capturedIdentitySpiffeAuth = identitySpiffeAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+        // Resolve JWKS (lazy fetch for remote, decrypt for static)
+        let { jwksJson, fromCache } = await $resolveJwks({ config: identitySpiffeAuth, orgId: ctx.identity.orgId });
 
-    try {
-      // Resolve JWKS (lazy fetch for remote, decrypt for static)
-      let { jwksJson, fromCache } = await $resolveJwks({ config: identitySpiffeAuth, orgId: identity.orgId });
+        const allowedAudiences = identitySpiffeAuth.allowedAudiences
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean);
 
-      const allowedAudiences = identitySpiffeAuth.allowedAudiences
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean);
-
-      let tokenData: Record<string, unknown>;
-      try {
-        tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
-      } catch (verifyError) {
-        // Kid-miss retry: if we used a cached JWKS and the kid wasn't found, force-refresh once
-        if (fromCache && verifyError instanceof Error && verifyError.message.includes("No key found in JWKS")) {
-          ({ jwksJson, fromCache } = await $resolveJwks({
-            config: identitySpiffeAuth,
-            orgId: identity.orgId,
-            forceRefresh: true
-          }));
-          try {
-            tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
-          } catch (retryError) {
-            if (retryError instanceof UnauthorizedError) {
-              retryError.detail = {
+        let tokenData: Record<string, unknown>;
+        try {
+          tokenData = await verifyJwtSvid(payload.jwt, jwksJson, allowedAudiences);
+        } catch (verifyError) {
+          // Kid-miss retry: if we used a cached JWKS and the kid wasn't found, force-refresh once
+          if (fromCache && verifyError instanceof Error && verifyError.message.includes("No key found in JWKS")) {
+            ({ jwksJson, fromCache } = await $resolveJwks({
+              config: identitySpiffeAuth,
+              orgId: ctx.identity.orgId,
+              forceRefresh: true
+            }));
+            try {
+              tokenData = await verifyJwtSvid(payload.jwt, jwksJson, allowedAudiences);
+            } catch (retryError) {
+              if (retryError instanceof UnauthorizedError) {
+                retryError.detail = {
+                  reasonCode: "jwt_svid_verification_failed",
+                  identityId: ctx.identity.id,
+                  orgId: ctx.identity.orgId,
+                  identityName: ctx.identity.name
+                };
+              }
+              throw retryError;
+            }
+          } else {
+            if (verifyError instanceof UnauthorizedError) {
+              verifyError.detail = {
                 reasonCode: "jwt_svid_verification_failed",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               };
             }
-            throw retryError;
+            throw verifyError;
           }
-        } else {
-          if (verifyError instanceof UnauthorizedError) {
-            verifyError.detail = {
-              reasonCode: "jwt_svid_verification_failed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            };
-          }
-          throw verifyError;
         }
-      }
 
-      if (!validateSpiffeClaims(tokenData, identitySpiffeAuth)) {
-        throw new UnauthorizedError({
-          message: "Access denied",
-          detail: {
-            reasonCode: "spiffe_claims_invalid",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
-      }
-
-      // Sub-org resolution
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-          }
-
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
+        if (!validateSpiffeClaims(tokenData, identitySpiffeAuth)) {
+          throw new UnauthorizedError({
+            message: "Access denied",
+            detail: {
+              reasonCode: "spiffe_claims_invalid",
+              identityId: ctx.identity.id,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
+            }
           });
-
-          if (!subOrgMembership) {
-            throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
-              }
-            });
-          }
-
-          subOrganizationId = subOrg.id;
         }
+
+        return {
+          accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
+          accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identitySpiffeAuth.accessTokenNumUsesLimit
+        };
       }
+    };
 
-      const identityAccessToken = await identitySpiffeAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.SPIFFE_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identitySpiffeAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identitySpiffeAuth.accessTokenTTL,
-            accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identitySpiffeAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.SPIFFE_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
 
-        return newToken;
-      });
-
-      let expireyOptions: { expiresIn: number } | undefined;
-      const accessTokenTTL = Number(identityAccessToken.accessTokenTTL);
-      if (accessTokenTTL > 0) {
-        expireyOptions = { expiresIn: accessTokenTTL };
-      }
-
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identitySpiffeAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        expireyOptions
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identitySpiffeAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.SPIFFE_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-
-      return { accessToken, identitySpiffeAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identitySpiffeAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.SPIFFE_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    return { ...result, identitySpiffeAuth: capturedIdentitySpiffeAuth! };
   };
 
   const attachSpiffeAuth = async ({

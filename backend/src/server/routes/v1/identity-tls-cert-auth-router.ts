@@ -71,20 +71,27 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           throw new BadRequestError({ message: "Missing TLS certificate in header" });
         }
 
-        const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityTlsCertAuth.login({
-            ...req.body,
-            clientCertificate: clientCertificate as string
-          });
+        const {
+          identityTlsCertAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityTlsCertAuth.login({
+          ...req.body,
+          clientCertificate: clientCertificate as string
+        });
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
             metadata: {
-              identityId: identityTlsCertAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityTlsCertAuthId: identityTlsCertAuth.id
             }
           }
@@ -93,23 +100,23 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityTlsCertAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityTlsCertAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.TLS_CERT_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityTlsCertAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

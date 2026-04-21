@@ -64,17 +64,24 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       try {
-        const { identityKubernetesAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityKubernetesAuth.login(req.body);
+        const {
+          identityKubernetesAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityKubernetesAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
             metadata: {
-              identityId: identityKubernetesAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityKubernetesAuthId: identityKubernetesAuth.id
             }
           }
@@ -83,23 +90,23 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityKubernetesAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityKubernetesAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.KUBERNETES_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityKubernetesAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityKubernetesAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityKubernetesAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

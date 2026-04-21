@@ -131,17 +131,24 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       try {
-        const { identitySpiffeAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identitySpiffeAuth.login(req.body);
+        const {
+          identitySpiffeAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identitySpiffeAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH,
             metadata: {
-              identityId: identitySpiffeAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identitySpiffeAuthId: identitySpiffeAuth.id
             }
           }
@@ -149,8 +156,8 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identitySpiffeAuth.accessTokenTTL,
-          accessTokenMaxTTL: identitySpiffeAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

@@ -48,17 +48,24 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const { identityAwsAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityAwsAuth.login(req.body);
+        const {
+          identityAwsAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityAwsAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_AWS_AUTH,
             metadata: {
-              identityId: identityAwsAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityAwsAuthId: identityAwsAuth.id
             }
           }
@@ -67,23 +74,23 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityAwsAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityAwsAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.AWS_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityAwsAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityAwsAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

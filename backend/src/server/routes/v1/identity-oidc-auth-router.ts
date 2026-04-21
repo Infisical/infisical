@@ -67,17 +67,25 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       try {
-        const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
-          await server.services.identityOidcAuth.login(req.body);
+        const {
+          identityOidcAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          oidcTokenData
+        } = await server.services.identityOidcAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
             metadata: {
-              identityId: identityOidcAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityOidcAuthId: identityOidcAuth.id,
               oidcClaimsReceived:
                 Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
@@ -90,23 +98,23 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityOidcAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityOidcAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.OIDC_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityOidcAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityOidcAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

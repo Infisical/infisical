@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import RE2 from "re2";
 
@@ -13,9 +12,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -25,13 +22,12 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -49,7 +45,7 @@ import {
 
 type TIdentityAwsAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -109,227 +105,128 @@ export const identityAwsAuthServiceFactory = ({
     iamRequestHeaders,
     organizationSlug
   }: TLoginAwsAuthDTO) => {
-    const appCfg = getConfig();
-    const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
-    if (!identityAwsAuth) {
-      throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
-    }
+    let capturedIdentityAwsAuth: Awaited<ReturnType<typeof identityAwsAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityAwsAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{
+      iamHttpRequestMethod: string;
+      iamRequestBody: string;
+      iamRequestHeaders: string;
+    }> = {
+      authMethod: IdentityAuthMethod.AWS_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.AWS_AUTH,
+      validate: async (payload, ctx) => {
+        const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityAwsAuth)
+          throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
+        capturedIdentityAwsAuth = identityAwsAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
+        const headers: TAwsGetCallerIdentityHeaders = JSON.parse(
+          Buffer.from(payload.iamRequestHeaders, "base64").toString()
+        );
+        const body: string = Buffer.from(payload.iamRequestBody, "base64").toString();
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+        const authHeader = headers.Authorization || headers.authorization;
+        const region = authHeader ? awsRegionFromHeader(authHeader) : null;
 
-    try {
-      const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
-      const body: string = Buffer.from(iamRequestBody, "base64").toString();
-
-      const authHeader = headers.Authorization || headers.authorization;
-      const region = authHeader ? awsRegionFromHeader(authHeader) : null;
-
-      if (!isValidAwsRegion(region)) {
-        throw new BadRequestError({ message: "Invalid AWS region" });
-      }
-
-      const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
-
-      const {
-        data: {
-          GetCallerIdentityResponse: {
-            GetCallerIdentityResult: { Account, Arn, UserId }
-          }
+        if (!isValidAwsRegion(region)) {
+          throw new BadRequestError({ message: "Invalid AWS region" });
         }
-      }: { data: TGetCallerIdentityResponse } = await request({
-        method: iamHttpRequestMethod,
-        url,
-        headers,
-        data: body
-      });
 
-      if (identityAwsAuth.allowedAccountIds) {
-        // validate if Account is in the list of allowed Account IDs
+        const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
 
-        const isAccountAllowed = identityAwsAuth.allowedAccountIds
-          .split(",")
-          .map((accountId) => accountId.trim())
-          .some((accountId) => accountId === Account);
-
-        if (!isAccountAllowed)
-          throw new UnauthorizedError({
-            message: "Access denied: AWS account ID not allowed.",
-            detail: {
-              reasonCode: "account_id_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
+        const {
+          data: {
+            GetCallerIdentityResponse: {
+              GetCallerIdentityResult: { Account, Arn, UserId }
             }
-          });
-      }
-
-      if (identityAwsAuth.allowedPrincipalArns) {
-        // validate if Arn is in the list of allowed Principal ARNs
-
-        const formattedArn = extractPrincipalArn(Arn);
-
-        const isArnAllowed = identityAwsAuth.allowedPrincipalArns
-          .split(",")
-          .map((principalArn) => principalArn.trim())
-          .some((principalArn) => {
-            // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
-            // considers exact matches + wildcard matches
-            // heavily validated in router
-            const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
-            return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
-          });
-
-        if (!isArnAllowed) {
-          logger.error(
-            `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
-          );
-
-          throw new UnauthorizedError({
-            message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,
-            detail: {
-              reasonCode: "principal_arn_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-      }
-
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
+        }: { data: TGetCallerIdentityResponse } = await request({
+          method: payload.iamHttpRequestMethod,
+          url,
+          headers,
+          data: body
+        });
 
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
+        if (identityAwsAuth.allowedAccountIds) {
+          // validate if Account is in the list of allowed Account IDs
 
-          if (!subOrgMembership) {
+          const isAccountAllowed = identityAwsAuth.allowedAccountIds
+            .split(",")
+            .map((accountId) => accountId.trim())
+            .some((accountId) => accountId === Account);
+
+          if (!isAccountAllowed)
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              message: "Access denied: AWS account ID not allowed.",
               detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                reasonCode: "account_id_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
+              }
+            });
+        }
+
+        if (identityAwsAuth.allowedPrincipalArns) {
+          // validate if Arn is in the list of allowed Principal ARNs
+
+          const formattedArn = extractPrincipalArn(Arn);
+
+          const isArnAllowed = identityAwsAuth.allowedPrincipalArns
+            .split(",")
+            .map((principalArn) => principalArn.trim())
+            .some((principalArn) => {
+              // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
+              // considers exact matches + wildcard matches
+              // heavily validated in router
+              const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+              return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
+            });
+
+          if (!isArnAllowed) {
+            logger.error(
+              `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${ctx.identity.id}]`
+            );
+
+            throw new UnauthorizedError({
+              message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,
+              detail: {
+                reasonCode: "principal_arn_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
           }
-
-          subOrganizationId = subOrg.id;
         }
-      }
 
-      const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityAwsAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityAwsAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AWS_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
-
-      const splitArn = extractPrincipalArnEntity(Arn);
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityAwsAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        const splitArn = extractPrincipalArnEntity(Arn);
+        return {
+          accessTokenTTL: identityAwsAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
           identityAuth: {
             aws: {
               accountId: Account,
               arn: Arn,
               userId: UserId,
-
-              // Derived from ARN
               partition: splitArn.Partition,
               service: splitArn.Service,
               resourceType: splitArn.Type,
               resourceName: splitArn.FriendlyName
             }
           }
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAwsAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
+        };
       }
+    };
 
-      return { accessToken, identityAwsAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAwsAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    const result = await runIdentityLogin(
+      { identityId, organizationSlug, payload: { iamHttpRequestMethod, iamRequestBody, iamRequestHeaders } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
+
+    return { ...result, identityAwsAuth: capturedIdentityAwsAuth! };
   };
 
   const attachAwsAuth = async ({

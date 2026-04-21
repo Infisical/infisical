@@ -8,7 +8,7 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 
@@ -24,7 +24,7 @@ type TLoadIdentityForManagementParams = {
   isActorSuperAdmin: boolean;
   actor: ActorType;
   actorId: string;
-  actorAuthMethod: string;
+  actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
   projectAction: ProjectPermissionIdentityActions;
   orgAction: OrgPermissionIdentityActions;
@@ -104,16 +104,9 @@ export const validateTokenTTL = (accessTokenTTL: number, accessTokenMaxTTL: numb
   }
 };
 
-export const processIpAllowlist = (
-  trustedIps: { ipAddress: string }[],
-  plan: { ipAllowlisting: boolean }
-): TIp[] =>
+export const processIpAllowlist = (trustedIps: { ipAddress: string }[], plan: { ipAllowlisting: boolean }): TIp[] =>
   trustedIps.map((trustedIp) => {
-    if (
-      !plan.ipAllowlisting &&
-      trustedIp.ipAddress !== "0.0.0.0/0" &&
-      trustedIp.ipAddress !== "::/0"
-    )
+    if (!plan.ipAllowlisting && trustedIp.ipAddress !== "0.0.0.0/0" && trustedIp.ipAddress !== "::/0")
       throw new BadRequestError({
         message:
           "Failed to add IP access range to access token due to plan restriction. Upgrade plan to add IP access range."
@@ -122,5 +115,5 @@ export const processIpAllowlist = (
     if (!isValidIpOrCidr(trustedIp.ipAddress))
       throw new BadRequestError({ message: "The IP is not a valid IPv4, IPv6, or CIDR block" });
 
-    return extractIPDetails(trustedIp.ipAddress);
+    return extractIPDetails(trustedIp.ipAddress) as TIp;
   });

@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -10,8 +9,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -20,13 +17,12 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -45,7 +41,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -62,218 +58,115 @@ export const identityGcpAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: gcpJwt, organizationSlug }: TLoginGcpAuthDTO) => {
-    const appCfg = getConfig();
-    const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
-    if (!identityGcpAuth) {
-      throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
-    }
+  const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginGcpAuthDTO) => {
+    let capturedIdentityGcpAuth: Awaited<ReturnType<typeof identityGcpAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityGcpAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+      authMethod: IdentityAuthMethod.GCP_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.GCP_AUTH,
+      validate: async (payload, ctx) => {
+        const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityGcpAuth)
+          throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
+        capturedIdentityGcpAuth = identityGcpAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    try {
-      let gcpIdentityDetails: TGcpIdentityDetails;
-      switch (identityGcpAuth.type) {
-        case "gce": {
-          gcpIdentityDetails = await validateIdTokenIdentity({
-            identityId,
-            jwt: gcpJwt
-          });
-          break;
-        }
-        case "iam": {
-          gcpIdentityDetails = await validateIamIdentity({
-            identityId,
-            jwt: gcpJwt
-          });
-          break;
-        }
-        default: {
-          throw new BadRequestError({ message: "Invalid GCP Auth type" });
-        }
-      }
-
-      if (identityGcpAuth.allowedServiceAccounts) {
-        // validate if the service account is in the list of allowed service accounts
-
-        const isServiceAccountAllowed = identityGcpAuth.allowedServiceAccounts
-          .split(",")
-          .map((serviceAccount) => serviceAccount.trim())
-          .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
-
-        if (!isServiceAccountAllowed)
-          throw new UnauthorizedError({
-            message: "Access denied: GCP service account not allowed.",
-            detail: {
-              reasonCode: "service_account_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-      }
-
-      if (
-        identityGcpAuth.type === "gce" &&
-        identityGcpAuth.allowedProjects &&
-        gcpIdentityDetails.computeEngineDetails
-      ) {
-        // validate if the project that the service account belongs to is in the list of allowed projects
-
-        const isProjectAllowed = identityGcpAuth.allowedProjects
-          .split(",")
-          .map((project) => project.trim())
-          .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
-
-        if (!isProjectAllowed)
-          throw new UnauthorizedError({
-            message: "Access denied: GCP project not allowed.",
-            detail: {
-              reasonCode: "project_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-      }
-
-      if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
-        const isZoneAllowed = identityGcpAuth.allowedZones
-          .split(",")
-          .map((zone) => zone.trim())
-          .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
-
-        if (!isZoneAllowed)
-          throw new UnauthorizedError({
-            message: "Access denied: GCP zone not allowed.",
-            detail: {
-              reasonCode: "zone_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-      }
-
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
+        let gcpIdentityDetails: TGcpIdentityDetails;
+        switch (identityGcpAuth.type) {
+          case "gce": {
+            gcpIdentityDetails = await validateIdTokenIdentity({
+              identityId: ctx.identity.id,
+              jwt: payload.jwt
+            });
+            break;
           }
+          case "iam": {
+            gcpIdentityDetails = await validateIamIdentity({
+              identityId: ctx.identity.id,
+              jwt: payload.jwt
+            });
+            break;
+          }
+          default: {
+            throw new BadRequestError({ message: "Invalid GCP Auth type" });
+          }
+        }
 
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
+        if (identityGcpAuth.allowedServiceAccounts) {
+          // validate if the service account is in the list of allowed service accounts
+          const isServiceAccountAllowed = identityGcpAuth.allowedServiceAccounts
+            .split(",")
+            .map((serviceAccount) => serviceAccount.trim())
+            .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
 
-          if (!subOrgMembership) {
+          if (!isServiceAccountAllowed)
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              message: "Access denied: GCP service account not allowed.",
               detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                reasonCode: "service_account_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
-          }
-
-          subOrganizationId = subOrg.id;
         }
-      }
 
-      const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
+        if (
+          identityGcpAuth.type === "gce" &&
+          identityGcpAuth.allowedProjects &&
+          gcpIdentityDetails.computeEngineDetails
+        ) {
+          // validate if the project that the service account belongs to is in the list of allowed projects
+          const isProjectAllowed = identityGcpAuth.allowedProjects
+            .split(",")
+            .map((project) => project.trim())
+            .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
+
+          if (!isProjectAllowed)
+            throw new UnauthorizedError({
+              message: "Access denied: GCP project not allowed.",
+              detail: {
+                reasonCode: "project_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityGcpAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityGcpAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.GCP_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityGcpAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
+            });
+        }
 
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityGcpAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
+        if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
+          const isZoneAllowed = identityGcpAuth.allowedZones
+            .split(",")
+            .map((zone) => zone.trim())
+            .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
 
-      return { accessToken, identityGcpAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityGcpAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
+          if (!isZoneAllowed)
+            throw new UnauthorizedError({
+              message: "Access denied: GCP zone not allowed.",
+              detail: {
+                reasonCode: "zone_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
+              }
+            });
+        }
+
+        return {
+          accessTokenTTL: identityGcpAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit
+        };
       }
-      throw error;
-    }
+    };
+
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
+
+    return { ...result, identityGcpAuth: capturedIdentityGcpAuth! };
   };
 
   const attachGcpAuth = async ({

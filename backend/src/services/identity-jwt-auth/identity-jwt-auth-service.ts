@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
@@ -19,7 +18,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -29,15 +27,14 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -58,7 +55,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -78,317 +75,218 @@ export const identityJwtAuthServiceFactory = ({
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
-    const appCfg = getConfig();
-    const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
-    if (!identityJwtAuth) {
-      throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
-    }
+    let capturedIdentityJwtAuth: Awaited<ReturnType<typeof identityJwtAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityJwtAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+      authMethod: IdentityAuthMethod.JWT_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.JWT_AUTH,
+      validate: async (payload, ctx) => {
+        const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityJwtAuth) {
+          throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
+        }
+        capturedIdentityJwtAuth = identityJwtAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    try {
-      const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: identity.orgId
-      });
-
-      const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
-      if (!decodedToken) {
-        throw new UnauthorizedError({
-          message: "Invalid JWT",
-          detail: {
-            reasonCode: "invalid_jwt",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
+        const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: ctx.identity.orgId
         });
-      }
 
-      let tokenData: Record<string, string | boolean | number> = {};
-
-      if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
-
-        let client: JwksClient;
-        if (identityJwtAuth.jwksUrl.includes("https:")) {
-          const decryptedJwksCaCert = orgDataKeyDecryptor({
-            cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-          }).toString();
-
-          const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl,
-            requestAgent
-          });
-        } else {
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl
+        const decodedToken = crypto.jwt().decode(payload.jwt, { complete: true });
+        if (!decodedToken) {
+          throw new UnauthorizedError({
+            message: "Invalid JWT",
+            detail: {
+              reasonCode: "invalid_jwt",
+              identityId: ctx.identity.id,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
+            }
           });
         }
 
-        const { kid } = decodedToken.header as { kid: string };
-        const jwtSigningKey = await client.getSigningKey(kid);
+        let tokenData: Record<string, string | boolean | number> = {};
 
-        try {
-          tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
-        } catch (error) {
-          if (error instanceof jwt.JsonWebTokenError) {
-            throw new UnauthorizedError({
-              message: `Access denied: ${error.message}`,
-              detail: {
-                reasonCode: "jwt_verification_failed",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
-              }
+        if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
+          await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+
+          let client: JwksClient;
+          if (identityJwtAuth.jwksUrl.includes("https:")) {
+            const decryptedJwksCaCert = orgDataKeyDecryptor({
+              cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+            }).toString();
+
+            const requestAgent = new https.Agent({
+              ca: decryptedJwksCaCert,
+              rejectUnauthorized: !!decryptedJwksCaCert
+            });
+            client = new JwksClient({
+              jwksUri: identityJwtAuth.jwksUrl,
+              requestAgent
+            });
+          } else {
+            client = new JwksClient({
+              jwksUri: identityJwtAuth.jwksUrl
             });
           }
 
-          throw error;
-        }
-      } else {
-        const decryptedPublicKeys = orgDataKeyDecryptor({ cipherTextBlob: identityJwtAuth.encryptedPublicKeys })
-          .toString()
-          .split(",");
+          const { kid } = decodedToken.header as { kid: string };
+          const jwtSigningKey = await client.getSigningKey(kid);
 
-        const errors: string[] = [];
-        let isMatchAnyKey = false;
-        for (const publicKey of decryptedPublicKeys) {
           try {
-            tokenData = crypto.jwt().verify(jwtValue, publicKey) as Record<string, string>;
-            isMatchAnyKey = true;
+            tokenData = crypto.jwt().verify(payload.jwt, jwtSigningKey.getPublicKey()) as Record<string, string>;
           } catch (error) {
             if (error instanceof jwt.JsonWebTokenError) {
-              errors.push(error.message);
+              throw new UnauthorizedError({
+                message: `Access denied: ${error.message}`,
+                detail: {
+                  reasonCode: "jwt_verification_failed",
+                  identityId: ctx.identity.id,
+                  orgId: ctx.identity.orgId,
+                  identityName: ctx.identity.name
+                }
+              });
             }
+
+            throw error;
+          }
+        } else {
+          const decryptedPublicKeys = orgDataKeyDecryptor({ cipherTextBlob: identityJwtAuth.encryptedPublicKeys })
+            .toString()
+            .split(",");
+
+          const errors: string[] = [];
+          let isMatchAnyKey = false;
+          for (const publicKey of decryptedPublicKeys) {
+            try {
+              tokenData = crypto.jwt().verify(payload.jwt, publicKey) as Record<string, string>;
+              isMatchAnyKey = true;
+            } catch (error) {
+              if (error instanceof jwt.JsonWebTokenError) {
+                errors.push(error.message);
+              }
+            }
+          }
+
+          if (!isMatchAnyKey) {
+            throw new UnauthorizedError({
+              message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`,
+              detail: {
+                reasonCode: "jwt_verification_failed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
+              }
+            });
           }
         }
 
-        if (!isMatchAnyKey) {
-          throw new UnauthorizedError({
-            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`,
-            detail: {
-              reasonCode: "jwt_verification_failed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-      }
-
-      if (identityJwtAuth.boundIssuer) {
-        if (tokenData.iss !== identityJwtAuth.boundIssuer) {
-          throw new ForbiddenRequestError({
-            message: "Access denied: issuer mismatch"
-          });
-        }
-      }
-
-      if (identityJwtAuth.boundSubject) {
-        if (!tokenData.sub) {
-          throw new UnauthorizedError({
-            message: "Access denied: token has no subject field",
-            detail: {
-              reasonCode: "missing_subject",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
+        if (identityJwtAuth.boundIssuer) {
+          if (tokenData.iss !== identityJwtAuth.boundIssuer) {
+            throw new ForbiddenRequestError({
+              message: "Access denied: issuer mismatch"
+            });
+          }
         }
 
-        if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
-          throw new ForbiddenRequestError({
-            message: "Access denied: subject not allowed"
-          });
-        }
-      }
-
-      if (identityJwtAuth.boundAudiences) {
-        if (!tokenData.aud) {
-          throw new UnauthorizedError({
-            message: "Access denied: token has no audience field",
-            detail: {
-              reasonCode: "missing_audience",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-
-        if (
-          !identityJwtAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
-        ) {
-          throw new UnauthorizedError({
-            message: "Access denied: token audience not allowed",
-            detail: {
-              reasonCode: "audience_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
-        }
-      }
-
-      if (identityJwtAuth.boundClaims) {
-        Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
-          const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
-          const value = getValueByDot(tokenData, claimKey);
-
-          if (!value) {
+        if (identityJwtAuth.boundSubject) {
+          if (!tokenData.sub) {
             throw new UnauthorizedError({
-              message: `Access denied: token has no ${claimKey} field`,
+              message: "Access denied: token has no subject field",
               detail: {
-                reasonCode: "missing_claim",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                reasonCode: "missing_subject",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
           }
 
-          // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
-            throw new UnauthorizedError({
-              message: `Access denied: claim mismatch for field ${claimKey}`,
-              detail: {
-                reasonCode: "claim_mismatch",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
-              }
+          if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
+            throw new ForbiddenRequestError({
+              message: "Access denied: subject not allowed"
             });
           }
-        });
-      }
-
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-          }
-
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
-
-          if (!subOrgMembership) {
-            throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
-              }
-            });
-          }
-
-          subOrganizationId = subOrg.id;
         }
-      }
 
-      const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
+        if (identityJwtAuth.boundAudiences) {
+          if (!tokenData.aud) {
+            throw new UnauthorizedError({
+              message: "Access denied: token has no audience field",
+              detail: {
+                reasonCode: "missing_audience",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityJwtAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityJwtAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.JWT_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
+            });
+          }
 
-        return newToken;
-      });
+          if (
+            !identityJwtAuth.boundAudiences
+              .split(", ")
+              .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+          ) {
+            throw new UnauthorizedError({
+              message: "Access denied: token audience not allowed",
+              detail: {
+                reasonCode: "audience_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
+              }
+            });
+          }
+        }
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityJwtAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
+        if (identityJwtAuth.boundClaims) {
+          Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
+            const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
+            const value = getValueByDot(tokenData, claimKey);
+
+            if (!value) {
+              throw new UnauthorizedError({
+                message: `Access denied: token has no ${claimKey} field`,
+                detail: {
+                  reasonCode: "missing_claim",
+                  identityId: ctx.identity.id,
+                  orgId: ctx.identity.orgId,
+                  identityName: ctx.identity.name
+                }
+              });
             }
-      );
 
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityJwtAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.JWT_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
+            // handle both single and multi-valued claims
+            if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
+              throw new UnauthorizedError({
+                message: `Access denied: claim mismatch for field ${claimKey}`,
+                detail: {
+                  reasonCode: "claim_mismatch",
+                  identityId: ctx.identity.id,
+                  orgId: ctx.identity.orgId,
+                  identityName: ctx.identity.name
+                }
+              });
+            }
+          });
+        }
 
-      return { accessToken, identityJwtAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityJwtAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.JWT_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
+        return {
+          accessTokenTTL: identityJwtAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit
+        };
       }
-      throw error;
-    }
+    };
+
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
+
+    return { ...result, identityJwtAuth: capturedIdentityJwtAuth! };
   };
 
   const attachJwtAuth = async ({

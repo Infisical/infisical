@@ -58,9 +58,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         const {
           identityUa,
           accessToken,
-          identityAccessToken,
           validClientSecretInfo,
-          identity,
+          identityId,
+          identityAccessTokenId,
+          orgId,
           accessTokenTTL,
           accessTokenMaxTTL
         } = await server.services.identityUa.login({
@@ -72,13 +73,13 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
             metadata: {
               clientSecretId: validClientSecretInfo.id,
-              identityId: identityUa.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityUniversalAuthId: identityUa.id
             }
           }
@@ -87,16 +88,16 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityUa.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityUa.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityUa.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {

@@ -119,17 +119,24 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const { identityJwtAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityJwtAuth.login(req.body);
+        const {
+          identityJwtAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityJwtAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_JWT_AUTH,
             metadata: {
-              identityId: identityJwtAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityJwtAuthId: identityJwtAuth.id
             }
           }
@@ -138,23 +145,23 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityJwtAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityJwtAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.JWT_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityJwtAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityJwtAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

@@ -1,5 +1,5 @@
-import { Knex } from "knex";
 import { requestContext } from "@fastify/request-context";
+import { Knex } from "knex";
 
 import { AccessScope, IdentityAuthMethod, TIdentities, TOrganizations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -63,6 +63,9 @@ export type TLoginResult = {
   accessToken: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
+  identityId: string;
+  orgId: string;
+  identityAccessTokenId: string;
 };
 
 export const loadLoginContext = async (identityId: string, deps: Pick<TLoginDeps, "identityDAL" | "orgDAL">) => {
@@ -173,7 +176,9 @@ export const runIdentityLogin = async <TPayload>(
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0 ? undefined : { expiresIn: Number(identityAccessToken.accessTokenTTL) }
+      Number(identityAccessToken.accessTokenTTL) === 0
+        ? undefined
+        : { expiresIn: Number(identityAccessToken.accessTokenTTL) }
     );
 
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -192,7 +197,10 @@ export const runIdentityLogin = async <TPayload>(
     return {
       accessToken,
       accessTokenTTL: validateResult.accessTokenTTL,
-      accessTokenMaxTTL: validateResult.accessTokenMaxTTL
+      accessTokenMaxTTL: validateResult.accessTokenMaxTTL,
+      identityId: identity.id,
+      orgId: org.id,
+      identityAccessTokenId: identityAccessToken.id
     };
   } catch (error) {
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {

@@ -81,17 +81,24 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       try {
-        const { identityAliCloudAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityAliCloudAuth.login(req.body);
+        const {
+          identityAliCloudAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityAliCloudAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
             metadata: {
-              identityId: identityAliCloudAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityAliCloudAuthId: identityAliCloudAuth.id
             }
           }
@@ -100,23 +107,23 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityAliCloudAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityAliCloudAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.ALICLOUD_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityAliCloudAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityAliCloudAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

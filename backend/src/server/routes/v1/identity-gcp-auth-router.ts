@@ -43,17 +43,24 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const { identityGcpAuth, accessToken, identityAccessToken, identity } =
-          await server.services.identityGcpAuth.login(req.body);
+        const {
+          identityGcpAuth,
+          accessToken,
+          identityId,
+          identityAccessTokenId,
+          orgId,
+          accessTokenTTL,
+          accessTokenMaxTTL
+        } = await server.services.identityGcpAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: identity.orgId,
+          orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_GCP_AUTH,
             metadata: {
-              identityId: identityGcpAuth.identityId,
-              identityAccessTokenId: identityAccessToken.id,
+              identityId,
+              identityAccessTokenId,
               identityGcpAuthId: identityGcpAuth.id
             }
           }
@@ -62,23 +69,23 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityGcpAuth.identityId}`,
-            organizationId: identity.orgId,
+            distinctId: `identity-${identityId}`,
+            organizationId: orgId,
             properties: {
-              identityId: identityGcpAuth.identityId,
-              orgId: identity.orgId,
+              identityId,
+              orgId,
               authMethod: IdentityAuthMethod.GCP_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityGcpAuth.identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: identityGcpAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL
+          expiresIn: accessTokenTTL,
+          accessTokenMaxTTL
         };
       } catch (error) {
         if (

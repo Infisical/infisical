@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -23,13 +22,12 @@ import {
 } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -52,7 +50,7 @@ type TIdentityUaServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityUaDAL: TIdentityUaDALFactory;
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
-  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "transaction">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -82,7 +80,7 @@ export const identityUaServiceFactory = ({
   identityDAL
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
-    const appCfg = getConfig();
+    // Load UA config first to get identityId (UA login uses clientId not identityId)
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
       throw new UnauthorizedError({
@@ -91,305 +89,209 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityUa.identityId);
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
+    let capturedValidClientSecretInfo: { id: string } | undefined;
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    try {
-      checkIPAgainstBlocklist({
-        ipAddress: ip,
-        trustedIps: identityUa.clientSecretTrustedIps as TIp[]
-      });
-
-      const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
-
-      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
-
-      let lockout: LockoutObject | undefined;
-      if (lockoutRaw) {
-        lockout = JSON.parse(lockoutRaw) as LockoutObject;
-      }
-
-      if (lockout && lockout.lockedOut && identityUa.lockoutEnabled) {
-        throw new UnauthorizedError({
-          message: "This identity auth method is temporarily locked, please try again later",
-          detail: {
-            reasonCode: "temporarily_locked",
-            identityId: identityUa.identityId,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
+    const strategy: TIdentityAuthLoginStrategy<{ clientSecret: string; ip: string }> = {
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.UNIVERSAL_AUTH,
+      validate: async (payload, ctx) => {
+        // identityUa is already loaded via closure
+        checkIPAgainstBlocklist({
+          ipAddress: payload.ip,
+          trustedIps: identityUa.clientSecretTrustedIps as TIp[]
         });
-      }
 
-      const clientSecretPrefix = clientSecret.slice(0, 4);
-      const clientSecretInfo = await identityUaClientSecretDAL.find({
-        identityUAId: identityUa.id,
-        isClientSecretRevoked: false,
-        clientSecretPrefix
-      });
+        const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
 
-      let validClientSecretInfo: (typeof clientSecretInfo)[0] | null = null;
-      for await (const info of clientSecretInfo) {
-        const isMatch = await crypto.hashing().compareHash(clientSecret, info.clientSecretHash);
+        const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
 
-        if (isMatch) {
-          validClientSecretInfo = info;
-          break;
+        let lockout: LockoutObject | undefined;
+        if (lockoutRaw) {
+          lockout = JSON.parse(lockoutRaw) as LockoutObject;
         }
-      }
 
-      if (!validClientSecretInfo) {
-        if (identityUa.lockoutEnabled) {
-          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-          try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 300, {
-              retryCount: 3,
-              retryDelay: 300,
-              retryJitter: 100
+        if (lockout && lockout.lockedOut) {
+          throw new UnauthorizedError({
+            message: "This identity auth method is temporarily locked, please try again later",
+            detail: {
+              reasonCode: "temporarily_locked",
+              identityId: identityUa.identityId,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
+            }
+          });
+        }
+
+        const clientSecretPrefix = payload.clientSecret.slice(0, 4);
+        const clientSecretInfo = await identityUaClientSecretDAL.find({
+          identityUAId: identityUa.id,
+          isClientSecretRevoked: false,
+          clientSecretPrefix
+        });
+
+        let validClientSecretInfo: (typeof clientSecretInfo)[0] | null = null;
+        for await (const info of clientSecretInfo) {
+          const isMatch = await crypto.hashing().compareHash(payload.clientSecret, info.clientSecretHash);
+
+          if (isMatch) {
+            validClientSecretInfo = info;
+            break;
+          }
+        }
+
+        if (!validClientSecretInfo) {
+          if (identityUa.lockoutEnabled) {
+            let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+            try {
+              lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 300, {
+                retryCount: 3,
+                retryDelay: 300,
+                retryJitter: 100
+              });
+
+              // Re-fetch the latest lockout data while holding the lock
+              const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+              if (lockoutRawNew) {
+                lockout = JSON.parse(lockoutRawNew) as LockoutObject;
+              } else {
+                lockout = {
+                  lockedOut: false,
+                  failedAttempts: 0
+                };
+              }
+
+              if (lockout.lockedOut) {
+                throw new UnauthorizedError({
+                  message: "This identity auth method is temporarily locked, please try again later",
+                  detail: {
+                    reasonCode: "temporarily_locked",
+                    identityId: identityUa.identityId,
+                    orgId: ctx.identity.orgId,
+                    identityName: ctx.identity.name
+                  }
+                });
+              }
+
+              lockout.failedAttempts += 1;
+              if (lockout.failedAttempts >= identityUa.lockoutThreshold) {
+                lockout.lockedOut = true;
+              }
+
+              await keyStore.setItemWithExpiry(
+                LOCKOUT_KEY,
+                lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
+                JSON.stringify(lockout)
+              );
+            } catch (e) {
+              if (lock === undefined) {
+                logger.info(
+                  `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
+                );
+                throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
+              }
+              throw e;
+            } finally {
+              if (lock) {
+                await lock.release();
+              }
+            }
+          }
+
+          throw new UnauthorizedError({
+            message: "Invalid credentials",
+            detail: {
+              reasonCode: "invalid_client_secret",
+              identityId: identityUa.identityId,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
+            }
+          });
+        } else if (lockout) {
+          // If credentials are valid, clear any existing lockout record
+          await keyStore.deleteItem(LOCKOUT_KEY);
+        }
+
+        const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
+        if (Number(clientSecretTTL) > 0) {
+          const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
+          const ttlInMilliseconds = Number(clientSecretTTL) * 1000;
+          const currentDate = new Date();
+          const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
+
+          if (currentDate > expirationTime) {
+            await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
+              isClientSecretRevoked: true
             });
 
-            // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
-            if (lockoutRawNew) {
-              lockout = JSON.parse(lockoutRawNew) as LockoutObject;
-            } else {
-              lockout = {
-                lockedOut: false,
-                failedAttempts: 0
-              };
-            }
-
-            if (lockout.lockedOut) {
-              throw new UnauthorizedError({
-                message: "This identity auth method is temporarily locked, please try again later",
-                detail: {
-                  reasonCode: "temporarily_locked",
-                  identityId: identityUa.identityId,
-                  orgId: identity.orgId,
-                  identityName: identity.name
-                }
-              });
-            }
-
-            lockout.failedAttempts += 1;
-            if (lockout.failedAttempts >= identityUa.lockoutThreshold) {
-              lockout.lockedOut = true;
-            }
-
-            await keyStore.setItemWithExpiry(
-              LOCKOUT_KEY,
-              lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
-              JSON.stringify(lockout)
-            );
-          } catch (e) {
-            if (lock === undefined) {
-              logger.info(
-                `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
-              );
-              throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
-            }
-            throw e;
-          } finally {
-            if (lock) {
-              await lock.release();
-            }
+            throw new UnauthorizedError({
+              message: "Access denied due to expired client secret",
+              detail: {
+                reasonCode: "client_secret_expired",
+                identityId: identityUa.identityId,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
+              }
+            });
           }
         }
 
-        throw new UnauthorizedError({
-          message: "Invalid credentials",
-          detail: {
-            reasonCode: "invalid_client_secret",
-            identityId: identityUa.identityId,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
-      } else if (lockout) {
-        // If credentials are valid, clear any existing lockout record
-        await keyStore.deleteItem(LOCKOUT_KEY);
-      }
-
-      const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
-      if (Number(clientSecretTTL) > 0) {
-        const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
-        const ttlInMilliseconds = Number(clientSecretTTL) * 1000;
-        const currentDate = new Date();
-        const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
-
-        if (currentDate > expirationTime) {
+        if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
+          // number of times client secret can be used for
+          // a login operation reached
           await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
             isClientSecretRevoked: true
           });
-
           throw new UnauthorizedError({
-            message: "Access denied due to expired client secret",
+            message: "Access denied due to client secret usage limit reached",
             detail: {
-              reasonCode: "client_secret_expired",
+              reasonCode: "client_secret_usage_limit_reached",
               identityId: identityUa.identityId,
-              orgId: identity.orgId,
-              identityName: identity.name
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
             }
           });
         }
-      }
 
-      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
-        // number of times client secret can be used for
-        // a login operation reached
-        await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
-          isClientSecretRevoked: true
-        });
-        throw new UnauthorizedError({
-          message: "Access denied due to client secret usage limit reached",
-          detail: {
-            reasonCode: "client_secret_usage_limit_reached",
-            identityId: identityUa.identityId,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
-      }
+        capturedValidClientSecretInfo = validClientSecretInfo;
 
-      const accessTokenTTLParams =
-        Number(identityUa.accessTokenPeriod) === 0
-          ? {
-              accessTokenTTL: identityUa.accessTokenTTL,
-              accessTokenMaxTTL: identityUa.accessTokenMaxTTL
-            }
-          : {
-              accessTokenTTL: identityUa.accessTokenPeriod,
-              // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
-              // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
-              accessTokenMaxTTL: 1000000000
-            };
-
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${organizationSlug} not found` });
-          }
-
-          // Allow access if identity has direct org membership or access via a group (e.g. root-org group linked to sub-org)
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
-
-          if (!subOrgMembership) {
-            throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
-              detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identityUa.identityId,
-                orgId: identity.orgId,
-                identityName: identity.name
-              }
-            });
-          }
-
-          subOrganizationId = subOrg.id;
-        }
-      }
-
-      const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-        const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-        await membershipIdentityDAL.update(
-          identity.projectId
+        // Compute TTL params (handles periodic tokens)
+        const accessTokenTTLParams =
+          Number(identityUa.accessTokenPeriod) === 0
             ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
+                accessTokenTTL: identityUa.accessTokenTTL,
+                accessTokenMaxTTL: identityUa.accessTokenMaxTTL
               }
             : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityUa.identityId,
-            isAccessTokenRevoked: false,
-            identityUAClientSecretId: uaClientSecretDoc.id,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
-            accessTokenPeriod: identityUa.accessTokenPeriod,
-            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-            subOrganizationId,
-            ...accessTokenTTLParams
-          },
-          tx
-        );
+                accessTokenTTL: identityUa.accessTokenPeriod,
+                // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
+                // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
+                accessTokenMaxTTL: 1000000000
+              };
 
-        return newToken;
-      });
-
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityUa.identityId,
+        return {
+          ...accessTokenTTLParams,
+          accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
+          accessTokenPeriod: identityUa.accessTokenPeriod,
           clientSecretId: validClientSecretInfo.id,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityUa.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.UNIVERSAL_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
+          onBeforeTokenCreate: async (tx) => {
+            const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+            return { identityUAClientSecretId: uaClientSecretDoc.id };
+          }
+        };
       }
+    };
 
-      return {
-        accessToken,
-        identityUa,
-        validClientSecretInfo,
-        identityAccessToken,
-        identity,
-        ...accessTokenTTLParams
-      };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityUa.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.UNIVERSAL_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    const result = await runIdentityLogin(
+      { identityId: identityUa.identityId, organizationSlug, payload: { clientSecret, ip } },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
+
+    return {
+      ...result,
+      identityUa,
+      validClientSecretInfo: capturedValidClientSecretInfo!
+    };
   };
 
   const attachUniversalAuth = async ({

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
@@ -13,9 +12,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -25,13 +22,12 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -47,7 +43,7 @@ import {
 
 type TIdentityOciAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -66,184 +62,82 @@ export const identityOciAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
-  const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
-    const appCfg = getConfig();
-    const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
-    if (!identityOciAuth) {
-      throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
-    }
+  const login = async ({ identityId, organizationSlug, headers, userOcid }: TLoginOciAuthDTO) => {
+    let capturedIdentityOciAuth: Awaited<ReturnType<typeof identityOciAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityOciAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{ headers: TLoginOciAuthDTO["headers"]; userOcid: string }> = {
+      authMethod: IdentityAuthMethod.OCI_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.OCI_AUTH,
+      validate: async (payload, ctx) => {
+        const identityOciAuth = await identityOciAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityOciAuth)
+          throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
+        capturedIdentityOciAuth = identityOciAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
+        // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
+        if (
+          !payload.headers.host ||
+          !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(payload.headers.host)
+        ) {
+          throw new BadRequestError({
+            message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
+          });
+        }
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+        const { data } = await request
+          .get<TOciGetUserResponse>(`https://${payload.headers.host}/20160918/users/${payload.userOcid}`, {
+            headers: payload.headers
+          })
+          .catch((err: AxiosError) => {
+            logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
+            throw err;
+          });
 
-    try {
-      // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
-      if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
-        throw new BadRequestError({
-          message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
-        });
-      }
-
-      const { data } = await request
-        .get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
-          headers
-        })
-        .catch((err: AxiosError) => {
-          logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
-          throw err;
-        });
-
-      if (data.compartmentId !== identityOciAuth.tenancyOcid) {
-        throw new UnauthorizedError({
-          message: "Access denied: OCI account isn't part of tenancy.",
-          detail: {
-            reasonCode: "tenancy_not_allowed",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
-      }
-
-      if (identityOciAuth.allowedUsernames) {
-        const isAccountAllowed = identityOciAuth.allowedUsernames.split(",").some((name) => name.trim() === data.name);
-
-        if (!isAccountAllowed)
+        if (data.compartmentId !== identityOciAuth.tenancyOcid) {
           throw new UnauthorizedError({
-            message: "Access denied: OCI account username not allowed.",
+            message: "Access denied: OCI account isn't part of tenancy.",
             detail: {
-              reasonCode: "username_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
+              reasonCode: "tenancy_not_allowed",
+              identityId: ctx.identity.id,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
             }
           });
-      }
+        }
 
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
+        if (identityOciAuth.allowedUsernames) {
+          const isAccountAllowed = identityOciAuth.allowedUsernames
+            .split(",")
+            .some((name) => name.trim() === data.name);
 
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-          }
-
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
-
-          if (!subOrgMembership) {
+          if (!isAccountAllowed)
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              message: "Access denied: OCI account username not allowed.",
               detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                reasonCode: "username_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
-          }
-
-          subOrganizationId = subOrg.id;
         }
+
+        return {
+          accessTokenTTL: identityOciAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit
+        };
       }
+    };
 
-      // Generate the token
-      const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityOciAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityOciAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.OCI_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { headers, userOcid } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityOciAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityOciAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.OCI_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-
-      return {
-        identityOciAuth,
-        accessToken,
-        identityAccessToken,
-        identity
-      };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityOciAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.OCI_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    return { ...result, identityOciAuth: capturedIdentityOciAuth! };
   };
 
   const attachOciAuth = async ({

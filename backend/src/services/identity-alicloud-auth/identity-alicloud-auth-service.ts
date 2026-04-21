@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import { AxiosError } from "axios";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -12,9 +11,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -24,13 +21,12 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -46,7 +42,7 @@ import {
 
 type TIdentityAliCloudAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   identityAliCloudAuthDAL: Pick<
     TIdentityAliCloudAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
@@ -68,170 +64,63 @@ export const identityAliCloudAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityAliCloudAuthServiceFactoryDep) => {
-  const login = async ({ identityId, organizationSlug, ...params }: TLoginAliCloudAuthDTO) => {
-    const appCfg = getConfig();
-    const identityAliCloudAuth = await identityAliCloudAuthDAL.findOne({ identityId });
-    if (!identityAliCloudAuth) {
-      throw new NotFoundError({
-        message: "Alibaba Cloud auth method not found for identity, did you configure Alibaba Cloud auth?"
-      });
-    }
+  const login = async ({ identityId, organizationSlug, ...alicloudParams }: TLoginAliCloudAuthDTO) => {
+    let capturedIdentityAliCloudAuth: Awaited<ReturnType<typeof identityAliCloudAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityAliCloudAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
-
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    try {
-      const requestUrl = new URL("https://sts.aliyuncs.com");
-
-      for (const key of Object.keys(params)) {
-        requestUrl.searchParams.set(key, (params as Record<string, string>)[key]);
-      }
-
-      const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
-        logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
-        throw err;
-      });
-
-      if (identityAliCloudAuth.allowedArns) {
-        // In the future we could do partial checks for role ARNs
-        const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
-
-        if (!isAccountAllowed)
-          throw new UnauthorizedError({
-            message: "Access denied: Alibaba Cloud account ARN not allowed.",
-            detail: {
-              reasonCode: "arn_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
+    const strategy: TIdentityAuthLoginStrategy<typeof alicloudParams> = {
+      authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.ALICLOUD_AUTH,
+      validate: async (payload, ctx) => {
+        const identityAliCloudAuth = await identityAliCloudAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityAliCloudAuth)
+          throw new NotFoundError({
+            message: "AliCloud auth method not found for identity, did you configure AliCloud auth?"
           });
-      }
+        capturedIdentityAliCloudAuth = identityAliCloudAuth;
 
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
+        const requestUrl = new URL("https://sts.aliyuncs.com");
 
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-          }
+        for (const key of Object.keys(payload)) {
+          requestUrl.searchParams.set(key, (payload as Record<string, string>)[key]);
+        }
 
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
+        const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
+          logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
+          throw err;
+        });
 
-          if (!subOrgMembership) {
+        if (identityAliCloudAuth.allowedArns) {
+          // In the future we could do partial checks for role ARNs
+          const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
+
+          if (!isAccountAllowed)
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              message: "Access denied: Alibaba Cloud account ARN not allowed.",
               detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                identityName: identity.name,
-                orgId: identity.orgId
+                reasonCode: "arn_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
-          }
-
-          subOrganizationId = subOrg.id;
         }
+
+        return {
+          accessTokenTTL: identityAliCloudAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit
+        };
       }
+    };
 
-      // Generate the token
-      const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityAliCloudAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityAliCloudAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: alicloudParams }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityAliCloudAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAliCloudAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.ALICLOUD_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-
-      return {
-        identityAliCloudAuth,
-        accessToken,
-        identityAccessToken,
-        identity
-      };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAliCloudAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.ALICLOUD_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    return { ...result, identityAliCloudAuth: capturedIdentityAliCloudAuth! };
   };
 
   const attachAliCloudAuth = async ({

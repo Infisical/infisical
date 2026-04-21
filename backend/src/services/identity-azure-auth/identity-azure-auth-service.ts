@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -10,8 +9,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -20,13 +17,12 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -47,7 +43,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -64,174 +60,73 @@ export const identityAzureAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
-    const appCfg = getConfig();
-    const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
-    if (!identityAzureAuth) {
-      throw new NotFoundError({ message: "Azure auth method not found for identity, did you configure Azure Auth?" });
-    }
+  const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginAzureAuthDTO) => {
+    let capturedIdentityAzureAuth: Awaited<ReturnType<typeof identityAzureAuthDAL.findOne>> | undefined;
 
-    const identity = await identityDAL.findById(identityAzureAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
+    const strategy: TIdentityAuthLoginStrategy<{ jwt: string }> = {
+      authMethod: IdentityAuthMethod.AZURE_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.AZURE_AUTH,
+      validate: async (payload, ctx) => {
+        const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityAzureAuth)
+          throw new NotFoundError({
+            message: "Azure auth method not found for identity, did you configure Azure auth?"
+          });
+        capturedIdentityAzureAuth = identityAzureAuth;
 
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    try {
-      const azureIdentity = await validateAzureIdentity({
-        tenantId: identityAzureAuth.tenantId,
-        resource: identityAzureAuth.resource,
-        jwt: azureJwt
-      });
-
-      if (azureIdentity.tid !== identityAzureAuth.tenantId)
-        throw new UnauthorizedError({
-          message: "Tenant ID mismatch",
-          detail: {
-            reasonCode: "tenant_id_mismatch",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
+        const azureIdentity = await validateAzureIdentity({
+          tenantId: identityAzureAuth.tenantId,
+          resource: identityAzureAuth.resource,
+          jwt: payload.jwt
         });
 
-      if (identityAzureAuth.allowedServicePrincipalIds) {
-        // validate if the service principal id is in the list of allowed service principal ids
-
-        const isServicePrincipalAllowed = identityAzureAuth.allowedServicePrincipalIds
-          .split(",")
-          .map((servicePrincipalId) => servicePrincipalId.trim())
-          .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
-
-        if (!isServicePrincipalAllowed) {
+        if (azureIdentity.tid !== identityAzureAuth.tenantId)
           throw new UnauthorizedError({
-            message: `Service principal '${azureIdentity.oid}' not allowed`,
+            message: "Tenant ID mismatch",
             detail: {
-              reasonCode: "service_principal_not_allowed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
+              reasonCode: "tenant_id_mismatch",
+              identityId: ctx.identity.id,
+              orgId: ctx.identity.orgId,
+              identityName: ctx.identity.name
             }
           });
-        }
-      }
 
-      if (organizationSlug && org.slug !== organizationSlug) {
-        if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
+        if (identityAzureAuth.allowedServicePrincipalIds) {
+          // validate if the service principal id is in the list of allowed service principal ids
+          const isServicePrincipalAllowed = identityAzureAuth.allowedServicePrincipalIds
+            .split(",")
+            .map((servicePrincipalId) => servicePrincipalId.trim())
+            .some((servicePrincipalId) => servicePrincipalId === azureIdentity.oid);
 
-          if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-          }
-
-          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-            actorType: ActorType.IDENTITY,
-            actorId: identity.id,
-            orgId: subOrg.id
-          });
-
-          if (!subOrgMembership) {
+          if (!isServicePrincipalAllowed) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${organizationSlug}`,
+              message: `Service principal '${azureIdentity.oid}' not allowed`,
               detail: {
-                reasonCode: "sub_org_unauthorized",
-                identityId: identity.id,
-                orgId: identity.orgId,
-                identityName: identity.name
+                reasonCode: "service_principal_not_allowed",
+                identityId: ctx.identity.id,
+                orgId: ctx.identity.orgId,
+                identityName: ctx.identity.name
               }
             });
           }
-
-          subOrganizationId = subOrg.id;
         }
+
+        return {
+          accessTokenTTL: identityAzureAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit
+        };
       }
+    };
 
-      const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityAzureAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityAzureAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AZURE_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
+    const result = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityAzureAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAzureAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.AZURE_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-
-      return { accessToken, identityAzureAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityAzureAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.AZURE_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    return { ...result, identityAzureAuth: capturedIdentityAzureAuth! };
   };
 
   const attachAzureAuth = async ({

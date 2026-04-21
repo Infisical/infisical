@@ -1,5 +1,6 @@
-import { TIdentities, TIdentityAccessTokens, TIdentityTlsCertAuths } from "@app/db/schemas";
+import { TIdentityTlsCertAuths } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
+import { TLoginResult } from "@app/services/identity-auth/identity-auth-pipeline";
 
 export type TLoginTlsCertAuthDTO = {
   identityId: string;
@@ -37,12 +38,7 @@ export type TRevokeTlsCertAuthDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIdentityTlsCertAuthServiceFactory = {
-  login: (dto: TLoginTlsCertAuthDTO) => Promise<{
-    identityTlsCertAuth: TIdentityTlsCertAuths;
-    accessToken: string;
-    identityAccessToken: TIdentityAccessTokens;
-    identity: TIdentities;
-  }>;
+  login: (dto: TLoginTlsCertAuthDTO) => Promise<TLoginResult & { identityTlsCertAuth: TIdentityTlsCertAuths }>;
   attachTlsCertAuth: (dto: TAttachTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
   updateTlsCertAuth: (dto: TUpdateTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
   revokeTlsCertAuth: (dto: TRevokeTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
