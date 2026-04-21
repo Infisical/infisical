@@ -131,12 +131,8 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       try {
-        const {
-          identitySpiffeAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identitySpiffeAuth.login(req.body);
+        const { identitySpiffeAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identitySpiffeAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

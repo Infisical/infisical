@@ -43,12 +43,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const {
-          identityGcpAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identityGcpAuth.login(req.body);
+        const { identityGcpAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identityGcpAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

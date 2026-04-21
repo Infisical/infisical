@@ -55,18 +55,13 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       try {
-        const {
-          identityUa,
-          accessToken,
-          validClientSecretInfo,
-          identity,
-          identityAccessToken
-        } = await server.services.identityUa.login({
-          ...req.body,
-          ip: req.realIp,
-          userAgent: req.auditLogInfo.userAgent,
-          userAgentType: req.auditLogInfo.userAgentType
-        });
+        const { identityUa, accessToken, validClientSecretInfo, identity, identityAccessToken } =
+          await server.services.identityUa.login({
+            ...req.body,
+            ip: req.realIp,
+            userAgent: req.auditLogInfo.userAgent,
+            userAgentType: req.auditLogInfo.userAgentType
+          });
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

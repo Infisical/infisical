@@ -64,12 +64,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       try {
-        const {
-          identityKubernetesAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identityKubernetesAuth.login(req.body);
+        const { identityKubernetesAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identityKubernetesAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

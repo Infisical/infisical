@@ -81,12 +81,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       try {
-        const {
-          identityAliCloudAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identityAliCloudAuth.login(req.body);
+        const { identityAliCloudAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identityAliCloudAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

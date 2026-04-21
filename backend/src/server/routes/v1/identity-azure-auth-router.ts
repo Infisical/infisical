@@ -43,12 +43,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       try {
-        const {
-          identityAzureAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identityAzureAuth.login(req.body);
+        const { identityAzureAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identityAzureAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,

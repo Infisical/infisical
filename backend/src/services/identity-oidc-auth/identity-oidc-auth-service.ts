@@ -393,11 +393,15 @@ export const identityOidcAuthServiceFactory = ({
       }
     };
 
-    const { authConfig: { identityOidcAuth, oidcTokenData }, ...result } = await runIdentityLogin(
-      { identityId, organizationSlug, payload: { jwt: jwtValue } },
-      strategy,
-      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
-    );
+    const {
+      authConfig: { identityOidcAuth, oidcTokenData },
+      ...result
+    } = await runIdentityLogin({ identityId, organizationSlug, payload: { jwt: jwtValue } }, strategy, {
+      identityDAL,
+      orgDAL,
+      identityAccessTokenDAL,
+      membershipIdentityDAL
+    });
 
     return { ...result, identityOidcAuth, oidcTokenData };
   };

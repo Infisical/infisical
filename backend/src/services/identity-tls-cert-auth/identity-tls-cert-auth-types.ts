@@ -38,7 +38,9 @@ export type TRevokeTlsCertAuthDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIdentityTlsCertAuthServiceFactory = {
-  login: (dto: TLoginTlsCertAuthDTO) => Promise<Omit<TLoginResult, "authConfig"> & { identityTlsCertAuth: TIdentityTlsCertAuths }>;
+  login: (dto: TLoginTlsCertAuthDTO) => Promise<
+    Omit<TLoginResult, "authConfig"> & { identityTlsCertAuth: TIdentityTlsCertAuths }
+  >;
   attachTlsCertAuth: (dto: TAttachTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
   updateTlsCertAuth: (dto: TUpdateTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
   revokeTlsCertAuth: (dto: TRevokeTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;

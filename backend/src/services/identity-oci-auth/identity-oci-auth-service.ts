@@ -64,7 +64,10 @@ export const identityOciAuthServiceFactory = ({
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, organizationSlug, headers, userOcid }: TLoginOciAuthDTO) => {
     type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityOciAuthDAL.findOne>>>;
-    const strategy: TIdentityAuthLoginStrategy<{ headers: TLoginOciAuthDTO["headers"]; userOcid: string }, TLoginAuthConfig> = {
+    const strategy: TIdentityAuthLoginStrategy<
+      { headers: TLoginOciAuthDTO["headers"]; userOcid: string },
+      TLoginAuthConfig
+    > = {
       authMethod: IdentityAuthMethod.OCI_AUTH,
       telemetryAuthMethod: AuthAttemptAuthMethod.OCI_AUTH,
       validate: async (payload, ctx) => {

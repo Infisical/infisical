@@ -60,12 +60,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       try {
-        const {
-          identityOciAuth,
-          accessToken,
-          identity,
-          identityAccessToken
-        } = await server.services.identityOciAuth.login(req.body);
+        const { identityOciAuth, accessToken, identity, identityAccessToken } =
+          await server.services.identityOciAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
