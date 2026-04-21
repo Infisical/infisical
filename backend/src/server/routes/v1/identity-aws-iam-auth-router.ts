@@ -51,21 +51,19 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         const {
           identityAwsAuth,
           accessToken,
-          identityId,
-          identityAccessTokenId,
-          orgId,
-          accessTokenTTL,
-          accessTokenMaxTTL
+          identity,
+          org,
+          identityAccessToken
         } = await server.services.identityAwsAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId,
+          orgId: org.id,
           event: {
             type: EventType.LOGIN_IDENTITY_AWS_AUTH,
             metadata: {
-              identityId,
-              identityAccessTokenId,
+              identityId: identity.id,
+              identityAccessTokenId: identityAccessToken.id,
               identityAwsAuthId: identityAwsAuth.id
             }
           }
@@ -74,23 +72,23 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityId}`,
-            organizationId: orgId,
+            distinctId: `identity-${identity.id}`,
+            organizationId: org.id,
             properties: {
-              identityId,
-              orgId,
+              identityId: identity.id,
+              orgId: org.id,
               authMethod: IdentityAuthMethod.AWS_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: accessTokenTTL,
-          accessTokenMaxTTL
+          expiresIn: identityAccessToken.accessTokenTTL,
+          accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
         };
       } catch (error) {
         if (

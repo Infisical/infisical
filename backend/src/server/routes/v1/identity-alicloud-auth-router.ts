@@ -84,21 +84,19 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         const {
           identityAliCloudAuth,
           accessToken,
-          identityId,
-          identityAccessTokenId,
-          orgId,
-          accessTokenTTL,
-          accessTokenMaxTTL
+          identity,
+          org,
+          identityAccessToken
         } = await server.services.identityAliCloudAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId,
+          orgId: org.id,
           event: {
             type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
             metadata: {
-              identityId,
-              identityAccessTokenId,
+              identityId: identity.id,
+              identityAccessTokenId: identityAccessToken.id,
               identityAliCloudAuthId: identityAliCloudAuth.id
             }
           }
@@ -107,23 +105,23 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityId}`,
-            organizationId: orgId,
+            distinctId: `identity-${identity.id}`,
+            organizationId: org.id,
             properties: {
-              identityId,
-              orgId,
+              identityId: identity.id,
+              orgId: org.id,
               authMethod: IdentityAuthMethod.ALICLOUD_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: accessTokenTTL,
-          accessTokenMaxTTL
+          expiresIn: identityAccessToken.accessTokenTTL,
+          accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
         };
       } catch (error) {
         if (

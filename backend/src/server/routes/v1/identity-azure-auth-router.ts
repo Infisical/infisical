@@ -46,21 +46,19 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         const {
           identityAzureAuth,
           accessToken,
-          identityId,
-          identityAccessTokenId,
-          orgId,
-          accessTokenTTL,
-          accessTokenMaxTTL
+          identity,
+          org,
+          identityAccessToken
         } = await server.services.identityAzureAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId,
+          orgId: org.id,
           event: {
             type: EventType.LOGIN_IDENTITY_AZURE_AUTH,
             metadata: {
-              identityId,
-              identityAccessTokenId,
+              identityId: identity.id,
+              identityAccessTokenId: identityAccessToken.id,
               identityAzureAuthId: identityAzureAuth.id
             }
           }
@@ -69,23 +67,23 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityId}`,
-            organizationId: orgId,
+            distinctId: `identity-${identity.id}`,
+            organizationId: org.id,
             properties: {
-              identityId,
-              orgId,
+              identityId: identity.id,
+              orgId: org.id,
               authMethod: IdentityAuthMethod.AZURE_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: accessTokenTTL,
-          accessTokenMaxTTL
+          expiresIn: identityAccessToken.accessTokenTTL,
+          accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
         };
       } catch (error) {
         if (

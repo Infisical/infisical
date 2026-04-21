@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { Knex } from "knex";
 
-import { AccessScope, IdentityAuthMethod, TIdentities, TOrganizations } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, TIdentities, TIdentityAccessTokens, TOrganizations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -61,11 +61,9 @@ export type TLoginDeps = {
 
 export type TLoginResult = {
   accessToken: string;
-  accessTokenTTL: number;
-  accessTokenMaxTTL: number;
-  identityId: string;
-  orgId: string;
-  identityAccessTokenId: string;
+  identity: TIdentities;
+  org: TOrganizations;
+  identityAccessToken: TIdentityAccessTokens;
 };
 
 export const loadLoginContext = async (identityId: string, deps: Pick<TLoginDeps, "identityDAL" | "orgDAL">) => {
@@ -194,14 +192,7 @@ export const runIdentityLogin = async <TPayload>(
       });
     }
 
-    return {
-      accessToken,
-      accessTokenTTL: validateResult.accessTokenTTL,
-      accessTokenMaxTTL: validateResult.accessTokenMaxTTL,
-      identityId: identity.id,
-      orgId: org.id,
-      identityAccessTokenId: identityAccessToken.id
-    };
+    return { accessToken, identity, org, identityAccessToken };
   } catch (error) {
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       authAttemptCounter.add(1, {

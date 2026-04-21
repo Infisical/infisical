@@ -70,22 +70,20 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         const {
           identityOidcAuth,
           accessToken,
-          identityId,
-          identityAccessTokenId,
-          orgId,
-          accessTokenTTL,
-          accessTokenMaxTTL,
+          identity,
+          org,
+          identityAccessToken,
           oidcTokenData
         } = await server.services.identityOidcAuth.login(req.body);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId,
+          orgId: org.id,
           event: {
             type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
             metadata: {
-              identityId,
-              identityAccessTokenId,
+              identityId: identity.id,
+              identityAccessTokenId: identityAccessToken.id,
               identityOidcAuthId: identityOidcAuth.id,
               oidcClaimsReceived:
                 Buffer.from(JSON.stringify(oidcTokenData), "utf8").byteLength < MAX_OIDC_CLAIM_SIZE
@@ -98,23 +96,23 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.MachineIdentityLogin,
-            distinctId: `identity-${identityId}`,
-            organizationId: orgId,
+            distinctId: `identity-${identity.id}`,
+            organizationId: org.id,
             properties: {
-              identityId,
-              orgId,
+              identityId: identity.id,
+              orgId: org.id,
               authMethod: IdentityAuthMethod.OIDC_AUTH
             }
           })
           .catch((error) => {
-            logger.error(error, `Failed to send telemetry event [identityId=${identityId}]`);
+            logger.error(error, `Failed to send telemetry event [identityId=${identity.id}]`);
           });
 
         return {
           accessToken,
           tokenType: "Bearer" as const,
-          expiresIn: accessTokenTTL,
-          accessTokenMaxTTL
+          expiresIn: identityAccessToken.accessTokenTTL,
+          accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL
         };
       } catch (error) {
         if (
