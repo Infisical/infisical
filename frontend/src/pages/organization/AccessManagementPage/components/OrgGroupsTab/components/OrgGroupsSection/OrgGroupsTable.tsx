@@ -306,180 +306,178 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   </TableRow>
                 ))}
               {!isPending &&
-                sortedGroups.map(
-                  ({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
-                    const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
-                    const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
-                    return (
-                      <TableRow
-                        key={`org-group-${id}`}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: "/organizations/$orgId/groups/$groupId",
-                            params: {
-                              orgId,
-                              groupId: id
-                            }
-                          })
-                        }
-                      >
-                        <TableCell isTruncatable>{name}</TableCell>
-                        <TableCell isTruncatable>{slug}</TableCell>
-                        <TableCell>
-                          <OrgPermissionCan
-                            I={OrgPermissionGroupActions.Edit}
-                            a={OrgPermissionSubjects.Groups}
-                          >
-                            {(isAllowed) => (
-                              <Select
-                                value={role === "custom" ? (customRole?.slug as string) : role}
-                                disabled={!isAllowed}
-                                onValueChange={(selectedRole) =>
-                                  handleChangeRole({
-                                    id,
-                                    role: selectedRole
-                                  })
-                                }
-                              >
-                                <SelectTrigger
-                                  size="sm"
-                                  className="w-full max-w-32 lg:max-w-64"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-w-32 lg:max-w-64">
-                                  {(roles || []).map(({ slug: roleSlug, name: roleName }) => (
-                                    <SelectItem value={roleSlug} key={`role-option-${roleSlug}`}>
-                                      {roleName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </OrgPermissionCan>
-                        </TableCell>
-                        {isSubOrganization && (
-                          <TableCell>
-                            <Badge variant={isManagedBySubOrg ? "sub-org" : "org"}>
-                              {isManagedBySubOrg ? (
-                                <>
-                                  <SubOrgIcon />
-                                  Sub-Organization
-                                </>
-                              ) : (
-                                <>
-                                  <OrgIcon />
-                                  Root Organization
-                                </>
-                              )}
-                            </Badge>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
+                sortedGroups.map(({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
+                  const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
+                  const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
+                  return (
+                    <TableRow
+                      key={`org-group-${id}`}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        navigate({
+                          to: "/organizations/$orgId/groups/$groupId",
+                          params: {
+                            orgId,
+                            groupId: id
+                          }
+                        })
+                      }
+                    >
+                      <TableCell isTruncatable>{name}</TableCell>
+                      <TableCell isTruncatable>{slug}</TableCell>
+                      <TableCell>
+                        <OrgPermissionCan
+                          I={OrgPermissionGroupActions.Edit}
+                          a={OrgPermissionSubjects.Groups}
+                        >
+                          {(isAllowed) => (
+                            <Select
+                              value={role === "custom" ? (customRole?.slug as string) : role}
+                              disabled={!isAllowed}
+                              onValueChange={(selectedRole) =>
+                                handleChangeRole({
+                                  id,
+                                  role: selectedRole
+                                })
+                              }
+                            >
+                              <SelectTrigger
+                                size="sm"
+                                className="w-full max-w-32 lg:max-w-64"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(id);
-                                  createNotification({
-                                    text: "Copied group ID to clipboard",
-                                    type: "info"
-                                  });
-                                }}
-                              >
-                                <CopyIcon />
-                                Copy Group ID
-                              </DropdownMenuItem>
-                              {!isLinkedGroup && (
-                                <OrgPermissionCan
-                                  I={OrgPermissionGroupActions.Edit}
-                                  a={OrgPermissionSubjects.Groups}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("group", {
-                                          groupId: id,
-                                          name,
-                                          slug,
-                                          role,
-                                          customRole
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      <PencilIcon />
-                                      Edit Group
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                              )}
-                              {!isLinkedGroup && (
-                                <OrgPermissionCan
-                                  I={OrgPermissionGroupActions.Edit}
-                                  a={OrgPermissionSubjects.Groups}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate({
-                                          to: "/organizations/$orgId/groups/$groupId",
-                                          params: {
-                                            orgId,
-                                            groupId: id
-                                          }
-                                        })
-                                      }
-                                      isDisabled={!isAllowed}
-                                    >
-                                      <UsersIcon />
-                                      Manage Members
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                              )}
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-w-32 lg:max-w-64">
+                                {(roles || []).map(({ slug: roleSlug, name: roleName }) => (
+                                  <SelectItem value={roleSlug} key={`role-option-${roleSlug}`}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </OrgPermissionCan>
+                      </TableCell>
+                      {isSubOrganization && (
+                        <TableCell>
+                          <Badge variant={isManagedBySubOrg ? "sub-org" : "org"}>
+                            {isManagedBySubOrg ? (
+                              <>
+                                <SubOrgIcon />
+                                Sub-Organization
+                              </>
+                            ) : (
+                              <>
+                                <OrgIcon />
+                                Root Organization
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(id);
+                                createNotification({
+                                  text: "Copied group ID to clipboard",
+                                  type: "info"
+                                });
+                              }}
+                            >
+                              <CopyIcon />
+                              Copy Group ID
+                            </DropdownMenuItem>
+                            {!isLinkedGroup && (
                               <OrgPermissionCan
-                                I={OrgPermissionGroupActions.Delete}
+                                I={OrgPermissionGroupActions.Edit}
                                 a={OrgPermissionSubjects.Groups}
                               >
                                 {(isAllowed) => (
                                   <DropdownMenuItem
-                                    variant="danger"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handlePopUpOpen("deleteGroup", {
+                                      handlePopUpOpen("group", {
                                         groupId: id,
                                         name,
-                                        isLinkedGroup
+                                        slug,
+                                        role,
+                                        customRole
                                       });
                                     }}
                                     isDisabled={!isAllowed}
                                   >
-                                    <TrashIcon />
-                                    {isLinkedGroup ? "Unlink Group" : "Delete Group"}
+                                    <PencilIcon />
+                                    Edit Group
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
-                )}
+                            )}
+                            {!isLinkedGroup && (
+                              <OrgPermissionCan
+                                I={OrgPermissionGroupActions.Edit}
+                                a={OrgPermissionSubjects.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate({
+                                        to: "/organizations/$orgId/groups/$groupId",
+                                        params: {
+                                          orgId,
+                                          groupId: id
+                                        }
+                                      })
+                                    }
+                                    isDisabled={!isAllowed}
+                                  >
+                                    <UsersIcon />
+                                    Manage Members
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            )}
+                            <OrgPermissionCan
+                              I={OrgPermissionGroupActions.Delete}
+                              a={OrgPermissionSubjects.Groups}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteGroup", {
+                                      groupId: id,
+                                      name,
+                                      isLinkedGroup
+                                    });
+                                  }}
+                                  isDisabled={!isAllowed}
+                                >
+                                  <TrashIcon />
+                                  {isLinkedGroup ? "Unlink Group" : "Delete Group"}
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
             </TableBody>
           </Table>
           {Boolean(totalCount) && (

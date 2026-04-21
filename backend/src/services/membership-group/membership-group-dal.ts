@@ -179,12 +179,14 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
       }
 
       // Count total matching groups (without pagination)
-      const [countResult] = await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`);
+      const [countResult] = (await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`)) as [
+        { count: string | number }?
+      ];
       const totalCount = Number(countResult?.count ?? 0);
 
       const dir = filter.orderDirection === OrderByDirection.DESC ? "DESC" : "ASC";
 
-      let paginatedGroupByColumns = [`${TableName.Membership}.id`, `${TableName.Groups}.name`];
+      const paginatedGroupByColumns = [`${TableName.Membership}.id`, `${TableName.Groups}.name`];
       let paginatedOrderByRaw: string;
       let outerOrderByRaw: string;
 
