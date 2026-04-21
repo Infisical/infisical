@@ -19,15 +19,6 @@ vi.mock("@app/lib/logger", () => ({
   }
 }));
 
-// Mock the REPL (terminal sessions create one eagerly)
-vi.mock("./pam-web-access-repl", () => ({
-  createPamSqlRepl: vi.fn(() => ({
-    getPrompt: vi.fn().mockReturnValue("=> "),
-    clearBuffer: vi.fn(),
-    processInput: vi.fn().mockResolvedValue({ output: "", prompt: "=> ", shouldClose: false })
-  }))
-}));
-
 // Mock pg
 vi.mock("pg", () => {
   const mockQuery = vi.fn().mockResolvedValue({ rows: [] });

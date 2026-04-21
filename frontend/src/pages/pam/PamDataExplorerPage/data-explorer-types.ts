@@ -22,8 +22,7 @@ export type DataExplorerServerMessage =
       executionTimeMs: number;
     }
   | { type: "error"; id: string; error: string; detail?: string; hint?: string }
-  // Lifecycle messages (reused from terminal)
-  | { type: "ready"; data: string; prompt: string }
+  | { type: "ready" }
   | { type: "session_end"; reason: string };
 
 export type SchemaInfo = {

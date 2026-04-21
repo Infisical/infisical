@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import { SessionEndReason } from "./pam-web-access-types";
-
 export enum PostgresClientMessageType {
-  Input = "input",
   Control = "control",
   GetSchemas = "get-schemas",
   GetTables = "get-tables",
@@ -13,9 +10,6 @@ export enum PostgresClientMessageType {
 }
 
 export enum PostgresServerMessageType {
-  Ready = "ready",
-  Output = "output",
-  SessionEnd = "session_end",
   Schemas = "schemas",
   Tables = "tables",
   TableDetail = "table-detail",
@@ -30,8 +24,6 @@ const CorrelatedBaseSchema = z.object({ id: z.string().uuid() });
 // =====================================================================
 // Client messages (client → server) — single flat discriminated union
 // =====================================================================
-
-const InputSchema = z.object({ type: z.literal(PostgresClientMessageType.Input), data: z.string() });
 
 const ControlSchema = z.object({ type: z.literal(PostgresClientMessageType.Control), data: z.string() });
 
@@ -58,7 +50,6 @@ const QueryRequestSchema = CorrelatedBaseSchema.extend({
 const CancelSchema = z.object({ type: z.literal(PostgresClientMessageType.Cancel) });
 
 export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
-  InputSchema,
   ControlSchema,
   GetSchemasRequestSchema,
   GetTablesRequestSchema,
@@ -70,19 +61,10 @@ export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
 export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;
 
 // =====================================================================
-// Server messages (server → client) — single flat discriminated union
+// Server messages (server → client) — correlated request/response schemas.
+// Lifecycle messages (ready / session_end) travel on the shared
+// TerminalServerMessageType channel defined in pam-web-access-types.ts.
 // =====================================================================
-
-const OutputSchema = z.object({
-  type: z.enum([PostgresServerMessageType.Ready, PostgresServerMessageType.Output]),
-  data: z.string(),
-  prompt: z.string().default("")
-});
-
-const SessionEndSchema = z.object({
-  type: z.literal(PostgresServerMessageType.SessionEnd),
-  reason: z.nativeEnum(SessionEndReason)
-});
 
 const SchemasResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(PostgresServerMessageType.Schemas),
@@ -152,17 +134,6 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   hint: z.string().optional()
 });
 
-export const PostgresServerMessageSchema = z.discriminatedUnion("type", [
-  OutputSchema,
-  SessionEndSchema,
-  SchemasResponseSchema,
-  TablesResponseSchema,
-  TableDetailResponseSchema,
-  QueryResultResponseSchema,
-  ErrorResponseSchema
-]);
-
-// Correlated server messages only (excludes lifecycle messages like ready/output/session_end)
 export type TPostgresCorrelatedServerMessage = z.infer<
   | typeof SchemasResponseSchema
   | typeof TablesResponseSchema

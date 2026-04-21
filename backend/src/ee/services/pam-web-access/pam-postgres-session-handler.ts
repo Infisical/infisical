@@ -16,7 +16,6 @@ import {
   type TPostgresCorrelatedServerMessage
 } from "./pam-postgres-ws-types";
 import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
-import { createPamSqlRepl } from "./pam-web-access-repl";
 import {
   SessionEndReason,
   TerminalServerMessageType,
@@ -70,12 +69,9 @@ export const handlePostgresSession = async (
   const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
   const backendPid = pidRows[0]?.pid;
 
-  const repl = createPamSqlRepl(pgClient);
-
   sendMessage({
     type: TerminalServerMessageType.Ready,
-    data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`,
-    prompt: "=> "
+    data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`
   });
 
   logger.info({ sessionId }, "Postgres web access session established");
@@ -156,14 +152,7 @@ export const handlePostgresSession = async (
 
     processingPromise = processingPromise
       .then(async () => {
-        if (!message) {
-          sendMessage({
-            type: TerminalServerMessageType.Output,
-            data: "Invalid message format\n",
-            prompt: repl.getPrompt()
-          });
-          return;
-        }
+        if (!message) return;
 
         switch (message.type) {
           case PostgresClientMessageType.GetSchemas: {
@@ -309,29 +298,7 @@ export const handlePostgresSession = async (
               sendSessionEnd(SessionEndReason.UserQuit);
               onCleanup();
               socket.close();
-              return;
             }
-            if (message.data === "clear-buffer") {
-              repl.clearBuffer();
-            }
-            break;
-          }
-
-          case PostgresClientMessageType.Input: {
-            const replResult = await repl.processInput(message.data);
-
-            if (replResult.shouldClose) {
-              sendSessionEnd(SessionEndReason.UserQuit);
-              onCleanup();
-              socket.close();
-              return;
-            }
-
-            sendMessage({
-              type: TerminalServerMessageType.Output,
-              data: replResult.output,
-              prompt: replResult.prompt
-            });
             break;
           }
 
@@ -341,11 +308,6 @@ export const handlePostgresSession = async (
       })
       .catch((err) => {
         logger.error(err, "Error processing Postgres message");
-        sendMessage({
-          type: TerminalServerMessageType.Output,
-          data: "Internal error\n",
-          prompt: "=> "
-        });
       });
   });
 
