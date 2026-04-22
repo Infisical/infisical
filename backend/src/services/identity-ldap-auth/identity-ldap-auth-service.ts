@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError, subject } from "@casl/ability";
-import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -19,8 +18,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -31,14 +28,13 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import { AuthAttemptAuthMethod } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { runIdentityLogin, TIdentityAuthLoginStrategy } from "../identity-auth/identity-auth-pipeline";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -57,7 +53,7 @@ import {
 } from "./identity-ldap-auth-types";
 
 type TIdentityLdapAuthServiceFactoryDep = {
-  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
+  identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete" | "transaction">;
   identityLdapAuthDAL: Pick<
     TIdentityLdapAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
@@ -156,145 +152,42 @@ export const identityLdapAuthServiceFactory = ({
   };
 
   const login = async ({ identityId, organizationSlug }: TLoginLdapAuthDTO) => {
-    const appCfg = getConfig();
-    const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
-
-    if (!identityLdapAuth) {
-      throw new UnauthorizedError({
-        message: "Invalid credentials"
-      });
-    }
-
-    const identity = await identityDAL.findById(identityLdapAuth.identityId);
-    if (!identity)
-      throw new UnauthorizedError({
-        message: "Identity not found"
-      });
-
-    const org = await orgDAL.findById(identity.orgId);
-    const isSubOrgIdentity = Boolean(org.rootOrgId);
-
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
-    let subOrganizationId = isSubOrgIdentity ? org.id : null;
-
-    const plan = await licenseService.getPlan(identity.orgId);
-    if (!plan.ldap) {
-      throw new BadRequestError({
-        message:
-          "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
-      });
-    }
-    if (organizationSlug && org.slug !== organizationSlug) {
-      if (!isSubOrgIdentity) {
-        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
-
-        if (!subOrg) {
-          throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
-        }
-
-        const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.IDENTITY,
-          actorId: identity.id,
-          orgId: subOrg.id
-        });
-
-        if (!subOrgMembership) {
+    type TLoginAuthConfig = NonNullable<Awaited<ReturnType<typeof identityLdapAuthDAL.findOne>>>;
+    const strategy: TIdentityAuthLoginStrategy<Record<string, never>, TLoginAuthConfig> = {
+      authMethod: IdentityAuthMethod.LDAP_AUTH,
+      telemetryAuthMethod: AuthAttemptAuthMethod.LDAP_AUTH,
+      validate: async (_payload, ctx) => {
+        const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId: ctx.identity.id });
+        if (!identityLdapAuth) {
           throw new UnauthorizedError({
-            message: `Identity not authorized to access sub organization ${organizationSlug}`,
-            detail: {
-              reasonCode: "sub_org_unauthorized",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
+            message: "Invalid credentials"
           });
         }
 
-        subOrganizationId = subOrg.id;
+        const plan = await licenseService.getPlan(ctx.identity.orgId);
+        if (!plan.ldap) {
+          throw new BadRequestError({
+            message:
+              "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
+          });
+        }
+
+        return {
+          accessTokenTTL: identityLdapAuth.accessTokenTTL,
+          accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
+          accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
+          authConfig: identityLdapAuth
+        };
       }
-    }
+    };
 
-    try {
-      const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-        const newToken = await identityAccessTokenDAL.create(
-          {
-            identityId: identityLdapAuth.identityId,
-            isAccessTokenRevoked: false,
-            accessTokenTTL: identityLdapAuth.accessTokenTTL,
-            accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
-            accessTokenNumUses: 0,
-            accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.LDAP_AUTH,
-            subOrganizationId
-          },
-          tx
-        );
-        return newToken;
-      });
+    const { authConfig: identityLdapAuth, ...result } = await runIdentityLogin(
+      { identityId, organizationSlug, payload: {} },
+      strategy,
+      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+    );
 
-      const accessToken = crypto.jwt().sign(
-        {
-          identityId: identityLdapAuth.identityId,
-          identityAccessTokenId: identityAccessToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET,
-        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-        Number(identityAccessToken.accessTokenTTL) === 0
-          ? undefined
-          : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
-      );
-
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityLdapAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-
-      return { accessToken, identityLdapAuth, identityAccessToken, identity };
-    } catch (error) {
-      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-        authAttemptCounter.add(1, {
-          "infisical.identity.id": identityLdapAuth.identityId,
-          "infisical.identity.name": identity.name,
-          "infisical.organization.id": org.id,
-          "infisical.organization.name": org.name,
-          "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
-          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
-          "client.address": requestContext.get(RequestContextKey.Ip),
-          "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
-        });
-      }
-      throw error;
-    }
+    return { ...result, identityLdapAuth };
   };
 
   const attachLdapAuth = async ({

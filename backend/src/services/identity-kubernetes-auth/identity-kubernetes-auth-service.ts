@@ -573,13 +573,25 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     };
 
-    const { authConfig: identityKubernetesAuth, ...result } = await runIdentityLogin(
-      { identityId, organizationSlug, payload: { serviceAccountJwt } },
-      strategy,
-      { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
-    );
+    try {
+      const { authConfig: identityKubernetesAuth, ...result } = await runIdentityLogin(
+        { identityId, organizationSlug, payload: { serviceAccountJwt } },
+        strategy,
+        { identityDAL, orgDAL, identityAccessTokenDAL, membershipIdentityDAL }
+      );
 
-    return { ...result, identityKubernetesAuth };
+      return { ...result, identityKubernetesAuth };
+    } catch (error) {
+      if (isKnownError(error)) throw error;
+
+      logger.error({ error, identityId }, "Unexpected error during Kubernetes auth login");
+
+      throw new BadRequestError({
+        name: "KubernetesAuthLoginError",
+        message: (error as Error).message || "An unexpected error occurred during Kubernetes authentication",
+        error
+      });
+    }
   };
 
   const attachKubernetesAuth = async ({

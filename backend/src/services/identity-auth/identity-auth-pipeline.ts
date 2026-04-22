@@ -120,8 +120,13 @@ export const runIdentityLogin = async <TPayload, TAuthConfig = undefined>(
 ): Promise<TLoginResult<TAuthConfig>> => {
   const appCfg = getConfig();
 
+  let identityRef: TIdentities | undefined;
+  let orgRef: TOrganizations | undefined;
+
   try {
     const { identity, org } = await loadLoginContext(params.identityId, deps);
+    identityRef = identity;
+    orgRef = org;
     const validateResult = await strategy.validate(params.payload, { identity, org });
     const { authConfig } = validateResult;
     const subOrganizationId = await resolveSubOrg(identity, org, params.organizationSlug, deps);
@@ -198,6 +203,8 @@ export const runIdentityLogin = async <TPayload, TAuthConfig = undefined>(
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       authAttemptCounter.add(1, {
         "infisical.identity.id": params.identityId,
+        ...(identityRef ? { "infisical.identity.name": identityRef.name } : {}),
+        ...(orgRef ? { "infisical.organization.id": orgRef.id, "infisical.organization.name": orgRef.name } : {}),
         "infisical.identity.auth_method": strategy.telemetryAuthMethod,
         "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
         "client.address": requestContext.get(RequestContextKey.Ip),
