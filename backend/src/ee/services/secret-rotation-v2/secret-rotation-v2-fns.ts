@@ -18,7 +18,6 @@ import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
 import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
-import { SUPABASE_API_KEY_ROTATION_LIST_OPTION } from "./supabase-api-key";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
@@ -33,6 +32,7 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
+import { SUPABASE_API_KEY_ROTATION_LIST_OPTION } from "./supabase-api-key";
 import {
   TUnixLinuxLocalAccountRotation,
   UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION

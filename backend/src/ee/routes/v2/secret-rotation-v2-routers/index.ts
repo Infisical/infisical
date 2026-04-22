@@ -12,10 +12,10 @@ import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rota
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
 import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-rotation-router";
-import { registerSupabaseApiKeyRotationRouter } from "./supabase-api-key-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
+import { registerSupabaseApiKeyRotationRouter } from "./supabase-api-key-rotation-router";
 import { registerUnixLinuxLocalAccountRotationRouter } from "./unix-linux-local-account-rotation-router";
 import { registerWindowsLocalAccountRotationRouter } from "./windows-local-account-rotation-router";
 

@@ -30,9 +30,7 @@ const SupabaseApiKeyRotationParametersSchema = z.object({
     .trim()
     .min(1, "Project reference required")
     .describe(SecretRotations.PARAMETERS.SUPABASE_API_KEY.projectRef),
-  keyType: z
-    .nativeEnum(SupabaseApiKeyType)
-    .describe(SecretRotations.PARAMETERS.SUPABASE_API_KEY.keyType)
+  keyType: z.nativeEnum(SupabaseApiKeyType).describe(SecretRotations.PARAMETERS.SUPABASE_API_KEY.keyType)
 });
 
 const SupabaseApiKeyRotationSecretsMappingSchema = z.object({

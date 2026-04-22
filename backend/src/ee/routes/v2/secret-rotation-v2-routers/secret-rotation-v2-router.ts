@@ -13,11 +13,11 @@ import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
-import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
+import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";

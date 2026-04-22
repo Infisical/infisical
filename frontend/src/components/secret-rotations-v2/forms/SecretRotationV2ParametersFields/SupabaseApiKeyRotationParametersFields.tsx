@@ -43,11 +43,7 @@ export const SupabaseApiKeyRotationParametersFields = () => {
             label="Key Type"
             tooltipText="Publishable keys are safe to use in browsers and client-side code. Secret keys grant privileged access to the project API and should never be exposed publicly."
           >
-            <Select
-              value={value}
-              onValueChange={onChange}
-              className="w-full"
-            >
+            <Select value={value} onValueChange={onChange} className="w-full">
               {KEY_TYPE_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
