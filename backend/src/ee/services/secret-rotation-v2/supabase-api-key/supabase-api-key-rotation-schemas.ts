@@ -12,7 +12,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 export const SupabaseApiKeyRotationGeneratedCredentialsSchema = z
   .object({
-    apiKey: z.string()
+    apiKey: z.string(),
+    keyId: z.string()
   })
   .array()
   .min(1)

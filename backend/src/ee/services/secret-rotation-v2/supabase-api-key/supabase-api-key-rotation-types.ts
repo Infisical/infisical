@@ -22,3 +22,16 @@ export type TSupabaseApiKeyRotationWithConnection = TSupabaseApiKeyRotation & {
 export type TSupabaseApiKeyRotationGeneratedCredentials = z.infer<
   typeof SupabaseApiKeyRotationGeneratedCredentialsSchema
 >;
+
+export type TSupabaseApiKeyCreateResponse = {
+  api_key: string | null;
+  id: string | null;
+  type: "legacy" | "publishable" | "secret" | null;
+  prefix: string | null;
+  name: string;
+  description: string | null;
+  hash: string | null;
+  secret_jwt_template: Record<string, unknown> | null;
+  inserted_at: string | null;
+  updated_at: string | null;
+};

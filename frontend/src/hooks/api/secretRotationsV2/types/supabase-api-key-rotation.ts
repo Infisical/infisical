@@ -23,6 +23,7 @@ export type TSupabaseApiKeyRotation = TSecretRotationV2Base & {
 
 export type TSupabaseApiKeyRotationGeneratedCredentials = {
   apiKey: string;
+  keyId: string;
 };
 
 export type TSupabaseApiKeyRotationGeneratedCredentialsResponse =
