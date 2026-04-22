@@ -378,7 +378,7 @@ export const useWebAccessSession = ({
 
           terminal.write("\r\nApproval request created successfully!\r\n");
 
-          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalData.request.id}`;
+          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalData.request.id}`;
           terminal.write(`View details at: ${approvalUrl}\r\n`);
 
           await prompt("\r\nOnce approved, press Enter to reconnect.");

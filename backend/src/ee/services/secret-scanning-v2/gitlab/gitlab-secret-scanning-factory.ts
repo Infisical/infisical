@@ -42,18 +42,6 @@ import {
   TQueueGitLabResourceDiffScan
 } from "./gitlab-secret-scanning-types";
 
-const getMainDomain = (instanceUrl: string) => {
-  const url = new URL(instanceUrl);
-  const { hostname } = url;
-  const parts = hostname.split(".");
-
-  if (parts.length >= 2) {
-    return parts.slice(-2).join(".");
-  }
-
-  return hostname;
-};
-
 export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TSecretScanningFactoryParams) => {
   const initialize: TSecretScanningFactoryInitialize<
     TGitLabDataSourceInput,
@@ -272,8 +260,10 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       throw new Error("Invalid GitLab project name");
     }
 
+    const validatedHostname = new URL(instanceUrl).host;
+
     await cloneRepository({
-      cloneUrl: `https://${user.username}:${connection.credentials.accessToken}@${getMainDomain(instanceUrl)}/${resourceName}.git`,
+      cloneUrl: `https://${user.username}:${connection.credentials.accessToken}@${validatedHostname}/${resourceName}.git`,
       repoPath
     });
 

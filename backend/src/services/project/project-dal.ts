@@ -13,6 +13,7 @@ import {
   TProjectsUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
@@ -414,7 +415,7 @@ export const projectDALFactory = (db: TDbClient) => {
       void query.where(`${TableName.Project}.type`, dto.type);
     }
     if (dto.name) {
-      void query.whereILike(`${TableName.Project}.name`, `%${dto.name}%`);
+      void query.whereILike(`${TableName.Project}.name`, `%${sanitizeSqlLikeString(dto.name)}%`);
     }
 
     if (dto.projectIds?.length) {

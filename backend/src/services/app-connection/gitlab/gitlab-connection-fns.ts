@@ -69,9 +69,19 @@ export const refreshGitLabToken = async (
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   instanceUrl?: string
 ): Promise<string> => {
-  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET, SITE_URL } =
-    getConfig();
-  if (!INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET || !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID || !SITE_URL) {
+  const {
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
+    SITE_URL,
+    isCloud
+  } = getConfig();
+  if (
+    !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||
+    !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID ||
+    !SITE_URL ||
+    // Cloud instances do not support OAuth authentication
+    isCloud
+  ) {
     throw new InternalServerError({
       message: `GitLab environment variables have not been configured`
     });
@@ -128,9 +138,18 @@ export const exchangeGitLabOAuthCode = async (
   code: string,
   instanceUrl?: string
 ): Promise<GitLabOAuthTokenResponse> => {
-  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET, SITE_URL } =
-    getConfig();
-  if (!INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET || !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID || !SITE_URL) {
+  const {
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
+    SITE_URL,
+    isCloud
+  } = getConfig();
+  if (
+    !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET ||
+    !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID ||
+    !SITE_URL ||
+    isCloud
+  ) {
     throw new InternalServerError({
       message: `GitLab environment variables have not been configured`
     });

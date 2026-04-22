@@ -49,6 +49,8 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
@@ -1855,13 +1857,6 @@ export const projectServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TGetProjectSshConfig) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({
-        message: `Project with ID '${projectId}' not found`
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1874,12 +1869,12 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
 
     const projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId: project.id
+      projectId
     });
 
     if (!projectSshConfig) {
       throw new NotFoundError({
-        message: `Project SSH config with ID '${project.id}' not found`
+        message: `Project SSH config with ID '${projectId}' not found`
       });
     }
 
@@ -1895,13 +1890,6 @@ export const projectServiceFactory = ({
     defaultUserSshCaId,
     defaultHostSshCaId
   }: TUpdateProjectSshConfig) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({
-        message: `Project with ID '${projectId}' not found`
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1914,12 +1902,12 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
     let projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId: project.id
+      projectId
     });
 
     if (!projectSshConfig) {
       throw new NotFoundError({
-        message: `Project SSH config with ID '${project.id}' not found`
+        message: `Project SSH config with ID '${projectId}' not found`
       });
     }
 
@@ -1928,7 +1916,7 @@ export const projectServiceFactory = ({
         const userSshCa = await sshCertificateAuthorityDAL.findOne(
           {
             id: defaultUserSshCaId,
-            projectId: project.id
+            projectId
           },
           tx
         );
@@ -1944,7 +1932,7 @@ export const projectServiceFactory = ({
         const hostSshCa = await sshCertificateAuthorityDAL.findOne(
           {
             id: defaultHostSshCaId,
-            projectId: project.id
+            projectId
           },
           tx
         );
@@ -1979,13 +1967,6 @@ export const projectServiceFactory = ({
     projectId,
     integration
   }: TGetProjectWorkflowIntegrationConfig) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({
-        message: `Project with ID '${projectId}' not found`
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1999,7 +1980,7 @@ export const projectServiceFactory = ({
 
     if (integration === WorkflowIntegration.SLACK) {
       const config = await projectSlackConfigDAL.findOne({
-        projectId: project.id
+        projectId
       });
 
       if (!config) {
@@ -2017,7 +1998,7 @@ export const projectServiceFactory = ({
 
     if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
       const config = await projectMicrosoftTeamsConfigDAL.findOne({
-        projectId: project.id
+        projectId
       });
 
       if (!config) {
@@ -2057,7 +2038,9 @@ export const projectServiceFactory = ({
     isSecretSyncErrorNotificationEnabled?: boolean;
     secretSyncErrorChannels?: string;
   }) => {
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) {
       throw new NotFoundError({
         message: `Project with ID '${projectId}' not found`
@@ -2266,13 +2249,6 @@ export const projectServiceFactory = ({
     integrationId,
     integration
   }: TDeleteProjectWorkflowIntegration) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({
-        message: `Project with ID '${projectId}' not found`
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2414,7 +2390,9 @@ export const projectServiceFactory = ({
     }
 
     const org = await orgDAL.findOne({ id: permission.orgId });
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     const userDetails = await userDAL.findById(permission.id);
     const appCfg = getConfig();
 

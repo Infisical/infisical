@@ -305,7 +305,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .whereIn(`${TableName.Users}.id`, userIds)
         .where(`${TableName.Project}.orgId`, orgId)
-        .join<TUserEncryptionKeys>(
+        .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`

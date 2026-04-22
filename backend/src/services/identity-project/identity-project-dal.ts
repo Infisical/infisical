@@ -20,6 +20,7 @@ import {
 } from "@app/db/schemas";
 import { TIdentityLdapAuths } from "@app/db/schemas/identity-ldap-auths";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { ProjectIdentityOrderBy, TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
@@ -244,7 +245,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
       const fetchIdentitySubquery = (tx || db.replicaNode())(TableName.Identity)
         .where((qb) => {
           if (filter.search) {
-            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
+            void qb.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(filter.search)}%`);
           }
         })
         .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
@@ -517,7 +518,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           }
 
           if (filter.search) {
-            void qb.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
+            void qb.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(filter.search)}%`);
           }
         })
         .count();

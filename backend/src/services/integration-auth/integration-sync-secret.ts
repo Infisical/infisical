@@ -37,6 +37,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -315,6 +316,8 @@ const syncSecretsAzureAppConfig = async ({
       message: "Invalid Azure App Configuration URL provided."
     });
 
+  await blockLocalAndPrivateIpAddresses(integration.app);
+
   const getCompleteAzureAppConfigValues = async (baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
     while (url) {
@@ -331,6 +334,9 @@ const syncSecretsAzureAppConfig = async ({
 
       result = result.concat(res.data.items);
       url = res.data?.["@nextLink"];
+      if (url) {
+        await blockLocalAndPrivateIpAddresses(url);
+      }
     }
 
     return result;
@@ -504,6 +510,12 @@ const syncSecretsAzureKeyVault = async ({
   createManySecretsRawFn: (params: TCreateManySecretsRawFn) => Promise<Array<{ id: string }>>;
   updateManySecretsRawFn: (params: TUpdateManySecretsRawFn) => Promise<Array<{ id: string }>>;
 }) => {
+  if (!integration.app) {
+    throw new BadRequestError({ message: "Azure Key Vault URI is required" });
+  }
+
+  await blockLocalAndPrivateIpAddresses(integration.app);
+
   interface GetAzureKeyVaultSecret {
     id: string; // secret URI
     value: string;
@@ -537,6 +549,9 @@ const syncSecretsAzureKeyVault = async ({
       result = result.concat(res.data.value);
 
       url = res.data.nextLink;
+      if (url) {
+        await blockLocalAndPrivateIpAddresses(url);
+      }
     }
 
     return result;
@@ -2561,6 +2576,7 @@ const syncSecretsDatabricks = async ({
 }) => {
   const databricksApiUrl = `${integrationAuth.url}/api`;
 
+  await blockLocalAndPrivateIpAddresses(databricksApiUrl);
   // sync secrets to Databricks
   await Promise.all(
     Object.keys(secrets).map(async (key) =>
@@ -2750,6 +2766,7 @@ const syncSecretsAzureDevops = async ({
     return { groupId: "", groupName: "" };
   };
 
+  await blockLocalAndPrivateIpAddresses(azureDevopsApiUrl);
   const { groupId, groupName } = await getEnvGroupId(integration.app, integration.appId, integration.environment.name);
 
   const variables: Record<string, { value: string; isSecret: boolean }> = {};
@@ -2851,6 +2868,11 @@ const syncSecretsGitLab = async ({
 
   const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : IntegrationUrls.GITLAB_API_URL;
 
+  // Validate the base URL to prevent SSRF on all subsequent requests
+  if (integrationAuth.url) {
+    await blockLocalAndPrivateIpAddresses(gitLabApiUrl);
+  }
+
   const getAllEnvVariables = async (integrationAppId: string, accToken: string) => {
     const headers = {
       Authorization: `Bearer ${accToken}`,
@@ -2862,6 +2884,7 @@ const syncSecretsGitLab = async ({
     let url: string | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
+      await blockLocalAndPrivateIpAddresses(url);
       const response = await request.get(url, { headers });
       allEnvVariables = [...allEnvVariables, ...response.data];
 
@@ -3562,6 +3585,9 @@ const syncSecretsTeamCity = async ({
     property: TeamCityBuildConfigParameter[];
   }
 
+  if (integrationAuth.url) {
+    await blockLocalAndPrivateIpAddresses(integrationAuth.url);
+  }
   if (integration.targetEnvironment && integration.targetEnvironmentId) {
     // case: sync to specific build-config in TeamCity project
     const res = (
@@ -3703,6 +3729,12 @@ const syncSecretsHashiCorpVault = async ({
   if (!accessId) {
     throw new Error("Access ID is required");
   }
+
+  if (!integrationAuth.url) {
+    throw new BadRequestError({ message: "HashiCorp Vault URL is required" });
+  }
+
+  await blockLocalAndPrivateIpAddresses(integrationAuth.url);
 
   interface LoginAppRoleRes {
     auth: {
@@ -3975,6 +4007,7 @@ const syncSecretsBitbucket = async ({
     }
 
     if (data.next) {
+      await blockLocalAndPrivateIpAddresses(data.next);
       variablesUrl = data.next;
     } else {
       hasNextPage = false;
@@ -4134,6 +4167,9 @@ const syncSecretsWindmill = async ({
     description?: string;
   }
   const apiUrl = integration.url ? `${integration.url}/api` : IntegrationUrls.WINDMILL_API_URL;
+  if (apiUrl) {
+    await blockLocalAndPrivateIpAddresses(apiUrl);
+  }
   // get secrets stored in windmill workspace
   const res = (
     await request.get<WindmillSecret[]>(`${apiUrl}/w/${integration.appId}/variables/list`, {
@@ -4458,7 +4494,11 @@ const syncSecretsRundeck = async ({
   }
 
   let existingRundeckSecrets: string[] = [];
+  if (!integration.url) {
+    return;
+  }
 
+  await blockLocalAndPrivateIpAddresses(integration.url);
   try {
     const listResult = await request.get<RundeckSecretsGetRes>(
       `${integration.url}/api/44/storage/${integration.path}`,
@@ -4531,6 +4571,8 @@ const syncSecretsOctopusDeploy = async ({
     default:
       throw new InternalServerError({ message: `Unhandled Octopus Deploy scope: ${integration.scope}` });
   }
+
+  await blockLocalAndPrivateIpAddresses(url);
 
   // SDK doesn't support variable set...
   const { data: variableSet } = await request.get<TOctopusDeployVariableSet>(url, {

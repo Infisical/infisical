@@ -879,7 +879,15 @@ export const identityLdapAuthServiceFactory = ({
       lockout = JSON.parse(lockoutRaw) as LockoutObject;
     }
 
-    if (lockout && lockout?.lockedOut) {
+    const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
+    if (!identityLdapAuth) {
+      throw new UnauthorizedError({
+        message: "Invalid credentials",
+        detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
+      });
+    }
+
+    if (lockout && lockout?.lockedOut && identityLdapAuth.lockoutEnabled) {
       throw new UnauthorizedError({
         message: "This identity auth method is temporarily locked, please try again later",
         detail: { reasonCode: "temporarily_locked", identityId, orgId, identityName: identity?.name }
@@ -898,14 +906,6 @@ export const identityLdapAuthServiceFactory = ({
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       if ((error as any).status === 401 || error instanceof UnauthorizedError) {
-        const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
-        if (!identityLdapAuth) {
-          throw new UnauthorizedError({
-            message: "Invalid credentials",
-            detail: { reasonCode: "ldap_auth_not_found", identityId, orgId, identityName: identity?.name }
-          });
-        }
-
         if (identityLdapAuth.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {

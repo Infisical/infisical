@@ -33,6 +33,8 @@ import {
   PolicyViolationError
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
@@ -773,15 +775,15 @@ export const pamAccountServiceFactory = ({
       );
     }
 
-    const project = await projectDAL.findById(account.projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
-
     const actorUser = await userDAL.findById(actor.id);
     if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     // If no mfaSessionId is provided, create a new MFA session
     if (!mfaSessionId && account.requireMfa) {
-      // Get organization to check if MFA is enforced at org level
+      const project = await requestMemoize(requestMemoKeys.projectFindById(account.projectId), () =>
+        projectDAL.findById(account.projectId)
+      );
+      if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
       const org = await orgDAL.findOrgById(project.orgId);
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
@@ -1056,7 +1058,9 @@ export const pamAccountServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    const project = await projectDAL.findById(session.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(session.projectId), () =>
+      projectDAL.findById(session.projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
     if (actor.type === ActorType.IDENTITY) {
@@ -1581,14 +1585,13 @@ export const pamAccountServiceFactory = ({
     }
 
     if (!mfaSessionId && accountWithParent.requireMfa) {
-      const project = await projectDAL.findById(accountWithParent.projectId);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${accountWithParent.projectId}' not found` });
-
+      // actorOrgId equals project.orgId: getProjectPermission above guarantees project existence
+      // and org membership, so no separate project lookup is needed to resolve the org ID.
       const actorUser = await userDAL.findById(actorId);
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
-      const org = await orgDAL.findOrgById(project.orgId);
-      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+      const org = await orgDAL.findOrgById(actorOrgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${actorOrgId}' not found` });
 
       const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
       const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;

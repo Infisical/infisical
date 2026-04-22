@@ -26,7 +26,6 @@ apiRequest.interceptors.request.use((config) => {
   const signupTempToken = getSignupTempToken();
   const mfaTempToken = getMfaTempToken();
   const token = getAuthToken();
-  const providerAuthToken = SecurityClient.getProviderAuthToken();
 
   if (config.headers) {
     if (mfaTempToken) {
@@ -38,9 +37,6 @@ apiRequest.interceptors.request.use((config) => {
     } else if (signupTempToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${signupTempToken}`;
-    } else if (providerAuthToken) {
-      // eslint-disable-next-line no-param-reassign
-      config.headers.Authorization = `Bearer ${providerAuthToken}`;
     }
   }
 

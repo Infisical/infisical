@@ -57,7 +57,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
           return (
             <Badge variant="warning" asChild>
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId"
+                to="/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId"
                 params={{
                   orgId: currentOrg.id,
                   projectId: currentProject.id,

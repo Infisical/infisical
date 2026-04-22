@@ -55,8 +55,6 @@ import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
-import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
-import { registerSecretRotationRouter } from "./secret-rotation-router";
 import { registerSecretRouter } from "./secret-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
@@ -101,9 +99,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerDeprecatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
-  });
-  await server.register(registerSecretRotationProviderRouter, {
-    prefix: "/secret-rotation-providers"
   });
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
@@ -157,7 +152,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerScimRouter, { prefix: "/scim" });
   await server.register(registerLdapRouter, { prefix: "/ldap" });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
-  await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });

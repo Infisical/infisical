@@ -11,14 +11,14 @@ import {
 
 import {
   Button,
-  UnstableCard,
-  UnstableCardAction,
-  UnstableCardContent,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import type { TPqcTrendPoint } from "@app/hooks/api/certificates";
 
@@ -50,10 +50,10 @@ const renderLegend = (value: string) => (
 export const PqcTrend = ({ data, onRangeChange, currentRange }: Props) => {
   const hasAnyData = data.some((d) => d.pqc > 0 || d.nonPqc > 0);
   return (
-    <UnstableCard className="h-auto w-full flex-1 md:w-auto">
-      <UnstableCardHeader>
-        <UnstableCardTitle>PQC Adoption Trend</UnstableCardTitle>
-        <UnstableCardAction>
+    <Card className="h-auto w-full flex-1 md:w-auto">
+      <CardHeader>
+        <CardTitle>PQC Adoption Trend</CardTitle>
+        <CardAction>
           <div className="flex gap-0.5">
             {ranges.map((r) => (
               <Button
@@ -66,15 +66,15 @@ export const PqcTrend = ({ data, onRangeChange, currentRange }: Props) => {
               </Button>
             ))}
           </div>
-        </UnstableCardAction>
-      </UnstableCardHeader>
-      <UnstableCardContent>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         {!hasAnyData ? (
-          <UnstableEmpty className="h-[250px]">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No certificates issued in this period</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="h-[250px]">
+            <EmptyHeader>
+              <EmptyTitle>No certificates issued in this period</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -123,7 +123,7 @@ export const PqcTrend = ({ data, onRangeChange, currentRange }: Props) => {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

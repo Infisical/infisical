@@ -322,7 +322,7 @@ export const useDataExplorerSession = ({
   );
 
   const approvalRequestUrl = approvalState?.approvalRequestId
-    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalState.approvalRequestId}`
+    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalState.approvalRequestId}`
     : undefined;
 
   // --- Request helpers ---

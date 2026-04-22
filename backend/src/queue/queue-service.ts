@@ -54,7 +54,6 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
-  SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
@@ -110,7 +109,6 @@ export enum QueueName {
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
@@ -210,10 +208,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.SecretRotation]: {
-    payload: { rotationId: string };
-    name: QueueJobs.SecretRotation;
   };
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
@@ -649,7 +643,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
 
   // Remove orphaned job schedulers left in Redis by the QueueInternalRecovery/QueueInternalReconciliation deleted queues.
   void (async () => {
-    const staleQueueNames = ["queue-internal-recovery", "queue-internal-reconciliation"];
+    const staleQueueNames = ["queue-internal-recovery", "queue-internal-reconciliation", "secret-rotation"];
     await Promise.allSettled(
       staleQueueNames.map(async (name) => {
         const staleQueue = new Queue(name, {

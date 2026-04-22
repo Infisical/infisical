@@ -13,6 +13,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -61,6 +62,7 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById">;
@@ -86,6 +88,7 @@ export const pkiScepServiceFactory = ({
   scepEnrollmentConfigDAL,
   scepDynamicChallengeDAL,
   scepTransactionDAL,
+  certificateDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
   certificateRequestDAL,
@@ -334,6 +337,7 @@ export const pkiScepServiceFactory = ({
         const isRenewalViaPKCSReq = await isSignerCertIssuedByCa({
           signerCertDer: parsed.signerCertDer,
           caId: profile.caId!,
+          certificateDAL,
           certificateAuthorityCertDAL,
           certificateAuthorityDAL,
           projectDAL,
@@ -487,6 +491,7 @@ export const pkiScepServiceFactory = ({
     const isValidSigner = await isSignerCertIssuedByCa({
       signerCertDer: parsed.signerCertDer,
       caId: profile.caId!,
+      certificateDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,

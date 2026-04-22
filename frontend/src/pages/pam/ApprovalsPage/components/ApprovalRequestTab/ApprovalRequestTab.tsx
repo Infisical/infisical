@@ -144,7 +144,7 @@ export const ApprovalRequestTab = () => {
 
   const handleRowClick = (requestId: string) => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId",
+      to: "/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId",
       params: {
         orgId: currentOrg.id,
         projectId: currentProject.id,

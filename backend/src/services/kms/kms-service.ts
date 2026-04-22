@@ -21,6 +21,8 @@ import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
   KMS_ROOT_CONFIG_UUID,
@@ -899,7 +901,9 @@ export const kmsServiceFactory = ({
   };
 
   const getProjectKeyBackup = async (projectId: string) => {
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) {
       throw new NotFoundError({
         message: `Project with ID '${projectId}' not found`
@@ -952,6 +956,12 @@ export const kmsServiceFactory = ({
         message: "Backup does not belong to project"
       });
     }
+
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(backupKmsKeyId);
+    if (kmsDoc.orgId !== project.orgId)
+      throw new ForbiddenRequestError({
+        message: "Backup does not belong to project"
+      });
 
     const kmsDecryptor = await decryptWithKmsKey({ kmsId: backupKmsKeyId });
     const dataKey = await kmsDecryptor({

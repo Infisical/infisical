@@ -30,7 +30,6 @@ const attemptLogin = async ({
     captchaToken
   });
 
-  SecurityClient.setProviderAuthToken("");
   SecurityClient.setToken(data.accessToken);
   if (email) {
     telemetry.identify(email, email);

@@ -16,6 +16,8 @@ import { BadRequestError, NotFoundError, PolicyViolationError } from "@app/lib/e
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
@@ -243,7 +245,9 @@ export const pamWebAccessServiceFactory = ({
 
     // MFA check
     if (account.requireMfa && !mfaSessionId) {
-      const project = await projectDAL.findById(account.projectId);
+      const project = await requestMemoize(requestMemoKeys.projectFindById(account.projectId), () =>
+        projectDAL.findById(account.projectId)
+      );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
 
       const actorUser = await userDAL.findById(actor.id);

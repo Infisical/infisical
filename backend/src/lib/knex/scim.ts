@@ -3,6 +3,9 @@ import { Compare, Filter, parse } from "scim2-parse-filter";
 
 import { TableName } from "@app/db/schemas";
 
+import { sanitizeSqlLikeString } from "../fn";
+import { BadRequestError } from "../errors";
+
 const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
   if (filter.op !== "[]" && filter.op !== "and" && filter.op !== "or" && filter.op !== "not") {
     return { ...filter, attrPath: `${parentPath}.${(filter as Compare).attrPath}` };
@@ -64,7 +67,10 @@ const processDynamicQuery = (
       }
       case "sw": {
         const attrPath = getAttributeField(scimFilterAst.attrPath);
-        if (attrPath) void query.whereILike(attrPath, `${scimFilterAst.compValue}%`);
+        if (!scimFilterAst.compValue || !attrPath) {
+          throw new BadRequestError({ message: "compValue is required for sw filter" });
+        }
+        void query.whereILike(attrPath, `${sanitizeSqlLikeString(String(scimFilterAst.compValue))}%`);
         break;
       }
       case "ew": {
@@ -73,7 +79,8 @@ const processDynamicQuery = (
         if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
           sanitizedValue = sanitizedValue.toLowerCase();
         }
-        if (attrPath) void query.whereILike(attrPath, `%${sanitizedValue}`);
+        if (attrPath && sanitizedValue)
+          void query.whereILike(attrPath, `%${sanitizeSqlLikeString(String(sanitizedValue))}`);
         break;
       }
       case "co": {
@@ -82,7 +89,8 @@ const processDynamicQuery = (
         if (attrPath === `${TableName.Users}.email` && typeof sanitizedValue === "string") {
           sanitizedValue = sanitizedValue.toLowerCase();
         }
-        if (attrPath) void query.whereILike(attrPath, `%${sanitizedValue}%`);
+        if (attrPath && sanitizedValue)
+          void query.whereILike(attrPath, `%${sanitizeSqlLikeString(String(sanitizedValue))}%`);
         break;
       }
       case "ne": {

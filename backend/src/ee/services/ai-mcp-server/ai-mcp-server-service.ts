@@ -86,12 +86,12 @@ const refreshOAuthToken = async (
   try {
     // First try: origin-only format
     const originOnlyUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
     serverMetadata = data;
   } catch {
     // Second try: origin + pathname format
     const pathnameUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
-    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+    const { data } = await ssrfSafeGet<TOAuthAuthorizationServerMetadata>(pathnameUrl);
     serverMetadata = data;
   }
 
@@ -106,7 +106,7 @@ const refreshOAuthToken = async (
     tokenParams.client_secret = clientSecret;
   }
 
-  const { data: tokenResponse } = await request.post<TOAuthTokenResponse>(
+  const { data: tokenResponse } = await ssrfSafePost<TOAuthTokenResponse>(
     serverMetadata.token_endpoint,
     new URLSearchParams(tokenParams).toString(),
     {

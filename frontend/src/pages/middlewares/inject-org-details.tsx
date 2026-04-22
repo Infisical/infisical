@@ -40,7 +40,6 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
 
           if (!isMfaEnabled && token) {
             SecurityClient.setToken(token);
-            SecurityClient.setProviderAuthToken("");
 
             context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
             context.queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });

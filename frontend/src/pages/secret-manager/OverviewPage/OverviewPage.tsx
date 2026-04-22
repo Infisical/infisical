@@ -108,7 +108,6 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import {
-  useDebounce,
   useLocalStorageState,
   usePagination,
   usePopUp,
@@ -287,7 +286,6 @@ const OverviewPageContent = () => {
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
-  const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { hasOrgRole } = useOrgPermission();
@@ -555,7 +553,7 @@ const OverviewPageContent = () => {
       includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
       includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
-      search: debouncedSearchFilter,
+      search: searchFilter,
       tags: tagFilter,
       limit,
       offset
@@ -795,7 +793,6 @@ const OverviewPageContent = () => {
 
       if (search) {
         setSearchFilter(search as string);
-        setDebouncedSearchFilter(search as string);
       }
     }
   }, [routerSearch.search, routerSearch.filterBy]);
@@ -1753,7 +1750,7 @@ const OverviewPageContent = () => {
     if (isFilteredByResources && !filter.secret && !activeTagSlugs.length) return secKeys;
 
     const result = [...secKeys];
-    const searchLower = debouncedSearchFilter.toLowerCase();
+    const searchLower = searchFilter.toLowerCase();
     pendingChanges.secrets.forEach((change) => {
       if (change.type === PendingAction.Create && !result.includes(change.secretKey)) {
         if (!searchLower || change.secretKey.toLowerCase().includes(searchLower)) {
@@ -1766,7 +1763,7 @@ const OverviewPageContent = () => {
     secKeys,
     isBatchModeActive,
     pendingChanges.secrets,
-    debouncedSearchFilter,
+    searchFilter,
     isFilteredByResources,
     filter.secret
   ]);
@@ -1862,7 +1859,7 @@ const OverviewPageContent = () => {
     // If resource filter is active and folders are excluded, skip pending folder creates
     const includePendingFolderCreates = !isFilteredByResources || filter.folder;
 
-    const searchLower = debouncedSearchFilter.toLowerCase();
+    const searchLower = searchFilter.toLowerCase();
     pendingChanges.folders.forEach((change) => {
       if (change.type === PendingAction.Create) {
         if (
@@ -1902,7 +1899,7 @@ const OverviewPageContent = () => {
     folderNamesAndDescriptions,
     isBatchModeActive,
     pendingChanges.folders,
-    debouncedSearchFilter,
+    searchFilter,
     isFilteredByResources,
     filter.folder
   ]);
@@ -2032,7 +2029,6 @@ const OverviewPageContent = () => {
     setFilter(restore?.filter ?? DEFAULT_FILTER_STATE);
     const el = restore?.searchFilter ?? "";
     setSearchFilter(el);
-    setDebouncedSearchFilter(el);
   };
 
   const handleFolderClick = (path: string) => {
@@ -2053,7 +2049,6 @@ const OverviewPageContent = () => {
     }).then(() => {
       setFilter(DEFAULT_FILTER_STATE);
       setSearchFilter("");
-      setDebouncedSearchFilter("");
     });
   };
 
@@ -2321,7 +2316,7 @@ const OverviewPageContent = () => {
         ProjectPermissionSecretActions.Create,
         ProjectPermissionSub.Secrets
       );
-      if (isTableFiltered || debouncedSearchFilter || cannotCreate) return "filter-empty" as const;
+      if (isTableFiltered || searchFilter || cannotCreate) return "filter-empty" as const;
       return "add-first-secret" as const;
     }
     return "table" as const;
@@ -2437,6 +2432,7 @@ const OverviewPageContent = () => {
                   />
                 )}
                 <ResourceSearchInput
+                  key={secretPath}
                   value={searchFilter}
                   tags={tags}
                   onChange={setSearchFilter}
@@ -2543,9 +2539,7 @@ const OverviewPageContent = () => {
               ) : null)}
             {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
             {tableView === "filter-empty" && (
-              <EmptyResourceDisplay
-                isFiltered={isTableFiltered || Boolean(debouncedSearchFilter)}
-              />
+              <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
             )}
             {tableView === "add-first-secret" && (
               <div className="relative">
@@ -2905,7 +2899,7 @@ const OverviewPageContent = () => {
                                 getSecretImportByEnv={getSecretImportByEnv}
                                 tableWidth={tableWidth}
                                 secretPath={secretPath}
-                                searchFilter={debouncedSearchFilter}
+                                searchFilter={searchFilter}
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
@@ -2926,7 +2920,7 @@ const OverviewPageContent = () => {
                                   getSecretImportByEnv={getSecretImportByEnv}
                                   tableWidth={tableWidth}
                                   secretPath={secretPath}
-                                  searchFilter={debouncedSearchFilter}
+                                  searchFilter={searchFilter}
                                   onDelete={(secretImport) =>
                                     handlePopUpOpen("deleteSecretImport", secretImport)
                                   }

@@ -20,6 +20,7 @@ export type TVerifyMfaTokenDTO = {
   userId: string;
   mfaToken: string;
   mfaMethod: MfaMethod;
+  requiredMfaMethod: MfaMethod;
   mfaJwtToken: string;
   ip: string;
   userAgent: string;

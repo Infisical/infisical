@@ -592,7 +592,15 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
-        redirect_uris: z.array(z.string()),
+        redirect_uris: z.array(
+          z
+            .string()
+            .url()
+            .refine(
+              (uri) => uri.startsWith("https://") || uri.startsWith("http://"),
+              "Redirect URI must start with https:// or http://"
+            )
+        ),
         token_endpoint_auth_method: z.string(),
         grant_types: z.array(z.string()),
         response_types: z.array(z.string()),
@@ -603,7 +611,15 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           client_id: z.string(),
-          redirect_uris: z.array(z.string()),
+          redirect_uris: z.array(
+            z
+              .string()
+              .url()
+              .refine(
+                (uri) => uri.startsWith("https://") || uri.startsWith("http://"),
+                "Redirect URI must start with https:// or http://"
+              )
+          ),
           client_name: z.string(),
           client_uri: z.string().optional(),
           grant_types: z.array(z.string()),
@@ -687,7 +703,13 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         client_id: z.string(),
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
-        redirect_uri: z.string(),
+        redirect_uri: z
+          .string()
+          .url()
+          .refine(
+            (uri) => uri.startsWith("https://") || uri.startsWith("http://"),
+            "Redirect URI must start with https:// or http://"
+          ),
         resource: z.string().optional(),
         expireIn: z.string().refine((val) => ms(val) > 0, "Max TTL must be a positive number")
       }),

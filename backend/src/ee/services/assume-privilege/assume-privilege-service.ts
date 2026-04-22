@@ -3,9 +3,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -16,12 +15,10 @@ import {
 import { TAssumePrivilegeServiceFactory } from "./assume-privilege-types";
 
 type TAssumePrivilegeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export const assumePrivilegeServiceFactory = ({
-  projectDAL,
   permissionService
 }: TAssumePrivilegeServiceFactoryDep): TAssumePrivilegeServiceFactory => {
   const assumeProjectPrivileges: TAssumePrivilegeServiceFactory["assumeProjectPrivileges"] = async ({
@@ -31,8 +28,6 @@ export const assumePrivilegeServiceFactory = ({
     actorPermissionDetails,
     tokenVersionId
   }) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     const { permission } = await permissionService.getProjectPermission({
       actor: actorPermissionDetails.type,
       actorId: actorPermissionDetails.id,

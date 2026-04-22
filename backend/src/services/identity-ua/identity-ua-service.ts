@@ -113,7 +113,7 @@ export const identityUaServiceFactory = ({
         lockout = JSON.parse(lockoutRaw) as LockoutObject;
       }
 
-      if (lockout && lockout.lockedOut) {
+      if (lockout && lockout.lockedOut && identityUa.lockoutEnabled) {
         throw new UnauthorizedError({
           message: "This identity auth method is temporarily locked, please try again later",
           detail: {

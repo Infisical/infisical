@@ -89,6 +89,7 @@ export type AuthModeMfaJwtTokenPayload = {
   authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
+  requiredMfaMethod: MfaMethod;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {

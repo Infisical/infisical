@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,7 +10,11 @@ import {
   Input,
   Modal,
   ModalClose,
-  ModalContent
+  ModalContent,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
 } from "@app/components/v2";
 import { useConfigureGatewayTokenAuth } from "@app/hooks/api/gateways-v2";
 
@@ -47,10 +51,22 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
       });
   }, [isOpen, gatewayData?.id]);
 
-  const command = useMemo(() => {
-    const gatewayName = gatewayData?.name ?? "";
+  const gatewayName = gatewayData?.name ?? "";
+
+  const cliCommand = useMemo(() => {
     return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
-  }, [gatewayData?.name, enrollmentToken, siteURL]);
+  }, [gatewayName, enrollmentToken, siteURL]);
+
+  const systemdInstallCommand = useMemo(() => {
+    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, siteURL]);
+
+  const startServiceCommand = "sudo systemctl start infisical-gateway";
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    createNotification({ text: `${label} copied to clipboard`, type: "info" });
+  };
 
   const handleClose = (open: boolean) => {
     if (!open) {
@@ -76,22 +92,63 @@ export const ReEnrollGatewayModal = ({ isOpen, onOpenChange, gatewayData }: Prop
               Run the following command on the machine where you want to deploy the gateway. The
               token expires in 1 hour and can only be used once.
             </p>
-            <FormLabel label="CLI Command" />
-            <div className="flex gap-2">
-              <Input value={command} isDisabled />
-              <IconButton
-                ariaLabel="copy"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => {
-                  navigator.clipboard.writeText(command);
-                  createNotification({ text: "Command copied to clipboard", type: "info" });
-                }}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
+            <Tabs defaultValue="cli" className="mt-2">
+              <TabList>
+                <Tab value="cli">CLI</Tab>
+                <Tab value="systemd">CLI (systemd)</Tab>
+              </TabList>
+              <TabPanel value="cli">
+                <div className="flex gap-2">
+                  <Input value={cliCommand} isDisabled />
+                  <IconButton
+                    ariaLabel="copy"
+                    variant="outline_bg"
+                    colorSchema="secondary"
+                    onClick={() => copyToClipboard(cliCommand, "Command")}
+                    className="w-10"
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                  </IconButton>
+                </div>
+              </TabPanel>
+              <TabPanel value="systemd">
+                <FormLabel label="Installation Command" />
+                <div className="flex gap-2">
+                  <Input value={systemdInstallCommand} isDisabled />
+                  <IconButton
+                    ariaLabel="copy install command"
+                    variant="outline_bg"
+                    colorSchema="secondary"
+                    onClick={() => copyToClipboard(systemdInstallCommand, "Installation command")}
+                    className="w-10"
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                  </IconButton>
+                </div>
+                <FormLabel label="Start the Gateway Service" className="mt-4" />
+                <div className="flex gap-2">
+                  <Input value={startServiceCommand} isDisabled />
+                  <IconButton
+                    ariaLabel="copy start command"
+                    variant="outline_bg"
+                    colorSchema="secondary"
+                    onClick={() => copyToClipboard(startServiceCommand, "Start command")}
+                    className="w-10"
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                  </IconButton>
+                </div>
+              </TabPanel>
+            </Tabs>
+            <a
+              href="https://infisical.com/docs/cli/overview"
+              target="_blank"
+              className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
+              rel="noreferrer"
+            >
+              <span>Install the Infisical CLI</span>
+              <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
+            </a>
             <div className="mt-6 flex items-center">
               <ModalClose asChild>
                 <Button className="mr-4" size="sm" colorSchema="secondary">

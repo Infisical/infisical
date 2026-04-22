@@ -1,14 +1,14 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 import {
-  UnstableCard,
-  UnstableCardContent,
-  UnstableCardDescription,
-  UnstableCardHeader,
-  UnstableCardTitle,
-  UnstableEmpty,
-  UnstableEmptyHeader,
-  UnstableEmptyTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
@@ -43,20 +43,20 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
   };
 
   return (
-    <UnstableCard className="flex h-auto w-full min-w-[280px] shrink-0 flex-col md:w-[320px]">
-      <UnstableCardHeader className="pb-0">
-        <UnstableCardTitle className="text-base font-semibold">PQC Readiness</UnstableCardTitle>
-        <UnstableCardDescription className="text-xs">
+    <Card className="flex h-auto w-full min-w-[280px] shrink-0 flex-col md:w-[320px]">
+      <CardHeader className="pb-0">
+        <CardTitle className="text-base font-semibold">PQC Readiness</CardTitle>
+        <CardDescription className="text-xs">
           Post-quantum vs. classical key algorithms
-        </UnstableCardDescription>
-      </UnstableCardHeader>
-      <UnstableCardContent className="flex flex-1 items-center pt-2">
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-2">
         {nonZeroData.length === 0 ? (
-          <UnstableEmpty className="h-[200px]">
-            <UnstableEmptyHeader>
-              <UnstableEmptyTitle>No data available</UnstableEmptyTitle>
-            </UnstableEmptyHeader>
-          </UnstableEmpty>
+          <Empty className="h-[200px]">
+            <EmptyHeader>
+              <EmptyTitle>No data available</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="flex w-full items-center gap-3">
             <div className="w-[120px] shrink-0">
@@ -141,7 +141,7 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
             </div>
           </div>
         )}
-      </UnstableCardContent>
-    </UnstableCard>
+      </CardContent>
+    </Card>
   );
 };

@@ -532,7 +532,6 @@ export const samlConfigServiceFactory = ({
       aliasType: UserAliasType.SAML
     });
 
-    // Verify that the email domain (if verified on the platform) belongs to this org
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);

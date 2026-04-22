@@ -173,7 +173,7 @@ export const authSignupServiceFactory = ({
     let organizationId: string | undefined;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
-      const shouldReject = !user || user.isAccepted;
+      const shouldReject = !user || user.isAccepted || Boolean(decodedToken?.aliasId);
 
       // Always hash the password so bcrypt cost is incurred regardless of validity
       const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);

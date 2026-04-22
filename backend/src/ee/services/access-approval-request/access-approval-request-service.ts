@@ -8,6 +8,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -339,7 +341,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to modify this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
 
     if (!project) {
       throw new NotFoundError({
@@ -362,6 +366,14 @@ export const accessApprovalRequestServiceFactory = ({
     if (accessApprovalRequest.isTemporary && accessApprovalRequest.temporaryRange) {
       if (ms(temporaryRange) > ms(accessApprovalRequest.temporaryRange)) {
         throw new BadRequestError({ message: "Updated access duration must be less than current access duration" });
+      }
+    }
+
+    if (policy.maxTimePeriod) {
+      if (ms(temporaryRange) > ms(policy.maxTimePeriod)) {
+        throw new BadRequestError({
+          message: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`
+        });
       }
     }
 
@@ -610,7 +622,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
     if (!project) {
       throw new NotFoundError({ message: "The project associated with this access request was not found." });
     }

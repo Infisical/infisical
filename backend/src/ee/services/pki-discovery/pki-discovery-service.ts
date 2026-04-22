@@ -8,7 +8,6 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
@@ -46,7 +45,6 @@ type TPkiDiscoveryServiceFactoryDep = {
     TPkiDiscoveryScanHistoryDALFactory,
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
@@ -71,7 +69,6 @@ const validateTargetConfigForType = (discoveryType: PkiDiscoveryType, config: TP
 export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
-  projectDAL,
   permissionService,
   gatewayV2DAL,
   queuePkiDiscoveryScan
@@ -103,11 +100,6 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionPkiDiscoveryActions.Create,
       ProjectPermissionSub.PkiDiscovery
     );
-
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    }
 
     const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
     if (existingCount >= MAX_DISCOVERIES_PER_PROJECT) {

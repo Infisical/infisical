@@ -177,8 +177,8 @@ export const injectIdentity = fp(
       }
 
       if (
-        req.url.includes(".well-known/est") ||
-        (req.url.includes("/api/v3/auth/") && !req.url.includes("/api/v3/auth/select-organization"))
+        req.url.startsWith("/.well-known/est") ||
+        (req.url.startsWith("/api/v3/auth/") && !req.url.startsWith("/api/v3/auth/select-organization"))
       ) {
         return;
       }
@@ -207,7 +207,7 @@ export const injectIdentity = fp(
       }
 
       // Authentication is handled on a route-level here.
-      if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+      if (req.url.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;
       }
 

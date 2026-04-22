@@ -10,7 +10,7 @@ import { RequestsTab } from "./components/RequestsTab";
 export const ApprovalsPage = () => {
   const { currentProject } = useProject();
   const { selectedTab } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/"
   });
 
   const activeTab = selectedTab || "requests";

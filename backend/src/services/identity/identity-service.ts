@@ -418,7 +418,7 @@ export const identityServiceFactory = ({
       scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
