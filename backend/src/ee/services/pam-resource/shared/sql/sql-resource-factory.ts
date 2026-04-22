@@ -349,18 +349,10 @@ const makeSqlConnection = (
             }
           }
         },
-        rotateCredentials: async (currentCredentials, newPassword) => {
-          // Oracle ALTER USER: escape double quotes defensively. The generated password is
-          // alphanumeric, but keep the guard in case this code is repurposed.
-          const safePassword = newPassword.replace(/"/g, '""');
-          const safeUser = currentCredentials.username.replace(/"/g, '""');
-          const conn = await openConnection();
-          try {
-            await conn.execute(`ALTER USER "${safeUser}" IDENTIFIED BY "${safePassword}"`);
-          } finally {
-            await conn.close().catch(() => undefined);
-          }
-          return { username: currentCredentials.username, password: newPassword };
+        rotateCredentials: async () => {
+          throw new BadRequestError({
+            message: "Unsupported operation"
+          });
         },
         close: async () => {
           // Connections are opened and closed per operation.
