@@ -31,9 +31,9 @@ const SIMPLE_QUERY = "select 1";
 // CA-only PEMs and synthesized wallets both fail (NJS-505 / NJS-506 for different
 // reasons). For resource-save validation (connectOnly) we bypass the driver entirely
 // and use a raw TLS handshake to verify the endpoint is reachable and its certificate
-// chains to the provided CA. Account credential validation and rotation still go
-// through node-oracledb and therefore require that any custom CA be in Node's trust
-// store via NODE_EXTRA_CA_CERTS — document this as an operator-level setup step.
+// chains to the provided CA. Account credential validation still goes through
+// node-oracledb, so any custom CA must be in Node's trust store (e.g. via
+// NODE_EXTRA_CA_CERTS) for that path to work with private-PKI Oracle targets.
 const probeOracleTls = (host: string, port: number, caPem: string | undefined): Promise<void> =>
   new Promise((resolve, reject) => {
     const socket = net.connect({ host, port });
