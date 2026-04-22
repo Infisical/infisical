@@ -28,5 +28,6 @@ export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryIm
   [PamResource.AwsIam]: awsIamResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.Redis]: redisResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.MongoDB]: mongodbResourceFactory as TPamResourceFactoryImplementation,
-  [PamResource.Windows]: windowsResourceFactory as TPamResourceFactoryImplementation
+  [PamResource.Windows]: windowsResourceFactory as TPamResourceFactoryImplementation,
+  [PamResource.Oracle]: sqlResourceFactory as TPamResourceFactoryImplementation
 };
