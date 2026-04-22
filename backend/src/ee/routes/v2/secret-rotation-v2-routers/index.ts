@@ -12,6 +12,7 @@ import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rota
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
 import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-rotation-router";
+import { registerSupabaseApiKeyRotationRouter } from "./supabase-api-key-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
@@ -40,5 +41,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
-  [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter
+  [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
+  [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter
 };

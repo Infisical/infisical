@@ -13,6 +13,7 @@ import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
+import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -41,7 +42,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
-  HpIloRotationListItemSchema
+  HpIloRotationListItemSchema,
+  SupabaseApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

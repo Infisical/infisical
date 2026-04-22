@@ -95,6 +95,7 @@ import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rot
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
+import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
@@ -170,7 +171,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

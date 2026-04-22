@@ -27,6 +27,7 @@ import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSevice
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
+import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -160,6 +161,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.HpIloLocalAccount:
       Component = (
         <ViewHpIloRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SupabaseApiKey:
+      Component = (
+        <ViewSupabaseApiKeyRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
