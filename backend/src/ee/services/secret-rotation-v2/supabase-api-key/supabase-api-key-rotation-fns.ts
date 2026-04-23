@@ -31,7 +31,7 @@ const createErrorMessage = (error: unknown) => {
       return error.message;
     }
   }
-  return "Unknown error";
+  return (error as Error)?.message ?? "Unknown error";
 };
 
 export const supabaseApiKeyRotationFactory: TRotationFactory<

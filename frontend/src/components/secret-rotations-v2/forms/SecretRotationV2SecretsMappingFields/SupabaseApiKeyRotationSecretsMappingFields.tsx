@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
@@ -21,11 +21,13 @@ export const SupabaseApiKeyRotationSecretsMappingFields = () => {
   >();
 
   const keyType = watch("parameters.keyType");
+  const prevKeyTypeRef = useRef(keyType);
 
   useEffect(() => {
-    if (keyType) {
+    if (keyType && prevKeyTypeRef.current !== keyType) {
       setValue("secretsMapping.apiKey", DEFAULT_SECRET_NAME[keyType]);
     }
+    prevKeyTypeRef.current = keyType;
   }, [keyType, setValue]);
 
   const items = [

@@ -32,7 +32,7 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
-import { SUPABASE_API_KEY_ROTATION_LIST_OPTION } from "./supabase-api-key";
+import { SUPABASE_API_KEY_ROTATION_LIST_OPTION, TSupabaseApiKeyRotation } from "./supabase-api-key";
 import {
   TUnixLinuxLocalAccountRotation,
   UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
@@ -359,6 +359,17 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update rotation method or username" });
+      }
+      break;
+    case SecretRotation.SupabaseApiKey:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TSupabaseApiKeyRotation["parameters"],
+          secretRotation.parameters as TSupabaseApiKeyRotation["parameters"],
+          ["projectRef", "keyType"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update project reference or key type" });
       }
       break;
     default:
