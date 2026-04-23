@@ -1,6 +1,6 @@
-import net from "net";
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
+import net from "net";
 import oracledb from "oracledb";
 import tls, { PeerCertificate } from "tls";
 
