@@ -285,14 +285,6 @@ export enum ProjectPermissionPamDiscoveryActions {
   RunScan = "run-scan"
 }
 
-export enum ProjectPermissionMcpEndpointActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  Connect = "connect"
-}
-
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -345,7 +337,6 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
-  | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups;
 
@@ -442,9 +433,6 @@ export enum ProjectPermissionSub {
   PamSessions = "pam-sessions",
   PamAccountPolicies = "pam-account-policies",
   PamDiscovery = "pam-discovery",
-  McpEndpoints = "mcp-endpoints",
-  McpServers = "mcp-servers",
-  McpActivityLogs = "mcp-activity-logs",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   Insights = "insights"
@@ -540,10 +528,6 @@ export type PamAccountSubjectFields = {
 export type PamResourceSubjectFields = {
   name: string;
   metadata?: { key: string; value: string }[];
-};
-
-export type McpEndpointSubjectFields = {
-  name: string;
 };
 
 export type ProjectPermissionSet =
@@ -734,15 +718,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
-  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
-  | [
-      ProjectPermissionMcpEndpointActions,
-      (
-        | ProjectPermissionSub.McpEndpoints
-        | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
-      )
-    ]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

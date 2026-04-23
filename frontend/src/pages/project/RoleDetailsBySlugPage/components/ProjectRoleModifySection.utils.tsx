@@ -23,7 +23,6 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamAccountPolicyActions,
@@ -264,25 +263,6 @@ const PamDiscoveryPolicyActionSchema = z.object({
   [ProjectPermissionPamDiscoveryActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamDiscoveryActions.Edit]: z.boolean().optional(),
   [ProjectPermissionPamDiscoveryActions.Delete]: z.boolean().optional()
-});
-
-const McpEndpointPolicyActionSchema = z.object({
-  [ProjectPermissionMcpEndpointActions.Read]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Create]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Connect]: z.boolean().optional()
-});
-
-const McpServerPolicyActionSchema = z.object({
-  [ProjectPermissionActions.Read]: z.boolean().optional(),
-  [ProjectPermissionActions.Create]: z.boolean().optional(),
-  [ProjectPermissionActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionActions.Delete]: z.boolean().optional()
-});
-
-const McpActivityLogPolicyActionSchema = z.object({
-  [ProjectPermissionActions.Read]: z.boolean().optional()
 });
 
 const ApprovalRequestPolicyActionSchema = z.object({
@@ -819,14 +799,6 @@ export const projectRoleFormSchema = z.object({
         []
       ),
       [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.McpServers]: McpServerPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.McpActivityLogs]: McpActivityLogPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default(
         []
       ),
@@ -883,7 +855,6 @@ type TConditionalFields =
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.PamResources
-  | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups;
 
@@ -909,7 +880,6 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.AppConnections ||
   subject === ProjectPermissionSub.PamAccounts ||
   subject === ProjectPermissionSub.PamResources ||
-  subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups;
 
@@ -1054,9 +1024,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.AppConnections,
         ProjectPermissionSub.PamFolders,
         ProjectPermissionSub.PamResources,
-        ProjectPermissionSub.McpEndpoints,
-        ProjectPermissionSub.McpServers,
-        ProjectPermissionSub.McpActivityLogs,
         ProjectPermissionSub.Insights
       ].includes(subject)
     ) {
@@ -1854,48 +1821,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Delete] = true;
       if (canEdit) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Edit] = true;
       if (canRunScan) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.RunScan] = true;
-    }
-
-    if (subject === ProjectPermissionSub.McpEndpoints) {
-      const canRead = action.includes(ProjectPermissionMcpEndpointActions.Read);
-      const canCreate = action.includes(ProjectPermissionMcpEndpointActions.Create);
-      const canEdit = action.includes(ProjectPermissionMcpEndpointActions.Edit);
-      const canDelete = action.includes(ProjectPermissionMcpEndpointActions.Delete);
-      const canConnect = action.includes(ProjectPermissionMcpEndpointActions.Connect);
-
-      if (!formVal[subject]) formVal[subject] = [];
-
-      formVal[subject]!.push({
-        [ProjectPermissionMcpEndpointActions.Read]: canRead,
-        [ProjectPermissionMcpEndpointActions.Create]: canCreate,
-        [ProjectPermissionMcpEndpointActions.Edit]: canEdit,
-        [ProjectPermissionMcpEndpointActions.Delete]: canDelete,
-        [ProjectPermissionMcpEndpointActions.Connect]: canConnect,
-        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-        inverted
-      });
-    }
-
-    if (subject === ProjectPermissionSub.McpServers) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-      const canCreate = action.includes(ProjectPermissionActions.Create);
-      const canEdit = action.includes(ProjectPermissionActions.Edit);
-      const canDelete = action.includes(ProjectPermissionActions.Delete);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionActions.Delete] = true;
-    }
-
-    if (subject === ProjectPermissionSub.McpActivityLogs) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
     }
 
     if (subject === ProjectPermissionSub.ApprovalRequests) {
@@ -3310,66 +3235,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
-  [ProjectPermissionSub.McpEndpoints]: {
-    title: "MCP Endpoints",
-    description: "Manage Model Context Protocol endpoints",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionMcpEndpointActions.Read,
-        description: "View MCP endpoints"
-      },
-      {
-        label: "Create",
-        value: ProjectPermissionMcpEndpointActions.Create,
-        description: "Create new MCP endpoints"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionMcpEndpointActions.Edit,
-        description: "Update endpoint configuration"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionMcpEndpointActions.Delete,
-        description: "Delete MCP endpoints"
-      },
-      {
-        label: "Connect",
-        value: ProjectPermissionMcpEndpointActions.Connect,
-        description: "Connect to MCP endpoints"
-      }
-    ]
-  },
-  [ProjectPermissionSub.McpServers]: {
-    title: "MCP Servers",
-    description: "Configure MCP server connections",
-    actions: [
-      { label: "Read", value: ProjectPermissionActions.Read, description: "View MCP servers" },
-      {
-        label: "Create",
-        value: ProjectPermissionActions.Create,
-        description: "Register new MCP servers"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionActions.Edit,
-        description: "Update server configuration"
-      },
-      { label: "Remove", value: ProjectPermissionActions.Delete, description: "Remove MCP servers" }
-    ]
-  },
-  [ProjectPermissionSub.McpActivityLogs]: {
-    title: "MCP Activity Logs",
-    description: "View MCP endpoint activity and usage",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionActions.Read,
-        description: "View MCP activity and access logs"
-      }
-    ]
-  },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
     description: "View secret change requests pending approval",
@@ -3461,12 +3326,6 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamDiscovery]: enabled
 });
 
-const AiPermissionSubjects = (enabled = false) => ({
-  [ProjectPermissionSub.McpEndpoints]: enabled,
-  [ProjectPermissionSub.McpServers]: enabled,
-  [ProjectPermissionSub.McpActivityLogs]: enabled
-});
-
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
 export const ProjectTypePermissionSubjects: Record<
   ProjectType,
@@ -3480,7 +3339,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
     ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true,
     // Approval Requests / Grants are not used in Secret Manager (secret approvals use SecretApproval policy)
     [ProjectPermissionSub.ApprovalRequests]: false,
@@ -3494,7 +3352,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
     ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.CertificateManager]: {
@@ -3505,7 +3362,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
     ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.SSH]: {
@@ -3516,7 +3372,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...SecretScanningSubject(),
     ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.SecretScanning]: {
@@ -3527,7 +3382,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.PAM]: {
@@ -3538,18 +3392,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...PamPermissionSubjects(true),
-    ...AiPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: false
-  },
-  [ProjectType.AI]: {
-    ...SharedPermissionSubjects,
-    ...SecretsManagerPermissionSubjects(),
-    ...KmsPermissionSubjects(),
-    ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects(),
-    ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
-    ...AiPermissionSubjects(true),
     [ProjectPermissionSub.AppConnections]: false
   }
 };
@@ -4036,6 +3878,5 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       ]
     },
     projectManagerTemplate()
-  ],
-  [ProjectType.AI]: [projectManagerTemplate()]
+  ]
 };

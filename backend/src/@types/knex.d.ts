@@ -20,27 +20,6 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
-  TAiMcpActivityLogs,
-  TAiMcpActivityLogsInsert,
-  TAiMcpActivityLogsUpdate,
-  TAiMcpEndpoints,
-  TAiMcpEndpointServers,
-  TAiMcpEndpointServersInsert,
-  TAiMcpEndpointServersUpdate,
-  TAiMcpEndpointServerTools,
-  TAiMcpEndpointServerToolsInsert,
-  TAiMcpEndpointServerToolsUpdate,
-  TAiMcpEndpointsInsert,
-  TAiMcpEndpointsUpdate,
-  TAiMcpServers,
-  TAiMcpServersInsert,
-  TAiMcpServersUpdate,
-  TAiMcpServerTools,
-  TAiMcpServerToolsInsert,
-  TAiMcpServerToolsUpdate,
-  TAiMcpServerUserCredentials,
-  TAiMcpServerUserCredentialsInsert,
-  TAiMcpServerUserCredentialsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -1693,37 +1672,6 @@ declare module "knex/types/tables" {
       TWebauthnCredentials,
       TWebauthnCredentialsInsert,
       TWebauthnCredentialsUpdate
-    >;
-    [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
-    [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpServerTools,
-      TAiMcpServerToolsInsert,
-      TAiMcpServerToolsUpdate
-    >;
-    [TableName.AiMcpEndpoint]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpoints,
-      TAiMcpEndpointsInsert,
-      TAiMcpEndpointsUpdate
-    >;
-    [TableName.AiMcpEndpointServer]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServers,
-      TAiMcpEndpointServersInsert,
-      TAiMcpEndpointServersUpdate
-    >;
-    [TableName.AiMcpEndpointServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServerTools,
-      TAiMcpEndpointServerToolsInsert,
-      TAiMcpEndpointServerToolsUpdate
-    >;
-    [TableName.AiMcpServerUserCredential]: KnexOriginal.CompositeTableType<
-      TAiMcpServerUserCredentials,
-      TAiMcpServerUserCredentialsInsert,
-      TAiMcpServerUserCredentialsUpdate
-    >;
-    [TableName.AiMcpActivityLog]: KnexOriginal.CompositeTableType<
-      TAiMcpActivityLogs,
-      TAiMcpActivityLogsInsert,
-      TAiMcpActivityLogsUpdate
     >;
     [TableName.ApprovalPolicies]: KnexOriginal.CompositeTableType<
       TApprovalPolicies,

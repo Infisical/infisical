@@ -36,7 +36,6 @@ const getTotalResourceCount = (resources: TGatewayConnectedResources | undefined
     resources.pamResources.length +
     resources.pamDiscoverySources.length +
     resources.kubernetesAuths.length +
-    resources.mcpServers.length +
     resources.pkiDiscoveryConfigs.length
   );
 };
@@ -49,7 +48,6 @@ const getResourceTypeCount = (resources: TGatewayConnectedResources | undefined)
   if (resources.pamResources.length > 0) count += 1;
   if (resources.pamDiscoverySources.length > 0) count += 1;
   if (resources.kubernetesAuths.length > 0) count += 1;
-  if (resources.mcpServers.length > 0) count += 1;
   if (resources.pkiDiscoveryConfigs.length > 0) count += 1;
   return count;
 };
@@ -98,7 +96,6 @@ export const GatewayConnectedResourcesDrawer = ({
     resources?.pamResources.length ? "pam-resources" : null,
     resources?.pamDiscoverySources.length ? "pam-discovery" : null,
     resources?.kubernetesAuths.length ? "kubernetes-auth" : null,
-    resources?.mcpServers.length ? "mcp-servers" : null,
     resources?.pkiDiscoveryConfigs.length ? "pki-discovery" : null
   ].filter(Boolean) as string[];
 
@@ -247,31 +244,6 @@ export const GatewayConnectedResourcesDrawer = ({
                             to="/organizations/$orgId/identities/$identityId"
                             params={{ orgId: currentOrg.id, identityId: auth.identityId }}
                             isLast={idx === (resources?.kubernetesAuths.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.mcpServers.length ?? 0) > 0 && (
-                    <AccordionItem value="mcp-servers">
-                      <AccordionTrigger>
-                        <span className="flex-1">MCP Servers</span>
-                        <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.mcpServers.map((server, idx) => (
-                          <ResourceRow
-                            key={server.id}
-                            name={server.name}
-                            subtitle={server.projectName}
-                            to="/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId"
-                            params={{
-                              orgId: currentOrg.id,
-                              projectId: server.projectId,
-                              serverId: server.id
-                            }}
-                            isLast={idx === (resources?.mcpServers.length ?? 0) - 1}
                           />
                         ))}
                       </AccordionContent>

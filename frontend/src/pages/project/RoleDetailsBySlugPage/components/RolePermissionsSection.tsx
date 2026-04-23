@@ -25,7 +25,6 @@ import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
-import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { MemberPermissionConditions } from "./MemberPermissionConditions";
 import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
 import { PamResourcePermissionConditions } from "./PamResourcePermissionConditions";
@@ -119,10 +118,6 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.CertificatePolicies) {
       return <CertificatePolicyPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (subject === ProjectPermissionSub.McpEndpoints) {
-      return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.SecretRotation) {

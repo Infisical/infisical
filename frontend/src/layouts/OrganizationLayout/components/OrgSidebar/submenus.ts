@@ -22,7 +22,6 @@ import {
   Route,
   ScanSearch,
   Search,
-  Server,
   Settings,
   Shield,
   ShieldCheck,
@@ -244,15 +243,3 @@ export const PAM_APPROVALS_SUBMENU: Submenu = {
   ]
 };
 
-// --- AI submenus ---
-
-export const MCP_SUBMENU: Submenu = {
-  title: "MCP",
-  pathSuffix: "overview",
-  defaultTab: "mcp-endpoints",
-  items: [
-    { label: "MCP Endpoints", icon: Server, tab: "mcp-endpoints" },
-    { label: "MCP Servers", icon: HardDrive, tab: "mcp-servers" },
-    { label: "Activity Logs", icon: FileText, tab: "activity-logs" }
-  ]
-};

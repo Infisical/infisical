@@ -151,7 +151,6 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.CertificatePolicies]: "Certificate Policies",
   [ProjectPermissionSub.AppConnections]: "App Connections",
   [ProjectPermissionSub.PamAccounts]: "PAM Accounts",
-  [ProjectPermissionSub.McpEndpoints]: "MCP Endpoints",
   [ProjectPermissionSub.Role]: "Roles",
   [ProjectPermissionSub.Member]: "User Management",
   [ProjectPermissionSub.Groups]: "Groups",

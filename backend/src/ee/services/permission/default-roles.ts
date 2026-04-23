@@ -18,7 +18,6 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamAccountPolicyActions,
@@ -65,9 +64,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateTemplates,
     ProjectPermissionSub.SshHostGroups,
     ProjectPermissionSub.PamFolders,
-    ProjectPermissionSub.PamResources,
-    ProjectPermissionSub.McpServers,
-    ProjectPermissionSub.McpActivityLogs
+    ProjectPermissionSub.PamResources
   ].forEach((el) => {
     can(
       [
@@ -428,17 +425,6 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionMcpEndpointActions.Create,
-      ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionMcpEndpointActions.Delete
-    ],
-    ProjectPermissionSub.McpEndpoints
-  );
-
-  can(
     [ProjectPermissionApprovalRequestActions.Read, ProjectPermissionApprovalRequestActions.Create],
     ProjectPermissionSub.ApprovalRequests
   );
@@ -720,10 +706,6 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
 
-  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
-
   can([ProjectPermissionApprovalRequestActions.Create], ProjectPermissionSub.ApprovalRequests);
 
   return rules;
@@ -801,10 +783,6 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionPamAccountPolicyActions.Read], ProjectPermissionSub.PamAccountPolicies);
 
   can([ProjectPermissionPamDiscoveryActions.Read], ProjectPermissionSub.PamDiscovery);
-
-  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
 
   return rules;
 };

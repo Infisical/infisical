@@ -7,7 +7,6 @@ import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { AINav } from "./AINav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
@@ -21,7 +20,6 @@ import {
   CERT_INTEGRATIONS_SUBMENU,
   CERT_SETTINGS_SUBMENU,
   INTEGRATIONS_SUBMENU,
-  MCP_SUBMENU,
   PAM_APPROVALS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_MANAGER_ACCESS_CONTROL_SUBMENU,
@@ -42,7 +40,6 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.CertificateManager]: CertManagerNav,
   [ProjectType.SSH]: SshNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.AI]: AINav,
   [ProjectType.SecretScanning]: SecretScanningNav
 };
 
@@ -67,7 +64,6 @@ export const ProjectNav = () => {
   const isOnIntegrations = pathname.includes("/integrations");
   const isOnProjectSettings = /\/settings(\/|\?|$)/.test(pathname);
   const isOnApproval = pathname.includes("/approval");
-  const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   const isOnCertPolicies = isCertManager && pathname.includes("/policies");
   const isOnCertDiscovery = isCertManager && pathname.includes("/discovery");
@@ -86,7 +82,6 @@ export const ProjectNav = () => {
     if (isOnProjectSettings && isCertManager) return CERT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
-    if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertDiscovery) return CERT_DISCOVERY_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;

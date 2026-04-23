@@ -4,7 +4,6 @@ import path from "node:path";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
-import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
 import fastifyFormBody from "@fastify/formbody";
@@ -13,7 +12,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import websocket from "@fastify/websocket";
-import fastify, { FastifyInstance, FastifyRequest } from "fastify";
+import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
@@ -109,37 +108,17 @@ export const main = async ({
 
     await server.register(fastifyEtag);
 
-    // Dynamic CORS: MCP OAuth routes need permissive CORS for browser-based flows (MCP Inspector)
-    await server.register(
-      cors,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      (_instance: FastifyInstance) =>
-        (req: FastifyRequest, callback: (err: Error | null, options: FastifyCorsOptions) => void) => {
-          const isMcpOAuthRoute =
-            req.url.startsWith("/.well-known/oauth-protected-resource") ||
-            req.url.startsWith("/.well-known/oauth-authorization-server") ||
-            req.url.startsWith("/mcp-endpoints/") ||
-            (req.url.includes("/ai/mcp/endpoints/") && req.url.includes("/oauth/"));
+    const defaultOrigin = appCfg.CORS_ALLOWED_ORIGINS?.length
+      ? [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
+      : appCfg.SITE_URL || true;
 
-          if (isMcpOAuthRoute) {
-            callback(null, { origin: true, credentials: false });
-            return;
-          }
-
-          // Default CORS config for other routes
-          const defaultOrigin = appCfg.CORS_ALLOWED_ORIGINS?.length
-            ? [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
-            : appCfg.SITE_URL || true;
-
-          callback(null, {
-            credentials: true,
-            origin: defaultOrigin,
-            ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
-              allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
-            })
-          });
-        }
-    );
+    await server.register(cors, {
+      credentials: true,
+      origin: defaultOrigin,
+      ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
+        allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
+      })
+    });
 
     await server.register(registerResponseSchemaHooks);
     // pull ip based on various proxy headers

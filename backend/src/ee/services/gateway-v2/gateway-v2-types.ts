@@ -55,13 +55,6 @@ export type TGatewayConnectedKubernetesAuth = {
   identityName: string;
 };
 
-export type TGatewayConnectedMcpServer = {
-  id: string;
-  name: string;
-  projectId: string;
-  projectName?: string;
-};
-
 export type TGatewayConnectedPkiDiscoveryConfig = {
   id: string;
   name: string;
@@ -75,6 +68,5 @@ export type TGatewayConnectedResources = {
   pamResources: TGatewayConnectedPamResource[];
   pamDiscoverySources: TGatewayConnectedPamDiscoverySource[];
   kubernetesAuths: TGatewayConnectedKubernetesAuth[];
-  mcpServers: TGatewayConnectedMcpServer[];
   pkiDiscoveryConfigs: TGatewayConnectedPkiDiscoveryConfig[];
 };

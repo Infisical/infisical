@@ -917,31 +917,6 @@
                 ]
               }
             ]
-          },
-          {
-            "item": "Agent Sentinel",
-            "groups": [
-              {
-                "group": "Agent Sentinel",
-                "pages": [
-                  "documentation/platform/agent-sentinel/overview",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Product Reference",
-                "pages": [
-                  "documentation/platform/agent-sentinel/mcp-servers",
-                  "documentation/platform/agent-sentinel/mcp-endpoints",
-                  "documentation/platform/agent-sentinel/activity-logs"
-                ]
-              }
-            ]
           }
         ]
       },

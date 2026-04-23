@@ -385,8 +385,7 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam",
-  AI = "ai"
+  PAM = "pam"
 }
 
 export enum ActionProjectType {
@@ -396,7 +395,6 @@ export enum ActionProjectType {
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
-  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

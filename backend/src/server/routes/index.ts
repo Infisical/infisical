@@ -5,11 +5,6 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
-import {
-  registerMcpEndpointAuthServerMetadataRouter,
-  registerMcpEndpointMetadataRouter,
-  registerRfc9728ProtectedResourceMetadataRouter
-} from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -25,16 +20,6 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
-import { aiMcpActivityLogDALFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-dal";
-import { aiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";
-import { aiMcpEndpointDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-dal";
-import { aiMcpEndpointServerDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-dal";
-import { aiMcpEndpointServerToolDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-tool-dal";
-import { aiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-service";
-import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
-import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
-import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
-import { aiMcpServerUserCredentialDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-user-credential-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -1303,7 +1288,6 @@ export const registerRoutes = async (
 
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
     sshCertificateAuthorityDAL,
@@ -1466,7 +1450,6 @@ export const registerRoutes = async (
     pamResourceDAL,
     pamDiscoverySourceDAL,
     identityKubernetesAuthDAL,
-    aiMcpServerDAL,
     pkiDiscoveryConfigDAL
   });
 
@@ -2857,13 +2840,6 @@ export const registerRoutes = async (
   const pamAccountDependenciesDAL = pamAccountDependenciesDALFactory(db);
   const pamResourceRotationRulesDAL = pamResourceRotationRulesDALFactory(db);
 
-  const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
-  const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
-  const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
-  const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
-  const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
-  const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
-
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
     permissionService
@@ -2999,39 +2975,6 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayV2Service,
     pamDiscoveryQueue
-  });
-
-  const aiMcpServerService = aiMcpServerServiceFactory({
-    aiMcpServerDAL,
-    aiMcpServerToolDAL,
-    aiMcpServerUserCredentialDAL,
-    kmsService,
-    keyStore,
-    permissionService,
-    gatewayV2DAL,
-    gatewayV2Service
-  });
-
-  const aiMcpActivityLogService = aiMcpActivityLogServiceFactory({
-    aiMcpActivityLogDAL,
-    permissionService
-  });
-
-  const aiMcpEndpointService = aiMcpEndpointServiceFactory({
-    aiMcpEndpointDAL,
-    aiMcpEndpointServerDAL,
-    aiMcpEndpointServerToolDAL,
-    aiMcpServerDAL,
-    aiMcpServerToolDAL,
-    aiMcpServerUserCredentialDAL,
-    aiMcpServerService,
-    kmsService,
-    keyStore,
-    authTokenService: tokenService,
-    aiMcpActivityLogService,
-    userDAL,
-    permissionService,
-    gatewayV2Service
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -3252,9 +3195,6 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,
-    aiMcpServer: aiMcpServerService,
-    aiMcpEndpoint: aiMcpEndpointService,
-    aiMcpActivityLog: aiMcpActivityLogService,
     approvalPolicy: approvalPolicyService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
@@ -3367,13 +3307,6 @@ export const registerRoutes = async (
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
   await server.register(registerPkiScepRouter, { prefix: "/scep" });
-  await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
-  await server.register(registerMcpEndpointAuthServerMetadataRouter, {
-    prefix: "/.well-known/oauth-authorization-server"
-  });
-  await server.register(registerRfc9728ProtectedResourceMetadataRouter, {
-    prefix: "/.well-known/oauth-protected-resource"
-  });
 
   // register routes for v1
   await server.register(
