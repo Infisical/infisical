@@ -72,26 +72,7 @@ $ infisical run -- npm run dev
     ```
   </Accordion>
 
-### Flags
-
-  <Accordion title="--watch">
-    By passing the `watch` flag, you are telling the CLI to watch for changes that happen in your Infisical project.
-    If secret changes happen, the command you provided will automatically be restarted with the new environment variables attached.
-
-    ```bash
-      # Example
-      infisical run --watch -- printenv
-    ```
-  </Accordion>
-
-  <Accordion title="--project-config-dir">
-    Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups.
-
-    ```bash
-      # Example
-      infisical run --project-config-dir=/some-dir -- printenv
-    ```
-  </Accordion>
+  ### Flags
 
   <Accordion title="--command">
     Pass secrets into multiple commands at once
@@ -103,26 +84,10 @@ $ infisical run -- npm run dev
 
   </Accordion>
 
-  <Accordion title="--projectId">
-    The project ID to fetch secrets from. This is required when using a machine identity to authenticate.
-
-    ```bash
-    # Example
-    infisical run --projectId=<project-id> -- npm run dev
-    ```
-
-  </Accordion>
-
-  <Accordion title="--token">
-    If you are using a [machine identity](/documentation/platform/identities/machine-identities) to authenticate, you can pass the token as a flag
-
-    ```bash
-    # Example
-    infisical run --token="<universal-auth-access-token>" --projectId=<project-id> -- npm run start
-    ```
-
-    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the run command. This will have the same effect as setting the token with `--token` flag
-
+  <Accordion title="--env">
+    This is used to specify the environment from which secrets should be
+    retrieved. The accepted values are the environment slugs defined for your
+    project, such as `dev`, `staging`, `test`, and `prod`. Default value: `dev`
   </Accordion>
 
   <Accordion title="--expand">
@@ -138,13 +103,44 @@ $ infisical run -- npm run dev
     Default value: `true`
   </Accordion>
 
-{" "}
+  <Accordion title="--path">
+    The `--path` flag indicates which project folder secrets will be injected from.
 
-<Accordion title="--env">
-  This is used to specify the environment from which secrets should be
-  retrieved. The accepted values are the environment slugs defined for your
-  project, such as `dev`, `staging`, `test`, and `prod`. Default value: `dev`
-</Accordion>
+    ```bash
+    # Example
+    infisical run --path="/nextjs" -- npm run dev
+    ```
+
+  </Accordion>
+
+  <Accordion title="--project-config-dir">
+    Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups.
+
+    ```bash
+      # Example
+      infisical run --project-config-dir=/some-dir -- printenv
+    ```
+  </Accordion>
+
+  <Accordion title="--projectId">
+    The project ID to fetch secrets from. This is required when using a machine identity to authenticate.
+
+    ```bash
+    # Example
+    infisical run --projectId=<project-id> -- npm run dev
+    ```
+
+  </Accordion>
+
+  <Accordion title="--recursive">
+    Fetch secrets recursively from the root or the specified path. Default value: `false`
+
+    ```bash
+      # Example
+      infisical run --recursive -- npm run dev
+    ```
+
+  </Accordion>
 
   <Accordion title="--secret-overriding">
     Prioritizes personal secrets with the same name over shared secrets
@@ -167,14 +163,26 @@ $ infisical run -- npm run dev
 
   </Accordion>
 
-  <Accordion title="--path">
-    The `--path` flag indicates which project folder secrets will be injected from.
+  <Accordion title="--token">
+    If you are using a [machine identity](/documentation/platform/identities/machine-identities) to authenticate, you can pass the token as a flag
 
     ```bash
     # Example
-    infisical run --path="/nextjs" -- npm run dev
+    infisical run --token="<universal-auth-access-token>" --projectId=<project-id> -- npm run start
     ```
 
+    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the run command. This will have the same effect as setting the token with `--token` flag
+
+  </Accordion>
+
+  <Accordion title="--watch">
+    By passing the `watch` flag, you are telling the CLI to watch for changes that happen in your Infisical project.
+    If secret changes happen, the command you provided will automatically be restarted with the new environment variables attached.
+
+    ```bash
+      # Example
+      infisical run --watch -- printenv
+    ```
   </Accordion>
 
 </Accordion>
