@@ -1,6 +1,5 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import net from "net";
 import oracledb from "oracledb";
 import tls, { PeerCertificate } from "tls";
 
@@ -11,6 +10,7 @@ import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { probeOracleTls } from "../../oracle/oracle-tls-probe";
 import { PamResource } from "../../pam-resource-enums";
 import {
   TPamResourceFactory,
@@ -25,48 +25,6 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
 const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
 const SIMPLE_QUERY = "select 1";
-
-// node-oracledb thin mode has no first-class "ca" option for trust anchors: it only
-// accepts a full mTLS wallet (client cert + private key + CAs) via walletLocation.
-// CA-only PEMs and synthesized wallets both fail (NJS-505 / NJS-506 for different
-// reasons). For resource-save validation (connectOnly) we bypass the driver entirely
-// and use a raw TLS handshake to verify the endpoint is reachable and its certificate
-// chains to the provided CA. Account credential validation still goes through
-// node-oracledb, so any custom CA must be in Node's trust store (e.g. via
-// NODE_EXTRA_CA_CERTS) for that path to work with private-PKI Oracle targets.
-const probeOracleTls = (host: string, port: number, caPem: string | undefined): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const socket = net.connect({ host, port });
-    socket.setTimeout(EXTERNAL_REQUEST_TIMEOUT);
-    socket.once("error", (err) => {
-      socket.destroy();
-      reject(err);
-    });
-    socket.once("timeout", () => {
-      socket.destroy();
-      reject(new Error("timeout connecting to Oracle listener"));
-    });
-    socket.once("connect", () => {
-      const tlsSocket = tls.connect({
-        socket,
-        // SNI must match something reasonable; the real upstream hostname is in `host`
-        // in the resource config, but our socket target is the tunnel's localhost.
-        // Setting servername=host makes the server cert check match the real name.
-        servername: host,
-        ca: caPem || undefined,
-        rejectUnauthorized: !!caPem,
-        checkServerIdentity: () => undefined // our tunnel uses localhost; bypass hostname check
-      });
-      tlsSocket.once("secureConnect", () => {
-        tlsSocket.end();
-        resolve();
-      });
-      tlsSocket.once("error", (err) => {
-        tlsSocket.destroy();
-        reject(err);
-      });
-    });
-  });
 
 export interface SqlResourceConnection {
   /**
@@ -284,50 +242,51 @@ const makeSqlConnection = (
       };
     }
     case PamResource.Oracle: {
-      // Oracle through the gateway proxy: TCP to localhost:proxyPort; gateway forwards to
-      // the real Oracle listener. We call node-oracledb directly rather than go through
-      // knex, because knex's oracledb dialect drops the connectTimeout / transportConnectTimeout
-      // options and masks driver errors as a generic "pool is probably full" timeout.
+      // Oracle uses node-oracledb directly rather than knex — knex's oracledb
+      // dialect drops connectTimeout / transportConnectTimeout and masks driver
+      // errors as generic "pool is probably full" timeouts.
       const ORACLE_CONNECT_TIMEOUT_SECONDS = 30;
-
-      // For non-TLS Oracle we use Easy Connect against the tunnel port. For TLS, we
-      // build a TCPS connect descriptor with SSL_SERVER_DN_MATCH=FALSE (we connect to
-      // `localhost:<proxyPort>` through the gateway tunnel, so the upstream cert's
-      // hostname will never match; we disable the driver-level DN check and rely on
-      // the chain check to ensure trust).
-      const connectString = sslEnabled
-        ? `(DESCRIPTION=` +
-          `(ADDRESS=(PROTOCOL=TCPS)(HOST=localhost)(PORT=${proxyPort}))` +
-          `(CONNECT_DATA=(SERVICE_NAME=${connectionDetails.database}))` +
-          `(SECURITY=(SSL_SERVER_DN_MATCH=FALSE))` +
-          `)`
-        : `localhost:${proxyPort}/${connectionDetails.database}`;
 
       const openConnection = () =>
         oracledb.getConnection({
           user: actualUsername,
           password: actualPassword,
-          connectString,
+          connectString: `localhost:${proxyPort}/${connectionDetails.database}`,
           connectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS,
           transportConnectTimeout: ORACLE_CONNECT_TIMEOUT_SECONDS
         });
+
       return {
         validate: async (connectOnly) => {
-          // Connect-only path: Oracle's trust-anchor story in node-oracledb doesn't
-          // accommodate a pasted CA PEM. We bypass the driver for resource-save
-          // validation and check the TLS endpoint directly — this verifies the host
-          // is reachable, it serves TLS, and its cert chain is trusted by the
-          // provided PEM (or Node's default store when no PEM is given).
-          if (connectOnly && sslEnabled) {
-            try {
-              await probeOracleTls("localhost", proxyPort, sslCertificate);
-              return;
-            } catch (error) {
-              throw new BadRequestError({
-                message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
-              });
+          // TLS-enabled Oracle is handled outside node-oracledb. The driver's thin
+          // mode has no inline-CA option (only a wallet file that requires a
+          // matching cert+key pair), so we can't feed it the resource's pasted
+          // sslCertificate. Resource save does a raw TLS probe against the tunnel
+          // to verify reachability and cert chain; account credential validation
+          // is deferred to first session use. Credential validation for every DB
+          // type should eventually move to the gateway, where per-connection CA
+          // handling is straightforward — this branch goes away then.
+          if (sslEnabled) {
+            if (connectOnly) {
+              try {
+                await probeOracleTls({
+                  tcpHost: "localhost",
+                  port: proxyPort,
+                  servername: host,
+                  caPem: sslCertificate,
+                  rejectUnauthorized: sslRejectUnauthorized
+                });
+                return;
+              } catch (error) {
+                throw new BadRequestError({
+                  message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+                });
+              }
             }
+            return;
           }
+
+          // Non-TLS Oracle: standard driver-based validation.
           let conn: oracledb.Connection | null = null;
           try {
             conn = await openConnection();
@@ -335,7 +294,8 @@ const makeSqlConnection = (
           } catch (error) {
             if (error instanceof Error) {
               const msg = error.message || "";
-              // ORA-01017 indicates the connection reached Oracle but the credentials are bad.
+              // ORA-01017 means we reached Oracle but credentials are bad —
+              // that's the signal the connectOnly path is looking for.
               if (connectOnly && (msg.includes("ORA-01017") || msg.includes("invalid username/password"))) {
                 return;
               }
