@@ -47,6 +47,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
+import { fnUpdateMovedSecretReferences } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import {
   SecretUpdateMode,
   TGetSecretReferencesDTO,
@@ -55,7 +56,9 @@ import {
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { ChangeType } from "../folder-commit/folder-commit-service";
+import { ChangeType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -148,15 +151,24 @@ type TSecretServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
-  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne" | "insertMany">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "find" | "updateById" | "transaction" | "invalidateSecretCacheByProjectId"
+    | "find"
+    | "findOne"
+    | "updateById"
+    | "transaction"
+    | "invalidateSecretCacheByProjectId"
+    | "upsertSecretReferences"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceEnvAndPath"
   >;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "find" | "updateById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -186,7 +198,9 @@ export const secretServiceFactory = ({
   secretRotationV2DAL,
   appConnectionDAL,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  kmsService,
+  folderCommitService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -3699,6 +3713,12 @@ export const secretServiceFactory = ({
       }
     }
 
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: project.id
+      });
+
     // Mapping rows in secret_rotation_v2_secret_mappings carry no folderId and stay as-is.
     // updateById on the base ORM avoids the secretDAL.update version-increment, which is
     // correct for a folder-only move since the secret value is unchanged.
@@ -3714,6 +3734,32 @@ export const secretServiceFactory = ({
 
       for await (const rotatedSecretId of rotatedSecretIdsBeingMoved) {
         await secretV2BridgeDAL.updateById(rotatedSecretId, { folderId: destinationFolder.id }, tx);
+      }
+
+      // Keep secret references in lock-step with the move: any other secret that referenced a
+      // moved key needs its reference expression rewritten (local <-> nested) so interpolation
+      // continues to resolve after the relocation. Mirrors the behaviour of moveSecrets.
+      for await (const movedSecret of sourceFolderInventory) {
+        await fnUpdateMovedSecretReferences({
+          orgId: actorOrgId,
+          projectId: project.id,
+          sourceEnvironment,
+          sourceSecretPath,
+          sourceFolderId: sourceFolder.id,
+          destinationEnvironment,
+          destinationSecretPath: destinationFolder.path,
+          destinationFolderId: destinationFolder.id,
+          secretKey: movedSecret.key,
+          secretId: movedSecret.id,
+          secretDAL: secretV2BridgeDAL,
+          secretVersionDAL: secretVersionV2DAL,
+          folderCommitService,
+          folderDAL,
+          secretQueueService,
+          encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
+          decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+          tx
+        });
       }
     });
 
@@ -3753,7 +3799,8 @@ export const secretServiceFactory = ({
     return {
       projectId: project.id,
       isSourceUpdated: true,
-      isDestinationUpdated: true
+      isDestinationUpdated: true,
+      secretIds: Array.from(rotatedSecretIdsBeingMoved).sort()
     };
   };
 

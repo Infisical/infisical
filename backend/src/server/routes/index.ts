@@ -1744,7 +1744,9 @@ export const registerRoutes = async (
     secretRotationV2DAL,
     appConnectionDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    kmsService,
+    folderCommitService
   });
 
   const secretSharingService = secretSharingServiceFactory({

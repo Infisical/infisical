@@ -932,13 +932,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecretRotations({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
-      });
+      const { projectId, isSourceUpdated, isDestinationUpdated, secretIds } =
+        await server.services.secret.moveSecretRotations({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.body
+        });
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -950,7 +951,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             sourceSecretPath: req.body.sourceSecretPath,
             destinationEnvironment: req.body.destinationEnvironment,
             destinationSecretPath: req.body.destinationSecretPath,
-            secretIds: req.body.secretIds,
+            secretIds,
             rotationConnectionOverrides: req.body.rotationConnectionOverrides
           }
         }

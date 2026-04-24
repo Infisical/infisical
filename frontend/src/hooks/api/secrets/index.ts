@@ -4,7 +4,6 @@ export {
   useCreateSecretV3,
   useDeleteSecretBatch,
   useDeleteSecretV3,
-  useMoveSecretRotations,
   useMoveSecrets,
   useRedactSecretValue,
   useUpdateSecretBatch,
