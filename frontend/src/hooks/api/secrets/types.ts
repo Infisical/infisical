@@ -261,6 +261,16 @@ export type TMoveSecretsDTO = {
   shouldOverwrite: boolean;
 };
 
+export type TMoveSecretRotationsDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  rotationConnectionOverrides?: { rotationId: string; connectionId: string }[];
+};
+
 export type TGetSecretReferenceTreeDTO = {
   secretKey: string;
   secretPath: string;

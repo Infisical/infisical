@@ -2397,6 +2397,7 @@ const OverviewPageContent = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
           visibleEnvs={visibleEnvs}
+          secretRotations={secretRotations}
         />
 
         <Card>

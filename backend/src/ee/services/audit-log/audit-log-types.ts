@@ -165,6 +165,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  MOVE_SECRET_ROTATIONS = "move-secret-rotations",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
   REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
@@ -1055,6 +1056,18 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+interface MoveSecretRotationsEvent {
+  type: EventType.MOVE_SECRET_ROTATIONS;
+  metadata: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+    secretIds: string[];
+    rotationConnectionOverrides?: { rotationId: string; connectionId: string }[];
   };
 }
 
@@ -6131,6 +6144,7 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | MoveSecretRotationsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
   | RedactSecretVersionValueEvent

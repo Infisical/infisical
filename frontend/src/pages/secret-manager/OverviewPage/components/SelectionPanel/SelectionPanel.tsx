@@ -18,6 +18,7 @@ import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import {
   SecretType,
@@ -47,6 +48,7 @@ type Props = {
   usedBySecretSyncs?: UsedBySecretSyncs[];
   secretsToDeleteKeys: string[];
   visibleEnvs: ProjectEnv[];
+  secretRotations?: TSecretRotationV2[];
 };
 
 export const SelectionPanel = ({
@@ -56,7 +58,8 @@ export const SelectionPanel = ({
   importedBy,
   secretsToDeleteKeys,
   usedBySecretSyncs = [],
-  visibleEnvs
+  visibleEnvs,
+  secretRotations
 }: Props) => {
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
@@ -364,6 +367,7 @@ export const SelectionPanel = ({
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
+        secretRotations={secretRotations}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog

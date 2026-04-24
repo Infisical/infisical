@@ -10,7 +10,8 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretsSchema,
-  SecretType
+  SecretType,
+  TableName
 } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -22,19 +23,25 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy, pick } from "@app/lib/fn";
+import { groupBy, pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -46,6 +53,7 @@ import {
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
+import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -95,6 +103,7 @@ import {
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
+  TMoveSecretRotationsDTO,
   TMoveSecretsDTO,
   TRedactSecretVersionValueDTO,
   TStartSecretsV2MigrationDTO,
@@ -140,7 +149,12 @@ type TSecretServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "find" | "updateById" | "transaction" | "invalidateSecretCacheByProjectId"
+  >;
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "find" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
@@ -169,6 +183,8 @@ export const secretServiceFactory = ({
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
+  secretRotationV2DAL,
+  appConnectionDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
 }: TSecretServiceFactoryDep) => {
@@ -3485,6 +3501,255 @@ export const secretServiceFactory = ({
     };
   };
 
+  const moveSecretRotations = async ({
+    sourceEnvironment,
+    sourceSecretPath,
+    destinationEnvironment,
+    destinationSecretPath,
+    secretIds,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    rotationConnectionOverrides
+  }: TMoveSecretRotationsDTO) => {
+    const project = await projectDAL.findById(projectId);
+
+    if (project.version !== ProjectVersion.V3) {
+      throw new BadRequestError({
+        message: "Secret rotations are only supported on V3 projects."
+      });
+    }
+
+    const isCrossEnvMove = sourceEnvironment !== destinationEnvironment;
+    // Overrides only apply to cross-env moves; for same-env moves any supplied overrides
+    // are ignored so the rotation's connection isn't silently swapped without the user
+    // seeing the confirmation UX.
+    const connectionOverridesByRotationId = isCrossEnvMove
+      ? new Map((rotationConnectionOverrides ?? []).map((o) => [o.rotationId, o.connectionId]))
+      : new Map<string, string>();
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const sourceFolder = await folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath);
+    if (!sourceFolder) {
+      throw new NotFoundError({
+        message: `Source folder with path '${sourceSecretPath}' in environment with slug '${sourceEnvironment}' not found`
+      });
+    }
+
+    const destinationFolder = await folderDAL.findBySecretPath(
+      project.id,
+      destinationEnvironment,
+      destinationSecretPath
+    );
+    if (!destinationFolder) {
+      throw new NotFoundError({
+        message: `Destination folder with path '${destinationSecretPath}' in environment with slug '${destinationEnvironment}' not found`
+      });
+    }
+
+    const requestedSourceSecrets = await secretV2BridgeDAL.find({
+      type: SecretType.Shared,
+      folderId: sourceFolder.id,
+      $in: {
+        [`${TableName.SecretV2}.id` as "id"]: secretIds
+      }
+    });
+
+    if (requestedSourceSecrets.length !== secretIds.length) {
+      throw new NotFoundError({
+        message: `One or more secrets not found in source folder with path '${sourceSecretPath}' and environment slug '${sourceEnvironment}'`
+      });
+    }
+
+    if (requestedSourceSecrets.some((s) => !s.isRotatedSecret || !s.rotationId)) {
+      throw new BadRequestError({
+        message:
+          "All secrets in this request must be rotation-backed. Non-rotated secrets should use /api/v4/secrets/move."
+      });
+    }
+
+    const affectedRotationIds = unique(requestedSourceSecrets.map((s) => s.rotationId));
+
+    if (isCrossEnvMove) {
+      // Cross-env requires explicit per-rotation connection confirmation from the caller.
+      // The supplied connectionId can equal the rotation's current one; the presence of
+      // the entry is the confirmation.
+      for (const rotationId of affectedRotationIds) {
+        if (!connectionOverridesByRotationId.has(rotationId)) {
+          throw new BadRequestError({
+            message: "Cross-environment rotation moves require a connection override for every affected rotation."
+          });
+        }
+      }
+      const overrideEntryCount = rotationConnectionOverrides?.length ?? 0;
+      if (connectionOverridesByRotationId.size !== overrideEntryCount) {
+        throw new BadRequestError({
+          message: "rotationConnectionOverrides contains duplicate rotationId entries."
+        });
+      }
+      for (const { rotationId } of rotationConnectionOverrides ?? []) {
+        if (!affectedRotationIds.includes(rotationId)) {
+          throw new BadRequestError({
+            message: `rotationId '${rotationId}' is not part of the move selection.`
+          });
+        }
+      }
+    }
+
+    // A rotation and its mapped secrets must move as a unit. The user may have selected
+    // only a subset of a rotation's generated secrets, so expand to the full set here.
+    const sourceFolderInventory = await secretV2BridgeDAL.find({
+      type: SecretType.Shared,
+      folderId: sourceFolder.id,
+      $in: {
+        [`${TableName.SecretRotationV2SecretMapping}.rotationId` as "id"]: affectedRotationIds
+      }
+    });
+    const rotatedSecretIdsBeingMoved = new Set<string>(sourceFolderInventory.map((s) => s.id));
+
+    const affectedRotations = await secretRotationV2DAL.find({
+      projectId: project.id,
+      $in: { id: affectedRotationIds }
+    });
+
+    const destinationRotationConflicts = await secretRotationV2DAL.find({
+      projectId: project.id,
+      folderId: destinationFolder.id,
+      $in: { name: affectedRotations.map((r) => r.name) }
+    });
+    if (destinationRotationConflicts.length > 0) {
+      throw new BadRequestError({
+        message: `Destination folder already has rotation(s) with name: ${destinationRotationConflicts
+          .map((c) => c.name)
+          .join(", ")}`
+      });
+    }
+
+    const rotationPermissionContexts = [
+      { environment: sourceEnvironment, secretPath: sourceSecretPath },
+      { environment: destinationEnvironment, secretPath: destinationFolder.path }
+    ];
+    for (const rotation of affectedRotations) {
+      for (const ctx of rotationPermissionContexts) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretRotationActions.Edit,
+          subject(ProjectPermissionSub.SecretRotation, { ...ctx, connectionId: rotation.connectionId })
+        );
+      }
+    }
+
+    if (isCrossEnvMove) {
+      // Validate every override's connection: existence, org/project scope, app type match,
+      // and the actor's AppConnections.Connect ability.
+      const overrideConnectionIds = unique(Array.from(connectionOverridesByRotationId.values()));
+      const connections = await appConnectionDAL.find({ $in: { id: overrideConnectionIds } });
+      const connectionById = new Map(connections.map((c) => [c.id, c]));
+
+      for (const rotation of affectedRotations) {
+        const overrideConnectionId = connectionOverridesByRotationId.get(rotation.id);
+        if (!overrideConnectionId) {
+          // Completeness was already enforced above for cross-env; defensive skip.
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const connection = connectionById.get(overrideConnectionId);
+        if (!connection) {
+          throw new NotFoundError({
+            message: `App connection with ID '${overrideConnectionId}' not found.`
+          });
+        }
+        if (connection.orgId !== actorOrgId) {
+          throw new ForbiddenRequestError({
+            message: "App connection does not belong to the actor's organization."
+          });
+        }
+        if (connection.projectId && connection.projectId !== project.id) {
+          throw new ForbiddenRequestError({
+            message: "App connection is project-scoped to a different project."
+          });
+        }
+        const expectedApp = SECRET_ROTATION_CONNECTION_MAP[rotation.type as SecretRotation];
+        if (connection.app !== expectedApp) {
+          throw new BadRequestError({
+            message: `App connection type '${connection.app}' does not match rotation type '${rotation.type}' (expected '${expectedApp}').`
+          });
+        }
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionAppConnectionActions.Connect,
+          subject(ProjectPermissionSub.AppConnections, { connectionId: overrideConnectionId })
+        );
+      }
+    }
+
+    // Mapping rows in secret_rotation_v2_secret_mappings carry no folderId and stay as-is.
+    // updateById on the base ORM avoids the secretDAL.update version-increment, which is
+    // correct for a folder-only move since the secret value is unchanged.
+    await secretV2BridgeDAL.transaction(async (tx) => {
+      for await (const rotation of affectedRotations) {
+        const newConnectionId = connectionOverridesByRotationId.get(rotation.id) ?? rotation.connectionId;
+        await secretRotationV2DAL.updateById(
+          rotation.id,
+          { folderId: destinationFolder.id, connectionId: newConnectionId },
+          tx
+        );
+      }
+
+      for await (const rotatedSecretId of rotatedSecretIdsBeingMoved) {
+        await secretV2BridgeDAL.updateById(rotatedSecretId, { folderId: destinationFolder.id }, tx);
+      }
+    });
+
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
+    await Promise.all([
+      snapshotService.performSnapshot(destinationFolder.id),
+      snapshotService.performSnapshot(sourceFolder.id)
+    ]);
+
+    const importMutationEvent = {
+      type: ProjectEvents.SecretImportMutation as const,
+      projectId: project.id,
+      secretPath: sourceFolder.path,
+      environment: sourceFolder.environment.slug
+    };
+    await Promise.all([
+      secretQueueService.syncSecrets({
+        projectId: project.id,
+        orgId: actorOrgId,
+        secretPath: destinationFolder.path,
+        environmentSlug: destinationFolder.environment.slug,
+        actorId,
+        actor,
+        events: [importMutationEvent]
+      }),
+      secretQueueService.syncSecrets({
+        projectId: project.id,
+        orgId: actorOrgId,
+        secretPath: sourceFolder.path,
+        environmentSlug: sourceFolder.environment.slug,
+        actorId,
+        actor,
+        events: [importMutationEvent]
+      })
+    ]);
+
+    return {
+      projectId: project.id,
+      isSourceUpdated: true,
+      isDestinationUpdated: true
+    };
+  };
+
   const startSecretV2Migration = async ({
     projectId,
     actor,
@@ -3627,6 +3892,7 @@ export const secretServiceFactory = ({
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,
+    moveSecretRotations,
     startSecretV2Migration,
     getSecretsCount,
     getSecretsCountMultiEnv,

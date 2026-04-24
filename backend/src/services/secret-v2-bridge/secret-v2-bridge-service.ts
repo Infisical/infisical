@@ -20,7 +20,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSecretRotationActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -32,14 +31,13 @@ import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
-import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { diff, groupBy, unique } from "@app/lib/fn";
+import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -147,7 +145,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
-  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "find" | "updateById">;
 };
 
 const ETAG_TTL = 900; // 15 minutes in seconds
@@ -178,8 +175,7 @@ export const secretV2BridgeServiceFactory = ({
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  secretValidationRuleService,
-  secretRotationV2DAL
+  secretValidationRuleService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -2910,62 +2906,14 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    // A rotation and its mapped secrets must move as a unit: the mapping rows carry no
-    // folderId, so a partial move would orphan them, and the rotation's connectionId is
-    // env-scoped so cross-env moves aren't safe here.
-    const rotatedRequestedSecrets = requestedSourceSecrets.filter((s) => s.isRotatedSecret && s.rotationId);
-    const affectedRotationIds = unique(rotatedRequestedSecrets.map((s) => s.rotationId));
-    const rotatedSecretIdsBeingMoved = new Set<string>();
-    let affectedRotations: Awaited<ReturnType<typeof secretRotationV2DAL.find>> = [];
-
-    if (affectedRotationIds.length > 0) {
-      if (sourceEnvironment !== destinationEnvironment) {
-        throw new BadRequestError({
-          message: "Rotation-backed secrets can only be moved within the same environment."
-        });
-      }
-
-      const sourceFolderInventory = await secretDAL.find({
-        type: SecretType.Shared,
-        folderId: sourceFolder.id
+    if (requestedSourceSecrets.some((s) => s.isRotatedSecret)) {
+      throw new BadRequestError({
+        message:
+          "Rotation-backed secrets cannot be moved via this endpoint. Use /api/v4/secrets/move-rotations instead."
       });
-      sourceFolderInventory
-        .filter((s) => s.rotationId && affectedRotationIds.includes(s.rotationId))
-        .forEach((s) => rotatedSecretIdsBeingMoved.add(s.id));
-
-      affectedRotations = await secretRotationV2DAL.find({
-        projectId,
-        $in: { id: affectedRotationIds }
-      });
-
-      const destinationRotationConflicts = await secretRotationV2DAL.find({
-        projectId,
-        folderId: destinationFolder.id,
-        $in: { name: affectedRotations.map((r) => r.name) }
-      });
-      if (destinationRotationConflicts.length > 0) {
-        throw new BadRequestError({
-          message: `Destination folder already has rotation(s) with name: ${destinationRotationConflicts
-            .map((c) => c.name)
-            .join(", ")}`
-        });
-      }
-
-      const rotationPermissionContexts = [
-        { environment: sourceEnvironment, secretPath: sourceSecretPath },
-        { environment: destinationEnvironment, secretPath: destinationFolder.path }
-      ];
-      for (const rotation of affectedRotations) {
-        for (const ctx of rotationPermissionContexts) {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretRotationActions.Edit,
-            subject(ProjectPermissionSub.SecretRotation, { ...ctx, connectionId: rotation.connectionId })
-          );
-        }
-      }
     }
 
-    const sourceSecrets = requestedSourceSecrets.filter((s) => !s.isRotatedSecret);
+    const sourceSecrets = requestedSourceSecrets;
 
     const sourceActions = [
       ProjectPermissionSecretActions.Delete,
@@ -3059,7 +3007,7 @@ export const secretV2BridgeServiceFactory = ({
 
       const isEmpty = locallyCreatedSecrets.length + locallyUpdatedSecrets.length === 0;
 
-      if (isEmpty && rotatedSecretIdsBeingMoved.size === 0) {
+      if (isEmpty) {
         throw new BadRequestError({
           message: "Selected secrets already exist in the destination."
         });
@@ -3315,22 +3263,6 @@ export const secretV2BridgeServiceFactory = ({
         );
 
         isSourceUpdated = true;
-      }
-
-      // Mapping rows in secret_rotation_v2_secret_mappings carry no folderId and stay as-is.
-      // updateById on the base ORM avoids the secretDAL.update version-increment, which is
-      // correct for a folder-only move since the secret value is unchanged.
-      if (rotatedSecretIdsBeingMoved.size > 0) {
-        for await (const rotation of affectedRotations) {
-          await secretRotationV2DAL.updateById(rotation.id, { folderId: destinationFolder.id }, tx);
-        }
-
-        for await (const rotatedSecretId of rotatedSecretIdsBeingMoved) {
-          await secretDAL.updateById(rotatedSecretId, { folderId: destinationFolder.id }, tx);
-        }
-
-        isSourceUpdated = true;
-        isDestinationUpdated = true;
       }
 
       // update references to the moved secrets whenever the destination was updated directly.

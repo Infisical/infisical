@@ -12,6 +12,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  RotationConnectionOverridesStep,
+  TRotationConnectionOverrideRotation
+} from "@app/components/secret-rotations-v2/RotationConnectionOverridesStep";
+import {
   Alert,
   AlertDescription,
   Button,
@@ -37,9 +41,10 @@ import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
-import { useMoveSecrets } from "@app/hooks/api";
+import { useMoveSecretRotations, useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -51,6 +56,7 @@ type Props = {
   projectSlug: string;
   sourceSecretPath: string;
   secrets: Record<string, Record<string, SecretV3RawSanitized>>;
+  secretRotations?: TSecretRotationV2[];
   onComplete: () => void;
 };
 
@@ -191,18 +197,23 @@ const SingleEnvContent = ({
   visibleEnvs,
   projectId,
   projectSlug,
-  sourceSecretPath
+  sourceSecretPath,
+  secretRotations
 }: ContentProps) => {
   const sourceEnv = visibleEnvs[0];
   const moveSecrets = useMoveSecrets();
+  const moveSecretRotations = useMoveSecretRotations();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
     secretPath: "/"
   });
+  const [step, setStep] = useState<"destination" | "rotation-confirm">("destination");
+  const [rotationOverrides, setRotationOverrides] = useState<Record<string, string>>({});
 
   const {
     handleSubmit,
     control,
     watch,
+    getValues,
     formState: { isSubmitting }
   } = useForm<TSingleEnvFormSchema>({
     resolver: zodResolver(singleEnvFormSchema),
@@ -222,7 +233,44 @@ const SingleEnvContent = ({
     Boolean(selectedPath?.secretPath) &&
     (sourceSecretPath !== selectedPath?.secretPath || selectedEnvironment !== sourceEnv.slug);
 
-  const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
+  const secretsToMove = useMemo(
+    () =>
+      Object.values(secrets)
+        .map((secretRecord) => secretRecord[sourceEnv.slug])
+        .filter((secret): secret is SecretV3RawSanitized => Boolean(secret)),
+    [secrets, sourceEnv.slug]
+  );
+
+  const affectedRotations = useMemo<TRotationConnectionOverrideRotation[]>(() => {
+    if (!secretRotations?.length) return [];
+    const rotationIdsInSelection = new Set(
+      secretsToMove
+        .filter((s) => s.isRotatedSecret && s.rotationId)
+        .map((s) => s.rotationId as string)
+    );
+    if (rotationIdsInSelection.size === 0) return [];
+    return secretRotations
+      .filter((r) => rotationIdsInSelection.has(r.id))
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        type: r.type,
+        connection: { id: r.connection.id, name: r.connection.name, app: r.connection.app },
+        secrets: r.secrets
+          .filter((s): s is SecretV3RawSanitized => s !== null)
+          .map((s) => ({ id: s.id, key: s.key }))
+      }));
+  }, [secretRotations, secretsToMove]);
+
+  const destinationEnvironmentLabel = useMemo(() => {
+    const match = environments.find((e) => e.slug === selectedEnvironment);
+    return match?.name ?? selectedEnvironment;
+  }, [environments, selectedEnvironment]);
+
+  const submitMove = async (
+    data: TSingleEnvFormSchema,
+    rotationConnectionOverrides?: { rotationId: string; connectionId: string }[]
+  ) => {
     if (!selectedPath) {
       createNotification({
         type: "error",
@@ -230,10 +278,6 @@ const SingleEnvContent = ({
       });
       return;
     }
-
-    const secretsToMove = Object.values(secrets)
-      .map((secretRecord) => secretRecord[sourceEnv.slug])
-      .filter((secret): secret is SecretV3RawSanitized => Boolean(secret));
 
     if (!secretsToMove.length) {
       createNotification({
@@ -243,16 +287,42 @@ const SingleEnvContent = ({
       return;
     }
 
-    const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-      shouldOverwrite: data.shouldOverwrite,
+    const regularSecrets = secretsToMove.filter((s) => !s.isRotatedSecret);
+    const rotatedSecrets = secretsToMove.filter((s) => s.isRotatedSecret);
+
+    const common = {
       sourceEnvironment: sourceEnv.slug,
       sourceSecretPath,
       destinationEnvironment: data.environment,
       destinationSecretPath: selectedPath.secretPath,
       projectId,
-      projectSlug,
-      secretIds: secretsToMove.map((sec) => sec.id)
-    });
+      projectSlug
+    };
+
+    const results: { isSourceUpdated: boolean; isDestinationUpdated: boolean }[] = [];
+
+    if (regularSecrets.length > 0) {
+      results.push(
+        await moveSecrets.mutateAsync({
+          ...common,
+          shouldOverwrite: data.shouldOverwrite,
+          secretIds: regularSecrets.map((sec) => sec.id)
+        })
+      );
+    }
+
+    if (rotatedSecrets.length > 0) {
+      results.push(
+        await moveSecretRotations.mutateAsync({
+          ...common,
+          secretIds: rotatedSecrets.map((sec) => sec.id),
+          rotationConnectionOverrides
+        })
+      );
+    }
+
+    const isSourceUpdated = results.some((r) => r.isSourceUpdated);
+    const isDestinationUpdated = results.some((r) => r.isDestinationUpdated);
 
     if (isDestinationUpdated && isSourceUpdated) {
       createNotification({
@@ -279,6 +349,55 @@ const SingleEnvContent = ({
     onClose();
     onComplete();
   };
+
+  const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
+    const isCrossEnv = data.environment !== sourceEnv.slug;
+    if (isCrossEnv && affectedRotations.length > 0) {
+      setStep("rotation-confirm");
+      return;
+    }
+    await submitMove(data);
+  };
+
+  const handleRotationConfirm = async () => {
+    const overrides = affectedRotations.map((rotation) => ({
+      rotationId: rotation.id,
+      connectionId: rotationOverrides[rotation.id] ?? rotation.connection.id
+    }));
+    await submitMove(getValues(), overrides);
+  };
+
+  const isMutating = moveSecrets.isPending || moveSecretRotations.isPending;
+
+  if (step === "rotation-confirm") {
+    return (
+      <div>
+        <RotationConnectionOverridesStep
+          rotations={affectedRotations}
+          projectId={projectId}
+          value={rotationOverrides}
+          onChange={setRotationOverrides}
+          destinationEnvironmentLabel={destinationEnvironmentLabel}
+        />
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => setStep("destination")} isDisabled={isMutating}>
+            Back
+          </Button>
+          <Button
+            variant="project"
+            onClick={handleRotationConfirm}
+            isDisabled={isMutating}
+            isPending={isMutating}
+          >
+            Confirm & Move
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  const isCrossEnv = selectedEnvironment !== sourceEnv.slug;
+  const primaryLabel = isCrossEnv && affectedRotations.length > 0 ? "Next" : "Move Secrets";
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -361,7 +480,7 @@ const SingleEnvContent = ({
           isDisabled={!destinationSelected || isSubmitting}
           isPending={isSubmitting}
         >
-          Move Secrets
+          {primaryLabel}
         </Button>
       </DialogFooter>
     </form>
@@ -422,6 +541,14 @@ const MultiEnvContent = ({
 
   const destinationSelected =
     Boolean(selectedPath?.secretPath) && sourceSecretPath !== selectedPath?.secretPath;
+
+  const hasSelectedRotationSecrets = useMemo(
+    () =>
+      Object.values(secrets).some((secretRecord) =>
+        Object.values(secretRecord).some((secret) => secret.isRotatedSecret)
+      ),
+    [secrets]
+  );
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
@@ -566,6 +693,15 @@ const MultiEnvContent = ({
           Select a single environment to move secrets across environments.
         </AlertDescription>
       </Alert>
+      {hasSelectedRotationSecrets && (
+        <Alert variant="info" className="mb-4">
+          <InfoIcon />
+          <AlertDescription>
+            A selected secret is managed by a rotation. Rotation secrets cannot be moved across all
+            environments. Select a single environment to move rotation secrets.
+          </AlertDescription>
+        </Alert>
+      )}
       <Field>
         <FieldLabel>Secret Path</FieldLabel>
         <FieldContent>

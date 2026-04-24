@@ -563,6 +563,16 @@ export type TMoveSecretsDTO = {
   shouldOverwrite: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TMoveSecretRotationsDTO = {
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  secretIds: string[];
+  rotationConnectionOverrides?: { rotationId: string; connectionId: string }[];
+} & Omit<TProjectPermission, "projectId">;
+
 export enum SecretProtectionType {
   Approval = "approval",
   Direct = "direct"
