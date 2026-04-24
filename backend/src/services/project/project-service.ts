@@ -1374,22 +1374,6 @@ export const projectServiceFactory = ({
     };
   };
 
-  // Dashboard endpoints run project-wide aggregate SQL and cannot be safely narrowed per-row.
-  // When a user's Read Certificates permission carries any metadata condition, the aggregates
-  // would leak counts for out-of-scope certificates, so we deny the endpoints entirely.
-  const hasMetadataScopedCertRule = (permission: MongoAbility): boolean =>
-    permission.rules.some((rule) => {
-      const actionMatches = Array.isArray(rule.action)
-        ? rule.action.includes(ProjectPermissionCertificateActions.Read)
-        : rule.action === ProjectPermissionCertificateActions.Read;
-      const subjectMatches = Array.isArray(rule.subject)
-        ? rule.subject.includes(ProjectPermissionSub.Certificates)
-        : rule.subject === ProjectPermissionSub.Certificates;
-      if (!actionMatches || !subjectMatches) return false;
-      const conds = rule.conditions as Record<string, unknown> | undefined;
-      return Boolean(conds && typeof conds === "object" && "metadata" in conds);
-    });
-
   const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
@@ -1407,12 +1391,6 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
-
-    if (hasMetadataScopedCertRule(permission)) {
-      throw new ForbiddenRequestError({
-        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
-      });
-    }
 
     return withCache({
       keyStore,
@@ -1446,12 +1424,6 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
-
-    if (hasMetadataScopedCertRule(permission)) {
-      throw new ForbiddenRequestError({
-        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
-      });
-    }
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
@@ -1488,12 +1460,6 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
-
-    if (hasMetadataScopedCertRule(permission)) {
-      throw new ForbiddenRequestError({
-        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
-      });
-    }
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
