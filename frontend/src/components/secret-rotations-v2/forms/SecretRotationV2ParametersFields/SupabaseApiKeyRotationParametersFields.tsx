@@ -15,6 +15,12 @@ const KEY_TYPE_OPTIONS = [
   { label: "Secret", value: SupabaseApiKeyType.Secret }
 ];
 
+const formatProjectOptionLabel = (option: TSupabaseProject) => (
+  <span>
+    {option.name} <span className="text-mineshaft-400">(id: {option.id})</span>
+  </span>
+);
+
 export const SupabaseApiKeyRotationParametersFields = () => {
   const { control } = useFormContext<
     TSecretRotationV2Form & {
@@ -55,11 +61,7 @@ export const SupabaseApiKeyRotationParametersFields = () => {
               placeholder="Select a project..."
               getOptionLabel={(option) => `${option.name} (id: ${option.id})`}
               getOptionValue={(option) => option.id}
-              formatOptionLabel={(option) => (
-                <span>
-                  {option.name} <span className="text-mineshaft-400">(id: {option.id})</span>
-                </span>
-              )}
+              formatOptionLabel={formatProjectOptionLabel}
             />
           </FormControl>
         )}
