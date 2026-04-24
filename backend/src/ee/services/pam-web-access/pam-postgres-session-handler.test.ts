@@ -361,6 +361,36 @@ describe("handlePostgresSession", () => {
     expect(failed.error).toContain("Maximum");
   });
 
+  test("concurrent open-connection requests cannot bypass the cap", async () => {
+    // Simulates a client firing 25 opens at once. Without the pendingOpens
+    // counter, each check against controllers.size would see 0 before any
+    // controller finished connecting, and all 25 would succeed.
+    const ctx = createMockContext();
+    await handlePostgresSession(ctx, mockParams);
+
+    const onMessage = getMessageHandler(ctx);
+    const ATTEMPTS = 25;
+    for (let i = 0; i < ATTEMPTS; i += 1) {
+      onMessage(
+        Buffer.from(
+          JSON.stringify({
+            type: PostgresClientMessageType.OpenConnection,
+            id: `eeeeeeee-eeee-eeee-eeee-${String(i).padStart(12, "0")}`
+          })
+        )
+      );
+    }
+
+    await new Promise<void>((r) => {
+      setTimeout(r, 50);
+    });
+
+    const opened = getSentResponses(ctx).filter((r) => r.type === PostgresServerMessageType.ConnectionOpened);
+    const failed = getSentResponses(ctx).filter((r) => r.type === PostgresServerMessageType.ConnectionOpenFailed);
+    expect(opened.length).toBe(20);
+    expect(failed.length).toBe(ATTEMPTS - 20);
+  });
+
   test("cleanup disposes every controller", async () => {
     const ctx = createMockContext();
     const result = await handlePostgresSession(ctx, mockParams);

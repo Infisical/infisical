@@ -57,6 +57,9 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const markConnectionDeadRef = useRef<((connId: string) => void) | null>(null);
   const resetTabsRef = useRef<(() => void) | null>(null);
   const openFirstQueryTabRef = useRef<(() => Promise<string | null>) | null>(null);
+  // Shared guard so the first-connect effect and onReconnected don't both
+  // end up opening a default tab.
+  const defaultTabOpenedRef = useRef(false);
 
   const {
     isConnected,
@@ -94,7 +97,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     onReconnected: () => {
       // Drop all tabs on reconnect — all connectionIds are invalid.
       resetTabsRef.current?.();
-      // Kick off a fresh query tab, same as page load.
+      // Claim the default-tab slot so the first-connect effect skips it.
+      defaultTabOpenedRef.current = true;
       const opener = openFirstQueryTabRef.current;
       if (opener) opener().catch(() => {});
     }
@@ -219,8 +223,10 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
       setHasDisconnected(false);
       (async () => {
         await loadSchemas();
-        // On very first connect, open a default query tab like the old layout.
-        if (tabs.length === 0) {
+        // Open a default query tab once — onReconnected handles subsequent
+        // reconnects via defaultTabOpenedRef, so we don't double-open.
+        if (!defaultTabOpenedRef.current) {
+          defaultTabOpenedRef.current = true;
           await openQueryTab();
         }
       })().catch(() => {});

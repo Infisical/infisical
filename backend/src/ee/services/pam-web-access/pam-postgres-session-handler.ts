@@ -88,6 +88,10 @@ export const handlePostgresSession = async (
   };
 
   const controllers = new Map<string, TPostgresConnectionController>();
+  // Reserved slots for in-flight opens — counted against the cap so a burst of
+  // open-connection messages can't all pass the check before any of them
+  // finishes inserting into `controllers`.
+  let pendingOpens = 0;
 
   // Metadata requests (get-schemas / get-tables) are processed outside any
   // controller queue so sidebar refreshes don't block tab work.
@@ -96,7 +100,7 @@ export const handlePostgresSession = async (
   // --- Per-message handlers ---
 
   const openTabConnection = async (requestId: string) => {
-    if (controllers.size >= MAX_CONNECTIONS_PER_WS) {
+    if (controllers.size + pendingOpens >= MAX_CONNECTIONS_PER_WS) {
       sendResponse({
         type: PostgresServerMessageType.ConnectionOpenFailed,
         id: requestId,
@@ -105,6 +109,7 @@ export const handlePostgresSession = async (
       return;
     }
 
+    pendingOpens += 1;
     const connectionId = crypto.randomUUID();
     try {
       const controller = await createPostgresConnectionController({
@@ -139,6 +144,8 @@ export const handlePostgresSession = async (
         id: requestId,
         error: msg
       });
+    } finally {
+      pendingOpens -= 1;
     }
   };
 
