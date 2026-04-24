@@ -10,6 +10,7 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
@@ -426,7 +427,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       // Add search functionality
       if (search) {
         baseQuery = baseQuery.where((qb) => {
-          void qb.whereILike("message", `%${search}%`);
+          void qb.whereILike("message", `%${sanitizeSqlLikeString(search)}%`);
         });
       }
 

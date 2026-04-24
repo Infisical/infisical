@@ -2,7 +2,9 @@ import * as x509 from "@peculiar/x509";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -59,6 +61,7 @@ export const generateRaCertificate = async (
 export const isSignerCertIssuedByCa = async ({
   signerCertDer,
   caId,
+  certificateDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
@@ -66,6 +69,7 @@ export const isSignerCertIssuedByCa = async ({
 }: {
   signerCertDer: Buffer;
   caId: string;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -96,7 +100,29 @@ export const isSignerCertIssuedByCa = async ({
       })
     );
 
-    return verifiedChains.some(Boolean);
+    const isChainValid = verifiedChains.some(Boolean);
+    if (!isChainValid) {
+      return false;
+    }
+
+    // Check if the certificate has been revoked in the database
+    // Use transaction to read from primary DB (not replica) since this is a security-critical check
+    const isRevoked = await certificateDAL.transaction(async (tx) => {
+      const storedCert = await certificateDAL.findOne(
+        {
+          serialNumber: signerCert.serialNumber,
+          caId
+        },
+        tx
+      );
+      return storedCert?.status === CertStatus.REVOKED;
+    });
+
+    if (isRevoked) {
+      return false;
+    }
+
+    return true;
   } catch {
     return false;
   }

@@ -43,6 +43,7 @@ type UseDataExplorerSessionOptions = {
   orgId: string;
   resourceName: string;
   accountName: string;
+  reason?: string;
   onSessionEnd?: (reason?: string) => void;
   // Server pushes connection-closed when a BE controller dies unexpectedly.
   onConnectionClosed?: (connectionId: string, reason: string) => void;
@@ -68,6 +69,7 @@ export const useDataExplorerSession = ({
   orgId,
   resourceName,
   accountName,
+  reason: accessReason,
   onSessionEnd,
   onConnectionClosed,
   onReconnected
@@ -219,7 +221,7 @@ export const useDataExplorerSession = ({
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
           `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-          { projectId, mfaSessionId }
+          { projectId, mfaSessionId, reason: accessReason }
         );
         openWebSocket(data.ticket);
       } catch (err: unknown) {
@@ -268,7 +270,7 @@ export const useDataExplorerSession = ({
         readyRejectRef.current?.(new Error("Failed to connect"));
       }
     },
-    [accountId, projectId, openWebSocket]
+    [accountId, projectId, accessReason, openWebSocket]
   );
 
   const disconnect = useCallback(() => {
@@ -370,7 +372,7 @@ export const useDataExplorerSession = ({
   );
 
   const approvalRequestUrl = approvalState?.approvalRequestId
-    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalState.approvalRequestId}`
+    ? `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalState.approvalRequestId}`
     : undefined;
 
   // --- Request helpers ---

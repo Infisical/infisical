@@ -633,9 +633,7 @@ export const AccessApprovalRequest = ({
 
       {!!selectedRequest && (
         <ReviewAccessRequestModal
-          selectedEnvSlug={envFilter}
           policies={policies || []}
-          selectedRequester={requestedByFilter}
           projectSlug={projectSlug}
           request={selectedRequest}
           members={members || []}

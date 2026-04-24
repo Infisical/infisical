@@ -136,6 +136,9 @@ export const useCreateAccessRequest = () => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
       });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
     }
   });
 };
@@ -153,7 +156,7 @@ export const useUpdateAccessRequest = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
       });
     }
   });
@@ -177,7 +180,7 @@ export const useRevokeAccessRequest = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
       });
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
@@ -195,8 +198,6 @@ export const useReviewAccessRequest = () => {
       requestId: string;
       status: "approved" | "rejected";
       projectSlug: string;
-      envSlug?: string;
-      requestedBy?: string;
       bypassReason?: string;
     }
   >({
@@ -210,14 +211,9 @@ export const useReviewAccessRequest = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug, envSlug, requestedBy, bypassReason }) => {
+    onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(
-          projectSlug,
-          envSlug,
-          requestedBy,
-          bypassReason
-        )
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
       });
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)

@@ -217,6 +217,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
           "X-Vault-Token": accessToken,
           ...(namespace ? { "X-Vault-Namespace": namespace } : {})
         },
+        maxRedirects: 0,
         httpsAgent
       });
 

@@ -365,7 +365,7 @@ export const RequestGrantTab = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
                               <Link
-                                to="/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId"
+                                to="/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId"
                                 params={{
                                   orgId: currentProject.orgId,
                                   projectId: currentProject.id,

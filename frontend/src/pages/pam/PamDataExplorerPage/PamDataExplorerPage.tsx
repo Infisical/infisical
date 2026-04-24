@@ -23,7 +23,11 @@ import type { SchemaInfo, TableInfo } from "./data-explorer-types";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { useQueryTabs } from "./use-query-tabs";
 
-export const PamDataExplorerPage = () => {
+type Props = {
+  reason?: string;
+};
+
+export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const { accountId, projectId, orgId } = useParams({
     strict: false
   }) as {
@@ -79,9 +83,10 @@ export const PamDataExplorerPage = () => {
     orgId,
     resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
-    onSessionEnd: (reason?: string) => {
+    reason,
+    onSessionEnd: (endReason?: string) => {
       setHasDisconnected(true);
-      setDisconnectReason(reason ?? null);
+      setDisconnectReason(endReason ?? null);
     },
     onConnectionClosed: (connId: string) => {
       markConnectionDeadRef.current?.(connId);

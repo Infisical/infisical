@@ -319,6 +319,12 @@ export enum EventType {
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
 
+  CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
+  GET_CERTIFICATE_REQUEST = "get-certificate-request",
+  GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
+  LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
+  TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
+
   SCEP_ENROLLMENT = "scep-enrollment",
   SCEP_RENEWAL = "scep-renewal",
   SCEP_DYNAMIC_CHALLENGE_GENERATED = "scep-dynamic-challenge-generated",

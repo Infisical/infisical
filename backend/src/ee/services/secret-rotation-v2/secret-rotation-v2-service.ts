@@ -1474,7 +1474,7 @@ export const secretRotationV2ServiceFactory = ({
       {
         projectId,
         $search: {
-          name: `%${search}%`
+          name: search
         },
         $in: {
           folderId: permissiveFolderMappings.map(({ folderId }) => folderId)

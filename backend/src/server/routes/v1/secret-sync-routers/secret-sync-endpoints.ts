@@ -48,7 +48,8 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
   const specialCases: Record<string, string> = {
     [SecretSync.OnePass]: "OnePassword",
     [SecretSync.GitHub]: "GitHub",
-    [SecretSync.GitLab]: "GitLab"
+    [SecretSync.GitLab]: "GitLab",
+    [SecretSync.TravisCI]: "TravisCI"
   };
   const destinationNameForOpId =
     specialCases[destination] ??

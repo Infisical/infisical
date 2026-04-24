@@ -5,6 +5,7 @@ import * as crypto from "crypto";
 import { TCertificateSyncs } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -211,6 +212,8 @@ export const azureKeyVaultPkiSyncFactory = ({
   certificateDAL
 }: TAzureKeyVaultPkiSyncFactoryDeps) => {
   const $getAzureKeyVaultCertificates = async (accessToken: string, vaultBaseUrl: string, syncId = "unknown") => {
+    await blockLocalAndPrivateIpAddresses(vaultBaseUrl);
+
     const paginateAzureKeyVaultCertificates = async () => {
       let result: GetAzureKeyVaultCertificate[] = [];
 
@@ -218,6 +221,7 @@ export const azureKeyVaultPkiSyncFactory = ({
 
       while (currentUrl) {
         const urlToFetch = currentUrl; // Capture current URL to avoid loop function issue
+        await blockLocalAndPrivateIpAddresses(urlToFetch);
         const res = await withRateLimitRetry(
           () =>
             request.get<{ value: GetAzureKeyVaultCertificate[]; nextLink: string }>(urlToFetch, {
@@ -248,14 +252,13 @@ export const azureKeyVaultPkiSyncFactory = ({
     const certificateResults = await executeWithConcurrencyLimit(
       enabledAzureKeyVaultCertificates,
       async (getAzureKeyVaultCertificate) => {
-        const azureKeyVaultCertificate = await request.get<GetAzureKeyVaultCertificate>(
-          `${getAzureKeyVaultCertificate.id}?api-version=7.4`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
+        const certificateDetailUrl = `${getAzureKeyVaultCertificate.id}?api-version=7.4`;
+        await blockLocalAndPrivateIpAddresses(certificateDetailUrl);
+        const azureKeyVaultCertificate = await request.get<GetAzureKeyVaultCertificate>(certificateDetailUrl, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
           }
-        );
+        });
 
         let certPem = "";
         if (azureKeyVaultCertificate.data.cer) {
@@ -732,6 +735,8 @@ export const azureKeyVaultPkiSyncFactory = ({
 
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
+
+    await blockLocalAndPrivateIpAddresses(destinationConfig.vaultBaseUrl);
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const certificateNamesToRemove: string[] = [];

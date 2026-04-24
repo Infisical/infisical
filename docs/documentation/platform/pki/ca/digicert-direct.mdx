@@ -1,0 +1,74 @@
+---
+title: "DigiCert (CertCentral Services API)"
+description: "Issue OV/EV certificates from DigiCert using the CertCentral Services API with manual DNS validation."
+---
+
+## Concept
+
+Infisical can issue OV and EV TLS certificates directly from [DigiCert CertCentral](https://www.digicert.com/) using the [CertCentral Services API](https://dev.digicert.com/en/certcentral-apis/services-api.html).
+
+## Prerequisites
+
+- A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.
+- A CertCentral **Organization** that has been pre-validated by DigiCert
+- Entitlement to either the OV or EV SSL product on your CertCentral account.
+
+## Create a DigiCert Certificate Authority
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Create a DigiCert App Connection">
+        Follow the [DigiCert App Connection guide](/integrations/app-connections/digicert) to store your CertCentral API key in Infisical.
+      </Step>
+      <Step title="Create the External CA">
+        In your Certificate Manager project, navigate to **Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **DigiCert CertCentral** as the type, and fill out the form:
+
+        - **App Connection** — the DigiCert connection you created
+        - **Organization** — the CertCentral organization that should appear on issued certificates
+        - **Product** — the CertCentral entitlement this CA will issue under
+
+        ![DigiCert External CA Form](/images/platform/pki/digicert/digicert-external-ca-form.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a DigiCert Certificate Authority, make an API request to the [Create DigiCert CA](/api-reference/endpoints/certificate-authorities/digicert/create) API endpoint.
+
+    ```bash Create a DigiCert CA
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "projectId": "<project-id>",
+        "name": "digicert-ov",
+        "status": "active",
+        "configuration": {
+          "appConnectionId": "<digicert-app-connection-id>",
+          "organizationId": 112236,
+          "productNameId": "ssl_plus"
+        }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## Issue a certificate
+
+After creating the CA and a Certificate Profile, request a certificate as you normally would. The request will move through the following states:
+
+1. **Pending Validation**: DigiCert has accepted the order. Complete the domain control validation directly in DigiCert CertCentral.
+2. Your team completes validation on the CertCentral side.
+3. Infisical re-checks DigiCert. If you don't want to wait, click **Trigger Validation** on the request row to force an immediate check. When DigiCert confirms the order, Infisical downloads the certificate and chain and moves the request to **Issued**.
+4. If DigiCert does not issue within 24 hours the request transitions to **Failed**. Complete validation on CertCentral and submit a new request.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What happens when I revoke a DigiCert-issued certificate in Infisical?">
+    Revoking the certificate in Infisical immediately marks it `Revoked` in the local inventory
+    **and** submits a revocation request to DigiCert CertCentral against the underlying order.
+    Depending on your CertCentral account's revocation policy, DigiCert may queue that request for
+    administrator approval before the certificate is actually revoked on their side.
+  </Accordion>
+</AccordionGroup>

@@ -21,6 +21,7 @@ import {
 } from "@app/db/schemas";
 import { TIdentityLdapAuths } from "@app/db/schemas/identity-ldap-auths";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
@@ -178,7 +179,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .as("paginatedIdentity");
 
       if (search?.length) {
-        void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
+        void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(search)}%`);
       }
 
       if (limit) {
@@ -686,7 +687,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .count();
 
       if (search?.length) {
-        void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);
+        void query.whereILike(`${TableName.Identity}.name`, `%${sanitizeSqlLikeString(search)}%`);
       }
 
       const identities = await query;

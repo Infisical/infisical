@@ -41,9 +41,12 @@ export const SecretSyncsBrowser = () => {
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting"},
     {"name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools"},
     {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"},
+    {"name": "Ona", "slug": "ona", "path": "/integrations/secret-syncs/ona", "description": "Learn how to sync secrets from Infisical to Ona (Gitpod) projects or user environments.", "category": "Hosting"},
     {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"},
     {"name": "Azure Entra ID SCIM", "slug": "azure-entra-id-scim", "path": "/integrations/secret-syncs/azure-entra-id-scim", "description": "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", "category": "Identity & Auth"},
-    {"name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security"}
+    {"name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security"},
+    {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
+
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

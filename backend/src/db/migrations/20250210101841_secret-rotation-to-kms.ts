@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -15,11 +14,14 @@ import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/
 
 const BATCH_SIZE = 500;
 export async function up(knex: Knex): Promise<void> {
-  const hasEncryptedRotationData = await knex.schema.hasColumn(TableName.SecretRotation, "encryptedRotationData");
+  const hasEncryptedRotationData = await knex.schema.hasColumn(
+    TableName.DeprecatedSecretRotationV1,
+    "encryptedRotationData"
+  );
 
-  const hasRotationTable = await knex.schema.hasTable(TableName.SecretRotation);
+  const hasRotationTable = await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1);
   if (hasRotationTable) {
-    await knex.schema.alterTable(TableName.SecretRotation, (t) => {
+    await knex.schema.alterTable(TableName.DeprecatedSecretRotationV1, (t) => {
       if (!hasEncryptedRotationData) t.binary("encryptedRotationData");
     });
   }
@@ -36,9 +38,9 @@ export async function up(knex: Knex): Promise<void> {
   const projectEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
-  const secretRotations = await knex(TableName.SecretRotation)
-    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretRotation}.envId`)
-    .select(selectAllTableCols(TableName.SecretRotation))
+  const secretRotations = await knex(TableName.DeprecatedSecretRotationV1)
+    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.DeprecatedSecretRotationV1}.envId`)
+    .select(`${TableName.DeprecatedSecretRotationV1}.*`)
     .select(knex.ref("projectId").withSchema(TableName.Environment))
     .orderBy(`${TableName.Environment}.projectId` as "projectId");
 
@@ -88,25 +90,28 @@ export async function up(knex: Knex): Promise<void> {
 
   for (let i = 0; i < updatedRotationData.length; i += BATCH_SIZE) {
     // eslint-disable-next-line no-await-in-loop
-    await knex(TableName.SecretRotation)
+    await knex(TableName.DeprecatedSecretRotationV1)
       .insert(updatedRotationData.slice(i, i + BATCH_SIZE))
       .onConflict("id")
       .merge();
   }
 
   if (hasRotationTable) {
-    await knex.schema.alterTable(TableName.SecretRotation, (t) => {
+    await knex.schema.alterTable(TableName.DeprecatedSecretRotationV1, (t) => {
       if (!hasEncryptedRotationData) t.binary("encryptedRotationData").notNullable().alter();
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasEncryptedRotationData = await knex.schema.hasColumn(TableName.SecretRotation, "encryptedRotationData");
+  const hasEncryptedRotationData = await knex.schema.hasColumn(
+    TableName.DeprecatedSecretRotationV1,
+    "encryptedRotationData"
+  );
 
-  const hasRotationTable = await knex.schema.hasTable(TableName.SecretRotation);
+  const hasRotationTable = await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1);
   if (hasRotationTable) {
-    await knex.schema.alterTable(TableName.SecretRotation, (t) => {
+    await knex.schema.alterTable(TableName.DeprecatedSecretRotationV1, (t) => {
       if (hasEncryptedRotationData) t.dropColumn("encryptedRotationData");
     });
   }

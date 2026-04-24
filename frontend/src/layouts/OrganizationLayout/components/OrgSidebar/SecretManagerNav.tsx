@@ -1,8 +1,6 @@
-import { ActivityIcon, BookCheck, FileText, Plug, RefreshCw, Settings, Shield } from "lucide-react";
+import { ActivityIcon, BookCheck, FileText, Plug, Settings, Shield } from "lucide-react";
 
 import { ProjectIcon } from "@app/components/v3";
-import { useProject } from "@app/context";
-import { useGetSecretRotations } from "@app/hooks/api";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import {
@@ -18,13 +16,7 @@ export const SecretManagerNav = ({
 }: {
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
-  const { projectId } = useProject();
-
   const { submenu: approvalsSubmenu, pendingRequestsCount } = useApprovalSubmenu();
-  const { data: secretRotations } = useGetSecretRotations({
-    workspaceId: projectId,
-    options: { refetchOnMount: false }
-  });
 
   const items: NavItem[] = [
     {
@@ -46,13 +38,6 @@ export const SecretManagerNav = ({
       pathSuffix: "integrations",
       submenu: INTEGRATIONS_SUBMENU
     },
-    {
-      label: "Secret Rotations",
-      icon: RefreshCw,
-      pathSuffix: "secret-rotation",
-      hidden: !secretRotations?.length
-    },
-
     {
       label: "Access Control",
       icon: Shield,

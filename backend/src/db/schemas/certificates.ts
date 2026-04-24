@@ -44,7 +44,8 @@ export const CertificatesSchema = z.object({
   isCA: z.boolean().nullable().optional(),
   pathLength: z.number().nullable().optional(),
   source: z.string().nullable().optional(),
-  discoveryMetadata: z.unknown().nullable().optional()
+  discoveryMetadata: z.unknown().nullable().optional(),
+  externalMetadata: z.unknown().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

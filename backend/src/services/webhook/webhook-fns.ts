@@ -7,6 +7,8 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -301,7 +303,9 @@ export const fnTriggerWebhook = async ({
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");
   let { projectName } = event.payload;
   if (!projectName) {
-    const project = await projectDAL.findById(event.payload.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(event.payload.projectId), () =>
+      projectDAL.findById(event.payload.projectId)
+    );
     projectName = project.name;
   }
 

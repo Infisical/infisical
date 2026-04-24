@@ -500,15 +500,6 @@ import {
   TSecretReferencesV2,
   TSecretReferencesV2Insert,
   TSecretReferencesV2Update,
-  TSecretRotationOutputs,
-  TSecretRotationOutputsInsert,
-  TSecretRotationOutputsUpdate,
-  TSecretRotationOutputV2,
-  TSecretRotationOutputV2Insert,
-  TSecretRotationOutputV2Update,
-  TSecretRotations,
-  TSecretRotationsInsert,
-  TSecretRotationsUpdate,
   TSecretRotationsV2,
   TSecretRotationsV2Insert,
   TSecretRotationsV2Update,
@@ -1282,16 +1273,6 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesEnvironmentsInsert,
       TSecretApprovalPoliciesEnvironmentsUpdate
     >;
-    [TableName.SecretRotation]: KnexOriginal.CompositeTableType<
-      TSecretRotations,
-      TSecretRotationsInsert,
-      TSecretRotationsUpdate
-    >;
-    [TableName.SecretRotationOutput]: KnexOriginal.CompositeTableType<
-      TSecretRotationOutputs,
-      TSecretRotationOutputsInsert,
-      TSecretRotationOutputsUpdate
-    >;
     [TableName.Snapshot]: KnexOriginal.CompositeTableType<
       TSecretSnapshots,
       TSecretSnapshotsInsert,
@@ -1391,11 +1372,6 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestSecretTagsV2,
       TSecretApprovalRequestSecretTagsV2Insert,
       TSecretApprovalRequestSecretTagsV2Update
-    >;
-    [TableName.SecretRotationOutputV2]: KnexOriginal.CompositeTableType<
-      TSecretRotationOutputV2,
-      TSecretRotationOutputV2Insert,
-      TSecretRotationOutputV2Update
     >;
     // KMS service
     [TableName.KmsServerRootConfig]: KnexOriginal.CompositeTableType<

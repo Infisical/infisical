@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { UnauthorizedError } from "../errors";
+import { sanitizeSqlLikeString } from "../fn";
 
 type TKnexDynamicPrimitiveOperator<T extends object> =
   | {
@@ -47,11 +48,11 @@ export const buildDynamicKnexQuery = <T extends object>(
         break;
       }
       case "startsWith": {
-        void queryBuilder.whereILike(filterAst.field, `${filterAst.value}%`);
+        void queryBuilder.whereILike(filterAst.field, `${sanitizeSqlLikeString(filterAst.value)}%`);
         break;
       }
       case "endsWith": {
-        void queryBuilder.whereILike(filterAst.field, `%${filterAst.value}`);
+        void queryBuilder.whereILike(filterAst.field, `%${sanitizeSqlLikeString(filterAst.value)}`);
         break;
       }
       case "notIn": {

@@ -22,6 +22,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           .trim()
           .email()
           .array()
+          .max(100)
           .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
         organizationId: z.string().trim(),
         organizationRoleSlug: z.string().default(OrgMembershipRole.Member)

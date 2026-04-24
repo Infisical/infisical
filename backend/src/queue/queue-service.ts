@@ -54,7 +54,6 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
-  SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
@@ -105,12 +104,12 @@ export enum QueueName {
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
-  CertificateCleanup = "certificate-cleanup"
+  CertificateCleanup = "certificate-cleanup",
+  DigiCertOrderPolling = "digicert-order-polling"
 }
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
@@ -177,7 +176,8 @@ export enum QueueJobs {
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
-  DailySecretSyncRetry = "daily-secret-sync-retry-job"
+  DailySecretSyncRetry = "daily-secret-sync-retry-job",
+  DigiCertOrderPolling = "digicert-order-polling-job"
 }
 
 export type TQueueOptions = {
@@ -210,10 +210,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.SecretRotation]: {
-    payload: { rotationId: string };
-    name: QueueJobs.SecretRotation;
   };
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
@@ -551,6 +547,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.CertificateCleanup;
     payload: undefined;
   };
+  [QueueName.DigiCertOrderPolling]: {
+    name: QueueJobs.DigiCertOrderPolling;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -649,7 +649,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
 
   // Remove orphaned job schedulers left in Redis by the QueueInternalRecovery/QueueInternalReconciliation deleted queues.
   void (async () => {
-    const staleQueueNames = ["queue-internal-recovery", "queue-internal-reconciliation"];
+    const staleQueueNames = ["queue-internal-recovery", "queue-internal-reconciliation", "secret-rotation"];
     await Promise.allSettled(
       staleQueueNames.map(async (name) => {
         const staleQueue = new Queue(name, {

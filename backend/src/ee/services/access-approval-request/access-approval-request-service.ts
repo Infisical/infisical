@@ -8,6 +8,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -27,7 +29,11 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
@@ -339,7 +345,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to modify this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
 
     if (!project) {
       throw new NotFoundError({
@@ -362,6 +370,14 @@ export const accessApprovalRequestServiceFactory = ({
     if (accessApprovalRequest.isTemporary && accessApprovalRequest.temporaryRange) {
       if (ms(temporaryRange) > ms(accessApprovalRequest.temporaryRange)) {
         throw new BadRequestError({ message: "Updated access duration must be less than current access duration" });
+      }
+    }
+
+    if (policy.maxTimePeriod) {
+      if (ms(temporaryRange) > ms(policy.maxTimePeriod)) {
+        throw new BadRequestError({
+          message: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`
+        });
       }
     }
 
@@ -490,7 +506,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -499,8 +515,17 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
+
+    if (!canReadAllApprovalRequests) {
+      requests = requests.filter((request) => request.requestedByUserId === actorId);
+    }
 
     if (authorUserId) {
       requests = requests.filter((request) => request.requestedByUserId === authorUserId);
@@ -610,7 +635,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
     }
 
-    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
+      projectDAL.findById(accessApprovalRequest.projectId)
+    );
     if (!project) {
       throw new NotFoundError({ message: "The project associated with this access request was not found." });
     }
@@ -901,7 +928,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -910,7 +937,16 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
+    const count = await accessApprovalRequestDAL.getCount({
+      projectId: project.id,
+      policyId,
+      requestedByUserId: canReadAllApprovalRequests ? undefined : actorId
+    });
 
     return { count };
   };

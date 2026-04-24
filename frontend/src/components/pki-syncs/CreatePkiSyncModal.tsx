@@ -65,7 +65,7 @@ export const CreatePkiSyncModal = ({
           )
         }
         className="max-w-3xl"
-        bodyClassName="overflow-visible"
+        bodyClassName={selectedSync ? "overflow-visible" : undefined}
         subTitle={
           selectedSync ? undefined : "Select a third-party service to sync certificates to."
         }

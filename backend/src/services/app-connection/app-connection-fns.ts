@@ -109,6 +109,11 @@ import {
 } from "./databricks/databricks-connection-fns";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
+  DigiCertConnectionMethod,
+  getDigiCertConnectionListItem,
+  validateDigiCertConnectionCredentials
+} from "./digicert";
+import {
   DigitalOceanConnectionMethod,
   getDigitalOceanConnectionListItem,
   validateDigitalOceanConnectionCredentials
@@ -174,6 +179,7 @@ import {
   validateOctopusDeployConnectionCredentials
 } from "./octopus-deploy";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
+import { getOnaConnectionListItem, OnaConnectionMethod, validateOnaConnectionCredentials } from "./ona";
 import {
   getOpenRouterConnectionListItem,
   OpenRouterConnectionMethod,
@@ -201,6 +207,11 @@ import {
   TerraformCloudConnectionMethod,
   validateTerraformCloudConnectionCredentials
 } from "./terraform-cloud";
+import {
+  getTravisCIConnectionListItem,
+  TravisCIConnectionMethod,
+  validateTravisCIConnectionCredentials
+} from "./travis-ci";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
@@ -233,7 +244,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
   AppConnection.Venafi,
-  AppConnection.NetScaler
+  AppConnection.NetScaler,
+  AppConnection.DigiCert
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -294,7 +306,10 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
-    getNetScalerConnectionListItem()
+    getNetScalerConnectionListItem(),
+    getOnaConnectionListItem(),
+    getDigiCertConnectionListItem(),
+    getTravisCIConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -441,12 +456,15 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
         deps.identityUaDAL
       )) as TAppConnectionCredentialsValidator,
-    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Doppler]: validateDopplerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DigiCert]: validateDigiCertConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -458,6 +476,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubRadarConnectionMethod.App:
       return "GitHub App";
     case GitHubConnectionMethod.Pat:
+    case OnaConnectionMethod.PersonalAccessToken:
       return "Personal Access Token";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -493,6 +512,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case TravisCIConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -526,12 +546,12 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SmbConnectionMethod.Credentials:
       return "Credentials";
     case VenafiConnectionMethod.ApiKey:
-      return "API Key";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case DigiCertConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -652,8 +672,11 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
+  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
-  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
+  [AppConnection.Ona]: platformManagedCredentialsNotSupported,
+  [AppConnection.DigiCert]: platformManagedCredentialsNotSupported,
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

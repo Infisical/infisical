@@ -22,7 +22,6 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
     route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
-    route("/secret-rotation", "secret-manager/SecretRotationPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
     route("/commits/$environment/$folderId", [
@@ -294,11 +293,10 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
       index("cert-manager/CodeSigningPage/route.tsx"),
       route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")
     ]),
-    route("/approvals", "cert-manager/ApprovalsPage/route.tsx"),
-    route(
-      "/approval-requests/$approvalRequestId",
-      "cert-manager/ApprovalRequestDetailPage/route.tsx"
-    ),
+    route("/approvals", [
+      index("cert-manager/ApprovalsPage/route.tsx"),
+      route("/$approvalRequestId", "cert-manager/ApprovalRequestDetailPage/route.tsx")
+    ]),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
@@ -408,8 +406,10 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
     route("/account-policies", "pam/PamAccountPoliciesPage/route.tsx"),
-    route("/approvals", "pam/ApprovalsPage/route.tsx"),
-    route("/approval-requests/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx"),
+    route("/approvals", [
+      index("pam/ApprovalsPage/route.tsx"),
+      route("/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx")
+    ]),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
@@ -462,7 +462,6 @@ export const routes = rootRoute("root.tsx", [
       route("/admin", "auth/AdminLoginPage/route.tsx"),
       route("/select-organization", "auth/SelectOrgPage/route.tsx"),
       route("/ldap", "auth/LoginLdapPage/route.tsx"),
-      route("/provider/success", "auth/ProviderSuccessPage/route.tsx"),
       route("/provider/error", "auth/ProviderErrorPage/route.tsx")
     ]),
     route("/signup", [

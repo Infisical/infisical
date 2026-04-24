@@ -68,12 +68,15 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
             .optional()
         })
         .superRefine((data, ctx) => {
-          if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Incoming Webhook URL is invalid.",
-              path: ["webhookUrl"]
-            });
+          if (data.type === WebhookType.SLACK) {
+            const parsed = new URL(data.webhookUrl);
+            if (parsed.hostname !== "hooks.slack.com") {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Incoming Webhook URL is invalid.",
+                path: ["webhookUrl"]
+              });
+            }
           }
         }),
       response: {

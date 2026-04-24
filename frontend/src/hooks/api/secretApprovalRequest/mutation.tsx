@@ -22,7 +22,9 @@ export const useUpdateSecretApprovalReviewStatus = () => {
     },
     onSuccess: (_, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.list({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     }
   });
@@ -40,6 +42,9 @@ export const useUpdateSecretApprovalRequestStatus = () => {
     },
     onSuccess: (_, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     }
   });
@@ -57,7 +62,9 @@ export const usePerformSecretApprovalRequestMerge = () => {
     },
     onSuccess: (_, { id, projectId }) => {
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.list({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     }
   });

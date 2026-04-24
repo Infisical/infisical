@@ -233,6 +233,16 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectId;
       secondaryText = `${destinationConfig.environment} - ${destinationConfig.secretPath}`;
       break;
+    case SecretSync.Ona:
+      primaryText = destinationConfig.projectName || destinationConfig.projectId;
+      secondaryText = "Ona Project";
+      break;
+    case SecretSync.TravisCI:
+      primaryText = destinationConfig.repositorySlug;
+      secondaryText = destinationConfig.branch
+        ? `Branch - ${destinationConfig.branch}`
+        : "Repository";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

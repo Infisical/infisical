@@ -13,6 +13,8 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -136,7 +138,9 @@ export const newProjectMembershipUserFactory = ({
 
     const appCfg = getConfig();
     const scope = getScopeField(dto.scopeData);
-    const project = await projectDAL.findById(scope.value);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
 
     const orgMembershipAcceptedUserIds = orgMembershipAccepted.map((el) => el.actorUserId as string);
     const emails = newMembers

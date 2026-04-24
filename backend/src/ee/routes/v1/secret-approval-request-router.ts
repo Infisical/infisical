@@ -133,7 +133,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string()
       }),
       body: z.object({
-        bypassReason: z.string().optional()
+        bypassReason: z.string().max(1000).optional()
       }),
       response: {
         200: z.object({

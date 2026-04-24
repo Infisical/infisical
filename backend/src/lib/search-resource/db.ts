@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { sanitizeSqlLikeString } from "../fn";
 import { SearchResourceOperators, TSearchResourceOperator } from "./search";
 
 const buildKnexQuery = (
@@ -65,15 +66,15 @@ const buildKnexQuery = (
       if (typeof value !== "string") throw new Error("Invalid value type for $contains operator");
 
       if (typeof fields === "string") {
-        return void query.whereILike(fields, `%${value}%`);
+        return void query.whereILike(fields, `%${sanitizeSqlLikeString(value)}%`);
       }
 
       return void query.where((qb) => {
         return fields.forEach((el, index) => {
           if (index === 0) {
-            return void qb.whereILike(el, `%${value}%`);
+            return void qb.whereILike(el, `%${sanitizeSqlLikeString(value)}%`);
           }
-          return void qb.orWhereILike(el, `%${value}%`);
+          return void qb.orWhereILike(el, `%${sanitizeSqlLikeString(value)}%`);
         });
       });
     }

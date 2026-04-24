@@ -6,6 +6,7 @@ export {
   useImportCertificate,
   useRenewCertificate,
   useRevokeCert,
+  useTriggerCertificateRequestValidation,
   useUpdateCertificate,
   useUpdateRenewalConfig
 } from "./mutations";

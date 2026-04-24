@@ -75,7 +75,9 @@ export const main = async ({
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
-    trustProxy: true,
+    // When TRUSTED_PROXY_CIDRS is configured, only requests from those sources have their
+    // forwarded-IP headers honored. Unset preserves legacy behavior (trust all) for backcompat.
+    trustProxy: appCfg.TRUSTED_PROXY_CIDRS ?? true,
 
     connectionTimeout: 100_000,
     ignoreTrailingSlash: true,

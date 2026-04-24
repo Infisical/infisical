@@ -80,6 +80,7 @@ export const KeyStorePrefixes = {
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
+  UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 
@@ -99,6 +100,8 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
+  PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
+
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
@@ -114,9 +117,10 @@ export const KeyStoreTtls = {
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   MfaSessionInSeconds: 300, // 5 minutes
   WebAuthnChallengeInSeconds: 300, // 5 minutes
+  UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
-  RefreshTokenGraceInSeconds: 30,
+  RefreshTokenGraceInSeconds: 10,
   InsightsCacheInSeconds: 300 // 5 minutes
 };
 

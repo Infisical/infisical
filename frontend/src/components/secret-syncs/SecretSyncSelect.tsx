@@ -24,15 +24,19 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
     initPerPage: 16
   });
 
-  const filteredOptions = useMemo(
-    () =>
-      secretSyncOptions?.filter(
-        ({ name, destination }) =>
-          name?.toLowerCase().includes(search.trim().toLowerCase()) ||
-          destination.toLowerCase().includes(search.toLowerCase())
-      ) ?? [],
-    [secretSyncOptions, search]
-  );
+  const filteredOptions = useMemo(() => {
+    const searchLower = search.trim().toLowerCase();
+    return (
+      secretSyncOptions?.filter(({ name, destination }) => {
+        const aliases = SECRET_SYNC_MAP[destination]?.aliases ?? [];
+        return (
+          name?.toLowerCase().includes(searchLower) ||
+          destination.toLowerCase().includes(searchLower) ||
+          aliases.some((alias) => alias.toLowerCase().includes(searchLower))
+        );
+      }) ?? []
+    );
+  }, [secretSyncOptions, search]);
 
   useResetPageHelper({
     totalCount: filteredOptions.length,

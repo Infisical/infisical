@@ -14,6 +14,7 @@ An account policy is a named, project-scoped configuration that contains one or 
 |---|---|---|
 | **Command Blocking** | Prevents execution of commands matching specified regex patterns. | SSH |
 | **Session Log Masking** | Redacts data matching specified regex patterns from session logs. | All resource types |
+| **Require Access Reason** | Requires the user to provide a reason before a session can start. The reason is stored for audit. | All resource types |
 
 A policy can be **active** or **inactive**. Only active policies are enforced during sessions.
 
@@ -34,6 +35,7 @@ Navigate to your PAM project sidebar and click **Account Policies**, then click 
 
     - **Command Blocking**: Add one or more regex patterns. Commands matching any of these patterns will be blocked during SSH sessions.
     - **Session Log Masking**: Add one or more regex patterns. Any data matching these patterns will be redacted in session logs.
+    - **Require Access Reason**: Forces the user to provide a non-empty reason before they can start a session. When the rule is active, the CLI prompts for a reason (or accepts the `--reason` flag) and the browser shows a Reason Required screen before the session is created.
 
     For each rule, click the **+** button to add additional patterns.
 

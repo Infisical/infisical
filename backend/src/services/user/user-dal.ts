@@ -13,6 +13,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TUserDALFactory = ReturnType<typeof userDALFactory>;
@@ -38,10 +39,10 @@ export const userDALFactory = (db: TDbClient) => {
       if (searchTerm) {
         query = query.where((qb) => {
           void qb
-            .whereILike("email", `%${searchTerm}%`)
-            .orWhereILike("firstName", `%${searchTerm}%`)
-            .orWhereILike("lastName", `%${searchTerm}%`)
-            .orWhereRaw('lower("username") like ?', `%${searchTerm}%`);
+            .whereILike("email", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereILike("firstName", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereILike("lastName", `%${sanitizeSqlLikeString(searchTerm)}%`)
+            .orWhereRaw('lower("username") like ?', `%${sanitizeSqlLikeString(searchTerm)}%`);
         });
       }
 
@@ -91,7 +92,9 @@ export const userDALFactory = (db: TDbClient) => {
           isGhost: false
         })
         .whereIn(`${TableName.Users}.id`, userIds)
-        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`);
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
+        .select(selectAllTableCols(TableName.Users))
+        .select(db.ref("publicKey").withSchema(TableName.UserEncryptionKey));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user ids batch" });
     }

@@ -1,5 +1,5 @@
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export type TAssumeProjectPrivilegeDTO = {
   targetActorType: ActorType.USER | ActorType.IDENTITY;
@@ -24,12 +24,14 @@ export interface TAssumePrivilegeServiceFactory {
   }>;
   verifyAssumePrivilegeToken: (
     token: string,
-    tokenVersionId: string
-  ) => {
+    tokenVersionId: string,
+    actorAuthMethod: ActorAuthMethod,
+    actorOrgId: string
+  ) => Promise<{
     tokenVersionId: string;
     projectId: string;
     requesterId: string;
     actorType: ActorType;
     actorId: string;
-  };
+  }>;
 }

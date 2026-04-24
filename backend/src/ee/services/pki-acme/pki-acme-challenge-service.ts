@@ -10,6 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
@@ -94,6 +95,10 @@ export const pkiAcmeChallengeServiceFactory = ({
 
     // TODO: read config from the profile to get the timeout instead
     const timeoutMs = 10 * 1000; // 10 seconds
+
+    // SSRF protection: resolve DNS and block private/local IP addresses
+    await blockLocalAndPrivateIpAddresses(challengeUrl.toString());
+
     // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
     //         a long running operation for long time. But assuming we are not performing a tons of
     //         challenge validation at the same time, it should be fine.

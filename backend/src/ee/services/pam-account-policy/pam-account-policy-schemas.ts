@@ -26,9 +26,12 @@ const RuleConfigSchema = z.object({
   patterns: z.array(re2PatternSchema).min(1).max(20, "A rule can have at most 20 patterns")
 });
 
+const RequireReasonConfigSchema = z.object({});
+
 export const PolicyRulesBaseSchema = z.object({
   [PamAccountPolicyRuleType.CommandBlocking]: RuleConfigSchema.optional(),
-  [PamAccountPolicyRuleType.SessionLogMasking]: RuleConfigSchema.optional()
+  [PamAccountPolicyRuleType.SessionLogMasking]: RuleConfigSchema.optional(),
+  [PamAccountPolicyRuleType.RequireReason]: RequireReasonConfigSchema.optional()
 });
 
 export const PolicyRulesInputSchema = PolicyRulesBaseSchema.refine(

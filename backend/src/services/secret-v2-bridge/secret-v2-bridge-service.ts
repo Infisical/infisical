@@ -631,7 +631,7 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: [{ key: finalKey, value: secretValue }]
+        secrets: [{ key: finalKey, value: secretValue, secretId }]
       });
     }
 
@@ -2337,7 +2337,11 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToValidate = [
           ...secretsToUpdate
             .filter((el) => el.secretValue || el.newSecretName)
-            .map((el) => ({ key: el.newSecretName || el.secretKey, value: el.secretValue })),
+            .map((el) => ({
+              key: el.newSecretName || el.secretKey,
+              value: el.secretValue,
+              secretId: secretsToUpdateInDBGroupedByKey[el.secretKey]?.[0]?.id
+            })),
           ...(updateMode === SecretUpdateMode.Upsert
             ? secretsToCreate.map((el) => ({ key: el.secretKey, value: el.secretValue }))
             : [])

@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TEmailDomainDALFactory = ReturnType<typeof emailDomainDALFactory>;
@@ -27,8 +28,8 @@ export const emailDomainDALFactory = (db: TDbClient) => {
     if (searchTerm) {
       void query.where((qb) => {
         void qb
-          .where(`${TableName.EmailDomains}.domain`, "ilike", `%${searchTerm}%`)
-          .orWhere(`${TableName.Organization}.name`, "ilike", `%${searchTerm}%`);
+          .where(`${TableName.EmailDomains}.domain`, "ilike", `%${sanitizeSqlLikeString(searchTerm)}%`)
+          .orWhere(`${TableName.Organization}.name`, "ilike", `%${sanitizeSqlLikeString(searchTerm)}%`);
       });
     }
 

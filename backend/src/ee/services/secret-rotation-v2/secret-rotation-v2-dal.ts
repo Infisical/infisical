@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { TSecretRotationsV2 } from "@app/db/schemas/secret-rotations-v2";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -198,10 +199,11 @@ export const secretRotationV2DALFactory = (
       .countDistinct(`${TableName.SecretRotationV2}.name`);
 
     if (search) {
+      const sanitizedSearch = sanitizeSqlLikeString(search);
       void query.where((qb) => {
         void qb
-          .whereILike(`${TableName.SecretV2}.key`, `%${search}%`)
-          .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${search}%`);
+          .whereILike(`${TableName.SecretV2}.key`, `%${sanitizedSearch}%`)
+          .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${sanitizedSearch}%`);
       });
     }
 
@@ -265,10 +267,11 @@ export const secretRotationV2DALFactory = (
         );
 
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         void subquery.where((qb) => {
           void qb
-            .whereILike(`${TableName.SecretV2}.key`, `%${search}%`)
-            .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${search}%`);
+            .whereILike(`${TableName.SecretV2}.key`, `%${sanitizedSearch}%`)
+            .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${sanitizedSearch}%`);
         });
       }
 

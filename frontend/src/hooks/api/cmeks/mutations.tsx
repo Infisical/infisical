@@ -4,6 +4,8 @@ import { encodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {
+  TCmekBulkExportPrivateKeysDTO,
+  TCmekBulkExportPrivateKeysResponse,
   TCmekDecrypt,
   TCmekDecryptResponse,
   TCmekEncrypt,
@@ -124,6 +126,19 @@ export const useCmekDecrypt = () => {
         {
           ciphertext
         }
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useBulkExportCmekPrivateKeys = () => {
+  return useMutation({
+    mutationFn: async ({ keyIds }: TCmekBulkExportPrivateKeysDTO) => {
+      const { data } = await apiRequest.post<TCmekBulkExportPrivateKeysResponse>(
+        "/api/v1/kms/keys/bulk-export-private-keys",
+        { keyIds }
       );
 
       return data;

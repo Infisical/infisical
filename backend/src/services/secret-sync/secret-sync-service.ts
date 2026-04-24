@@ -16,7 +16,6 @@ import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -63,7 +62,6 @@ type TSecretSyncServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath">;
@@ -86,7 +84,6 @@ export const secretSyncServiceFactory = ({
   appConnectionService,
   kmsService,
   permissionService,
-  projectDAL,
   orgDAL,
   projectBotService,
   secretSyncQueue,
@@ -360,12 +357,9 @@ export const secretSyncServiceFactory = ({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
 
-    const project = await projectDAL.findById(projectId);
-    if (!project) {
-      throw new NotFoundError({ message: "Project not found" });
-    }
-
-    const organization = await orgDAL.findById(project.orgId);
+    // getProjectPermission above throws NotFoundError if the project doesn't exist and
+    // guarantees actor.orgId === project.orgId — no separate project lookup needed.
+    const organization = await orgDAL.findById(actor.orgId);
     if (organization?.blockDuplicateSecretSyncDestinations) {
       const duplicateCheck = await checkDuplicateDestination(
         {
@@ -494,11 +488,9 @@ export const secretSyncServiceFactory = ({
     let { folderId } = secretSync;
 
     if (params.destinationConfig) {
-      const project = await projectDAL.findById(secretSync.projectId);
-      if (!project) {
-        throw new NotFoundError({ message: "Project not found" });
-      }
-      const organization = await orgDAL.findById(project.orgId);
+      // getProjectPermission above throws NotFoundError if the project doesn't exist and
+      // guarantees actor.orgId === project.orgId — no separate project lookup needed.
+      const organization = await orgDAL.findById(actor.orgId);
 
       if (organization?.blockDuplicateSecretSyncDestinations) {
         const duplicateCheck = await checkDuplicateDestination(

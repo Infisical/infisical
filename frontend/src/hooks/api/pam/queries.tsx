@@ -60,7 +60,6 @@ export const pamKeys = {
     projectId,
     { search }
   ],
-  getAccountPolicy: (policyId: string) => [...pamKeys.accountPolicy(), "get", policyId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   getSessionLogs: (sessionId: string) => [...pamKeys.session(), "logs", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],

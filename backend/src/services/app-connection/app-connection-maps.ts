@@ -57,7 +57,10 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
-  [AppConnection.Anthropic]: "Anthropic"
+  [AppConnection.Anthropic]: "Anthropic",
+  [AppConnection.Ona]: "Ona",
+  [AppConnection.DigiCert]: "DigiCert",
+  [AppConnection.TravisCI]: "Travis CI"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -117,5 +120,8 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
-  [AppConnection.Anthropic]: AppConnectionPlanType.Regular
+  [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
+  [AppConnection.Ona]: AppConnectionPlanType.Regular,
+  [AppConnection.DigiCert]: AppConnectionPlanType.Regular,
+  [AppConnection.TravisCI]: AppConnectionPlanType.Regular
 };

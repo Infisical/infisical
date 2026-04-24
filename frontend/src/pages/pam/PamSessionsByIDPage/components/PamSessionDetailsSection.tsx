@@ -34,7 +34,8 @@ export const PamSessionDetailsSection = ({
     actorIp,
     actorUserAgent,
     startedAt,
-    expiresAt
+    expiresAt,
+    reason
   }
 }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -104,6 +105,12 @@ export const PamSessionDetailsSection = ({
 
         <DetailItem label="User Agent">
           <p className="truncate">{actorUserAgent}</p>
+        </DetailItem>
+
+        <DetailItem label="Reason">
+          <div className="max-h-32 overflow-y-auto">
+            <p className="break-words whitespace-pre-wrap">{reason || "—"}</p>
+          </div>
         </DetailItem>
 
         <DetailItem label="Created At">

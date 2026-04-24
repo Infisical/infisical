@@ -18,7 +18,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
     try {
       const projectKey = await (tx || db.replicaNode())(TableName.ProjectKeys)
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
-        .join(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
         .where({ projectId, receiverId: userId })
         .orderBy("createdAt", "desc", "last")
         .select(selectAllTableCols(TableName.ProjectKeys))
@@ -38,7 +38,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeProjectId` as "scopeProjectId", projectId)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
+        .leftJoin(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .select(db.ref("userId").withSchema(TableName.Users), "publicKey");
       return pubKeys;
     } catch (error) {

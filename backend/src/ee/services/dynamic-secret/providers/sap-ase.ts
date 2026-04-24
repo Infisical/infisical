@@ -158,7 +158,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
     const masterClient = await $getClient(providerInputs, true);
 
     // Get all processes for this login and kill them. If there are active connections to the database when drop login happens, it will throw an error.
-    const result = await masterClient.query<{ spid?: string }>(`sp_who '${username}'`);
+    const result = await masterClient.query<{ spid?: string }>(`sp_who ?`, [username]);
 
     if (result && result.length > 0) {
       for await (const row of result) {

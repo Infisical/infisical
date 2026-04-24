@@ -28,6 +28,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAiMcpActivityLogServiceFactory } from "../ai-mcp-activity-log/ai-mcp-activity-log-service";
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
 import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
+import { ssrfSafeMcpFetch } from "../ai-mcp-server/ai-mcp-server-fns";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
@@ -322,6 +323,7 @@ export const aiMcpEndpointServiceFactory = ({
           });
 
           const clientTransport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+            fetch: ssrfSafeMcpFetch,
             requestInit: { headers }
           });
 
@@ -1352,6 +1354,7 @@ export const aiMcpEndpointServiceFactory = ({
         });
 
         const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          fetch: ssrfSafeMcpFetch,
           requestInit: {
             headers: {
               Authorization: `Bearer ${accessToken}`
@@ -1368,11 +1371,12 @@ export const aiMcpEndpointServiceFactory = ({
         const err = error as { code?: string | number; cause?: { code?: string } };
         const errCode = err?.code || err?.cause?.code;
 
-        let message = "An unknown error occurred";
+        // All non-auth failures share one message: separating connection-refused
+        // from other errors would let an attacker probe whether internal ports
+        // are open by cycling redirect targets.
+        let message = "Unable to verify token";
         if (errCode === 401 || errCode === 403) {
           message = "Invalid token";
-        } else if (errCode === "ECONNREFUSED" || errCode === "ENOTFOUND" || errCode === "ETIMEDOUT") {
-          message = "Server unreachable";
         }
 
         return { valid: false, message };

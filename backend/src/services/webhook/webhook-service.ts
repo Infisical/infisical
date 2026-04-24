@@ -4,6 +4,8 @@ import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -169,7 +171,9 @@ export const webhookServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const project = await projectDAL.findById(webhook.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(webhook.projectId), () =>
+      projectDAL.findById(webhook.projectId)
+    );
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: project.id

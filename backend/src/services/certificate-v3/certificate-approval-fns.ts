@@ -14,6 +14,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
+import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
@@ -438,8 +439,29 @@ export const certificateApprovalServiceFactory = (
 
     const caType = (targetCa.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
-    if (caType !== CaType.ACME && caType !== CaType.AZURE_AD_CS && caType !== CaType.AWS_PCA) {
+    if (
+      caType !== CaType.ACME &&
+      caType !== CaType.AZURE_AD_CS &&
+      caType !== CaType.AWS_PCA &&
+      caType !== CaType.AWS_ACM_PUBLIC_CA
+    ) {
       return null;
+    }
+
+    // Pre-flight validation for ACM — fail the approval synchronously rather than
+    // letting the job produce a FAILED request row after the approver already accepted.
+    if (caType === CaType.AWS_ACM_PUBLIC_CA) {
+      validateAcmIssuanceInputs({
+        csr: certRequest.csr || undefined,
+        keyAlgorithm: certRequest.keyAlgorithm || undefined,
+        altNames: altNames ?? undefined,
+        ttl,
+        organization: certRequest.organization || undefined,
+        organizationalUnit: certRequest.organizationalUnit || undefined,
+        country: certRequest.country || undefined,
+        state: certRequest.state || undefined,
+        locality: certRequest.locality || undefined
+      });
     }
 
     const orderId = randomUUID();
@@ -448,6 +470,7 @@ export const certificateApprovalServiceFactory = (
       certificateId: orderId,
       profileId: profile.id,
       caId: profile.caId || "",
+      caType,
       ttl: ttl || "1y",
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",

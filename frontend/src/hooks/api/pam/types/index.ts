@@ -128,6 +128,7 @@ export type TPamSession = {
   aiInsightsStatus?: string | null;
   aiInsightsError?: string | null;
   aiInsights?: TPamSessionAiInsights | null;
+  reason?: string | null;
 };
 
 // Resource DTOs
@@ -293,11 +294,12 @@ export type TPamSessionLogsPage = {
 // Account Policy types
 export enum PamAccountPolicyRuleType {
   CommandBlocking = "command-blocking",
-  SessionLogMasking = "session-log-masking"
+  SessionLogMasking = "session-log-masking",
+  RequireReason = "require-reason"
 }
 
 export type TPamAccountPolicyRuleConfig = {
-  patterns: string[];
+  patterns?: string[];
 };
 
 export type TPamAccountPolicyRules = Partial<

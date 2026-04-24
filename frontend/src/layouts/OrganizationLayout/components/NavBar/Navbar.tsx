@@ -216,7 +216,6 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
-    SecurityClient.setProviderAuthToken("");
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 

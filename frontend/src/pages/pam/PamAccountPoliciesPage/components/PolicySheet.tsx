@@ -44,6 +44,7 @@ import {
 import { PAM_RESOURCE_TYPE_MAP } from "@app/hooks/api/pam/maps";
 
 import {
+  PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS,
   PAM_ACCOUNT_POLICY_RULE_METADATA,
   PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES
 } from "./constants";
@@ -66,13 +67,21 @@ const RulePatternSchema = z.object({
     .refine(isValidRegex, { message: "Invalid regular expression" })
 });
 
-const RuleSchema = z.object({
-  ruleType: z.nativeEnum(PamAccountPolicyRuleType),
-  patterns: z
-    .array(RulePatternSchema)
-    .min(1, "At least one pattern is required")
-    .max(20, "A rule can have at most 20 patterns")
-});
+const RuleSchema = z
+  .object({
+    ruleType: z.nativeEnum(PamAccountPolicyRuleType),
+    patterns: z.array(RulePatternSchema).max(20, "A rule can have at most 20 patterns").optional()
+  })
+  .superRefine((rule, ctx) => {
+    if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[rule.ruleType]) return;
+    if (!rule.patterns || rule.patterns.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patterns"],
+        message: "At least one pattern is required"
+      });
+    }
+  });
 
 const FormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
@@ -90,19 +99,33 @@ type Props = {
 };
 
 const rulesToFormData = (rules: TPamAccountPolicyRules): TFormData["rules"] => {
-  return (Object.entries(rules) as [PamAccountPolicyRuleType, { patterns: string[] }][])
-    .filter(([, config]) => config?.patterns)
-    .map(([ruleType, config]) => ({
-      ruleType,
-      patterns: config.patterns.map((p) => ({ value: p }))
-    }));
+  return (
+    Object.entries(rules) as [PamAccountPolicyRuleType, { patterns?: string[] } | undefined][]
+  )
+    .filter(([ruleType, config]) => {
+      if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType]) return Boolean(config);
+      return Boolean(config?.patterns);
+    })
+    .map(([ruleType, config]) => {
+      if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType]) {
+        return { ruleType };
+      }
+      return {
+        ruleType,
+        patterns: (config?.patterns ?? []).map((p) => ({ value: p }))
+      };
+    });
 };
 
 const formDataToRules = (rules: TFormData["rules"]): TPamAccountPolicyRules => {
   return rules.reduce<TPamAccountPolicyRules>((acc, rule) => {
-    acc[rule.ruleType] = {
-      patterns: rule.patterns.map((p) => p.value)
-    };
+    if (PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[rule.ruleType]) {
+      acc[rule.ruleType] = {};
+    } else {
+      acc[rule.ruleType] = {
+        patterns: (rule.patterns ?? []).map((p) => p.value)
+      };
+    }
     return acc;
   }, {});
 };
@@ -376,7 +399,13 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                                 disabled={isAdded}
                                 onSelect={() => {
                                   if (!isAdded) {
-                                    appendRule({ ruleType, patterns: [{ value: "" }] });
+                                    const isPatternless =
+                                      PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType];
+                                    appendRule(
+                                      isPatternless
+                                        ? { ruleType }
+                                        : { ruleType, patterns: [{ value: "" }] }
+                                    );
                                     setAddRuleOpen(false);
                                   }
                                 }}
@@ -403,6 +432,7 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                 const ruleType = currentRules[ruleIndex]?.ruleType;
                 if (!ruleType) return null;
                 const meta = PAM_ACCOUNT_POLICY_RULE_METADATA[ruleType];
+                const isPatternless = PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS[ruleType];
 
                 return (
                   <div key={ruleField.id} className="rounded-md border border-border bg-card p-4">
@@ -424,9 +454,11 @@ export const PolicySheet = ({ isOpen, onOpenChange, projectId, policy }: Props) 
                       <p className="mt-2 text-xs text-muted">{meta.description}</p>
                     )}
 
-                    <div className="mt-3">
-                      <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
-                    </div>
+                    {!isPatternless && (
+                      <div className="mt-3">
+                        <RulePatterns control={control} ruleIndex={ruleIndex} errors={errors} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

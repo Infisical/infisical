@@ -29,11 +29,13 @@ import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema"
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
+import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
+import { TravisCISyncDestinationSchema } from "./travis-ci-sync-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
 import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
@@ -75,7 +77,9 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ChefSyncDestinationSchema,
   CircleCISyncDestinationSchema,
   AzureEntraIdScimSyncDestinationSchema,
-  ExternalInfisicalSyncDestinationSchema
+  ExternalInfisicalSyncDestinationSchema,
+  OnaSyncDestinationSchema,
+  TravisCISyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

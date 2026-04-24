@@ -398,6 +398,7 @@ export const pkiAcmeServiceFactory = ({
       switch (orderWithCertificateRequest.certificateRequest.status) {
         case CertificateRequestStatus.PENDING:
         case CertificateRequestStatus.PENDING_APPROVAL:
+        case CertificateRequestStatus.PENDING_VALIDATION:
           break;
         case CertificateRequestStatus.ISSUED:
           newStatus = AcmeOrderStatus.Valid;

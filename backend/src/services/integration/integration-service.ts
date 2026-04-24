@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
@@ -106,6 +107,10 @@ export const integrationServiceFactory = ({
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' not found in environment with slug'${sourceEnvironment}'`
       });
+    }
+
+    if (url) {
+      await blockLocalAndPrivateIpAddresses(url);
     }
 
     const integration = await integrationDAL.create({

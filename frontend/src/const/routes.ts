@@ -11,10 +11,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/login/select-organization",
       "/_restrict-login-signup/login/select-organization"
     ),
-    ProviderSuccessPage: setRoute(
-      "/login/provider/success",
-      "/_restrict-login-signup/login/provider/success"
-    ),
     SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
     AccountRecoveryResetPage: setRoute(
       "/account-recovery-reset",
@@ -382,8 +378,8 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"
     ),
     ApprovalRequestDetailPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId"
+      "/organizations/$orgId/projects/pam/$projectId/approvals/$approvalRequestId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals/$approvalRequestId"
     ),
     PamSessionByIDPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",

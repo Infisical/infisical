@@ -5,6 +5,7 @@ import { Tables } from "knex/types/tables";
 import { TableName } from "@app/db/schemas";
 
 import { DatabaseError } from "../errors";
+import { sanitizeSqlLikeString } from "../fn";
 import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";
 
 export * from "./connection";
@@ -70,7 +71,7 @@ export const buildFindFilter =
     if ($search) {
       Object.entries($search).forEach(([key, val]) => {
         if (val) {
-          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, val as never);
+          void bd.whereILike(`${tableName ? `${tableName}.` : ""}${key}`, `%${sanitizeSqlLikeString(val as string)}%`);
         }
       });
     }

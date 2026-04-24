@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const CertificateRequestsSchema = z.object({
@@ -36,7 +38,8 @@ export const CertificateRequestsSchema = z.object({
   organizationalUnit: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
-  locality: z.string().nullable().optional()
+  locality: z.string().nullable().optional(),
+  encryptedPrivateKey: zodBuffer.nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

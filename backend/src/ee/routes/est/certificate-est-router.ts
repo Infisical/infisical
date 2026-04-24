@@ -56,9 +56,14 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
   });
 
   // Authenticate EST client using Passphrase
-  server.addHook("onRequest", async (req, res) => {
+  // Using preHandler instead of onRequest ensures rate limiting (preValidation) runs first
+  server.addHook("preHandler", async (req, res) => {
     const { authorization } = req.headers;
-    const urlFragments = req.url.split("/");
+
+    // Strip query string before parsing URL path to prevent bypass attacks
+    // (e.g., /simpleenroll?foo=/cacerts would otherwise match "cacerts")
+    const urlPath = req.url.split("?")[0];
+    const urlFragments = urlPath.split("/");
 
     // cacerts endpoint should not have any authentication
     if (urlFragments[urlFragments.length - 1] === "cacerts") {

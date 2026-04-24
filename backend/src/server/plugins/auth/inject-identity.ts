@@ -176,38 +176,42 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Match against the pathname only — req.url includes the query string, which a
+      // client can use to smuggle matching substrings and skip auth injection.
+      const pathname = req.url.split("?", 1)[0];
+
       if (
-        req.url.includes(".well-known/est") ||
-        (req.url.includes("/api/v3/auth/") && !req.url.includes("/api/v3/auth/select-organization"))
+        pathname.startsWith("/.well-known/est") ||
+        (pathname.startsWith("/api/v3/auth/") && !pathname.startsWith("/api/v3/auth/select-organization"))
       ) {
         return;
       }
 
-      if (req.url.includes("/scep/") && req.url.includes("pkiclient.exe")) {
+      if (pathname.includes("/scep/") && pathname.includes("pkiclient.exe")) {
         return;
       }
 
-      if (req.url === "/api/v1/ai/mcp/servers/oauth/callback") {
+      if (pathname === "/api/v1/ai/mcp/servers/oauth/callback") {
         return;
       }
 
       // Authentication is handled on a route-level
-      if (req.url === "/api/v1/relays/register-instance-relay") {
+      if (pathname === "/api/v1/relays/register-instance-relay") {
         return;
       }
 
       // Authentication is handled on a route-level (enrollment token in body)
-      if (req.url === "/api/v3/gateways/token-auth/enroll") {
+      if (pathname === "/api/v3/gateways/token-auth/enroll") {
         return;
       }
 
       // Authentication is handled on a route-level
-      if (req.url === "/api/v1/relays/heartbeat-instance-relay") {
+      if (pathname === "/api/v1/relays/heartbeat-instance-relay") {
         return;
       }
 
       // Authentication is handled on a route-level here.
-      if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+      if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;
       }
 

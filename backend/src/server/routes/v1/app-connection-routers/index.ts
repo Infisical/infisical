@@ -21,6 +21,7 @@ import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
+import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
@@ -43,6 +44,7 @@ import { registerNetScalerConnectionRouter } from "./netscaler-connection-router
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
+import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
@@ -53,6 +55,7 @@ import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
@@ -118,5 +121,8 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
-    [AppConnection.Anthropic]: registerAnthropicConnectionRouter
+    [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
+    [AppConnection.Ona]: registerOnaConnectionRouter,
+    [AppConnection.DigiCert]: registerDigiCertConnectionRouter,
+    [AppConnection.TravisCI]: registerTravisCIConnectionRouter
   };

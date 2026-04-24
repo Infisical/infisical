@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import picomatch from "picomatch";
 import RandExp from "randexp";
+import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
 import {
@@ -126,7 +127,8 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredSuffix]: "Suffix",
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.MinLength]: "Min length",
-  [ConstraintType.MaxLength]: "Max length"
+  [ConstraintType.MaxLength]: "Max length",
+  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
 };
 
 const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
@@ -374,10 +376,19 @@ export const PasswordGenerator = ({
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {valueConstraints.map((constraint) => (
                   <span key={constraint.type} className="text-xs">
-                    <span className="font-medium text-muted">
-                      {CONSTRAINT_LABELS[constraint.type]}:
-                    </span>{" "}
-                    <span className="font-mono text-label">{constraint.value}</span>
+                    <span
+                      className={twMerge(
+                        "font-medium text-muted",
+                        constraint.type === ConstraintType.PreventValueReuse && "text-label"
+                      )}
+                    >
+                      {CONSTRAINT_LABELS[constraint.type]}
+                    </span>
+                    {constraint.type !== ConstraintType.PreventValueReuse && (
+                      <>
+                        : <span className="font-mono text-label">{constraint.value}</span>
+                      </>
+                    )}
                   </span>
                 ))}
               </div>

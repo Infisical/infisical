@@ -32,11 +32,13 @@ import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
+import { OnaSyncFields } from "./OnaSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
+import { TravisCISyncFields } from "./TravisCISyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
 import { ZabbixSyncFields } from "./ZabbixSyncFields";
@@ -121,6 +123,10 @@ export const SecretSyncDestinationFields = () => {
       return <AzureEntraIdScimSyncFields />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncFields />;
+    case SecretSync.Ona:
+      return <OnaSyncFields />;
+    case SecretSync.TravisCI:
+      return <TravisCISyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

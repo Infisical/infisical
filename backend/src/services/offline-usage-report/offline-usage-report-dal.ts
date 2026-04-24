@@ -183,16 +183,14 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
 
   const getSecretRotationMetrics = async () => {
     // Check both v1 and v2 secret rotation tables
-    const [v1RotationsResult, v2RotationsResult] = await Promise.all([
-      db.from(TableName.SecretRotation).count("* as count").first() as Promise<{ count: string } | undefined>,
-      db.from(TableName.SecretRotationV2).count("* as count").first() as Promise<{ count: string } | undefined>
-    ]);
+    const v2RotationsResult = (await db.from(TableName.SecretRotationV2).count("* as count").first()) as
+      | { count: string }
+      | undefined;
 
-    const totalV1Rotations = parseInt(v1RotationsResult?.count || "0", 10);
-    const totalV2Rotations = parseInt(v2RotationsResult?.count || "0", 10);
+    const totalSecretRotations = parseInt(v2RotationsResult?.count || "0", 10);
 
     return {
-      totalSecretRotations: totalV1Rotations + totalV2Rotations
+      totalSecretRotations
     };
   };
 

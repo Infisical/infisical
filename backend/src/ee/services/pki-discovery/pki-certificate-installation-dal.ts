@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TPkiCertificateInstallations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TPkiCertificateInstallationDALFactory = ReturnType<typeof pkiCertificateInstallationDALFactory>;
@@ -100,14 +101,15 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         void query.andWhere((qb: Knex.QueryBuilder) => {
           void qb
-            .whereILike(`${TableName.PkiCertificateInstallation}.name`, `%${search}%`)
+            .whereILike(`${TableName.PkiCertificateInstallation}.name`, `%${sanitizedSearch}%`)
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'hostname' ILIKE ?`, [
-              `%${search}%`
+              `%${sanitizedSearch}%`
             ])
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'ipAddress' ILIKE ?`, [
-              `%${search}%`
+              `%${sanitizedSearch}%`
             ]);
         });
       }
@@ -166,14 +168,15 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         void query.andWhere((qb: Knex.QueryBuilder) => {
           void qb
-            .whereILike(`${TableName.PkiCertificateInstallation}.name`, `%${search}%`)
+            .whereILike(`${TableName.PkiCertificateInstallation}.name`, `%${sanitizedSearch}%`)
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'hostname' ILIKE ?`, [
-              `%${search}%`
+              `%${sanitizedSearch}%`
             ])
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'ipAddress' ILIKE ?`, [
-              `%${search}%`
+              `%${sanitizedSearch}%`
             ]);
         });
       }

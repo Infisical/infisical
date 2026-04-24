@@ -70,6 +70,24 @@ Example values:
   auth method.
 </ParamField>
 
+<ParamField query="TRUSTED_PROXY_CIDRS" type="string" optional>
+  Comma-separated list of trusted reverse-proxy CIDRs or named ranges whose forwarded-IP headers (e.g. `X-Forwarded-For`) Infisical will honor.
+
+  Accepted values are IPv4/IPv6 CIDR notation or the named aliases `loopback`, `linklocal`, and `uniquelocal`.
+
+  ```
+  TRUSTED_PROXY_CIDRS=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+  ```
+
+  When set, only requests arriving from a socket address within this list will have their forwarded-IP headers respected. Requests from any other source fall back to using the raw socket IP. This prevents IP allowlist bypass via spoofed proxy headers.
+
+  When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility with existing self-hosted deployments).
+
+  <Warning>
+    If your deployment sits behind a reverse proxy (e.g. Nginx, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
+  </Warning>
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.

@@ -709,7 +709,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           },
           scepConfig: undefined,
           externalConfigs: undefined,
-          defaults: undefined
+          defaults: {}
         }
   });
 
@@ -818,6 +818,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   // Get the selected CA to check if it's Azure ADCS
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
+  // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
+  const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
 
   // Fetch Azure ADCS templates if needed
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
@@ -910,6 +912,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       setValue("externalConfigs.template", profile.externalConfigs.template);
     }
   }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
+
+  // Pin TTL to 198 days when the selected CA is AWS ACM Public CA — backend rejects any other value.
+  // Also re-applies when the user lands on the Defaults tab (policy selected) so the field shows 198
+  // even if the TTL Controller was unmounted when the CA first got picked.
+  useEffect(() => {
+    if (isAwsAcmPublicCa && watchedPolicyId) {
+      setValue("defaults.ttlDays", 198, { shouldDirty: true });
+    }
+  }, [isAwsAcmPublicCa, watchedPolicyId, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
     if (!currentProject?.id && !isEdit) return;
@@ -1750,7 +1761,13 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             <FormLabel
                               label="Time to Live (TTL) in Days"
                               icon={
-                                <Tooltip content="Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default.">
+                                <Tooltip
+                                  content={
+                                    isAwsAcmPublicCa
+                                      ? "AWS ACM Public CA issues certificates with a fixed 198-day validity — this field cannot be changed."
+                                      : "Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default."
+                                  }
+                                >
                                   <FontAwesomeIcon
                                     icon={faQuestionCircle}
                                     className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
@@ -1767,6 +1784,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             type="number"
                             placeholder="e.g. 365"
                             value={field.value == null ? "" : field.value}
+                            isDisabled={isAwsAcmPublicCa}
                             onChange={(e) => {
                               const val = e.target.value;
                               field.onChange(val === "" ? null : Number(val));

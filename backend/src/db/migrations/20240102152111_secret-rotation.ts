@@ -4,8 +4,8 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.SecretRotation))) {
-    await knex.schema.createTable(TableName.SecretRotation, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationV1))) {
+    await knex.schema.createTable(TableName.DeprecatedSecretRotationV1, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("provider").notNullable();
       t.string("secretPath").notNullable();
@@ -23,22 +23,22 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  await createOnUpdateTrigger(knex, TableName.SecretRotation);
+  await createOnUpdateTrigger(knex, TableName.DeprecatedSecretRotationV1);
 
-  if (!(await knex.schema.hasTable(TableName.SecretRotationOutput))) {
-    await knex.schema.createTable(TableName.SecretRotationOutput, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationOutput))) {
+    await knex.schema.createTable(TableName.DeprecatedSecretRotationOutput, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("key").notNullable();
       t.uuid("secretId").notNullable();
       t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("CASCADE");
       t.uuid("rotationId").notNullable();
-      t.foreign("rotationId").references("id").inTable(TableName.SecretRotation).onDelete("CASCADE");
+      t.foreign("rotationId").references("id").inTable(TableName.DeprecatedSecretRotationV1).onDelete("CASCADE");
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.SecretRotationOutput);
-  await knex.schema.dropTableIfExists(TableName.SecretRotation);
-  await dropOnUpdateTrigger(knex, TableName.SecretRotation);
+  await dropOnUpdateTrigger(knex, TableName.DeprecatedSecretRotationV1);
+  await knex.schema.dropTableIfExists(TableName.DeprecatedSecretRotationOutput);
+  await knex.schema.dropTableIfExists(TableName.DeprecatedSecretRotationV1);
 }

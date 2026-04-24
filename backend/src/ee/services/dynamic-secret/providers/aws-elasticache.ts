@@ -255,7 +255,9 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username: entityId });
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+      username: entityId
+    });
     const parsedStatement = DeleteElasticCacheUserSchema.parse(JSON.parse(revokeStatement));
 
     try {
