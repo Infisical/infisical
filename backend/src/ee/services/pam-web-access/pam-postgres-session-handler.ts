@@ -252,6 +252,13 @@ export const handlePostgresSession = async (
         break;
       }
 
+      case PostgresClientMessageType.Activity: {
+        // No-op. The idle timer is reset by the sibling socket.on("message")
+        // listener in pam-web-access-service.ts — this branch just keeps the
+        // discriminated-union exhaustive so the `default` arm stays unreachable.
+        break;
+      }
+
       default:
         break;
     }

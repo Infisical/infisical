@@ -11,7 +11,9 @@ export type DataExplorerClientMessage =
   | { type: "cancel"; connectionId: string }
   // Lifecycle
   | { type: "open-connection"; id: string }
-  | { type: "close-connection"; connectionId: string };
+  | { type: "close-connection"; connectionId: string }
+  // Keepalive sent while the browser tab is visible; resets the BE idle timer
+  | { type: "activity" };
 
 export type DataExplorerServerMessage =
   | { type: "schemas"; id: string; data: SchemaInfo[] }

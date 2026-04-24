@@ -301,6 +301,20 @@ describe("handlePostgresSession", () => {
     expect(getSentResponses(ctx)).toEqual([]);
   });
 
+  test("activity keepalive is accepted and emits no response", async () => {
+    const ctx = createMockContext();
+    await handlePostgresSession(ctx, mockParams);
+
+    const onMessage = getMessageHandler(ctx);
+    onMessage(Buffer.from(JSON.stringify({ type: PostgresClientMessageType.Activity })));
+
+    await new Promise<void>((r) => {
+      setTimeout(r, 10);
+    });
+    expect(getSentResponses(ctx)).toEqual([]);
+    expect(ctx.sendSessionEnd).not.toHaveBeenCalled();
+  });
+
   test("server-initiated controller death removes entry and emits connection-closed", async () => {
     const ctx = createMockContext();
     await handlePostgresSession(ctx, mockParams);

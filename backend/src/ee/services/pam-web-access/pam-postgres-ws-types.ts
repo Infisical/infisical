@@ -8,7 +8,8 @@ export enum PostgresClientMessageType {
   Query = "query",
   Cancel = "cancel",
   OpenConnection = "open-connection",
-  CloseConnection = "close-connection"
+  CloseConnection = "close-connection",
+  Activity = "activity"
 }
 
 export enum PostgresServerMessageType {
@@ -71,6 +72,13 @@ const CloseConnectionSchema = z.object({
   connectionId: z.string().uuid()
 });
 
+// Fire-and-forget heartbeat sent by the FE while the browser tab is visible, so
+// the server-side idle timer only fires on truly inactive tabs — not on active
+// read-only sessions that don't happen to send queries.
+const ActivitySchema = z.object({
+  type: z.literal(PostgresClientMessageType.Activity)
+});
+
 export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
   ControlSchema,
   GetSchemasRequestSchema,
@@ -79,7 +87,8 @@ export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
   QueryRequestSchema,
   CancelSchema,
   OpenConnectionSchema,
-  CloseConnectionSchema
+  CloseConnectionSchema,
+  ActivitySchema
 ]);
 
 export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;

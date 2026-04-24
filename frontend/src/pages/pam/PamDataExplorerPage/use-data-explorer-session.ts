@@ -53,6 +53,10 @@ type UseDataExplorerSessionOptions = {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
+// Cadence for the visibility-driven keepalive. The BE idle timer is 10 min;
+// 60s leaves plenty of headroom if a heartbeat drops on flaky networks.
+const ACTIVITY_PING_INTERVAL_MS = 60_000;
+
 type QueryResult = {
   rows: Record<string, unknown>[];
   fields: FieldInfo[];
@@ -502,6 +506,49 @@ export const useDataExplorerSession = ({
     },
     [sendRequest]
   );
+
+  // Visibility-driven keepalive. While the browser tab is visible and the WS
+  // is open, send a fire-and-forget { type: "activity" } every minute so the
+  // BE idle timer doesn't fire on read-only sessions (filter/paginate/browse).
+  // When the tab goes hidden we stop sending, and the BE idle timer takes over.
+  useEffect(() => {
+    if (!isConnected) return undefined;
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const sendActivity = () => {
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "activity" } satisfies DataExplorerClientMessage));
+      }
+    };
+
+    const start = () => {
+      if (interval) return;
+      sendActivity();
+      interval = setInterval(sendActivity, ACTIVITY_PING_INTERVAL_MS);
+    };
+
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      stop();
+    };
+  }, [isConnected]);
 
   return {
     isConnected,
