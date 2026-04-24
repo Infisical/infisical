@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
 import { EyeIcon } from "lucide-react";
 
@@ -28,7 +28,11 @@ type DataExplorerGridProps = {
   tableType?: string;
   schema: string;
   table: string;
-  executeQuery: (sql: string) => Promise<{
+  connectionId: string;
+  executeQuery: (
+    connectionId: string,
+    sql: string
+  ) => Promise<{
     rows: Record<string, unknown>[];
     fields: FieldInfo[];
     rowCount: number | null;
@@ -36,8 +40,7 @@ type DataExplorerGridProps = {
     executionTimeMs: number;
   }>;
   isLoading: boolean;
-  onChangeCountUpdate?: (count: number) => void;
-  onFullRefresh?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 };
 
 const ROW_KEY_PREFIX = "__new_";
@@ -175,10 +178,10 @@ export const DataExplorerGrid = ({
   tableType,
   schema,
   table,
+  connectionId,
   executeQuery,
   isLoading,
-  onChangeCountUpdate,
-  onFullRefresh
+  onRefresh
 }: DataExplorerGridProps) => {
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
@@ -238,8 +241,8 @@ export const DataExplorerGrid = ({
         // sequentially, not in a single transaction), so the count could be off by 1 if
         // another session modifies data between them. Acceptable for a data explorer.
         const [dataResult, countResult] = await Promise.all([
-          executeQuery(selectSql),
-          executeQuery(countSql)
+          executeQuery(connectionId, selectSql),
+          executeQuery(connectionId, countSql)
         ]);
 
         const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
@@ -267,7 +270,7 @@ export const DataExplorerGrid = ({
         setIsDataLoading(false);
       }
     },
-    [tableDetail, schema, table, primaryKeys, executeQuery]
+    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId]
   );
 
   // Fetch data when filters/sorts/pagination change.
@@ -350,10 +353,6 @@ export const DataExplorerGrid = ({
     return count;
   }, [currentData, originalDataByPk, primaryKeys, newRowTempIds, tableColumns]);
 
-  useEffect(() => {
-    onChangeCountUpdate?.(changeCount);
-  }, [changeCount, onChangeCountUpdate]);
-
   const handleAddRecord = useCallback(() => {
     newRowCounterRef.current += 1;
     const tempId = `${ROW_KEY_PREFIX}${newRowCounterRef.current}`;
@@ -401,7 +400,7 @@ export const DataExplorerGrid = ({
       if (deleteStatements.length > 0) {
         try {
           const sql = wrapInTransaction(deleteStatements);
-          await executeQuery(sql);
+          await executeQuery(connectionId, sql);
           createNotification({
             text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
             type: "success"
@@ -424,6 +423,7 @@ export const DataExplorerGrid = ({
       primaryKeys,
       schema,
       table,
+      connectionId,
       executeQuery,
       fetchData,
       offset,
@@ -506,7 +506,7 @@ export const DataExplorerGrid = ({
         return;
       }
 
-      await executeQuery(sql);
+      await executeQuery(connectionId, sql);
       createNotification({
         text: `Saved ${statements.length} change${statements.length !== 1 ? "s" : ""}`,
         type: "success"
@@ -530,6 +530,7 @@ export const DataExplorerGrid = ({
     primaryKeys,
     schema,
     table,
+    connectionId,
     executeQuery,
     fetchData,
     offset,
@@ -642,7 +643,7 @@ export const DataExplorerGrid = ({
     if (deleteStatements.length > 0) {
       try {
         const sql = wrapInTransaction(deleteStatements);
-        await executeQuery(sql);
+        await executeQuery(connectionId, sql);
         createNotification({
           text: `Deleted ${deleteStatements.length} row${deleteStatements.length !== 1 ? "s" : ""}`,
           type: "success"
@@ -663,7 +664,18 @@ export const DataExplorerGrid = ({
     gridRef.current?.resetRowSelection();
     selectedRowsRef.current = [];
     setSelectedRowCount(0);
-  }, [schema, table, primaryKeys, executeQuery, fetchData, offset, pageSize, filters, sorts]);
+  }, [
+    schema,
+    table,
+    primaryKeys,
+    connectionId,
+    executeQuery,
+    fetchData,
+    offset,
+    pageSize,
+    filters,
+    sorts
+  ]);
 
   if (!tableDetail) {
     return (
@@ -697,7 +709,7 @@ export const DataExplorerGrid = ({
         hasPrimaryKey={hasPrimaryKey}
         isDataLoading={isDataLoading}
         onRefresh={async () => {
-          if (onFullRefresh) await onFullRefresh();
+          if (onRefresh) await onRefresh();
           await fetchData(offset, pageSize, filters, sorts);
         }}
         isRefreshing={isDataLoading && hasLoaded}

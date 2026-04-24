@@ -16,6 +16,8 @@ type PendingRequest = {
   resolve: (msg: DataExplorerServerMessage) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  // Present on tab-scoped requests so we can reject all pending when a tab closes.
+  connectionId?: string;
 };
 
 type MfaState = {
@@ -42,9 +44,23 @@ type UseDataExplorerSessionOptions = {
   resourceName: string;
   accountName: string;
   onSessionEnd?: (reason?: string) => void;
+  // Server pushes connection-closed when a BE controller dies unexpectedly.
+  onConnectionClosed?: (connectionId: string, reason: string) => void;
+  // Called after a reconnect so the page can drop tabs + land on a fresh query tab.
+  onReconnected?: () => void;
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
+
+type QueryResult = {
+  rows: Record<string, unknown>[];
+  fields: FieldInfo[];
+  rowCount: number | null;
+  isTruncated: boolean;
+  transactionOpen: boolean;
+  command: string;
+  executionTimeMs: number;
+};
 
 export const useDataExplorerSession = ({
   accountId,
@@ -52,7 +68,9 @@ export const useDataExplorerSession = ({
   orgId,
   resourceName,
   accountName,
-  onSessionEnd
+  onSessionEnd,
+  onConnectionClosed,
+  onReconnected
 }: UseDataExplorerSessionOptions) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -66,10 +84,19 @@ export const useDataExplorerSession = ({
   const readyRejectRef = useRef<((err: Error) => void) | null>(null);
   const readyPromiseRef = useRef<Promise<void> | null>(null);
   const onSessionEndRef = useRef(onSessionEnd);
+  const onConnectionClosedRef = useRef(onConnectionClosed);
+  const onReconnectedRef = useRef(onReconnected);
+  const hasConnectedBeforeRef = useRef(false);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
   }, [onSessionEnd]);
+  useEffect(() => {
+    onConnectionClosedRef.current = onConnectionClosed;
+  }, [onConnectionClosed]);
+  useEffect(() => {
+    onReconnectedRef.current = onReconnected;
+  }, [onReconnected]);
 
   const rejectAllPending = useCallback((reason: string) => {
     const pending = pendingRequestsRef.current;
@@ -102,6 +129,10 @@ export const useDataExplorerSession = ({
           setIsConnected(true);
           setIsConnecting(false);
           readyResolveRef.current?.();
+          if (hasConnectedBeforeRef.current) {
+            onReconnectedRef.current?.();
+          }
+          hasConnectedBeforeRef.current = true;
           return;
         }
 
@@ -115,7 +146,22 @@ export const useDataExplorerSession = ({
           return;
         }
 
-        // Request-response correlation
+        if (serverMsg.type === "connection-closed") {
+          // Informational only — the FE has no pending-request id to resolve.
+          // Reject any pending requests tied to this connectionId.
+          const pending = pendingRequestsRef.current;
+          pending.forEach((p, id) => {
+            if (p.connectionId === serverMsg.connectionId) {
+              clearTimeout(p.timer);
+              p.reject(new Error(serverMsg.reason || "Connection closed"));
+              pending.delete(id);
+            }
+          });
+          onConnectionClosedRef.current?.(serverMsg.connectionId, serverMsg.reason);
+          return;
+        }
+
+        // Request-response correlation (all remaining typed messages carry `id`).
         if ("id" in serverMsg && serverMsg.id) {
           const pending = pendingRequestsRef.current.get(serverMsg.id);
           if (pending) {
@@ -127,6 +173,8 @@ export const useDataExplorerSession = ({
                 .filter(Boolean)
                 .join("\n");
               pending.reject(new Error(errMsg));
+            } else if (serverMsg.type === "connection-open-failed") {
+              pending.reject(new Error(serverMsg.error));
             } else {
               pending.resolve(serverMsg);
             }
@@ -328,8 +376,10 @@ export const useDataExplorerSession = ({
   // --- Request helpers ---
 
   const sendRequest = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async <T extends DataExplorerServerMessage>(msg: Record<string, any>): Promise<T> => {
+    async <T extends DataExplorerServerMessage>(
+      msg: Record<string, unknown>,
+      opts?: { connectionId?: string }
+    ): Promise<T> => {
       if (readyPromiseRef.current) {
         await readyPromiseRef.current;
       }
@@ -346,7 +396,8 @@ export const useDataExplorerSession = ({
         pendingRequestsRef.current.set(id, {
           resolve: resolve as (m: DataExplorerServerMessage) => void,
           reject,
-          timer
+          timer,
+          connectionId: opts?.connectionId
         });
 
         const ws = wsRef.current;
@@ -361,6 +412,35 @@ export const useDataExplorerSession = ({
     },
     []
   );
+
+  const openConnection = useCallback(async (): Promise<{
+    connectionId: string;
+    backendPid: number | null;
+  }> => {
+    const resp = await sendRequest<
+      Extract<DataExplorerServerMessage, { type: "connection-opened" }>
+    >({
+      type: "open-connection"
+    });
+    return { connectionId: resp.connectionId, backendPid: resp.backendPid };
+  }, [sendRequest]);
+
+  const closeConnection = useCallback((connectionId: string): void => {
+    const ws = wsRef.current;
+    // Reject any pending requests tied to this connection immediately so the
+    // caller doesn't have a dangling promise when the tab is gone.
+    const pending = pendingRequestsRef.current;
+    pending.forEach((p, id) => {
+      if (p.connectionId === connectionId) {
+        clearTimeout(p.timer);
+        p.reject(new Error("Connection closed"));
+        pending.delete(id);
+      }
+    });
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "close-connection", connectionId }));
+    }
+  }, []);
 
   const fetchSchemas = useCallback(async (): Promise<SchemaInfo[]> => {
     const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "schemas" }>>({
@@ -381,40 +461,33 @@ export const useDataExplorerSession = ({
   );
 
   const fetchTableDetail = useCallback(
-    async (schema: string, table: string): Promise<TableDetail> => {
-      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "table-detail" }>>({
-        type: "get-table-detail",
-        schema,
-        table
-      });
-      return resp.data;
+    async (
+      connectionId: string,
+      schema: string,
+      table: string
+    ): Promise<{ detail: TableDetail; transactionOpen: boolean }> => {
+      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "table-detail" }>>(
+        { type: "get-table-detail", connectionId, schema, table },
+        { connectionId }
+      );
+      return { detail: resp.data, transactionOpen: resp.transactionOpen };
     },
     [sendRequest]
   );
 
-  const cancelQuery = useCallback(() => {
+  const cancelQuery = useCallback((connectionId: string) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "cancel" }));
+      ws.send(JSON.stringify({ type: "cancel", connectionId }));
     }
   }, []);
 
   const executeQuery = useCallback(
-    async (
-      sql: string
-    ): Promise<{
-      rows: Record<string, unknown>[];
-      fields: FieldInfo[];
-      rowCount: number | null;
-      isTruncated: boolean;
-      transactionOpen: boolean;
-      command: string;
-      executionTimeMs: number;
-    }> => {
-      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "query-result" }>>({
-        type: "query",
-        sql
-      });
+    async (connectionId: string, sql: string): Promise<QueryResult> => {
+      const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "query-result" }>>(
+        { type: "query", connectionId, sql },
+        { connectionId }
+      );
       return {
         rows: resp.rows,
         fields: resp.fields,
@@ -428,9 +501,6 @@ export const useDataExplorerSession = ({
     [sendRequest]
   );
 
-  // No auto-connect here — the page component drives connection lifecycle,
-  // same as useWebAccessSession where containerEl gates the connect call.
-
   return {
     isConnected,
     isConnecting,
@@ -443,6 +513,8 @@ export const useDataExplorerSession = ({
     handleMfaVerification,
     submitApprovalRequest,
     approvalRequestUrl,
+    openConnection,
+    closeConnection,
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
