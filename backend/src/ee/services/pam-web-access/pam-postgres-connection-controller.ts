@@ -119,6 +119,11 @@ export const createPostgresConnectionController = async (
       ssl: false,
       connectionTimeoutMillis: 5_000
     });
+    // pg.Client is an EventEmitter; an unhandled 'error' would throw and
+    // crash the Node process. Attach a no-op listener.
+    cancelClient.on("error", (err) => {
+      logger.debug(err, `Cancel client error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
+    });
     try {
       await cancelClient.connect();
       await cancelClient.query("SELECT pg_cancel_backend($1)", [backendPid]);

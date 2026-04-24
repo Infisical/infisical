@@ -200,23 +200,24 @@ export const useQueryTabs = ({
 
   const closeTab = useCallback(
     (id: string) => {
-      setTabs((prev) => {
-        const target = prev.find((t) => t.id === id);
-        if (!target) return prev;
-        closeConnection(target.connectionId);
-        const next = prev.filter((t) => t.id !== id);
-        if (activeTabId === id) {
-          // Activate the most recently focused remaining tab, if any.
-          const nextActive =
-            next.length > 0
-              ? next.reduce((a, b) => (a.lastFocusedAt >= b.lastFocusedAt ? a : b)).id
-              : null;
-          setActiveTabId(nextActive);
-        }
-        return next;
-      });
+      // Side effects (closeConnection + setActiveTabId) are hoisted OUT of
+      // the setTabs updater so StrictMode's double-invoke can't fire the WS
+      // close frame twice. React requires updaters to be pure.
+      const target = tabs.find((t) => t.id === id);
+      if (!target) return;
+      closeConnection(target.connectionId);
+      const remaining = tabs.filter((t) => t.id !== id);
+      if (activeTabId === id) {
+        // Activate the most recently focused remaining tab, if any.
+        const nextActive =
+          remaining.length > 0
+            ? remaining.reduce((a, b) => (a.lastFocusedAt >= b.lastFocusedAt ? a : b)).id
+            : null;
+        setActiveTabId(nextActive);
+      }
+      setTabs(remaining);
     },
-    [activeTabId, closeConnection]
+    [tabs, activeTabId, closeConnection]
   );
 
   const setActiveTab = useCallback((id: string) => {

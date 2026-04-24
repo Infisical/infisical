@@ -1,5 +1,7 @@
 import pg from "pg";
 
+import { logger } from "@app/lib/logger";
+
 import { getSchemasQuery, getTablesQuery } from "./pam-postgres-data-explorer-metadata";
 
 // Shared connection options for one-shot metadata queries. Each call opens a
@@ -10,8 +12,8 @@ type OneShotOptions = {
   database: string;
 };
 
-const buildClient = ({ relayPort, username, database }: OneShotOptions): pg.Client =>
-  new pg.Client({
+const buildClient = ({ relayPort, username, database }: OneShotOptions): pg.Client => {
+  const client = new pg.Client({
     host: "localhost",
     port: relayPort,
     user: username,
@@ -21,6 +23,13 @@ const buildClient = ({ relayPort, username, database }: OneShotOptions): pg.Clie
     connectionTimeoutMillis: 10_000,
     statement_timeout: 30_000
   });
+  // pg.Client is an EventEmitter; an unhandled 'error' (e.g. mid-query socket
+  // reset) would throw and crash the Node process. Attach a no-op listener.
+  client.on("error", (err) => {
+    logger.debug(err, "one-shot pg client error");
+  });
+  return client;
+};
 
 const withClient = async <T>(opts: OneShotOptions, fn: (client: pg.Client) => Promise<T>): Promise<T> => {
   const client = buildClient(opts);
