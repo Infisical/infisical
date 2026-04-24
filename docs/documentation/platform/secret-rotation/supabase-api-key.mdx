@@ -36,7 +36,7 @@ description: "Learn how to automatically rotate Supabase API keys."
 
         4. Set the Supabase API key parameters, then click **Next**.
 
-        - **Project Reference** – The reference ID of the Supabase project to rotate the API key for.
+        - **Project** – The Supabase project to rotate the API key for.
         - **Key Type** – The type of the API key to rotate:
             - `publishable` – The public `anon` key, safe to expose in client-side code. It is used with Row Level Security (RLS) policies to control per-user access.
             - `secret` – The `service_role` key, which bypasses RLS entirely and has full access to your project's data. Must be kept server-side only.
