@@ -2540,7 +2540,7 @@ export const certificateV3ServiceFactory = ({
 
     if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 
@@ -2657,7 +2657,7 @@ export const certificateV3ServiceFactory = ({
 
     if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 
