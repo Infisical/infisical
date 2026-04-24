@@ -5,6 +5,10 @@ description: "Learn how to configure a Network discovery job to find certificate
 
 Network discovery scans network endpoints over TLS to discover certificates served by hosts across IP ranges and domains. Optionally, you can use an [Infisical Gateway](/documentation/platform/gateways/overview) to reach endpoints in private networks that are not accessible from the internet.
 
+<Note>
+  If you are self-hosting Infisical, you can alternatively set the [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) environment variable to `true` on your instance to scan private networks directly without a gateway.
+</Note>
+
 <Tabs>
   <Tab title="Infisical UI">
     1. Navigate to your Certificate Management Project > **Discovery** and press **Add Job**.
