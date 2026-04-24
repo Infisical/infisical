@@ -258,32 +258,32 @@ const makeSqlConnection = (
 
       return {
         validate: async (connectOnly) => {
-          // TLS-enabled Oracle is handled outside node-oracledb. The driver's thin
-          // mode has no inline-CA option (only a wallet file that requires a
-          // matching cert+key pair), so we can't feed it the resource's pasted
-          // sslCertificate. Resource save does a raw TLS probe against the tunnel
-          // to verify reachability and cert chain; account credential validation
-          // is deferred to first session use. Credential validation for every DB
+          // TLS-enabled Oracle doesn't go through node-oracledb. Thin mode has no
+          // inline-CA option (only a wallet file that requires a matching cert+key
+          // pair), so we can't feed it the resource's pasted sslCertificate for
+          // actual credential validation. What we CAN do on both resource save
+          // (connectOnly) and account save is run a raw TLS probe against the
+          // tunnel: it verifies the Oracle endpoint is reachable, the cert chain
+          // validates against the pasted CA, and sslRejectUnauthorized is honored.
+          // It does NOT verify credentials — bad creds on a TLS Oracle account
+          // still surface on first session. Credential validation for every DB
           // type should eventually move to the gateway, where per-connection CA
           // handling is straightforward — this branch goes away then.
           if (sslEnabled) {
-            if (connectOnly) {
-              try {
-                await probeOracleTls({
-                  tcpHost: "localhost",
-                  port: proxyPort,
-                  servername: host,
-                  caPem: sslCertificate,
-                  rejectUnauthorized: sslRejectUnauthorized
-                });
-                return;
-              } catch (error) {
-                throw new BadRequestError({
-                  message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
-                });
-              }
+            try {
+              await probeOracleTls({
+                tcpHost: "localhost",
+                port: proxyPort,
+                servername: host,
+                caPem: sslCertificate,
+                rejectUnauthorized: sslRejectUnauthorized
+              });
+              return;
+            } catch (error) {
+              throw new BadRequestError({
+                message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+              });
             }
-            return;
           }
 
           // Non-TLS Oracle: standard driver-based validation.
