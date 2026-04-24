@@ -1682,7 +1682,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     reminderService,
     keyStore,
-    secretValidationRuleService
+    secretValidationRuleService,
+    secretRotationV2DAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({

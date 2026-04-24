@@ -233,9 +233,7 @@ const SingleEnvContent = ({
 
     const secretsToMove = Object.values(secrets)
       .map((secretRecord) => secretRecord[sourceEnv.slug])
-      .filter(
-        (secret): secret is SecretV3RawSanitized => Boolean(secret) && !secret.isRotatedSecret
-      );
+      .filter((secret): secret is SecretV3RawSanitized => Boolean(secret));
 
     if (!secretsToMove.length) {
       createNotification({
