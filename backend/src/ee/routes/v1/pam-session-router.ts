@@ -6,6 +6,7 @@ import { PolicyRulesResponseSchema } from "@app/ee/services/pam-account-policy";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MongoDBSessionCredentialsSchema } from "@app/ee/services/pam-resource/mongodb/mongodb-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
+import { OracleSessionCredentialsSchema } from "@app/ee/services/pam-resource/oracle/oracle-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
@@ -27,6 +28,7 @@ const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
   MySQLSessionCredentialsSchema,
+  OracleSessionCredentialsSchema,
   MongoDBSessionCredentialsSchema,
   KubernetesSessionCredentialsSchema,
   RedisSessionCredentialsSchema
