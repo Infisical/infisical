@@ -10,7 +10,7 @@ import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { probeOracleTls } from "../../oracle/oracle-tls-probe";
+import { probeOracleTls } from "../../oracle/oracle-resource-fns";
 import { PamResource } from "../../pam-resource-enums";
 import {
   TPamResourceFactory,
