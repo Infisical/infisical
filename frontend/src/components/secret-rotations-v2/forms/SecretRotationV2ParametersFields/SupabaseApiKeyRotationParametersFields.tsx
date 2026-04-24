@@ -78,7 +78,12 @@ export const SupabaseApiKeyRotationParametersFields = () => {
           >
             <FilterableSelect
               value={KEY_TYPE_OPTIONS.find((o) => o.value === value) ?? null}
-              onChange={(option) => onChange(option?.value ?? null)}
+              onChange={(option) =>
+                onChange(
+                  (option as SingleValue<{ label: string; value: SupabaseApiKeyType }>)
+                    ?.value ?? null
+                )
+              }
               options={KEY_TYPE_OPTIONS}
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
