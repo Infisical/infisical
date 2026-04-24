@@ -1,7 +1,9 @@
 import net from "net";
 import tls from "tls";
 
+import { ORACLE_TLS_PROBE_TIMEOUT_MS } from "./oracle-resource-constants";
 import { OracleResourceListItemSchema } from "./oracle-resource-schemas";
+import { TProbeOracleTlsArgs } from "./oracle-resource-types";
 
 export const getOracleResourceListItem = () => {
   return {
@@ -10,30 +12,13 @@ export const getOracleResourceListItem = () => {
   };
 };
 
-const DEFAULT_PROBE_TIMEOUT_MS = 10 * 1000;
-
-interface ProbeOracleTlsArgs {
-  /** Address we actually dial — usually the gateway tunnel's localhost. */
-  tcpHost: string;
-  port: number;
-  /** Real upstream Oracle hostname. Sent as TLS SNI so multi-SNI listeners
-   * return the right cert, and used for chain validation. Different from
-   * `tcpHost` because we dial the tunnel, not the listener. */
-  servername: string;
-  /** Pasted CA PEM from the resource. When undefined, Node falls back to its
-   * default trust store. */
-  caPem: string | undefined;
-  /** Honors the resource's sslRejectUnauthorized toggle. */
-  rejectUnauthorized: boolean;
-  timeoutMs?: number;
-}
-
 /**
  * Verifies an SSL-enabled Oracle resource is reachable and presents a trusted
- * TLS cert, without going through node-oracledb. Used on resource save so the
- * pasted sslCertificate is actually consulted — node-oracledb thin mode can't
- * accept an inline CA, so we do this step ourselves. See sql-resource-factory
- * for the reason account-credential validation on TLS resources is deferred.
+ * TLS cert, without going through node-oracledb. Used on resource save and
+ * account save so the pasted sslCertificate is actually consulted —
+ * node-oracledb thin mode can't accept an inline CA, so we do this step
+ * ourselves. See sql-resource-factory for the reason account-credential
+ * validation on TLS resources is deferred beyond this reachability check.
  */
 export const probeOracleTls = ({
   tcpHost,
@@ -41,8 +26,8 @@ export const probeOracleTls = ({
   servername,
   caPem,
   rejectUnauthorized,
-  timeoutMs = DEFAULT_PROBE_TIMEOUT_MS
-}: ProbeOracleTlsArgs): Promise<void> =>
+  timeoutMs = ORACLE_TLS_PROBE_TIMEOUT_MS
+}: TProbeOracleTlsArgs): Promise<void> =>
   new Promise((resolve, reject) => {
     const socket = net.connect({ host: tcpHost, port });
     socket.setTimeout(timeoutMs);
