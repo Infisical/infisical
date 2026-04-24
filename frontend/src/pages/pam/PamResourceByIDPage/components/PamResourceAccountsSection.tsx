@@ -66,10 +66,10 @@ import {
 
 import { PamAccessAccountModal } from "../../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccountModal";
+import { PamAwsIamAccessReasonModal } from "../../PamAccountsPage/components/PamAwsIamAccessReasonModal";
 import { PamDeleteAccountModal } from "../../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../../PamAccountsPage/components/PamUpdateAccountModal";
-import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAccessAwsIamAccount";
 
 type Props = {
   resource: TPamResource;
@@ -93,23 +93,24 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const params = useParams({ strict: false }) as { projectId?: string };
   const { projectId } = params;
 
-  const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
   const manualRotate = useManualRotateAccount();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [rotatingAccountIds, setRotatingAccountIds] = useState<Set<string>>(new Set());
+  const [accessReason, setAccessReason] = useState<string | undefined>(undefined);
 
   const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
   const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "addAccount",
     "accessAccount",
     "requestAccount",
     "updateAccount",
-    "deleteAccount"
+    "deleteAccount",
+    "awsIamReason"
   ] as const);
 
   const isTableFiltered = Boolean(appliedMetadataEntries.some((e) => e.key.trim()));
@@ -272,7 +273,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     }
 
     if (account.resource?.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account);
+      handlePopUpOpen("awsIamReason", { account });
     } else {
       handlePopUpOpen("accessAccount", { account });
     }
@@ -540,8 +541,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                               e.stopPropagation();
                               accessAccount(account);
                             }}
-                            isPending={loadingAccountId === account.id}
-                            isDisabled={loadingAccountId === account.id}
                           >
                             <LogInIcon />
                             Connect
@@ -645,9 +644,26 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
       <PamAccessAccountModal
         isOpen={popUp.accessAccount.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("accessAccount", isOpen);
+          if (!isOpen) setAccessReason(undefined);
+        }}
         account={popUp.accessAccount.data?.account}
         projectId={projectId!}
+        reason={accessReason}
+      />
+
+      <PamAwsIamAccessReasonModal
+        isOpen={popUp.awsIamReason.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("awsIamReason", isOpen)}
+        account={popUp.awsIamReason.data?.account}
+        onSubmit={(reason) => {
+          const account = popUp.awsIamReason.data?.account;
+          if (!account) return;
+          handlePopUpClose("awsIamReason");
+          setAccessReason(reason || undefined);
+          handlePopUpOpen("accessAccount", { account });
+        }}
       />
 
       <PamRequestAccountAccessModal

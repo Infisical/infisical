@@ -6,7 +6,8 @@ export const PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES: Record<
   PamResourceType[] | "all"
 > = {
   [PamAccountPolicyRuleType.CommandBlocking]: [PamResourceType.SSH],
-  [PamAccountPolicyRuleType.SessionLogMasking]: "all"
+  [PamAccountPolicyRuleType.SessionLogMasking]: "all",
+  [PamAccountPolicyRuleType.RequireReason]: "all"
 };
 
 export const PAM_ACCOUNT_POLICY_RULE_METADATA: Record<
@@ -20,5 +21,15 @@ export const PAM_ACCOUNT_POLICY_RULE_METADATA: Record<
   [PamAccountPolicyRuleType.SessionLogMasking]: {
     name: "Session Log Masking",
     description: "Mask sensitive data in session logs matching specified patterns"
+  },
+  [PamAccountPolicyRuleType.RequireReason]: {
+    name: "Require Access Reason",
+    description: "Require users to provide a reason before they can start a session"
   }
+};
+
+export const PAM_ACCOUNT_POLICY_RULE_IS_PATTERNLESS: Record<PamAccountPolicyRuleType, boolean> = {
+  [PamAccountPolicyRuleType.CommandBlocking]: false,
+  [PamAccountPolicyRuleType.SessionLogMasking]: false,
+  [PamAccountPolicyRuleType.RequireReason]: true
 };

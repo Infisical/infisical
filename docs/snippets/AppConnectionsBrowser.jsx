@@ -445,6 +445,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Doppler for migrating data from Doppler to Infisical.",
       category: "DevOps Tools",
+    }, 
+    {
+      name: "Travis CI",
+      slug: "travis-ci",
+      path: "/integrations/app-connections/travis-ci",
+      description:
+        "Learn how to connect Travis CI to pull secrets from Infisical.",
+      category: "CI/CD",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

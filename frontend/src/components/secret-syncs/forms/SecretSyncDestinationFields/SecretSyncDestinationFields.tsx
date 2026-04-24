@@ -37,6 +37,7 @@ import { RenderSyncFields } from "./RenderSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
+import { TravisCISyncFields } from "./TravisCISyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
 import { ZabbixSyncFields } from "./ZabbixSyncFields";
@@ -121,6 +122,8 @@ export const SecretSyncDestinationFields = () => {
       return <AzureEntraIdScimSyncFields />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncFields />;
+    case SecretSync.TravisCI:
+      return <TravisCISyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

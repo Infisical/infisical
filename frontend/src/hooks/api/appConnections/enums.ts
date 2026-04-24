@@ -55,5 +55,6 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
-  Anthropic = "anthropic"
+  Anthropic = "anthropic",
+  TravisCI = "travis-ci"
 }

@@ -63,6 +63,7 @@ import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
+import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
@@ -104,7 +105,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncSchema,
   CircleCISyncSchema,
   AzureEntraIdScimSyncSchema,
-  ExternalInfisicalSyncSchema
+  ExternalInfisicalSyncSchema,
+  TravisCISyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -144,7 +146,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncListItemSchema,
   CircleCISyncListItemSchema,
   AzureEntraIdScimSyncListItemSchema,
-  ExternalInfisicalSyncListItemSchema
+  ExternalInfisicalSyncListItemSchema,
+  TravisCISyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

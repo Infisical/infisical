@@ -201,6 +201,11 @@ import {
   TerraformCloudConnectionMethod,
   validateTerraformCloudConnectionCredentials
 } from "./terraform-cloud";
+import {
+  getTravisCIConnectionListItem,
+  TravisCIConnectionMethod,
+  validateTravisCIConnectionCredentials
+} from "./travis-ci";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
@@ -294,7 +299,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getVenafiConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
-    getNetScalerConnectionListItem()
+    getNetScalerConnectionListItem(),
+    getTravisCIConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -441,6 +447,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
       validateExternalInfisicalConnectionCredentials(
         config as TExternalInfisicalConnectionConfig,
@@ -493,6 +500,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case TravisCIConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -652,8 +660,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
+  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
-  [AppConnection.NetScaler]: platformManagedCredentialsNotSupported
+  [AppConnection.TravisCI]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

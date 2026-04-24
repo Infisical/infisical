@@ -539,6 +539,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountName: z.string().trim(),
         projectId: z.string().uuid(),
         mfaSessionId: z.string().optional(),
+        reason: z.string().trim().max(1000).optional(),
         duration: z
           .string()
           .min(1)
@@ -566,11 +567,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Oracle) }),
-          // AWS IAM (no gateway, returns console URL)
           z.object({
             sessionId: z.string(),
             resourceType: z.literal(PamResource.AwsIam),
-            consoleUrl: z.string().url(),
+            accessKeyId: z.string(),
+            secretAccessKey: z.string(),
+            sessionToken: z.string(),
+            expiresAt: z.string(),
             metadata: z.record(z.string(), z.string().optional()).optional()
           })
         ])
@@ -593,7 +596,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           accountName: req.body.accountName,
           projectId: req.body.projectId,
           duration: req.body.duration,
-          mfaSessionId: req.body.mfaSessionId
+          mfaSessionId: req.body.mfaSessionId,
+          reason: req.body.reason
         },
         req.permission
       );
@@ -608,7 +612,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             accountId: response.account.id,
             resourceName: req.body.resourceName,
             accountName: response.account.name,
-            duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined
+            duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined,
+            reason: req.body.reason
           }
         }
       });
@@ -630,6 +635,66 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Mint an AWS Console federated sign-in URL from an existing AWS IAM session
+  server.route({
+    method: "POST",
+    url: "/sessions/:sessionId/aws-console-url",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Generate an AWS console sign-in URL for an existing PAM session",
+      params: z.object({
+        sessionId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().uuid(),
+        accessKeyId: z.string().min(1),
+        secretAccessKey: z.string().min(1),
+        sessionToken: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          consoleUrl: z.string().url()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "You can only access PAM accounts using JWT auth tokens." });
+      }
+
+      const result = await server.services.pamAccount.getAwsIamConsoleUrl(
+        {
+          sessionId: req.params.sessionId,
+          projectId: req.body.projectId,
+          accessKeyId: req.body.accessKeyId,
+          secretAccessKey: req.body.secretAccessKey,
+          sessionToken: req.body.sessionToken
+        },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_AWS_CONSOLE_URL_GENERATED,
+          metadata: {
+            sessionId: req.params.sessionId,
+            accountId: result.accountId ?? "",
+            resourceName: result.resourceName,
+            accountName: result.accountName
+          }
+        }
+      });
+
+      return { consoleUrl: result.consoleUrl };
+    }
+  });
+
   // Web access ticket endpoint
   server.route({
     method: "POST",
@@ -644,7 +709,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         projectId: z.string().uuid(),
-        mfaSessionId: z.string().optional()
+        mfaSessionId: z.string().optional(),
+        reason: z.string().trim().max(1000).optional()
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -665,7 +731,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         auditLogInfo: req.auditLogInfo,
-        mfaSessionId: req.body.mfaSessionId
+        mfaSessionId: req.body.mfaSessionId,
+        reason: req.body.reason
       });
 
       await server.services.telemetry
@@ -734,6 +801,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             accountName: z.string(),
             actorEmail: z.string(),
             actorName: z.string(),
+            reason: z.string().nullable().optional(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
@@ -763,7 +831,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           auditLogInfo: payload.auditLogInfo as AuditLogInfo,
           userId,
           actorIp: req.realIp ?? "",
-          actorUserAgent: req.headers["user-agent"] ?? ""
+          actorUserAgent: req.headers["user-agent"] ?? "",
+          reason: payload.reason
         });
       } catch (err) {
         logger.error(err, "WebSocket ticket validation failed");

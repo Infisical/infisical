@@ -22,6 +22,7 @@ export interface TBasePamAccount {
   description?: string | null;
   credentialsConfigured: boolean;
   requireMfa?: boolean | null;
+  requireReason?: boolean;
   lastRotatedAt?: string | null;
   lastRotationMessage?: string | null;
   rotationStatus?: string | null;

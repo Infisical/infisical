@@ -9,11 +9,33 @@ import {
   TSecretValidationRuleInputs
 } from "./secret-validation-rule-types";
 
-export const constraintSchema = z.object({
-  type: z.nativeEnum(ConstraintType),
-  appliesTo: z.nativeEnum(ConstraintTarget),
-  value: z.string().min(1)
-});
+export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
+
+export const constraintSchema = z
+  .object({
+    type: z.nativeEnum(ConstraintType),
+    appliesTo: z.nativeEnum(ConstraintTarget),
+    value: z.string()
+  })
+  .refine((c) => c.type === ConstraintType.PreventValueReuse || c.value.length > 0, {
+    message: "Value is required",
+    path: ["value"]
+  })
+  .refine((c) => c.type !== ConstraintType.PreventValueReuse || c.appliesTo === ConstraintTarget.SecretValue, {
+    message: "No value reuse constraint can only apply to secret values",
+    path: ["appliesTo"]
+  })
+  .refine(
+    (c) => {
+      if (c.type !== ConstraintType.PreventValueReuse) return true;
+      const num = Number(c.value);
+      return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
+    },
+    {
+      message: `Prevent value reuse version count must be between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
+      path: ["value"]
+    }
+  );
 
 export const staticSecretsInputsSchema = z.object({
   constraints: z.array(constraintSchema).min(1)

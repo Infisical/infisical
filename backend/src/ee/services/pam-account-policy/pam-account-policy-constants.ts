@@ -4,7 +4,8 @@ import { PamAccountPolicyRuleType } from "./pam-account-policy-enums";
 
 export const PAM_ACCOUNT_POLICY_RULE_SUPPORTED_RESOURCES: Record<PamAccountPolicyRuleType, PamResource[] | "all"> = {
   [PamAccountPolicyRuleType.CommandBlocking]: [PamResource.SSH],
-  [PamAccountPolicyRuleType.SessionLogMasking]: "all"
+  [PamAccountPolicyRuleType.SessionLogMasking]: "all",
+  [PamAccountPolicyRuleType.RequireReason]: "all"
 };
 
 export const PAM_ACCOUNT_POLICY_RULE_METADATA: Record<PamAccountPolicyRuleType, { name: string; description: string }> =
@@ -16,5 +17,9 @@ export const PAM_ACCOUNT_POLICY_RULE_METADATA: Record<PamAccountPolicyRuleType, 
     [PamAccountPolicyRuleType.SessionLogMasking]: {
       name: "Session Log Masking",
       description: "Mask sensitive data in session logs matching specified patterns"
+    },
+    [PamAccountPolicyRuleType.RequireReason]: {
+      name: "Require Access Reason",
+      description: "Require users to provide a reason before they can start a session"
     }
   };

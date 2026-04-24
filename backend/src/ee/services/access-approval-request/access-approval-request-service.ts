@@ -29,7 +29,11 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
@@ -502,7 +506,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -511,8 +515,17 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
+
+    if (!canReadAllApprovalRequests) {
+      requests = requests.filter((request) => request.requestedByUserId === actorId);
+    }
 
     if (authorUserId) {
       requests = requests.filter((request) => request.requestedByUserId === authorUserId);
@@ -915,7 +928,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -924,7 +937,16 @@ export const accessApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+
+    const count = await accessApprovalRequestDAL.getCount({
+      projectId: project.id,
+      policyId,
+      requestedByUserId: canReadAllApprovalRequests ? undefined : actorId
+    });
 
     return { count };
   };

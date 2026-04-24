@@ -71,6 +71,7 @@ import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/rend
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 
 export const APP_CONNECTION_MAP: Record<
@@ -162,7 +163,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.ExternalInfisical]: { name: "Infisical", image: "Infisical.png" },
   [AppConnection.Doppler]: { name: "Doppler", image: "Doppler.png" },
   [AppConnection.NetScaler]: { name: "NetScaler", image: "NetScaler.png" },
-  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" }
+  [AppConnection.Anthropic]: { name: "Anthropic", image: "Anthropic.png" },
+  [AppConnection.TravisCI]: { name: "Travis CI", image: "Travis CI.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -204,6 +206,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case LaravelForgeConnectionMethod.ApiToken:
     case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
+    case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:

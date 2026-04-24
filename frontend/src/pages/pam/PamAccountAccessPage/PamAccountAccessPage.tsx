@@ -2,30 +2,33 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams } from "@tanstack/react-router";
 
-import { PamResourceType, useGetPamAccountById } from "@app/hooks/api/pam";
+import { PamResourceType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
+import { ReasonGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 
 const TerminalContent = ({
-  accountId,
+  account,
   projectId,
-  orgId
+  orgId,
+  reason
 }: {
-  accountId: string;
+  account: TPamAccount;
   projectId: string;
   orgId: string;
+  reason?: string;
 }) => {
-  const { data: account, isPending } = useGetPamAccountById(accountId);
   const [sessionEnded, setSessionEnded] = useState(false);
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
-    accountId,
+    accountId: account.id,
     projectId,
     orgId,
     resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
     resourceType: account?.resource?.resourceType ?? "",
+    reason,
     onSessionEnd: () => setSessionEnded(true)
   });
 
@@ -33,22 +36,6 @@ const TerminalContent = ({
     setSessionEnded(false);
     reconnect();
   };
-
-  if (isPending) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117] text-mineshaft-300">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!account) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
-        <p className="text-mineshaft-300">Could not find PAM Account with ID {accountId}</p>
-      </div>
-    );
-  }
 
   let statusLabel = "Connecting";
   let statusDotClass = "bg-yellow-500";
@@ -129,11 +116,37 @@ const PageContent = () => {
     );
   }
 
-  if (account?.resource?.resourceType === PamResourceType.Postgres) {
-    return <PamDataExplorerPage />;
+  if (!account) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0d1117]">
+        <p className="text-mineshaft-300">Could not find PAM Account with ID {accountId}</p>
+      </div>
+    );
   }
 
-  return <TerminalContent accountId={accountId!} projectId={projectId!} orgId={orgId!} />;
+  // SSH uses inline terminal prompts for reason — bypass the upfront ReasonGate so the
+  // approval prompt and reason prompt render in the same terminal stream, in order.
+  if (account.resource?.resourceType === PamResourceType.SSH) {
+    return <TerminalContent account={account} projectId={projectId!} orgId={orgId!} />;
+  }
+
+  return (
+    <ReasonGate account={account}>
+      {(reason) => {
+        if (account.resource?.resourceType === PamResourceType.Postgres) {
+          return <PamDataExplorerPage reason={reason} />;
+        }
+        return (
+          <TerminalContent
+            account={account}
+            projectId={projectId!}
+            orgId={orgId!}
+            reason={reason}
+          />
+        );
+      }}
+    </ReasonGate>
+  );
 };
 
 export const PamAccountAccessPage = () => {

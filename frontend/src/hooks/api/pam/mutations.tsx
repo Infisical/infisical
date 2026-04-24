@@ -191,13 +191,20 @@ export type TAccessPamAccountDTO = {
   accountName: string;
   projectId: string;
   duration: string;
+  reason?: string;
 };
 
 export type TAccessPamAccountResponse = {
   sessionId: string;
   resourceType: string;
-  consoleUrl?: string;
   metadata?: Record<string, string | undefined>;
+  // AWS IAM credentials (raw STS) -- usable directly by the AWS CLI
+  // and exchangeable for a federated console URL via /sessions/:id/aws-console-url
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  sessionToken?: string;
+  expiresAt?: string;
+  // Gateway-resource fields (Postgres, MySQL, etc.)
   relayClientCertificate?: string;
   relayClientPrivateKey?: string;
   relayServerCertificateChain?: string;
@@ -214,7 +221,8 @@ export const useAccessPamAccount = () => {
       resourceName,
       accountName,
       projectId,
-      duration
+      duration,
+      reason
     }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
@@ -223,10 +231,37 @@ export const useAccessPamAccount = () => {
           resourceName,
           accountName,
           projectId,
-          duration
+          duration,
+          reason
         }
       );
 
+      return data;
+    }
+  });
+};
+
+export type TGetAwsIamConsoleUrlDTO = {
+  sessionId: string;
+  projectId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken: string;
+};
+
+export const useGetAwsIamConsoleUrl = () => {
+  return useMutation({
+    mutationFn: async ({
+      sessionId,
+      projectId,
+      accessKeyId,
+      secretAccessKey,
+      sessionToken
+    }: TGetAwsIamConsoleUrlDTO) => {
+      const { data } = await apiRequest.post<{ consoleUrl: string }>(
+        `/api/v1/pam/accounts/sessions/${sessionId}/aws-console-url`,
+        { projectId, accessKeyId, secretAccessKey, sessionToken }
+      );
       return data;
     }
   });

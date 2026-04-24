@@ -35,6 +35,9 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { TPamAccountPolicyDALFactory } from "../pam-account-policy/pam-account-policy-dal";
+import { PamAccountPolicyRuleType } from "../pam-account-policy/pam-account-policy-enums";
+import { TPolicyRules } from "../pam-account-policy/pam-account-policy-types";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
 import {
@@ -66,6 +69,7 @@ const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH, P
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findMetadataByAccountIds">;
+  pamAccountPolicyDAL: Pick<TPamAccountPolicyDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -100,9 +104,11 @@ type THandleWebSocketConnectionDTO = {
   actorName: string;
   actorIp: string;
   actorUserAgent: string;
+  reason?: string | null;
 };
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
+  pamAccountPolicyDAL,
   pamResourceDAL,
   permissionService,
   auditLogService,
@@ -162,7 +168,8 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     auditLogInfo,
-    mfaSessionId
+    mfaSessionId,
+    reason
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findById(accountId);
 
@@ -173,6 +180,8 @@ export const pamWebAccessServiceFactory = ({
     if (account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
+
+    const trimmedReason = reason?.trim() || null;
 
     if (!account.resourceId) {
       throw new BadRequestError({ message: "Web access is only available for resource-backed accounts" });
@@ -243,6 +252,19 @@ export const pamWebAccessServiceFactory = ({
       );
     }
 
+    // Reason check is intentionally placed after the approval/permission gates so
+    // its distinct error code does not leak policy configuration to unauthorized actors.
+    if (account.policyId) {
+      const policy = await pamAccountPolicyDAL.findById(account.policyId);
+      const policyRules = (policy?.rules ?? {}) as TPolicyRules;
+      if (policy?.isActive && policyRules[PamAccountPolicyRuleType.RequireReason] && !trimmedReason) {
+        throw new BadRequestError({
+          message: "A reason is required to access this account",
+          name: "PAM_REASON_REQUIRED"
+        });
+      }
+    }
+
     // MFA check
     if (account.requireMfa && !mfaSessionId) {
       const project = await requestMemoize(requestMemoKeys.projectFindById(account.projectId), () =>
@@ -303,7 +325,8 @@ export const pamWebAccessServiceFactory = ({
         accountName: account.name,
         actorEmail,
         actorName,
-        auditLogInfo
+        auditLogInfo,
+        reason: trimmedReason
       })
     });
 
@@ -336,7 +359,8 @@ export const pamWebAccessServiceFactory = ({
     actorEmail,
     actorName,
     actorIp,
-    actorUserAgent
+    actorUserAgent,
+    reason: accessReason
   }: THandleWebSocketConnectionDTO): Promise<void> => {
     let session: { id: string } | null = null;
     let cleanedUp = false;
@@ -488,7 +512,8 @@ export const pamWebAccessServiceFactory = ({
         resourceType: resource.resourceType,
         accountId: account.id,
         resourceId: resource.id,
-        userId
+        userId,
+        reason: accessReason?.trim() || null
       });
 
       await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
@@ -590,7 +615,8 @@ export const pamWebAccessServiceFactory = ({
             accountId,
             resourceName,
             accountName,
-            duration: expiresAt.toISOString()
+            duration: expiresAt.toISOString(),
+            reason: accessReason ?? undefined
           }
         }
       });

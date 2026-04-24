@@ -652,8 +652,10 @@ export const ActionBar = ({
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
       });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
 
-      // Close the modal and show notification
       handlePopUpClose("confirmUpload");
       createNotification({
         type: "success",

@@ -265,6 +265,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "Travis CI",
       slug: "travisci",
+      syncSlug: "travis-ci",
       image: "Travis CI.png",
       isAvailable: true,
       type: "pat",

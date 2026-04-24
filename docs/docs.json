@@ -157,6 +157,7 @@
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/travis-ci",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
@@ -605,6 +606,7 @@
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
+                      "integrations/secret-syncs/travis-ci",
                       "integrations/secret-syncs/vercel",
                       "integrations/secret-syncs/windmill",
                       "integrations/secret-syncs/zabbix"
@@ -3265,7 +3267,8 @@
                   "api-reference/endpoints/kms/keys/update",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
-                  "api-reference/endpoints/kms/keys/private-key"
+                  "api-reference/endpoints/kms/keys/private-key",
+                  "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                 ]
               },
               {

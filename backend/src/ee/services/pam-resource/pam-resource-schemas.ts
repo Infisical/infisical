@@ -92,7 +92,8 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
   domain: PamDomainsSchema.pick({ id: true, name: true, domainType: true }).nullable().optional(),
   policyName: z.string().nullable().optional(),
   lastRotationMessage: z.string().nullable().optional(),
-  rotationStatus: z.string().nullable().optional()
+  rotationStatus: z.string().nullable().optional(),
+  requireReason: z.boolean().default(false)
 });
 
 export const BaseCreatePamAccountSchema = z.object({

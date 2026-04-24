@@ -1626,7 +1626,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     folderDAL,
-    secretDAL: secretV2BridgeDAL
+    secretDAL: secretV2BridgeDAL,
+    secretVersionV2BridgeDAL
   });
   const folderService = secretFolderServiceFactory({
     permissionService,
@@ -2909,7 +2910,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     pamSessionExpirationService,
     resourceMetadataDAL,
-    pamAccountDependenciesDAL
+    pamAccountDependenciesDAL,
+    keyStore
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2930,6 +2932,7 @@ export const registerRoutes = async (
 
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
+    pamAccountPolicyDAL,
     pamResourceDAL,
     permissionService,
     auditLogService,

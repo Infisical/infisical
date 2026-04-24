@@ -3,8 +3,8 @@ import { Compare, Filter, parse } from "scim2-parse-filter";
 
 import { TableName } from "@app/db/schemas";
 
-import { sanitizeSqlLikeString } from "../fn";
 import { BadRequestError } from "../errors";
+import { sanitizeSqlLikeString } from "../fn";
 
 const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
   if (filter.op !== "[]" && filter.op !== "and" && filter.op !== "or" && filter.op !== "not") {

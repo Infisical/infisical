@@ -32,6 +32,7 @@ export type TAccessAccountDTO = {
   actorUserAgent: string;
   duration: number;
   mfaSessionId?: string;
+  reason?: string;
 };
 
 export type TListAccountsDTO = {

@@ -26,6 +26,8 @@ export const secretApprovalRequestKeys = {
       { projectId, environment, status, committer, offset, limit, search },
       "secret-approval-requests"
     ] as const,
+  listAllForProject: ({ projectId }: { projectId: string }) =>
+    [{ projectId }, "secret-approval-requests"] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
     [{ id }, "secret-approval-request-detail"] as const,
   count: ({ projectId, policyId }: TGetSecretApprovalRequestCount) => [

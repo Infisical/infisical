@@ -100,6 +100,8 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
+  PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
+
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
