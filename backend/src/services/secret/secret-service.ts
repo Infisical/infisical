@@ -3640,10 +3640,17 @@ export const secretServiceFactory = ({
       { environment: destinationEnvironment, secretPath: destinationFolder.path }
     ];
     for (const rotation of affectedRotations) {
+      const effectiveConnectionId = isCrossEnvMove
+        ? (connectionOverridesByRotationId.get(rotation.id) ?? rotation.connectionId)
+        : rotation.connectionId;
+
       for (const ctx of rotationPermissionContexts) {
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionSecretRotationActions.Edit,
-          subject(ProjectPermissionSub.SecretRotation, { ...ctx, connectionId: rotation.connectionId })
+          subject(ProjectPermissionSub.SecretRotation, {
+            ...ctx,
+            connectionId: ctx.environment === sourceEnvironment ? rotation.connectionId : effectiveConnectionId
+          })
         );
       }
     }

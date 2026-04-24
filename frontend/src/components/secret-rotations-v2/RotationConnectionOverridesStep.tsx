@@ -153,7 +153,7 @@ export const RotationConnectionOverridesStep = ({
       <div className="rounded-md border border-yellow-700/30 bg-yellow-900/20 p-4">
         <div className="flex items-start gap-3">
           <FontAwesomeIcon icon={faWarning} className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" />
-          <div className="text-sm text-yellow-500">
+          <div className="text-sm text-mineshaft-300">
             <p className="font-medium">Cross-environment rotation move</p>
             <p className="mt-1">
               Moving rotations to{" "}
