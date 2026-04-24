@@ -2,7 +2,7 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
   TSupabaseProject,
   useSupabaseConnectionListProjects
@@ -76,13 +76,14 @@ export const SupabaseApiKeyRotationParametersFields = () => {
             label="Key Type"
             tooltipText="Publishable keys are safe to use in browsers and client-side code. Secret keys grant privileged access to the project API and should never be exposed publicly."
           >
-            <Select value={value} onValueChange={onChange} className="w-full">
-              {KEY_TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </Select>
+            <FilterableSelect
+              value={KEY_TYPE_OPTIONS.find((o) => o.value === value) ?? null}
+              onChange={(option) => onChange(option?.value ?? null)}
+              options={KEY_TYPE_OPTIONS}
+              getOptionLabel={(option) => option.label}
+              getOptionValue={(option) => option.value}
+              placeholder="Select a key type..."
+            />
           </FormControl>
         )}
       />
