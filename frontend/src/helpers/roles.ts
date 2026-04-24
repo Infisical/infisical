@@ -22,7 +22,7 @@ export const formatProjectRoleName = (role: string, customRoleName?: string) => 
     case ProjectMembershipRole.Admin:
       return "Admin";
     case ProjectMembershipRole.Member:
-      return "Developer";
+      return "Member";
     case ProjectMembershipRole.Viewer:
       return "Viewer";
     case ProjectMembershipRole.NoAccess:
