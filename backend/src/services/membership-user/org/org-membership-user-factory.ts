@@ -6,7 +6,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -80,12 +80,6 @@ export const newOrgMembershipUserFactory = ({
     }
 
     const org = await orgDAL.findById(dto.permission.orgId);
-    if (org?.authEnforced) {
-      throw new ForbiddenRequestError({
-        name: "InviteUser",
-        message: "Failed to invite user due to org-level auth enforced for organization"
-      });
-    }
 
     if (org.rootOrgId) {
       const rootOrgMembership = await membershipUserDAL.find({
