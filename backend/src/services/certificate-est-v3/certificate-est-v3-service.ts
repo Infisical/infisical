@@ -3,7 +3,9 @@ import * as x509 from "@peculiar/x509";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -25,6 +27,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -39,6 +42,7 @@ export const certificateEstV3ServiceFactory = ({
   certificateV3Service,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
+  certificateDAL,
   projectDAL,
   kmsService,
   licenseService,
@@ -247,6 +251,16 @@ export const certificateEstV3ServiceFactory = ({
       throw new BadRequestError({
         message: "Invalid client certificate: unable to build a valid certificate chain"
       });
+    }
+
+    // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
+    const isRevoked = await certificateDAL.transaction(async (tx) => {
+      const storedCert = await certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx);
+      return storedCert?.status === CertStatus.REVOKED;
+    });
+
+    if (isRevoked) {
+      throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);

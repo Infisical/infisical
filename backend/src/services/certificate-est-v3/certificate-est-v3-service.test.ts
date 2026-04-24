@@ -6,7 +6,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
@@ -31,6 +32,14 @@ vi.mock("@peculiar/x509", () => ({
     cRLSign: 64,
     encipherOnly: 128,
     decipherOnly: 256
+  },
+  ExtendedKeyUsage: {
+    clientAuth: "1.3.6.1.5.5.7.3.2",
+    serverAuth: "1.3.6.1.5.5.7.3.1",
+    codeSigning: "1.3.6.1.5.5.7.3.3",
+    emailProtection: "1.3.6.1.5.5.7.3.4",
+    ocspSigning: "1.3.6.1.5.5.7.3.9",
+    timeStamping: "1.3.6.1.5.5.7.3.8"
   }
 }));
 
@@ -82,6 +91,11 @@ describe("CertificateEstV3Service", () => {
   const mockCertificateAuthorityCertDAL = {
     find: vi.fn(),
     findById: vi.fn()
+  };
+
+  const mockCertificateDAL = {
+    findOne: vi.fn(),
+    transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({}))
   };
 
   const mockProjectDAL = {
@@ -152,6 +166,7 @@ describe("CertificateEstV3Service", () => {
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
+      certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
       kmsService: mockKmsService,
       licenseService: mockLicenseService,
@@ -165,6 +180,7 @@ describe("CertificateEstV3Service", () => {
     mockProjectDAL.findOne.mockResolvedValue(mockProject);
     mockLicenseService.getPlan.mockResolvedValue(mockPlan);
     mockCertificatePolicyDAL.findById.mockResolvedValue(mockPolicy);
+    mockCertificateDAL.findOne.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -411,6 +427,20 @@ describe("CertificateEstV3Service", () => {
           sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
         })
       ).rejects.toThrow(/requires approval/i);
+    });
+
+    it("should reject re-enrollment when the client certificate is revoked", async () => {
+      mockCertificateDAL.findOne.mockResolvedValue({ status: CertStatus.REVOKED });
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow(UnauthorizedError);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
     });
   });
 
