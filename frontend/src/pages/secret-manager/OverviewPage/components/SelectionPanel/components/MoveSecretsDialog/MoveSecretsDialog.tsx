@@ -770,7 +770,7 @@ const MultiEnvContent = ({
         <Button
           type="submit"
           variant="project"
-          isDisabled={!destinationSelected || isSubmitting}
+          isDisabled={!destinationSelected || isSubmitting || hasSelectedRotationSecrets}
           isPending={isSubmitting}
         >
           Move Secrets
