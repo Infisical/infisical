@@ -80,8 +80,8 @@ export const SupabaseApiKeyRotationParametersFields = () => {
               value={KEY_TYPE_OPTIONS.find((o) => o.value === value) ?? null}
               onChange={(option) =>
                 onChange(
-                  (option as SingleValue<{ label: string; value: SupabaseApiKeyType }>)
-                    ?.value ?? null
+                  (option as SingleValue<{ label: string; value: SupabaseApiKeyType }>)?.value ??
+                    null
                 )
               }
               options={KEY_TYPE_OPTIONS}
