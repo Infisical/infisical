@@ -254,6 +254,9 @@ export const certificateDALFactory = (db: TDbClient) => {
         );
       }
 
+      // The CASL-sourced metadata filter (if any) has already been merged
+      // into `filters.metadataFilter` by the service layer, so
+      // applyInventoryFilters handles it via applyMetadataFilter.
       query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter) as typeof query;
 
       if (permissionFilters) {
@@ -342,7 +345,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .where("notAfter", ">", new Date())
         .whereNull("renewedByCertificateId");
 
-      Object.entries(filter).forEach(([key, value]) => {
+      const { metadataFilter, ...scalarFilters } = filter;
+      Object.entries(scalarFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (key === "friendlyName" || key === "commonName") {
             const sanitizedValue = sanitizeSqlLikeString(String(value));
@@ -352,6 +356,10 @@ export const certificateDALFactory = (db: TDbClient) => {
           }
         }
       });
+
+      if (metadataFilter && metadataFilter.length > 0) {
+        query = applyMetadataFilter(query, metadataFilter, "certificateId", TableName.Certificate);
+      }
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
@@ -633,10 +641,14 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getDashboardStats = async (projectId: string) => {
+  const getDashboardStats = async (projectId: string, metadataFilter?: Array<{ key: string; value?: string }>) => {
     try {
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const applyMeta = <T extends Knex.QueryBuilder>(q: T): T =>
+        metadataFilter && metadataFilter.length > 0
+          ? applyMetadataFilter(q, metadataFilter, "certificateId", TableName.Certificate)
+          : q;
 
       interface TotalsRow {
         total: number;
@@ -662,51 +674,54 @@ export const certificateDALFactory = (db: TDbClient) => {
         count: string;
       }
 
-      const [totalsRow] = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .select(
-          db.raw("COUNT(*)::int as total"),
-          db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ?)::int as active`,
-            [now, CertStatus.REVOKED]
-          ),
-          db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as "expiringSoon"`,
-            [now, thirtyDaysFromNow, CertStatus.REVOKED]
-          ),
-          db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as expired`,
-            [now, CertStatus.REVOKED]
-          ),
-          db.raw(`COUNT(*) FILTER (WHERE "${TableName.Certificate}"."status" = ?)::int as revoked`, [
-            CertStatus.REVOKED
-          ]),
-          db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewBeforeDays" IS NULL)::int as "expiringSoonNoAutoRenewal"`,
-            [now, thirtyDaysFromNow, CertStatus.REVOKED]
-          ),
-          db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL)::int as "expiredNotRenewed"`,
-            [now, CertStatus.REVOKED]
-          )
-        );
+      const [totalsRow] = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      ).select(
+        db.raw("COUNT(*)::int as total"),
+        db.raw(
+          `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ?)::int as active`,
+          [now, CertStatus.REVOKED]
+        ),
+        db.raw(
+          `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as "expiringSoon"`,
+          [now, thirtyDaysFromNow, CertStatus.REVOKED]
+        ),
+        db.raw(
+          `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as expired`,
+          [now, CertStatus.REVOKED]
+        ),
+        db.raw(`COUNT(*) FILTER (WHERE "${TableName.Certificate}"."status" = ?)::int as revoked`, [CertStatus.REVOKED]),
+        db.raw(
+          `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewBeforeDays" IS NULL)::int as "expiringSoonNoAutoRenewal"`,
+          [now, thirtyDaysFromNow, CertStatus.REVOKED]
+        ),
+        db.raw(
+          `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL)::int as "expiredNotRenewed"`,
+          [now, CertStatus.REVOKED]
+        )
+      );
 
       const totals = totalsRow as unknown as TotalsRow;
 
-      const byAlgorithm = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      const byAlgorithm = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      )
         .select(`${TableName.Certificate}.keyAlgorithm as label`)
         .count("* as count")
         .groupBy(`${TableName.Certificate}.keyAlgorithm`);
 
-      const byCA = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      const byCA = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      )
         .select(`${TableName.CertificateAuthority}.id as id`)
         .select(`${TableName.CertificateAuthority}.name as label`)
         .count("* as count")
@@ -718,15 +733,17 @@ export const certificateDALFactory = (db: TDbClient) => {
         { label: "Revoked", count: totals.revoked }
       ];
 
-      const byEnrollmentMethod = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .leftJoin(
-          TableName.PkiCertificateProfile,
-          `${TableName.Certificate}.profileId`,
-          `${TableName.PkiCertificateProfile}.id`
-        )
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      const byEnrollmentMethod = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .leftJoin(
+            TableName.PkiCertificateProfile,
+            `${TableName.Certificate}.profileId`,
+            `${TableName.PkiCertificateProfile}.id`
+          )
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+      )
         .select(db.raw(`COALESCE("${TableName.PkiCertificateProfile}"."enrollmentType", 'API') as label`))
         .count("* as count")
         .groupBy("label");
@@ -735,11 +752,13 @@ export const certificateDALFactory = (db: TDbClient) => {
       const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
       const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-      const expirationBuckets = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+      const expirationBuckets = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+      )
         .select(
           db.raw(
             `CASE
@@ -756,12 +775,14 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.raw("count(*)::int as count"))
         .groupBy("bucket");
 
-      const validityBuckets = await db
-        .replicaNode()(TableName.Certificate)
-        .where(`${TableName.Certificate}.projectId`, projectId)
-        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
-        .where(`${TableName.Certificate}.notAfter`, ">", now)
-        .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
+      const validityBuckets = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .where(`${TableName.Certificate}.projectId`, projectId)
+          .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+          .where(`${TableName.Certificate}.notAfter`, ">", now)
+          .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
+      )
         .select(
           db.raw(
             `CASE
@@ -815,7 +836,11 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getActivityTrend = async (projectId: string, daysBack: number) => {
+  const getActivityTrend = async (
+    projectId: string,
+    daysBack: number,
+    metadataFilter?: Array<{ key: string; value?: string }>
+  ) => {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysBack);
@@ -833,48 +858,61 @@ export const certificateDALFactory = (db: TDbClient) => {
       const periodExpr = (col: string) =>
         db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."${col}"), ?) as period`, [truncUnit, dateFormat]);
 
-      const issued = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
+      const applyMeta = <T extends Knex.QueryBuilder>(q: T): T =>
+        metadataFilter && metadataFilter.length > 0
+          ? applyMetadataFilter(q, metadataFilter, "certificateId", TableName.Certificate)
+          : q;
+
+      const issued = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+          .where(`${TableName.Certificate}.notBefore`, "<=", now)
+      )
         .select(periodExpr("notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
 
-      const expired = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
-        .where(`${TableName.Certificate}.notAfter`, "<=", now)
-        .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+      const expired = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .where(`${TableName.Certificate}.notAfter`, ">=", startDate)
+          .where(`${TableName.Certificate}.notAfter`, "<=", now)
+          .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+      )
         .select(periodExpr("notAfter"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
 
-      const revoked = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
-        .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
-        .where(`${TableName.Certificate}.revokedAt`, "<=", now)
+      const revoked = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .where(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+          .where(`${TableName.Certificate}.revokedAt`, ">=", startDate)
+          .where(`${TableName.Certificate}.revokedAt`, "<=", now)
+      )
         .select(periodExpr("revokedAt"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
         .orderBy("period");
 
-      const renewed = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
-        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
+      const renewed = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .whereNotNull(`${TableName.Certificate}.renewedFromCertificateId`)
+          .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+          .where(`${TableName.Certificate}.notBefore`, "<=", now)
+      )
         .select(periodExpr("notBefore"))
         .select(db.raw("count(*)::int as count"))
         .groupBy("period")
@@ -934,7 +972,11 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getPqcTrend = async (projectId: string, daysBack: number) => {
+  const getPqcTrend = async (
+    projectId: string,
+    daysBack: number,
+    metadataFilter?: Array<{ key: string; value?: string }>
+  ) => {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysBack);
@@ -948,13 +990,20 @@ export const certificateDALFactory = (db: TDbClient) => {
       const truncUnit = useDaily ? "day" : "month";
       const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
 
-      const rows = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
-        .where(`${TableName.Certificate}.notBefore`, "<=", now)
-        .whereIn(`${TableName.Certificate}.keyAlgorithm`, [...PQC_KEY_ALGORITHMS, ...NON_PQC_KEY_ALGORITHMS])
+      const applyMeta = <T extends Knex.QueryBuilder>(q: T): T =>
+        metadataFilter && metadataFilter.length > 0
+          ? applyMetadataFilter(q, metadataFilter, "certificateId", TableName.Certificate)
+          : q;
+
+      const rows = await applyMeta(
+        db
+          .replicaNode()(TableName.Certificate)
+          .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+          .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+          .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+          .where(`${TableName.Certificate}.notBefore`, "<=", now)
+          .whereIn(`${TableName.Certificate}.keyAlgorithm`, [...PQC_KEY_ALGORITHMS, ...NON_PQC_KEY_ALGORITHMS])
+      )
         .select(
           db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."notBefore"), ?) as period`, [truncUnit, dateFormat])
         )

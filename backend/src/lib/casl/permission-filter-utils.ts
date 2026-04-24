@@ -1,6 +1,8 @@
 import type { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import RE2 from "re2";
 
+import { BadRequestError } from "@app/lib/errors";
+
 export interface PermissionFilterConfig {
   operator: string;
   value: unknown;
@@ -13,6 +15,16 @@ export type PermissionFilters = Record<string, Array<PermissionFilterConfig>>;
 export interface ProcessedPermissionRules {
   allowRules: Array<Record<string, Array<PermissionFilterConfig>>>;
   forbidRules: Array<Record<string, Array<PermissionFilterConfig>>>;
+  /**
+   * Metadata $elemMatch conditions extracted from the matching rules, ready
+   * to be passed to applyMetadataFilter. Each entry ANDs with the others when
+   * applied. Multi-rule semantics: CASL would OR multiple allow rules, but
+   * applyMetadataFilter ANDs entries together — we intentionally AND here as
+   * it's stricter (smaller result set, no leaks). A warning is logged when
+   * more than one allow rule on the same subject contributes $elemMatch
+   * entries so the deviation is observable.
+   */
+  metadataFilter: Array<{ key: string; value?: string }>;
 }
 
 interface MongoRegexFilter {
@@ -35,14 +47,99 @@ interface MongoGlobFilter {
   $glob: unknown;
 }
 
+const RECOGNIZED_OPERATORS = new Set(["$regex", "$eq", "$in", "$glob", "$ne", "$elemMatch"]);
+
+/**
+ * Extract metadata $elemMatch entries (compatible with applyMetadataFilter)
+ * from a CASL condition value. Only $eq and $in are permitted under the
+ * inner `key` / `value` objects (matching the schemas in project-permission.ts).
+ * Any other operator throws loudly so the translator can't silently drop
+ * security-relevant conditions.
+ */
+const extractElemMatchEntries = (field: string, elemMatchValue: unknown): Array<{ key: string; value?: string }> => {
+  if (!elemMatchValue || typeof elemMatchValue !== "object") {
+    throw new BadRequestError({
+      message: `Invalid $elemMatch value for field "${field}" — expected an object.`
+    });
+  }
+
+  const inner = elemMatchValue as Record<string, unknown>;
+  const keySpec = inner.key as Record<string, unknown> | undefined;
+  const valueSpec = inner.value as Record<string, unknown> | undefined;
+
+  const readOperand = (
+    innerField: "key" | "value",
+    spec: Record<string, unknown> | undefined
+  ): string[] | undefined => {
+    if (spec === undefined) return undefined;
+    if (!spec || typeof spec !== "object") {
+      throw new BadRequestError({
+        message: `Invalid $elemMatch.${innerField} for field "${field}" — expected an object.`
+      });
+    }
+    const allowed = new Set(["$eq", "$in"]);
+    const ops = Object.keys(spec).filter((k) => k.startsWith("$"));
+    for (const op of ops) {
+      if (!allowed.has(op)) {
+        throw new BadRequestError({
+          message: `Unknown CASL operator "${op}" under $elemMatch.${innerField} on field "${field}" — only $eq/$in are supported.`
+        });
+      }
+    }
+    const results: string[] = [];
+    if ("$eq" in spec) {
+      results.push(String(spec.$eq));
+    }
+    if ("$in" in spec) {
+      const arr = spec.$in;
+      if (!Array.isArray(arr)) {
+        throw new BadRequestError({
+          message: `Invalid $elemMatch.${innerField}.$in for field "${field}" — expected array.`
+        });
+      }
+      arr.forEach((v) => results.push(String(v)));
+    }
+    // No recognized operator under elemMatch — treat as no constraint.
+    return results.length > 0 ? results : undefined;
+  };
+
+  const keys = readOperand("key", keySpec);
+  const values = readOperand("value", valueSpec);
+
+  if (!keys || keys.length === 0) {
+    // Every entry needs a key; otherwise applyMetadataFilter has nothing to
+    // join on. This matches what the schema requires in practice.
+    throw new BadRequestError({
+      message: `$elemMatch on field "${field}" must specify a key constraint.`
+    });
+  }
+
+  if (!values) {
+    return keys.map((key) => ({ key }));
+  }
+
+  const entries: Array<{ key: string; value?: string }> = [];
+  keys.forEach((key) => {
+    values.forEach((value) => {
+      entries.push({ key, value });
+    });
+  });
+  return entries;
+};
+
 /**
  * Builds permission filters from CASL MongoDB-style conditions
  * @param conditions - MongoDB-style conditions from CASL ability
  * @param isInverted - Whether this rule is inverted (forbidden)
- * @returns Record of field names to arrays of filter configurations
+ * @returns Record of field names to arrays of filter configurations, plus the
+ *          metadata $elemMatch entries extracted for the service layer.
  */
-const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted = false): PermissionFilters => {
+const buildPermissionFiltersFromConditions = (
+  conditions: MongoQuery,
+  isInverted = false
+): { permissionFilters: PermissionFilters; metadataFilter: Array<{ key: string; value?: string }> } => {
   const permissionFilters: PermissionFilters = {};
+  const metadataFilter: Array<{ key: string; value?: string }> = [];
 
   function addFilterToField(key: string, operator: string, value: unknown, isPattern: boolean) {
     if (!permissionFilters[key]) {
@@ -106,6 +203,23 @@ const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted
       const operatorKeys = ["$regex", "$eq", "$in", "$glob", "$ne"];
       const presentOperators = operatorKeys.filter((op) => op in valueObj);
 
+      // $elemMatch handled via the service layer (applyMetadataFilter), not
+      // via SQL translation. Extract entries even in the multi-operator case,
+      // though our schemas never mix $elemMatch with anything else.
+      if ("$elemMatch" in valueObj) {
+        if (isInverted) {
+          throw new BadRequestError({
+            message: `Inverted rules with $elemMatch on field "${key}" are not supported.`
+          });
+        }
+        const entries = extractElemMatchEntries(key, valueObj.$elemMatch);
+        metadataFilter.push(...entries);
+        // If the value is only $elemMatch, we're done. If it had other
+        // recognized operators, keep processing them below.
+        const otherPresent = presentOperators.length > 0;
+        if (!otherPresent) return;
+      }
+
       if (presentOperators.length > 1) {
         if ("$eq" in valueObj) {
           addFilterToField(key, "=", valueObj.$eq, false);
@@ -153,6 +267,21 @@ const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted
         const valueStr = String(neFilter.$ne);
         const hasWildcards = valueStr.includes("*") || valueStr.includes("?");
         addFilterToField(key, hasWildcards ? "NOT LIKE" : "!=", neFilter.$ne, hasWildcards);
+      } else {
+        // Guardrail: If the value looks like a CASL operator object (has
+        // $-prefixed keys) but none of them are recognized, fail loudly
+        // instead of silently dropping the condition. This is what bit us
+        // with $elemMatch originally.
+        const dollarKeys = Object.keys(valueObj).filter((k) => k.startsWith("$"));
+        if (dollarKeys.length > 0) {
+          const unknown = dollarKeys.find((k) => !RECOGNIZED_OPERATORS.has(k));
+          if (unknown) {
+            throw new BadRequestError({
+              message: `Unknown CASL operator "${unknown}" on field "${key}" — translator is missing a handler.`
+            });
+          }
+        }
+        // Otherwise it's a plain nested object — ignore (prior behavior).
       }
     } else {
       addFilterToField(key, "=", value, false);
@@ -181,7 +310,7 @@ const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted
     processConditions(conditions);
   }
 
-  return permissionFilters;
+  return { permissionFilters, metadataFilter };
 };
 
 /**
@@ -207,19 +336,36 @@ export function getProcessedPermissionRules(
 
   const allowRules: Array<Record<string, Array<PermissionFilterConfig>>> = [];
   const forbidRules: Array<Record<string, Array<PermissionFilterConfig>>> = [];
+  const metadataFilter: Array<{ key: string; value?: string }> = [];
+  let allowRulesWithMetadata = 0;
 
   matchingRules.forEach((rule: RawRuleOf<MongoAbility>) => {
     if (rule.conditions) {
       const isInverted = rule.inverted || false;
-      const ruleFilters = buildPermissionFiltersFromConditions(rule.conditions, isInverted);
+      const { permissionFilters, metadataFilter: ruleMetadata } = buildPermissionFiltersFromConditions(
+        rule.conditions,
+        isInverted
+      );
 
       if (isInverted) {
-        forbidRules.push(ruleFilters);
+        forbidRules.push(permissionFilters);
       } else {
-        allowRules.push(ruleFilters);
+        allowRules.push(permissionFilters);
+        if (ruleMetadata.length > 0) {
+          allowRulesWithMetadata += 1;
+          metadataFilter.push(...ruleMetadata);
+        }
       }
     }
   });
 
-  return { allowRules, forbidRules };
+  if (allowRulesWithMetadata > 1) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[permission-filter-utils] ${allowRulesWithMetadata} allow rules with metadata $elemMatch conditions detected on ` +
+        `subject "${subjectName}" / action "${action}". Entries will be AND-ed (stricter than CASL's OR semantics).`
+    );
+  }
+
+  return { allowRules, forbidRules, metadataFilter };
 }

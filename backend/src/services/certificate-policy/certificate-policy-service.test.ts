@@ -271,14 +271,14 @@ describe("CertificatePolicyService", () => {
           limit: 20,
           search: undefined
         },
-        { allowRules: [], forbidRules: [] }
+        { allowRules: [], forbidRules: [], metadataFilter: [] }
       );
       expect(mockCertificatePolicyDAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: undefined
         },
-        { allowRules: [], forbidRules: [] }
+        { allowRules: [], forbidRules: [], metadataFilter: [] }
       );
       expect(result).toEqual({ policies, totalCount });
     });
@@ -303,14 +303,14 @@ describe("CertificatePolicyService", () => {
           limit: 20,
           search: "web server"
         },
-        { allowRules: [], forbidRules: [] }
+        { allowRules: [], forbidRules: [], metadataFilter: [] }
       );
       expect(mockCertificatePolicyDAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: "web server"
         },
-        { allowRules: [], forbidRules: [] }
+        { allowRules: [], forbidRules: [], metadataFilter: [] }
       );
     });
   });

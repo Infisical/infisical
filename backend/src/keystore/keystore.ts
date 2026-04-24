@@ -100,9 +100,15 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   SecretEtag: (projectId: string) => `secret-etag:${projectId}` as const,
 
-  CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
-  CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
-  CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
+  // `metadataFilterHash` scopes dashboards per metadata-filter so users with
+  // different RBAC metadata scopes don't share cached aggregates. Pass "" for
+  // unscoped callers (the common case).
+  CertDashboardStats: (projectId: string, metadataFilterHash: string = "") =>
+    `cert-dashboard-stats:${projectId}:${metadataFilterHash}` as const,
+  CertActivityTrend: (projectId: string, range: string, metadataFilterHash: string = "") =>
+    `cert-activity-trend:${projectId}:${range}:${metadataFilterHash}` as const,
+  CertPqcTrend: (projectId: string, range: string, metadataFilterHash: string = "") =>
+    `cert-pqc-trend:${projectId}:${range}:${metadataFilterHash}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const
 };

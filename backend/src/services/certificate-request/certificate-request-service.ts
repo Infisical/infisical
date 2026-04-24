@@ -415,6 +415,13 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    // Merge user-supplied metadata filters with CASL-sourced metadata
+    // $elemMatch conditions (AND — see translator notes).
+    const mergedMetadataFilter: Array<{ key: string; value?: string }> = [
+      ...(metadataFilter || []),
+      ...processedRules.metadataFilter
+    ];
+
     const options: Parameters<typeof certificateRequestDAL.findByProjectIdWithCertificate>[1] = {
       offset,
       limit,
@@ -425,7 +432,7 @@ export const certificateRequestServiceFactory = ({
       profileIds,
       sortBy,
       sortOrder,
-      metadataFilter
+      metadataFilter: mergedMetadataFilter.length > 0 ? mergedMetadataFilter : undefined
     };
 
     const [certificateRequests, totalCount] = await Promise.all([

@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
+import { createHash } from "crypto";
 
 import {
   AccessScope,
@@ -1257,6 +1258,20 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    const permissionFilters = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    // Merge user-supplied metadata filters with CASL-sourced metadata
+    // $elemMatch conditions. ANDing is the safe direction — the user cannot
+    // broaden scope beyond what their role grants.
+    const mergedMetadataFilter: Array<{ key: string; value?: string }> = [
+      ...(metadataFilter || []),
+      ...permissionFilters.metadataFilter
+    ];
+
     const regularFilters = {
       projectId,
       ...(friendlyName && { friendlyName }),
@@ -1268,7 +1283,7 @@ export const projectServiceFactory = ({
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
-      ...(metadataFilter && { metadataFilter }),
+      ...(mergedMetadataFilter.length > 0 && { metadataFilter: mergedMetadataFilter }),
       ...(extendedKeyUsage && { extendedKeyUsage }),
       ...(keyAlgorithm && { keyAlgorithm }),
       ...(signatureAlgorithm && { signatureAlgorithm }),
@@ -1281,11 +1296,6 @@ export const projectServiceFactory = ({
       ...(notBeforeFrom && { notBeforeFrom }),
       ...(notBeforeTo && { notBeforeTo })
     };
-    const permissionFilters = getProcessedPermissionRules(
-      permission,
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
 
     const ALLOWED_SORT_COLUMNS = new Set([
       "notAfter",
@@ -1344,6 +1354,26 @@ export const projectServiceFactory = ({
     };
   };
 
+  /**
+   * Produce a stable fingerprint of the CASL-sourced metadata filter so
+   * users with different metadata scopes hitting the same project don't
+   * share a cached dashboard payload. Unscoped callers get "" and share
+   * the global cache.
+   */
+  const metadataFilterCacheHash = (metadataFilter: Array<{ key: string; value?: string }>): string => {
+    if (metadataFilter.length === 0) return "";
+    const normalized = [...metadataFilter]
+      .map((entry) => ({ key: entry.key, value: entry.value ?? null }))
+      .sort((a, b) => {
+        if (a.key !== b.key) return a.key < b.key ? -1 : 1;
+        const av = a.value ?? "";
+        const bv = b.value ?? "";
+        if (av === bv) return 0;
+        return av < bv ? -1 : 1;
+      });
+    return createHash("sha256").update(JSON.stringify(normalized)).digest("hex").slice(0, 16);
+  };
+
   const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
@@ -1362,11 +1392,18 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    const { metadataFilter } = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    const filterHash = metadataFilterCacheHash(metadataFilter);
+
     return withCache({
       keyStore,
-      key: KeyStorePrefixes.CertDashboardStats(projectId),
+      key: KeyStorePrefixes.CertDashboardStats(projectId, filterHash),
       ttlSeconds: DASHBOARD_CACHE_TTL,
-      fetcher: () => certificateDAL.getDashboardStats(projectId)
+      fetcher: () => certificateDAL.getDashboardStats(projectId, metadataFilter)
     });
   };
 
@@ -1398,11 +1435,18 @@ export const projectServiceFactory = ({
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
 
+    const { metadataFilter } = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    const filterHash = metadataFilterCacheHash(metadataFilter);
+
     return withCache({
       keyStore,
-      key: KeyStorePrefixes.CertActivityTrend(projectId, range),
+      key: KeyStorePrefixes.CertActivityTrend(projectId, range, filterHash),
       ttlSeconds: DASHBOARD_CACHE_TTL,
-      fetcher: () => certificateDAL.getActivityTrend(projectId, daysBack)
+      fetcher: () => certificateDAL.getActivityTrend(projectId, daysBack, metadataFilter)
     });
   };
 
@@ -1434,11 +1478,18 @@ export const projectServiceFactory = ({
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
 
+    const { metadataFilter } = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+    const filterHash = metadataFilterCacheHash(metadataFilter);
+
     return withCache({
       keyStore,
-      key: KeyStorePrefixes.CertPqcTrend(projectId, range),
+      key: KeyStorePrefixes.CertPqcTrend(projectId, range, filterHash),
       ttlSeconds: DASHBOARD_CACHE_TTL,
-      fetcher: () => certificateDAL.getPqcTrend(projectId, daysBack)
+      fetcher: () => certificateDAL.getPqcTrend(projectId, daysBack, metadataFilter)
     });
   };
 
