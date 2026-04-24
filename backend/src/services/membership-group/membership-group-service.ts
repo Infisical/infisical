@@ -386,9 +386,9 @@ export const membershipGroupServiceFactory = ({
         offset: dto.data.offset,
         orderBy: dto.data.orderBy,
         orderDirection: dto.data.orderDirection,
-        name: dto.data.groupName
+        name: dto.data.search
           ? {
-              [SearchResourceOperators.$contains]: dto.data.groupName
+              [SearchResourceOperators.$contains]: dto.data.search
             }
           : undefined,
         role: dto.data.roles?.length

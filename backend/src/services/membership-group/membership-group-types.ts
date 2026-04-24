@@ -62,7 +62,7 @@ export type TListMembershipGroupDTO = {
   data: {
     limit?: number;
     offset?: number;
-    groupName?: string;
+    search?: string;
     roles?: string[];
     orderBy?: OrgGroupsOrderBy;
     orderDirection?: OrderByDirection;

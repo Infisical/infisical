@@ -691,7 +691,7 @@ export const useSearchOrganizationGroups = ({
           params: {
             limit,
             offset,
-            groupName: search || undefined,
+            search: search || undefined,
             roles: roles?.length ? roles : undefined,
             orderBy,
             orderDirection
