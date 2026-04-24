@@ -393,6 +393,23 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMetadataByCertificateRequestIds = async (certificateRequestIds: string[], tx?: Knex) => {
+    if (certificateRequestIds.length === 0) return {} as Record<string, Array<{ key: string; value: string }>>;
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+        .whereIn("certificateRequestId", certificateRequestIds)
+        .select("certificateRequestId", "key", "value");
+      const byId: Record<string, Array<{ key: string; value: string }>> = {};
+      for (const r of rows as Array<{ certificateRequestId: string; key: string; value: string | null }>) {
+        if (!byId[r.certificateRequestId]) byId[r.certificateRequestId] = [];
+        byId[r.certificateRequestId].push({ key: r.key, value: r.value ?? "" });
+      }
+      return byId;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find metadata by certificate request ids" });
+    }
+  };
+
   return {
     ...certificateRequestOrm,
     findByIdWithCertificate,
@@ -402,6 +419,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findByProjectIdWithCertificate,
+    findMetadataByCertificateRequestIds,
     markExpiredApprovalRequests
   };
 };

@@ -1005,6 +1005,23 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMetadataByCertificateIds = async (certificateIds: string[], tx?: Knex) => {
+    if (certificateIds.length === 0) return {} as Record<string, Array<{ key: string; value: string }>>;
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.ResourceMetadata)
+        .whereIn("certificateId", certificateIds)
+        .select("certificateId", "key", "value");
+      const byCertId: Record<string, Array<{ key: string; value: string }>> = {};
+      for (const r of rows as Array<{ certificateId: string; key: string; value: string | null }>) {
+        if (!byCertId[r.certificateId]) byCertId[r.certificateId] = [];
+        byCertId[r.certificateId].push({ key: r.key, value: r.value ?? "" });
+      }
+      return byCertId;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find metadata by certificate ids" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -1018,6 +1035,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findCertificatesEligibleForRenewal,
     findWithPrivateKeyInfo,
     findWithFullDetails,
+    findMetadataByCertificateIds,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend

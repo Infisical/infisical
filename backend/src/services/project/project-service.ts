@@ -169,6 +169,7 @@ type TProjectServiceFactoryDep = {
     | "findWithPrivateKeyInfo"
     | "findActiveCertificatesForSync"
     | "countActiveCertificatesForSync"
+    | "findMetadataByCertificateIds"
     | "getDashboardStats"
     | "getActivityTrend"
     | "getPqcTrend"
@@ -1311,6 +1312,33 @@ export const projectServiceFactory = ({
           permissionFilters
         );
 
+    // The SQL permission filter above handles commonName/friendlyName/status/etc conditions,
+    // but $elemMatch metadata conditions are dropped at query-build time. Enforce the
+    // metadata dimension here per-row (mirroring pam-account/pam-resource list patterns).
+    const metadataByCertId = await certificateDAL.findMetadataByCertificateIds(certificates.map((c) => c.id));
+    const filteredCertificates = certificates.filter((c) =>
+      permission.can(
+        ProjectPermissionCertificateActions.Read,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: c.commonName ?? undefined,
+          altNames: c.altNames
+            ? c.altNames
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : undefined,
+          serialNumber: c.serialNumber ?? undefined,
+          friendlyName: c.friendlyName ?? undefined,
+          status: c.status,
+          metadata: metadataByCertId[c.id] ?? []
+        })
+      )
+    );
+    const certificatesWithMetadata = filteredCertificates.map((c) => ({
+      ...c,
+      metadata: metadataByCertId[c.id] ?? []
+    }));
+
     const countFilter = {
       projectId,
       ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
@@ -1334,15 +1362,33 @@ export const projectServiceFactory = ({
       ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo })
     };
 
+    // totalCount reflects the pre-metadata-filter SQL count; this matches the existing
+    // PAM account list quirk where the total may be higher than the filtered page length.
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(countFilter)
       : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
 
     return {
-      certificates,
+      certificates: certificatesWithMetadata,
       totalCount: count
     };
   };
+
+  // Dashboard endpoints run project-wide aggregate SQL and cannot be safely narrowed per-row.
+  // When a user's Read Certificates permission carries any metadata condition, the aggregates
+  // would leak counts for out-of-scope certificates, so we deny the endpoints entirely.
+  const hasMetadataScopedCertRule = (permission: MongoAbility): boolean =>
+    permission.rules.some((rule) => {
+      const actionMatches = Array.isArray(rule.action)
+        ? rule.action.includes(ProjectPermissionCertificateActions.Read)
+        : rule.action === ProjectPermissionCertificateActions.Read;
+      const subjectMatches = Array.isArray(rule.subject)
+        ? rule.subject.includes(ProjectPermissionSub.Certificates)
+        : rule.subject === ProjectPermissionSub.Certificates;
+      if (!actionMatches || !subjectMatches) return false;
+      const conds = rule.conditions as Record<string, unknown> | undefined;
+      return Boolean(conds && typeof conds === "object" && "metadata" in conds);
+    });
 
   const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
@@ -1361,6 +1407,12 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
+
+    if (hasMetadataScopedCertRule(permission)) {
+      throw new ForbiddenRequestError({
+        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
+      });
+    }
 
     return withCache({
       keyStore,
@@ -1394,6 +1446,12 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
+
+    if (hasMetadataScopedCertRule(permission)) {
+      throw new ForbiddenRequestError({
+        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
+      });
+    }
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
@@ -1430,6 +1488,12 @@ export const projectServiceFactory = ({
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
+
+    if (hasMetadataScopedCertRule(permission)) {
+      throw new ForbiddenRequestError({
+        message: "Dashboard statistics are not available when certificate read permissions are scoped by metadata."
+      });
+    }
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];

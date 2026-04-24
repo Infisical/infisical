@@ -433,8 +433,24 @@ export const certificateRequestServiceFactory = ({
       certificateRequestDAL.countByProjectId(projectId, options, processedRules)
     ]);
 
-    const mappedCertificateRequests = certificateRequests.map((request) => ({
+    // SQL permission filter drops $elemMatch metadata conditions; enforce metadata-scoped
+    // Read Certificates per-row here (matches the listProjectCertificates behaviour).
+    const metadataByRequestId = await certificateRequestDAL.findMetadataByCertificateRequestIds(
+      certificateRequests.map((r) => r.id)
+    );
+    const filteredCertificateRequests = certificateRequests.filter((request) =>
+      permission.can(
+        ProjectPermissionCertificateActions.Read,
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: request.commonName ?? undefined,
+          metadata: metadataByRequestId[request.id] ?? []
+        })
+      )
+    );
+
+    const mappedCertificateRequests = filteredCertificateRequests.map((request) => ({
       ...request,
+      metadata: metadataByRequestId[request.id] ?? [],
       status: request.status as CertificateRequestStatus
     }));
 
