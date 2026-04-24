@@ -12,7 +12,6 @@ export {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
   useGetOrganizations,
-  useSearchOrganizationGroups,
   useGetOrganizationsWithSubOrgs,
   useGetOrgBillingDetails,
   useGetOrgIntegrationAuths,
@@ -24,6 +23,7 @@ export {
   useGetOrgPmtMethods,
   useGetOrgTaxIds,
   useGetOrgTrialUrl,
+  useSearchOrganizationGroups,
   useUpdateOrg,
   useUpdateOrgBillingDetails,
   useUpgradePrivilegeSystem
