@@ -1,7 +1,12 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  TSupabaseProject,
+  useSupabaseConnectionListProjects
+} from "@app/hooks/api/appConnections/supabase";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SupabaseApiKeyType } from "@app/hooks/api/secretRotationsV2/types/supabase-api-key-rotation";
 
@@ -17,6 +22,15 @@ export const SupabaseApiKeyRotationParametersFields = () => {
     }
   >();
 
+  const connectionId = useWatch({ name: "connection.id", control });
+
+  const { data: projects = [], isPending: isProjectsLoading } = useSupabaseConnectionListProjects(
+    connectionId,
+    {
+      enabled: Boolean(connectionId)
+    }
+  );
+
   return (
     <>
       <Controller
@@ -26,10 +40,27 @@ export const SupabaseApiKeyRotationParametersFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Project Reference"
-            tooltipText="The reference ID of the Supabase project"
+            label="Project"
+            tooltipText="The Supabase project to rotate the API key for"
           >
-            <Input value={value} onChange={onChange} placeholder="your-project-ref" />
+            <FilterableSelect
+              isLoading={isProjectsLoading && Boolean(connectionId)}
+              isDisabled={!connectionId}
+              value={projects.find((p) => p.id === value) ?? null}
+              onChange={(option) => {
+                const v = option as SingleValue<TSupabaseProject>;
+                onChange(v?.id ?? null);
+              }}
+              options={projects}
+              placeholder="Select a project..."
+              getOptionLabel={(option) => `${option.name} (id: ${option.id})`}
+              getOptionValue={(option) => option.id}
+              formatOptionLabel={(option) => (
+                <span>
+                  {option.name} <span className="text-mineshaft-400">(id: {option.id})</span>
+                </span>
+              )}
+            />
           </FormControl>
         )}
       />

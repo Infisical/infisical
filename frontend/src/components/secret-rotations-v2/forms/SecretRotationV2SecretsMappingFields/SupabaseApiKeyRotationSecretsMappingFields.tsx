@@ -21,7 +21,7 @@ export const SupabaseApiKeyRotationSecretsMappingFields = () => {
   >();
 
   const keyType = watch("parameters.keyType");
-  const prevKeyTypeRef = useRef(keyType);
+  const prevKeyTypeRef = useRef<SupabaseApiKeyType | undefined>(undefined);
 
   useEffect(() => {
     if (keyType && prevKeyTypeRef.current !== keyType) {

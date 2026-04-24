@@ -8,7 +8,7 @@ export const SUPABASE_API_KEY_ROTATION_LIST_OPTION: TSecretRotationV2ListItem = 
   connection: AppConnection.Supabase,
   template: {
     secretsMapping: {
-      apiKey: "SUPABASE_SECRET_API_KEY"
+      apiKey: "SUPABASE_API_KEY"
     }
   }
 };
