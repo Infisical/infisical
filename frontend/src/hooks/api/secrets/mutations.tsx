@@ -1,4 +1,4 @@
-import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MutationOptions, QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
@@ -17,6 +17,7 @@ import {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TMoveSecretRotationsDTO,
   TMoveSecretsDTO,
   TUpdateSecretBatchDTO,
   TUpdateSecretsV3DTO
@@ -371,6 +372,34 @@ export const useDeleteSecretBatch = ({
   });
 };
 
+const invalidateSecretLocationQueries = (
+  queryClient: QueryClient,
+  {
+    projectId,
+    environment,
+    secretPath
+  }: { projectId: string; environment: string; secretPath: string }
+) => {
+  queryClient.invalidateQueries({
+    queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+  });
+  queryClient.invalidateQueries({
+    queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+  });
+  queryClient.invalidateQueries({
+    queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
+  });
+  queryClient.invalidateQueries({
+    queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
+  });
+  queryClient.invalidateQueries({
+    queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
+  });
+  queryClient.invalidateQueries({
+    queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
+  });
+};
+
 export const useMoveSecrets = ({
   options
 }: {
@@ -412,54 +441,107 @@ export const useMoveSecrets = ({
 
       return data;
     },
-    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({
-          projectId,
-          secretPath: sourceSecretPath
-        })
+    onSuccess: (
+      _,
+      {
+        projectId,
+        sourceEnvironment,
+        sourceSecretPath,
+        destinationEnvironment,
+        destinationSecretPath
+      }
+    ) => {
+      invalidateSecretLocationQueries(queryClient, {
+        projectId,
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath
       });
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({
+      if (
+        destinationEnvironment !== sourceEnvironment ||
+        destinationSecretPath !== sourceSecretPath
+      ) {
+        invalidateSecretLocationQueries(queryClient, {
           projectId,
-          environment: sourceEnvironment,
-          secretPath: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          environment: sourceEnvironment,
-          projectId,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          environment: sourceEnvironment,
-          projectId,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({
-          projectId,
-          environment: sourceEnvironment,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({
-          projectId,
-          environment: sourceEnvironment,
-          directory: sourceSecretPath
-        })
-      });
+          environment: destinationEnvironment,
+          secretPath: destinationSecretPath
+        });
+      }
+
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
       });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
+    },
+    ...options
+  });
+};
+
+export const useMoveSecretRotations = ({
+  options
+}: {
+  options?: Omit<MutationOptions<object, object, TMoveSecretRotationsDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    {
+      isSourceUpdated: boolean;
+      isDestinationUpdated: boolean;
+    },
+    object,
+    TMoveSecretRotationsDTO
+  >({
+    mutationFn: async ({
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath,
+      secretIds,
+      projectId,
+      rotationConnectionOverrides
+    }) => {
+      const { data } = await apiRequest.post<{
+        isSourceUpdated: boolean;
+        isDestinationUpdated: boolean;
+      }>("/api/v4/secrets/move-rotations", {
+        sourceEnvironment,
+        sourceSecretPath,
+        destinationEnvironment,
+        destinationSecretPath,
+        secretIds,
+        projectId,
+        rotationConnectionOverrides
+      });
+
+      return data;
+    },
+    onSuccess: (
+      _,
+      {
+        projectId,
+        sourceEnvironment,
+        sourceSecretPath,
+        destinationEnvironment,
+        destinationSecretPath
+      }
+    ) => {
+      invalidateSecretLocationQueries(queryClient, {
+        projectId,
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath
+      });
+      if (
+        destinationEnvironment !== sourceEnvironment ||
+        destinationSecretPath !== sourceSecretPath
+      ) {
+        invalidateSecretLocationQueries(queryClient, {
+          projectId,
+          environment: destinationEnvironment,
+          secretPath: destinationSecretPath
+        });
+      }
     },
     ...options
   });

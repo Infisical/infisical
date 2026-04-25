@@ -72,9 +72,7 @@ export const SelectionPanel = ({
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
-  const isRotatedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
-    Object.values(record).some((secret) => secret.isRotatedSecret)
-  );
+
   const selectedCount = selectedFolderCount + selectedKeysCount;
 
   const { currentProject, projectId } = useProject();
@@ -306,11 +304,7 @@ export const SelectionPanel = ({
           >
             Unselect All
           </button>
-          {isRotatedSecretSelected && (
-            <span className="text-xs text-accent">
-              Rotated Secrets will not be affected by move or delete action.
-            </span>
-          )}
+
           {selectedKeysCount > 0 && (
             <Tooltip open={isTagActionDisabled ? undefined : false}>
               <TooltipTrigger>
