@@ -9,7 +9,7 @@ import { useUser } from "@app/context";
 import { useRenameUser } from "@app/hooks/api/users/queries";
 
 const formSchema = z.object({
-  name: z.string().describe("User Name")
+  name: z.string().trim().min(1, "Name cannot be empty")
 });
 
 type FormData = z.infer<typeof formSchema>;
