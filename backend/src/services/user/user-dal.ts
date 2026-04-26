@@ -229,6 +229,18 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Read from the primary DB node, bypassing any read replica.
+  // Use this for write-following-read patterns where replica lag could cause
+  // stale results — e.g. checking whether a user exists immediately after deletion.
+  const findOneFromPrimary = async (filter: Partial<TUsers>) => {
+    try {
+      const res = await db(TableName.Users).where(filter as never).first("*");
+      return res as TUsers | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one from primary" });
+    }
+  };
+
   // USER ACTION FUNCTIONS
   // ---------------------
   const findOneUserAction = (filter: TUserActionsUpdate, tx?: Knex) => {
@@ -261,6 +273,7 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    findAllMyAccounts
+    findAllMyAccounts,
+    findOneFromPrimary
   };
 };

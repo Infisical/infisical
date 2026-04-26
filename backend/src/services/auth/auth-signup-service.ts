@@ -51,8 +51,10 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    // akhilmhdh: case sensitive email resolution
-    let user = await userDAL.findOne({ username: sanitizedEmail });
+    // Use primary DB to avoid read-replica lag causing stale results immediately
+    // after account deletion (re-registration with the same email would otherwise
+    // see the deleted user on the replica and incorrectly send an "account exists" email).
+    let user = await userDAL.findOneFromPrimary({ username: sanitizedEmail });
     if (user && user.isAccepted) {
       // Send informational email for existing accounts instead of throwing error
       // This prevents user enumeration vulnerability
