@@ -651,7 +651,30 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
-            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+            // Tags belong to the shared secret row, not to personal override rows.
+            // When a personal override row exists (userId IS NOT NULL), include it if its
+            // corresponding shared secret (same key + folder, userId IS NULL) has a matching tag.
+            // This allows the service-layer PersonalOverridesBehavior.Priority logic to replace
+            // the shared value with the personal override value after tag filtering.
+            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs).orWhere((personalOverrideBd) => {
+              void personalOverrideBd
+                .whereNotNull(`${TableName.SecretV2}.userId`)
+                .whereExists((subQuery) => {
+                  void subQuery
+                    .select("shared.id")
+                    .from(`${TableName.SecretV2} as shared`)
+                    .join(
+                      `${TableName.SecretV2JnTag} as jnTag`,
+                      "shared.id",
+                      `jnTag.${TableName.SecretV2}Id`
+                    )
+                    .join(`${TableName.SecretTag} as tag`, `jnTag.${TableName.SecretTag}Id`, "tag.id")
+                    .whereNull("shared.userId")
+                    .whereRaw(`shared."folderId" = "${TableName.SecretV2}"."folderId"`)
+                    .whereRaw(`shared."key" = "${TableName.SecretV2}"."key"`)
+                    .whereIn("tag.slug", slugs);
+                });
+            });
           }
         })
         .where((bd) => {
