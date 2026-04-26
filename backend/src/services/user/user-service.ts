@@ -310,6 +310,21 @@ export const userServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
+    // Prevent the last super admin from deleting their own account.
+    // Doing so would leave the instance in an unrecoverable state where
+    // /admin/signup permanently redirects to /login because the initialized
+    // flag remains set but no admin exists to manage the instance.
+    const userToDelete = await userDAL.findById(userId);
+    if (userToDelete?.superAdmin) {
+      const superAdmins = await userDAL.find({ superAdmin: true });
+      if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+        throw new BadRequestError({
+          message:
+            "Cannot delete the only server admin account on this instance. Grant server admin access to another user before deleting your account."
+        });
+      }
+    }
+
     const user = await userDAL.deleteById(userId);
 
     try {
