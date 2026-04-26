@@ -18,7 +18,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         offset: z.coerce.number(),
-        limit: z.coerce.number()
+        limit: z.coerce.number().max(1000)
       }),
       response: {
         200: z.object({

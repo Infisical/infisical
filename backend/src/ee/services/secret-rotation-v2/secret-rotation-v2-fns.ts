@@ -32,6 +32,7 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
+import { SUPABASE_API_KEY_ROTATION_LIST_OPTION, TSupabaseApiKeyRotation } from "./supabase-api-key";
 import {
   TUnixLinuxLocalAccountRotation,
   UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
@@ -58,7 +59,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION
+  [SecretRotation.HpIloLocalAccount]: HP_ILO_ROTATION_LIST_OPTION,
+  [SecretRotation.SupabaseApiKey]: SUPABASE_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -357,6 +359,17 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update rotation method or username" });
+      }
+      break;
+    case SecretRotation.SupabaseApiKey:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TSupabaseApiKeyRotation["parameters"],
+          secretRotation.parameters as TSupabaseApiKeyRotation["parameters"],
+          ["projectRef", "keyType"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update project reference or key type" });
       }
       break;
     default:

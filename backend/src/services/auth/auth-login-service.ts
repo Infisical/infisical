@@ -12,7 +12,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -758,7 +758,11 @@ export const authLoginServiceFactory = ({
               });
 
               // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
+              await keyStore.setItemWithExpiry(
+                KeyStorePrefixes.UserMfaUnlockEmailSent(userId),
+                KeyStoreTtls.UserMfaUnlockEmailSentInSeconds,
+                "1"
+              );
             }
           } catch (lockErr) {
             if (lock) {

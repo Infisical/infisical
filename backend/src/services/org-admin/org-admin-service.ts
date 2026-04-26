@@ -60,7 +60,7 @@ export const orgAdminServiceFactory = ({
       {
         orgId: actorOrgId,
         $search: {
-          name: search ? `%${search}%` : undefined
+          name: search || undefined
         }
       },
       { offset, limit, sort: [["name", "asc"]], count: true }

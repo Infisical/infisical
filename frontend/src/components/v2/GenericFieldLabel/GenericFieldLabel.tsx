@@ -27,7 +27,9 @@ export const GenericFieldLabel = ({
         <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>
       </div>
       {children ? (
-        <p className={twMerge("text-sm text-mineshaft-100", truncate && "truncate")}>{children}</p>
+        <p className={twMerge("text-sm text-mineshaft-100", truncate ? "truncate" : "break-all")}>
+          {children}
+        </p>
       ) : (
         <p className="text-sm text-mineshaft-400/50 italic">None</p>
       )}

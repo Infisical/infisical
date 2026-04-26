@@ -29,6 +29,7 @@ import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
+import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
@@ -119,6 +120,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureEntraIdScimSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.ExternalInfisical:
       return <ExternalInfisicalSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Ona:
+      return <OnaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.TravisCI:
       return <TravisCISyncDestinationCol secretSync={secretSync} />;
     default:

@@ -104,7 +104,8 @@ export enum QueueName {
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
-  CertificateCleanup = "certificate-cleanup"
+  CertificateCleanup = "certificate-cleanup",
+  DigiCertOrderPolling = "digicert-order-polling"
 }
 
 export enum QueueJobs {
@@ -175,7 +176,8 @@ export enum QueueJobs {
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
-  DailySecretSyncRetry = "daily-secret-sync-retry-job"
+  DailySecretSyncRetry = "daily-secret-sync-retry-job",
+  DigiCertOrderPolling = "digicert-order-polling-job"
 }
 
 export type TQueueOptions = {
@@ -543,6 +545,10 @@ export type TQueueJobTypes = {
       };
   [QueueName.CertificateCleanup]: {
     name: QueueJobs.CertificateCleanup;
+    payload: undefined;
+  };
+  [QueueName.DigiCertOrderPolling]: {
+    name: QueueJobs.DigiCertOrderPolling;
     payload: undefined;
   };
 };

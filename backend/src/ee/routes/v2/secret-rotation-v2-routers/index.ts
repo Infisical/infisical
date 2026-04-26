@@ -15,6 +15,7 @@ import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-ro
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
+import { registerSupabaseApiKeyRotationRouter } from "./supabase-api-key-rotation-router";
 import { registerUnixLinuxLocalAccountRotationRouter } from "./unix-linux-local-account-rotation-router";
 import { registerWindowsLocalAccountRotationRouter } from "./windows-local-account-rotation-router";
 
@@ -40,5 +41,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter,
-  [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter
+  [SecretRotation.HpIloLocalAccount]: registerHpIloRotationRouter,
+  [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter
 };

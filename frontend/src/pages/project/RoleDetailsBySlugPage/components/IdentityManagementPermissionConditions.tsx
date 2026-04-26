@@ -59,7 +59,7 @@ export const IdentityManagementPermissionConditions = ({ position = 0, isDisable
           value: "assignableRole",
           label: "Assignable Roles",
           description:
-            "The roles that the actor is allowed to assign to the target machine identities. (e.g., admin, developer, viewer)"
+            "The roles that the actor is allowed to assign to the target machine identities. (e.g., admin, member, viewer)"
         },
         {
           value: "assignableSubject",

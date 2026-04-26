@@ -104,9 +104,13 @@ export const identityUaServiceFactory = ({
         trustedIps: identityUa.clientSecretTrustedIps as TIp[]
       });
 
-      const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
+      const lockoutKey = KeyStorePrefixes.IdentityLockoutState(
+        identityUa.identityId,
+        IdentityAuthMethod.UNIVERSAL_AUTH,
+        clientId
+      );
 
-      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+      const lockoutRaw = await keyStore.getItem(lockoutKey);
 
       let lockout: LockoutObject | undefined;
       if (lockoutRaw) {
@@ -146,14 +150,14 @@ export const identityUaServiceFactory = ({
         if (identityUa.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 300, {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 300, {
               retryCount: 3,
               retryDelay: 300,
               retryJitter: 100
             });
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+            const lockoutRawNew = await keyStore.getItem(lockoutKey);
             if (lockoutRawNew) {
               lockout = JSON.parse(lockoutRawNew) as LockoutObject;
             } else {
@@ -181,7 +185,7 @@ export const identityUaServiceFactory = ({
             }
 
             await keyStore.setItemWithExpiry(
-              LOCKOUT_KEY,
+              lockoutKey,
               lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
               JSON.stringify(lockout)
             );
@@ -211,7 +215,7 @@ export const identityUaServiceFactory = ({
         });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
-        await keyStore.deleteItem(LOCKOUT_KEY);
+        await keyStore.deleteItem(lockoutKey);
       }
 
       const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -1213,7 +1217,7 @@ export const identityUaServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
     const deleted = await keyStore.deleteItems({
-      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:*`
+      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.UNIVERSAL_AUTH)
     });
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };

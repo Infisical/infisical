@@ -18,6 +18,7 @@ import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotat
 
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
+import { SupabaseApiKeyRotationSchema } from "./supabase-api-key";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
@@ -36,5 +37,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationSchema,
   WindowsLocalAccountRotationSchema,
   OpenRouterApiKeyRotationSchema,
-  HpIloRotationSchema
+  HpIloRotationSchema,
+  SupabaseApiKeyRotationSchema
 ]);

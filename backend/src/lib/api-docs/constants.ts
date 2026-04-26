@@ -2650,6 +2650,13 @@ export const AppConnections = {
     VERCEL: {
       apiToken: "The API token used to authenticate with Vercel."
     },
+    ONA: {
+      personalAccessToken: "The Personal Access Token used to authenticate with Ona."
+    },
+    DIGICERT: {
+      apiKey: "The CertCentral API Key used to authenticate with DigiCert.",
+      region: "The CertCentral region the API key belongs to (us or eu)."
+    },
     TRAVISCI: {
       apiToken: "The API token used to authenticate with Travis CI."
     },
@@ -2960,6 +2967,10 @@ export const SecretSyncs = {
       scope: "The Terraform Cloud scope that secrets should be synced to.",
       category: "The Terraform Cloud category that secrets should be synced to."
     },
+    ONA: {
+      projectId: "The Ona project ID to sync secrets to.",
+      projectName: "An optional display name for the Ona project."
+    },
     VERCEL: {
       app: "The ID of the Vercel app to sync secrets to.",
       appName: "The name of the Vercel app to sync secrets to.",
@@ -3250,6 +3261,10 @@ export const SecretRotations = {
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
         "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
+    },
+    SUPABASE_API_KEY: {
+      projectRef: "The reference ID of the Supabase project to rotate the API key for.",
+      keyType: "The type of the API key to rotate (e.g. publishable, secret)."
     }
   },
   SECRETS_MAPPING: {
@@ -3310,6 +3325,9 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
+    },
+    SUPABASE_API_KEY: {
+      apiKey: "The name of the secret that the rotated Supabase API key will be mapped to."
     }
   }
 };

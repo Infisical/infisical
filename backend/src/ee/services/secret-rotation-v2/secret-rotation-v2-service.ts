@@ -97,6 +97,7 @@ import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-clien
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
+import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
 import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-schemas";
 import {
@@ -170,7 +171,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1474,7 +1476,7 @@ export const secretRotationV2ServiceFactory = ({
       {
         projectId,
         $search: {
-          name: `%${search}%`
+          name: search
         },
         $in: {
           folderId: permissiveFolderMappings.map(({ folderId }) => folderId)

@@ -332,7 +332,7 @@ export const SecretTableRow = ({
                 "top-1/2 right-[3px] -translate-y-1/2"
               )}
             >
-              <Tooltip delayDuration={300} disableHoverableContent>
+              <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
                     variant="ghost"
@@ -349,7 +349,7 @@ export const SecretTableRow = ({
                 </TooltipTrigger>
                 <TooltipContent>Copy Secret Name</TooltipContent>
               </Tooltip>
-              <Tooltip delayDuration={300} disableHoverableContent>
+              <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
                     variant="ghost"

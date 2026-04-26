@@ -305,7 +305,7 @@ export const SecretOverrideRow = ({
             isSingleEnvView ? "-top-[1.5px] -right-2.5" : "-top-[1.5px] -right-1.5"
           )}
         >
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
               <IconButton
                 onClick={() => {
@@ -324,7 +324,7 @@ export const SecretOverrideRow = ({
             <TooltipContent>Edit Override</TooltipContent>
           </Tooltip>
           {!isCreatingOverride && (
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
                   isDisabled={!canFetchOverrideValue}
@@ -362,7 +362,7 @@ export const SecretOverrideRow = ({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Tooltip delayDuration={300} disableHoverableContent>
+          <Tooltip disableHoverableContent>
             <TooltipTrigger>
               <IconButton
                 onClick={

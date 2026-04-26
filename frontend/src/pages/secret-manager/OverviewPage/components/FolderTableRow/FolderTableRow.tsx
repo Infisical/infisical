@@ -129,7 +129,7 @@ export const FolderTableRow = ({
           )}
         >
           {pendingAction !== PendingAction.Delete && (
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
                   variant="ghost"
@@ -147,7 +147,7 @@ export const FolderTableRow = ({
             </Tooltip>
           )}
           {pendingAction ? (
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
                   variant="ghost"
@@ -164,7 +164,7 @@ export const FolderTableRow = ({
               <TooltipContent>Discard pending changes</TooltipContent>
             </Tooltip>
           ) : (
-            <Tooltip delayDuration={300} disableHoverableContent>
+            <Tooltip disableHoverableContent>
               <TooltipTrigger>
                 <IconButton
                   variant="ghost"

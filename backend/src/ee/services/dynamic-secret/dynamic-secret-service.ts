@@ -616,7 +616,7 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const dynamicSecretCfg = await dynamicSecretDAL.find(
-      { $in: { folderId: folders.map((folder) => folder.id) }, $search: search ? { name: `%${search}%` } : undefined },
+      { $in: { folderId: folders.map((folder) => folder.id) }, $search: search ? { name: search } : undefined },
       { countDistinct: "name" }
     );
 
@@ -653,7 +653,7 @@ export const dynamicSecretServiceFactory = ({
     }
 
     const dynamicSecretCfg = await dynamicSecretDAL.find(
-      { folderId: folder.id, $search: search ? { name: `%${search}%` } : undefined },
+      { folderId: folder.id, $search: search ? { name: search } : undefined },
       { count: true }
     );
     return Number(dynamicSecretCfg[0]?.count ?? 0);
@@ -697,7 +697,7 @@ export const dynamicSecretServiceFactory = ({
       throw new NotFoundError({ message: `Folder with path '${path}' in environment '${environmentSlug}' not found` });
 
     const dynamicSecretCfg = await dynamicSecretDAL.findWithMetadata(
-      { folderId: folder.id, $search: search ? { name: `%${search}%` } : undefined },
+      { folderId: folder.id, $search: search ? { name: search } : undefined },
       {
         limit,
         offset,

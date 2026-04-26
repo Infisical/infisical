@@ -799,6 +799,7 @@ export const pkiScepServiceFactory = ({
     switch (certRequest.status) {
       case CertificateRequestStatus.PENDING_APPROVAL:
       case CertificateRequestStatus.PENDING:
+      case CertificateRequestStatus.PENDING_VALIDATION:
         return buildCertRepPending({
           raCertDer,
           raPrivateKeyDer,

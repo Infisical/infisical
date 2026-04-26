@@ -402,6 +402,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "Ona",
+      slug: "ona",
+      path: "/integrations/app-connections/ona",
+      description:
+        "Learn how to connect your Ona (Gitpod) workspaces to pull secrets from Infisical.",
+      category: "Hosting",
+    },
+    {
       name: "MongoDB",
       slug: "mongodb",
       path: "/integrations/app-connections/mongodb",

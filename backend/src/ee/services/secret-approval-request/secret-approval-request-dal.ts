@@ -12,6 +12,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships, stripUndefinedInWhere, TFindFilter } from "@app/lib/knex";
 
 import { RequestState } from "./secret-approval-request-types";
@@ -537,13 +538,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
               db.ref("firstName").withSchema("committerUser"),
               db.ref("lastName").withSchema("committerUser"),
-              `%${search}%`
+              `%${sanitizeSqlLikeString(search)}%`
             ])
-            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
-            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
-            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
-            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+            .orWhereRaw(`?? ilike ?`, [
+              db.ref("username").withSchema("committerUser"),
+              `%${sanitizeSqlLikeString(search)}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [
+              db.ref("email").withSchema("committerUser"),
+              `%${sanitizeSqlLikeString(search)}%`
+            ])
+            .orWhereILike(`${TableName.Environment}.name`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`${TableName.Environment}.slug`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${sanitizeSqlLikeString(search)}%`);
         });
       }
 
@@ -739,15 +746,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
               db.ref("committerUserFirstName"),
               db.ref("committerUserLastName"),
-              `%${search}%`
+              `%${sanitizeSqlLikeString(search)}%`
             ])
-            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${search}%`])
-            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${search}%`])
-            .orWhereILike(`environmentName`, `%${search}%`)
-            .orWhereILike(`environment`, `%${search}%`)
-            .orWhereILike(`policySecretPath`, `%${search}%`)
-            .orWhereILike(`requestFolderPath`, `%${search}%`)
-            .orWhereILike(`secretKey`, `%${search}%`);
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereILike(`environmentName`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`environment`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`policySecretPath`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`requestFolderPath`, `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike(`secretKey`, `%${sanitizeSqlLikeString(search)}%`);
         });
       }
 

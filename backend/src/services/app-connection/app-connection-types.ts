@@ -131,6 +131,12 @@ import {
   TValidateDbtConnectionCredentialsSchema
 } from "./dbt";
 import {
+  TDigiCertConnection,
+  TDigiCertConnectionConfig,
+  TDigiCertConnectionInput,
+  TValidateDigiCertConnectionCredentialsSchema
+} from "./digicert";
+import {
   TDigitalOceanConnection,
   TDigitalOceanConnectionConfig,
   TDigitalOceanConnectionInput,
@@ -252,6 +258,12 @@ import {
   TOktaConnectionInput,
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
+import {
+  TOnaConnection,
+  TOnaConnectionConfig,
+  TOnaConnectionInput,
+  TValidateOnaConnectionCredentialsSchema
+} from "./ona";
 import {
   TOpenRouterConnection,
   TOpenRouterConnectionConfig,
@@ -400,6 +412,8 @@ export type TAppConnection = { id: string } & (
   | TDopplerConnection
   | TNetScalerConnection
   | TAnthropicConnection
+  | TOnaConnection
+  | TDigiCertConnection
   | TTravisCIConnection
 );
 
@@ -469,6 +483,8 @@ export type TAppConnectionInput = { id: string } & (
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
   | TAnthropicConnectionInput
+  | TOnaConnectionInput
+  | TDigiCertConnectionInput
   | TTravisCIConnectionInput
 );
 
@@ -567,6 +583,8 @@ export type TAppConnectionConfig =
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
   | TAnthropicConnectionConfig
+  | TOnaConnectionConfig
+  | TDigiCertConnectionConfig
   | TTravisCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -627,6 +645,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
+  | TValidateOnaConnectionCredentialsSchema
+  | TValidateDigiCertConnectionCredentialsSchema
   | TValidateTravisCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

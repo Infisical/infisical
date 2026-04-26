@@ -14,6 +14,7 @@ import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecret
 import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import { SupabaseApiKeyRotationSecretsMappingFields } from "./SupabaseApiKeyRotationSecretsMappingFields";
 import { UnixLinuxLocalAccountRotationSecretsMappingFields } from "./UnixLinuxLocalAccountRotationSecretsMappingFields";
 import { WindowsLocalAccountRotationSecretsMappingFields } from "./WindowsLocalAccountRotationSecretsMappingFields";
 
@@ -35,7 +36,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationSecretsMappingFields,
   [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationSecretsMappingFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationSecretsMappingFields,
-  [SecretRotation.HpIloLocalAccount]: HpIloRotationSecretsMappingFields
+  [SecretRotation.HpIloLocalAccount]: HpIloRotationSecretsMappingFields,
+  [SecretRotation.SupabaseApiKey]: SupabaseApiKeyRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

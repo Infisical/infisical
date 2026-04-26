@@ -40,7 +40,7 @@ import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-
 import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
-import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
@@ -124,8 +124,6 @@ import {
   TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
 } from "./project-types";
-
-const DASHBOARD_CACHE_TTL = 600;
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
@@ -727,7 +725,7 @@ export const projectServiceFactory = ({
       };
     });
 
-    await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
     return results;
   };
 
@@ -801,7 +799,7 @@ export const projectServiceFactory = ({
         return delProject;
       });
 
-      await keyStore.deleteItem(`infisical-cloud-plan-${actorOrgId}`);
+      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
       return deletedProject;
     } finally {
       await lock.release();
@@ -1365,7 +1363,7 @@ export const projectServiceFactory = ({
     return withCache({
       keyStore,
       key: KeyStorePrefixes.CertDashboardStats(projectId),
-      ttlSeconds: DASHBOARD_CACHE_TTL,
+      ttlSeconds: KeyStoreTtls.DashboardCacheInSeconds,
       fetcher: () => certificateDAL.getDashboardStats(projectId)
     });
   };
@@ -1401,7 +1399,7 @@ export const projectServiceFactory = ({
     return withCache({
       keyStore,
       key: KeyStorePrefixes.CertActivityTrend(projectId, range),
-      ttlSeconds: DASHBOARD_CACHE_TTL,
+      ttlSeconds: KeyStoreTtls.DashboardCacheInSeconds,
       fetcher: () => certificateDAL.getActivityTrend(projectId, daysBack)
     });
   };
@@ -1437,7 +1435,7 @@ export const projectServiceFactory = ({
     return withCache({
       keyStore,
       key: KeyStorePrefixes.CertPqcTrend(projectId, range),
-      ttlSeconds: DASHBOARD_CACHE_TTL,
+      ttlSeconds: KeyStoreTtls.DashboardCacheInSeconds,
       fetcher: () => certificateDAL.getPqcTrend(projectId, daysBack)
     });
   };

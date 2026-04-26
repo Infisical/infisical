@@ -903,7 +903,7 @@ export const secretFolderServiceFactory = ({
           parentId: parentFolders.map((folder) => folder.id)
         },
         isReserved: false,
-        $search: search ? { name: `%${search}%` } : undefined
+        $search: search ? { name: search } : undefined
       },
       { countDistinct: "name" }
     );

@@ -290,6 +290,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     );
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
+    if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
+      throw new UnauthorizedError({ message: "Account is locked" });
+    }
+
     let orgId = "";
     let orgName = "";
     let rootOrgId = "";

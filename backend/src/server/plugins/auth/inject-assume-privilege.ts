@@ -9,9 +9,11 @@ export const injectAssumePrivilege = fp(async (server: FastifyZodProvider) => {
     const assumeRoleCookie = req.cookies["infisical-project-assume-privileges"];
     try {
       if (req?.auth?.authMode === AuthMode.JWT && assumeRoleCookie) {
-        const decodedToken = server.services.assumePrivileges.verifyAssumePrivilegeToken(
+        const decodedToken = await server.services.assumePrivileges.verifyAssumePrivilegeToken(
           assumeRoleCookie,
-          req.auth.tokenVersionId
+          req.auth.tokenVersionId,
+          req.auth.authMethod,
+          req.auth.orgId
         );
         if (decodedToken) {
           requestContext.set(RequestContextKey.AssumedPrivilegeDetails, decodedToken);

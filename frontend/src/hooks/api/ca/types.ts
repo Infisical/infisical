@@ -49,6 +49,20 @@ export type TAwsPcaCertificateAuthority = {
   };
 };
 
+export type TDigiCertCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.DIGICERT;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    organizationId: number;
+    productNameId: string;
+  };
+};
+
 export type TAwsAcmPublicCaCertificateAuthority = {
   id: string;
   projectId: string;
@@ -95,6 +109,7 @@ export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
+  | TDigiCertCertificateAuthority
   | TAwsAcmPublicCaCertificateAuthority
   | TInternalCertificateAuthority;
 

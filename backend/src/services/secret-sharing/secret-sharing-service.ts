@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -631,17 +632,17 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing) => {
+  const $decrementSecretViewCount = async (sharedSecret: TSecretSharing, tx?: Knex) => {
     const { expiresAfterViews } = sharedSecret;
 
+    let payload: { lastViewedAt: Date; $decr?: { expiresAfterViews: number } } = {
+      lastViewedAt: new Date()
+    };
     if (expiresAfterViews) {
-      // decrement view count if view count expiry set
-      await secretSharingDAL.updateById(sharedSecret.id, { $decr: { expiresAfterViews: 1 } });
+      payload = { ...payload, $decr: { expiresAfterViews: 1 } };
     }
 
-    await secretSharingDAL.updateById(sharedSecret.id, {
-      lastViewedAt: new Date()
-    });
+    await secretSharingDAL.updateById(sharedSecret.id, payload, tx);
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
@@ -649,10 +650,13 @@ export const secretSharingServiceFactory = ({
     const result = await secretSharingDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AccessSharedSecret(sharedSecretId)]);
 
-      const sharedSecret = await secretSharingDAL.findOne({
-        type: SecretSharingType.Share,
-        identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
-      });
+      const sharedSecret = await secretSharingDAL.findOne(
+        {
+          type: SecretSharingType.Share,
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+        },
+        tx
+      );
 
       if (!sharedSecret) {
         throw new NotFoundError({
@@ -684,13 +688,13 @@ export const secretSharingServiceFactory = ({
       // or can be safely sent to the client.
       if (expiresAt !== null && expiresAt < new Date()) {
         // check lifetime expiry
-        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        await secretSharingDAL.softDeleteById(sharedSecret.id, tx);
         throw new NotFoundError({ message: "The shared secret has expired" });
       }
 
       if (expiresAfterViews !== null && expiresAfterViews === 0) {
         // check view count expiry
-        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        await secretSharingDAL.softDeleteById(sharedSecret.id, tx);
         throw new NotFoundError({ message: "The shared secret has reached its view limit" });
       }
 
@@ -726,7 +730,7 @@ export const secretSharingServiceFactory = ({
       }
 
       // decrement when we are sure the user will view secret.
-      await $decrementSecretViewCount(sharedSecret);
+      await $decrementSecretViewCount(sharedSecret, tx);
 
       return {
         ...mapIdentifierToId(sharedSecret),

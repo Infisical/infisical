@@ -450,6 +450,7 @@ export enum EventType {
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
+  TRIGGER_CERTIFICATE_REQUEST_VALIDATION = "trigger-certificate-request-validation",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -5397,6 +5398,15 @@ interface GetCertificateFromRequestEvent {
   };
 }
 
+interface TriggerCertificateRequestValidationEvent {
+  type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
+  metadata: {
+    certificateRequestId: string;
+    status: string;
+    orderStatus?: string;
+  };
+}
+
 interface ListCertificateRequestsEvent {
   type: EventType.LIST_CERTIFICATE_REQUESTS;
   metadata: {
@@ -6609,6 +6619,7 @@ export type Event =
   | GetCertificateRequestEvent
   | GetCertificateFromRequestEvent
   | ListCertificateRequestsEvent
+  | TriggerCertificateRequestValidationEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent

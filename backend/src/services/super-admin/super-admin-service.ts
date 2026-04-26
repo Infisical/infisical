@@ -12,7 +12,7 @@ import {
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import {
   getConfig,
@@ -128,8 +128,6 @@ export const getInstanceIntegrationsConfig = () => {
   return adminIntegrationsConfig;
 };
 
-const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
-const ADMIN_CONFIG_KEY_EXP = 60; // 60s
 export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
@@ -160,8 +158,8 @@ export const superAdminServiceFactory = ({
     getServerCfg = async () => {
       const serverCfg = await withCache({
         keyStore,
-        key: ADMIN_CONFIG_KEY,
-        ttlSeconds: ADMIN_CONFIG_KEY_EXP,
+        key: KeyStorePrefixes.AdminConfig,
+        ttlSeconds: KeyStoreTtls.AdminConfigInSeconds,
         fetcher: async () => {
           const cfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
           if (!cfg) {
@@ -181,7 +179,7 @@ export const superAdminServiceFactory = ({
     };
 
     // reset on initialized
-    await keyStore.deleteItem(ADMIN_CONFIG_KEY);
+    await keyStore.deleteItem(KeyStorePrefixes.AdminConfig);
     const serverCfg = await serverCfgDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SuperAdminInit]);
       const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
@@ -463,9 +461,16 @@ export const superAdminServiceFactory = ({
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     try {
-      await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.AdminConfig,
+        KeyStoreTtls.AdminConfigInSeconds,
+        JSON.stringify(updatedServerCfg)
+      );
     } catch (err) {
-      logger.warn({ key: ADMIN_CONFIG_KEY, err }, `updateServerCfg: cache write failed [key=${ADMIN_CONFIG_KEY}]`);
+      logger.warn(
+        { key: KeyStorePrefixes.AdminConfig, err },
+        `updateServerCfg: cache write failed [key=${KeyStorePrefixes.AdminConfig}]`
+      );
     }
 
     if (gitHubAppConnectionSettingsUpdated) {
@@ -1161,7 +1166,7 @@ export const superAdminServiceFactory = ({
   };
 
   const checkIfInvalidatingCache = async () => {
-    return (await keyStore.getItem("invalidating-cache")) !== null;
+    return (await keyStore.getItem(KeyStorePrefixes.InvalidatingCache)) !== null;
   };
 
   const initializeAdminIntegrationConfigSync = async () => {

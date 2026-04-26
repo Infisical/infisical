@@ -870,9 +870,9 @@ export const identityLdapAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityId);
     const orgId = identity?.orgId ?? null;
 
-    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
+    const lockoutKey = KeyStorePrefixes.IdentityLockoutState(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug);
 
-    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+    const lockoutRaw = await keyStore.getItem(lockoutKey);
 
     let lockout: LockoutObject | undefined;
     if (lockoutRaw) {
@@ -899,7 +899,7 @@ export const identityLdapAuthServiceFactory = ({
 
       // If auth succeeds, clear any existing lockout
       if (lockout) {
-        await keyStore.deleteItem(LOCKOUT_KEY);
+        await keyStore.deleteItem(lockoutKey);
       }
 
       return result;
@@ -909,14 +909,14 @@ export const identityLdapAuthServiceFactory = ({
         if (identityLdapAuth.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 500, {
               retryCount: 10,
               retryDelay: 300,
               retryJitter: 100
             });
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+            const lockoutRawNew = await keyStore.getItem(lockoutKey);
             if (lockoutRawNew) {
               lockout = JSON.parse(lockoutRawNew) as LockoutObject;
             } else {
@@ -939,7 +939,7 @@ export const identityLdapAuthServiceFactory = ({
             }
 
             await keyStore.setItemWithExpiry(
-              LOCKOUT_KEY,
+              lockoutKey,
               lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
               JSON.stringify(lockout)
             );
@@ -1016,7 +1016,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const deleted = await keyStore.deleteItems({
-      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`
+      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.LDAP_AUTH)
     });
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };

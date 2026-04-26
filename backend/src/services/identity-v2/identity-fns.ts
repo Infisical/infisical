@@ -1,10 +1,10 @@
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
 export const getIdentityActiveLockoutAuthMethods = async (
   identityId: string,
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">
 ) => {
-  const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${identityId}:*`);
+  const activeLockouts = await keyStore.getKeysByPattern(KeyStorePrefixes.IdentityLockoutStatePattern(identityId));
 
   const activeLockoutAuthMethods = new Set<string>();
   for await (const key of activeLockouts) {

@@ -44,6 +44,7 @@ import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
+import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
@@ -198,6 +199,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.ExternalInfisical:
       DestinationFieldsComponent = <ExternalInfisicalSyncReviewFields />;
+      break;
+    case SecretSync.Ona:
+      DestinationFieldsComponent = <OnaSyncReviewFields />;
       break;
     case SecretSync.TravisCI:
       DestinationFieldsComponent = <TravisCISyncReviewFields />;

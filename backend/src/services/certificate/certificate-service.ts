@@ -390,7 +390,11 @@ export const certificateServiceFactory = ({
 
     // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
     // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).
-    if (ca.externalCa?.type === CaType.AWS_PCA || ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
+    if (
+      ca.externalCa?.type === CaType.AWS_PCA ||
+      ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA ||
+      ca.externalCa?.type === CaType.DIGICERT
+    ) {
       await certificateAuthorityService.revokeCertificate({
         caId: ca.id,
         serialNumber: cert.serialNumber,
