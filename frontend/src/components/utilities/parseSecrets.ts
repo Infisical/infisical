@@ -66,15 +66,32 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   return object;
 }
 
+function flattenJson(
+  obj: unknown,
+  env: Record<string, { value: string; comments: string[] }>,
+  prefix: string
+): void {
+  if (obj !== null && typeof obj === "object" && !Array.isArray(obj)) {
+    Object.keys(obj as Record<string, unknown>).forEach((key) => {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      flattenJson((obj as Record<string, unknown>)[key], env, fullKey);
+    });
+  } else {
+    const value =
+      obj === null || obj === undefined
+        ? ""
+        : typeof obj === "object"
+          ? JSON.stringify(obj)
+          : String(obj);
+    env[prefix] = { value, comments: [] };
+  }
+}
+
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const formatedData: Record<string, string> = JSON.parse(file);
+  const formatedData: unknown = JSON.parse(file);
   const env: Record<string, { value: string; comments: string[] }> = {};
-  Object.keys(formatedData).forEach((key) => {
-    if (typeof formatedData[key] === "string") {
-      env[key] = { value: formatedData[key], comments: [] };
-    }
-  });
+  flattenJson(formatedData, env, "");
   return env;
 };
 
