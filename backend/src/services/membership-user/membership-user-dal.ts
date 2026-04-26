@@ -149,12 +149,12 @@ export const membershipUserDALFactory = (db: TDbClient) => {
 
   const findUsers = async ({ scopeData, tx, filter }: TFindUserArg) => {
     try {
-      const paginatedUsers = (tx || db.replicaNode())(TableName.Membership)
+      // Base filtered query without pagination — used for counting and as a subquery for paging
+      const baseFilterQuery = (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
-        .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where(`${TableName.Users}.isGhost`, false)
         .where((qb) => {
@@ -167,12 +167,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedUsers.limit(filter.limit);
-      if (filter.offset) void paginatedUsers.offset(filter.offset);
-
       if (filter.username || filter.role) {
         buildKnexFilterForSearchResource(
-          paginatedUsers,
+          baseFilterQuery,
           {
             username: filter.username!,
             role: filter.role!
@@ -189,6 +186,17 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         );
       }
+
+      // Count distinct memberships before pagination to avoid inflated counts from role JOINs
+      const [countResult] = (await baseFilterQuery.clone().countDistinct(`${TableName.Membership}.id as count`)) as [
+        { count: string | number }?
+      ];
+      const totalCount = Number(countResult?.count ?? 0);
+
+      // Paginated subquery — apply limit/offset on distinct membership IDs only
+      const paginatedUsers = baseFilterQuery.clone().distinct(`${TableName.Membership}.id`);
+      if (filter.limit) void paginatedUsers.limit(filter.limit);
+      if (filter.offset) void paginatedUsers.offset(filter.offset);
 
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
@@ -223,11 +231,6 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("id").withSchema(TableName.Users).as("userId")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
 
       const data = sqlNestRelationships({
@@ -277,7 +280,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindUser" });
     }
