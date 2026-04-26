@@ -13,10 +13,19 @@ type Props = {
 export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
 
-  const copyTokenToClipboard = () => {
+  const copyTokenToClipboard = async () => {
     if (isInviteLinkCopied) return;
 
-    navigator.clipboard.writeText(invite.link);
+    const copied = await copyTextToClipboard(invite.link);
+
+    if (!copied) {
+      createNotification({
+        type: "error",
+        text: "Failed to copy invitation link. Please copy it manually."
+      });
+      return;
+    }
+
     setInviteLinkCopied.timedToggle();
 
     createNotification({
@@ -53,3 +62,32 @@ export const OrgInviteLink = ({ invite }: Props) => {
     </div>
   );
 };
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  // Modern Clipboard API — only available in secure contexts (HTTPS or localhost)
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to legacy fallback
+    }
+  }
+
+  // Legacy fallback using a temporary textarea and execCommand — works on HTTP
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return success;
+  } catch {
+    return false;
+  }
+}
