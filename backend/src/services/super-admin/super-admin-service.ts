@@ -562,6 +562,8 @@ export const superAdminServiceFactory = ({
     const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -573,12 +575,11 @@ export const superAdminServiceFactory = ({
           isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL],
-          isEmailVerified: true
+          isEmailVerified: true,
+          hashedPassword
         },
         tx
       );
-
-      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
       const userEnc = await userDAL.createUserEncryption(
         {
