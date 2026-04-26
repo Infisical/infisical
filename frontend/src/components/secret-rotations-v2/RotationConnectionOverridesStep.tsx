@@ -116,6 +116,7 @@ const RotationConnectionRow = ({
           getOptionLabel={(option) => option.name}
           getOptionValue={(option) => option.id}
           components={{ Option: AppConnectionOption }}
+          menuPlacement="auto"
           onChange={(newValue) => {
             const next = newValue as SingleValue<{ id: string; name: string }>;
             if (!next) return;
@@ -165,15 +166,20 @@ export const RotationConnectionOverridesStep = ({
           </div>
         </div>
       </div>
-      {rotations.map((rotation) => (
-        <RotationConnectionRow
-          key={rotation.id}
-          rotation={rotation}
-          projectId={projectId}
-          selectedConnectionId={value[rotation.id] ?? rotation.connection.id}
-          onSelect={(connectionId) => onChange({ ...value, [rotation.id]: connectionId })}
-        />
-      ))}
+      <div className="relative">
+        <div className="flex max-h-[55vh] thin-scrollbar flex-col gap-3 overflow-y-auto pr-1 pb-4">
+          {rotations.map((rotation) => (
+            <RotationConnectionRow
+              key={rotation.id}
+              rotation={rotation}
+              projectId={projectId}
+              selectedConnectionId={value[rotation.id] ?? rotation.connection.id}
+              onSelect={(connectionId) => onChange({ ...value, [rotation.id]: connectionId })}
+            />
+          ))}
+        </div>
+        <div className="pointer-events-none absolute right-2 bottom-0 left-0 h-6 bg-gradient-to-t from-popover to-transparent" />
+      </div>
     </div>
   );
 };
