@@ -119,7 +119,8 @@ export const registerServeUI = async (
           "https://googleads.g.doubleclick.net",
           "https://*.hubspot.com",
           "https://forms.hubspot.com",
-          "https://api.hubapi.com"
+          "https://api.hubapi.com",
+          "https://infisical.com"
         ],
         "img-src": [
           "https://www.googletagmanager.com",
@@ -128,7 +129,8 @@ export const registerServeUI = async (
           "https://googleads.g.doubleclick.net",
           "https://www.googleadservices.com",
           "https://track.hubspot.com",
-          "https://forms.hubspot.com"
+          "https://forms.hubspot.com",
+          "https://images.ctfassets.net"
         ]
       };
 
