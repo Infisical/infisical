@@ -686,8 +686,26 @@ const Page = () => {
   }
 
   const handleResetFilter = () => {
-    setFilter(defaultFilterState);
+    setFilter({
+      searchFilter: "",
+      tags: {},
+      include: {
+        [RowType.Folder]: false,
+        [RowType.Import]: false,
+        [RowType.DynamicSecret]: false,
+        [RowType.Secret]: false,
+        [RowType.SecretRotation]: false
+      }
+    });
     setDebouncedSearchFilter("");
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        search: "",
+        tags: "",
+        filterBy: ""
+      })
+    });
   };
 
   const getMergedSecretsWithPending = (
