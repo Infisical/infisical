@@ -1302,7 +1302,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secrets } = secretOperation;
 
       await server.services.auditLog.createAuditLog({
-        projectId: secrets[0].workspace,
+        projectId: req.body.projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.DELETE_SECRETS,
@@ -1324,7 +1324,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          projectId: secrets[0].workspace,
+          projectId: req.body.projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),

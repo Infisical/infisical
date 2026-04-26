@@ -2071,10 +2071,14 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           metadata: {
             environment: req.body.environment,
             secretPath: req.body.secretPath,
-            secrets: secrets.map((secret, i) => ({
-              secretId: secret.id,
-              secretKey: inputSecrets[i].secretName,
-              secretVersion: secret.version
+            // Use inputSecrets for secretKey — the names come from the caller and are always
+            // defined. The secretId/secretVersion are matched by position from the returned
+            // secrets array; this is best-effort for this deprecated encrypted endpoint since
+            // the database does not guarantee DELETE RETURNING order matches input order.
+            secrets: inputSecrets.map((inputSecret, i) => ({
+              secretId: secrets[i]?.id,
+              secretKey: inputSecret.secretName,
+              secretVersion: secrets[i]?.version
             }))
           }
         }
