@@ -16,6 +16,7 @@ import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { TSshHost } from "../sshHost/types";
 import { TSshHostGroup } from "../sshHostGroup/types";
+import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import {
@@ -224,6 +225,9 @@ export const useCreateWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getAllUserProjects()
       });
+      queryClient.invalidateQueries({
+        queryKey: subscriptionQueryKeys.all()
+      });
     }
   });
 };
@@ -296,6 +300,9 @@ export const useDeleteWorkspace = () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: subscriptionQueryKeys.all()
       });
     }
   });
