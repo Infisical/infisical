@@ -28,17 +28,33 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
     if (validUrl.hostname === "localhost" || validUrl.hostname === "host.docker.internal") {
       throw new BadRequestError({ message: "Local IPs not allowed as URL" });
     }
-    const entries = await dns.lookup(validUrl.hostname, { all: true });
 
-    if (!entries || entries.length === 0) {
-      throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
+    // Resolve both IPv4 (A) and IPv6 (AAAA) records independently so that
+    // hosts that only have AAAA records (IPv6-only clusters) can still be
+    // validated.  dns.lookup({ all: true }) uses getaddrinfo() which may
+    // only return A records in some network configurations.
+    const [ipv4Entries, ipv6Entries] = await Promise.allSettled([
+      dns.resolve4(validUrl.hostname),
+      dns.resolve6(validUrl.hostname)
+    ]);
+
+    if (ipv4Entries.status === "fulfilled") {
+      inputHostIps.push(...ipv4Entries.value);
+    }
+    if (ipv6Entries.status === "fulfilled") {
+      inputHostIps.push(...ipv6Entries.value);
     }
 
-    inputHostIps.push(...entries.map(({ address }) => address));
+    if (inputHostIps.length === 0) {
+      throw new BadRequestError({ message: "Could not resolve hostname to any IP address" });
+    }
   }
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)
-    throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+    throw new BadRequestError({
+      message:
+        "Private/local IP addresses are not allowed as URL. If you are running Infisical inside the same cluster (e.g. using kubernetes.default.svc.cluster.local), set the ALLOW_INTERNAL_IP_CONNECTIONS environment variable to true."
+    });
 };
 
 type FQDNOptions = {

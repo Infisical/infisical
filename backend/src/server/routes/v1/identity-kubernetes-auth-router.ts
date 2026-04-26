@@ -171,12 +171,14 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
+                  CharacterType.Hyphen,
+                  CharacterType.OpenBracket,
+                  CharacterType.CloseBracket
                 ])(val);
               },
               {
                 message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, forward slashes, and brackets (for IPv6 addresses)."
               }
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
@@ -335,12 +337,14 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
+                  CharacterType.Hyphen,
+                  CharacterType.OpenBracket,
+                  CharacterType.CloseBracket
                 ])(val);
               },
               {
                 message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
+                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, forward slashes, and brackets (for IPv6 addresses)."
               }
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
