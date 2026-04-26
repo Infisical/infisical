@@ -564,15 +564,41 @@ export const secretSyncQueueFactory = ({
       const secretMap = await $getInfisicalSecrets(secretSync);
 
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
-        const importedSecretMap = await $importSecrets(
-          secretSyncWithCredentials,
+        const resolvedImportBehavior =
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource
             ? SecretSyncImportBehavior.PrioritizeSource
-            : SecretSyncImportBehavior.PrioritizeDestination
-        );
+            : SecretSyncImportBehavior.PrioritizeDestination;
+
+        const importedSecretMap = await $importSecrets(secretSyncWithCredentials, resolvedImportBehavior);
 
         Object.entries(importedSecretMap).forEach(([key, secretData]) => {
           secretMap[key] = secretData;
+        });
+
+        await auditLogService.createAuditLog({
+          projectId: secretSync.projectId,
+          ...(auditLogInfo ?? {
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            }
+          }),
+          event: {
+            type: EventType.SECRET_SYNC_IMPORT_SECRETS,
+            metadata: {
+              syncId: secretSync.id,
+              syncOptions: secretSync.syncOptions,
+              destination: secretSync.destination,
+              destinationConfig: secretSync.destinationConfig,
+              folderId: secretSync.folderId,
+              connectionId: secretSync.connectionId,
+              jobRanAt: new Date(),
+              jobId: job.id!,
+              importStatus: SecretSyncStatus.Succeeded,
+              importMessage: null,
+              importBehavior: resolvedImportBehavior
+            }
+          }
         });
       }
 
