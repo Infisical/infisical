@@ -3537,12 +3537,6 @@ export const secretServiceFactory = ({
     }
 
     const isCrossEnvMove = sourceEnvironment !== destinationEnvironment;
-    // Overrides only apply to cross-env moves; for same-env moves any supplied overrides
-    // are ignored so the rotation's connection isn't silently swapped without the user
-    // seeing the confirmation UX.
-    const connectionOverridesByRotationId = isCrossEnvMove
-      ? new Map((rotationConnectionOverrides ?? []).map((o) => [o.rotationId, o.connectionId]))
-      : new Map<string, string>();
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -3553,18 +3547,15 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const sourceFolder = await folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath);
+    const [sourceFolder, destinationFolder] = await Promise.all([
+      folderDAL.findBySecretPath(project.id, sourceEnvironment, sourceSecretPath),
+      folderDAL.findBySecretPath(project.id, destinationEnvironment, destinationSecretPath)
+    ]);
     if (!sourceFolder) {
       throw new NotFoundError({
         message: `Source folder with path '${sourceSecretPath}' in environment with slug '${sourceEnvironment}' not found`
       });
     }
-
-    const destinationFolder = await folderDAL.findBySecretPath(
-      project.id,
-      destinationEnvironment,
-      destinationSecretPath
-    );
     if (!destinationFolder) {
       throw new NotFoundError({
         message: `Destination folder with path '${destinationSecretPath}' in environment with slug '${destinationEnvironment}' not found`
@@ -3594,27 +3585,32 @@ export const secretServiceFactory = ({
 
     const affectedRotationIds = unique(requestedSourceSecrets.map((s) => s.rotationId));
 
+    // Overrides only apply to cross-env moves; for same-env moves any supplied overrides
+    // are ignored so the rotation's connection isn't silently swapped without the user
+    // seeing the confirmation UX.
+    const overrideMap = new Map<string, string>();
     if (isCrossEnvMove) {
-      // Cross-env requires explicit per-rotation connection confirmation from the caller.
-      // The supplied connectionId can equal the rotation's current one; the presence of
-      // the entry is the confirmation.
-      for (const rotationId of affectedRotationIds) {
-        if (!connectionOverridesByRotationId.has(rotationId)) {
-          throw new BadRequestError({
-            message: "Cross-environment rotation moves require a connection override for every affected rotation."
-          });
-        }
+      const provided = rotationConnectionOverrides ?? [];
+      for (const { rotationId, connectionId } of provided) {
+        overrideMap.set(rotationId, connectionId);
       }
-      const overrideEntryCount = rotationConnectionOverrides?.length ?? 0;
-      if (connectionOverridesByRotationId.size !== overrideEntryCount) {
+      if (overrideMap.size !== provided.length) {
         throw new BadRequestError({
           message: "rotationConnectionOverrides contains duplicate rotationId entries."
         });
       }
-      for (const { rotationId } of rotationConnectionOverrides ?? []) {
-        if (!affectedRotationIds.includes(rotationId)) {
+      const affectedSet = new Set(affectedRotationIds);
+      for (const { rotationId } of provided) {
+        if (!affectedSet.has(rotationId)) {
           throw new BadRequestError({
             message: `rotationId '${rotationId}' is not part of the move selection.`
+          });
+        }
+      }
+      for (const id of affectedRotationIds) {
+        if (!overrideMap.has(id)) {
+          throw new BadRequestError({
+            message: "Cross-environment rotation moves require a connection override for every affected rotation."
           });
         }
       }
@@ -3622,19 +3618,20 @@ export const secretServiceFactory = ({
 
     // A rotation and its mapped secrets must move as a unit. The user may have selected
     // only a subset of a rotation's generated secrets, so expand to the full set here.
-    const sourceFolderInventory = await secretV2BridgeDAL.find({
-      type: SecretType.Shared,
-      folderId: sourceFolder.id,
-      $in: {
-        [`${TableName.SecretRotationV2SecretMapping}.rotationId` as "id"]: affectedRotationIds
-      }
-    });
+    const [sourceFolderInventory, affectedRotations] = await Promise.all([
+      secretV2BridgeDAL.find({
+        type: SecretType.Shared,
+        folderId: sourceFolder.id,
+        $in: {
+          [`${TableName.SecretRotationV2SecretMapping}.rotationId` as "id"]: affectedRotationIds
+        }
+      }),
+      secretRotationV2DAL.find({
+        projectId: project.id,
+        $in: { id: affectedRotationIds }
+      })
+    ]);
     const rotatedSecretIdsBeingMoved = new Set<string>(sourceFolderInventory.map((s) => s.id));
-
-    const affectedRotations = await secretRotationV2DAL.find({
-      projectId: project.id,
-      $in: { id: affectedRotationIds }
-    });
 
     const destinationRotationConflicts = await secretRotationV2DAL.find({
       projectId: project.id,
@@ -3649,42 +3646,45 @@ export const secretServiceFactory = ({
       });
     }
 
-    const rotationPermissionContexts = [
-      { environment: sourceEnvironment, secretPath: sourceSecretPath },
-      { environment: destinationEnvironment, secretPath: destinationFolder.path }
-    ];
-    for (const rotation of affectedRotations) {
-      const effectiveConnectionId = isCrossEnvMove
-        ? (connectionOverridesByRotationId.get(rotation.id) ?? rotation.connectionId)
-        : rotation.connectionId;
+    // Pre-compute the post-move connection for each rotation so destination permission
+    // checks and the actual update reuse the same value without re-resolving overrides.
+    const effectiveConnectionIdByRotationId = new Map<string, string>(
+      affectedRotations.map((r) => [r.id, isCrossEnvMove ? (overrideMap.get(r.id) ?? r.connectionId) : r.connectionId])
+    );
 
-      for (const ctx of rotationPermissionContexts) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretRotationActions.Edit,
-          subject(ProjectPermissionSub.SecretRotation, {
-            ...ctx,
-            connectionId: ctx.environment === sourceEnvironment ? rotation.connectionId : effectiveConnectionId
-          })
-        );
-      }
+    // Pass 1 — rotation Edit permission on source (current connection) and destination
+    // (post-move connection). Surfaces permission errors before connection-shape errors.
+    for (const rotation of affectedRotations) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretRotationActions.Edit,
+        subject(ProjectPermissionSub.SecretRotation, {
+          environment: sourceEnvironment,
+          secretPath: sourceSecretPath,
+          connectionId: rotation.connectionId
+        })
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretRotationActions.Edit,
+        subject(ProjectPermissionSub.SecretRotation, {
+          environment: destinationEnvironment,
+          secretPath: destinationFolder.path,
+          connectionId: effectiveConnectionIdByRotationId.get(rotation.id)!
+        })
+      );
     }
 
+    // Pass 2 — cross-env override connection validation: existence, org/project scope,
+    // app type match, and the actor's AppConnections.Connect ability. Completeness of
+    // overrideMap was enforced above so .get(rotation.id)! is safe here.
     if (isCrossEnvMove) {
-      // Validate every override's connection: existence, org/project scope, app type match,
-      // and the actor's AppConnections.Connect ability.
-      const overrideConnectionIds = unique(Array.from(connectionOverridesByRotationId.values()));
-      const connections = await appConnectionDAL.find({ $in: { id: overrideConnectionIds } });
-      const connectionById = new Map(connections.map((c) => [c.id, c]));
+      const overrideConnections = await appConnectionDAL.find({
+        $in: { id: unique(Array.from(overrideMap.values())) }
+      });
+      const overrideConnectionsById = new Map(overrideConnections.map((c) => [c.id, c]));
 
       for (const rotation of affectedRotations) {
-        const overrideConnectionId = connectionOverridesByRotationId.get(rotation.id);
-        if (!overrideConnectionId) {
-          // Completeness was already enforced above for cross-env; defensive skip.
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        const connection = connectionById.get(overrideConnectionId);
+        const overrideConnectionId = overrideMap.get(rotation.id)!;
+        const connection = overrideConnectionsById.get(overrideConnectionId);
         if (!connection) {
           throw new NotFoundError({
             message: `App connection with ID '${overrideConnectionId}' not found.`
@@ -3724,10 +3724,12 @@ export const secretServiceFactory = ({
     // correct for a folder-only move since the secret value is unchanged.
     await secretV2BridgeDAL.transaction(async (tx) => {
       for await (const rotation of affectedRotations) {
-        const newConnectionId = connectionOverridesByRotationId.get(rotation.id) ?? rotation.connectionId;
         await secretRotationV2DAL.updateById(
           rotation.id,
-          { folderId: destinationFolder.id, connectionId: newConnectionId },
+          {
+            folderId: destinationFolder.id,
+            connectionId: effectiveConnectionIdByRotationId.get(rotation.id)!
+          },
           tx
         );
       }
@@ -3763,8 +3765,8 @@ export const secretServiceFactory = ({
       }
     });
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
     await Promise.all([
+      secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id),
       snapshotService.performSnapshot(destinationFolder.id),
       snapshotService.performSnapshot(sourceFolder.id)
     ]);
