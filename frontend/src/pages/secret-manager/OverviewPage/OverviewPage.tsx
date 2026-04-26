@@ -2323,11 +2323,18 @@ const OverviewPageContent = () => {
     return "table" as const;
   })();
 
+  const isViewingAllEnvs = visibleEnvs.length === userAvailableEnvs.length;
+
   useEffect(() => {
-    if (tableView === "add-first-secret" && secretPath === "/") {
+    if (
+      tableView === "add-first-secret" &&
+      secretPath === "/" &&
+      isViewingAllEnvs &&
+      !searchFilter
+    ) {
       localStorage.setItem(`first-secrets-seen-empty-${projectId}`, "true");
     }
-  }, [tableView, secretPath, projectId]);
+  }, [tableView, secretPath, projectId, isViewingAllEnvs, searchFilter]);
 
   if (!isProjectV3)
     return (
