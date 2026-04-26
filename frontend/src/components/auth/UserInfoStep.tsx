@@ -24,6 +24,7 @@ import { initProjectHelper } from "@app/helpers/project";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import { checkIsPasswordBreached } from "../utilities/checks/password/checkIsPasswordBreached";
 import {
@@ -54,7 +55,7 @@ const createUserInfoFormSchema = (isInvite: boolean) =>
     name: z.string().min(1, "Please, specify your name"),
     organizationName: isInvite
       ? z.string().optional()
-      : z.string().min(1, "Please, specify your organization name").max(64),
+      : GenericResourceNameSchema,
     password: passwordSchema,
     attributionSource: z.string().optional()
   });
