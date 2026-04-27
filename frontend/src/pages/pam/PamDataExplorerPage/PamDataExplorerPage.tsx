@@ -410,7 +410,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex h-12 shrink-0 items-center overflow-x-scroll overflow-y-hidden border-b border-mineshaft-600 bg-mineshaft-800 px-2 pt-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:#4a4b4e_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-mineshaft-600 [&::-webkit-scrollbar-track]:bg-transparent">
+          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:#4a4b4e_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-mineshaft-600 [&::-webkit-scrollbar-track]:bg-transparent">
             {tabs.map((tab) => {
               const isActive = activeTabId === tab.id;
               const Icon = tab.kind === "browse" ? TableIcon : TerminalSquareIcon;
@@ -426,7 +426,7 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
                   onClick={() => setActiveTab(tab.id)}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setActiveTab(tab.id)}
                   className={cn(
-                    "group flex shrink-0 cursor-pointer items-center gap-1 border-t-[3px] px-3 py-2 text-xs font-medium transition-colors",
+                    "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                     isActive
                       ? "border-info text-mineshaft-100"
                       : "border-transparent text-mineshaft-400 hover:text-mineshaft-200",
