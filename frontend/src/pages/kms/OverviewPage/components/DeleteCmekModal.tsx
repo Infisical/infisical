@@ -6,9 +6,10 @@ type Props = {
   cmek: TCmek;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onDeleted?: (keyId: string) => void;
 };
 
-export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek, onDeleted }: Props) => {
   const deleteCmek = useDeleteCmek();
 
   if (!cmek) return null;
@@ -26,6 +27,7 @@ export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
       type: "success"
     });
 
+    onDeleted?.(keyId);
     onOpenChange(false);
   };
 

@@ -66,7 +66,7 @@ export const CreateSecretSyncModal = ({
           )
         }
         className="max-w-2xl"
-        bodyClassName="overflow-visible"
+        bodyClassName={selectedSync ? "overflow-visible" : undefined}
         subTitle={selectedSync ? undefined : "Select a third-party service to sync secrets to."}
       >
         <Content

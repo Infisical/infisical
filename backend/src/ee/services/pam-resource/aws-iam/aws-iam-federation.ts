@@ -181,10 +181,19 @@ export const validateTargetRoleAssumption = async ({
   }
 };
 
+export type TAwsIamSessionCredentials = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken: string;
+  expiresAt: Date;
+};
+
 /**
- * Assumes the target role and generates a federated console sign-in URL.
+ * Runs the STS role-chaining sequence and returns the temporary credentials
+ * that the caller can either consume directly (CLI) or exchange for a
+ * federated console sign-in URL via {@link exchangeCredentialsForConsoleUrl}.
  */
-export const generateConsoleFederationUrl = async ({
+export const generateAwsIamSessionCredentials = async ({
   connectionDetails,
   targetRoleArn,
   roleSessionName,
@@ -196,7 +205,7 @@ export const generateConsoleFederationUrl = async ({
   roleSessionName: string;
   projectId: string;
   sessionDuration: number;
-}): Promise<{ consoleUrl: string; expiresAt: Date }> => {
+}): Promise<TAwsIamSessionCredentials> => {
   const pamCredentials = await assumePamRole({
     connectionDetails,
     projectId,
@@ -216,15 +225,31 @@ export const generateConsoleFederationUrl = async ({
 
   const { AccessKeyId, SecretAccessKey, SessionToken, Expiration } = targetCredentials!;
 
-  // Generate federation URL
+  if (!AccessKeyId || !SecretAccessKey || !SessionToken) {
+    throw new InternalServerError({
+      message: "AWS STS returned credentials missing required fields"
+    });
+  }
+
+  return {
+    accessKeyId: AccessKeyId,
+    secretAccessKey: SecretAccessKey,
+    sessionToken: SessionToken,
+    expiresAt: Expiration ?? new Date(Date.now() + sessionDuration * 1000)
+  };
+};
+
+// Exchanges existing STS credentials for a one-shot AWS console sign-in URL
+export const exchangeCredentialsForConsoleUrl = async (
+  credentials: Pick<TAwsIamSessionCredentials, "accessKeyId" | "secretAccessKey" | "sessionToken">
+): Promise<string> => {
   const sessionJson = JSON.stringify({
-    sessionId: AccessKeyId,
-    sessionKey: SecretAccessKey,
-    sessionToken: SessionToken
+    sessionId: credentials.accessKeyId,
+    sessionKey: credentials.secretAccessKey,
+    sessionToken: credentials.sessionToken
   });
 
   const federationEndpoint = "https://signin.aws.amazon.com/federation";
-
   const signinTokenUrl = `${federationEndpoint}?Action=getSigninToken&Session=${encodeURIComponent(sessionJson)}`;
 
   const tokenResponse = await request.get<{ SigninToken?: string }>(signinTokenUrl);
@@ -236,10 +261,5 @@ export const generateConsoleFederationUrl = async ({
   }
 
   const consoleDestination = `https://console.aws.amazon.com/`;
-  const consoleUrl = `${federationEndpoint}?Action=login&SigninToken=${encodeURIComponent(tokenResponse.data.SigninToken)}&Destination=${encodeURIComponent(consoleDestination)}`;
-
-  return {
-    consoleUrl,
-    expiresAt: Expiration ?? new Date(Date.now() + sessionDuration * 1000)
-  };
+  return `${federationEndpoint}?Action=login&SigninToken=${encodeURIComponent(tokenResponse.data.SigninToken)}&Destination=${encodeURIComponent(consoleDestination)}`;
 };

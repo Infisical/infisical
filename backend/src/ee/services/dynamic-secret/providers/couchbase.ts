@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 
-import axios from "axios";
 import RE2 from "re2";
 
 import { TDynamicSecrets } from "@app/db/schemas";
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -159,7 +159,7 @@ const couchbaseApiRequest = async (
   await blockLocalAndPrivateIpAddresses(url);
 
   try {
-    const response = await axios({
+    const response = await request({
       method: method.toLowerCase() as "get" | "post" | "put" | "delete",
       url,
       headers: {
@@ -167,7 +167,8 @@ const couchbaseApiRequest = async (
         "Content-Type": "application/json"
       },
       data: data || undefined,
-      timeout: 30000
+      timeout: 30000,
+      maxRedirects: 0
     });
 
     return response.data as CouchbaseUserResponse;

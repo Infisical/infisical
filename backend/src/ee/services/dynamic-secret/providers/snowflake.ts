@@ -146,7 +146,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
 
     try {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
 
       await new Promise((resolve, reject) => {
         client.execute({
@@ -181,7 +181,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration
       });

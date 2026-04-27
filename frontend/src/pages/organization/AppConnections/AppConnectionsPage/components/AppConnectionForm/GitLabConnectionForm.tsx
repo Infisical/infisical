@@ -221,10 +221,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
               }. This field cannot be changed after creation.`}
               errorText={
                 !isLoading && isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth
-                  ? `Environment variables have not been configured. ${
+                  ? `${
                       isInfisicalCloud()
-                        ? "Please contact Infisical."
-                        : `See Docs to configure GitLab ${methodDetails.name} Connections.`
+                        ? "GitLab Oauth is not supported in Infisical Cloud."
+                        : `Environment variables have not been configured. See Docs to configure GitLab ${methodDetails.name} Connections.`
                     }`
                   : error?.message
               }

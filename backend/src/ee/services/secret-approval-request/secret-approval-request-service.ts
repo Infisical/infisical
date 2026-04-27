@@ -20,6 +20,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -479,12 +481,6 @@ export const secretApprovalRequestServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TReviewRequestDTO) => {
-    const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
-    if (!secretApprovalRequest) {
-      throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
-    }
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
-
     const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
@@ -492,6 +488,15 @@ export const secretApprovalRequestServiceFactory = ({
           "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
       });
     }
+
+    const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
+    if (!secretApprovalRequest) {
+      throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
+    }
+    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+
+    if (secretApprovalRequest.status !== RequestState.Open)
+      throw new BadRequestError({ message: "You can only review open approval requests" });
 
     const { policy } = secretApprovalRequest;
     if (policy.deletedAt) {
@@ -637,6 +642,10 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
+    if (secretApprovalRequest.hasMerged) throw new BadRequestError({ message: "Approval request has been merged" });
+    if (secretApprovalRequest.status !== RequestState.Open)
+      throw new BadRequestError({ message: "You can only approve or reject open approval requests" });
+
     const { hasRole } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId,
@@ -708,21 +717,27 @@ export const secretApprovalRequestServiceFactory = ({
       if (secretUpdationCommits.length) {
         const secrets = await secretV2BridgeDAL.findBySecretKeys(
           folderId,
-          secretCreationCommits.map((el) => ({
+          secretUpdationCommits.map((el) => ({
             key: el.key,
             type: SecretType.Shared
           }))
         );
-        const updationConflictSecretsGroupByKey = groupBy(secrets, (i) => i.key);
+        const updationSecretsGroupByKey = groupBy(secrets, (i) => i.key);
         secretUpdationCommits
-          .filter(({ key, secretId }) => updationConflictSecretsGroupByKey[key] || !secretId)
+          .filter(({ key, secretId }) => {
+            const dbSecret = updationSecretsGroupByKey[key]?.[0];
+            // Conflict if: secret doesn't exist OR secretId doesn't match (was recreated) OR no secretId in commit
+            return !dbSecret || dbSecret.id !== secretId || !secretId;
+          })
           .forEach((el) => {
             conflicts.push({ op: SecretOperations.Update, secretId: el.id });
           });
 
-        secretUpdationCommits = secretUpdationCommits.filter(
-          ({ key, secretId }) => Boolean(secretId) && !updationConflictSecretsGroupByKey[key]
-        );
+        secretUpdationCommits = secretUpdationCommits.filter(({ key, secretId }) => {
+          const dbSecret = updationSecretsGroupByKey[key]?.[0];
+          // Valid if: secret exists AND secretId matches AND has secretId
+          return dbSecret && dbSecret.id === secretId && Boolean(secretId);
+        });
       }
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
@@ -1630,7 +1645,9 @@ export const secretApprovalRequestServiceFactory = ({
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,

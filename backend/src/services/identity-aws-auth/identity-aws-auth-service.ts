@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import axios from "axios";
 import RE2 from "re2";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -15,6 +14,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -67,7 +67,7 @@ const awsRegionFromHeader = (authorizationHeader: string): string | null => {
   // 	SignedHeaders=content-length;content-type;host;x-amz-date,
   //	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
   //
-  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"
+  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"xi
   try {
     const fields = authorizationHeader.split(" ");
     for (const field of fields) {
@@ -146,7 +146,7 @@ export const identityAwsAuthServiceFactory = ({
             GetCallerIdentityResult: { Account, Arn, UserId }
           }
         }
-      }: { data: TGetCallerIdentityResponse } = await axios({
+      }: { data: TGetCallerIdentityResponse } = await request({
         method: iamHttpRequestMethod,
         url,
         headers,

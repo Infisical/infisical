@@ -83,14 +83,14 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
 
   const redirectToSaml = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
-      callbackPort ? `?callback_port=${callbackPort}` : ""
+      callbackPort ? `?callback_port=${encodeURIComponent(callbackPort)}` : ""
     }`;
     window.location.assign(redirectUrl);
   };
 
   const redirectToOidc = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
-      callbackPort ? `&callbackPort=${callbackPort}` : ""
+      callbackPort ? `&callbackPort=${encodeURIComponent(callbackPort)}` : ""
     }`;
     window.location.assign(redirectUrl);
   };

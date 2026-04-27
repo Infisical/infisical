@@ -34,7 +34,7 @@ const addAcceptedUsersToGroup = async ({
 
   await userGroupMembershipDAL.insertMany(
     users.map((user) => ({
-      userId: user.userId,
+      userId: user.id,
       groupId: group.id,
       isPending: false
     })),
@@ -82,7 +82,7 @@ const addAcceptedUsersToGroup = async ({
       continue;
     }
 
-    const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.userId}`));
+    const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
 
     if (usersToAddProjectKeyFor.length) {
       // there are users who need to be shared keys
@@ -149,7 +149,7 @@ const addAcceptedUsersToGroup = async ({
           encryptedKey,
           nonce,
           senderId: ghostUser.id,
-          receiverId: user.userId,
+          receiverId: user.id,
           projectId
         };
       });

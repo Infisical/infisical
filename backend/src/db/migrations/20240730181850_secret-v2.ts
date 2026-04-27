@@ -134,14 +134,14 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.SecretRotationOutputV2))) {
-    await knex.schema.createTable(TableName.SecretRotationOutputV2, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DeprecatedSecretRotationOutputV2))) {
+    await knex.schema.createTable(TableName.DeprecatedSecretRotationOutputV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("key").notNullable();
       t.uuid("secretId").notNullable();
       t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("CASCADE");
       t.uuid("rotationId").notNullable();
-      t.foreign("rotationId").references("id").inTable(TableName.SecretRotation).onDelete("CASCADE");
+      t.foreign("rotationId").references("id").inTable(TableName.DeprecatedSecretRotationV1).onDelete("CASCADE");
     });
   }
 }
@@ -154,7 +154,7 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.SecretV2JnTag);
   await knex.schema.dropTableIfExists(TableName.SecretReferenceV2);
 
-  await knex.schema.dropTableIfExists(TableName.SecretRotationOutputV2);
+  await knex.schema.dropTableIfExists(TableName.DeprecatedSecretRotationOutputV2);
 
   await dropOnUpdateTrigger(knex, TableName.SecretVersionV2);
   await knex.schema.dropTableIfExists(TableName.SecretVersionV2Tag);

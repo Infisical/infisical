@@ -64,7 +64,8 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateTemplates,
     ProjectPermissionSub.SshHostGroups,
     ProjectPermissionSub.PamFolders,
-    ProjectPermissionSub.PamResources
+    ProjectPermissionSub.PamResources,
+    ProjectPermissionSub.PamDomains
   ].forEach((el) => {
     can(
       [
@@ -697,6 +698,8 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
 
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamDomains);
+
   can(
     [ProjectPermissionPamAccountActions.Access, ProjectPermissionPamAccountActions.Read],
     ProjectPermissionSub.PamAccounts
@@ -777,6 +780,8 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamDomains);
 
   can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
 

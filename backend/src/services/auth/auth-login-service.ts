@@ -12,7 +12,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -198,7 +198,8 @@ export const authLoginServiceFactory = ({
         authTokenType: AuthTokenType.MFA_TOKEN,
         userId,
         organizationId,
-        email
+        email,
+        requiredMfaMethod
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -600,7 +601,13 @@ export const authLoginServiceFactory = ({
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
    */
-  const resendMfaToken = async (userId: string) => {
+  const resendMfaToken = async (userId: string, requiredMfaMethod: MfaMethod) => {
+    if (requiredMfaMethod !== MfaMethod.EMAIL) {
+      throw new BadRequestError({
+        message: "Email MFA code cannot be sent when a different MFA method is required"
+      });
+    }
+
     const user = await userDAL.findById(userId);
     if (!user || !user.email) return;
     enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
@@ -667,6 +674,7 @@ export const authLoginServiceFactory = ({
     userId,
     mfaToken,
     mfaMethod,
+    requiredMfaMethod,
     mfaJwtToken,
     ip,
     userAgent,
@@ -677,6 +685,12 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userId);
 
     try {
+      if (mfaMethod !== requiredMfaMethod) {
+        throw new BadRequestError({
+          message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
+        });
+      }
+
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
       if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
@@ -744,7 +758,11 @@ export const authLoginServiceFactory = ({
               });
 
               // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
+              await keyStore.setItemWithExpiry(
+                KeyStorePrefixes.UserMfaUnlockEmailSent(userId),
+                KeyStoreTtls.UserMfaUnlockEmailSentInSeconds,
+                "1"
+              );
             }
           } catch (lockErr) {
             if (lock) {

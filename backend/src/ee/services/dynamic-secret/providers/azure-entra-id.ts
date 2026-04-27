@@ -1,6 +1,6 @@
-import axios from "axios";
 import { customAlphabet } from "nanoid";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 
@@ -29,7 +29,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
     applicationId: string,
     clientSecret: string
   ): Promise<{ token?: string; success: boolean }> => {
-    const response = await axios.post<{ access_token: string }>(
+    const response = await request.post<{ access_token: string }>(
       `${MSFT_LOGIN_URL}/${tenantId}/oauth2/v2.0/token`,
       {
         grant_type: "client_credentials",
@@ -76,7 +76,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
         throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
       }
 
-      const response = await axios.patch(
+      const response = await request.patch(
         `${MSFT_GRAPH_API_URL}/users/${providerInputs.userId}`,
         {
           passwordProfile: {
@@ -136,7 +136,7 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
       throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
     }
 
-    const response = await axios.get<{ value: [{ id: string; displayName: string; userPrincipalName: string }] }>(
+    const response = await request.get<{ value: [{ id: string; displayName: string; userPrincipalName: string }] }>(
       `${MSFT_GRAPH_API_URL}/users`,
       {
         headers: {

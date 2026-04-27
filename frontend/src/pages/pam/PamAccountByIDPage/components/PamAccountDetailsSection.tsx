@@ -51,7 +51,9 @@ const rotationStatusLabel = (status?: string | null) => {
 };
 
 export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
-  const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
+  const resourceTypeInfo = account.resource
+    ? PAM_RESOURCE_TYPE_MAP[account.resource.resourceType]
+    : null;
   const isRotating = account.rotationStatus === PamAccountRotationStatus.Rotating;
 
   // Poll for status updates while rotation is in progress
@@ -83,22 +85,24 @@ export const PamAccountDetailsSection = ({ account, onEdit }: Props) => {
           <DetailLabel>Description</DetailLabel>
           <DetailValue>{account.description || "-"}</DetailValue>
         </Detail>
-        <Detail>
-          <DetailLabel>Type</DetailLabel>
-          <DetailValue>
-            <div className="flex items-center gap-2">
-              <img
-                alt={resourceTypeInfo.name}
-                src={`/images/integrations/${resourceTypeInfo.image}`}
-                className="size-4"
-              />
-              {resourceTypeInfo.name} Account
-            </div>
-          </DetailValue>
-        </Detail>
+        {resourceTypeInfo && (
+          <Detail>
+            <DetailLabel>Type</DetailLabel>
+            <DetailValue>
+              <div className="flex items-center gap-2">
+                <img
+                  alt={resourceTypeInfo.name}
+                  src={`/images/integrations/${resourceTypeInfo.image}`}
+                  className="size-4"
+                />
+                {resourceTypeInfo.name} Account
+              </div>
+            </DetailValue>
+          </Detail>
+        )}
         <Detail>
           <DetailLabel>Parent Resource</DetailLabel>
-          <DetailValue>{account.resource.name}</DetailValue>
+          <DetailValue>{account.resource?.name ?? "—"}</DetailValue>
         </Detail>
         <Detail>
           <DetailLabel>Account Policy</DetailLabel>

@@ -124,6 +124,7 @@
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/dbt",
+                      "integrations/app-connections/digicert",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/doppler",
                       "integrations/app-connections/dns-made-easy",
@@ -145,6 +146,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
+                      "integrations/app-connections/ona",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
@@ -157,6 +159,7 @@
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/travis-ci",
                       "integrations/app-connections/venafi",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
@@ -480,6 +483,7 @@
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/supabase-api-key",
                       "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/windows-local-account"
                     ]
@@ -598,6 +602,7 @@
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
+                      "integrations/secret-syncs/ona",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/railway",
@@ -605,6 +610,7 @@
                       "integrations/secret-syncs/supabase",
                       "integrations/secret-syncs/teamcity",
                       "integrations/secret-syncs/terraform-cloud",
+                      "integrations/secret-syncs/travis-ci",
                       "integrations/secret-syncs/vercel",
                       "integrations/secret-syncs/windmill",
                       "integrations/secret-syncs/zabbix"
@@ -832,9 +838,11 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
+                  "documentation/platform/pki/ca/digicert-direct",
                   "documentation/platform/pki/ca/sectigo",
                   "documentation/platform/pki/ca/azure-adcs",
                   "documentation/platform/pki/ca/aws-pca",
+                  "documentation/platform/pki/ca/aws-acm-public-ca",
                   "documentation/platform/pki/ca/venafi"
                 ]
               }
@@ -917,6 +925,11 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "arrow-up-right-from-square",
+            "href": "https://docs.agent-vault.dev/"
           }
         ]
       },
@@ -1444,6 +1457,18 @@
                       "api-reference/endpoints/app-connections/dbt/create",
                       "api-reference/endpoints/app-connections/dbt/update",
                       "api-reference/endpoints/app-connections/dbt/delete"
+                    ]
+                  },
+                  {
+                    "group": "DigiCert",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/digicert/list",
+                      "api-reference/endpoints/app-connections/digicert/available",
+                      "api-reference/endpoints/app-connections/digicert/get-by-id",
+                      "api-reference/endpoints/app-connections/digicert/get-by-name",
+                      "api-reference/endpoints/app-connections/digicert/create",
+                      "api-reference/endpoints/app-connections/digicert/update",
+                      "api-reference/endpoints/app-connections/digicert/delete"
                     ]
                   },
                   {
@@ -2339,6 +2364,19 @@
                     ]
                   },
                   {
+                    "group": "Supabase API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/create",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/delete",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/list",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/supabase-api-key/update"
+                    ]
+                  },
+                  {
                     "group": "HP iLO Local Account",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/hp-ilo-local-account/create",
@@ -2920,6 +2958,26 @@
                     ]
                   },
                   {
+                    "group": "DigiCert",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/digicert/list",
+                      "api-reference/endpoints/certificate-authorities/digicert/create",
+                      "api-reference/endpoints/certificate-authorities/digicert/read",
+                      "api-reference/endpoints/certificate-authorities/digicert/update",
+                      "api-reference/endpoints/certificate-authorities/digicert/delete"
+                    ]
+                  },
+                  {
+                    "group": "AWS ACM Public CA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-acm-public-ca/delete"
+                    ]
+                  },
+                  {
                     "group": "Internal",
                     "pages": [
                       "api-reference/endpoints/certificate-authorities/internal/list",
@@ -3228,7 +3286,8 @@
                   "api-reference/endpoints/kms/keys/update",
                   "api-reference/endpoints/kms/keys/delete",
                   "api-reference/endpoints/kms/keys/public-key",
-                  "api-reference/endpoints/kms/keys/private-key"
+                  "api-reference/endpoints/kms/keys/private-key",
+                  "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                 ]
               },
               {

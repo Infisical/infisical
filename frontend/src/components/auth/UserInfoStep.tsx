@@ -137,7 +137,6 @@ export default function UserInfoStep({
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
-    SecurityClient.setProviderAuthToken("");
 
     if (isInfisicalCloud()) {
       window.dataLayer = window.dataLayer || [];

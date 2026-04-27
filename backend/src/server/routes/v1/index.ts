@@ -79,7 +79,6 @@ import { registerSecretValidationRuleRouter } from "./secret-validation-rule-rou
 import { registerSignerRouter } from "./signer-router";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
-import { registerUpgradePathRouter } from "./upgrade-path-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
@@ -316,8 +315,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerEventRouter, { prefix: "/events" });
-  await server.register(registerUpgradePathRouter, { prefix: "/upgrade-path" });
-
   await server.register(
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints

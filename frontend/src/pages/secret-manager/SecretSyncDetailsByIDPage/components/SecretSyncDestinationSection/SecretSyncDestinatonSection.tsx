@@ -39,11 +39,13 @@ import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
+import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
+import { TravisCISyncDestinationSection } from "./TravisCISyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
@@ -174,6 +176,12 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.ExternalInfisical:
       DestinationComponents = <ExternalInfisicalSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Ona:
+      DestinationComponents = <OnaSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TravisCI:
+      DestinationComponents = <TravisCISyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

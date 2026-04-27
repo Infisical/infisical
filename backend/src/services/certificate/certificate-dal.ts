@@ -13,7 +13,23 @@ import { isUuidV4 } from "@app/lib/validator";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { keySizeToAlgorithms } from "./certificate-fns";
-import { CertStatus } from "./certificate-types";
+import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
+
+// Scoped to UI-surfaced algorithms; intentionally narrower than pqc-utils.PQC_ALGORITHMS.
+export const PQC_KEY_ALGORITHMS: string[] = [
+  CertKeyAlgorithm.ML_DSA_44,
+  CertKeyAlgorithm.ML_DSA_65,
+  CertKeyAlgorithm.ML_DSA_87
+];
+
+export const NON_PQC_KEY_ALGORITHMS: string[] = [
+  CertKeyAlgorithm.RSA_2048,
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384,
+  CertKeyAlgorithm.ECDSA_P521
+];
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
@@ -918,6 +934,77 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getPqcTrend = async (projectId: string, daysBack: number) => {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      startDate.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      const useDaily = daysBack <= 30;
+      if (!useDaily) {
+        startDate.setDate(1);
+      }
+      const truncUnit = useDaily ? "day" : "month";
+      const dateFormat = useDaily ? "YYYY-MM-DD" : "YYYY-MM";
+
+      const rows = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
+        .where(`${TableName.CertificateAuthority}.projectId`, projectId)
+        .where(`${TableName.Certificate}.notBefore`, ">=", startDate)
+        .where(`${TableName.Certificate}.notBefore`, "<=", now)
+        .whereIn(`${TableName.Certificate}.keyAlgorithm`, [...PQC_KEY_ALGORITHMS, ...NON_PQC_KEY_ALGORITHMS])
+        .select(
+          db.raw(`to_char(date_trunc(?, "${TableName.Certificate}"."notBefore"), ?) as period`, [truncUnit, dateFormat])
+        )
+        .select(
+          db.raw(
+            `CASE WHEN "${TableName.Certificate}"."keyAlgorithm" IN (${PQC_KEY_ALGORITHMS.map(() => "?").join(",")}) THEN 'pqc' ELSE 'nonPqc' END as bucket`,
+            [...PQC_KEY_ALGORITHMS]
+          )
+        )
+        .select(db.raw("count(*)::int as count"))
+        .groupBy("period", "bucket")
+        .orderBy("period");
+
+      interface PeriodBucketCount {
+        period: string;
+        bucket: "pqc" | "nonPqc";
+        count: string;
+      }
+      const typed = rows as unknown as PeriodBucketCount[];
+      const pqcMap = new Map<string, number>();
+      const nonPqcMap = new Map<string, number>();
+      typed.forEach((r) => {
+        if (r.bucket === "pqc") pqcMap.set(r.period, Number(r.count));
+        else nonPqcMap.set(r.period, Number(r.count));
+      });
+
+      const periods: Array<{ period: string; pqc: number; nonPqc: number }> = [];
+      const cursor = new Date(startDate);
+      while (cursor <= now) {
+        const periodKey = useDaily
+          ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
+          : `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+        periods.push({
+          period: periodKey,
+          pqc: pqcMap.get(periodKey) ?? 0,
+          nonPqc: nonPqcMap.get(periodKey) ?? 0
+        });
+        if (useDaily) {
+          cursor.setDate(cursor.getDate() + 1);
+        } else {
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      return { periods };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get PQC trend" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -932,6 +1019,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findWithPrivateKeyInfo,
     findWithFullDetails,
     getDashboardStats,
-    getActivityTrend
+    getActivityTrend,
+    getPqcTrend
   };
 };

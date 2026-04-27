@@ -76,7 +76,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     | "updateById"
     | "deleteById"
   >;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithResourceDetails" | "findMetadataByAccountIds">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithParentDetails" | "findMetadataByAccountIds">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -632,32 +632,38 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string
   ) => {
-    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
-    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    const accountWithParent = await pamAccountDAL.findByIdWithParentDetails(accountId);
+    if (!accountWithParent) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: accountWithResource.projectId,
+      projectId: accountWithParent.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
 
-    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithResource.id]);
-    const accountMetadata = metadataByAccountId[accountWithResource.id] || [];
+    const metadataByAccountId = await pamAccountDAL.findMetadataByAccountIds([accountWithParent.id]);
+    const accountMetadata = metadataByAccountId[accountWithParent.id] || [];
 
     ForbiddenError.from(permission).throwUnlessCan(
       action,
       subject(ProjectPermissionSub.PamAccounts, {
-        resourceName: accountWithResource.resource.name,
-        accountName: accountWithResource.name,
-        resourceType: accountWithResource.resource.resourceType,
+        accountName: accountWithParent.name,
+        ...(accountWithParent.resource && {
+          resourceName: accountWithParent.resource.name,
+          resourceType: accountWithParent.resource.resourceType
+        }),
+        ...(accountWithParent.domain && {
+          domainName: accountWithParent.domain.name,
+          domainType: accountWithParent.domain.domainType
+        }),
         metadata: accountMetadata
       })
     );
 
-    return accountWithResource;
+    return accountWithParent;
   };
 
   const decryptDependencySyncMessages = async <T extends { encryptedLastSyncMessage?: Buffer | null }>(
@@ -697,7 +703,7 @@ export const pamDiscoverySourceServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    const accountWithResource = await verifyAccountPermission(
+    const accountWithParent = await verifyAccountPermission(
       accountId,
       ProjectPermissionPamAccountActions.Read,
       actor,
@@ -706,7 +712,7 @@ export const pamDiscoverySourceServiceFactory = ({
       actorOrgId
     );
     const deps = await pamAccountDependenciesDAL.findByAccountId(accountId);
-    return decryptDependencySyncMessages(deps, accountWithResource.projectId);
+    return decryptDependencySyncMessages(deps, accountWithParent.projectId);
   };
 
   const getResourceDependencies = async ({

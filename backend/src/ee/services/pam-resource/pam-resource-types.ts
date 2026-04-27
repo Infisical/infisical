@@ -9,12 +9,6 @@ import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-meta
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDependenciesDALFactory } from "../pam-discovery/pam-account-dependencies-dal";
 import {
-  TActiveDirectoryAccount,
-  TActiveDirectoryAccountCredentials,
-  TActiveDirectoryResource,
-  TActiveDirectoryResourceConnectionDetails
-} from "./active-directory/active-directory-resource-types";
-import {
   TAwsIamAccount,
   TAwsIamAccountCredentials,
   TAwsIamResource,
@@ -83,8 +77,7 @@ export type TPamResource =
   | TKubernetesResource
   | TRedisResource
   | TMongoDBResource
-  | TWindowsResource
-  | TActiveDirectoryResource;
+  | TWindowsResource;
 export type TPamResourceWithFavorite = TPamResources & { isFavorite: boolean };
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
@@ -95,8 +88,7 @@ export type TPamResourceConnectionDetails =
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
   | TMongoDBResourceConnectionDetails
-  | TWindowsResourceConnectionDetails
-  | TActiveDirectoryResourceConnectionDetails;
+  | TWindowsResourceConnectionDetails;
 export type TPamResourceInternalMetadata = TSSHResourceInternalMetadata | TWindowsResourceInternalMetadata;
 
 // Account types
@@ -109,8 +101,7 @@ export type TPamAccount =
   | TKubernetesAccount
   | TRedisAccount
   | TMongoDBAccount
-  | TWindowsAccount
-  | TActiveDirectoryAccount;
+  | TWindowsAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -121,14 +112,13 @@ export type TPamAccountCredentials =
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
   | TMongoDBAccountCredentials
-  | TWindowsAccountCredentials
-  | TActiveDirectoryAccountCredentials;
+  | TWindowsAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
-  adServerResourceId?: string | null;
+  domainId?: string | null;
   metadata?: z.input<typeof ResourceMetadataNonEncryptionSchema>;
 };
 

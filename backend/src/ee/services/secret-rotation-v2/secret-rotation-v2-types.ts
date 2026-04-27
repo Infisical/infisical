@@ -110,6 +110,13 @@ import {
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 import {
+  TSupabaseApiKeyRotation,
+  TSupabaseApiKeyRotationGeneratedCredentials,
+  TSupabaseApiKeyRotationInput,
+  TSupabaseApiKeyRotationListItem,
+  TSupabaseApiKeyRotationWithConnection
+} from "./supabase-api-key";
+import {
   TUnixLinuxLocalAccountRotation,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput,
@@ -141,7 +148,8 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
-  | THpIloRotation;
+  | THpIloRotation
+  | TSupabaseApiKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -160,7 +168,8 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
-  | THpIloRotationWithConnection;
+  | THpIloRotationWithConnection
+  | TSupabaseApiKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -175,7 +184,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
-  | THpIloRotationGeneratedCredentials;
+  | THpIloRotationGeneratedCredentials
+  | TSupabaseApiKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -194,7 +204,8 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
-  | THpIloRotationInput;
+  | THpIloRotationInput
+  | TSupabaseApiKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -213,7 +224,8 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
-  | THpIloRotationListItem;
+  | THpIloRotationListItem
+  | TSupabaseApiKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

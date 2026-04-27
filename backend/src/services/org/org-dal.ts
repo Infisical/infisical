@@ -15,7 +15,7 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { groupBy, unique } from "@app/lib/fn";
+import { groupBy, sanitizeSqlLikeString, unique } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -53,7 +53,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
       if (searchTerm) {
         void orgSubquery.where((qb) => {
-          void qb.whereILike(`${TableName.Organization}.name`, `%${searchTerm}%`);
+          void qb.whereILike(`${TableName.Organization}.name`, `%${sanitizeSqlLikeString(searchTerm)}%`);
         });
       }
 
@@ -219,7 +219,8 @@ export const orgDALFactory = (db: TDbClient) => {
       };
 
       const baseQuery = buildBaseQuery();
-      if (dto.search) void baseQuery.whereILike(`${TableName.Organization}.name`, `%${dto.search}%`);
+      if (dto.search)
+        void baseQuery.whereILike(`${TableName.Organization}.name`, `%${sanitizeSqlLikeString(dto.search)}%`);
 
       const [totalResult, orgs] = await Promise.all([
         baseQuery.clone().count({ count: "*" }).first(),

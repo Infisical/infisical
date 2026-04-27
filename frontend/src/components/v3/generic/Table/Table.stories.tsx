@@ -36,7 +36,7 @@ const identities: {
   },
   {
     name: "machine-three",
-    role: "Developer"
+    role: "Member"
   },
   {
     name: "machine-four",
@@ -56,7 +56,7 @@ const identities: {
   },
   {
     name: "machine-six",
-    role: "Developer"
+    role: "Member"
   }
 ];
 

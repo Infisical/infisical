@@ -20,8 +20,7 @@ export const publicPaths = [
   "/verify-email",
   "/password-reset",
   "/saml-sso",
-  "/login/provider/success", // TODO: change
-  "/login/provider/error", // TODO: change
+  "/login/provider/error",
   "/login/sso",
   "/admin/signup",
   "/shared/secret/[id]",

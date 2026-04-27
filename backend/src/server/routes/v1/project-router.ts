@@ -1464,6 +1464,51 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:projectId/certificates/pqc-trend",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getCertificatePqcTrend",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Get certificate PQC adoption trend over time.",
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        range: z.enum(["7d", "30d", "6m"]).optional().default("30d")
+      }),
+      response: {
+        200: z.object({
+          periods: z.array(
+            z.object({
+              period: z.string(),
+              pqc: z.number(),
+              nonPqc: z.number()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.project.getPqcTrend({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        range: req.query.range,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/pki-alerts",
     config: {
       rateLimit: readLimit

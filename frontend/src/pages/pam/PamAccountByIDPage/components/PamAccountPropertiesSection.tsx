@@ -3,12 +3,7 @@ import { CopyIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { Detail, DetailLabel, DetailValue, IconButton, Input } from "@app/components/v3";
-import {
-  PamResourceType,
-  TActiveDirectoryAccount,
-  TPamAccount,
-  TWindowsAccount
-} from "@app/hooks/api/pam";
+import { PamResourceType, TPamAccount, TWindowsAccount } from "@app/hooks/api/pam";
 
 const CopyableField = ({ label, value }: { label: string; value: string }) => {
   const handleCopy = () => {
@@ -41,30 +36,8 @@ type TPropertyField = {
 };
 
 const getAccountProperties = (account: TPamAccount): TPropertyField[] => {
+  if (!account.resource) return [];
   switch (account.resource.resourceType) {
-    case PamResourceType.ActiveDirectory: {
-      const { internalMetadata } = account as TActiveDirectoryAccount;
-      const fields: TPropertyField[] = [];
-
-      if (internalMetadata.userPrincipalName) {
-        fields.push({ label: "User Principal Name", value: internalMetadata.userPrincipalName });
-      }
-      if (internalMetadata.adGuid) {
-        fields.push({ label: "AD GUID", value: internalMetadata.adGuid });
-      }
-      if (internalMetadata.passwordLastSet) {
-        fields.push({
-          label: "Password Last Set",
-          value: internalMetadata.passwordLastSet,
-          type: "date"
-        });
-      }
-      if (internalMetadata.lastLogon) {
-        fields.push({ label: "Last Logon", value: internalMetadata.lastLogon, type: "date" });
-      }
-
-      return fields;
-    }
     case PamResourceType.Windows: {
       const { internalMetadata } = account as TWindowsAccount;
       const fields: TPropertyField[] = [];

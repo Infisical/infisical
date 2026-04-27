@@ -3,9 +3,11 @@ import { z } from "zod";
 import { AccessScope, GroupsSchema, TemporaryPermissionMode } from "@app/db/schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { OrgGroupsOrderBy } from "@app/services/membership-group/membership-group-types";
 
 /**
  * Organization group memberships.
@@ -54,7 +56,14 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       security: [{ bearerAuth: [] }],
       querystring: z.object({
         limit: z.coerce.number().min(1).max(100).default(100).optional(),
-        offset: z.coerce.number().min(0).default(0).optional()
+        offset: z.coerce.number().min(0).default(0).optional(),
+        search: z.string().optional(),
+        roles: z
+          .union([z.string(), z.array(z.string())])
+          .transform((v) => (typeof v === "string" ? [v] : v))
+          .optional(),
+        orderBy: z.nativeEnum(OrgGroupsOrderBy).optional(),
+        orderDirection: z.nativeEnum(OrderByDirection).optional()
       }),
       response: {
         200: z.object({
@@ -72,7 +81,11 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         },
         data: {
           limit: req.query.limit,
-          offset: req.query.offset
+          offset: req.query.offset,
+          search: req.query.search,
+          roles: req.query.roles,
+          orderBy: req.query.orderBy,
+          orderDirection: req.query.orderDirection
         }
       });
 

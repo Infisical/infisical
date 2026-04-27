@@ -28,7 +28,8 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
       headers: {
         Accept: "application/vnd.atlas.2023-02-01+json",
         "Content-Type": "application/json"
-      }
+      },
+      maxRedirects: 0
     });
     const digestAuth = createDigestAuthRequestInterceptor(
       client,

@@ -52,13 +52,13 @@ import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approval
 import {
   PamAccountRotationStatus,
   PamResourceType,
-  TActiveDirectoryAccount,
   TPamAccount,
   TPamResource,
   TWindowsAccount,
   useListPamAccounts
 } from "@app/hooks/api/pam";
 import { useManualRotateAccount } from "@app/hooks/api/pam/mutations";
+import { PamDomainType, useGetPamDomainById } from "@app/hooks/api/pamDomain";
 import {
   MetadataFilterEntry,
   MetadataFilterSection
@@ -66,27 +66,23 @@ import {
 
 import { PamAccessAccountModal } from "../../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccountModal";
+import { PamAwsIamAccessReasonModal } from "../../PamAccountsPage/components/PamAwsIamAccessReasonModal";
 import { PamDeleteAccountModal } from "../../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../../PamAccountsPage/components/PamUpdateAccountModal";
-import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAccessAwsIamAccount";
 
 type Props = {
   resource: TPamResource;
 };
 
-const hasAccountType = (resourceType: PamResourceType) =>
-  resourceType === PamResourceType.Windows || resourceType === PamResourceType.ActiveDirectory;
+const hasAccountType = (resourceType: PamResourceType) => resourceType === PamResourceType.Windows;
 
 const hasAccountsWithDependencies = (resourceType: PamResourceType) =>
-  resourceType === PamResourceType.Windows || resourceType === PamResourceType.ActiveDirectory;
+  resourceType === PamResourceType.Windows;
 
 const getAccountType = (account: TPamAccount): string | undefined => {
-  if (account.resource.resourceType === PamResourceType.Windows) {
+  if (account.resource?.resourceType === PamResourceType.Windows) {
     return (account as TWindowsAccount).internalMetadata?.accountType;
-  }
-  if (account.resource.resourceType === PamResourceType.ActiveDirectory) {
-    return (account as TActiveDirectoryAccount).internalMetadata?.accountType;
   }
   return undefined;
 };
@@ -97,23 +93,24 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const params = useParams({ strict: false }) as { projectId?: string };
   const { projectId } = params;
 
-  const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
   const manualRotate = useManualRotateAccount();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [rotatingAccountIds, setRotatingAccountIds] = useState<Set<string>>(new Set());
+  const [accessReason, setAccessReason] = useState<string | undefined>(undefined);
 
   const [pendingMetadataEntries, setPendingMetadataEntries] = useState<MetadataFilterEntry[]>([]);
   const [appliedMetadataEntries, setAppliedMetadataEntries] = useState<MetadataFilterEntry[]>([]);
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "addAccount",
     "accessAccount",
     "requestAccount",
     "updateAccount",
-    "deleteAccount"
+    "deleteAccount",
+    "awsIamReason"
   ] as const);
 
   const isTableFiltered = Boolean(appliedMetadataEntries.some((e) => e.key.trim()));
@@ -131,12 +128,19 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
     setAppliedMetadataEntries([]);
   };
 
+  const { data: domainData } = useGetPamDomainById(
+    PamDomainType.ActiveDirectory,
+    resource.domainId || undefined,
+    { enabled: !!resource.domainId }
+  );
+
   const hasRotatingAccounts = rotatingAccountIds.size > 0;
 
   const { data: accountsData, isPending } = useListPamAccounts(
     {
       projectId: projectId!,
       filterResourceIds: resource.id,
+      filterDomainIds: resource.domainId || undefined,
       search: debouncedSearch || undefined,
       metadataFilter: appliedMetadataEntries.filter((e) => e.key.trim()).length
         ? appliedMetadataEntries
@@ -192,16 +196,29 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   );
 
   const handleAccountClick = (account: TPamAccount) => {
-    navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
-      params: {
-        orgId: currentOrg.id,
-        projectId: projectId!,
-        resourceType: resource.resourceType,
-        resourceId: resource.id,
-        accountId: account.id
-      }
-    });
+    if (account.domainId && account.domain) {
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/domains/$domainType/$domainId/accounts/$accountId",
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          domainType: account.domain.domainType,
+          domainId: account.domainId,
+          accountId: account.id
+        }
+      });
+    } else {
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+        params: {
+          orgId: currentOrg.id,
+          projectId: projectId!,
+          resourceType: resource.resourceType,
+          resourceId: resource.id,
+          accountId: account.id
+        }
+      });
+    }
   };
 
   const handleRotateAccount = async (accountId: string) => {
@@ -255,8 +272,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
       return;
     }
 
-    if (account.resource.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account);
+    if (account.resource?.resourceType === PamResourceType.AwsIam) {
+      handlePopUpOpen("awsIamReason", { account });
     } else {
       handlePopUpOpen("accessAccount", { account });
     }
@@ -436,6 +453,12 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         )}
                       </Tooltip>
 
+                      {account.resourceId !== resource.id && domainData && (
+                        <Badge variant="info" className="text-xs">
+                          {domainData.connectionDetails.domain}
+                        </Badge>
+                      )}
+
                       {!account.credentialsConfigured && (
                         <Badge variant="warning" className="text-xs">
                           <KeyRoundIcon className="size-3" />
@@ -505,29 +528,25 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {/* Temporarily disable accessing Windows Server accounts */}
-                      {/* Disable accessing Active Directory accounts */}
-                      {resource.resourceType !== PamResourceType.Windows &&
-                        resource.resourceType !== PamResourceType.ActiveDirectory && (
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPamAccountActions.Access}
-                            a={ProjectPermissionSub.PamAccounts}
+                      {/* TODO: Disabled for Windows Server and Active Directory accounts until RDP is implemented */}
+                      {resource.resourceType !== PamResourceType.Windows && !account.domainId && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPamAccountActions.Access}
+                          a={ProjectPermissionSub.PamAccounts}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              accessAccount(account);
+                            }}
                           >
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                accessAccount(account);
-                              }}
-                              isPending={loadingAccountId === account.id}
-                              isDisabled={loadingAccountId === account.id}
-                            >
-                              <LogInIcon />
-                              Connect
-                            </Button>
-                          </ProjectPermissionCan>
-                        )}
+                            <LogInIcon />
+                            Connect
+                          </Button>
+                        </ProjectPermissionCan>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
@@ -548,58 +567,62 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                             )}
                             Copy Account ID
                           </DropdownMenuItem>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPamAccountActions.TriggerRotation}
-                            a={ProjectPermissionSub.PamAccounts}
-                          >
-                            {(isAllowed: boolean) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed || manualRotate.isPending}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRotateAccount(account.id);
-                                }}
+                          {!account.domainId && (
+                            <>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionPamAccountActions.TriggerRotation}
+                                a={ProjectPermissionSub.PamAccounts}
                               >
-                                <RefreshCwIcon className="size-4" />
-                                Rotate Account
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPamAccountActions.Edit}
-                            a={ProjectPermissionSub.PamAccounts}
-                          >
-                            {(isAllowed: boolean) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("updateAccount", account);
-                                }}
+                                {(isAllowed: boolean) => (
+                                  <DropdownMenuItem
+                                    isDisabled={!isAllowed || manualRotate.isPending}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRotateAccount(account.id);
+                                    }}
+                                  >
+                                    <RefreshCwIcon className="size-4" />
+                                    Rotate Account
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionPamAccountActions.Edit}
+                                a={ProjectPermissionSub.PamAccounts}
                               >
-                                <PencilIcon className="size-4" />
-                                Edit Account
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPamAccountActions.Delete}
-                            a={ProjectPermissionSub.PamAccounts}
-                          >
-                            {(isAllowed: boolean) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed}
-                                variant="danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deleteAccount", account);
-                                }}
+                                {(isAllowed: boolean) => (
+                                  <DropdownMenuItem
+                                    isDisabled={!isAllowed}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("updateAccount", account);
+                                    }}
+                                  >
+                                    <PencilIcon className="size-4" />
+                                    Edit Account
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionPamAccountActions.Delete}
+                                a={ProjectPermissionSub.PamAccounts}
                               >
-                                <TrashIcon className="size-4" />
-                                Delete Account
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
+                                {(isAllowed: boolean) => (
+                                  <DropdownMenuItem
+                                    isDisabled={!isAllowed}
+                                    variant="danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteAccount", account);
+                                    }}
+                                  >
+                                    <TrashIcon className="size-4" />
+                                    Delete Account
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -621,9 +644,26 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
       <PamAccessAccountModal
         isOpen={popUp.accessAccount.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("accessAccount", isOpen);
+          if (!isOpen) setAccessReason(undefined);
+        }}
         account={popUp.accessAccount.data?.account}
         projectId={projectId!}
+        reason={accessReason}
+      />
+
+      <PamAwsIamAccessReasonModal
+        isOpen={popUp.awsIamReason.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("awsIamReason", isOpen)}
+        account={popUp.awsIamReason.data?.account}
+        onSubmit={(reason) => {
+          const account = popUp.awsIamReason.data?.account;
+          if (!account) return;
+          handlePopUpClose("awsIamReason");
+          setAccessReason(reason || undefined);
+          handlePopUpOpen("accessAccount", { account });
+        }}
       />
 
       <PamRequestAccountAccessModal

@@ -54,7 +54,9 @@ const parseSubjectDetails = (data: string) => {
   const values: Record<string, string> = {};
   data.split("\n").forEach((el) => {
     const [key, value] = el.split("=");
-    values[key.trim()] = value.trim();
+    if (key && value) {
+      values[key.trim()] = value.trim();
+    }
   });
   return values;
 };

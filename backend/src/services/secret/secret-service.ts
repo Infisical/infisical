@@ -3055,7 +3055,9 @@ export const secretServiceFactory = ({
     if (projectSlug) {
       project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     } else if (inputProjectId) {
-      project = await projectDAL.findById(inputProjectId);
+      project = await requestMemoize(requestMemoKeys.projectFindById(inputProjectId), () =>
+        projectDAL.findById(inputProjectId)
+      );
     }
 
     if (!project) {
@@ -3592,12 +3594,7 @@ export const secretServiceFactory = ({
       throw new NotFoundError({ message: `Secret version with ID '${versionId}' not found` });
     }
 
-    const project = await projectDAL.findById(version.projectId);
-    if (!project) {
-      throw new NotFoundError({ message: `Project with ID '${version.projectId}' not found` });
-    }
-
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(project.id);
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(version.projectId);
     if (!shouldUseSecretV2Bridge) {
       throw new BadRequestError({
         message: "Project version not supported",

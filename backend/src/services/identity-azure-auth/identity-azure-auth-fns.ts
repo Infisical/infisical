@@ -1,5 +1,4 @@
-import axios from "axios";
-
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 
@@ -20,7 +19,7 @@ export const validateAzureIdentity = async ({
 
   const { kid } = decodedJwt.header;
 
-  const { data }: { data: TAzureJwksUriResponse } = await axios.get(jwksUri);
+  const { data }: { data: TAzureJwksUriResponse } = await request.get(jwksUri);
   const signingKeys = data.keys;
 
   const signingKey = signingKeys.find((key) => key.kid === kid);

@@ -42,15 +42,8 @@ Now, migrations run automatically during boot-up. This improvement streamlines t
    - Verify that your backup is current and accessible.
 
 2. **Plan Your Upgrade Path:**
-   - Use our [Upgrade Path Tool](https://app.infisical.com/upgrade-path) to analyze your upgrade path between your current version and target version.
-   - The tool will show you:
-     - **Breaking changes** that require action before upgrading
-     - **Database migrations** that may require additional settings or precautions
-     - **Step-by-step upgrade path** with intermediate versions if needed
-   - Review any breaking changes and plan necessary configuration updates before proceeding.
-   - Visit the [Infisical releases page](https://github.com/Infisical/infisical/releases) for a complete list of available versions.
-
-![Upgrade Path Tool showing breaking changes and migration information](/images/self-hosting/helper/upgrade-path-tool.png)
+   - Head over to the [Infisical releases page](https://github.com/Infisical/infisical/releases) and review the releases between your current version and the one you're upgrading to.
+   - Keep an eye out for breaking changes or migration notes — these will tell you if any extra steps or configuration changes are needed before you proceed.
 
 3. **Start the Upgrade Process:**  
    - Launch the new version of Infisical. During startup, the application will automatically compare the current database schema with the updated schema in the code.

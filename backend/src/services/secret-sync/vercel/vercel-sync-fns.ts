@@ -320,6 +320,27 @@ const updateSecret = async (
 
 // ===== Team-scoped shared environment variable functions =====
 
+type TeamDestinationConfig = Extract<TVercelSyncWithCredentials["destinationConfig"], { scope: VercelSyncScope.Team }>;
+
+const setsEqual = (a: readonly string[] | undefined, b: readonly string[] | undefined) => {
+  const av = a ?? [];
+  const bv = b ?? [];
+  if (av.length !== bv.length) return false;
+  const bSet = new Set(bv);
+  return av.every((v) => bSet.has(v));
+};
+
+const isTeamSharedEnvVarOwnedByThisSync = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
+  const expectedType = destinationConfig.sensitive ? "sensitive" : "encrypted";
+  if (envVar.type !== expectedType) return false;
+
+  const effectiveTargets = destinationConfig.sensitive
+    ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
+    : destinationConfig.targetEnvironments;
+
+  return setsEqual(envVar.target, effectiveTargets) && setsEqual(envVar.projectId, destinationConfig.targetProjects);
+};
+
 const listTeamSharedEnvVarsWithRetries = async (
   secretSync: TVercelSyncWithCredentials
 ): Promise<VercelSharedEnvVar[]> => {
@@ -429,6 +450,19 @@ const getTeamSharedEnvVars = async (secretSync: TVercelSyncWithCredentials): Pro
   );
 
   return envVarsWithValues;
+};
+
+const getOwnedTeamSharedEnvVars = async (secretSync: TVercelSyncWithCredentials): Promise<VercelSharedEnvVar[]> => {
+  if (secretSync.destinationConfig.scope !== VercelSyncScope.Team) {
+    throw new SecretSyncError({
+      message: "Invalid scope for team-level Vercel secret sync",
+      shouldRetry: false
+    });
+  }
+
+  const teamDestinationConfig = secretSync.destinationConfig;
+  const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
+  return allSharedEnvVars.filter((envVar) => isTeamSharedEnvVarOwnedByThisSync(envVar, teamDestinationConfig));
 };
 
 const createTeamSharedEnvVar = async (
@@ -632,7 +666,7 @@ const deleteTeamSharedEnvVar = async (
 export const VercelSyncFns = {
   syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
-      const sharedEnvVars = await getTeamSharedEnvVars(secretSync);
+      const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
       const sharedEnvVarsMap = new Map(sharedEnvVars.map((s) => [s.key, s]));
 
       const { targetEnvironments, targetProjects, sensitive } = secretSync.destinationConfig;
@@ -739,7 +773,7 @@ export const VercelSyncFns = {
 
   getSecrets: async (secretSync: TVercelSyncWithCredentials): Promise<TSecretMap> => {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
-      const sharedEnvVars = await getTeamSharedEnvVars(secretSync);
+      const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
       return Object.fromEntries(sharedEnvVars.map((s) => [s.key, { value: s.value ?? "" }]));
     }
 
@@ -749,7 +783,7 @@ export const VercelSyncFns = {
 
   removeSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
-      const sharedEnvVars = await getTeamSharedEnvVars(secretSync);
+      const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
 
       for await (const sharedEnvVar of sharedEnvVars) {
         if (sharedEnvVar.key in secretMap) {

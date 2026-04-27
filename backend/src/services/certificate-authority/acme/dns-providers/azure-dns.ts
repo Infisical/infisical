@@ -1,4 +1,4 @@
-import axios from "axios";
+import { isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
@@ -41,7 +41,7 @@ export const azureDnsInsertTxtRecord = async (
       }
     );
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const errorMessage = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
       throw new Error(typeof errorMessage === "string" ? errorMessage : String(errorMessage));
@@ -75,7 +75,7 @@ export const azureDnsDeleteTxtRecord = async (
       }
     );
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       if (error.response?.status === 404) {
         logger.warn({ hostedZoneId, recordName, value }, "TXT record not found for deletion");
         return;

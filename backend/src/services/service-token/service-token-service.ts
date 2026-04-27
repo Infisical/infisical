@@ -11,6 +11,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
@@ -174,7 +176,9 @@ export const serviceTokenServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(tokenIdentifier);
 
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${tokenIdentifier}' not found` });
-    const project = await projectDAL.findById(serviceToken.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(serviceToken.projectId), () =>
+      projectDAL.findById(serviceToken.projectId)
+    );
 
     if (!project) throw new NotFoundError({ message: `Project with ID '${serviceToken.projectId}' not found` });
 

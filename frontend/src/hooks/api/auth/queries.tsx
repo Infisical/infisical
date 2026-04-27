@@ -80,7 +80,6 @@ export const useSelectOrganization = () => {
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
       if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
-        SecurityClient.setProviderAuthToken("");
       }
 
       if (data.token && !data.isMfaEnabled) {

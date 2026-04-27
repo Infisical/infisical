@@ -83,7 +83,7 @@ export const UpdateRedisAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedRedisAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.Redis),
+  parentType: z.literal(PamResource.Redis),
   credentials: RedisAccountCredentialsSchema.pick({
     username: true
   })

@@ -4,24 +4,17 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 
 type TGroupProjectServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleUsers">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 };
 
 export type TGroupProjectServiceFactory = ReturnType<typeof groupProjectServiceFactory>;
 
-export const groupProjectServiceFactory = ({
-  groupDAL,
-  projectDAL,
-  permissionService
-}: TGroupProjectServiceFactoryDep) => {
+export const groupProjectServiceFactory = ({ groupDAL, permissionService }: TGroupProjectServiceFactoryDep) => {
   const listProjectGroupUsers = async ({
     id,
     projectId,
@@ -35,12 +28,6 @@ export const groupProjectServiceFactory = ({
     search,
     filter
   }: TListProjectGroupUsersDTO) => {
-    const project = await projectDAL.findById(projectId);
-
-    if (!project) {
-      throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -51,8 +38,10 @@ export const groupProjectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
 
+    // getProjectPermission above throws NotFoundError if the project doesn't exist and
+    // guarantees actorOrgId === project.orgId — no separate project lookup needed.
     const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
-      orgId: project.orgId,
+      orgId: actorOrgId,
       groupId: id,
       offset,
       limit,

@@ -15,6 +15,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v2";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   gatewaysQueryKeys,
   PkiDiscoveryType,
@@ -407,7 +408,26 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
             render={({ field }) => (
               <FormControl
                 label="Gateway"
-                tooltipText="Use a gateway to discover certificates on private networks that are not directly accessible from the internet. The gateway acts as a proxy, routing scan traffic through your infrastructure."
+                tooltipClassName="max-w-lg py-3"
+                tooltipText={
+                  <div className="flex flex-col gap-3">
+                    <p>
+                      Use a gateway to discover certificates on private networks that are not
+                      directly accessible from the internet. The gateway acts as a proxy, routing
+                      scan traffic through your infrastructure.
+                    </p>
+                    {!isInfisicalCloud() && (
+                      <p>
+                        Alternatively, you can set the{" "}
+                        <span className="font-medium text-bunker-200">
+                          ALLOW_INTERNAL_IP_CONNECTIONS
+                        </span>{" "}
+                        environment variable to <span className="font-medium">true</span> on your
+                        instance to scan private networks directly without a gateway.
+                      </p>
+                    )}
+                  </div>
+                }
               >
                 <Select
                   value={field.value}

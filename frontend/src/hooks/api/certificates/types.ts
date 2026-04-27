@@ -1,4 +1,10 @@
-import { CertExtendedKeyUsage, CertKeyUsage, CertSource, CertStatus } from "./enums";
+import {
+  CertExtendedKeyUsage,
+  CertificateRequestStatus,
+  CertKeyUsage,
+  CertSource,
+  CertStatus
+} from "./enums";
 
 export type TCertificateSubject = {
   commonName?: string;
@@ -204,7 +210,7 @@ export type TUpdateCertificateDTO = {
 
 export type TCertificateRequestListItem = {
   id: string;
-  status: "pending_approval" | "pending" | "issued" | "failed" | "rejected";
+  status: "pending_approval" | "pending" | "pending_validation" | "issued" | "failed" | "rejected";
   commonName: string | null;
   altNames: string | null;
   profileId: string | null;
@@ -282,4 +288,19 @@ export type TActivityTrendPoint = {
 
 export type TActivityTrendResponse = {
   periods: TActivityTrendPoint[];
+};
+
+export type TPqcTrendPoint = {
+  period: string;
+  pqc: number;
+  nonPqc: number;
+};
+
+export type TPqcTrendResponse = {
+  periods: TPqcTrendPoint[];
+};
+
+export type TTriggerCertificateRequestValidationResponse = {
+  status: CertificateRequestStatus;
+  orderStatus?: string;
 };

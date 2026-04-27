@@ -1,6 +1,7 @@
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import https from "https";
 
+import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -119,7 +120,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
         async (baseUrl, httpsAgent) => {
           // Validate connection by checking API server version
           try {
-            await axios.get(`${baseUrl}/version`, {
+            await request.get(`${baseUrl}/version`, {
               ...(httpsAgent ? { httpsAgent } : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
               timeout: EXTERNAL_REQUEST_TIMEOUT
@@ -171,7 +172,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
             // Validate service account token using SelfSubjectReview API (whoami)
             // This endpoint doesn't require any special permissions from the service account
             try {
-              await axios.post(
+              await request.post(
                 `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
                 {
                   apiVersion: "authentication.k8s.io/v1",
@@ -227,7 +228,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
         await validateWithGatewayHttp({ gatewayId }, gatewayV2Service, async (baseUrl) => {
           const impersonateUser = `system:serviceaccount:${credentials.namespace}:${credentials.serviceAccountName}`;
           try {
-            await axios.post(
+            await request.post(
               `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
               {
                 apiVersion: "authentication.k8s.io/v1",

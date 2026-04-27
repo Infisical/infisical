@@ -33,7 +33,7 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -146,8 +146,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
-
-const ETAG_TTL = 900; // 15 minutes in seconds
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
 
@@ -631,7 +629,7 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: [{ key: finalKey, value: secretValue }]
+        secrets: [{ key: finalKey, value: secretValue, secretId }]
       });
     }
 
@@ -1247,7 +1245,7 @@ export const secretV2BridgeServiceFactory = ({
         };
         const cachedEtag = `"${generateCacheKeyFromData(payload)}"`;
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
-        await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+        await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1498,7 +1496,7 @@ export const secretV2BridgeServiceFactory = ({
       }
       const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-      await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+      await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
     }
 
@@ -1572,7 +1570,7 @@ export const secretV2BridgeServiceFactory = ({
     }
     const computedEtag = `"${generateCacheKeyFromData(payload)}"`;
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-    await keyStore.setExpiry(etagRedisKey, ETAG_TTL);
+    await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
   };
 
@@ -2337,7 +2335,11 @@ export const secretV2BridgeServiceFactory = ({
         const secretsToValidate = [
           ...secretsToUpdate
             .filter((el) => el.secretValue || el.newSecretName)
-            .map((el) => ({ key: el.newSecretName || el.secretKey, value: el.secretValue })),
+            .map((el) => ({
+              key: el.newSecretName || el.secretKey,
+              value: el.secretValue,
+              secretId: secretsToUpdateInDBGroupedByKey[el.secretKey]?.[0]?.id
+            })),
           ...(updateMode === SecretUpdateMode.Upsert
             ? secretsToCreate.map((el) => ({ key: el.secretKey, value: el.secretValue }))
             : [])

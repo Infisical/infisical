@@ -112,7 +112,7 @@ export const accountRecoveryServiceFactory = ({
 
     const token = crypto.jwt().sign(
       {
-        authTokenType: AuthTokenType.SIGNUP_TOKEN,
+        authTokenType: AuthTokenType.ACCOUNT_RECOVERY_TOKEN,
         userId: user.id
       },
       cfg.AUTH_SECRET,

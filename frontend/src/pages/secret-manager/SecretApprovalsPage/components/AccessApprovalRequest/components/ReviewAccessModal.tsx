@@ -94,8 +94,6 @@ export const ReviewAccessRequestModal = ({
   onOpenChange,
   request,
   projectSlug,
-  selectedRequester,
-  selectedEnvSlug,
   canBypass,
   policies = [],
   members = [],
@@ -110,8 +108,6 @@ export const ReviewAccessRequestModal = ({
     isApprover: boolean;
   };
   projectSlug: string;
-  selectedRequester: string | undefined;
-  selectedEnvSlug: string | undefined;
   canBypass: boolean;
   policies: TAccessApprovalPolicy[];
   members: TWorkspaceUser[];
@@ -216,8 +212,6 @@ export const ReviewAccessRequestModal = ({
           requestId: request.id,
           status,
           projectSlug,
-          envSlug: selectedEnvSlug,
-          requestedBy: selectedRequester,
           bypassReason: bypassApproval ? bypassReason : undefined
         });
 
@@ -234,15 +228,7 @@ export const ReviewAccessRequestModal = ({
       setIsLoading(null);
       onOpenChange(false);
     },
-    [
-      bypassApproval,
-      bypassReason,
-      reviewAccessRequest,
-      request,
-      selectedEnvSlug,
-      selectedRequester,
-      onOpenChange
-    ]
+    [bypassApproval, bypassReason, reviewAccessRequest, request, onOpenChange]
   );
 
   const handleRevoke = useCallback(async () => {

@@ -2,7 +2,7 @@
 import net from "node:net";
 
 import quicDefault, * as quicModule from "@infisical/quic";
-import axios from "axios";
+import { isAxiosError } from "axios";
 import https from "https";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -417,7 +417,7 @@ export const withGatewayProxy = async <T>(
     }
     logger.error(err, "Failed to do gateway");
     let errorMessage = proxyErrorMessage || (err as Error)?.message;
-    if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
+    if (isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
       errorMessage = (err.response?.data as { message: string }).message;
     }
 

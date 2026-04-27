@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -23,7 +23,6 @@ import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } fro
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
-const AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -192,7 +191,7 @@ export const auditLogServiceFactory = ({
 
     if (rowCount < AUDIT_LOG_ROW_WARNING_THRESHOLD) return;
 
-    const lastAlertedRowCountStr: string | null = await keyStore.getItem("audit-log-migration-alert-last-row-count");
+    const lastAlertedRowCountStr: string | null = await keyStore.getItem(KeyStorePrefixes.AuditLogMigrationAlert);
     const lastAlertedRowCount = lastAlertedRowCountStr ? Number(lastAlertedRowCountStr) : 0;
 
     if (lastAlertedRowCount > 0 && rowCount < lastAlertedRowCount + AUDIT_LOG_ALERT_ROW_INCREMENT) return;
@@ -210,8 +209,8 @@ export const auditLogServiceFactory = ({
 
     if (superAdminsResult.users.length === 0) {
       await keyStore.setItemWithExpiry(
-        "audit-log-migration-alert-last-row-count",
-        AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS,
+        KeyStorePrefixes.AuditLogMigrationAlert,
+        KeyStoreTtls.AuditLogMigrationAlertInSeconds,
         String(rowCount)
       );
       return;
@@ -253,8 +252,8 @@ export const auditLogServiceFactory = ({
       });
 
     await keyStore.setItemWithExpiry(
-      "audit-log-migration-alert-last-row-count",
-      AUDIT_LOG_MIGRATION_ALERT_STATE_TTL_SECONDS,
+      KeyStorePrefixes.AuditLogMigrationAlert,
+      KeyStoreTtls.AuditLogMigrationAlertInSeconds,
       String(rowCount)
     );
     logger.info(`checkPostgresAuditLogVolumeMigrationAlert: alert sent to super admins (rowCount=${rowCount})`);

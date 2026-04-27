@@ -178,7 +178,6 @@ export const OrgSubOrgsTab = () => {
     }
 
     SecurityClient.setToken(token);
-    SecurityClient.setProviderAuthToken("");
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await navigateUserToOrg({ navigate, organizationId: subOrgId });

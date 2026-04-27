@@ -464,7 +464,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           <Popover.Content
             align="start"
             onOpenAutoFocus={(e) => e.preventDefault()}
-            className="relative top-2 z-100 max-h-64 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+            className="relative top-2 z-100 max-h-64 thin-scrollbar min-w-80 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
             style={{
               width: "var(--radix-popover-trigger-width)"
             }}

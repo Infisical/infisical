@@ -33,7 +33,11 @@ import type { SchemaInfo, TableDetail, TableInfo } from "./data-explorer-types";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { BROWSE_TAB_ID, useQueryTabs } from "./use-query-tabs";
 
-export const PamDataExplorerPage = () => {
+type Props = {
+  reason?: string;
+};
+
+export const PamDataExplorerPage = ({ reason }: Props = {}) => {
   const { accountId, projectId, orgId } = useParams({
     strict: false
   }) as {
@@ -88,10 +92,11 @@ export const PamDataExplorerPage = () => {
     orgId,
     resourceName: account?.resource?.name ?? "",
     accountName: account?.name ?? "",
-    onSessionEnd: (reason?: string) => {
+    reason,
+    onSessionEnd: (endReason?: string) => {
       unsavedChangeCountRef.current = 0;
       setHasDisconnected(true);
-      setDisconnectReason(reason ?? null);
+      setDisconnectReason(endReason ?? null);
     }
   });
 

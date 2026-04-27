@@ -80,6 +80,9 @@ export const useCreateSecretV3 = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -139,6 +142,11 @@ export const useUpdateSecretV3 = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -151,6 +159,9 @@ export const useUpdateSecretV3 = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -202,6 +213,9 @@ export const useDeleteSecretV3 = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -250,6 +264,9 @@ export const useCreateSecretBatch = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -286,6 +303,11 @@ export const useUpdateSecretBatch = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -298,6 +320,9 @@ export const useUpdateSecretBatch = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -348,6 +373,9 @@ export const useDeleteSecretBatch = ({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });
@@ -438,6 +466,9 @@ export const useMoveSecrets = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
     },
     ...options
@@ -548,6 +579,11 @@ export const useCreateCommit = () => {
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -560,6 +596,9 @@ export const useCreateCommit = () => {
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     }
   });
 };

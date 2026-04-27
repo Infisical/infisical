@@ -3,6 +3,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 
+import { MAX_PREVENT_VALUE_REUSE_VERSIONS } from "./secret-validation-rule-schemas";
 import {
   ConstraintTarget,
   ConstraintType,
@@ -146,6 +147,7 @@ export const checkForOverlappingRules = ({
 type TSecretToValidate = {
   key: string;
   value?: string;
+  previousValues?: string[];
 };
 
 type TValidationRule = {
@@ -168,7 +170,8 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.MaxLength]: "Maximum length",
   [ConstraintType.RegexPattern]: "Regex pattern",
   [ConstraintType.RequiredPrefix]: "Required prefix",
-  [ConstraintType.RequiredSuffix]: "Required suffix"
+  [ConstraintType.RequiredSuffix]: "Required suffix",
+  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values"
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -231,6 +234,17 @@ const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate):
     case ConstraintType.RequiredSuffix: {
       if (!targetValue.endsWith(constraint.value)) {
         return `${targetLabel} must end with "${constraint.value}"`;
+      }
+      return null;
+    }
+    case ConstraintType.PreventValueReuse: {
+      if (secret.value === undefined || !secret.previousValues?.length) {
+        return null;
+      }
+      const versionCount = Number(constraint.value) || MAX_PREVENT_VALUE_REUSE_VERSIONS;
+      const valuesToCheck = secret.previousValues.slice(0, versionCount);
+      if (valuesToCheck.includes(secret.value)) {
+        return `${targetLabel} cannot reuse any of the last ${versionCount} values`;
       }
       return null;
     }

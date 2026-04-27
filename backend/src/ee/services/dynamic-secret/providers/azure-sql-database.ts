@@ -367,7 +367,10 @@ export const AzureSqlDatabaseProvider = ({
     const { database, masterDatabase } = providerInputs;
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+        username,
+        database
+      });
       const queries = revokeStatement.toString().split(";").filter(Boolean);
 
       const userDropQueries = queries.filter((query) => query.toLowerCase().includes("drop user"));
@@ -487,7 +490,7 @@ export const AzureSqlDatabaseProvider = ({
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration,
         database

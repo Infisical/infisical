@@ -21,7 +21,7 @@ export const AppConnectionOption = ({
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
         {isCreateOption ? (
-          <div className="flex items-center gap-x-1 text-mineshaft-400">
+          <div className="flex items-center gap-x-1 text-mineshaft-200">
             <FontAwesomeIcon icon={faPlus} size="sm" />
             <span className="mr-auto">Create New Connection</span>
           </div>

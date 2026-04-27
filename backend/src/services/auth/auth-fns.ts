@@ -3,7 +3,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthModeAccountRecoveryTokenPayload, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 export const extractBearerToken = (token?: string): string => {
   if (!token) {
@@ -43,9 +43,9 @@ export const validatePasswordResetAuthorization = (token?: string) => {
   const appCfg = getConfig();
   const authTokenValue = extractBearerToken(token);
 
-  const decodedToken = crypto.jwt().verify(authTokenValue, appCfg.AUTH_SECRET) as AuthModeSignUpTokenPayload;
+  const decodedToken = crypto.jwt().verify(authTokenValue, appCfg.AUTH_SECRET) as AuthModeAccountRecoveryTokenPayload;
 
-  if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
+  if (decodedToken.authTokenType !== AuthTokenType.ACCOUNT_RECOVERY_TOKEN) {
     throw new UnauthorizedError({
       message: `The provided authentication token type is not supported.`
     });

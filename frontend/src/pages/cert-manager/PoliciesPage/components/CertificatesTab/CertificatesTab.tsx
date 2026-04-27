@@ -7,10 +7,15 @@ type Props = {
     search?: string;
   };
   dashboardFilters?: FilterRule[];
+  dashboardViewId?: string;
 };
 
-export const CertificatesTab = ({ externalFilter, dashboardFilters }: Props) => {
+export const CertificatesTab = ({ externalFilter, dashboardFilters, dashboardViewId }: Props) => {
   return (
-    <CertificatesSection externalFilter={externalFilter} dashboardFilters={dashboardFilters} />
+    <CertificatesSection
+      externalFilter={externalFilter}
+      dashboardFilters={dashboardFilters}
+      dashboardViewId={dashboardViewId}
+    />
   );
 };

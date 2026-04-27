@@ -7,6 +7,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -155,7 +157,9 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Cannot update logs for sessions with existing logs" });
     }
 
-    const project = await projectDAL.findById(session.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(session.projectId), () =>
+      projectDAL.findById(session.projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
     if (actor.type === ActorType.IDENTITY) {
@@ -199,14 +203,16 @@ export const pamSessionServiceFactory = ({
       encryptedLogsBlob: cipherTextBlob
     });
 
-    return { session: updatedSession, projectId: project.id };
+    return { session: updatedSession, projectId: session.projectId };
   };
 
   const endSessionById = async (sessionId: string, actor: OrgServiceActor) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    const project = await projectDAL.findById(session.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(session.projectId), () =>
+      projectDAL.findById(session.projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
     if (actor.type === ActorType.IDENTITY) {
@@ -247,27 +253,24 @@ export const pamSessionServiceFactory = ({
       if (session.status !== PamSessionStatus.Ended && session.status !== PamSessionStatus.Terminated) {
         throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
       }
-      return { session, projectId: project.id, alreadyEnded: true };
+      return { session, projectId: session.projectId, alreadyEnded: true };
     }
 
     // Fire-and-forget AI summarization
     void (async () => {
       try {
-        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
       } catch (err) {
         logger.error({ sessionId, err }, `Failed to queue AI summary for ended session [sessionId=${sessionId}]`);
       }
     })();
 
-    return { session: updatedSession, projectId: project.id, alreadyEnded: false };
+    return { session: updatedSession, projectId: session.projectId, alreadyEnded: false };
   };
 
   const terminateSessionById = async (sessionId: string, actor: OrgServiceActor) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-
-    const project = await projectDAL.findById(session.projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -283,16 +286,18 @@ export const pamSessionServiceFactory = ({
       ProjectPermissionSub.PamSessions
     );
 
+    // No project lookup needed: getProjectPermission above throws NotFoundError if the
+    // project doesn't exist, and session.projectId === project.id by definition.
     // Atomic update: only transitions active/starting → terminated
     const updatedSession = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updatedSession) {
-      return { session, projectId: project.id, alreadyEnded: true };
+      return { session, projectId: session.projectId, alreadyEnded: true };
     }
 
     // Fire-and-forget AI summarization
     void (async () => {
       try {
-        await pamSessionAiSummaryService.queueAiSummary(sessionId, project.id);
+        await pamSessionAiSummaryService.queueAiSummary(sessionId, session.projectId);
       } catch (err) {
         logger.error({ sessionId, err }, `Failed to queue AI summary for terminated session [sessionId=${sessionId}]`);
       }
@@ -344,7 +349,7 @@ export const pamSessionServiceFactory = ({
       })();
     }
 
-    return { session: updatedSession, projectId: project.id, alreadyEnded: false };
+    return { session: updatedSession, projectId: session.projectId, alreadyEnded: false };
   };
 
   const getSessionLogs = async (sessionId: string, offset: number, limit: number, actor: OrgServiceActor) => {
@@ -401,7 +406,9 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    const project = await projectDAL.findById(session.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(session.projectId), () =>
+      projectDAL.findById(session.projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
     if (actor.type === ActorType.IDENTITY) {
@@ -441,7 +448,7 @@ export const pamSessionServiceFactory = ({
 
     const { wasInserted } = await pamSessionEventBatchDAL.upsertBatch(sessionId, startOffset, cipherTextBlob);
 
-    return { projectId: project.id, wasInserted };
+    return { projectId: session.projectId, wasInserted };
   };
 
   return { getById, list, getSessionLogs, updateLogsById, endSessionById, terminateSessionById, uploadEventBatch };

@@ -103,18 +103,23 @@ export const validateTargetConfig = (
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
     if (shouldBlockPrivateIps(!!hasGateway)) {
+      const appCfg = getConfig();
+      const selfHostedHint = appCfg.isCloud
+        ? ""
+        : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
+
       const privateIp = singleIps.find((ip) => isPrivateIp(ip));
       if (privateIp) {
         return {
           valid: false,
-          error: "Private/internal IP addresses require a gateway. Use a gateway to scan private networks."
+          error: `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
         };
       }
       const privateCidr = cidrRanges.find((cidr) => isPrivateIp(cidr.split("/")[0]));
       if (privateCidr) {
         return {
           valid: false,
-          error: "Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks."
+          error: `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
         };
       }
     }

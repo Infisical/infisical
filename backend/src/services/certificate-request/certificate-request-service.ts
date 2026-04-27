@@ -32,7 +32,7 @@ type TCertificateRequestServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
+  resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -433,10 +433,12 @@ export const certificateRequestServiceFactory = ({
       certificateRequestDAL.countByProjectId(projectId, options, processedRules)
     ]);
 
-    const mappedCertificateRequests = certificateRequests.map((request) => ({
-      ...request,
-      status: request.status as CertificateRequestStatus
-    }));
+    const mappedCertificateRequests = certificateRequests.map(
+      ({ encryptedPrivateKey: _encryptedPrivateKey, ...request }) => ({
+        ...request,
+        status: request.status as CertificateRequestStatus
+      })
+    );
 
     return {
       certificateRequests: mappedCertificateRequests,

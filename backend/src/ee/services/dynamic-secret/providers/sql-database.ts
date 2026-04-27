@@ -345,7 +345,10 @@ export const SqlDatabaseProvider = ({
         originalHost: providerInputs.host
       });
       try {
-        const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
+        const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
+          username,
+          database
+        });
         const queries = revokeStatement.toString().split(";").filter(Boolean);
         await db.transaction(async (tx) => {
           for (const query of queries) {
@@ -387,7 +390,7 @@ export const SqlDatabaseProvider = ({
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
-      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
         username: entityId,
         expiration,
         database

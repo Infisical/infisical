@@ -6,8 +6,7 @@ import { PamResourceByIDPage } from "./PamResourceByIDPage";
 
 export enum ResourceDetailTab {
   Accounts = "accounts",
-  Dependencies = "dependencies",
-  RelatedResources = "related-resources"
+  Dependencies = "dependencies"
 }
 
 const ResourceDetailSearchSchema = z.object({

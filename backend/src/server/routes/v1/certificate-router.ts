@@ -437,6 +437,63 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/certificate-requests/:requestId/trigger-validation",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "triggerCertificateRequestValidation",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Manually ask the issuing CA to re-check validation for a pending certificate request",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          status: z.nativeEnum(CertificateRequestStatus),
+          orderStatus: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.certificateAuthority.triggerCertificateRequestValidation({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        certificateRequestId: req.params.requestId
+      });
+
+      const orderStatus = "orderStatus" in result ? result.orderStatus : undefined;
+      const mappedStatus =
+        result.status === "skipped"
+          ? CertificateRequestStatus.PENDING_VALIDATION
+          : (result.status as CertificateRequestStatus);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION,
+          metadata: {
+            certificateRequestId: req.params.requestId,
+            status: mappedStatus,
+            orderStatus
+          }
+        }
+      });
+
+      return {
+        status: mappedStatus,
+        orderStatus
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/certificate-requests",
     config: {

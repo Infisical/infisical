@@ -1,6 +1,7 @@
-import axios from "axios";
+import { isAxiosError } from "axios";
 import jwt from "jsonwebtoken";
 
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
@@ -56,7 +57,7 @@ export const GithubProvider = (): TDynamicProviderFns => {
     const tokenUrl = `${IntegrationUrls.GITHUB_API_URL}/app/installations/${String(installationId)}/access_tokens`;
 
     try {
-      const response = await axios.post<GitHubInstallationTokenResponse>(tokenUrl, undefined, {
+      const response = await request.post<GitHubInstallationTokenResponse>(tokenUrl, undefined, {
         headers: {
           Authorization: `Bearer ${appJwt}`,
           Accept: "application/vnd.github.v3+json",
@@ -73,7 +74,7 @@ export const GithubProvider = (): TDynamicProviderFns => {
       });
     } catch (error) {
       let message = "Failed to fetch GitHub installation access token.";
-      if (axios.isAxiosError(error) && error.response) {
+      if (isAxiosError(error) && error.response) {
         const githubErrorMsg =
           (error.response.data as { message?: string })?.message || JSON.stringify(error.response.data);
         message += ` GitHub API Error: ${error.response.status} - ${githubErrorMsg}`;

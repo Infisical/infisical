@@ -6,11 +6,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./project-env-types";
@@ -18,7 +17,6 @@ import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TUpdateEnvDTO } from "./proje
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
@@ -33,7 +31,6 @@ export const projectEnvServiceFactory = ({
   permissionService,
   licenseService,
   keyStore,
-  projectDAL,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
   secretApprovalPolicyEnvironmentDAL
@@ -80,8 +77,9 @@ export const projectEnvServiceFactory = ({
           name: "CreateEnvironment"
         });
 
-      const project = await projectDAL.findById(projectId);
-      const plan = await licenseService.getPlan(project.orgId);
+      // getProjectPermission above guarantees project existence and org membership,
+      // so actorOrgId === project.orgId — no separate project lookup needed.
+      const plan = await licenseService.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -116,7 +114,7 @@ export const projectEnvServiceFactory = ({
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
-        10,
+        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
         "true"
       );
 
@@ -178,8 +176,9 @@ export const projectEnvServiceFactory = ({
       }
 
       const envs = await projectEnvDAL.find({ projectId });
-      const project = await projectDAL.findById(projectId);
-      const plan = await licenseService.getPlan(project.orgId);
+      // getProjectPermission above guarantees project existence and org membership,
+      // so actorOrgId === project.orgId — no separate project lookup needed.
+      const plan = await licenseService.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -202,7 +201,7 @@ export const projectEnvServiceFactory = ({
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
-        10,
+        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
         "true"
       );
 
@@ -264,7 +263,7 @@ export const projectEnvServiceFactory = ({
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
-        10,
+        KeyStoreTtls.ProjectEnvironmentOperationMarkerInSeconds,
         "true"
       );
 

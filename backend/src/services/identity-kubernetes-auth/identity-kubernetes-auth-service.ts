@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import picomatch from "picomatch";
 import RE2 from "re2";
@@ -313,7 +313,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
         const baseUrl = port ? `${host}:${port}` : host;
 
-        const res = await axios
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
             {
@@ -388,7 +388,7 @@ export const identityKubernetesAuthServiceFactory = ({
           "tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway"
         );
 
-        const res = await axios
+        const res = await request
           .post<TCreateTokenReviewResponse>(
             `${host}:${port}/apis/authentication.k8s.io/v1/tokenreviews`,
             {

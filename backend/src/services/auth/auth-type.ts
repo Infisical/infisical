@@ -22,7 +22,8 @@ export enum AuthTokenType {
   SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
   SCIM_TOKEN = "scimToken",
-  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken"
+  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
+  ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
 }
 
 // Result state from processProviderCallback — determines what the route handler should do
@@ -88,6 +89,7 @@ export type AuthModeMfaJwtTokenPayload = {
   authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
+  requiredMfaMethod: MfaMethod;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
@@ -115,6 +117,11 @@ export type AuthModeSignUpTokenPayload = {
   email?: string;
   firstName?: string;
   lastName?: string;
+};
+
+export type AuthModeAccountRecoveryTokenPayload = {
+  authTokenType: AuthTokenType.ACCOUNT_RECOVERY_TOKEN;
+  userId: string;
 };
 
 export enum MfaMethod {

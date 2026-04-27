@@ -29,11 +29,13 @@ import { registerLaravelForgeSyncRouter } from "./laravel-forge-sync-router";
 import { registerNetlifySyncRouter } from "./netlify-sync-router";
 import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
+import { registerOnaSyncRouter } from "./ona-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
+import { registerTravisCISyncRouter } from "./travis-ci-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
 import { registerZabbixSyncRouter } from "./zabbix-sync-router";
@@ -77,5 +79,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter,
   [SecretSync.CircleCI]: registerCircleCISyncRouter,
   [SecretSync.AzureEntraIdScim]: registerAzureEntraIdScimSyncRouter,
-  [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter
+  [SecretSync.ExternalInfisical]: registerExternalInfisicalSyncRouter,
+  [SecretSync.Ona]: registerOnaSyncRouter,
+  [SecretSync.TravisCI]: registerTravisCISyncRouter
 };

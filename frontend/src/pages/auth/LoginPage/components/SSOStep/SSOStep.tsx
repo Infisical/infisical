@@ -38,11 +38,11 @@ export const SSOStep = ({ setSection, type }: Props) => {
 
     if (type === "SAML") {
       window.location.href = `/api/v1/sso/redirect/saml2/organizations/domain/${identifier}${
-        callbackPort ? `?callback_port=${callbackPort}` : ""
+        callbackPort ? `?callback_port=${encodeURIComponent(callbackPort)}` : ""
       }`;
     } else {
       window.location.href = `/api/v1/sso/oidc/login?domain=${identifier}${
-        callbackPort ? `&callbackPort=${callbackPort}` : ""
+        callbackPort ? `&callbackPort=${encodeURIComponent(callbackPort)}` : ""
       }`;
     }
   };

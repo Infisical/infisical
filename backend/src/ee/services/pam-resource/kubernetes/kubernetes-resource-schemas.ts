@@ -93,7 +93,7 @@ export const UpdateKubernetesAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedKubernetesAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.Kubernetes),
+  parentType: z.literal(PamResource.Kubernetes),
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
       authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken)

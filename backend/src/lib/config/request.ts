@@ -26,7 +26,7 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
 }
 
 export function createRequestClient(defaults: CreateAxiosDefaults = {}, retry: IAxiosRetryConfig = {}): AxiosInstance {
-  const client = axios.create(defaults);
+  const client = axios.create({ ...defaults, maxRedirects: 0 });
 
   client.interceptors.response.use((response) => axiosResponseInterceptor(response, logger));
 

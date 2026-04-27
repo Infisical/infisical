@@ -15,7 +15,7 @@ export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 export const pamAccountDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamAccount);
 
-  const findByProjectIdWithResourceDetails = async (
+  const findByProjectIdWithParentDetails = async (
     {
       projectId,
       folderId,
@@ -26,6 +26,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       orderBy = PamAccountOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       filterResourceIds,
+      filterDomainIds,
       metadataFilter
     }: {
       projectId: string;
@@ -37,6 +38,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       orderBy?: PamAccountOrderBy;
       orderDirection?: OrderByDirection;
       filterResourceIds?: string[];
+      filterDomainIds?: string[];
       metadataFilter?: Array<{ key: string; value?: string }>;
     },
     tx?: Knex
@@ -45,6 +47,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const dbInstance = tx || db.replicaNode();
       const query = dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
         .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.projectId`, projectId);
 
@@ -67,12 +70,24 @@ export const pamAccountDALFactory = (db: TDbClient) => {
           void q
             .whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "name", pattern])
             .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "name", pattern])
+            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamDomain, "name", pattern])
             .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "description", pattern]);
         });
       }
 
-      if (filterResourceIds && filterResourceIds.length) {
+      const hasResourceFilter = filterResourceIds && filterResourceIds.length > 0;
+      const hasDomainFilter = filterDomainIds && filterDomainIds.length > 0;
+
+      if (hasResourceFilter && hasDomainFilter) {
+        void query.where((qb) => {
+          void qb
+            .whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds)
+            .orWhereIn(`${TableName.PamAccount}.domainId`, filterDomainIds);
+        });
+      } else if (hasResourceFilter) {
         void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
+      } else if (hasDomainFilter) {
+        void query.whereIn(`${TableName.PamAccount}.domainId`, filterDomainIds);
       }
 
       if (metadataFilter && metadataFilter.length > 0) {
@@ -82,10 +97,16 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
       void query.select(selectAllTableCols(TableName.PamAccount)).select(
-        // resource
+        // resource (may be null for domain accounts)
         db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
         db.ref("resourceType").withSchema(TableName.PamResource),
-        db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource),
+        db
+          .ref("encryptedRotationAccountCredentials")
+          .withSchema(TableName.PamResource)
+          .as("resourceEncryptedRotationAccountCredentials"),
+        // domain (may be null for resource accounts)
+        db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
+        db.ref("domainType").withSchema(TableName.PamDomain),
         // policy
         db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
       );
@@ -101,66 +122,110 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       const [results, countResult] = await Promise.all([query, countQuery]);
       const totalCount = Number(countResult?.count || 0);
 
-      const accounts = results.map(
-        // @ts-expect-error resourceName, resourceType, encryptedRotationAccountCredentials, policyName are from joined tables
-        ({ resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, policyName, ...account }) => ({
-          ...account,
-          resourceId,
-          policyName: (policyName as string) || null,
-          resource: {
-            id: resourceId,
-            name: resourceName as string,
-            resourceType,
-            encryptedRotationAccountCredentials
-          }
-        })
-      );
+      const accounts = results.map((row) => {
+        const r = row as Record<string, unknown>;
+        const rId = row.resourceId as string | null;
+        const dId = row.domainId as string | null;
+
+        return {
+          ...row,
+          resourceId: rId,
+          domainId: dId,
+          policyName: (r.policyName as string) || null,
+          resource: rId
+            ? {
+                id: rId,
+                name: r.resourceName as string,
+                resourceType: r.resourceType as string,
+                encryptedRotationAccountCredentials: r.resourceEncryptedRotationAccountCredentials as Buffer | null
+              }
+            : null,
+          domain: dId
+            ? {
+                id: dId,
+                name: r.domainName as string,
+                domainType: r.domainType as string
+              }
+            : null
+        };
+      });
+
       return { accounts, totalCount };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM accounts with resource details" });
+      throw new DatabaseError({ error, name: "Find PAM accounts with parent details" });
     }
   };
 
-  const findByIdWithResourceDetails = async (accountId: string, tx?: Knex) => {
+  const findByIdWithParentDetails = async (accountId: string, tx?: Knex) => {
     try {
       const dbInstance = tx || db.replicaNode();
       const result = await dbInstance(TableName.PamAccount)
         .leftJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+        .leftJoin(TableName.PamDomain, `${TableName.PamAccount}.domainId`, `${TableName.PamDomain}.id`)
         .leftJoin(TableName.PamAccountPolicy, `${TableName.PamAccount}.policyId`, `${TableName.PamAccountPolicy}.id`)
         .where(`${TableName.PamAccount}.id`, accountId)
         .select(selectAllTableCols(TableName.PamAccount))
         .select(
+          // resource (may be null for domain accounts)
           db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
           db.ref("resourceType").withSchema(TableName.PamResource),
-          db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource),
+          db
+            .ref("encryptedRotationAccountCredentials")
+            .withSchema(TableName.PamResource)
+            .as("resourceEncryptedRotationAccountCredentials"),
+          // domain (may be null for resource accounts)
+          db.ref("name").withSchema(TableName.PamDomain).as("domainName"),
+          db.ref("domainType").withSchema(TableName.PamDomain),
           db.ref("name").withSchema(TableName.PamAccountPolicy).as("policyName")
         )
         .first();
 
       if (!result) return null;
 
-      const { resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, policyName, ...account } =
-        result as {
-          resourceId: string;
-          resourceName: string;
-          resourceType: string;
-          encryptedRotationAccountCredentials: Buffer | null;
-          policyName: string | null;
-        } & typeof result;
+      const {
+        resourceId,
+        domainId,
+        resourceName,
+        resourceType,
+        resourceEncryptedRotationAccountCredentials,
+        domainName,
+        domainType,
+        policyName,
+        ...account
+      } = result as {
+        resourceId: string | null;
+        domainId: string | null;
+        resourceName: string | null;
+        resourceType: string | null;
+        resourceEncryptedRotationAccountCredentials: Buffer | null;
+        domainName: string | null;
+        domainType: string | null;
+        policyName: string | null;
+      } & typeof result;
 
       return {
         ...account,
         resourceId,
+        domainId,
         policyName: policyName || null,
-        resource: {
-          id: resourceId,
-          name: resourceName,
-          resourceType,
-          encryptedRotationAccountCredentials
-        }
+        resource: resourceId
+          ? {
+              id: resourceId,
+              name: resourceName,
+              resourceType,
+              encryptedRotationAccountCredentials: resourceEncryptedRotationAccountCredentials
+            }
+          : null,
+        domain: domainId
+          ? {
+              id: domainId,
+              name: domainName,
+              domainType
+            }
+          : null
       };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find PAM account by ID with resource details" });
+      throw new DatabaseError({ error, name: "Find PAM account by ID with parent details" });
     }
   };
 
@@ -179,14 +244,34 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return byAccountId;
   };
 
-  const findRotationCandidates = async (resourceIds: string[], minIntervalSeconds: number, tx?: Knex) => {
-    if (!resourceIds.length) return [];
+  const findRotationCandidates = async (
+    {
+      resourceIds,
+      domainIds,
+      minIntervalSeconds
+    }: {
+      resourceIds?: string[];
+      domainIds?: string[];
+      minIntervalSeconds: number;
+    },
+    tx?: Knex
+  ) => {
+    const hasResourceIds = resourceIds && resourceIds.length > 0;
+    const hasDomainIds = domainIds && domainIds.length > 0;
+    if (!hasResourceIds && !hasDomainIds) return [];
 
     try {
       const cutoff = new Date(Date.now() - minIntervalSeconds * 1000);
 
       return await (tx || db.replicaNode())(TableName.PamAccount)
-        .whereIn("resourceId", resourceIds)
+        .where((qb) => {
+          if (hasResourceIds) {
+            void qb.whereIn("resourceId", resourceIds);
+          }
+          if (hasDomainIds) {
+            void qb.orWhereIn("domainId", domainIds);
+          }
+        })
         .where((qb) => {
           void qb.whereNot("rotationStatus", "rotating").orWhereNull("rotationStatus");
         })
@@ -203,8 +288,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    findByProjectIdWithResourceDetails,
-    findByIdWithResourceDetails,
+    findByProjectIdWithParentDetails,
+    findByIdWithParentDetails,
     findMetadataByAccountIds,
     findRotationCandidates
   };

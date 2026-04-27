@@ -266,7 +266,9 @@ export const permissionServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${serviceTokenId}' not found` });
 
-    const serviceTokenProject = await projectDAL.findById(serviceToken.projectId);
+    const serviceTokenProject = await requestMemoize(requestMemoKeys.projectFindById(serviceToken.projectId), () =>
+      projectDAL.findById(serviceToken.projectId)
+    );
 
     if (!serviceTokenProject) throw new BadRequestError({ message: "Service token not linked to a project" });
 
@@ -331,7 +333,9 @@ export const permissionServiceFactory = ({
     actor: ActorType.USER | ActorType.IDENTITY,
     actorId: string
   ): Promise<TCachedProjectPermission> => {
-    const projectDetails = await projectDAL.findById(projectId);
+    const projectDetails = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!projectDetails) {
       throw new NotFoundError({ message: `Project with ${projectId} not found` });
     }

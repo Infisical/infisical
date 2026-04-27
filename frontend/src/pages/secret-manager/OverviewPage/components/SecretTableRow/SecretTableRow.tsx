@@ -10,7 +10,8 @@ import {
   GitBranchIcon,
   ImportIcon,
   KeyIcon,
-  RefreshCcwIcon
+  RefreshCcwIcon,
+  RefreshCwIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -227,7 +228,7 @@ export const SecretTableRow = ({
               "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
-            isSingleEnvView && "pt-3 align-top",
+            isSingleEnvView && "relative pt-3 align-top",
             pendingActionBorderClass(singleEnvPendingAction)
           )}
         >
@@ -256,13 +257,24 @@ export const SecretTableRow = ({
               )}
             />
           ) : (
-            <KeyIcon
-              className={twMerge(
-                "block text-secret",
-                !isSelectionDisabled && "group-hover:!hidden",
-                isSelected && "!hidden"
+            <>
+              <KeyIcon
+                className={twMerge(
+                  "block text-secret",
+                  !isSelectionDisabled && "group-hover:!hidden",
+                  isSelected && "!hidden"
+                )}
+              />
+              {singleEnvSecret?.isRotatedSecret && isSingleEnvView && (
+                <RefreshCwIcon
+                  className={twMerge(
+                    "absolute right-2 bottom-2 !size-2.5 text-secret-rotation",
+                    !isSelectionDisabled && "group-hover:!hidden",
+                    isSelected && "!hidden"
+                  )}
+                />
               )}
-            />
+            </>
           )}
         </TableCell>
         {isSingleEnvView ? (
@@ -332,7 +344,7 @@ export const SecretTableRow = ({
                 "top-1/2 right-[3px] -translate-y-1/2"
               )}
             >
-              <Tooltip delayDuration={300} disableHoverableContent>
+              <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
                     variant="ghost"
@@ -349,7 +361,7 @@ export const SecretTableRow = ({
                 </TooltipTrigger>
                 <TooltipContent>Copy Secret Name</TooltipContent>
               </Tooltip>
-              <Tooltip delayDuration={300} disableHoverableContent>
+              <Tooltip disableHoverableContent>
                 <TooltipTrigger>
                   <IconButton
                     variant="ghost"

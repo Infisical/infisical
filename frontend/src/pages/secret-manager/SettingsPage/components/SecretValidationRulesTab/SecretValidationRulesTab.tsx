@@ -67,6 +67,7 @@ import { ConstraintCard } from "./ConstraintCard";
 import {
   CONSTRAINT_OPTIONS,
   ConstraintTarget,
+  ConstraintType,
   RULE_TYPE_LABELS,
   ruleFormSchema,
   RuleType,
@@ -119,11 +120,13 @@ const RuleFormContent = ({
 
   const watchedConstraints = form.watch("enforcement.inputs.constraints");
   const usedConstraintPairs = new Set(watchedConstraints?.map((c) => `${c.type}:${c.appliesTo}`));
-  const availableConstraintOptions = CONSTRAINT_OPTIONS.filter(
-    (opt) =>
-      !usedConstraintPairs.has(`${opt.type}:${ConstraintTarget.SecretKey}`) ||
-      !usedConstraintPairs.has(`${opt.type}:${ConstraintTarget.SecretValue}`)
-  );
+  const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
+    const targets = opt.allowedTargets || [
+      ConstraintTarget.SecretKey,
+      ConstraintTarget.SecretValue
+    ];
+    return targets.some((target) => !usedConstraintPairs.has(`${opt.type}:${target}`));
+  });
 
   return (
     <FormProvider {...form}>
@@ -266,12 +269,13 @@ const RuleFormContent = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {availableConstraintOptions.map((opt) => {
-                      const valueUsed = usedConstraintPairs.has(
-                        `${opt.type}:${ConstraintTarget.SecretValue}`
-                      );
-                      const defaultTarget = valueUsed
-                        ? ConstraintTarget.SecretKey
-                        : ConstraintTarget.SecretValue;
+                      const targets = opt.allowedTargets || [
+                        ConstraintTarget.SecretValue,
+                        ConstraintTarget.SecretKey
+                      ];
+                      const defaultTarget =
+                        targets.find((t) => !usedConstraintPairs.has(`${opt.type}:${t}`)) ??
+                        targets[0];
 
                       return (
                         <DropdownMenuItem
@@ -280,7 +284,10 @@ const RuleFormContent = ({
                             append({
                               type: opt.type,
                               appliesTo: defaultTarget,
-                              value: ""
+                              value:
+                                opt.type === ConstraintType.PreventValueReuse
+                                  ? String(opt.placeholder || 10)
+                                  : ""
                             })
                           }
                         >

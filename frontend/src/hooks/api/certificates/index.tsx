@@ -6,6 +6,7 @@ export {
   useImportCertificate,
   useRenewCertificate,
   useRevokeCert,
+  useTriggerCertificateRequestValidation,
   useUpdateCertificate,
   useUpdateRenewalConfig
 } from "./mutations";
@@ -17,6 +18,7 @@ export {
   useGetCertDashboardStats,
   useGetCertificateById,
   useGetCertificateRequest,
+  useGetCertPqcTrend,
   useListCertificateRequests
 } from "./queries";
 export type {
@@ -31,5 +33,7 @@ export type {
   TExpirationBucket,
   TListCertificateRequestsParams,
   TListCertificateRequestsResponse,
+  TPqcTrendPoint,
+  TPqcTrendResponse,
   TUpdateCertificateDTO
 } from "./types";

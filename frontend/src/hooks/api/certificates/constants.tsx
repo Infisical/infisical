@@ -28,6 +28,7 @@ export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_4096]: "RSA 4096",
   [CertKeyAlgorithm.ECDSA_P256]: "ECDSA P256",
   [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384",
+  [CertKeyAlgorithm.ECDSA_P521]: "ECDSA P521",
   [CertKeyAlgorithm.ML_DSA_44]: "ML-DSA-44",
   [CertKeyAlgorithm.ML_DSA_65]: "ML-DSA-65",
   [CertKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
@@ -44,6 +45,24 @@ export const certSignatureAlgorithmToNameMap: Record<string, string> = {
   "ML-DSA-65": "ML-DSA-65",
   "ML-DSA-87": "ML-DSA-87"
 };
+
+export const PQC_KEY_ALGORITHMS = [
+  CertKeyAlgorithm.ML_DSA_44,
+  CertKeyAlgorithm.ML_DSA_65,
+  CertKeyAlgorithm.ML_DSA_87
+] as const;
+
+export const NON_PQC_KEY_ALGORITHMS = [
+  CertKeyAlgorithm.RSA_2048,
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384,
+  CertKeyAlgorithm.ECDSA_P521
+] as const;
+
+export const isPqcAlgorithm = (label: string): boolean =>
+  (PQC_KEY_ALGORITHMS as readonly string[]).includes(label);
 
 export const certKeyAlgorithms = [
   { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_2048], value: CertKeyAlgorithm.RSA_2048 },

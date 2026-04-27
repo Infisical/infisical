@@ -68,7 +68,10 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
       { value: "RSA_4096", label: "RSA-4096" },
       { value: "EC_prime256v1", label: "ECDSA-P256" },
       { value: "EC_secp384r1", label: "ECDSA-P384" },
-      { value: "EC_secp521r1", label: "ECDSA-P521" }
+      { value: "EC_secp521r1", label: "ECDSA-P521" },
+      { value: "ML-DSA-44", label: "ML-DSA-44" },
+      { value: "ML-DSA-65", label: "ML-DSA-65" },
+      { value: "ML-DSA-87", label: "ML-DSA-87" }
     ]
   },
   {

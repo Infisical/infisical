@@ -176,7 +176,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
     const username = entityId;
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
 
     try {
@@ -204,7 +204,10 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();
 
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration });
+    const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+      username,
+      expiration
+    });
 
     try {
       if (renewStatement) {

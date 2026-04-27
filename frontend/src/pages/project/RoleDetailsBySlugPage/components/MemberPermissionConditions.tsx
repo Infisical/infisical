@@ -56,7 +56,7 @@ export const MemberPermissionConditions = ({ position = 0, isDisabled }: Props) 
           value: "assignableRole",
           label: "Assignable Roles",
           description:
-            "The roles that the actor is allowed to assign to the target users. (e.g., admin, developer, viewer)"
+            "The roles that the actor is allowed to assign to the target users. (e.g., admin, member, viewer)"
         },
         {
           value: "assignableSubject",

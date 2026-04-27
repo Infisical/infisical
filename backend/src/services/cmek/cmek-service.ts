@@ -3,11 +3,12 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { SigningAlgorithm } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import {
+  TCmekBulkGetPrivateKeysDTO,
   TCmekDecryptDTO,
   TCmekEncryptDTO,
   TCmekGetPrivateKeyDTO,
@@ -318,6 +319,79 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     };
   };
 
+  const bulkGetPrivateKeys = async ({ keyIds }: TCmekBulkGetPrivateKeysDTO, actor: OrgServiceActor) => {
+    if (keyIds.length === 0) throw new BadRequestError({ message: "At least one key ID is required" });
+
+    const uniqueKeyIds = [...new Set(keyIds)];
+    const keys = await kmsDAL.findCmeksByIds(uniqueKeyIds);
+
+    if (keys.length === 0) throw new NotFoundError({ message: "No keys found for the provided IDs" });
+
+    if (keys.length !== uniqueKeyIds.length) {
+      const foundIds = new Set(keys.map((k) => k.id));
+      const missingIds = uniqueKeyIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundError({ message: `Keys not found for IDs: ${missingIds.join(", ")}` });
+    }
+
+    const projectIds = new Set<string>();
+    for (const key of keys) {
+      if (!key.projectId || key.isReserved)
+        throw new BadRequestError({ message: `Key with ID "${key.id}" is not customer managed` });
+      if (key.isDisabled) throw new BadRequestError({ message: `Key with ID "${key.id}" is disabled` });
+      projectIds.add(key.projectId);
+    }
+
+    if (projectIds.size > 1) throw new BadRequestError({ message: "All keys must belong to the same project" });
+
+    const projectId = keys[0].projectId!;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCmekActions.ExportPrivateKey,
+      ProjectPermissionSub.Cmek
+    );
+
+    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
+
+    const materialByKmsId = new Map(bulkMaterials.map((m) => [m.kmsId, m]));
+    const asymmetricAlgorithms = new Set<string>(Object.values(AsymmetricKeyAlgorithm));
+
+    const result = keys.map((key) => {
+      const materialEntry = materialByKmsId.get(key.id);
+
+      if (!materialEntry) {
+        throw new NotFoundError({ message: `Key material not found for key ID "${key.id}"` });
+      }
+
+      let publicKey: string | undefined;
+      if (asymmetricAlgorithms.has(key.encryptionAlgorithm)) {
+        const pubKeyBuffer = signingService(
+          key.encryptionAlgorithm as AsymmetricKeyAlgorithm
+        ).getPublicKeyFromPrivateKey(materialEntry.keyMaterial);
+        publicKey = pubKeyBuffer.toString("base64");
+      }
+
+      return {
+        keyId: key.id,
+        name: key.name,
+        keyUsage: key.keyUsage,
+        algorithm: key.encryptionAlgorithm,
+        privateKey: materialEntry.keyMaterial.toString("base64"),
+        ...(publicKey ? { publicKey } : {})
+      };
+    });
+
+    return { keys: result, projectId };
+  };
+
   const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
@@ -432,6 +506,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     cmekVerify,
     listSigningAlgorithms,
     getPublicKey,
-    getPrivateKey
+    getPrivateKey,
+    bulkGetPrivateKeys
   };
 };

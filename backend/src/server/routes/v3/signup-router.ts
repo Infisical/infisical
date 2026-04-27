@@ -128,7 +128,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       if (!userAgent) throw new Error("user agent header is required");
       const appCfg = getConfig();
 
-      const { user, accessToken, refreshToken, authMethod, organizationId } =
+      const { user, accessToken, refreshToken, authMethod, organizationId, isInvitedUser } =
         await server.services.signup.completeAccount({
           ...req.body,
           ip: req.realIp,
@@ -140,13 +140,14 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry.sendLoopsEvent(user.email, user.firstName || "", user.lastName || "");
         void server.services.telemetry.sendHubSpotSignupEvent(
           user.email,
-          authMethod,
+          isInvitedUser ? "invite" : authMethod,
           user.firstName || "",
           user.lastName || "",
           req.body.hubspotUtk
         );
       }
 
+      const bodyAttributionSource = "attributionSource" in req.body ? req.body.attributionSource : undefined;
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserSignedUp,
         distinctId: user.username ?? "",
@@ -154,7 +155,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         properties: {
           username: user.username,
           email: user.email ?? "",
-          attributionSource: "attributionSource" in req.body ? req.body.attributionSource : undefined
+          attributionSource: isInvitedUser ? "Team Invite" : bodyAttributionSource
         }
       });
 

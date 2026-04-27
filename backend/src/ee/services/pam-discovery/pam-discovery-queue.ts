@@ -5,6 +5,7 @@ import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
 import { PamDiscoverySourceRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
@@ -27,6 +28,7 @@ type TPamDiscoveryQueueFactoryDep = {
     "upsertJunction" | "markStaleForRun"
   >;
   pamAccountDependenciesDAL: Pick<TPamAccountDependenciesDALFactory, "upsertDependency">;
+  pamDomainDAL: Pick<TPamDomainDALFactory, "create" | "find" | "transaction">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "create" | "find" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -44,6 +46,7 @@ export const pamDiscoveryQueueFactory = ({
   pamDiscoverySourceAccountsDAL,
   pamDiscoverySourceDependenciesDAL,
   pamAccountDependenciesDAL,
+  pamDomainDAL,
   pamResourceDAL,
   pamAccountDAL,
   kmsService,
@@ -92,6 +95,7 @@ export const pamDiscoveryQueueFactory = ({
             pamDiscoverySourceAccountsDAL,
             pamDiscoverySourceDependenciesDAL,
             pamAccountDependenciesDAL,
+            pamDomainDAL,
             pamResourceDAL,
             pamAccountDAL,
             kmsService,

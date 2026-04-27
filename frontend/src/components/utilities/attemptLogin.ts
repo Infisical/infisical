@@ -2,7 +2,6 @@ import { loginV3 } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 import Telemetry from "./telemetry/Telemetry";
-import SecurityClient from "./SecurityClient";
 
 export enum LoginMode {
   LegacySrp = "legacy-srp",
@@ -39,7 +38,6 @@ const attemptLogin = async ({
     captchaToken
   });
 
-  SecurityClient.setProviderAuthToken("");
   setAuthToken(data.accessToken);
 
   if (email) {

@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { Controller, useFormContext } from "react-hook-form";
-import { TrashIcon } from "lucide-react";
+import { InfoIcon, TrashIcon } from "lucide-react";
 
 import {
   IconButton,
@@ -9,7 +9,10 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 
 import {
@@ -18,6 +21,7 @@ import {
   CONSTRAINT_VALUE_LABELS,
   ConstraintTarget,
   ConstraintType,
+  MAX_PREVENT_VALUE_REUSE_VERSIONS,
   TRuleForm
 } from "./SecretValidationRulesTab.utils";
 
@@ -42,6 +46,11 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
 
   const Icon = constraintOption?.icon;
   const placeholder = constraintOption?.placeholder;
+  const isPreventValueReuse = constraintType === ConstraintType.PreventValueReuse;
+  const isNumericInput =
+    constraintType === ConstraintType.MinLength ||
+    constraintType === ConstraintType.MaxLength ||
+    constraintType === ConstraintType.PreventValueReuse;
 
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -57,38 +66,65 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
         </IconButton>
       </div>
 
+      {constraintOption?.cardDescription && (
+        <p className="mt-1.5 text-xs text-muted">{constraintOption.cardDescription}</p>
+      )}
+
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted">Applies to</label>
-          <Controller
-            control={control}
-            name={`enforcement.inputs.constraints.${index}.appliesTo`}
-            render={({ field: { value, onChange } }) => (
-              <Select value={value} onValueChange={onChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  <SelectItem
-                    value={ConstraintTarget.SecretKey}
-                    disabled={otherTargets.has(ConstraintTarget.SecretKey)}
-                  >
-                    Secret Key
-                  </SelectItem>
-                  <SelectItem
-                    value={ConstraintTarget.SecretValue}
-                    disabled={otherTargets.has(ConstraintTarget.SecretValue)}
-                  >
-                    Secret Value
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
+        {isPreventValueReuse ? (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Applies to</label>
+            <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Applies to</label>
+            <Controller
+              control={control}
+              name={`enforcement.inputs.constraints.${index}.appliesTo`}
+              render={({ field: { value, onChange } }) => (
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem
+                      value={ConstraintTarget.SecretKey}
+                      disabled={otherTargets.has(ConstraintTarget.SecretKey)}
+                    >
+                      Secret Key
+                    </SelectItem>
+                    <SelectItem
+                      value={ConstraintTarget.SecretValue}
+                      disabled={otherTargets.has(ConstraintTarget.SecretValue)}
+                    >
+                      Secret Value
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted">
-            {CONSTRAINT_VALUE_LABELS[constraintType]}
+            <div className="flex items-center gap-1">
+              {CONSTRAINT_VALUE_LABELS[constraintType]}
+              {constraintType === ConstraintType.PreventValueReuse && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="ml-1 size-3.5 text-muted" />
+                  </TooltipTrigger>
+                  <TooltipContent side="left" align="start" className="max-w-xs">
+                    <p className="text-sm">
+                      When a secret is updated, its new value is validated against the specified
+                      number of prior versions.
+                    </p>
+                    <p className="mt-2 text-xs text-muted">Maximum: 25 versions</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </label>
           <Controller
             control={control}
@@ -97,12 +133,9 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               <div>
                 <Input
                   {...field}
-                  type={
-                    constraintType === ConstraintType.MinLength ||
-                    constraintType === ConstraintType.MaxLength
-                      ? "number"
-                      : "text"
-                  }
+                  type={isNumericInput ? "number" : "text"}
+                  min={isPreventValueReuse ? 1 : undefined}
+                  max={isPreventValueReuse ? MAX_PREVENT_VALUE_REUSE_VERSIONS : undefined}
                   placeholder={placeholder?.toString() || undefined}
                   isError={Boolean(error)}
                 />

@@ -1,6 +1,6 @@
 import https from "node:https";
 
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, isAxiosError } from "axios";
 import { v4 as uuidv4 } from "uuid";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
@@ -51,7 +51,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         data: Record<string, { accessor: string; options: { version?: string } | null; type: string }>;
       }>("/v1/sys/mounts")
       .catch((err) => {
-        if (axios.isAxiosError(err)) {
+        if (isAxiosError(err)) {
           logger.error(err.response?.data, "External migration: Failed to get Vault mounts");
         }
         throw err;
@@ -87,7 +87,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
 
       return response.data.data.keys;
     } catch (err) {
-      if (axios.isAxiosError(err)) {
+      if (isAxiosError(err)) {
         logger.error(err.response?.data, "External migration: Failed to get Vault paths");
         if (err.response?.status === 404) {
           return null;
@@ -117,7 +117,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
           };
         }>(`/v1/${mountPath}/data/${secretPath}`)
         .catch((err) => {
-          if (axios.isAxiosError(err)) {
+          if (isAxiosError(err)) {
             // handle soft-deleted secrets (Vault returns 404 with metadata for soft deleted secrets)
             const vaultResponse = err.response?.data as { data?: { metadata?: { deletion_time?: string } } };
 
@@ -152,7 +152,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         renewable: boolean;
       }>(`/v1/${mountPath}/${secretPath}`)
       .catch((err) => {
-        if (axios.isAxiosError(err)) {
+        if (isAxiosError(err)) {
           logger.error(err.response?.data, "External migration: Failed to get Vault secret");
         }
         throw err;
@@ -217,6 +217,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
           "X-Vault-Token": accessToken,
           ...(namespace ? { "X-Vault-Namespace": namespace } : {})
         },
+        maxRedirects: 0,
         httpsAgent
       });
 
@@ -285,6 +286,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         getData
       );
     } else {
+      await blockLocalAndPrivateIpAddresses(baseUrl);
       data = await getData(baseUrl);
     }
 

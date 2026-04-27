@@ -1,10 +1,11 @@
 /* eslint-disable class-methods-use-this */
-import axios from "axios";
+import { isAxiosError } from "axios";
 import { TeamsActivityHandler, TurnContext } from "botbuilder";
 import { Knex } from "knex";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -26,14 +27,14 @@ export const verifyTenantFromCode = async (
   clientSecret: string
 ) => {
   const getAccessToken = async (params: URLSearchParams) => {
-    const response = await axios
+    const response = await request
       .post<{ access_token: string }>(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, params, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         }
       })
       .catch((err) => {
-        if (axios.isAxiosError(err)) {
+        if (isAxiosError(err)) {
           if ((err.response?.data as { error_description?: string })?.error_description?.includes(ConsentError)) {
             throw new BadRequestError({
               message: "Unable to verify tenant, please ensure that you have granted admin consent."
@@ -177,7 +178,7 @@ export const getMicrosoftTeamsAccessToken = async (
       }
     }
 
-    const tokenResponse = await axios.post<{ access_token: string; expires_in: number }>(
+    const tokenResponse = await request.post<{ access_token: string; expires_in: number }>(
       details.uri,
       new URLSearchParams({
         client_id: clientId,
@@ -235,7 +236,7 @@ export const getMicrosoftTeamsAccessToken = async (
 
     return tokenResponse.data.access_token;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       logger.error(
         error.response?.data,
         `getMicrosoftTeamsAccessToken: Error fetching Microsoft Teams access token [status-code=${error.response?.status}]`
@@ -306,7 +307,7 @@ export const isBotInstalledInTenant = async (
       } as const;
     }
 
-    const appsResponse = await axios
+    const appsResponse = await request
       .get<{ value: { id: string; displayName: string; distributionMethod: string; externalId: string }[] }>(
         "https://graph.microsoft.com/v1.0/appCatalogs/teamsApps",
         {
@@ -622,7 +623,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
       };
 
-      await axios.post(
+      await request.post(
         `https://smba.trafficmanager.net/amer/v3/conversations/${channelId}/activities`,
         adaptiveCardActivity,
         {
@@ -633,7 +634,7 @@ export class TeamsBot extends TeamsActivityHandler {
         }
       );
     } catch (error) {
-      if (axios.isAxiosError(error)) {
+      if (isAxiosError(error)) {
         logger.error(
           error.response?.data,
           `sendMessageToChannel: Axios Error, Microsoft Teams Workflow Integration: Failed to send message to channel [channelId=${channelId}] [teamId=${teamId}] [tenantId=${tenantId}]`
@@ -656,7 +657,7 @@ export class TeamsBot extends TeamsActivityHandler {
       while (teamsNextLink?.length) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const response = await axios.get<{
+          const response = await request.get<{
             value: { displayName: string; id: string }[];
             "@odata.nextLink"?: string;
           }>(teamsNextLink, {
@@ -678,7 +679,7 @@ export class TeamsBot extends TeamsActivityHandler {
       for await (const team of allTeams) {
         try {
           // Get installed apps for this team
-          const installedAppsResponse = await axios.get<{ value: { teamsAppDefinition: { teamsAppId: string } }[] }>(
+          const installedAppsResponse = await request.get<{ value: { teamsAppDefinition: { teamsAppId: string } }[] }>(
             `https://graph.microsoft.com/v1.0/teams/${team.id}/installedApps?$expand=teamsAppDefinition`,
             {
               headers: {
@@ -702,7 +703,7 @@ export class TeamsBot extends TeamsActivityHandler {
 
         while (channelNextLink?.length) {
           // eslint-disable-next-line no-await-in-loop
-          const resp = await axios
+          const resp = await request
             .get<{
               value: { displayName: string; id: string }[];
               "@odata.nextLink"?: string;
@@ -712,7 +713,7 @@ export class TeamsBot extends TeamsActivityHandler {
               }
             })
             .catch((error) => {
-              if (axios.isAxiosError(error)) {
+              if (isAxiosError(error)) {
                 logger.error(
                   error.response?.data,
                   "getTeamsAndChannels: Axios error, Microsoft Teams Workflow Integration: Failed to fetch channels"

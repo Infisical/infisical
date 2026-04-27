@@ -2251,6 +2251,51 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate has already been renewed");
     });
 
+    it("should reject update with accurate enrollment type when profile is ACME", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedByCertificateId: null,
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.ACME,
+        issuerType: IssuerType.CA,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow("Certificate is not eligible for auto-renewal: ACME certificates cannot be auto-renewed");
+    });
+
     it("should reject update if renewBeforeDays >= certificate TTL", async () => {
       const mockCert = {
         id: "cert-123",

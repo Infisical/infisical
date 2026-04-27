@@ -429,6 +429,7 @@ export enum ProjectPermissionSub {
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
+  PamDomains = "pam-domains",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
   PamAccountPolicies = "pam-account-policies",
@@ -519,8 +520,10 @@ export type CertificatePolicySubjectFields = {
 };
 
 export type PamAccountSubjectFields = {
-  resourceName: string;
-  resourceType: string;
+  resourceName?: string;
+  resourceType?: string;
+  domainName?: string;
+  domainType?: string;
   accountName: string;
   metadata?: { key: string; value: string }[];
 };
@@ -705,6 +708,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
       )
     ]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamDomains]
   | [
       ProjectPermissionPamAccountActions,
       (

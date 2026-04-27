@@ -11,14 +11,23 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
+import { PamAwsIamAccessSection } from "./PamAwsIamAccessSection";
+
 type Props = {
   account?: TPamAccount;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
+  reason?: string;
 };
 
-export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
+export const PamAccessAccountModal = ({
+  isOpen,
+  onOpenChange,
+  account,
+  projectId,
+  reason
+}: Props) => {
   const { currentOrg } = useOrganization();
   const [duration, setDuration] = useState("4h");
 
@@ -68,20 +77,23 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
   }, [duration]);
 
   const command = useMemo(() => {
-    if (!account) return "";
+    if (!account?.resource) return "";
+    const { resource } = account;
+    const base = (verb: string) =>
+      `infisical pam ${verb} access --resource ${resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
 
-    switch (account.resource.resourceType) {
+    switch (resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
       case PamResourceType.MsSQL:
       case PamResourceType.MongoDB:
-        return `infisical pam db access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return base("db");
       case PamResourceType.Redis:
-        return `infisical pam redis access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return base("redis");
       case PamResourceType.SSH:
-        return `infisical pam ssh access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return base("ssh");
       case PamResourceType.Kubernetes:
-        return `infisical pam kubernetes access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return base("kubernetes");
       default:
         return "";
     }
@@ -89,10 +101,12 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
 
   if (!account) return null;
 
+  const isAwsIam = account.resource?.resourceType === PamResourceType.AwsIam;
+
   const showWebAccess =
-    account.resource.resourceType === PamResourceType.Postgres ||
-    account.resource.resourceType === PamResourceType.SSH ||
-    account.resource.resourceType === PamResourceType.Redis;
+    account.resource?.resourceType === PamResourceType.Postgres ||
+    account.resource?.resourceType === PamResourceType.SSH ||
+    account.resource?.resourceType === PamResourceType.Redis;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -101,82 +115,95 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId
         title="Access Account"
         subTitle={`Connect to ${account.name}`}
       >
-        <div className="py-1">
-          <p className="text-sm font-medium text-mineshaft-400">Terminal</p>
-          <p className="mb-2 text-xs text-mineshaft-400">Connect using the Infisical CLI</p>
-          <FormLabel
-            label="Duration"
-            tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
+        {isAwsIam ? (
+          <PamAwsIamAccessSection
+            account={account}
+            projectId={projectId}
+            reason={reason}
+            onClose={() => onOpenChange(false)}
           />
-          <Input
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="permanent"
-            isError={!isDurationValid}
-          />
-          <FormLabel label="CLI Command" className="mt-4" />
-          <div className="flex gap-2">
-            <Input value={command} isDisabled />
-            <IconButton
-              ariaLabel="copy"
-              variant="outline_bg"
-              colorSchema="secondary"
-              onClick={() => {
-                navigator.clipboard.writeText(command);
-
-                createNotification({
-                  text: "Command copied to clipboard",
-                  type: "info"
-                });
-
-                onOpenChange(false);
-              }}
-              className="w-10"
-            >
-              <FontAwesomeIcon icon={faCopy} />
-            </IconButton>
-          </div>
-          <a
-            href="https://infisical.com/docs/cli/overview"
-            target="_blank"
-            className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
-            rel="noreferrer"
-          >
-            <span>Install the Infisical CLI</span>
-            <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-          </a>
-        </div>
-        {showWebAccess && (
+        ) : (
           <>
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-mineshaft-600" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-mineshaft-800 px-2 text-mineshaft-400">OR</span>
-              </div>
-            </div>
             <div className="py-1">
-              <p className="text-sm font-medium text-mineshaft-400">Browser</p>
-              <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
+              <p className="text-sm font-medium text-mineshaft-400">Terminal</p>
+              <p className="mb-2 text-xs text-mineshaft-400">Connect using the Infisical CLI</p>
+              <FormLabel
+                label="Duration"
+                tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
+              />
+              <Input
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                placeholder="permanent"
+                isError={!isDurationValid}
+              />
+              <FormLabel label="CLI Command" className="mt-4" />
               <div className="flex gap-2">
-                <Link
-                  to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId,
-                    resourceType: account.resource.resourceType,
-                    resourceId: account.resource.id,
-                    accountId: account.id
+                <Input value={command} isDisabled />
+                <IconButton
+                  ariaLabel="copy"
+                  variant="outline_bg"
+                  colorSchema="secondary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(command);
+
+                    createNotification({
+                      text: "Command copied to clipboard",
+                      type: "info"
+                    });
+
+                    onOpenChange(false);
                   }}
-                  target="_blank"
-                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
+                  className="w-10"
                 >
-                  <FontAwesomeIcon icon={faTerminal} />
-                  Connect in Browser
-                </Link>
+                  <FontAwesomeIcon icon={faCopy} />
+                </IconButton>
               </div>
+              <a
+                href="https://infisical.com/docs/cli/overview"
+                target="_blank"
+                className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
+                rel="noreferrer"
+              >
+                <span>Install the Infisical CLI</span>
+                <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
+              </a>
             </div>
+            {showWebAccess && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-mineshaft-600" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-mineshaft-800 px-2 text-mineshaft-400">OR</span>
+                  </div>
+                </div>
+                <div className="py-1">
+                  <p className="text-sm font-medium text-mineshaft-400">Browser</p>
+                  <p className="mb-2 text-xs text-mineshaft-400">
+                    Connect directly from your browser
+                  </p>
+                  <div className="flex gap-2">
+                    <Link
+                      to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
+                      params={{
+                        orgId: currentOrg.id,
+                        projectId,
+                        resourceType: account.resource?.resourceType ?? "",
+                        resourceId: account.resource?.id ?? "",
+                        accountId: account.id
+                      }}
+                      target="_blank"
+                      className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
+                    >
+                      <FontAwesomeIcon icon={faTerminal} />
+                      Connect in Browser
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </ModalContent>

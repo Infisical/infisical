@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
-import axios from "axios";
+
+import { isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { TCloudflareConnectionConfig } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
@@ -34,7 +35,7 @@ export const cloudflareInsertTxtRecord = async (
       }
     );
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       const firstErrorMessage = (
         error.response?.data as {
           errors?: { message: string }[];
@@ -125,7 +126,7 @@ export const cloudflareDeleteTxtRecord = async (
   }
 
   if (lastError) {
-    if (axios.isAxiosError(lastError)) {
+    if (isAxiosError(lastError)) {
       const firstErrorMessage = (
         lastError.response?.data as {
           errors?: { message: string }[];

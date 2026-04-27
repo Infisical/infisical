@@ -1,5 +1,7 @@
 import fp from "fastify-plugin";
 
+import { getConfig } from "@app/lib/config/env";
+
 /*! https://github.com/pbojinov/request-ip/blob/9501cdf6e73059cc70fc6890adb086348d7cca46/src/index.js.
   MIT License. 2022 Petar Bojinov - petarbojinov+github@gmail.com */
 const headersOrder = [
@@ -20,7 +22,18 @@ const headersOrder = [
 
 export const fastifyIp = fp(async (fastify) => {
   fastify.decorateRequest("realIp", null);
+  const { TRUSTED_PROXY_CIDRS } = getConfig();
   fastify.addHook("onRequest", async (req) => {
+    // Strict mode: TRUSTED_PROXY_CIDRS configured → delegate to Fastify's proxy-addr-backed
+    // req.ip, which validates the socket source against the trusted CIDR list and parses
+    // X-Forwarded-For right-to-left, discarding attacker-supplied values.
+    if (TRUSTED_PROXY_CIDRS) {
+      req.realIp = req.ip;
+      return;
+    }
+
+    // Legacy mode: first-matching-header wins. Preserved for backwards compatibility
+    // with self-hosted deployments that haven't configured a trusted proxy list.
     const forwardedIpHeader = headersOrder.find((header) => Boolean(req.headers[header]));
     const forwardedIp = forwardedIpHeader ? req.headers[forwardedIpHeader] : undefined;
     if (forwardedIp) {

@@ -49,6 +49,17 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
+  getOrgGroupsWithParams: (
+    orgId: string,
+    params: {
+      offset?: number;
+      limit?: number;
+      search?: string;
+      roles?: string[];
+      orderBy?: string;
+      orderDirection?: string;
+    }
+  ) => [...organizationKeys.getOrgGroups(orgId), params] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
   getOrgById: (orgId: string) => ["organization", { orgId }],
   getAvailableIdentities: () => ["available-identities"],
@@ -639,6 +650,55 @@ export const useGetOrganizationGroups = (organizationId: string) => {
       );
 
       return groupMemberships.map(mapOrgMembershipToGroup);
+    }
+  });
+};
+
+export const useSearchOrganizationGroups = ({
+  organizationId,
+  offset,
+  limit,
+  search,
+  roles,
+  orderBy,
+  orderDirection
+}: {
+  organizationId: string;
+  offset?: number;
+  limit?: number;
+  search?: string;
+  roles?: string[];
+  orderBy?: string;
+  orderDirection?: string;
+}) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgGroupsWithParams(organizationId, {
+      offset,
+      limit,
+      search,
+      roles,
+      orderBy,
+      orderDirection
+    }),
+    enabled: Boolean(organizationId),
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const {
+        data: { groupMemberships, totalCount }
+      } = await apiRequest.get<OrgGroupMembershipResponse>(
+        "/api/v1/organizations/memberships/groups",
+        {
+          params: {
+            limit,
+            offset,
+            search: search || undefined,
+            roles: roles?.length ? roles : undefined,
+            orderBy,
+            orderDirection
+          }
+        }
+      );
+      return { groups: groupMemberships.map(mapOrgMembershipToGroup), totalCount };
     }
   });
 };

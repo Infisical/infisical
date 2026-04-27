@@ -424,8 +424,6 @@ export const scimServiceFactory = ({
       aliasType
     });
 
-    // Verify that the email domain (if verified on the platform) belongs to this org
-
     await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
 
     const { user: createdUser, orgMembership: createdOrgMembership } = await userDAL.transaction(async (tx) => {
@@ -885,8 +883,8 @@ export const scimServiceFactory = ({
 
     const groups = await groupDAL.findGroups(
       {
-        orgId,
-        ...(filter && parseScimFilter(filter))
+        ...(filter && parseScimFilter(filter)),
+        orgId
       },
       {
         offset: startIndex - 1,

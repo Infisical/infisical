@@ -1,6 +1,7 @@
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
   PENDING = "pending",
+  PENDING_VALIDATION = "pending_validation",
   ISSUED = "issued",
   FAILED = "failed",
   REJECTED = "rejected"

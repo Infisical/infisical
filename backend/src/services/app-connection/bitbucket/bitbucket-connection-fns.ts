@@ -53,8 +53,12 @@ export const validateBitbucketConnectionCredentials = async (config: TBitbucketC
   return config.credentials;
 };
 
+interface BitbucketWorkspaceMembership {
+  workspace: { slug: string };
+}
+
 interface BitbucketWorkspacesResponse {
-  values: TBitbucketWorkspace[];
+  values: BitbucketWorkspaceMembership[];
   next?: string;
 }
 
@@ -67,7 +71,7 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   };
 
   let allWorkspaces: TBitbucketWorkspace[] = [];
-  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces?pagelen=100`;
+  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces?pagelen=100`;
   let iterationCount = 0;
 
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 workspaces
@@ -77,7 +81,7 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
       headers
     });
 
-    allWorkspaces = allWorkspaces.concat(data.values.map((workspace) => ({ slug: workspace.slug })));
+    allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
     nextUrl = data.next;
     iterationCount += 1;
   }

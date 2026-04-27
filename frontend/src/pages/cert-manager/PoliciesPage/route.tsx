@@ -11,7 +11,8 @@ const policiesPageSearchSchema = z.object({
   filterKeyAlgorithm: z.string().optional(),
   filterCaId: z.string().optional(),
   filterExpiresDays: z.string().optional(),
-  filterExpiresAfterDays: z.string().optional()
+  filterExpiresAfterDays: z.string().optional(),
+  viewId: z.string().optional()
 });
 
 export const Route = createFileRoute(

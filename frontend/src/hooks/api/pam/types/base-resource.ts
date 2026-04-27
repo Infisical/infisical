@@ -9,7 +9,7 @@ export interface TBasePamResource {
   projectId: string;
   name: string;
   gatewayId: string;
-  adServerResourceId?: string | null;
+  domainId?: string | null;
   metadata?: { key: string; value: string }[];
   isFavorite?: boolean;
   sessionSummaryConfig?: TSessionSummaryConfig;

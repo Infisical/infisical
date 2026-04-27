@@ -64,7 +64,7 @@ export const UpdateMsSQLAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedMsSQLAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
-  resourceType: z.literal(PamResource.MsSQL),
+  parentType: z.literal(PamResource.MsSQL),
   credentials: MsSQLAccountCredentialsSchema.pick({
     username: true
   })
