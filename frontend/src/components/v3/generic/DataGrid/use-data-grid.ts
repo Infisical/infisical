@@ -1984,6 +1984,9 @@ function useDataGrid<TData>({
       get readOnly() {
         return propsRef.current.readOnly;
       },
+      get enablePaste() {
+        return propsRef.current.enablePaste;
+      },
       getIsCellSelected,
       getIsSearchMatch,
       getIsActiveSearchMatch,

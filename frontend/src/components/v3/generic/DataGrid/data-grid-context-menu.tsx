@@ -1,6 +1,12 @@
 import * as React from "react";
 import type { ColumnDef, TableMeta } from "@tanstack/react-table";
-import { CircleOffIcon, CopyIcon, EraserIcon, ScissorsIcon } from "lucide-react";
+import {
+  CircleOffIcon,
+  ClipboardPasteIcon,
+  CopyIcon,
+  EraserIcon,
+  ScissorsIcon
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +38,7 @@ export function DataGridContextMenu<TData>({
   const onRowsDelete = tableMeta?.onRowsDelete;
   const onCellsCopy = tableMeta?.onCellsCopy;
   const onCellsCut = tableMeta?.onCellsCut;
+  const onCellsPaste = tableMeta?.onCellsPaste;
 
   if (!contextMenu.open) return null;
 
@@ -48,6 +55,7 @@ export function DataGridContextMenu<TData>({
       onRowsDelete={onRowsDelete}
       onCellsCopy={onCellsCopy}
       onCellsCut={onCellsCut}
+      onCellsPaste={onCellsPaste}
     />
   );
 }
@@ -62,6 +70,7 @@ interface ContextMenuProps<TData>
       | "onRowsDelete"
       | "onCellsCopy"
       | "onCellsCut"
+      | "onCellsPaste"
       | "readOnly"
     >,
     Required<Pick<TableMeta<TData>, "contextMenu">> {
@@ -93,7 +102,8 @@ function ContextMenuImpl<TData>({
   onDataUpdate,
   onRowsDelete,
   onCellsCopy,
-  onCellsCut
+  onCellsCut,
+  onCellsPaste
 }: ContextMenuProps<TData>) {
   const propsRef = useAsRef({
     dataGridRef,
@@ -102,6 +112,7 @@ function ContextMenuImpl<TData>({
     onRowsDelete,
     onCellsCopy,
     onCellsCut,
+    onCellsPaste,
     columns
   });
 
@@ -138,6 +149,10 @@ function ContextMenuImpl<TData>({
 
   const onCut = React.useCallback(() => {
     propsRef.current.onCellsCut?.();
+  }, [propsRef]);
+
+  const onPaste = React.useCallback(() => {
+    propsRef.current.onCellsPaste?.();
   }, [propsRef]);
 
   const onClear = React.useCallback(() => {
@@ -213,6 +228,12 @@ function ContextMenuImpl<TData>({
           <ScissorsIcon />
           Cut
         </DropdownMenuItem>
+        {tableMeta?.enablePaste && (
+          <DropdownMenuItem onSelect={onPaste} isDisabled={tableMeta?.readOnly}>
+            <ClipboardPasteIcon />
+            Paste
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
           <EraserIcon />
           Clear
