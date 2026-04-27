@@ -883,15 +883,17 @@ export const secretApprovalRequestServiceFactory = ({
               sourceFolderId,
               sourceEnvironment,
               sourceSecretPath,
-              destinationFolderId = folderId,
-              destinationEnvironment = environment,
-              destinationSecretPath: configuredDestinationSecretPath,
+              destinationFolderId,
+              destinationEnvironment,
+              destinationSecretPath,
               newConnectionId
             } = firstMeta.payload;
-            let destinationSecretPath = configuredDestinationSecretPath;
-            if (!destinationSecretPath) {
-              const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [destinationFolderId], tx);
-              destinationSecretPath = folderPaths?.[0]?.path || "/";
+            // Defaulting to the approval's own folderId here would silently relocate the rotation
+            // to the source folder on a source-policy merge. Fail loudly on malformed metadata.
+            if (!destinationFolderId || !destinationEnvironment || !destinationSecretPath) {
+              throw new BadRequestError({
+                message: `MoveRotation commit for rotation '${rotationId}' is missing destination metadata.`
+              });
             }
 
             await secretRotationV2DAL.updateById(
@@ -1066,7 +1068,11 @@ export const secretApprovalRequestServiceFactory = ({
           secrets: {
             created: newSecrets,
             updated: updatedSecrets,
-            deleted: deletedSecret.concat(sourceApprovedMovedSecrets)
+            deleted: deletedSecret,
+            // Source-policy MoveRotation merges relocate the secret rather than deleting it.
+            // Keep these out of `deleted` so downstream SecretDelete/DELETE_SECRET events don't
+            // misrepresent the action. The original /move-rotations call already audits the move.
+            movedRotations: sourceApprovedMovedSecrets
           },
           approval: updatedSecretApproval
         };

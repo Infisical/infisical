@@ -9,6 +9,7 @@ import {
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
+import { TSecretApprovalRequest } from "../secretApprovalRequest/types";
 import { PendingAction } from "../secretFolders/types";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
@@ -22,6 +23,10 @@ import {
   TUpdateSecretBatchDTO,
   TUpdateSecretsV3DTO
 } from "./types";
+
+export type TMoveSecretRotationsResponse =
+  | { isSourceUpdated: boolean; isDestinationUpdated: boolean }
+  | { approval: TSecretApprovalRequest };
 
 export const useCreateSecretV3 = ({
   options
@@ -491,18 +496,14 @@ export const useMoveSecrets = ({
 export const useMoveSecretRotations = ({
   options
 }: {
-  options?: Omit<MutationOptions<object, object, TMoveSecretRotationsDTO>, "mutationFn">;
+  options?: Omit<
+    MutationOptions<TMoveSecretRotationsResponse, object, TMoveSecretRotationsDTO>,
+    "mutationFn"
+  >;
 } = {}) => {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    {
-      isSourceUpdated: boolean;
-      isDestinationUpdated: boolean;
-    },
-    object,
-    TMoveSecretRotationsDTO
-  >({
+  return useMutation<TMoveSecretRotationsResponse, object, TMoveSecretRotationsDTO>({
     mutationFn: async ({
       sourceEnvironment,
       sourceSecretPath,
@@ -512,18 +513,18 @@ export const useMoveSecretRotations = ({
       projectId,
       rotationConnectionOverrides
     }) => {
-      const { data } = await apiRequest.post<{
-        isSourceUpdated: boolean;
-        isDestinationUpdated: boolean;
-      }>("/api/v4/secrets/move-rotations", {
-        sourceEnvironment,
-        sourceSecretPath,
-        destinationEnvironment,
-        destinationSecretPath,
-        secretIds,
-        projectId,
-        rotationConnectionOverrides
-      });
+      const { data } = await apiRequest.post<TMoveSecretRotationsResponse>(
+        "/api/v4/secrets/move-rotations",
+        {
+          sourceEnvironment,
+          sourceSecretPath,
+          destinationEnvironment,
+          destinationSecretPath,
+          secretIds,
+          projectId,
+          rotationConnectionOverrides
+        }
+      );
 
       return data;
     },
@@ -552,6 +553,13 @@ export const useMoveSecretRotations = ({
           secretPath: destinationSecretPath
         });
       }
+
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
     },
     ...options
   });

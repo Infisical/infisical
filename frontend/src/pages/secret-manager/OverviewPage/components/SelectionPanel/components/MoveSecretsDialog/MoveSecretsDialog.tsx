@@ -45,6 +45,7 @@ import { useMoveSecretRotations, useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { TMoveSecretRotationsResponse } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -299,10 +300,11 @@ const SingleEnvContent = ({
       projectSlug
     };
 
-    const results: { isSourceUpdated: boolean; isDestinationUpdated: boolean }[] = [];
+    const directResults: { isSourceUpdated: boolean; isDestinationUpdated: boolean }[] = [];
+    let rotationApprovalCreated = false;
 
     if (regularSecrets.length > 0) {
-      results.push(
+      directResults.push(
         await moveSecrets.mutateAsync({
           ...common,
           shouldOverwrite: data.shouldOverwrite,
@@ -312,19 +314,34 @@ const SingleEnvContent = ({
     }
 
     if (rotatedSecrets.length > 0) {
-      results.push(
-        await moveSecretRotations.mutateAsync({
-          ...common,
-          secretIds: rotatedSecrets.map((sec) => sec.id),
-          rotationConnectionOverrides
-        })
-      );
+      const rotationResult: TMoveSecretRotationsResponse = await moveSecretRotations.mutateAsync({
+        ...common,
+        secretIds: rotatedSecrets.map((sec) => sec.id),
+        rotationConnectionOverrides
+      });
+      if ("approval" in rotationResult) {
+        rotationApprovalCreated = true;
+      } else {
+        directResults.push(rotationResult);
+      }
     }
 
-    const isSourceUpdated = results.some((r) => r.isSourceUpdated);
-    const isDestinationUpdated = results.some((r) => r.isDestinationUpdated);
+    const isSourceUpdated = directResults.some((r) => r.isSourceUpdated);
+    const isDestinationUpdated = directResults.some((r) => r.isDestinationUpdated);
 
-    if (isDestinationUpdated && isSourceUpdated) {
+    if (rotationApprovalCreated) {
+      if (directResults.length > 0 && isSourceUpdated && isDestinationUpdated) {
+        createNotification({
+          type: "info",
+          text: "Selected secrets were moved. An approval request was created for the rotation move."
+        });
+      } else {
+        createNotification({
+          type: "info",
+          text: "An approval request has been created for the rotation move."
+        });
+      }
+    } else if (isDestinationUpdated && isSourceUpdated) {
       createNotification({
         type: "success",
         text: "Successfully moved selected secrets"

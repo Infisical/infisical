@@ -123,9 +123,9 @@ export type TInternalMetadataMoveRotation = {
     sourceFolderId: string;
     sourceEnvironment: string;
     sourceSecretPath: string;
-    destinationFolderId?: string;
-    destinationEnvironment?: string;
-    destinationSecretPath?: string;
+    destinationFolderId: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
     newConnectionId?: string;
   };
 };
