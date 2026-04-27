@@ -85,6 +85,7 @@ import {
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { TSecretRotationV2DALFactory } from "../secret-rotation-v2/secret-rotation-v2-dal";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
@@ -152,9 +153,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "updateSecretReferenceEnvAndPath"
     | "findOne"
   >;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany" | "update">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "updateById">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
@@ -185,6 +187,7 @@ export const secretApprovalRequestServiceFactory = ({
   userDAL,
   projectEnvDAL,
   secretApprovalPolicyDAL,
+  secretRotationV2DAL,
   kmsService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
@@ -741,8 +744,22 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
+      const moveRotationCreationCommits = secretCreationCommits.filter(
+        (el) => (el.internalMetadata as TInternalMetadata)?.type === InternalMetadataType.MoveRotation
+      );
+      const moveRotationDeletionCommits = secretDeletionCommits.filter(
+        (el) => (el.internalMetadata as TInternalMetadata)?.type === InternalMetadataType.MoveRotation
+      );
+      const standardDeletionCommits = secretDeletionCommits.filter(
+        (el) => (el.internalMetadata as TInternalMetadata)?.type !== InternalMetadataType.MoveRotation
+      );
+      // MoveRotation commits represent existing rotation-backed secrets being relocated, not
+      // fresh inserts — keep them out of the bulk insert so we don't duplicate the source rows.
+      const insertableCreationCommits = secretCreationCommits.filter(
+        (el) => (el.internalMetadata as TInternalMetadata)?.type !== InternalMetadataType.MoveRotation
+      );
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
-        const newSecrets = secretCreationCommits.length
+        const newSecrets = insertableCreationCommits.length
           ? await fnSecretV2BridgeBulkInsert({
               tx,
               folderId,
@@ -751,7 +768,7 @@ export const secretApprovalRequestServiceFactory = ({
                 type: actor
               },
               orgId: actorOrgId,
-              inputSecrets: secretCreationCommits.map((el) => {
+              inputSecrets: insertableCreationCommits.map((el) => {
                 return {
                   tagIds: el?.tags.map(({ id }) => id),
                   version: 1,
@@ -836,6 +853,94 @@ export const secretApprovalRequestServiceFactory = ({
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
               tx
             });
+          }
+        }
+
+        // case: move rotations. Destination approvals store this as a Create commit on the
+        // destination folder; source approvals store it as a Delete commit on the source folder.
+        // Both commit shapes relocate the existing rotation-backed secrets instead of inserting
+        // or deleting rows.
+        const moveRotationCommits = moveRotationCreationCommits.concat(moveRotationDeletionCommits);
+        const sourceApprovedMovedSecrets: Awaited<ReturnType<typeof secretV2BridgeDAL.updateById>>[] = [];
+
+        if (moveRotationCommits.length > 0) {
+          const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+
+          const rotationCommitsByRotationId = groupBy(moveRotationCommits, (el) => {
+            const m = el.internalMetadata as TInternalMetadata;
+            if (m.type !== InternalMetadataType.MoveRotation) return "";
+            return m.payload.rotationId;
+          });
+
+          for await (const [rotationId, rotationCommits] of Object.entries(rotationCommitsByRotationId)) {
+            const firstMeta = rotationCommits[0].internalMetadata as TInternalMetadata;
+            // eslint-disable-next-line no-continue
+            if (firstMeta.type !== InternalMetadataType.MoveRotation) continue;
+            const {
+              sourceFolderId,
+              sourceEnvironment,
+              sourceSecretPath,
+              destinationFolderId = folderId,
+              destinationEnvironment = environment,
+              destinationSecretPath: configuredDestinationSecretPath,
+              newConnectionId
+            } = firstMeta.payload;
+            let destinationSecretPath = configuredDestinationSecretPath;
+            if (!destinationSecretPath) {
+              const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [destinationFolderId], tx);
+              destinationSecretPath = folderPaths?.[0]?.path || "/";
+            }
+
+            await secretRotationV2DAL.updateById(
+              rotationId,
+              {
+                folderId: destinationFolderId,
+                ...(newConnectionId ? { connectionId: newConnectionId } : {})
+              },
+              tx
+            );
+
+            for await (const commit of rotationCommits) {
+              // eslint-disable-next-line no-continue
+              if (!commit.secretId) continue;
+              const movedSecret = await secretV2BridgeDAL.updateById(
+                commit.secretId,
+                { folderId: destinationFolderId },
+                tx
+              );
+              await secretVersionV2BridgeDAL.update(
+                { secretId: commit.secretId },
+                { folderId: destinationFolderId },
+                tx
+              );
+              if (commit.op === SecretOperations.Delete) {
+                sourceApprovedMovedSecrets.push(movedSecret);
+              }
+
+              await fnUpdateMovedSecretReferences({
+                orgId: actorOrgId,
+                projectId,
+                sourceEnvironment,
+                sourceSecretPath,
+                sourceFolderId,
+                destinationEnvironment,
+                destinationSecretPath,
+                destinationFolderId,
+                secretKey: commit.key,
+                secretId: commit.secretId,
+                secretDAL: secretV2BridgeDAL,
+                secretVersionDAL: secretVersionV2BridgeDAL,
+                folderCommitService,
+                folderDAL,
+                secretQueueService,
+                encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
+                decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
+                tx
+              });
+            }
           }
         }
 
@@ -931,7 +1036,7 @@ export const secretApprovalRequestServiceFactory = ({
           }
         }
 
-        const deletedSecret = secretDeletionCommits.length
+        const deletedSecret = standardDeletionCommits.length
           ? await fnSecretV2BridgeBulkDelete({
               projectId,
               folderId,
@@ -940,7 +1045,7 @@ export const secretApprovalRequestServiceFactory = ({
               actorType: actor,
               secretDAL: secretV2BridgeDAL,
               secretQueueService,
-              inputSecrets: secretDeletionCommits.map(({ key }) => ({ secretKey: key, type: SecretType.Shared })),
+              inputSecrets: standardDeletionCommits.map(({ key }) => ({ secretKey: key, type: SecretType.Shared })),
               folderCommitService,
               secretVersionDAL: secretVersionV2BridgeDAL
             })
@@ -958,7 +1063,11 @@ export const secretApprovalRequestServiceFactory = ({
         );
         await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
-          secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
+          secrets: {
+            created: newSecrets,
+            updated: updatedSecrets,
+            deleted: deletedSecret.concat(sourceApprovedMovedSecrets)
+          },
           approval: updatedSecretApproval
         };
       });

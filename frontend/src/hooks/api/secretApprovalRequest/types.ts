@@ -16,6 +16,38 @@ export enum CommitType {
   ADD = "add"
 }
 
+export enum InternalMetadataType {
+  MoveSecret = "move-secret",
+  MoveRotation = "move-rotation"
+}
+
+export type TInternalMetadataMoveSecret = {
+  type: InternalMetadataType.MoveSecret;
+  payload: {
+    source: {
+      environment: string;
+      secretPath: string;
+    };
+  };
+};
+
+export type TInternalMetadataMoveRotation = {
+  type: InternalMetadataType.MoveRotation;
+  payload: {
+    rotationId: string;
+    secretKey: string;
+    sourceFolderId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationFolderId?: string;
+    destinationEnvironment?: string;
+    destinationSecretPath?: string;
+    newConnectionId?: string;
+  };
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret | TInternalMetadataMoveRotation;
+
 export type TSecretApprovalSecChangeData = {
   id: string;
   secretKey: string;
@@ -103,6 +135,7 @@ export type TSecretApprovalRequest = {
     secretVersion: SecretV3Raw;
     // if there is no new version its for Delete
     op: CommitType;
+    internalMetadata?: TInternalMetadata | null;
   } & TSecretApprovalSecChangeData)[];
 };
 

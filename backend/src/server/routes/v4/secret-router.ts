@@ -924,25 +924,27 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
       }),
       response: {
-        200: z.object({
-          isSourceUpdated: z.boolean(),
-          isDestinationUpdated: z.boolean()
-        })
+        200: z.union([
+          z.object({
+            isSourceUpdated: z.boolean(),
+            isDestinationUpdated: z.boolean()
+          }),
+          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret approval policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, isSourceUpdated, isDestinationUpdated, secretIds } =
-        await server.services.secret.moveSecretRotations({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          ...req.body
-        });
+      const result = await server.services.secret.moveSecretRotations({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
 
       await server.services.auditLog.createAuditLog({
-        projectId,
+        projectId: result.projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.MOVE_SECRET_ROTATIONS,
@@ -951,15 +953,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             sourceSecretPath: req.body.sourceSecretPath,
             destinationEnvironment: req.body.destinationEnvironment,
             destinationSecretPath: req.body.destinationSecretPath,
-            secretIds,
+            secretIds: result.secretIds,
             rotationConnectionOverrides: req.body.rotationConnectionOverrides
           }
         }
       });
 
+      if (result.type === SecretProtectionType.Approval) {
+        return { approval: result.approval };
+      }
+
       return {
-        isSourceUpdated,
-        isDestinationUpdated
+        isSourceUpdated: result.isSourceUpdated,
+        isDestinationUpdated: result.isDestinationUpdated
       };
     }
   });

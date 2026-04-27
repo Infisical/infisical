@@ -101,7 +101,8 @@ export type TSecretApprovalDetailsDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export enum InternalMetadataType {
-  MoveSecret = "move-secret"
+  MoveSecret = "move-secret",
+  MoveRotation = "move-rotation"
 }
 
 export type TInternalMetadataMoveSecret = {
@@ -114,4 +115,19 @@ export type TInternalMetadataMoveSecret = {
   };
 };
 
-export type TInternalMetadata = TInternalMetadataMoveSecret;
+export type TInternalMetadataMoveRotation = {
+  type: InternalMetadataType.MoveRotation;
+  payload: {
+    rotationId: string;
+    secretKey: string;
+    sourceFolderId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationFolderId?: string;
+    destinationEnvironment?: string;
+    destinationSecretPath?: string;
+    newConnectionId?: string;
+  };
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret | TInternalMetadataMoveRotation;

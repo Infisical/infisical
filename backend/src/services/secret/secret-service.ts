@@ -33,6 +33,10 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import {
+  InternalMetadataType,
+  TInternalMetadataMoveRotation
+} from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
@@ -147,11 +151,11 @@ type TSecretServiceFactoryDep = {
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
   secretApprovalRequestSecretDAL: Pick<
     TSecretApprovalRequestSecretDALFactory,
-    "insertMany" | "insertApprovalSecretTags"
+    "insertMany" | "insertApprovalSecretTags" | "insertV2Bridge"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
-  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne" | "insertMany">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne" | "insertMany" | "findLatestVersionMany" | "update">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "find"
@@ -3713,6 +3717,89 @@ export const secretServiceFactory = ({
       }
     }
 
+    // Approval-policy gate: if destination or source folder has an approval policy and the
+    // actor is a user, create an approval request rather than executing the move directly.
+    // The merge handler in secret-approval-request-service detects MoveRotation commits and
+    // performs the rotation+secrets folderId update — preserving rotation linkage. Destination
+    // policy takes precedence; if only source has a policy, the request is created there.
+    if (actor === ActorType.USER) {
+      const destinationPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        destinationEnvironment,
+        destinationFolder.path
+      );
+      const sourcePolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        project.id,
+        sourceEnvironment,
+        sourceFolder.path
+      );
+      const approvalPolicy = destinationPolicy ?? sourcePolicy;
+
+      if (approvalPolicy) {
+        const isDestinationApproval = Boolean(destinationPolicy);
+        const approvalFolderId = destinationPolicy ? destinationFolder.id : sourceFolder.id;
+        const approval = await secretApprovalRequestDAL.transaction(async (tx) => {
+          const approvalRequestDoc = await secretApprovalRequestDAL.create(
+            {
+              folderId: approvalFolderId,
+              slug: alphaNumericNanoId(),
+              policyId: approvalPolicy.id,
+              status: "open",
+              hasMerged: false,
+              committerUserId: actorId
+            },
+            tx
+          );
+
+          const latestSecretVersions = await secretVersionV2DAL.findLatestVersionMany(
+            sourceFolder.id,
+            sourceFolderInventory.map((s) => s.id),
+            tx
+          );
+
+          const commits = sourceFolderInventory.map((secret) => {
+            const { rotationId } = secret;
+            const meta: TInternalMetadataMoveRotation = {
+              type: InternalMetadataType.MoveRotation,
+              payload: {
+                rotationId,
+                secretKey: secret.key,
+                sourceFolderId: sourceFolder.id,
+                sourceEnvironment,
+                sourceSecretPath: sourceFolder.path,
+                destinationFolderId: destinationFolder.id,
+                destinationEnvironment,
+                destinationSecretPath: destinationFolder.path,
+                newConnectionId: isCrossEnvMove ? effectiveConnectionIdByRotationId.get(rotationId) : undefined
+              }
+            };
+
+            return {
+              op: isDestinationApproval ? SecretOperations.Create : SecretOperations.Delete,
+              requestId: approvalRequestDoc.id,
+              key: secret.key,
+              encryptedValue: secret.encryptedValue,
+              encryptedComment: secret.encryptedComment,
+              skipMultilineEncoding: secret.skipMultilineEncoding,
+              secretId: secret.id,
+              secretVersion: latestSecretVersions[secret.id]?.id,
+              internalMetadata: meta
+            };
+          });
+
+          await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
+          return approvalRequestDoc;
+        });
+
+        return {
+          type: SecretProtectionType.Approval as const,
+          approval,
+          projectId: project.id,
+          secretIds: Array.from(rotatedSecretIdsBeingMoved).sort()
+        };
+      }
+    }
+
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
@@ -3736,6 +3823,7 @@ export const secretServiceFactory = ({
 
       for await (const rotatedSecretId of rotatedSecretIdsBeingMoved) {
         await secretV2BridgeDAL.updateById(rotatedSecretId, { folderId: destinationFolder.id }, tx);
+        await secretVersionV2DAL.update({ secretId: rotatedSecretId }, { folderId: destinationFolder.id }, tx);
       }
 
       // Keep secret references in lock-step with the move: any other secret that referenced a
@@ -3799,6 +3887,7 @@ export const secretServiceFactory = ({
     ]);
 
     return {
+      type: SecretProtectionType.Direct as const,
       projectId: project.id,
       isSourceUpdated: true,
       isDestinationUpdated: true,

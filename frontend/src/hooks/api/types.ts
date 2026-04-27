@@ -23,10 +23,13 @@ export type {
 export type { TSecretApprovalPolicy } from "./secretApproval/types";
 export type {
   TGetSecretApprovalRequestDetails,
+  TInternalMetadata,
+  TInternalMetadataMoveRotation,
+  TInternalMetadataMoveSecret,
   TSecretApprovalRequest,
   TSecretApprovalSecChange
 } from "./secretApprovalRequest/types";
-export { ApprovalStatus, CommitType } from "./secretApprovalRequest/types";
+export { ApprovalStatus, CommitType, InternalMetadataType } from "./secretApprovalRequest/types";
 export type { TSecretFolder } from "./secretFolders/types";
 export type { TImportedSecrets, TSecretImport } from "./secretImports/types";
 export * from "./secrets/types";
