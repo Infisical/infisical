@@ -149,7 +149,7 @@ const PageContent = () => {
       return;
     }
 
-    const { requiresApproval } = await checkPolicyMatch({
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
@@ -162,7 +162,8 @@ const PageContent = () => {
       handlePopUpOpen("requestAccount", {
         resourceName: account.resource?.name ?? "",
         accountName: account.name,
-        accountAccessed: true
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
@@ -353,6 +354,7 @@ const PageContent = () => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamDeleteAccountModal
