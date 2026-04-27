@@ -101,12 +101,12 @@ export const useDeleteOrgIdentity = () => {
       );
       return data;
     },
-    onSuccess: (_, { orgId }) => {
+    onSuccess: (_, { orgId, identityId }) => {
       queryClient.invalidateQueries({
         queryKey: organizationKeys.getOrgIdentityMemberships(orgId)
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
-      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(orgId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: orgIdentityQuery.allKey() });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.all()
