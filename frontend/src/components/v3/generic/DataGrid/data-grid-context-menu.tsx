@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { ColumnDef, TableMeta } from "@tanstack/react-table";
-import { CircleOffIcon, EraserIcon } from "lucide-react";
+import { CircleOffIcon, CopyIcon, EraserIcon, ScissorsIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -132,6 +132,14 @@ function ContextMenuImpl<TData>({
     [propsRef]
   );
 
+  const onCopy = React.useCallback(() => {
+    propsRef.current.onCellsCopy?.();
+  }, [propsRef]);
+
+  const onCut = React.useCallback(() => {
+    propsRef.current.onCellsCut?.();
+  }, [propsRef]);
+
   const onClear = React.useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const { selectionState, columns, onDataUpdate } = propsRef.current;
@@ -197,6 +205,14 @@ function ContextMenuImpl<TData>({
         className="min-w-[140px] p-0.5 [&_[role=menuitem]]:gap-1.5 [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-xs [&_svg]:size-3"
         onCloseAutoFocus={onCloseAutoFocus}
       >
+        <DropdownMenuItem onSelect={onCopy}>
+          <CopyIcon />
+          Copy
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onCut} isDisabled={tableMeta?.readOnly}>
+          <ScissorsIcon />
+          Cut
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
           <EraserIcon />
           Clear
