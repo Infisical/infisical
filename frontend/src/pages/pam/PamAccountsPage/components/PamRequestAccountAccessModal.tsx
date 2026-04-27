@@ -56,6 +56,16 @@ const buildFormSchema = (max: string) =>
       .refine(
         (value) => {
           try {
+            return ms(value) >= ms("30s");
+          } catch {
+            return true;
+          }
+        },
+        { message: "Access duration must be at least 30s" }
+      )
+      .refine(
+        (value) => {
+          try {
             return ms(value) <= ms(max);
           } catch {
             return true;
