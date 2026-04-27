@@ -97,13 +97,15 @@ export const auditLogQueueServiceFactory = async ({
         return;
       }
 
-      if (!orgId) {
+      if (projectId) {
         // TODO(akhilmhdh): use caching here in dal to avoid db calls
-        project = await projectDAL.findById(projectId!);
-        orgId = project.orgId;
+        project = await projectDAL.findById(projectId);
+        if (!orgId) {
+          orgId = project.orgId;
+        }
       }
 
-      const plan = await licenseService.getPlan(orgId);
+      const plan = await licenseService.getPlan(orgId!);
 
       // skip inserting if audit log retention is 0 meaning its not supported
       if (plan.auditLogsRetentionDays) {
@@ -155,7 +157,10 @@ export const auditLogQueueServiceFactory = async ({
         }
 
         if (getConfig().AUDIT_LOG_STREAMS_ENABLED) {
-          await auditLogStreamService.streamLog(orgId, auditLog);
+          await auditLogStreamService.streamLog(orgId!, {
+            ...auditLog,
+            projectName: project?.name ?? null
+          });
         }
       }
     } catch (error) {
