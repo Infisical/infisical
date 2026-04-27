@@ -224,24 +224,28 @@ function ContextMenuImpl<TData>({
           <CopyIcon />
           Copy
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onCut} isDisabled={tableMeta?.readOnly}>
-          <ScissorsIcon />
-          Cut
-        </DropdownMenuItem>
-        {tableMeta?.enablePaste && (
-          <DropdownMenuItem onSelect={onPaste} isDisabled={tableMeta?.readOnly}>
-            <ClipboardPasteIcon />
-            Paste
-          </DropdownMenuItem>
+        {!tableMeta?.readOnly && (
+          <>
+            <DropdownMenuItem onSelect={onCut}>
+              <ScissorsIcon />
+              Cut
+            </DropdownMenuItem>
+            {tableMeta?.enablePaste && (
+              <DropdownMenuItem onSelect={onPaste}>
+                <ClipboardPasteIcon />
+                Paste
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={onClear}>
+              <EraserIcon />
+              Clear
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSetNull}>
+              <CircleOffIcon />
+              Set NULL
+            </DropdownMenuItem>
+          </>
         )}
-        <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
-          <EraserIcon />
-          Clear
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSetNull} isDisabled={tableMeta?.readOnly}>
-          <CircleOffIcon />
-          Set NULL
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
