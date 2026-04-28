@@ -17,7 +17,9 @@ on:
         default: false
   push:
     tags:
+      # Generate changelogs for all stable releases
       - "v*.*.*"
+      # Exclude nightly tags to prevent them from being treated as stable releases
       - "!v*.*.*-nightly-*"
 
 jobs:

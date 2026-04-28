@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # inspired by https://www.photoroom.com/inside-photoroom/how-we-automated-our-changelog-thanks-to-chatgpt
 import os
 import requests
@@ -34,27 +35,18 @@ def set_multiline_output(name, value):
         print(value, file=fh)
         print(delimiter, file=fh)
 
-def post_changelog_to_slack(changelog, tag):
-    slack_payload = {
-        "text": "Hey team, it's changelog time! :wave:",
-        "attachments": [
-            {
-                "color": SLACK_MSG_COLOR,
-                "title": f"🗓️Infisical Changelog - {tag}",
-                "text": changelog,
-            }
-        ],
-    }
-
-    response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
-
-    if response.status_code != 200:
-        raise Exception("Failed to post changelog to Slack.")
-
 def find_previous_release_tag(release_tag:str):
-    # Find the immediate previous tag (any prefix)
-    previous_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0", f"{release_tag}^"]).decode("utf-8").strip()
-    return previous_tag
+    # Find the previous stable release tag, excluding nightly tags
+    all_tags = subprocess.check_output(
+        ["git", "tag", "-l", "--merged", release_tag, "--sort=-version:refname"]
+    ).decode("utf-8").strip().split('\n')
+
+    for tag in all_tags:
+        if tag == release_tag or "nightly" in tag or not tag:
+            continue
+        return tag
+
+    raise Exception(f"No previous stable release tag found for {release_tag}. Ensure at least one prior stable release exists.")
 
 def get_tag_creation_date(tag_name):
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/git/refs/tags/{tag_name}"

@@ -116,6 +116,7 @@ jobs:
           prerelease: true
           make_latest: false
 
+      # Fallback to GitHub's auto-generated notes if changelog generation fails
       - name: Create GitHub Release (fallback)
         if: steps.changelog.outcome != 'success' || !steps.changelog.outputs.changelog
         uses: softprops/action-gh-release@v2
