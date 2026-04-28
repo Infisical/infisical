@@ -624,7 +624,7 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 			"type":        "shared",
 		}).
 		SetResult(&resp).
-		Post(fmt.Sprintf("/api/v4/secrets/raw/%s", key))
+		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
 	if err != nil {
 		t.Fatalf("infra.CreateSecret: request failed: %v", err)
 	}
@@ -656,7 +656,7 @@ func (n *NodeJSService) CreateSecretWithTags(t *testing.T, projectID, environmen
 			"tagIds":      tagIDs,
 		}).
 		SetResult(&resp).
-		Post(fmt.Sprintf("/api/v4/secrets/raw/%s", key))
+		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
 	if err != nil {
 		t.Fatalf("infra.CreateSecretWithTags: request failed: %v", err)
 	}
@@ -804,7 +804,7 @@ func (n *NodeJSService) CreateTag(t *testing.T, projectID, slug, name, color str
 	}
 
 	return &TagSeed{
-		ID:   jsonStr(resp, "workspaceTag.id"),
+		ID:   jsonStr(resp, "tag.id"),
 		Slug: slug,
 		Name: name,
 	}

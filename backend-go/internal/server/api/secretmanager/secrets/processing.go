@@ -14,7 +14,7 @@ import (
 	"github.com/infisical/api/internal/services/secretmanager/secrets"
 )
 
-const secretValueHiddenMask = "<hidden>"
+const secretValueHiddenMask = "<hidden-by-infisical>"
 
 // processedSecret holds a secret with its computed metadata.
 type processedSecret struct {

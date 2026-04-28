@@ -85,11 +85,11 @@ func TestIdentityMember_CanReadAllSecrets(t *testing.T) {
 	assert.Equal(t, "member-value", result.Secrets[0].SecretValue)
 }
 
-func TestIdentityViewer_SecretValuesHidden(t *testing.T) {
+func TestIdentityViewer_CanReadSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "viewer-read-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VIEWER_SECRET", "hidden-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VIEWER_SECRET", "viewer-visible-value")
 
 	identity := nodejs.CreateIdentity(t, "viewer-secrets-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "viewer")
@@ -104,8 +104,9 @@ func TestIdentityViewer_SecretValuesHidden(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
 
-	assert.True(t, result.Secrets[0].SecretValueHidden, "viewer should have values hidden")
-	assert.Empty(t, result.Secrets[0].SecretValue, "viewer should not see secret value")
+	// Viewer role has ReadValue permission, so they CAN see secret values
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer should see secret values")
+	assert.Equal(t, "viewer-visible-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityNoAccess_EmptyResult(t *testing.T) {
@@ -173,11 +174,11 @@ func TestUserAdmin_CanReadSecrets(t *testing.T) {
 	assert.Equal(t, "admin-value", result.Secrets[0].SecretValue)
 }
 
-func TestUserViewer_SecretValuesHidden(t *testing.T) {
+func TestUserViewer_CanReadSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "user-viewer-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_VIEWER_SECRET", "hidden-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_VIEWER_SECRET", "user-viewer-value")
 
 	user := nodejs.InviteAndCreateUser(t, "user-viewer-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
@@ -191,7 +192,9 @@ func TestUserViewer_SecretValuesHidden(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.True(t, result.Secrets[0].SecretValueHidden, "viewer should have values hidden")
+	// Viewer role has ReadValue permission, so they CAN see secret values
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer should see secret values")
+	assert.Equal(t, "user-viewer-value", result.Secrets[0].SecretValue)
 }
 
 // =============================================================================
@@ -202,7 +205,7 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "env-scoped-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
@@ -331,11 +334,11 @@ func TestGroupAdmin_UserInheritsAccess(t *testing.T) {
 	assert.False(t, result.Secrets[0].SecretValueHidden)
 }
 
-func TestGroupViewer_UserInheritsReadOnly(t *testing.T) {
+func TestGroupViewer_UserInheritsReadAccess(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "group-viewer-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_VIEWER_SECRET", "viewer-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_VIEWER_SECRET", "group-viewer-value")
 
 	group := nodejs.CreateGroup(t, "secrets-viewer-group")
 	user := nodejs.InviteAndCreateUser(t, "group-viewer@test.local")
@@ -351,14 +354,16 @@ func TestGroupViewer_UserInheritsReadOnly(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	assert.True(t, result.Secrets[0].SecretValueHidden, "group viewer should have values hidden")
+	// Viewer role has ReadValue permission, so they CAN see secret values
+	assert.False(t, result.Secrets[0].SecretValueHidden, "group viewer should see secret values")
+	assert.Equal(t, "group-viewer-value", result.Secrets[0].SecretValue)
 }
 
 func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "group-custom-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
@@ -408,7 +413,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "addl-priv-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
@@ -451,7 +456,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "multi-addl-priv-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
@@ -600,8 +605,9 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
-	// Permanent viewer can see secrets but values are hidden
-	assert.True(t, result.Secrets[0].SecretValueHidden, "viewer permissions should hide values")
+	// Permanent viewer has ReadValue permission, so they CAN see secret values
+	assert.False(t, result.Secrets[0].SecretValueHidden, "viewer role should allow reading values")
+	assert.Equal(t, "mixed-value", result.Secrets[0].SecretValue)
 }
 
 func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
@@ -680,7 +686,7 @@ func TestViewSecretValue_False_HidesValues(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
 	assert.True(t, result.Secrets[0].SecretValueHidden, "value should be hidden when viewSecretValue=false")
-	assert.Empty(t, result.Secrets[0].SecretValue, "value should be empty when viewSecretValue=false")
+	assert.Equal(t, "<hidden-by-infisical>", result.Secrets[0].SecretValue, "value should be masked when viewSecretValue=false")
 }
 
 func TestViewSecretValue_True_ShowsValues(t *testing.T) {

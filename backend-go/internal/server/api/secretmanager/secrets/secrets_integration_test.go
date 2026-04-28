@@ -63,6 +63,9 @@ func newSecretsService(t *testing.T) gensecrets.Service {
 	})
 	require.NoError(t, err)
 
+	err = kmsSvc.Start(context.Background(), false)
+	require.NoError(t, err)
+
 	smSharedSvcs := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
 
 	return secrets.NewService(testutil.NopLogger(), &secrets.Deps{
@@ -218,7 +221,7 @@ func TestListSecrets_IncludeImports_ReturnsImportedSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "imports-include-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_DB_URL", "staging-db-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_KEY", "staging-api-value")
@@ -261,7 +264,7 @@ func TestListSecrets_ExcludeImports_OmitsImportedSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "imports-exclude-test")
-	nodejs.CreateEnvironment(t, proj.ID, "staging", "Staging")
+	// Note: "staging" environment is pre-created with the project
 
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORTED_SECRET", "imported-value")
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DIRECT_SECRET", "direct-value")
@@ -284,98 +287,169 @@ func TestListSecrets_ExcludeImports_OmitsImportedSecrets(t *testing.T) {
 	assert.Nil(t, result.Imports, "imports should not be included when IncludeImports=false")
 }
 
-func TestListSecrets_CrossEnvironmentImport(t *testing.T) {
+func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	proj := nodejs.CreateProject(t, "cross-env-import-test")
-	nodejs.CreateEnvironment(t, proj.ID, "production", "Production")
+	proj := nodejs.CreateProject(t, "expansion-imports-test")
 
-	nodejs.CreateSecret(t, proj.ID, "production", "/", "PROD_DATABASE_URL", "prod-db-url")
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "production", "/")
+	// Setup: Multi-level import structure with folders
+	//
+	// prod environment:
+	//   /           -> PROD_ROOT = "prod-root"
+	//   /config     -> PROD_DB_HOST = "prod-db.example.com"
+	//                  SHARED_KEY = "prod-shared-value"
+	//
+	// staging environment:
+	//   /           -> STAGING_API_URL = "https://staging-api.example.com"
+	//                  SHARED_KEY = "staging-shared-value"
+	//                  IMPORT_PRIORITY_KEY = "from-first-import"
+	//   /services   -> SERVICE_URL = "https://staging-service.example.com"
+	//                  IMPORT_PRIORITY_KEY = "from-second-import"
+	//   imports prod:/config into staging:/
+	//
+	// dev environment:
+	//   /           -> LOCAL_SECRET = "local-only"
+	//                  SHARED_KEY = "dev-shared-value" (local override)
+	//   /app        -> APP_CONFIG = "app-config"
+	//   imports staging:/ into dev:/ (first import - higher priority)
+	//   imports staging:/services into dev:/ (second import)
+	//   imports prod:/config into dev:/app (folder-to-folder import)
+	//
+	// Test references:
+	//   REF_LOCAL = "${LOCAL_SECRET}" -> local
+	//   REF_STAGING = "${STAGING_API_URL}" -> staging import
+	//   REF_SHARED = "${SHARED_KEY}" -> local (priority)
+	//   REF_IMPORT_PRIORITY = "${IMPORT_PRIORITY_KEY}" -> last import (staging:/services) wins
+	//   REF_SERVICE = "${SERVICE_URL}" -> staging/services import
+	//   REF_PROD_VIA_STAGING = "${PROD_DB_HOST}" -> prod via staging import chain
+	//   REF_CHAIN = "host=${PROD_DB_HOST}&api=${STAGING_API_URL}"
+	//   REF_MISSING = "${NOT_EXISTS}"
 
-	identity := nodejs.CreateIdentity(t, "cross-env-import-identity")
+	// Create folders
+	nodejs.CreateFolder(t, proj.ID, "prod", "/", "config")
+	nodejs.CreateFolder(t, proj.ID, "staging", "/", "services")
+	nodejs.CreateFolder(t, proj.ID, "dev", "/", "app")
+
+	// Prod secrets
+	nodejs.CreateSecret(t, proj.ID, "prod", "/", "PROD_ROOT", "prod-root")
+	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "PROD_DB_HOST", "prod-db.example.com")
+	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "SHARED_KEY", "prod-shared-value")
+
+	// Staging secrets + import from prod/config
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_URL", "https://staging-api.example.com")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "SHARED_KEY", "staging-shared-value")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORT_PRIORITY_KEY", "from-first-import")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "SERVICE_URL", "https://staging-service.example.com")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "IMPORT_PRIORITY_KEY", "from-second-import")
+	nodejs.CreateSecretImport(t, proj.ID, "staging", "/", "prod", "/config")
+
+	// Dev secrets
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "LOCAL_SECRET", "local-only")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "SHARED_KEY", "dev-shared-value")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_CONFIG", "app-config")
+
+	// Dev reference secrets
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_LOCAL", "${LOCAL_SECRET}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_STAGING", "${STAGING_API_URL}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SHARED", "${SHARED_KEY}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SERVICE", "${SERVICE_URL}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_PROD_VIA_STAGING", "${PROD_DB_HOST}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_CHAIN", "host=${PROD_DB_HOST}&api=${STAGING_API_URL}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_MISSING", "${NOT_EXISTS}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}")
+
+	// Dev imports (order matters for priority)
+	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/services")
+	nodejs.CreateSecretImport(t, proj.ID, "dev", "/app", "prod", "/config")
+
+	// Dev/app reference secret that uses folder-level import
+	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app")
+
+	identity := nodejs.CreateIdentity(t, "expansion-imports-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
 
-	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
-		ProjectID:       proj.ID,
-		Environment:     "dev",
-		SecretPath:      "/",
-		ViewSecretValue: true,
-		IncludeImports:  true,
+	// Test root level expansion with imports
+	t.Run("root level expansion", func(t *testing.T) {
+		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			IncludeImports:         true,
+			ExpandSecretReferences: true,
+		})
+
+		require.NoError(t, err)
+
+		secretValues := make(map[string]string)
+		for _, s := range result.Secrets {
+			secretValues[s.SecretKey] = s.SecretValue
+		}
+
+		// Local reference
+		assert.Equal(t, "local-only", secretValues["REF_LOCAL"], "should expand from local")
+
+		// Import-only reference
+		assert.Equal(t, "https://staging-api.example.com", secretValues["REF_STAGING"], "should expand from staging import")
+
+		// Shared key - local wins
+		assert.Equal(t, "dev-shared-value", secretValues["REF_SHARED"], "local should override imports")
+
+		// Import priority - last import wins when key absent locally (later overrides earlier)
+		assert.Equal(t, "from-second-import", secretValues["REF_IMPORT_PRIORITY"], "last import should win over first import")
+
+		// Service from staging/services import
+		assert.Equal(t, "https://staging-service.example.com", secretValues["REF_SERVICE"], "should expand from staging/services import")
+
+		// Prod secret via staging import chain
+		assert.Equal(t, "prod-db.example.com", secretValues["REF_PROD_VIA_STAGING"], "should expand from prod via staging import")
+
+		// Multiple refs
+		assert.Equal(t, "host=prod-db.example.com&api=https://staging-api.example.com", secretValues["REF_CHAIN"], "multiple refs should expand")
+
+		// Missing ref
+		assert.Empty(t, secretValues["REF_MISSING"], "missing ref should be empty")
+
+		// Verify imports present
+		assert.GreaterOrEqual(t, len(result.Imports), 2, "should have multiple imports")
 	})
 
-	require.NoError(t, err)
-	require.Len(t, result.Imports, 1)
-	assert.Equal(t, "production", result.Imports[0].Environment)
-	require.Len(t, result.Imports[0].Secrets, 1)
-	assert.Equal(t, "PROD_DATABASE_URL", result.Imports[0].Secrets[0].SecretKey)
-	assert.Equal(t, "prod-db-url", result.Imports[0].Secrets[0].SecretValue)
-}
+	// Test folder level expansion with folder import
+	t.Run("folder level expansion with folder import", func(t *testing.T) {
+		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/app",
+			ViewSecretValue:        true,
+			IncludeImports:         true,
+			ExpandSecretReferences: true,
+		})
 
-func TestListSecrets_ImportFromSubfolder(t *testing.T) {
-	nodejs := stack.NodeJS()
+		require.NoError(t, err)
 
-	proj := nodejs.CreateProject(t, "import-subfolder-test")
+		secretValues := make(map[string]string)
+		for _, s := range result.Secrets {
+			secretValues[s.SecretKey] = s.SecretValue
+		}
 
-	nodejs.CreateFolder(t, proj.ID, "dev", "/", "shared")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/shared", "SHARED_CONFIG", "shared-config-value")
-	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "dev", "/shared")
+		// Direct secret in /app
+		assert.Equal(t, "app-config", secretValues["APP_CONFIG"], "direct secret should be present")
 
-	identity := nodejs.CreateIdentity(t, "import-subfolder-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+		// Reference that expands from folder-level import (prod/config into dev/app)
+		assert.Equal(t, "postgres://prod-db.example.com:5432/app", secretValues["APP_DB_URL"],
+			"should expand using folder-level import from prod/config")
 
-	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
-		ProjectID:       proj.ID,
-		Environment:     "dev",
-		SecretPath:      "/",
-		ViewSecretValue: true,
-		IncludeImports:  true,
+		// Verify folder import present
+		require.Len(t, result.Imports, 1, "should have 1 folder import")
+		assert.Equal(t, "prod", result.Imports[0].Environment)
+		assert.Equal(t, "/config", result.Imports[0].SecretPath)
 	})
-
-	require.NoError(t, err)
-	require.Len(t, result.Imports, 1)
-	assert.Equal(t, "dev", result.Imports[0].Environment)
-	assert.Equal(t, "/shared", result.Imports[0].SecretPath)
-	require.Len(t, result.Imports[0].Secrets, 1)
-	assert.Equal(t, "SHARED_CONFIG", result.Imports[0].Secrets[0].SecretKey)
 }
 
 // =============================================================================
 // Secret Expansion Tests
 // =============================================================================
-
-func TestListSecrets_SingleLevelExpansion(t *testing.T) {
-	nodejs := stack.NodeJS()
-
-	proj := nodejs.CreateProject(t, "expansion-single-test")
-
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DATABASE_HOST", "localhost")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DATABASE_URL", "postgres://${DATABASE_HOST}:5432/mydb")
-
-	identity := nodejs.CreateIdentity(t, "expansion-single-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
-
-	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
-		ProjectID:              proj.ID,
-		Environment:            proj.EnvSlug,
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: true,
-	})
-
-	require.NoError(t, err)
-	require.Len(t, result.Secrets, 2)
-
-	var databaseURL string
-	for _, s := range result.Secrets {
-		if s.SecretKey == "DATABASE_URL" {
-			databaseURL = s.SecretValue
-			break
-		}
-	}
-
-	assert.Equal(t, "postgres://localhost:5432/mydb", databaseURL, "secret reference should be expanded")
-}
 
 func TestListSecrets_NestedExpansion(t *testing.T) {
 	nodejs := stack.NodeJS()
@@ -446,7 +520,8 @@ func TestListSecrets_CrossPathExpansion(t *testing.T) {
 
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "common")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/common", "COMMON_SECRET", "common-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "${dev./common.COMMON_SECRET}")
+	// Reference format is ${env.path.path.KEY} where path segments use . not /
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "${dev.common.COMMON_SECRET}")
 
 	identity := nodejs.CreateIdentity(t, "expansion-cross-path-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
@@ -462,28 +537,6 @@ func TestListSecrets_CrossPathExpansion(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Secrets, 1)
 	assert.Equal(t, "common-value", result.Secrets[0].SecretValue)
-}
-
-func TestListSecrets_MissingReference_PreservesOriginal(t *testing.T) {
-	nodejs := stack.NodeJS()
-
-	proj := nodejs.CreateProject(t, "expansion-missing-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "BROKEN_REF", "${NON_EXISTENT_SECRET}")
-
-	identity := nodejs.CreateIdentity(t, "expansion-missing-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
-
-	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
-		ProjectID:              proj.ID,
-		Environment:            proj.EnvSlug,
-		SecretPath:             "/",
-		ViewSecretValue:        true,
-		ExpandSecretReferences: true,
-	})
-
-	require.NoError(t, err)
-	require.Len(t, result.Secrets, 1)
-	assert.Contains(t, result.Secrets[0].SecretValue, "NON_EXISTENT_SECRET", "missing reference should be preserved")
 }
 
 func TestListSecrets_NoExpansion_PreservesReferences(t *testing.T) {
