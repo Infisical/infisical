@@ -7,13 +7,13 @@ import "github.com/golang-jwt/jwt/v5"
 type UserJWTClaims struct {
 	jwt.RegisteredClaims
 	AuthTokenType     AuthTokenType `json:"authTokenType"`
-	AuthMethod        string `json:"authMethod,omitempty"`
-	UserID            string `json:"userId"`
-	TokenVersionID    string `json:"tokenVersionId"`
-	AccessVersion     int    `json:"accessVersion"`
-	OrganizationID    string `json:"organizationId,omitempty"`
-	SubOrganizationID string `json:"subOrganizationId,omitempty"`
-	IsMfaVerified     bool   `json:"isMfaVerified,omitempty"`
+	AuthMethod        string        `json:"authMethod,omitempty"`
+	UserID            string        `json:"userId"`
+	TokenVersionID    string        `json:"tokenVersionId"`
+	AccessVersion     int           `json:"accessVersion"`
+	OrganizationID    string        `json:"organizationId,omitempty"`
+	SubOrganizationID string        `json:"subOrganizationId,omitempty"`
+	IsMfaVerified     bool          `json:"isMfaVerified,omitempty"`
 }
 
 // IdentityJWTClaims represents the JWT payload for machine identity access tokens.

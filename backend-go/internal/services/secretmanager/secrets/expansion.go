@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"maps"
 	"regexp"
 	"strings"
 
@@ -309,8 +310,6 @@ func hasReferences(value string) bool {
 
 func copyVisited(visited map[string]struct{}) map[string]struct{} {
 	newVisited := make(map[string]struct{}, len(visited)+1)
-	for k, v := range visited {
-		newVisited[k] = v
-	}
+	maps.Copy(newVisited, visited)
 	return newVisited
 }

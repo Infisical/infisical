@@ -140,8 +140,9 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	}
 
 	// 6. Organization scoping.
-	var orgID, rootOrgID, parentOrgID string
+	var orgID, rootOrgID, parentOrgID uuid.UUID
 	if claims.OrganizationID != "" {
+		claimOrgUUID := parseUUID(claims.OrganizationID)
 		if claims.SubOrganizationID != "" {
 			// 6a. Sub-organization scope.
 			subOrgUUID := parseUUID(claims.SubOrganizationID)
@@ -154,11 +155,11 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			}
 
 			// Verify the sub-org belongs to the token's root organization.
-			subRootOrgID := ""
+			var subRootOrgID uuid.UUID
 			if nullUUIDValid(subOrg.RootOrgId) {
-				subRootOrgID = subOrg.RootOrgId.V.String()
+				subRootOrgID = subOrg.RootOrgId.V
 			}
-			if subRootOrgID != claims.OrganizationID && subOrg.ID.String() != claims.OrganizationID {
+			if subRootOrgID != claimOrgUUID && subOrg.ID != claimOrgUUID {
 				return nil, errutil.Forbidden("Sub-organization does not belong to the token's organization")
 			}
 
@@ -173,14 +174,13 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 				return nil, errutil.Forbidden("User organization membership is inactive")
 			}
 
-			orgID = subOrg.ID.String()
-			rootOrgID = claims.OrganizationID
+			orgID = subOrg.ID
+			rootOrgID = claimOrgUUID
 			if nullUUIDValid(subOrg.ParentOrgId) {
-				parentOrgID = subOrg.ParentOrgId.V.String()
+				parentOrgID = subOrg.ParentOrgId.V
 			}
 		} else {
 			// 6b. Regular organization scope.
-			claimOrgUUID := parseUUID(claims.OrganizationID)
 			_, err := h.dal.FindOrgByID(ctx, claimOrgUUID)
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to find organization").WithErr(err)
@@ -197,9 +197,9 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 				return nil, errutil.Forbidden("User organization membership is inactive")
 			}
 
-			orgID = claims.OrganizationID
-			rootOrgID = claims.OrganizationID
-			parentOrgID = claims.OrganizationID
+			orgID = claimOrgUUID
+			rootOrgID = claimOrgUUID
+			parentOrgID = claimOrgUUID
 		}
 	}
 
@@ -213,14 +213,14 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	return &Identity{
 		AuthMode:     AuthModeJWT,
 		Actor:        permission.ActorTypeUser,
-		ActorID:      user.ID.String(),
+		ActorID:      user.ID,
 		OrgID:        orgID,
 		RootOrgID:    rootOrgID,
 		ParentOrgID:  parentOrgID,
 		AuthMethod:   permission.ActorAuthMethod(claims.AuthMethod),
 		IsSuperAdmin: isSuperAdmin,
 		UserAuthInfo: &UserAuthInfo{
-			UserID: user.ID.String(),
+			UserID: user.ID,
 			Email:  email,
 		},
 	}, nil
@@ -346,7 +346,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 
 	// 12. Build identity auth info (for audit logging).
 	identityAuthInfo := &IdentityAuthInfo{
-		IdentityID:   accessToken.IdentityId.String(),
+		IdentityID:   accessToken.IdentityId,
 		IdentityName: accessToken.IdentityName,
 		AuthMethod:   accessToken.AuthMethod,
 	}
@@ -366,7 +366,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	return &Identity{
 		AuthMode:         AuthModeIdentityAccessToken,
 		Actor:            permission.ActorTypeIdentity,
-		ActorID:          accessToken.IdentityId.String(),
+		ActorID:          accessToken.IdentityId,
 		OrgID:            orgID,
 		RootOrgID:        rootOrgID,
 		ParentOrgID:      parentOrgID,
@@ -428,10 +428,11 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 
 	// 7. Build identity.
 	orgID, rootOrgID, parentOrgID := resolveOrgHierarchy(org)
+	serviceTokenUUID := parseUUID(serviceToken.ID)
 	return &Identity{
 		AuthMode:    AuthModeServiceToken,
 		Actor:       permission.ActorTypeService,
-		ActorID:     serviceToken.ID,
+		ActorID:     serviceTokenUUID,
 		OrgID:       orgID,
 		RootOrgID:   rootOrgID,
 		ParentOrgID: parentOrgID,
@@ -439,15 +440,15 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 }
 
 // resolveOrgHierarchy extracts orgID, rootOrgID, and parentOrgID from an OrgRow.
-func resolveOrgHierarchy(org *OrgRow) (orgID, rootOrgID, parentOrgID string) {
-	orgID = org.ID.String()
+func resolveOrgHierarchy(org *OrgRow) (orgID, rootOrgID, parentOrgID uuid.UUID) {
+	orgID = org.ID
 	rootOrgID = orgID
 	parentOrgID = orgID
 	if nullUUIDValid(org.RootOrgId) {
-		rootOrgID = org.RootOrgId.V.String()
+		rootOrgID = org.RootOrgId.V
 	}
 	if nullUUIDValid(org.ParentOrgId) {
-		parentOrgID = org.ParentOrgId.V.String()
+		parentOrgID = org.ParentOrgId.V
 	}
 	return
 }

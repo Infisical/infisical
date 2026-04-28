@@ -2,6 +2,8 @@ package secretmanager
 
 import (
 	"github.com/infisical/api/internal/database/pg"
+	"github.com/infisical/api/internal/services/secretmanager/environment"
+	"github.com/infisical/api/internal/services/secretmanager/secret"
 	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
 	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 )
@@ -11,16 +13,22 @@ type ServicesDeps struct {
 }
 
 type Services struct {
-	SecretFolder *secretfolder.Service
-	SecretImport *secretimport.Service
+	SecretFolder   *secretfolder.Service
+	SecretImport   *secretimport.Service
+	SecretDAL      *secret.DAL
+	EnvironmentDAL *environment.DAL
 }
 
 func NewServices(deps ServicesDeps) *Services {
 	secretFolderDAL := secretfolder.NewDAL(deps.DB)
 	secretImportDAL := secretimport.NewDAL(deps.DB)
+	secretDAL := secret.NewDAL(deps.DB)
+	environmentDAL := environment.NewDAL(deps.DB)
 
 	return &Services{
-		SecretFolder: secretfolder.NewService(secretfolder.Deps{DAL: secretFolderDAL}),
-		SecretImport: secretimport.NewService(secretimport.Deps{DAL: secretImportDAL}),
+		SecretFolder:   secretfolder.NewService(secretfolder.Deps{DAL: secretFolderDAL}),
+		SecretImport:   secretimport.NewService(secretimport.Deps{DAL: secretImportDAL}),
+		SecretDAL:      secretDAL,
+		EnvironmentDAL: environmentDAL,
 	}
 }

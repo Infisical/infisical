@@ -46,6 +46,11 @@ type ProjectKmsInfo struct {
 	KmsSecretManagerEncryptedDataKey *[]byte             `alias:"projects.kmsSecretManagerEncryptedDataKey"`
 }
 
+// SuperAdminConfig holds the fips-related fields from super_admin table.
+type SuperAdminConfig struct {
+	FipsEnabled bool
+}
+
 // DAL handles all KMS-related database operations across
 // kms_root_config, kms_keys, internal_kms, organizations, and projects.
 type DAL struct {
@@ -56,6 +61,30 @@ type DAL struct {
 // NewDAL creates a new KMS DAL.
 func NewDAL(db pg.DB, lockStore dalLockStore) *DAL {
 	return &DAL{db: db, lockStore: lockStore}
+}
+
+// superAdminConfigUUID is the fixed UUID for the single super_admin config row.
+var superAdminConfigUUID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
+
+// FindSuperAdminConfig returns the super_admin config row if it exists.
+// Returns nil (no error) if the row doesn't exist (new deployment).
+func (d *DAL) FindSuperAdminConfig(ctx context.Context) (*SuperAdminConfig, error) {
+	var result model.SuperAdmin
+
+	err := table.SuperAdmin.
+		SELECT(table.SuperAdmin.FipsEnabled).
+		WHERE(table.SuperAdmin.ID.EQ(postgres.UUID(superAdminConfigUUID))).
+		QueryContext(ctx, d.db.Replica(), &result)
+	if errors.Is(err, qrm.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("finding super_admin config: %w", err)
+	}
+
+	return &SuperAdminConfig{
+		FipsEnabled: result.FipsEnabled,
+	}, nil
 }
 
 // --- Root config ---

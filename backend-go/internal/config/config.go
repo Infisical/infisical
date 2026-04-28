@@ -86,6 +86,7 @@ type Config struct {
 	// Encryption
 	EncryptionKey     string `koanf:"ENCRYPTION_KEY"`
 	RootEncryptionKey string `koanf:"ROOT_ENCRYPTION_KEY"`
+	FipsEnabled       bool   `koanf:"FIPS_ENABLED"`
 
 	// Auth
 	AuthSecret              string `koanf:"AUTH_SECRET"`

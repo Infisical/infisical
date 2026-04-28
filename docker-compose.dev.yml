@@ -157,7 +157,7 @@ services:
     container_name: infisical-dev-api-go
     build:
       context: ./backend-go
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.dev.fips
     depends_on:
       db:
         condition: service_started

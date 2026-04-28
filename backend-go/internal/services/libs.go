@@ -44,6 +44,11 @@ func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
 		return nil, fmt.Errorf("kms: %w", err)
 	}
 
+	hsmConfigured := deps.HSM != nil
+	if err := kmsSvc.Start(ctx, hsmConfigured); err != nil {
+		return nil, fmt.Errorf("kms start: %w", err)
+	}
+
 	licenseDAL := license.NewDAL(deps.DB)
 	licenseSvc := license.NewService(ctx, deps.Logger, license.Deps{
 		Config:   deps.Config,

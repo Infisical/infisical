@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -16,6 +17,11 @@ type RedisService struct {
 }
 
 func (r *RedisService) URL() string { return r.url }
+
+func (r *RedisService) Client() redis.UniversalClient {
+	opts, _ := redis.ParseURL(r.url)
+	return redis.NewClient(opts)
+}
 
 func startRedis(ctx context.Context, networkName string) (*RedisService, error) {
 	req := testcontainers.ContainerRequest{

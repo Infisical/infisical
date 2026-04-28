@@ -22,10 +22,14 @@ func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *services.Service
 	})
 
 	return &Registry{
-		Secrets: secrets.NewService(l, secrets.Deps{
-			AuthHandler:  sharedServices.AuthHandler,
-			Permission:   sharedServices.Permission,
-			SecretFolder: smServices.SecretFolder,
+		Secrets: secrets.NewService(l, &secrets.Deps{
+			AuthHandler:    sharedServices.AuthHandler,
+			Permission:     sharedServices.Permission,
+			KMS:            sharedServices.KMS,
+			SecretFolder:   smServices.SecretFolder,
+			SecretImport:   smServices.SecretImport,
+			SecretDAL:      smServices.SecretDAL,
+			EnvironmentDAL: smServices.EnvironmentDAL,
 		}),
 	}
 }

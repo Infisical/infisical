@@ -9,10 +9,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
 	secretssvr "github.com/infisical/api/internal/server/gen/http/secrets/server"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auth"
+	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
 	smShared "github.com/infisical/api/internal/services/secretmanager"
 	"github.com/infisical/api/internal/testutil"
@@ -47,12 +49,28 @@ func setupMux(t *testing.T) *testutil.TestMux {
 	authDAL := auth.NewDAL(stack.DB())
 	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
 
+	redisClient := stack.Redis().Client()
+	t.Cleanup(func() { redisClient.Close() })
+
+	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())
+	kmsDAL := kms.NewDAL(stack.DB(), ks)
+	kmsSvc, err := kms.NewService(kms.Deps{
+		DAL:    kmsDAL,
+		HSM:    nil,
+		Config: stack.Config(),
+	})
+	require.NoError(t, err)
+
 	smSharedSvcs := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
 
-	svc := secrets.NewService(testutil.NopLogger(), secrets.Deps{
-		AuthHandler:  authHandler,
-		Permission:   permLib,
-		SecretFolder: smSharedSvcs.SecretFolder,
+	svc := secrets.NewService(testutil.NopLogger(), &secrets.Deps{
+		AuthHandler:    authHandler,
+		Permission:     permLib,
+		KMS:            kmsSvc,
+		SecretFolder:   smSharedSvcs.SecretFolder,
+		SecretImport:   smSharedSvcs.SecretImport,
+		SecretDAL:      smSharedSvcs.SecretDAL,
+		EnvironmentDAL: smSharedSvcs.EnvironmentDAL,
 	})
 
 	mux := testutil.NewTestMux()

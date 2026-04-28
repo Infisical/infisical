@@ -70,6 +70,9 @@ type dal interface {
 	// Root config.
 	FindOrCreateRootConfig(ctx context.Context, createFn func() (encryptedRootKey []byte, encryptionStrategy string, err error)) (*model.KmsRootConfig, error)
 
+	// Super admin config (for FIPS mode detection).
+	FindSuperAdminConfig(ctx context.Context) (*SuperAdminConfig, error)
+
 	// Organization find-or-create with advisory lock.
 	FindOrCreateOrgKmsKey(ctx context.Context, orgID uuid.UUID, generateKeyFn func() (encryptedKey []byte, err error)) (uuid.UUID, error)
 	FindOrCreateOrgDataKey(ctx context.Context, orgID uuid.UUID, createFn func() (encryptedDataKey []byte, err error)) ([]byte, error)
@@ -107,9 +110,14 @@ type Service struct {
 	mu                sync.RWMutex
 	rootEncryptionKey []byte // loaded during Start(), protected by mu
 
-	encryptionKey []byte     // from env (ENCRYPTION_KEY / ROOT_ENCRYPTION_KEY)
+	encryptionKey []byte     // decoded during Start(), used to decrypt root key
 	dal           dal        // database operations
 	hsm           HsmService // nil when HSM is not configured
+
+	// Raw config values - decoded during Start() based on FIPS mode
+	rawEncryptionKey     string
+	rawRootEncryptionKey string
+	fipsEnabledEnv       bool
 }
 
 // Deps holds the dependencies for the KMS shared service.
@@ -120,22 +128,14 @@ type Deps struct {
 }
 
 // NewService creates a new KMS service.
+// The encryption key is decoded during Start() based on FIPS mode determination.
 func NewService(deps Deps) (*Service, error) {
-	var encryptionKey []byte
-	if deps.Config.EncryptionKey != "" {
-		encryptionKey = []byte(deps.Config.EncryptionKey)
-	} else if deps.Config.RootEncryptionKey != "" {
-		var decErr error
-		encryptionKey, decErr = base64.StdEncoding.DecodeString(deps.Config.RootEncryptionKey)
-		if decErr != nil {
-			return nil, fmt.Errorf("failed to decode ROOT_ENCRYPTION_KEY from base64: %w", decErr)
-		}
-	}
-
 	return &Service{
-		encryptionKey: encryptionKey,
-		dal:           deps.DAL,
-		hsm:           deps.HSM,
+		dal:                  deps.DAL,
+		hsm:                  deps.HSM,
+		rawEncryptionKey:     deps.Config.EncryptionKey,
+		rawRootEncryptionKey: deps.Config.RootEncryptionKey,
+		fipsEnabledEnv:       deps.Config.FipsEnabled,
 	}, nil
 }
 
@@ -151,6 +151,10 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if err := s.resolveEncryptionKey(ctx); err != nil {
+		return fmt.Errorf("KMS: resolving encryption key: %w", err)
+	}
 
 	rootConfig, err := s.dal.FindOrCreateRootConfig(ctx, func() (encryptedRootKey []byte, encryptionStrategy string, err error) {
 		var newRootKey []byte
@@ -186,6 +190,44 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 	}
 
 	s.rootEncryptionKey = decryptedRootKey
+	return nil
+}
+
+// resolveEncryptionKey decodes the encryption key based on FIPS mode.
+// ROOT_ENCRYPTION_KEY takes precedence and is always base64-encoded.
+// ENCRYPTION_KEY is base64-encoded in FIPS mode, raw 32-char string otherwise.
+func (s *Service) resolveEncryptionKey(ctx context.Context) error {
+	if s.rawRootEncryptionKey != "" {
+		decoded, err := base64.StdEncoding.DecodeString(s.rawRootEncryptionKey)
+		if err != nil {
+			return fmt.Errorf("failed to decode ROOT_ENCRYPTION_KEY from base64: %w", err)
+		}
+		s.encryptionKey = decoded
+		return nil
+	}
+
+	fipsEnabled := false
+	if s.fipsEnabledEnv {
+		superAdminConfig, err := s.dal.FindSuperAdminConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to query super_admin config for FIPS mode: %w", err)
+		}
+		fipsEnabled = superAdminConfig != nil && superAdminConfig.FipsEnabled
+	}
+
+	if s.rawEncryptionKey == "" {
+		return fmt.Errorf("ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY is required")
+	}
+
+	if fipsEnabled {
+		decoded, err := base64.StdEncoding.DecodeString(s.rawEncryptionKey)
+		if err != nil {
+			return fmt.Errorf("failed to decode ENCRYPTION_KEY from base64 (FIPS mode): %w", err)
+		}
+		s.encryptionKey = decoded
+	} else {
+		s.encryptionKey = []byte(s.rawEncryptionKey)
+	}
 	return nil
 }
 

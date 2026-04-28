@@ -318,7 +318,7 @@ func TestExpand_CircularReference_ThreeWay(t *testing.T) {
 
 func TestExpand_MaxDepth(t *testing.T) {
 	secrets := make([]SecretInput, 15)
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		key := string(rune('A' + i))
 		var value string
 		if i < 14 {

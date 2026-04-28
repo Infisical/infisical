@@ -1,6 +1,7 @@
 package secretfolder
 
 import (
+	"maps"
 	"sort"
 	"strings"
 
@@ -145,4 +146,17 @@ func splitPath(p string) []string {
 		return nil
 	}
 	return strings.Split(trimmed, "/")
+}
+
+// Merge combines another FolderLookup into this one.
+// Used to add folders from additional environments after initial load.
+func (l *FolderLookup) Merge(other *FolderLookup) {
+	maps.Copy(l.byID, other.byID)
+	maps.Copy(l.envRoots, other.envRoots)
+}
+
+// HasEnv reports whether folders for the given environment have been loaded.
+func (l *FolderLookup) HasEnv(envID uuid.UUID) bool {
+	_, ok := l.envRoots[envID]
+	return ok
 }

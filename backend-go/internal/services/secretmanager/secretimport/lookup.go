@@ -97,6 +97,8 @@ type ResolvedImport struct {
 	FolderID uuid.UUID
 	Import   ImportEntry
 	Depth    int
+	EnvSlug  string
+	Path     string
 }
 
 // ResolveChain walks the full import chain starting from a folder and returns

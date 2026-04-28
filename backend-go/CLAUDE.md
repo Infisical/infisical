@@ -77,6 +77,41 @@ DI wiring: `api.NewRegistry()` constructs shared services first, then passes the
 
 **Read replica pattern**: `pg.DB` wraps primary + replica pools. Reads go to a random replica (fallback to primary). Writes always hit primary.
 
+### Go-Jet QRM Automatic Nesting
+
+For queries with LEFT JOINs that create one-to-many relationships (e.g., secrets → tags), use go-jet's automatic nesting via struct definitions instead of manual nesting functions.
+
+**Define nested structs with slice fields and primary key tags:**
+
+```go
+type Secret struct {
+    ID       uuid.UUID    `sql:"primary_key" alias:"secrets_v2.id"`
+    Key      string       `alias:"secrets_v2.key"`
+    Tags     []SecretTag  `alias:"secret_tags"`  // go-jet auto-groups into slices
+}
+
+type SecretTag struct {
+    ID   uuid.UUID `sql:"primary_key" alias:"secret_tags.id"`
+    Slug string    `alias:"secret_tags.slug"`
+}
+```
+
+**Query directly into nested struct:**
+
+```go
+var secrets []Secret
+err := stmt.QueryContext(ctx, d.db.Replica(), &secrets)
+// secrets[].Tags[] automatically populated and deduplicated
+```
+
+**Key requirements:**
+- Include `sql:"primary_key"` tag on ID fields — go-jet uses these for grouping/deduplication
+- Use `alias:"table.column"` tags to map columns from JOINed tables
+- Child slices must have their own primary keys to avoid duplicates from cartesian products
+- No manual nesting function needed — go-jet handles it automatically
+
+See `internal/services/secretmanager/secret/dal.go` for a complete example with multiple nested slices (tags, metadata, reminder recipients).
+
 ### Testing
 
 Integration tests with testcontainers-go (PostgreSQL 14, Redis 7, Node.js backend):

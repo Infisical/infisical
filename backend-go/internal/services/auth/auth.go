@@ -5,6 +5,8 @@ package auth
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/infisical/api/internal/services/permission"
 )
 
@@ -37,14 +39,14 @@ const (
 // UserAuthInfo holds the minimal user info stored in request context for audit logging.
 // Port of Node.js requestContext.userAuthInfo.
 type UserAuthInfo struct {
-	UserID string
+	UserID uuid.UUID
 	Email  string
 }
 
 // IdentityAuthInfo holds the minimal identity info stored in request context for audit logging.
 // Port of Node.js requestContext.identityAuthInfo.
 type IdentityAuthInfo struct {
-	IdentityID   string
+	IdentityID   uuid.UUID
 	IdentityName string
 	AuthMethod   string
 	OIDC         *IdentityAuthOIDC
@@ -79,10 +81,10 @@ type IdentityAuthAWS struct {
 type Identity struct {
 	AuthMode     AuthMode
 	Actor        permission.ActorType
-	ActorID      string
-	OrgID        string
-	RootOrgID    string
-	ParentOrgID  string
+	ActorID      uuid.UUID
+	OrgID        uuid.UUID
+	RootOrgID    uuid.UUID
+	ParentOrgID  uuid.UUID
 	AuthMethod   permission.ActorAuthMethod
 	IsSuperAdmin bool
 
