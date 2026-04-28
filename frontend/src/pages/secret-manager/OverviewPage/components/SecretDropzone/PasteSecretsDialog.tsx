@@ -82,14 +82,22 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
               </TooltipTrigger>
               <TooltipContent className="max-w-lg py-3 whitespace-pre-line">
                 <div className="flex flex-col gap-2">
-                  <p>Example Formats:</p>
+                  <div>
+                    <p>Example Formats:</p>
+                    <p className="text-xs text-muted">
+                      Each entry&apos;s key becomes the secret name and its value becomes the secret
+                      value.
+                    </p>
+                  </div>
                   <pre className="rounded-md bg-container p-3 text-xs">
                     {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
-                    <p className="text-mineshaft-400">// .json</p>
+                    <p className="text-mineshaft-400">
+                      // .json — {"{ <secret-name>: <secret-value> }"}
+                    </p>
                     {JSON.stringify(
                       {
-                        APP_NAME: "example-service",
-                        APP_VERSION: "1.2.3",
+                        DATABASE_URL: "postgres://user:pass@host:5432/db",
+                        API_KEY: "sk_live_abc123",
                         NODE_ENV: "production"
                       },
                       null,

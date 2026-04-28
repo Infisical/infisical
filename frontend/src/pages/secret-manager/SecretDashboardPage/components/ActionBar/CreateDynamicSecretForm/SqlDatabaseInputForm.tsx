@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import ms from "ms";
@@ -73,6 +75,7 @@ const formSchema = z.object({
     renewStatement: z.string().optional(),
     sslEnabled: z.boolean().optional(),
     ca: z.string().optional(),
+    sslRejectUnauthorized: z.boolean().default(true),
     gatewayId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -188,6 +191,7 @@ export const SqlDatabaseInputForm = ({
     defaultValues: {
       provider: {
         ...getSqlStatements(SqlProviders.Postgres),
+        sslRejectUnauthorized: true,
         passwordRequirements: {
           length: 48,
           required: {
@@ -624,6 +628,37 @@ export const SqlDatabaseInputForm = ({
                         {...field}
                         containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
                       />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  name="provider.sslRejectUnauthorized"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                      <Switch
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        id="ssl-reject-unauthorized"
+                        thumbClassName="bg-mineshaft-800"
+                        isChecked={value}
+                        onCheckedChange={onChange}
+                      >
+                        <p className="w-full">
+                          SSL Reject Unauthorized
+                          <Tooltip
+                            className="max-w-md"
+                            content={
+                              <p>
+                                If enabled, the server certificate will be verified against the list
+                                of supplied CAs. Disable this option if you are using a self-signed
+                                certificate.
+                              </p>
+                            }
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                          </Tooltip>
+                        </p>
+                      </Switch>
                     </FormControl>
                   )}
                 />

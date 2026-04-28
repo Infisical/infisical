@@ -58,7 +58,6 @@ const SEARCH_SHORTCUT_KEY = "f";
 const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions"];
 
 const DOMAIN_REGEX = /^[\w.-]+\.[a-z]{2,}(\/\S*)?$/i;
-const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}.*)?$/;
 const TRUTHY_BOOLEANS = new Set(["true", "1", "yes", "checked"]);
 const VALID_BOOLEANS = new Set(["true", "false", "1", "0", "yes", "no", "checked", "unchecked"]);
 
@@ -535,12 +534,14 @@ function useDataGrid<TData>({
           const cellVariant = cell.column.columnDef?.meta?.cell?.variant;
 
           let serializedValue = "";
-          if (cellVariant === "file" || cellVariant === "multi-select") {
+          if (value === null || value === undefined) {
+            serializedValue = "NULL";
+          } else if (cellVariant === "file" || cellVariant === "multi-select") {
             serializedValue = value ? JSON.stringify(value) : "";
           } else if (value instanceof Date) {
             serializedValue = value.toISOString();
           } else {
-            serializedValue = String(value ?? "");
+            serializedValue = String(value);
           }
 
           cellData.set(cellKey, serializedValue);
@@ -632,12 +633,14 @@ function useDataGrid<TData>({
           const cellVariant = cell.column.columnDef?.meta?.cell?.variant;
 
           let serializedValue = "";
-          if (cellVariant === "file" || cellVariant === "multi-select") {
+          if (value === null || value === undefined) {
+            serializedValue = "NULL";
+          } else if (cellVariant === "file" || cellVariant === "multi-select") {
             serializedValue = value ? JSON.stringify(value) : "";
           } else if (value instanceof Date) {
             serializedValue = value.toISOString();
           } else {
-            serializedValue = String(value ?? "");
+            serializedValue = String(value);
           }
 
           cellData.set(cellKey, serializedValue);
@@ -792,170 +795,134 @@ function useDataGrid<TData>({
             const cellOpts = column?.columnDef?.meta?.cell;
             const cellVariant = cellOpts?.variant;
 
-            let processedValue: unknown = pastedValue;
+            const isNullValue = pastedValue === "NULL";
+            let processedValue: unknown = isNullValue ? null : pastedValue;
             let shouldSkip = false;
 
-            switch (cellVariant) {
-              case "number": {
-                if (!pastedValue) {
-                  processedValue = null;
-                } else {
-                  const num = Number.parseFloat(pastedValue);
-                  if (Number.isNaN(num)) shouldSkip = true;
-                  else processedValue = num;
-                }
-                break;
-              }
-
-              case "checkbox": {
-                if (!pastedValue) {
-                  processedValue = false;
-                } else {
-                  const lower = pastedValue.toLowerCase();
-                  if (VALID_BOOLEANS.has(lower)) {
-                    processedValue = TRUTHY_BOOLEANS.has(lower);
+            if (!isNullValue)
+              switch (cellVariant) {
+                case "number": {
+                  if (!pastedValue) {
+                    processedValue = null;
                   } else {
-                    shouldSkip = true;
+                    const num = Number.parseFloat(pastedValue);
+                    if (Number.isNaN(num)) shouldSkip = true;
+                    else processedValue = num;
                   }
-                }
-                break;
-              }
-
-              case "date": {
-                if (!pastedValue) {
-                  processedValue = null;
-                } else {
-                  const date = new Date(pastedValue);
-                  if (Number.isNaN(date.getTime())) shouldSkip = true;
-                  else processedValue = date;
-                }
-                break;
-              }
-
-              case "select": {
-                const options = cellOpts?.options ?? [];
-                if (!pastedValue) {
-                  processedValue = "";
-                } else {
-                  const matched = matchSelectOption(pastedValue, options);
-                  if (matched) processedValue = matched;
-                  else shouldSkip = true;
-                }
-                break;
-              }
-
-              case "multi-select": {
-                const options = cellOpts?.options ?? [];
-                let values: string[] = [];
-                try {
-                  const parsed = JSON.parse(pastedValue);
-                  if (Array.isArray(parsed)) {
-                    values = parsed.filter((v): v is string => typeof v === "string");
-                  }
-                } catch {
-                  values = pastedValue ? pastedValue.split(",").map((v) => v.trim()) : [];
-                }
-
-                const validated = values
-                  .map((v) => matchSelectOption(v, options))
-                  .filter(Boolean) as string[];
-
-                if (values.length > 0 && validated.length === 0) {
-                  shouldSkip = true;
-                } else {
-                  processedValue = validated;
-                }
-                break;
-              }
-
-              case "file": {
-                if (!pastedValue) {
-                  processedValue = [];
-                } else {
-                  try {
-                    const parsed = JSON.parse(pastedValue);
-                    if (!Array.isArray(parsed)) {
-                      shouldSkip = true;
-                    } else {
-                      const validFiles = parsed.filter(getIsFileCellData);
-                      if (parsed.length > 0 && validFiles.length === 0) {
-                        shouldSkip = true;
-                      } else {
-                        processedValue = validFiles;
-                      }
-                    }
-                  } catch {
-                    shouldSkip = true;
-                  }
-                }
-                break;
-              }
-
-              case "url": {
-                if (!pastedValue) {
-                  processedValue = "";
-                } else {
-                  const firstChar = pastedValue[0];
-                  if (firstChar === "[" || firstChar === "{") {
-                    shouldSkip = true;
-                  } else {
-                    try {
-                      new URL(pastedValue);
-                      processedValue = pastedValue;
-                    } catch {
-                      if (DOMAIN_REGEX.test(pastedValue)) {
-                        processedValue = pastedValue;
-                      } else {
-                        shouldSkip = true;
-                      }
-                    }
-                  }
-                }
-                break;
-              }
-
-              default: {
-                if (!pastedValue) {
-                  processedValue = "";
                   break;
                 }
 
-                if (ISO_DATE_REGEX.test(pastedValue)) {
-                  const date = new Date(pastedValue);
-                  if (!Number.isNaN(date.getTime())) {
-                    processedValue = date.toLocaleDateString();
-                    break;
+                case "checkbox": {
+                  if (!pastedValue) {
+                    processedValue = false;
+                  } else {
+                    const lower = pastedValue.toLowerCase();
+                    if (VALID_BOOLEANS.has(lower)) {
+                      processedValue = TRUTHY_BOOLEANS.has(lower);
+                    } else {
+                      shouldSkip = true;
+                    }
                   }
+                  break;
                 }
 
-                const firstChar = pastedValue[0];
-                if (
-                  firstChar === "[" ||
-                  firstChar === "{" ||
-                  firstChar === "t" ||
-                  firstChar === "f"
-                ) {
+                case "date": {
+                  if (!pastedValue) {
+                    processedValue = null;
+                  } else {
+                    const date = new Date(pastedValue);
+                    if (Number.isNaN(date.getTime())) shouldSkip = true;
+                    else processedValue = date;
+                  }
+                  break;
+                }
+
+                case "select": {
+                  const options = cellOpts?.options ?? [];
+                  if (!pastedValue) {
+                    processedValue = "";
+                  } else {
+                    const matched = matchSelectOption(pastedValue, options);
+                    if (matched) processedValue = matched;
+                    else shouldSkip = true;
+                  }
+                  break;
+                }
+
+                case "multi-select": {
+                  const options = cellOpts?.options ?? [];
+                  let values: string[] = [];
                   try {
                     const parsed = JSON.parse(pastedValue);
-
                     if (Array.isArray(parsed)) {
-                      if (parsed.length > 0 && parsed.every(getIsFileCellData)) {
-                        processedValue = parsed.map((f) => f.name).join(", ");
-                      } else if (parsed.every((v) => typeof v === "string")) {
-                        processedValue = (parsed as string[]).join(", ");
-                      }
-                    } else if (typeof parsed === "boolean") {
-                      processedValue = parsed ? "Checked" : "Unchecked";
+                      values = parsed.filter((v): v is string => typeof v === "string");
                     }
                   } catch {
-                    const lower = pastedValue.toLowerCase();
-                    if (lower === "true" || lower === "false") {
-                      processedValue = lower === "true" ? "Checked" : "Unchecked";
+                    values = pastedValue ? pastedValue.split(",").map((v) => v.trim()) : [];
+                  }
+
+                  const validated = values
+                    .map((v) => matchSelectOption(v, options))
+                    .filter(Boolean) as string[];
+
+                  if (values.length > 0 && validated.length === 0) {
+                    shouldSkip = true;
+                  } else {
+                    processedValue = validated;
+                  }
+                  break;
+                }
+
+                case "file": {
+                  if (!pastedValue) {
+                    processedValue = [];
+                  } else {
+                    try {
+                      const parsed = JSON.parse(pastedValue);
+                      if (!Array.isArray(parsed)) {
+                        shouldSkip = true;
+                      } else {
+                        const validFiles = parsed.filter(getIsFileCellData);
+                        if (parsed.length > 0 && validFiles.length === 0) {
+                          shouldSkip = true;
+                        } else {
+                          processedValue = validFiles;
+                        }
+                      }
+                    } catch {
+                      shouldSkip = true;
                     }
                   }
+                  break;
+                }
+
+                case "url": {
+                  if (!pastedValue) {
+                    processedValue = "";
+                  } else {
+                    const firstChar = pastedValue[0];
+                    if (firstChar === "[" || firstChar === "{") {
+                      shouldSkip = true;
+                    } else {
+                      try {
+                        new URL(pastedValue);
+                        processedValue = pastedValue;
+                      } catch {
+                        if (DOMAIN_REGEX.test(pastedValue)) {
+                          processedValue = pastedValue;
+                        } else {
+                          shouldSkip = true;
+                        }
+                      }
+                    }
+                  }
+                  break;
+                }
+
+                default: {
+                  processedValue = pastedValue;
                 }
               }
-            }
 
             if (shouldSkip) {
               cellsSkipped++;
@@ -1983,6 +1950,9 @@ function useDataGrid<TData>({
       },
       get readOnly() {
         return propsRef.current.readOnly;
+      },
+      get enablePaste() {
+        return propsRef.current.enablePaste;
       },
       getIsCellSelected,
       getIsSearchMatch,

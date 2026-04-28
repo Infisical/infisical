@@ -68,6 +68,9 @@ Create a user with the required permission in your MongoDB instance. This user w
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections.
 	</ParamField>
+	<ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+		If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+	</ParamField>
 	<DynamicSecretUsernameTemplateParamField />
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-mongodb.png)

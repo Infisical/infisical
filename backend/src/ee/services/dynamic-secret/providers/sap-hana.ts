@@ -51,7 +51,8 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       password: providerInputs.password,
       ...(providerInputs.ca
         ? {
-            ca: providerInputs.ca
+            ca: providerInputs.ca,
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized
           }
         : {})
     });

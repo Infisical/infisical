@@ -1,40 +1,40 @@
 import { z } from "zod";
 
-import { SessionEndReason } from "./pam-web-access-types";
-
 export enum PostgresClientMessageType {
-  Input = "input",
   Control = "control",
   GetSchemas = "get-schemas",
   GetTables = "get-tables",
   GetTableDetail = "get-table-detail",
   Query = "query",
-  Cancel = "cancel"
+  Cancel = "cancel",
+  OpenConnection = "open-connection",
+  CloseConnection = "close-connection",
+  Activity = "activity"
 }
 
 export enum PostgresServerMessageType {
-  Ready = "ready",
-  Output = "output",
-  SessionEnd = "session_end",
   Schemas = "schemas",
   Tables = "tables",
   TableDetail = "table-detail",
   QueryResult = "query-result",
-  Error = "error"
+  Error = "error",
+  ConnectionOpened = "connection-opened",
+  ConnectionOpenFailed = "connection-open-failed",
+  ConnectionClosed = "connection-closed"
 }
 
-// --- Shared base for correlated request/response messages ---
+// --- Shared bases ---
 
 const CorrelatedBaseSchema = z.object({ id: z.string().uuid() });
+const TabScopedBaseSchema = CorrelatedBaseSchema.extend({ connectionId: z.string().uuid() });
 
 // =====================================================================
 // Client messages (client → server) — single flat discriminated union
 // =====================================================================
 
-const InputSchema = z.object({ type: z.literal(PostgresClientMessageType.Input), data: z.string() });
-
 const ControlSchema = z.object({ type: z.literal(PostgresClientMessageType.Control), data: z.string() });
 
+// Metadata messages — not connectionId-scoped; served by one-shot pg.Clients.
 const GetSchemasRequestSchema = CorrelatedBaseSchema.extend({
   type: z.literal(PostgresClientMessageType.GetSchemas)
 });
@@ -44,45 +44,60 @@ const GetTablesRequestSchema = CorrelatedBaseSchema.extend({
   schema: z.string()
 });
 
-const GetTableDetailRequestSchema = CorrelatedBaseSchema.extend({
+// Tab-scoped messages — carry connectionId; routed to a specific controller.
+const GetTableDetailRequestSchema = TabScopedBaseSchema.extend({
   type: z.literal(PostgresClientMessageType.GetTableDetail),
   schema: z.string(),
   table: z.string()
 });
 
-const QueryRequestSchema = CorrelatedBaseSchema.extend({
+const QueryRequestSchema = TabScopedBaseSchema.extend({
   type: z.literal(PostgresClientMessageType.Query),
   sql: z.string().max(50 * 1024)
 });
 
-const CancelSchema = z.object({ type: z.literal(PostgresClientMessageType.Cancel) });
+// Cancel stays fire-and-forget; gains connectionId for routing but not id.
+const CancelSchema = z.object({
+  type: z.literal(PostgresClientMessageType.Cancel),
+  connectionId: z.string().uuid()
+});
+
+// Lifecycle — open/close tab controllers.
+const OpenConnectionSchema = CorrelatedBaseSchema.extend({
+  type: z.literal(PostgresClientMessageType.OpenConnection)
+});
+
+const CloseConnectionSchema = z.object({
+  type: z.literal(PostgresClientMessageType.CloseConnection),
+  connectionId: z.string().uuid()
+});
+
+// Fire-and-forget heartbeat sent by the FE while the browser tab is visible, so
+// the server-side idle timer only fires on truly inactive tabs — not on active
+// read-only sessions that don't happen to send queries.
+const ActivitySchema = z.object({
+  type: z.literal(PostgresClientMessageType.Activity)
+});
 
 export const PostgresClientMessageSchema = z.discriminatedUnion("type", [
-  InputSchema,
   ControlSchema,
   GetSchemasRequestSchema,
   GetTablesRequestSchema,
   GetTableDetailRequestSchema,
   QueryRequestSchema,
-  CancelSchema
+  CancelSchema,
+  OpenConnectionSchema,
+  CloseConnectionSchema,
+  ActivitySchema
 ]);
 
 export type TPostgresClientMessage = z.infer<typeof PostgresClientMessageSchema>;
 
 // =====================================================================
-// Server messages (server → client) — single flat discriminated union
+// Server messages (server → client) — correlated request/response schemas.
+// Lifecycle messages (ready / session_end) travel on the shared
+// TerminalServerMessageType channel defined in pam-web-access-types.ts.
 // =====================================================================
-
-const OutputSchema = z.object({
-  type: z.enum([PostgresServerMessageType.Ready, PostgresServerMessageType.Output]),
-  data: z.string(),
-  prompt: z.string().default("")
-});
-
-const SessionEndSchema = z.object({
-  type: z.literal(PostgresServerMessageType.SessionEnd),
-  reason: z.nativeEnum(SessionEndReason)
-});
 
 const SchemasResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(PostgresServerMessageType.Schemas),
@@ -94,8 +109,9 @@ const TablesResponseSchema = CorrelatedBaseSchema.extend({
   data: z.array(z.object({ name: z.string(), tableType: z.string() }))
 });
 
-const TableDetailResponseSchema = CorrelatedBaseSchema.extend({
+const TableDetailResponseSchema = TabScopedBaseSchema.extend({
   type: z.literal(PostgresServerMessageType.TableDetail),
+  transactionOpen: z.boolean(),
   data: z.object({
     columns: z.array(
       z.object({
@@ -128,7 +144,7 @@ const TableDetailResponseSchema = CorrelatedBaseSchema.extend({
   })
 });
 
-const QueryResultResponseSchema = CorrelatedBaseSchema.extend({
+const QueryResultResponseSchema = TabScopedBaseSchema.extend({
   type: z.literal(PostgresServerMessageType.QueryResult),
   rows: z.array(z.record(z.string(), z.unknown())),
   fields: z.array(
@@ -145,28 +161,45 @@ const QueryResultResponseSchema = CorrelatedBaseSchema.extend({
   executionTimeMs: z.number()
 });
 
+// Error responses carry transactionOpen for tab-scoped errors so the FE banner
+// stays in sync after auto-rollback. connectionId is optional because errors
+// can come from metadata requests (no connectionId) or unknown-connectionId
+// cases tied to a request id.
 const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(PostgresServerMessageType.Error),
+  connectionId: z.string().uuid().optional(),
+  transactionOpen: z.boolean().optional(),
   error: z.string(),
   detail: z.string().optional(),
   hint: z.string().optional()
 });
 
-export const PostgresServerMessageSchema = z.discriminatedUnion("type", [
-  OutputSchema,
-  SessionEndSchema,
-  SchemasResponseSchema,
-  TablesResponseSchema,
-  TableDetailResponseSchema,
-  QueryResultResponseSchema,
-  ErrorResponseSchema
-]);
+// Lifecycle responses.
+const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
+  type: z.literal(PostgresServerMessageType.ConnectionOpened),
+  connectionId: z.string().uuid(),
+  backendPid: z.number().nullable()
+});
 
-// Correlated server messages only (excludes lifecycle messages like ready/output/session_end)
+const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
+  type: z.literal(PostgresServerMessageType.ConnectionOpenFailed),
+  error: z.string()
+});
+
+// Informational — BE pushes this when a controller dies outside clean dispose.
+const ConnectionClosedResponseSchema = z.object({
+  type: z.literal(PostgresServerMessageType.ConnectionClosed),
+  connectionId: z.string().uuid(),
+  reason: z.string()
+});
+
 export type TPostgresCorrelatedServerMessage = z.infer<
   | typeof SchemasResponseSchema
   | typeof TablesResponseSchema
   | typeof TableDetailResponseSchema
   | typeof QueryResultResponseSchema
   | typeof ErrorResponseSchema
+  | typeof ConnectionOpenedResponseSchema
+  | typeof ConnectionOpenFailedResponseSchema
+  | typeof ConnectionClosedResponseSchema
 >;

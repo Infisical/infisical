@@ -275,7 +275,9 @@ export const pamWebAccessServiceFactory = ({
       const actorUser = await userDAL.findById(actor.id);
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
-      const org = await orgDAL.findOrgById(project.orgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
+        orgDAL.findOrgById(project.orgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
       // Determine which MFA method to use

@@ -217,6 +217,7 @@ export type TCreateSecretBatchDTO = {
     skipMultilineEncoding?: boolean | null;
     type: SecretType;
     tagIds?: string[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     metadata?: {
       source?: string;
     };
@@ -234,6 +235,7 @@ export type TUpdateSecretBatchDTO = {
     secretComment?: string;
     skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
+    secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     metadata?: {
       source?: string;
     };

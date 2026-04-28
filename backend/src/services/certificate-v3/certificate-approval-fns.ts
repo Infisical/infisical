@@ -443,7 +443,8 @@ export const certificateApprovalServiceFactory = (
       caType !== CaType.ACME &&
       caType !== CaType.AZURE_AD_CS &&
       caType !== CaType.AWS_PCA &&
-      caType !== CaType.AWS_ACM_PUBLIC_CA
+      caType !== CaType.AWS_ACM_PUBLIC_CA &&
+      caType !== CaType.VENAFI_TPP
     ) {
       return null;
     }

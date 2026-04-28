@@ -297,6 +297,7 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
 
 export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClient, logger }: TArgs) => {
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
+  const failOnSanitizedSchemaError = process.env.FAIL_ON_SANITIZED_SCHEMA_ERROR === "true";
 
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
@@ -369,6 +370,9 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
             { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "recreate" },
             `${SANITIZED_SCHEMA_ERROR}: Failed to recreate sanitized schema`
           );
+          if (failOnSanitizedSchemaError) {
+            throw err;
+          }
         }
       }
       return;
@@ -424,6 +428,9 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
           { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "create" },
           `${SANITIZED_SCHEMA_ERROR}: Failed to create sanitized schema after migrations`
         );
+        if (failOnSanitizedSchemaError) {
+          throw err;
+        }
       }
     }
   } catch (err) {

@@ -1,4 +1,10 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { RequestSecretForm } from "./RequestSecretForm";
@@ -13,18 +19,21 @@ type Props = {
 
 export const AddSecretRequestModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
-    <Modal
-      isOpen={popUp?.createSecretRequest?.isOpen}
+    <Dialog
+      open={popUp?.createSecretRequest?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("createSecretRequest", isOpen);
       }}
     >
-      <ModalContent
-        title="Request a Secret"
-        subTitle="Securely request one off secrets from your team or people outside your organization."
-      >
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Request a Secret</DialogTitle>
+          <DialogDescription>
+            Securely request one off secrets from your team or people outside your organization.
+          </DialogDescription>
+        </DialogHeader>
         <RequestSecretForm />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

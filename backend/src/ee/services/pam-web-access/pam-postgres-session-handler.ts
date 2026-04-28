@@ -1,6 +1,4 @@
-import { parse as parseSql } from "libpg-query";
-import pg from "pg";
-import Cursor from "pg-cursor";
+import crypto from "crypto";
 
 import {
   TPostgresAccountCredentials,
@@ -8,15 +6,18 @@ import {
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-types";
 import { logger } from "@app/lib/logger";
 
-import { getSchemasQuery, getTableDetailQuery, getTablesQuery } from "./pam-postgres-data-explorer-metadata";
+import {
+  createPostgresConnectionController,
+  type TPostgresConnectionController
+} from "./pam-postgres-connection-controller";
+import { fetchSchemasOneShot, fetchTablesOneShot, verifyReachabilityOneShot } from "./pam-postgres-metadata";
 import {
   PostgresClientMessageSchema,
   PostgresClientMessageType,
   PostgresServerMessageType,
   type TPostgresCorrelatedServerMessage
 } from "./pam-postgres-ws-types";
-import { parseClientMessage, resolveEndReason } from "./pam-web-access-fns";
-import { createPamSqlRepl } from "./pam-web-access-repl";
+import { parseClientMessage } from "./pam-web-access-fns";
 import {
   SessionEndReason,
   TerminalServerMessageType,
@@ -29,56 +30,52 @@ type TPostgresSessionParams = {
   credentials: TPostgresAccountCredentials;
 };
 
+// Fan-out bound inside a single already-authenticated WS session.
+const MAX_CONNECTIONS_PER_WS = 20;
+
+// Unwrap a pg driver error into the shape our WS error responses expect.
+const toPgErrorFields = (err: unknown) => {
+  const pgErr = err as { message?: string; detail?: string; hint?: string };
+  return { message: pgErr.message, detail: pgErr.detail, hint: pgErr.hint };
+};
+
 export const handlePostgresSession = async (
   ctx: TSessionContext,
   params: TPostgresSessionParams
 ): Promise<TSessionHandlerResult> => {
-  const { socket, relayPort, resourceName, sessionId, sendMessage, sendSessionEnd, isNearSessionExpiry, onCleanup } =
-    ctx;
+  const { socket, relayPort, resourceName, sessionId, sendMessage, sendSessionEnd, onCleanup } = ctx;
   const { connectionDetails, credentials } = params;
 
-  // Type parser shared between the pg.Client and pg-cursor instances so all
-  // results — whether fetched via the simple query path or cursor — apply the
-  // same normalisation rules.
-  const pgTypes = {
-    getTypeParser: (oid: number) => {
-      // Boolean (OID 16): Postgres wire protocol sends 't'/'f' — expand to 'true'/'false'
-      // so the Data Explorer UI displays human-readable literals.
-      if (oid === 16)
-        return (val: string | Buffer) => {
-          const raw = typeof val === "string" ? val : val.toString("utf8");
-          return raw === "t" ? "true" : "false";
-        };
-      return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
-    }
+  const oneShotOpts = {
+    relayPort,
+    username: credentials.username,
+    database: connectionDetails.database
   };
 
-  const pgClient = new pg.Client({
-    host: "localhost",
-    port: relayPort,
-    user: credentials.username,
-    database: connectionDetails.database,
-    password: "",
-    ssl: false,
-    connectionTimeoutMillis: 30_000,
-    statement_timeout: 30_000,
-    types: pgTypes
-  });
-
-  await pgClient.connect();
-
-  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const backendPid = pidRows[0]?.pid;
-
-  const repl = createPamSqlRepl(pgClient);
+  // Early reachability check — fail fast before sending ready, preserving the
+  // early "Connection error" UX the FE relies on.
+  try {
+    await verifyReachabilityOneShot(oneShotOpts);
+  } catch (err) {
+    logger.error(err, `Postgres reachability check failed [sessionId=${sessionId}]`);
+    sendSessionEnd(SessionEndReason.SetupFailed);
+    onCleanup();
+    try {
+      socket.close();
+    } catch {
+      // ignore
+    }
+    return {
+      cleanup: async () => {}
+    };
+  }
 
   sendMessage({
     type: TerminalServerMessageType.Ready,
-    data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`,
-    prompt: "=> "
+    data: `Connected to ${resourceName} (${connectionDetails.database}) as ${credentials.username}\n\n`
   });
 
-  logger.info({ sessionId }, "Postgres web access session established");
+  logger.info(`Postgres web access session established [sessionId=${sessionId}]`);
 
   const sendResponse = (msg: TPostgresCorrelatedServerMessage) => {
     try {
@@ -86,289 +83,198 @@ export const handlePostgresSession = async (
         socket.send(JSON.stringify(msg));
       }
     } catch (err) {
-      logger.error(err, "Failed to send WebSocket message");
+      logger.error(err, `Failed to send WebSocket message [sessionId=${sessionId}]`);
     }
   };
 
-  // Server-side transaction state — updated after every query so the client
-  // always receives the authoritative value, including for multi-statement SQL.
-  let isInTransaction = false;
+  const controllers = new Map<string, TPostgresConnectionController>();
+  // Reserved slots for in-flight opens — counted against the cap so a burst of
+  // open-connection messages can't all pass the check before any of them
+  // finishes inserting into `controllers`.
+  let pendingOpens = 0;
 
-  // Shared error handler for correlated query messages
-  const sendQueryError = async (id: string, err: unknown) => {
-    const pgErr = err as { message?: string; detail?: string; hint?: string };
+  // Metadata requests (get-schemas / get-tables) are processed outside any
+  // controller queue so sidebar refreshes don't block tab work.
+  let metadataPromise: Promise<void> = Promise.resolve();
 
-    // If the failed query was inside a transaction, roll back so the
-    // connection is not stuck in an aborted transaction state.
-    try {
-      await pgClient.query("ROLLBACK");
-    } catch {
-      // ROLLBACK fails if there was no active transaction — safe to ignore.
-    }
+  // --- Per-message handlers ---
 
-    isInTransaction = false;
-
-    sendResponse({
-      type: PostgresServerMessageType.Error,
-      id,
-      error: pgErr.message ?? "Query execution failed",
-      detail: pgErr.detail,
-      hint: pgErr.hint
-    });
-  };
-
-  // Cancel the currently running query via pg_cancel_backend.
-  // Runs on a separate connection so it is not blocked by the sequential queue.
-  const cancelRunningQuery = async () => {
-    if (!backendPid) return;
-    const pid = backendPid;
-    const cancelClient = new pg.Client({
-      host: "localhost",
-      port: relayPort,
-      user: credentials.username,
-      database: connectionDetails.database,
-      password: "",
-      ssl: false,
-      connectionTimeoutMillis: 5_000
-    });
-    try {
-      await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [pid]);
-    } catch (err) {
-      logger.debug(err, "Failed to cancel backend query");
-    } finally {
-      await cancelClient.end().catch(() => {});
-    }
-  };
-
-  // Sequential message processing to prevent concurrent query issues
-  let processingPromise = Promise.resolve();
-
-  socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
-    const message = parseClientMessage(rawData, PostgresClientMessageSchema);
-
-    // Cancel is handled immediately outside the sequential queue so it can
-    // interrupt a running query rather than waiting behind it.
-    if (message?.type === PostgresClientMessageType.Cancel) {
-      void cancelRunningQuery();
+  const openTabConnection = async (requestId: string) => {
+    if (controllers.size + pendingOpens >= MAX_CONNECTIONS_PER_WS) {
+      sendResponse({
+        type: PostgresServerMessageType.ConnectionOpenFailed,
+        id: requestId,
+        error: `Maximum ${MAX_CONNECTIONS_PER_WS} connections per session reached`
+      });
       return;
     }
 
-    processingPromise = processingPromise
+    pendingOpens += 1;
+    const connectionId = crypto.randomUUID();
+    try {
+      const controller = await createPostgresConnectionController({
+        relayPort,
+        username: credentials.username,
+        database: connectionDetails.database,
+        sessionId,
+        connectionId,
+        sendResponse,
+        onUnexpectedTermination: (reason) => {
+          if (!controllers.has(connectionId)) return;
+          controllers.delete(connectionId);
+          sendResponse({
+            type: PostgresServerMessageType.ConnectionClosed,
+            connectionId,
+            reason
+          });
+        }
+      });
+      controllers.set(connectionId, controller);
+      sendResponse({
+        type: PostgresServerMessageType.ConnectionOpened,
+        id: requestId,
+        connectionId,
+        backendPid: controller.backendPid
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to open connection";
+      logger.error(err, `Failed to open tab connection [sessionId=${sessionId}]`);
+      sendResponse({
+        type: PostgresServerMessageType.ConnectionOpenFailed,
+        id: requestId,
+        error: msg
+      });
+    } finally {
+      pendingOpens -= 1;
+    }
+  };
+
+  // Queue a metadata fetch (schemas / tables) behind any in-flight metadata
+  // call so one-shot pg.Clients don't pile up. Errors are normalised into
+  // PostgresServerMessageType.Error responses tied to the request id.
+  const queueMetadata = <T>(
+    requestId: string,
+    fetcher: () => Promise<T>,
+    onSuccess: (rows: T) => TPostgresCorrelatedServerMessage,
+    fallbackError: string
+  ) => {
+    metadataPromise = metadataPromise
       .then(async () => {
-        if (!message) {
-          sendMessage({
-            type: TerminalServerMessageType.Output,
-            data: "Invalid message format\n",
-            prompt: repl.getPrompt()
+        try {
+          const rows = await fetcher();
+          sendResponse(onSuccess(rows));
+        } catch (err) {
+          const { message: errMsg, detail, hint } = toPgErrorFields(err);
+          sendResponse({
+            type: PostgresServerMessageType.Error,
+            id: requestId,
+            error: errMsg ?? fallbackError,
+            detail,
+            hint
+          });
+        }
+      })
+      .catch(() => {});
+  };
+
+  socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
+    const message = parseClientMessage(rawData, PostgresClientMessageSchema);
+    if (!message) return;
+
+    switch (message.type) {
+      case PostgresClientMessageType.Control: {
+        if (message.data === "quit") {
+          sendSessionEnd(SessionEndReason.UserQuit);
+          onCleanup();
+          socket.close();
+        }
+        break;
+      }
+
+      case PostgresClientMessageType.OpenConnection: {
+        void openTabConnection(message.id);
+        break;
+      }
+
+      case PostgresClientMessageType.CloseConnection: {
+        const controller = controllers.get(message.connectionId);
+        if (!controller) return;
+        controllers.delete(message.connectionId);
+        controller.dispose();
+        break;
+      }
+
+      case PostgresClientMessageType.Cancel: {
+        const controller = controllers.get(message.connectionId);
+        if (!controller || controller.isDisposing()) {
+          logger.debug(
+            `Cancel on missing/disposing connection [sessionId=${sessionId}] [connectionId=${message.connectionId}]`
+          );
+          return;
+        }
+        controller.handleMessage(message);
+        break;
+      }
+
+      case PostgresClientMessageType.GetSchemas: {
+        queueMetadata(
+          message.id,
+          () => fetchSchemasOneShot(oneShotOpts),
+          (rows) => ({ type: PostgresServerMessageType.Schemas, id: message.id, data: rows }),
+          "Failed to fetch schemas"
+        );
+        break;
+      }
+
+      case PostgresClientMessageType.GetTables: {
+        queueMetadata(
+          message.id,
+          () => fetchTablesOneShot(oneShotOpts, message.schema),
+          (rows) => ({ type: PostgresServerMessageType.Tables, id: message.id, data: rows }),
+          "Failed to fetch tables"
+        );
+        break;
+      }
+
+      case PostgresClientMessageType.GetTableDetail:
+      case PostgresClientMessageType.Query: {
+        const controller = controllers.get(message.connectionId);
+        if (!controller || controller.isDisposing()) {
+          sendResponse({
+            type: PostgresServerMessageType.Error,
+            id: message.id,
+            connectionId: message.connectionId,
+            error: "Connection not found"
           });
           return;
         }
+        controller.handleMessage(message);
+        break;
+      }
 
-        switch (message.type) {
-          case PostgresClientMessageType.GetSchemas: {
-            try {
-              const query = getSchemasQuery();
-              const result = await pgClient.query(query.text, query.values);
-              sendResponse({
-                type: PostgresServerMessageType.Schemas,
-                id: message.id,
-                data: result.rows as { name: string }[]
-              });
-            } catch (err) {
-              await sendQueryError(message.id, err);
-            }
-            break;
-          }
+      case PostgresClientMessageType.Activity: {
+        // No-op. The idle timer is reset by the sibling socket.on("message")
+        // listener in pam-web-access-service.ts — this branch just keeps the
+        // discriminated-union exhaustive so the `default` arm stays unreachable.
+        break;
+      }
 
-          case PostgresClientMessageType.GetTables: {
-            try {
-              const query = getTablesQuery(message.schema);
-              const result = await pgClient.query(query.text, query.values);
-              sendResponse({
-                type: PostgresServerMessageType.Tables,
-                id: message.id,
-                data: result.rows as { name: string; tableType: string }[]
-              });
-            } catch (err) {
-              await sendQueryError(message.id, err);
-            }
-            break;
-          }
-
-          case PostgresClientMessageType.GetTableDetail: {
-            try {
-              const query = getTableDetailQuery(message.schema, message.table);
-              const result = await pgClient.query<{ result: string }>(query.text, query.values);
-              const rawDetail = result.rows[0]?.result;
-              if (!rawDetail) {
-                sendResponse({
-                  type: PostgresServerMessageType.Error,
-                  id: message.id,
-                  error: "Table not found or no metadata available"
-                });
-                break;
-              }
-              const detail =
-                typeof rawDetail === "string"
-                  ? (JSON.parse(rawDetail) as Record<string, unknown>)
-                  : (rawDetail as unknown as Record<string, unknown>);
-              sendResponse({
-                type: PostgresServerMessageType.TableDetail,
-                id: message.id,
-                data: detail as {
-                  columns: {
-                    name: string;
-                    type: string;
-                    nullable: boolean;
-                    identityGeneration: string | null;
-                  }[];
-                  primaryKeys: string[];
-                  foreignKeys: {
-                    constraintName: string;
-                    columns: string[];
-                    targetSchema: string;
-                    targetTable: string;
-                    targetColumns: string[];
-                  }[];
-                }
-              });
-            } catch (err) {
-              await sendQueryError(message.id, err);
-            }
-            break;
-          }
-
-          case PostgresClientMessageType.Query: {
-            try {
-              const startTime = performance.now();
-              const MAX_ROWS = 1000;
-
-              // Split the SQL into individual statements using the real PostgreSQL C parser
-              // (via libpg-query WASM). Each statement is then run through a pg-cursor with
-              // an explicit row cap — the server sends at most MAX_ROWS+1 rows at the wire
-              // level regardless of result set size, so memory usage is bounded.
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              const parsed = await parseSql(message.sql);
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
-                const location = s.stmt_location ?? 0;
-                return s.stmt_len !== undefined
-                  ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trim();
-              });
-
-              let lastRows: Record<string, unknown>[] = [];
-              let lastFields: { name: string }[] = [];
-              let lastRowCount: number | null = null;
-              let lastCommand = "";
-              let lastIsTruncated = false;
-
-              for (const stmtSql of stmtTexts) {
-                const cursor = pgClient.query(new Cursor(stmtSql.trim(), null, { types: pgTypes }));
-                // eslint-disable-next-line no-await-in-loop
-                const stmtRows = await cursor.read(MAX_ROWS + 1);
-                const stmtIsTruncated = stmtRows.length > MAX_ROWS;
-                if (stmtIsTruncated) stmtRows.splice(MAX_ROWS);
-                // eslint-disable-next-line no-await-in-loop
-                await cursor.close();
-
-                // eslint-disable-next-line no-underscore-dangle
-                const cursorResult = cursor._result;
-                const cmd = (cursorResult.command ?? "").toUpperCase();
-                if (cmd === "BEGIN" || cmd === "START") isInTransaction = true;
-                if (cmd === "COMMIT" || cmd === "ROLLBACK") isInTransaction = false;
-
-                lastRows = stmtRows;
-                lastFields = (cursorResult.fields ?? []).map((f) => ({ name: f.name }));
-                lastRowCount = cursorResult.rowCount;
-                lastCommand = cursorResult.command ?? "";
-                lastIsTruncated = stmtIsTruncated;
-              }
-
-              const executionTimeMs = Math.round(performance.now() - startTime);
-              sendResponse({
-                type: PostgresServerMessageType.QueryResult,
-                id: message.id,
-                rows: lastRows,
-                fields: lastFields,
-                rowCount: lastRowCount,
-                isTruncated: lastIsTruncated,
-                transactionOpen: isInTransaction,
-                command: lastCommand,
-                executionTimeMs
-              });
-            } catch (err) {
-              await sendQueryError(message.id, err);
-            }
-            break;
-          }
-
-          case PostgresClientMessageType.Control: {
-            if (message.data === "quit") {
-              sendSessionEnd(SessionEndReason.UserQuit);
-              onCleanup();
-              socket.close();
-              return;
-            }
-            if (message.data === "clear-buffer") {
-              repl.clearBuffer();
-            }
-            break;
-          }
-
-          case PostgresClientMessageType.Input: {
-            const replResult = await repl.processInput(message.data);
-
-            if (replResult.shouldClose) {
-              sendSessionEnd(SessionEndReason.UserQuit);
-              onCleanup();
-              socket.close();
-              return;
-            }
-
-            sendMessage({
-              type: TerminalServerMessageType.Output,
-              data: replResult.output,
-              prompt: replResult.prompt
-            });
-            break;
-          }
-
-          default:
-            break;
-        }
-      })
-      .catch((err) => {
-        logger.error(err, "Error processing Postgres message");
-        sendMessage({
-          type: TerminalServerMessageType.Output,
-          data: "Internal error\n",
-          prompt: "=> "
-        });
-      });
-  });
-
-  // Tunnel drop detection
-  pgClient.on("error", (err) => {
-    logger.error(err, "Database connection error");
-    sendSessionEnd(resolveEndReason(isNearSessionExpiry));
-    onCleanup();
-    socket.close();
-  });
-
-  pgClient.on("end", () => {
-    sendSessionEnd(resolveEndReason(isNearSessionExpiry));
-    onCleanup();
-    socket.close();
+      default:
+        break;
+    }
   });
 
   return {
     cleanup: async () => {
-      try {
-        await pgClient.end();
-      } catch (err) {
-        logger.debug(err, "Error closing pg client");
+      // dispose() is synchronous and fire-and-forget — no await needed.
+      const snapshot = Array.from(controllers.values());
+      controllers.clear();
+      for (const controller of snapshot) {
+        try {
+          controller.dispose();
+        } catch (err) {
+          logger.debug(err, `Error disposing controller [sessionId=${sessionId}]`);
+        }
       }
     }
   };

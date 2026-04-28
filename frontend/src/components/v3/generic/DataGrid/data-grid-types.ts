@@ -117,6 +117,7 @@ declare module "@tanstack/react-table" {
     pasteDialog?: PasteDialogState;
     onPasteDialogOpenChange?: (open: boolean) => void;
     readOnly?: boolean;
+    enablePaste?: boolean;
   }
 }
 

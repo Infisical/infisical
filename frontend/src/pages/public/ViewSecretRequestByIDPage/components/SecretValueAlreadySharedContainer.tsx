@@ -1,5 +1,6 @@
 import { KeyRoundIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 
 import { BrandingTheme } from "../../ViewSharedSecretByIDPage/ViewSharedSecretByIDPage";
 
@@ -9,36 +10,22 @@ type Props = {
 
 export const SecretValueAlreadySharedContainer = ({ brandingTheme }: Props) => {
   const panelStyle = brandingTheme
-    ? {
+    ? ({
         backgroundColor: brandingTheme.panelBg,
         color: brandingTheme.textColor,
-        "--muted-color": brandingTheme.textMutedColor,
         borderColor: brandingTheme.panelBorder
-      }
+      } as React.CSSProperties)
     : undefined;
 
   return (
-    <div
-      className={twMerge(
-        "rounded-lg border p-6",
-        !brandingTheme && "border-mineshaft-600 bg-mineshaft-800"
-      )}
-      style={panelStyle}
-    >
-      <div className="flex items-center gap-4">
-        <KeyRoundIcon
-          className="size-8 shrink-0"
-          style={{ color: brandingTheme?.textMutedColor || "white" }}
-        />
-        <div className="flex flex-col">
-          <span className="font-medium">Secret Already Shared</span>
-          <span
-            className={`text-sm ${brandingTheme ? "text-[var(--muted-color)]" : "text-mineshaft-300"}`}
-          >
-            A secret value has already been shared for this secret request.
-          </span>
-        </div>
-      </div>
-    </div>
+    <Alert variant={brandingTheme ? "default" : "info"} style={panelStyle}>
+      <KeyRoundIcon style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined} />
+      <AlertTitle style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
+        Secret Already Shared
+      </AlertTitle>
+      <AlertDescription style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}>
+        A secret value has already been shared for this secret request.
+      </AlertDescription>
+    </Alert>
   );
 };

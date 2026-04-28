@@ -1,12 +1,32 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { getObjectFromSeconds } from "@app/helpers/datetime";
 import { useUpdateOrg } from "@app/hooks/api";
@@ -107,7 +127,6 @@ export const OrgSecretShareLimitSection = () => {
     reset(formData);
   };
 
-  // Units for the dropdown with readable labels
   const timeUnits = [
     { value: "m", label: "Minutes" },
     { value: "h", label: "Hours" },
@@ -115,143 +134,151 @@ export const OrgSecretShareLimitSection = () => {
   ];
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-medium">Secret Share Limits</p>
-      </div>
-      <p className="mt-2 mb-4 text-sm text-gray-400">
-        These settings establish the maximum limits for all Shared Secret parameters within this
-        organization. Shared secrets cannot be created with values exceeding these limits.
-      </p>
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-        {(isAllowed) => (
-          <form onSubmit={handleSubmit(handleFormSubmit)} autoComplete="off">
-            <div className="flex max-w-sm gap-4">
-              <Controller
-                control={control}
-                name="maxLifetimeValue"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    tooltipText="The max amount of time that can be set before the secret share link expires."
-                    label="Max Lifetime"
-                    className="w-full"
-                  >
-                    <Input
-                      {...field}
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={field.value}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === "" ? "" : parseInt(val, 10));
-                      }}
-                      disabled={!isAllowed}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="maxLifetimeUnit"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="Time unit"
-                  >
-                    <Select
-                      value={field.value}
-                      className="pr-2"
-                      onValueChange={field.onChange}
-                      placeholder="Select time unit"
-                      isDisabled={!isAllowed}
-                    >
-                      {timeUnits.map(({ value, label }) => (
-                        <SelectItem
-                          key={value}
-                          value={value}
-                          className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">{label}</div>
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="flex max-w-sm items-end gap-2">
-              <Controller
-                control={control}
-                name="shouldLimitView"
-                render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Max Views"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    className="w-48"
-                  >
-                    <Select
-                      defaultValue={value.toString()}
-                      value={value.toString()}
-                      onValueChange={(e) => onChange(e === "true")}
-                      className="w-full"
-                      position="popper"
-                      dropdownContainerClassName="max-w-none"
-                      isDisabled={!isAllowed}
-                      {...field}
-                    >
-                      {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
-                        <SelectItem
-                          value={viewLimitValue.toString()}
-                          key={viewLimitValue.toString()}
-                        >
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              {shouldLimitView && (
+    <Card>
+      <CardHeader>
+        <CardTitle>Secret Share Limits</CardTitle>
+        <CardDescription>
+          These settings establish the maximum limits for all Shared Secret parameters within this
+          organization. Shared secrets cannot be created with values exceeding these limits.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+          {(isAllowed) => (
+            <form
+              onSubmit={handleSubmit(handleFormSubmit)}
+              autoComplete="off"
+              className="flex flex-col gap-4"
+            >
+              <div className="flex max-w-sm gap-4">
                 <Controller
                   control={control}
-                  name="maxViewLimit"
-                  render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                      className="w-48"
-                    >
+                  name="maxLifetimeValue"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="w-full">
+                      <FieldLabel>
+                        Max Lifetime
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="size-3 cursor-help text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            The max amount of time that can be set before the secret share link
+                            expires.
+                          </TooltipContent>
+                        </Tooltip>
+                      </FieldLabel>
                       <Input
-                        value={value}
-                        onChange={onChange}
                         {...field}
-                        min={1}
-                        max={1000}
                         type="number"
-                        isDisabled={!isAllowed}
+                        min={1}
+                        step={1}
+                        value={field.value}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === "" ? "" : parseInt(val, 10));
+                        }}
+                        disabled={!isAllowed}
+                        isError={Boolean(error)}
                       />
-                    </FormControl>
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </Field>
                   )}
                 />
-              )}
-            </div>
-            <Button
-              colorSchema="secondary"
-              type="submit"
-              isLoading={isSubmitting}
-              disabled={!isDirty || !isAllowed}
-              className="mt-4"
-            >
-              Save
-            </Button>
-          </form>
-        )}
-      </OrgPermissionCan>
-    </div>
+                <Controller
+                  control={control}
+                  name="maxLifetimeUnit"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel>Time unit</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!isAllowed}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeUnits.map(({ value, label }) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </Field>
+                  )}
+                />
+              </div>
+              <div className="flex max-w-sm items-end gap-2">
+                <Controller
+                  control={control}
+                  name="shouldLimitView"
+                  render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+                    <Field className="w-48">
+                      <FieldLabel>Max Views</FieldLabel>
+                      <Select
+                        value={value.toString()}
+                        onValueChange={(e) => onChange(e === "true")}
+                        disabled={!isAllowed}
+                        {...field}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {viewLimitOptions.map(({ label, value: viewLimitValue }) => (
+                            <SelectItem
+                              value={viewLimitValue.toString()}
+                              key={viewLimitValue.toString()}
+                            >
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </Field>
+                  )}
+                />
+                {shouldLimitView && (
+                  <Controller
+                    control={control}
+                    name="maxViewLimit"
+                    render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+                      <Field className="w-48">
+                        <Input
+                          value={value}
+                          onChange={onChange}
+                          {...field}
+                          min={1}
+                          max={1000}
+                          type="number"
+                          disabled={!isAllowed}
+                          isError={Boolean(error)}
+                        />
+                        {error && <FieldError>{error.message}</FieldError>}
+                      </Field>
+                    )}
+                  />
+                )}
+              </div>
+              <div>
+                <Button
+                  variant={!isDirty || !isAllowed ? "outline" : "org"}
+                  type="submit"
+                  isPending={isSubmitting}
+                  isDisabled={!isDirty || !isAllowed}
+                >
+                  Save
+                </Button>
+              </div>
+            </form>
+          )}
+        </OrgPermissionCan>
+      </CardContent>
+    </Card>
   );
 };

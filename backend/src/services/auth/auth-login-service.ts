@@ -25,6 +25,8 @@ import {
 } from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -255,7 +257,9 @@ export const authLoginServiceFactory = ({
     let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
 
     if (organizationId) {
-      const org = await orgDAL.findById(organizationId);
+      const org = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+        orgDAL.findById(organizationId)
+      );
       if (org) {
         await membershipUserDAL.update(
           { actorUserId: userId, scopeOrgId: org.id, scope: AccessScope.Organization },
@@ -931,7 +935,9 @@ export const authLoginServiceFactory = ({
         );
 
         if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-          const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
+          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(serverCfg.defaultAuthOrgId), () =>
+            orgDAL.findOrgById(serverCfg.defaultAuthOrgId as string)
+          );
           if (!defaultOrg) {
             throw new BadRequestError({
               message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
@@ -1092,7 +1098,7 @@ export const authLoginServiceFactory = ({
 
       await smtpService.sendMail({
         template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
+        subjectLine: `Infisical confirmation code: ${verificationCode}`,
         recipients: [user.email],
         substitutions: {
           code: verificationCode
@@ -1162,7 +1168,9 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    const selectedOrg = await orgDAL.findById(organizationId);
+    const selectedOrg = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
+      orgDAL.findById(organizationId)
+    );
     if (!selectedOrg) {
       throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
     }
@@ -1178,7 +1186,9 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
+      rootOrg = await requestMemoize(requestMemoKeys.orgFindById(selectedOrg.rootOrgId), () =>
+        orgDAL.findById(selectedOrg.rootOrgId as string)
+      );
       if (!rootOrg) {
         throw new BadRequestError({
           message: "Invalid sub-organization"

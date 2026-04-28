@@ -174,7 +174,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       security: [{ bearerAuth: [] }],
       querystring: z.object({
         projectId: z.string().trim(),
-        staleSecretsOffset: z.coerce.number().min(0).default(0),
+        staleSecretsOffset: z.coerce.number().min(0).max(10000).default(0),
         staleSecretsLimit: z.coerce.number().min(1).max(100).default(50)
       }),
       response: {

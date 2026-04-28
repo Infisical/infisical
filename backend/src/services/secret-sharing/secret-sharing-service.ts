@@ -11,6 +11,8 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
@@ -726,7 +728,10 @@ export const secretSharingServiceFactory = ({
         sharedSecret.orgId === orgId &&
         sharedSecret.accessType === SecretSharingAccessType.Organization
       ) {
-        organization = await orgDAL.findOrgById(sharedSecret.orgId);
+        const sharedOrgId = sharedSecret.orgId;
+        organization = await requestMemoize(requestMemoKeys.orgFindOrgById(sharedOrgId), () =>
+          orgDAL.findOrgById(sharedOrgId)
+        );
       }
 
       // decrement when we are sure the user will view secret.
@@ -827,7 +832,7 @@ export const secretSharingServiceFactory = ({
       return null;
     }
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     const assets = await orgAssetDAL.listAssetsByType(orgId, ["brand-logo", "brand-favicon"]);
 
     const hasLogo = assets.some((a) => a.assetType === "brand-logo");

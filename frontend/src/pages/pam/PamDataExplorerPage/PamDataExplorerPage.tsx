@@ -12,16 +12,6 @@ import {
 } from "lucide-react";
 
 import { Spinner } from "@app/components/v2";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@app/components/v3/generic/AlertDialog";
 import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
 import { useGetPamAccountById } from "@app/hooks/api/pam";
@@ -29,9 +19,9 @@ import { useGetPamAccountById } from "@app/hooks/api/pam";
 import { DataExplorerGrid } from "./components/DataExplorerGrid";
 import { DataExplorerSidebar } from "./components/DataExplorerSidebar";
 import { QueryPanel } from "./components/QueryPanel";
-import type { SchemaInfo, TableDetail, TableInfo } from "./data-explorer-types";
+import type { SchemaInfo, TableInfo } from "./data-explorer-types";
 import { useDataExplorerSession } from "./use-data-explorer-session";
-import { BROWSE_TAB_ID, useQueryTabs } from "./use-query-tabs";
+import { useQueryTabs } from "./use-query-tabs";
 
 type Props = {
   reason?: string;
@@ -48,26 +38,28 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   const { data: account } = useGetPamAccountById(accountId);
 
+  // Sidebar-only view state. Switching schemas in the sidebar does not alter
+  // open tabs — tabs are bound to their own (schema, table) at open time.
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
   const [selectedSchema, setSelectedSchema] = useState("public");
   const [tables, setTables] = useState<TableInfo[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [tableDetail, setTableDetail] = useState<TableDetail | null>(null);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [hasDisconnected, setHasDisconnected] = useState(false);
   const [disconnectReason, setDisconnectReason] = useState<string | null>(null);
-  const unsavedChangeCountRef = useRef(0);
-  const [pendingTableSwitch, setPendingTableSwitch] = useState<string | null>(null);
   const latestSchemaRequestRef = useRef(0);
-  const latestDetailRequestRef = useRef(0);
+  const tabElRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const [approvalJustification, setApprovalJustification] = useState("");
 
-  const { tabs, activeTabId, atTabLimit, addTab, closeTab, setActiveTab, updateTabSql } =
-    useQueryTabs();
-  const [isInTransaction, setIsInTransaction] = useState(false);
+  // Forward refs for tab-state handlers that useDataExplorerSession calls
+  // before useQueryTabs has been called. Assigned after useQueryTabs below.
+  const markConnectionDeadRef = useRef<((connId: string) => void) | null>(null);
+  const resetTabsRef = useRef<(() => void) | null>(null);
+  const openFirstQueryTabRef = useRef<(() => Promise<string | null>) | null>(null);
+  // Shared guard so the first-connect effect and onReconnected don't both
+  // end up opening a default tab.
+  const defaultTabOpenedRef = useRef(false);
 
   const {
     isConnected,
@@ -81,6 +73,8 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     handleMfaVerification,
     submitApprovalRequest,
     approvalRequestUrl,
+    openConnection,
+    closeConnection,
     fetchSchemas,
     fetchTables,
     fetchTableDetail,
@@ -94,11 +88,46 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     accountName: account?.name ?? "",
     reason,
     onSessionEnd: (endReason?: string) => {
-      unsavedChangeCountRef.current = 0;
       setHasDisconnected(true);
       setDisconnectReason(endReason ?? null);
+    },
+    onConnectionClosed: (connId: string) => {
+      markConnectionDeadRef.current?.(connId);
+    },
+    onReconnected: () => {
+      // Drop all tabs on reconnect — all connectionIds are invalid.
+      resetTabsRef.current?.();
+      // Claim the default-tab slot so the first-connect effect skips it.
+      defaultTabOpenedRef.current = true;
+      const opener = openFirstQueryTabRef.current;
+      if (opener) opener().catch(() => {});
     }
   });
+
+  const {
+    tabs,
+    activeTabId,
+    atTabLimit,
+    isOpeningTab,
+    openQueryTab,
+    openBrowseTab,
+    closeTab,
+    setActiveTab,
+    updateTabSql,
+    setTabTransactionOpen,
+    markConnectionDead,
+    resetTabs,
+    refreshBrowseTab,
+    MAX_TABS
+  } = useQueryTabs({
+    openConnection,
+    closeConnection,
+    fetchTableDetail
+  });
+
+  markConnectionDeadRef.current = markConnectionDead;
+  resetTabsRef.current = resetTabs;
+  openFirstQueryTabRef.current = openQueryTab;
 
   // Drive connection from the page, not the hook.
   // Use a ref callback as the gate (same approach as useWebAccessSession's containerEl).
@@ -123,37 +152,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load schemas when connected
-  const loadSchemas = useCallback(async () => {
-    setIsLoadingSchemas(true);
-    try {
-      const result = await fetchSchemas();
-      setSchemas(result);
-      // Determine the active schema
-      const hasPublic = result.find((s) => s.name === selectedSchema);
-      const activeSchema = hasPublic ? selectedSchema : (result[0]?.name ?? "public");
-      if (!hasPublic && result.length > 0) {
-        setSelectedSchema(activeSchema);
-      }
-      // Auto-load tables for the active schema
-      if (result.length > 0) {
-        setIsLoadingTables(true);
-        try {
-          const tableResult = await fetchTables(activeSchema);
-          setTables(tableResult);
-        } catch {
-          // Error handled by the hook
-        } finally {
-          setIsLoadingTables(false);
-        }
-      }
-    } catch {
-      // Error handled by the hook
-    } finally {
-      setIsLoadingSchemas(false);
-    }
-  }, [fetchSchemas, fetchTables, selectedSchema]);
-
   const loadTables = useCallback(
     async (schema: string) => {
       // Guard against stale responses when the user switches schemas quickly.
@@ -176,25 +174,46 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     [fetchTables]
   );
 
-  const loadTableDetail = useCallback(
-    async (schema: string, tableName: string) => {
-      latestDetailRequestRef.current += 1;
-      const requestId = latestDetailRequestRef.current;
-      setIsLoadingDetail(true);
+  const loadSchemas = useCallback(
+    async (keepSelected = false) => {
+      setIsLoadingSchemas(true);
       try {
-        const result = await fetchTableDetail(schema, tableName);
-        if (latestDetailRequestRef.current !== requestId) return;
-        setTableDetail(result);
+        const result = await fetchSchemas();
+        setSchemas(result);
+        const hasSelected = result.find((s) => s.name === selectedSchema);
+        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? "public");
+        if (!hasSelected && result.length > 0 && !keepSelected) {
+          setSelectedSchema(activeSchema);
+        }
+        if (result.length > 0) {
+          await loadTables(activeSchema);
+        }
       } catch {
         // Error handled by the hook
       } finally {
-        if (latestDetailRequestRef.current === requestId) {
-          setIsLoadingDetail(false);
-        }
+        setIsLoadingSchemas(false);
       }
     },
-    [fetchTableDetail]
+    [fetchSchemas, loadTables, selectedSchema]
   );
+
+  // Keep the active tab visible in the tab bar whenever activation changes
+  // (tab switch, new tab opened, sidebar table opened, etc.). Only scrolls the
+  // tab bar itself — not ancestor containers — so the rest of the page layout
+  // stays put.
+  useEffect(() => {
+    if (!activeTabId) return;
+    const el = tabElRefs.current.get(activeTabId);
+    const container = el?.parentElement;
+    if (!el || !container) return;
+    const elRect = el.getBoundingClientRect();
+    const cRect = container.getBoundingClientRect();
+    if (elRect.left < cRect.left) {
+      container.scrollBy({ left: elRect.left - cRect.left, behavior: "smooth" });
+    } else if (elRect.right > cRect.right) {
+      container.scrollBy({ left: elRect.right - cRect.right, behavior: "smooth" });
+    }
+  }, [activeTabId, tabs.length]);
 
   // Auto-load schemas when we transition to connected
   const wasConnectedRef = useRef(false);
@@ -202,85 +221,60 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
     if (isConnected && !wasConnectedRef.current) {
       wasConnectedRef.current = true;
       setHasDisconnected(false);
-      loadSchemas();
+      (async () => {
+        await loadSchemas();
+        // Open a default query tab once — onReconnected handles subsequent
+        // reconnects via defaultTabOpenedRef, so we don't double-open.
+        if (!defaultTabOpenedRef.current) {
+          defaultTabOpenedRef.current = true;
+          await openQueryTab();
+        }
+      })().catch(() => {});
     }
     if (!isConnected) {
       wasConnectedRef.current = false;
     }
-  }, [isConnected, loadSchemas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   const handleSchemaChange = useCallback(
     (schema: string) => {
       setSelectedSchema(schema);
-      // Clear immediately so the grid doesn't fire a stale query
-      // against the new schema with the old table name.
-      setSelectedTable(null);
-      setTableDetail(null);
       loadTables(schema);
     },
     [loadTables]
   );
 
-  const handleTableSelect = useCallback(
-    (tableName: string) => {
-      if (tableName === selectedTable) {
-        setActiveTab(BROWSE_TAB_ID);
-        return;
-      }
-      if (unsavedChangeCountRef.current > 0) {
-        setPendingTableSwitch(tableName);
-        return;
-      }
-      setSelectedTable(tableName);
-      loadTableDetail(selectedSchema, tableName);
-      setActiveTab(BROWSE_TAB_ID);
+  const handleTableOpen = useCallback(
+    (tableName: string, opts: { forceNew: boolean }) => {
+      openBrowseTab(selectedSchema, tableName, opts).catch(() => {});
     },
-    [selectedTable, selectedSchema, loadTableDetail, setActiveTab]
+    [selectedSchema, openBrowseTab]
   );
-
-  const handleDiscardAndSwitch = useCallback(() => {
-    if (!pendingTableSwitch) return;
-    unsavedChangeCountRef.current = 0;
-    setSelectedTable(pendingTableSwitch);
-    loadTableDetail(selectedSchema, pendingTableSwitch);
-    setPendingTableSwitch(null);
-    setActiveTab(BROWSE_TAB_ID);
-  }, [pendingTableSwitch, selectedSchema, loadTableDetail, setActiveTab]);
-
-  const handleFullRefresh = useCallback(async () => {
-    // 1. Re-fetch tables for current schema (picks up new/dropped tables)
-    setIsLoadingTables(true);
-    try {
-      const tableResult = await fetchTables(selectedSchema);
-      setTables(tableResult);
-
-      // 2. If selected table was dropped, deselect and stop
-      if (selectedTable && !tableResult.find((t) => t.name === selectedTable)) {
-        setSelectedTable(null);
-        setTableDetail(null);
-        return;
-      }
-    } catch {
-      // Error handled by the hook
-    } finally {
-      setIsLoadingTables(false);
-    }
-
-    // 3. Re-fetch table detail for current table (picks up column/PK changes)
-    if (selectedTable) {
-      await loadTableDetail(selectedSchema, selectedTable);
-    }
-  }, [selectedSchema, selectedTable, fetchTables, loadTableDetail]);
 
   const handleReconnect = useCallback(() => {
     setHasDisconnected(false);
     setDisconnectReason(null);
     setSchemas([]);
     setTables([]);
-    setSelectedTable(null);
-    setTableDetail(null);
+    resetTabs();
     reconnect();
-  }, [reconnect]);
+  }, [reconnect, resetTabs]);
+
+  // Tab-scoped refresh: re-fetches tableDetail + schemas + sidebar tables.
+  // The grid also re-runs its own SELECT after this completes.
+  const handleTabRefresh = useCallback(
+    async (tabId: string) => {
+      await Promise.all([refreshBrowseTab(tabId), loadSchemas(true), loadTables(selectedSchema)]);
+    },
+    [refreshBrowseTab, loadSchemas, loadTables, selectedSchema]
+  );
+
+  const activeBrowseTarget = (() => {
+    const active = tabs.find((t) => t.id === activeTabId);
+    if (active?.kind === "browse") return { schema: active.schema, table: active.table };
+    return null;
+  })();
 
   // --- Overlay states (shown instead of the main layout) ---
 
@@ -398,125 +392,151 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
 
   // --- Main layout ---
 
+  const tabOpeningDisabled = isOpeningTab || atTabLimit;
+
   return (
     <div ref={mountRef} className="flex h-screen w-screen flex-col bg-bunker-800">
-      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         <DataExplorerSidebar
           schemas={schemas}
           selectedSchema={selectedSchema}
           onSchemaChange={handleSchemaChange}
           tables={tables}
-          selectedTable={selectedTable}
-          onTableSelect={handleTableSelect}
+          activeBrowseTarget={activeBrowseTarget}
+          onTableOpen={handleTableOpen}
           isLoadingSchemas={isLoadingSchemas}
           isLoadingTables={isLoadingTables}
+          disabled={isOpeningTab}
         />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex thin-scrollbar shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 [&::-webkit-scrollbar]:h-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab(BROWSE_TAB_ID)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2 text-xs font-medium transition-colors",
-                activeTabId === BROWSE_TAB_ID
-                  ? "border-info text-mineshaft-100"
-                  : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
-              )}
-            >
-              <TableIcon className="size-3.5" />
-              Browse
-            </button>
-
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setActiveTab(tab.id)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setActiveTab(tab.id)}
-                className={cn(
-                  "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
-                  activeTabId === tab.id
-                    ? "border-info text-mineshaft-100"
-                    : "border-transparent text-mineshaft-400 hover:text-mineshaft-200"
-                )}
-              >
-                <span className="flex items-center gap-1.5">
-                  <TerminalSquareIcon className="size-3.5" />
-                  {tab.title}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(tab.id);
+          <div className="flex min-h-[34px] shrink-0 items-center overflow-x-auto border-b border-mineshaft-600 bg-mineshaft-800 px-2 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:#4a4b4e_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-mineshaft-600 [&::-webkit-scrollbar-track]:bg-transparent">
+            {tabs.map((tab) => {
+              const isActive = activeTabId === tab.id;
+              const Icon = tab.kind === "browse" ? TableIcon : TerminalSquareIcon;
+              return (
+                <div
+                  key={tab.id}
+                  ref={(el) => {
+                    if (el) tabElRefs.current.set(tab.id, el);
+                    else tabElRefs.current.delete(tab.id);
                   }}
-                  className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
-                  aria-label={`Close ${tab.title}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setActiveTab(tab.id)}
+                  className={cn(
+                    "group flex shrink-0 cursor-pointer items-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
+                    isActive
+                      ? "border-info text-mineshaft-100"
+                      : "border-transparent text-mineshaft-400 hover:text-mineshaft-200",
+                    tab.isDead && "text-red-400"
+                  )}
                 >
-                  <XIcon className="size-3" />
-                </button>
-              </div>
-            ))}
+                  <span className="flex items-center gap-1.5">
+                    <Icon className="size-3.5" />
+                    {tab.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(tab.id);
+                    }}
+                    className="ml-1 rounded p-0.5 text-mineshaft-300 transition-colors hover:text-mineshaft-100"
+                    aria-label={`Close ${tab.title}`}
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                </div>
+              );
+            })}
 
             <button
               type="button"
-              onClick={addTab}
-              disabled={atTabLimit}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
+              onClick={() => {
+                openQueryTab().catch(() => {});
+              }}
+              disabled={tabOpeningDisabled}
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300 transition-colors first:ml-0 hover:border-mineshaft-500 hover:text-mineshaft-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-mineshaft-600 disabled:hover:text-mineshaft-300"
               aria-label="New query tab"
+              title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >
               <PlusIcon className="size-3" />
               New query
             </button>
           </div>
 
-          <div
-            className={cn("flex flex-1 overflow-hidden", activeTabId !== BROWSE_TAB_ID && "hidden")}
-          >
-            {selectedTable ? (
-              <DataExplorerGrid
-                key={`${selectedSchema}.${selectedTable}`}
-                tableDetail={tableDetail}
-                tableType={tables.find((t) => t.name === selectedTable)?.tableType}
-                schema={selectedSchema}
-                table={selectedTable}
-                executeQuery={executeQuery}
-                isLoading={isLoadingDetail}
-                onChangeCountUpdate={(count) => {
-                  unsavedChangeCountRef.current = count;
-                }}
-                onFullRefresh={handleFullRefresh}
-              />
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <div className="text-center">
-                  <DatabaseIcon className="mx-auto mb-3 size-12 text-mineshaft-600" />
-                  <p className="text-sm text-mineshaft-400">
-                    Select a table from the sidebar to browse data
-                  </p>
-                </div>
+          {/* All tabs are mounted; inactive tabs are CSS-hidden so their
+              component instance state (filters, pagination, SQL, results)
+              survives tab switches. */}
+          {tabs.map((tab) => {
+            const deadTabView = (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                <AlertTriangleIcon className="size-8 text-red-400" />
+                <p className="text-sm text-mineshaft-300">
+                  This connection was closed and cannot be reused.
+                </p>
+                <Button variant="outline" size="xs" onClick={() => closeTab(tab.id)}>
+                  Close tab
+                </Button>
               </div>
-            )}
-          </div>
+            );
+            let content;
+            if (tab.isDead) {
+              content = deadTabView;
+            } else if (tab.kind === "browse") {
+              content = (
+                <DataExplorerGrid
+                  key={tab.id}
+                  tableDetail={tab.tableDetail}
+                  tableType={tables.find((t) => t.name === tab.table)?.tableType}
+                  schema={tab.schema}
+                  table={tab.table}
+                  connectionId={tab.connectionId}
+                  executeQuery={executeQuery}
+                  isLoading={tab.isLoadingDetail}
+                  onRefresh={() => handleTabRefresh(tab.id)}
+                />
+              );
+            } else {
+              content = (
+                <QueryPanel
+                  key={tab.id}
+                  tab={tab}
+                  executeQuery={executeQuery}
+                  cancelQuery={cancelQuery}
+                  onSqlChange={(sql) => updateTabSql(tab.id, sql)}
+                  onTransactionStateChange={(open) => setTabTransactionOpen(tab.id, open)}
+                />
+              );
+            }
+            return (
+              <div
+                key={tab.id}
+                className={cn("flex flex-1 overflow-hidden", activeTabId !== tab.id && "hidden")}
+              >
+                {content}
+              </div>
+            );
+          })}
 
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={cn("flex flex-1 overflow-hidden", activeTabId !== tab.id && "hidden")}
-            >
-              <QueryPanel
-                tab={tab}
-                executeQuery={executeQuery}
-                cancelQuery={cancelQuery}
-                isInTransaction={isInTransaction}
-                onSqlChange={(sql) => updateTabSql(tab.id, sql)}
-                onTransactionStateChange={setIsInTransaction}
-              />
+          {tabs.length === 0 && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+              <DatabaseIcon className="size-12 text-mineshaft-600" />
+              <p className="text-sm text-mineshaft-400">No tabs open</p>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  openQueryTab().catch(() => {});
+                }}
+                isPending={isOpeningTab}
+              >
+                New query tab
+              </Button>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -537,28 +557,6 @@ export const PamDataExplorerPage = ({ reason }: Props = {}) => {
           </span>
         </div>
       </div>
-
-      <AlertDialog
-        open={pendingTableSwitch !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingTableSwitch(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              Table contains unsaved changes. Do you want to discard them?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleDiscardAndSwitch}>
-              Discard changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

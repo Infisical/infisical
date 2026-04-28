@@ -8,6 +8,7 @@ export * from "./ButtonGroup";
 export * from "./Calendar";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./ColorPicker";
 export * from "./Command";
 export * from "./DataGrid";
 export * from "./DateRangeFilter";

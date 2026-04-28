@@ -13,6 +13,8 @@ const alertVariants = cva(
         default: "bg-container text-card-foreground",
         info: "bg-info/5 text-info border-info/20",
         warning: "bg-warning/5 text-warning border-warning/20",
+        success: "bg-success/5 text-success border-success/20",
+        danger: "bg-danger/5 text-danger border-danger/20",
         org: "bg-org/5 text-org border-org/20",
         "sub-org": "bg-sub-org/5 text-sub-org border-sub-org/20"
       }

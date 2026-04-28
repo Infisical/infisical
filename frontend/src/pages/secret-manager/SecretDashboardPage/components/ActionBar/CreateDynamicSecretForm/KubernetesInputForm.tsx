@@ -65,6 +65,7 @@ const formSchema = z
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
+        sslRejectUnauthorized: z.boolean().default(true),
         credentialType: z.literal(KubernetesDynamicSecretCredentialType.Static),
         serviceAccountName: z.string().trim().min(1),
         namespace: z
@@ -84,6 +85,7 @@ const formSchema = z
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
+        sslRejectUnauthorized: z.boolean().default(true),
         credentialType: z.literal(KubernetesDynamicSecretCredentialType.Dynamic),
         namespace: z
           .string()
@@ -183,6 +185,7 @@ export const KubernetesInputForm = ({
         clusterToken: "",
         ca: "",
         sslEnabled: false,
+        sslRejectUnauthorized: true,
         serviceAccountName: "",
         namespace: "",
         credentialType: KubernetesDynamicSecretCredentialType.Static,
@@ -496,6 +499,41 @@ export const KubernetesInputForm = ({
                             placeholder="-----BEGIN CERTIFICATE----- ..."
                             isDisabled={!sslEnabled}
                           />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      name="provider.sslRejectUnauthorized"
+                      control={control}
+                      render={({ field: { value, onChange }, fieldState: { error } }) => (
+                        <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                          <Switch
+                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                            id="ssl-reject-unauthorized"
+                            thumbClassName="bg-mineshaft-800"
+                            isChecked={value}
+                            onCheckedChange={onChange}
+                          >
+                            <p className="w-full">
+                              SSL Reject Unauthorized
+                              <Tooltip
+                                className="max-w-md"
+                                content={
+                                  <p>
+                                    If enabled, the server certificate will be verified against the
+                                    list of supplied CAs. Disable this option if you are using a
+                                    self-signed certificate.
+                                  </p>
+                                }
+                              >
+                                <FontAwesomeIcon
+                                  icon={faQuestionCircle}
+                                  size="sm"
+                                  className="ml-1"
+                                />
+                              </Tooltip>
+                            </p>
+                          </Switch>
                         </FormControl>
                       )}
                     />

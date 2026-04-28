@@ -13,6 +13,8 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -359,7 +361,9 @@ export const secretSyncServiceFactory = ({
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
     // guarantees actor.orgId === project.orgId — no separate project lookup needed.
-    const organization = await orgDAL.findById(actor.orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
+      orgDAL.findById(actor.orgId)
+    );
     if (organization?.blockDuplicateSecretSyncDestinations) {
       const duplicateCheck = await checkDuplicateDestination(
         {
@@ -490,7 +494,9 @@ export const secretSyncServiceFactory = ({
     if (params.destinationConfig) {
       // getProjectPermission above throws NotFoundError if the project doesn't exist and
       // guarantees actor.orgId === project.orgId — no separate project lookup needed.
-      const organization = await orgDAL.findById(actor.orgId);
+      const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
+        orgDAL.findById(actor.orgId)
+      );
 
       if (organization?.blockDuplicateSecretSyncDestinations) {
         const duplicateCheck = await checkDuplicateDestination(

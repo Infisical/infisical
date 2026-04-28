@@ -61,7 +61,6 @@ export enum TableName {
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
-  ApiKey = "api_keys",
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -219,6 +218,8 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
   GatewayEnrollmentTokens = "gateway_enrollment_tokens",
+  GatewayPool = "gateway_pools",
+  GatewayPoolMembership = "gateway_pool_memberships",
 
   KeyValueStore = "key_value_store",
 
@@ -292,7 +293,8 @@ export enum TableName {
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
-  DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2"
+  DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
+  DeprecatedApiKey = "api_keys"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

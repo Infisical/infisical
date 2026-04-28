@@ -1,9 +1,9 @@
-import bcrypt from "bcrypt";
 import { Knex } from "knex";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
@@ -38,9 +38,14 @@ export async function seed(knex: Knex): Promise<void> {
   await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
   await knex(TableName.SuperAdmin).insert([
-    // eslint-disable-next-line
-    // @ts-ignore
-    { id: "00000000-0000-0000-0000-000000000000", initialized: true, allowSignUp: true }
+    {
+      // eslint-disable-next-line
+      // @ts-ignore
+      id: "00000000-0000-0000-0000-000000000000",
+      initialized: true,
+      allowSignUp: true,
+      fipsEnabled: process.env.FIPS_ENABLED === "true"
+    }
   ]);
   // Inserts seed entries
 
@@ -65,8 +70,7 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("*");
 
-  // Hash password for modern login support (POST /api/v3/auth/login)
-  const hashedPassword = await bcrypt.hash(seedData1.password, 10);
+  const hashedPassword = await crypto.hashing().createHash(seedData1.password, 10);
   await knex(TableName.Users).where({ id: user.id }).update({ hashedPassword });
 
   const encKeys = await generateUserSrpKeys(seedData1.password);

@@ -33,6 +33,11 @@ export const DigiCertExternalConfigSchema = z.object({});
 export const AwsAcmPublicCaExternalConfigSchema = z.object({});
 
 /**
+ * External configuration schema for Venafi TPP Certificate Authority
+ */
+export const VenafiTppExternalConfigSchema = z.object({});
+
+/**
  * Map of CA types to their corresponding external configuration schemas
  */
 export const ExternalConfigSchemaMap = {
@@ -41,6 +46,7 @@ export const ExternalConfigSchemaMap = {
   [CaType.AWS_PCA]: AwsPcaExternalConfigSchema,
   [CaType.DIGICERT]: DigiCertExternalConfigSchema,
   [CaType.AWS_ACM_PUBLIC_CA]: AwsAcmPublicCaExternalConfigSchema,
+  [CaType.VENAFI_TPP]: VenafiTppExternalConfigSchema,
   [CaType.INTERNAL]: z.object({}).optional() // Internal CAs don't use external configs
 } as const;
 
@@ -67,6 +73,7 @@ export const ExternalConfigUnionSchema = z
     AwsPcaExternalConfigSchema,
     DigiCertExternalConfigSchema,
     AwsAcmPublicCaExternalConfigSchema,
+    VenafiTppExternalConfigSchema,
     z.object({})
   ])
   .nullable()

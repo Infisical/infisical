@@ -55,7 +55,8 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
 
   const vaultConnections = useMemo(
-    () => appConnections.filter((conn) => conn.app === AppConnection.HCVault),
+    () =>
+      appConnections.filter((conn) => conn.app === AppConnection.HCVault && conn.projectId == null),
     [appConnections]
   );
 

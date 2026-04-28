@@ -56,10 +56,12 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return new Promise((resolve, reject) => {
       const client = ldapjs.createClient({
         url: providerInputs.url,
-        tlsOptions: {
-          ca: providerInputs.ca ? providerInputs.ca : null,
-          rejectUnauthorized: !!providerInputs.ca
-        },
+        tlsOptions: providerInputs.ca
+          ? {
+              ca: providerInputs.ca ? providerInputs.ca : null,
+              rejectUnauthorized: providerInputs.sslRejectUnauthorized
+            }
+          : undefined,
         reconnect: true,
         bindDN: providerInputs.binddn,
         bindCredentials: providerInputs.bindpass

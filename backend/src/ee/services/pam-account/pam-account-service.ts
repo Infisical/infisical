@@ -818,7 +818,9 @@ export const pamAccountServiceFactory = ({
         projectDAL.findById(account.projectId)
       );
       if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
-      const org = await orgDAL.findOrgById(project.orgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(project.orgId), () =>
+        orgDAL.findOrgById(project.orgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
 
       // Determine which MFA method to use
@@ -1703,7 +1705,9 @@ export const pamAccountServiceFactory = ({
       const actorUser = await userDAL.findById(actorId);
       if (!actorUser) throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
 
-      const org = await orgDAL.findOrgById(actorOrgId);
+      const org = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
+        orgDAL.findOrgById(actorOrgId)
+      );
       if (!org) throw new NotFoundError({ message: `Organization with ID '${actorOrgId}' not found` });
 
       const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;

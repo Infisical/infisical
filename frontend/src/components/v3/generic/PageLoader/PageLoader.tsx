@@ -1,9 +1,15 @@
+import { twMerge } from "tailwind-merge";
+
 import { Lottie } from "@app/components/v2";
 
-export function PageLoader() {
+type PageLoaderProps = {
+  lottieClassName?: string;
+};
+
+export function PageLoader({ lottieClassName }: PageLoaderProps) {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Lottie icon="infisical_loading" isAutoPlay className="w-24" />
+      <Lottie icon="infisical_loading" isAutoPlay className={twMerge("w-24", lottieClassName)} />
     </div>
   );
 }

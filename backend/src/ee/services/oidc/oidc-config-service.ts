@@ -15,7 +15,9 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
@@ -207,7 +209,7 @@ export const oidcConfigServiceFactory = ({
       aliasType: UserAliasType.OIDC
     });
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     let user: TUsers;
@@ -419,7 +421,7 @@ export const oidcConfigServiceFactory = ({
       await smtpService
         .sendMail({
           template: SmtpTemplates.EmailVerification,
-          subjectLine: "Infisical confirmation code",
+          subjectLine: `Infisical confirmation code: ${token}`,
           recipients: [user.email],
           substitutions: {
             code: token

@@ -1,25 +1,14 @@
 import { Octokit } from "@octokit/rest";
 import { execFile } from "child_process";
-import { mkdir, readFile, rm, writeFile } from "fs";
+import { readFile, rm, writeFile } from "fs";
+import { mkdtemp } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
 import { SecretMatch } from "./secret-scanning-queue-types";
 
 export function createTempFolder(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const tempDir = tmpdir();
-    const tempFolderName = Math.random().toString(36).substring(2);
-    const tempFolderPath = join(tempDir, tempFolderName);
-
-    mkdir(tempFolderPath, (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(tempFolderPath);
-      }
-    });
-  });
+  return mkdtemp(join(tmpdir(), "infisical-scan-"));
 }
 
 export function writeTextToFile(filePath: string, content: string): Promise<void> {
