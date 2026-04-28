@@ -49,7 +49,7 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 
 	tokenMode := ClassifyToken(token)
 	if tokenMode == "" {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("Token classification failed"))
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("token classification failed"))
 	}
 
 	// Map scheme name to expected auth mode.
@@ -62,12 +62,12 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 	case "service_token":
 		expectedMode = AuthModeServiceToken
 	default:
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("Invalid token"))
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(errors.New("invalid token"))
 	}
 
 	// Fast reject: token type doesn't match the scheme being tried.
 	if tokenMode != expectedMode {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(fmt.Errorf("Provider token %v not support", tokenMode))
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(fmt.Errorf("provider token %v not supported", tokenMode))
 	}
 
 	var (

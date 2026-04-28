@@ -25,6 +25,15 @@ func ClassifyToken(token string) AuthMode {
 		return AuthModeJWT
 	case AuthTokenTypeIdentityAccessToken:
 		return AuthModeIdentityAccessToken
+	case AuthTokenTypeRefreshToken,
+		AuthTokenTypeSignupToken,
+		AuthTokenTypeMfaToken,
+		AuthTokenTypeProviderToken,
+		AuthTokenTypeAPIKey,
+		AuthTokenTypeServiceAccessToken,
+		AuthTokenTypeServiceRefreshToken,
+		AuthTokenTypeSCIMToken:
+		return ""
 	}
 
 	return ""
