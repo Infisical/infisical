@@ -600,3 +600,278 @@ func (n *NodeJSService) CreateUserAdditionalPrivilege(t *testing.T, userID, proj
 		t.Fatalf("infra.CreateUserAdditionalPrivilege: returned %d: %s", r.StatusCode(), r.String())
 	}
 }
+
+// SecretSeed contains metadata for a secret created via the Node.js API.
+type SecretSeed struct {
+	ID      string
+	Key     string
+	Value   string
+	Version int
+}
+
+// CreateSecret creates a secret via the Node.js API.
+func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secretPath, key, value string) *SecretSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"projectId":   projectID,
+			"environment": environment,
+			"secretPath":  secretPath,
+			"secretValue": value,
+			"type":        "shared",
+		}).
+		SetResult(&resp).
+		Post(fmt.Sprintf("/api/v4/secrets/raw/%s", key))
+	if err != nil {
+		t.Fatalf("infra.CreateSecret: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateSecret: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &SecretSeed{
+		ID:      jsonStr(resp, "secret.id"),
+		Key:     key,
+		Value:   value,
+		Version: 1,
+	}
+}
+
+// CreateSecretWithTags creates a secret with tags via the Node.js API.
+func (n *NodeJSService) CreateSecretWithTags(t *testing.T, projectID, environment, secretPath, key, value string, tagIDs []string) *SecretSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"projectId":   projectID,
+			"environment": environment,
+			"secretPath":  secretPath,
+			"secretValue": value,
+			"type":        "shared",
+			"tagIds":      tagIDs,
+		}).
+		SetResult(&resp).
+		Post(fmt.Sprintf("/api/v4/secrets/raw/%s", key))
+	if err != nil {
+		t.Fatalf("infra.CreateSecretWithTags: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateSecretWithTags: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &SecretSeed{
+		ID:      jsonStr(resp, "secret.id"),
+		Key:     key,
+		Value:   value,
+		Version: 1,
+	}
+}
+
+// FolderSeed contains metadata for a folder created via the Node.js API.
+type FolderSeed struct {
+	ID   string
+	Name string
+}
+
+// CreateFolder creates a secret folder via the Node.js API.
+func (n *NodeJSService) CreateFolder(t *testing.T, projectID, environment, path, name string) *FolderSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"projectId":   projectID,
+			"environment": environment,
+			"path":        path,
+			"name":        name,
+		}).
+		SetResult(&resp).
+		Post("/api/v2/folders")
+	if err != nil {
+		t.Fatalf("infra.CreateFolder: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateFolder: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &FolderSeed{
+		ID:   jsonStr(resp, "folder.id"),
+		Name: name,
+	}
+}
+
+// SecretImportSeed contains metadata for a secret import created via the Node.js API.
+type SecretImportSeed struct {
+	ID string
+}
+
+// CreateSecretImport creates a secret import via the Node.js API.
+func (n *NodeJSService) CreateSecretImport(t *testing.T, projectID, environment, path, importEnv, importPath string) *SecretImportSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"projectId":   projectID,
+			"environment": environment,
+			"path":        path,
+			"import": map[string]any{
+				"environment": importEnv,
+				"path":        importPath,
+			},
+		}).
+		SetResult(&resp).
+		Post("/api/v2/secret-imports")
+	if err != nil {
+		t.Fatalf("infra.CreateSecretImport: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateSecretImport: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &SecretImportSeed{
+		ID: jsonStr(resp, "secretImport.id"),
+	}
+}
+
+// EnvironmentSeed contains metadata for an environment created via the Node.js API.
+type EnvironmentSeed struct {
+	ID   string
+	Slug string
+	Name string
+}
+
+// CreateEnvironment creates an environment in a project via the Node.js API.
+func (n *NodeJSService) CreateEnvironment(t *testing.T, projectID, slug, name string) *EnvironmentSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"slug": slug,
+			"name": name,
+		}).
+		SetResult(&resp).
+		Post(fmt.Sprintf("/api/v1/projects/%s/environments", projectID))
+	if err != nil {
+		t.Fatalf("infra.CreateEnvironment: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateEnvironment: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &EnvironmentSeed{
+		ID:   jsonStr(resp, "environment.id"),
+		Slug: slug,
+		Name: name,
+	}
+}
+
+// TagSeed contains metadata for a tag created via the Node.js API.
+type TagSeed struct {
+	ID   string
+	Slug string
+	Name string
+}
+
+// CreateTag creates a project tag via the Node.js API.
+func (n *NodeJSService) CreateTag(t *testing.T, projectID, slug, name, color string) *TagSeed {
+	t.Helper()
+
+	var resp map[string]any
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"slug":  slug,
+			"name":  name,
+			"color": color,
+		}).
+		SetResult(&resp).
+		Post(fmt.Sprintf("/api/v1/projects/%s/tags", projectID))
+	if err != nil {
+		t.Fatalf("infra.CreateTag: request failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateTag: returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return &TagSeed{
+		ID:   jsonStr(resp, "workspaceTag.id"),
+		Slug: slug,
+		Name: name,
+	}
+}
+
+// GetIdentityAccessToken creates and returns an access token for an identity.
+// This is useful for testing API calls as that specific identity.
+func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) string {
+	t.Helper()
+
+	// First, create a universal auth method for the identity
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"identityId":                    identityID,
+			"accessTokenTrustedIps":         []map[string]any{{"ipAddress": "0.0.0.0/0"}},
+			"accessTokenTTL":                3600,
+			"accessTokenMaxTTL":             7200,
+			"accessTokenNumUsesLimit":       0,
+			"clientSecretTrustedIps":        []map[string]any{{"ipAddress": "0.0.0.0/0"}},
+			"clientSecretNumUsesLimit":      0,
+			"isClientSecretRotationEnabled": false,
+		}).
+		Post("/api/v1/auth/universal-auth/identities/" + identityID)
+	if err != nil {
+		t.Fatalf("infra.GetIdentityAccessToken: create auth failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.GetIdentityAccessToken: create auth returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	// Then create a client secret
+	var clientSecretResp map[string]any
+	r, err = n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(map[string]any{
+			"description":  "test-client-secret",
+			"ttl":          0,
+			"numUsesLimit": 0,
+		}).
+		SetResult(&clientSecretResp).
+		Post("/api/v1/auth/universal-auth/identities/" + identityID + "/client-secrets")
+	if err != nil {
+		t.Fatalf("infra.GetIdentityAccessToken: create client secret failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.GetIdentityAccessToken: create client secret returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	clientID := jsonStr(clientSecretResp, "clientSecretData.clientId")
+	clientSecret := jsonStr(clientSecretResp, "clientSecretData.clientSecretPrefix") + jsonStr(clientSecretResp, "clientSecret")
+
+	// Finally, login to get the access token
+	var loginResp map[string]any
+	r, err = n.client.R().
+		SetBody(map[string]any{
+			"clientId":     clientID,
+			"clientSecret": clientSecret,
+		}).
+		SetResult(&loginResp).
+		Post("/api/v1/auth/universal-auth/login")
+	if err != nil {
+		t.Fatalf("infra.GetIdentityAccessToken: login failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.GetIdentityAccessToken: login returned %d: %s", r.StatusCode(), r.String())
+	}
+
+	return jsonStr(loginResp, "accessToken")
+}
