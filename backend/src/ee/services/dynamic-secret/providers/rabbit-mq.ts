@@ -94,7 +94,7 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
       },
       maxRedirects: 0,
       ...(providerInputs.ca && {
-        httpsAgent: new https.Agent({ ca: providerInputs.ca, rejectUnauthorized: false })
+        httpsAgent: new https.Agent({ ca: providerInputs.ca, rejectUnauthorized: providerInputs.sslRejectUnauthorized })
       })
     });
 

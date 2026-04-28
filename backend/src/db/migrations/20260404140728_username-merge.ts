@@ -40,6 +40,7 @@ export async function up(knex: Knex): Promise<void> {
     UPDATE "${TableName.Users}"
     SET "isGitHubVerified" = TRUE
     WHERE "authMethods" @> ARRAY['github']::text[]
+      AND "isAccepted" = TRUE
       AND ("isGitHubVerified" IS NULL OR "isGitHubVerified" = FALSE)
   `);
 
@@ -47,6 +48,7 @@ export async function up(knex: Knex): Promise<void> {
     UPDATE "${TableName.Users}"
     SET "isGoogleVerified" = TRUE
     WHERE "authMethods" @> ARRAY['google']::text[]
+      AND "isAccepted" = TRUE
       AND ("isGoogleVerified" IS NULL OR "isGoogleVerified" = FALSE)
   `);
 
@@ -54,6 +56,7 @@ export async function up(knex: Knex): Promise<void> {
     UPDATE "${TableName.Users}"
     SET "isGitLabVerified" = TRUE
     WHERE "authMethods" @> ARRAY['gitlab']::text[]
+      AND "isAccepted" = TRUE
       AND ("isGitLabVerified" IS NULL OR "isGitLabVerified" = FALSE)
   `);
     log(`Step 2 done in ${Date.now() - t}ms`);

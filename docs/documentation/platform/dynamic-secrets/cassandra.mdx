@@ -76,6 +76,10 @@ The above configuration allows user creation and granting permissions.
 		A CA may be required if your cassandra requires it for incoming connections.
   </ParamField>
 
+	<ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+	  If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+	</ParamField>
+
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-cassandra.png)
 
   </Step>

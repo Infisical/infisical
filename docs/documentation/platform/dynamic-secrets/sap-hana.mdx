@@ -61,6 +61,10 @@ The Infisical SAP HANA dynamic secret allows you to generate SAP HANA database c
 
   </ParamField>
 
+    <ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+      If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+    </ParamField>
+
     ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-setup-modal-sap-hana.png)
 
   </Step>

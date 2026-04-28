@@ -1,5 +1,6 @@
-import { CircleCheckBigIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { CheckCircleIcon } from "lucide-react";
+
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 
 import { BrandingTheme } from "../../ViewSharedSecretByIDPage/ViewSharedSecretByIDPage";
 
@@ -10,37 +11,25 @@ type Props = {
 
 export const SecretRequestSuccessContainer = ({ brandingTheme, requesterUsername }: Props) => {
   const panelStyle = brandingTheme
-    ? {
+    ? ({
         backgroundColor: brandingTheme.panelBg,
         color: brandingTheme.textColor,
-        "--muted-color": brandingTheme.textMutedColor,
         borderColor: brandingTheme.panelBorder
-      }
+      } as React.CSSProperties)
     : undefined;
 
   return (
-    <div
-      className={twMerge(
-        "rounded-lg border p-6",
-        !brandingTheme && "border-mineshaft-600 bg-mineshaft-800"
-      )}
-      style={panelStyle}
-    >
-      <div className="flex items-center gap-4">
-        <CircleCheckBigIcon
-          className="size-8 shrink-0"
-          style={{ color: brandingTheme?.textMutedColor || "white" }}
-        />
-        <div className="flex flex-col">
-          <span className="font-medium">Secret Shared</span>
-          <span
-            className={`text-sm ${brandingTheme ? "text-[var(--muted-color)]" : "text-mineshaft-300"}`}
-          >
-            <strong>{requesterUsername}</strong> has now been notified of your shared secret, and
-            will be able to access it shortly.
-          </span>
-        </div>
-      </div>
-    </div>
+    <Alert variant={brandingTheme ? "default" : "success"} style={panelStyle}>
+      <CheckCircleIcon
+        style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
+      />
+      <AlertTitle style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
+        Secret Shared
+      </AlertTitle>
+      <AlertDescription style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}>
+        {requesterUsername} has now been notified of your shared secret, and will be able to access
+        it shortly.
+      </AlertDescription>
+    </Alert>
   );
 };

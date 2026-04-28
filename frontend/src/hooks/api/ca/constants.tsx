@@ -54,7 +54,8 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES
-  ]
+  ],
+  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
 };
 
 export const EXTERNAL_CA_TYPE_NAME_MAP: Record<string, string> = {
@@ -62,7 +63,8 @@ export const EXTERNAL_CA_TYPE_NAME_MAP: Record<string, string> = {
   [CaType.AZURE_AD_CS]: "Active Directory Certificate Services (AD CS)",
   [CaType.AWS_PCA]: "AWS Private CA (PCA)",
   [CaType.DIGICERT]: "DigiCert CertCentral",
-  [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA"
+  [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",
+  [CaType.VENAFI_TPP]: "Venafi TPP"
 };
 
 /**

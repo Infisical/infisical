@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
@@ -13,7 +15,9 @@ import {
   Input,
   Select,
   SelectItem,
-  TextArea
+  Switch,
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -47,6 +51,7 @@ const formSchema = z.object({
       binddn: z.string().trim().min(1),
       bindpass: z.string().trim().min(1),
       ca: z.string().optional(),
+      sslRejectUnauthorized: z.boolean().default(true),
       credentialType: z.literal(CredentialType.Dynamic),
       creationLdif: z.string().min(1),
       revocationLdif: z.string().min(1),
@@ -57,6 +62,7 @@ const formSchema = z.object({
       binddn: z.string().trim().min(1),
       bindpass: z.string().trim().min(1),
       ca: z.string().optional(),
+      sslRejectUnauthorized: z.boolean().default(true),
       credentialType: z.literal(CredentialType.Static),
       rotationLdif: z.string().min(1)
     })
@@ -120,6 +126,7 @@ export const LdapInputForm = ({
         binddn: "",
         bindpass: "",
         ca: "",
+        sslRejectUnauthorized: true,
         creationLdif: "",
         revocationLdif: "",
         rollbackLdif: "",
@@ -331,6 +338,38 @@ export const LdapInputForm = ({
                       errorText={error?.message}
                     >
                       <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                    </FormControl>
+                  )}
+                />
+
+                <Controller
+                  name="provider.sslRejectUnauthorized"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                      <Switch
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        id="ssl-reject-unauthorized"
+                        thumbClassName="bg-mineshaft-800"
+                        isChecked={value}
+                        onCheckedChange={onChange}
+                      >
+                        <p className="w-full">
+                          SSL Reject Unauthorized
+                          <Tooltip
+                            className="max-w-md"
+                            content={
+                              <p>
+                                If enabled, the server certificate will be verified against the list
+                                of supplied CAs. Disable this option if you are using a self-signed
+                                certificate.
+                              </p>
+                            }
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                          </Tooltip>
+                        </p>
+                      </Switch>
                     </FormControl>
                   )}
                 />

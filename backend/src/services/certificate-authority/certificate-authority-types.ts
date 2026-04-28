@@ -20,6 +20,10 @@ import {
   TInternalCertificateAuthority,
   TInternalCertificateAuthorityInput
 } from "./internal/internal-certificate-authority-types";
+import {
+  TCreateVenafiTppCertificateAuthorityDTO,
+  TVenafiTppCertificateAuthority
+} from "./venafi-tpp/venafi-tpp-certificate-authority-types";
 
 export type TCertificateAuthority =
   | TInternalCertificateAuthority
@@ -27,7 +31,8 @@ export type TCertificateAuthority =
   | TAzureAdCsCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
-  | TAwsAcmPublicCaCertificateAuthority;
+  | TAwsAcmPublicCaCertificateAuthority
+  | TVenafiTppCertificateAuthority;
 
 export type TCertificateAuthorityInput =
   | TInternalCertificateAuthorityInput
@@ -35,7 +40,8 @@ export type TCertificateAuthorityInput =
   | TCreateAzureAdCsCertificateAuthorityDTO
   | TCreateAwsPcaCertificateAuthorityDTO
   | TCreateDigiCertCertificateAuthorityDTO
-  | TCreateAwsAcmPublicCaCertificateAuthorityDTO;
+  | TCreateAwsAcmPublicCaCertificateAuthorityDTO
+  | TCreateVenafiTppCertificateAuthorityDTO;
 
 export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id" | "enableDirectIssuance">;
 

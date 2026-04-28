@@ -832,24 +832,30 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (vaultPath: string, namespace: string) => {
-    const result = await importVaultSecrets({
+  const handleVaultImport = async (vaultPaths: string[], namespace: string) => {
+    const { status } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
-      vaultSecretPath: vaultPath
+      vaultSecretPaths: vaultPaths
     });
 
-    if (result.status === ExternalMigrationImportStatus.ApprovalRequired) {
+    if (status === ExternalMigrationImportStatus.ApprovalRequired) {
       createNotification({
         type: "info",
-        text: "Secret change request created successfully. Awaiting approval."
+        text:
+          vaultPaths.length > 1
+            ? `Secret change request created for ${vaultPaths.length} Vault paths. Awaiting approval.`
+            : "Secret change request created successfully. Awaiting approval."
       });
     } else {
       createNotification({
         type: "success",
-        text: "Successfully imported secrets from HashiCorp Vault"
+        text:
+          vaultPaths.length > 1
+            ? `Successfully imported secrets from ${vaultPaths.length} HashiCorp Vault paths`
+            : "Successfully imported secrets from HashiCorp Vault"
       });
     }
   };
@@ -3359,6 +3365,17 @@ const OverviewPageContent = () => {
         projectId={projectId}
         secretPath={secretPath}
         initialParsedSecrets={importParsedSecrets}
+        onComplete={(envSlugs) => {
+          const visibleSlugs = new Set(visibleEnvs.map((e) => e.slug));
+          const allTargetEnvsVisible = envSlugs.every((slug) => visibleSlugs.has(slug));
+
+          if (!allTargetEnvsVisible) {
+            const targetEnvs = userAvailableEnvs.filter((env) => envSlugs.includes(env.slug));
+            if (targetEnvs.length) {
+              setFilteredEnvs(targetEnvs);
+            }
+          }
+        }}
       />
       <ReplicateFolderFromBoard
         isOpen={popUp.replicateFolder.isOpen}

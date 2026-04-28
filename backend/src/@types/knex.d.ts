@@ -41,9 +41,6 @@ import {
   TAiMcpServerUserCredentials,
   TAiMcpServerUserCredentialsInsert,
   TAiMcpServerUserCredentialsUpdate,
-  TApiKeys,
-  TApiKeysInsert,
-  TApiKeysUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -167,6 +164,12 @@ import {
   TGatewayEnrollmentTokens,
   TGatewayEnrollmentTokensInsert,
   TGatewayEnrollmentTokensUpdate,
+  TGatewayPoolMemberships,
+  TGatewayPoolMembershipsInsert,
+  TGatewayPoolMembershipsUpdate,
+  TGatewayPools,
+  TGatewayPoolsInsert,
+  TGatewayPoolsUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -1044,7 +1047,6 @@ declare module "knex/types/tables" {
     >;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
-    [TableName.ApiKey]: KnexOriginal.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
       TProjectSshConfigs,
@@ -1583,6 +1585,12 @@ declare module "knex/types/tables" {
       TGatewayEnrollmentTokens,
       TGatewayEnrollmentTokensInsert,
       TGatewayEnrollmentTokensUpdate
+    >;
+    [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
+    [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<
+      TGatewayPoolMemberships,
+      TGatewayPoolMembershipsInsert,
+      TGatewayPoolMembershipsUpdate
     >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,

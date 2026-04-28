@@ -82,7 +82,7 @@ export type TImportVaultSecretsDTO = {
   environment: string;
   secretPath: string;
   vaultNamespace: string;
-  vaultSecretPath: string;
+  vaultSecretPaths: string[];
 };
 
 export type VaultKubernetesAuthRole = {

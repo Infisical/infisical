@@ -13,7 +13,6 @@ import {
   FilterableSelect,
   FormControl,
   Input,
-  SecretInput,
   TextArea
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
@@ -28,8 +27,7 @@ const formSchema = z.object({
 
     region: z.string().trim(),
     creationStatement: z.string().trim(),
-    revocationStatement: z.string().trim(),
-    ca: z.string().optional()
+    revocationStatement: z.string().trim()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -246,23 +244,6 @@ export const AwsElastiCacheInputForm = ({
                 />
               </div>
               <div>
-                <Controller
-                  control={control}
-                  name="provider.ca"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isOptional
-                      label="CA(SSL)"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <SecretInput
-                        {...field}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
-                      />
-                    </FormControl>
-                  )}
-                />
                 <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify ElastiCache Statements</AccordionTrigger>

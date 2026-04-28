@@ -21,6 +21,7 @@ export type TAttachKubernetesAuthDTO = {
   allowedNames: string;
   allowedAudience: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -38,6 +39,7 @@ export type TUpdateKubernetesAuthDTO = {
   allowedNames?: string;
   allowedAudience?: string;
   gatewayId?: string | null;
+  gatewayPoolId?: string | null;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

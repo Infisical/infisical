@@ -5,7 +5,6 @@ import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
-import { APIKeyDataV2 } from "../apiKeys/types";
 import { authKeys } from "../auth/queries";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
@@ -14,9 +13,7 @@ import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
-  APIKeyData,
   AuthMethod,
-  CreateAPIKeyRes,
   DeleteOrgMembershipBatchDTO,
   DeleteOrgMembershipDTO,
   OrgUser,
@@ -381,64 +378,6 @@ export const useGetMyIp = () => {
       return data.ip;
     },
     enabled: true
-  });
-};
-
-export const useGetMyAPIKeys = () => {
-  // TODO: deprecate (moving to API Key V2)
-  return useQuery({
-    queryKey: userKeys.myAPIKeys,
-    queryFn: async () => {
-      const { data } = await apiRequest.get<APIKeyData[]>("/api/v2/users/me/api-keys");
-      return data;
-    },
-    enabled: true
-  });
-};
-
-export const useGetMyAPIKeysV2 = () => {
-  return useQuery({
-    queryKey: userKeys.myAPIKeysV2,
-    queryFn: async () => {
-      const {
-        data: { apiKeyData }
-      } = await apiRequest.get<{ apiKeyData: APIKeyDataV2[] }>("/api/v3/users/me/api-keys");
-      return apiKeyData;
-    },
-    enabled: true
-  });
-};
-
-export const useCreateAPIKey = () => {
-  // TODO: deprecate (moving to API Key V2)
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ name, expiresIn }: { name: string; expiresIn: number }) => {
-      const { data } = await apiRequest.post<CreateAPIKeyRes>("/api/v2/users/me/api-keys", {
-        name,
-        expiresIn
-      });
-
-      return data;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeys });
-    }
-  });
-};
-
-export const useDeleteAPIKey = () => {
-  // TODO: deprecate (moving to API Key V2)
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (apiKeyDataId: string) => {
-      const { data } = await apiRequest.delete(`/api/v2/users/me/api-keys/${apiKeyDataId}`);
-
-      return data;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: userKeys.myAPIKeys });
-    }
   });
 };
 

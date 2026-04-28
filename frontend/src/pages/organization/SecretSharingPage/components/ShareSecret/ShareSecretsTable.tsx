@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
 
 import {
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { useGetSharedSecrets } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -37,43 +38,60 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
     offset: (page - 1) * perPage,
     limit: perPage
   });
+  const hasSecrets = !isPending && data?.secrets && data.secrets.length > 0;
+
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th className="w-5" />
-            <Th>Name</Th>
-            <Th>Status</Th>
-            <Th>Created At</Th>
-            <Th>Valid Until</Th>
-            <Th>Views Left</Th>
-            <Th aria-label="button" className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isPending && <TableSkeleton columns={7} innerKey="shared-secrets" />}
-          {!isPending &&
-            data?.secrets?.map((row) => (
-              <ShareSecretsRow key={row.id} row={row} handlePopUpOpen={handlePopUpOpen} />
-            ))}
-        </TBody>
-      </Table>
-      {!isPending &&
-        data?.secrets &&
-        data?.totalCount >= perPage &&
-        data?.totalCount !== undefined && (
-          <Pagination
-            count={data.totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-          />
-        )}
-      {!isPending && !data?.secrets?.length && (
-        <EmptyState title="No secrets shared yet" icon={faKey} />
+    <div>
+      {(isPending || hasSecrets) && (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-5" />
+              <TableHead className="w-1/4">Name</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableHead>Views Left</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead aria-label="button" className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending &&
+              Array.from({ length: 5 }).map((_, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <TableRow key={`skeleton-${i}`}>
+                  {Array.from({ length: 7 }).map((__, j) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <td key={`skeleton-cell-${j}`} className="px-3 py-3">
+                      <Skeleton className="h-4 w-full" />
+                    </td>
+                  ))}
+                </TableRow>
+              ))}
+            {hasSecrets &&
+              data.secrets.map((row) => (
+                <ShareSecretsRow key={row.id} row={row} handlePopUpOpen={handlePopUpOpen} />
+              ))}
+          </TableBody>
+        </Table>
       )}
-    </TableContainer>
+      {hasSecrets && data.totalCount >= perPage && data.totalCount !== undefined && (
+        <Pagination
+          count={data.totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={(newPage) => setPage(newPage)}
+          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+        />
+      )}
+      {!isPending && !data?.secrets?.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No secrets shared yet</EmptyTitle>
+            <EmptyDescription>Share a secret to get started</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </div>
   );
 };

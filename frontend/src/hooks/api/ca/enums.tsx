@@ -4,7 +4,8 @@ export enum CaType {
   AZURE_AD_CS = "azure-ad-cs",
   AWS_PCA = "aws-pca",
   DIGICERT = "digicert",
-  AWS_ACM_PUBLIC_CA = "aws-acm-public-ca"
+  AWS_ACM_PUBLIC_CA = "aws-acm-public-ca",
+  VENAFI_TPP = "venafi-tpp"
 }
 
 export enum InternalCaType {

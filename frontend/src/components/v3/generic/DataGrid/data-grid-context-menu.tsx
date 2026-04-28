@@ -1,6 +1,12 @@
 import * as React from "react";
 import type { ColumnDef, TableMeta } from "@tanstack/react-table";
-import { CircleOffIcon, EraserIcon } from "lucide-react";
+import {
+  CircleOffIcon,
+  ClipboardPasteIcon,
+  CopyIcon,
+  EraserIcon,
+  ScissorsIcon
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +38,7 @@ export function DataGridContextMenu<TData>({
   const onRowsDelete = tableMeta?.onRowsDelete;
   const onCellsCopy = tableMeta?.onCellsCopy;
   const onCellsCut = tableMeta?.onCellsCut;
+  const onCellsPaste = tableMeta?.onCellsPaste;
 
   if (!contextMenu.open) return null;
 
@@ -48,6 +55,7 @@ export function DataGridContextMenu<TData>({
       onRowsDelete={onRowsDelete}
       onCellsCopy={onCellsCopy}
       onCellsCut={onCellsCut}
+      onCellsPaste={onCellsPaste}
     />
   );
 }
@@ -62,6 +70,7 @@ interface ContextMenuProps<TData>
       | "onRowsDelete"
       | "onCellsCopy"
       | "onCellsCut"
+      | "onCellsPaste"
       | "readOnly"
     >,
     Required<Pick<TableMeta<TData>, "contextMenu">> {
@@ -93,7 +102,8 @@ function ContextMenuImpl<TData>({
   onDataUpdate,
   onRowsDelete,
   onCellsCopy,
-  onCellsCut
+  onCellsCut,
+  onCellsPaste
 }: ContextMenuProps<TData>) {
   const propsRef = useAsRef({
     dataGridRef,
@@ -102,6 +112,7 @@ function ContextMenuImpl<TData>({
     onRowsDelete,
     onCellsCopy,
     onCellsCut,
+    onCellsPaste,
     columns
   });
 
@@ -131,6 +142,18 @@ function ContextMenuImpl<TData>({
     },
     [propsRef]
   );
+
+  const onCopy = React.useCallback(() => {
+    propsRef.current.onCellsCopy?.();
+  }, [propsRef]);
+
+  const onCut = React.useCallback(() => {
+    propsRef.current.onCellsCut?.();
+  }, [propsRef]);
+
+  const onPaste = React.useCallback(() => {
+    propsRef.current.onCellsPaste?.();
+  }, [propsRef]);
 
   const onClear = React.useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-shadow
@@ -197,14 +220,32 @@ function ContextMenuImpl<TData>({
         className="min-w-[140px] p-0.5 [&_[role=menuitem]]:gap-1.5 [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-xs [&_svg]:size-3"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DropdownMenuItem onSelect={onClear} isDisabled={tableMeta?.readOnly}>
-          <EraserIcon />
-          Clear
+        <DropdownMenuItem onSelect={onCopy}>
+          <CopyIcon />
+          Copy
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSetNull} isDisabled={tableMeta?.readOnly}>
-          <CircleOffIcon />
-          Set NULL
-        </DropdownMenuItem>
+        {!tableMeta?.readOnly && (
+          <>
+            <DropdownMenuItem onSelect={onCut}>
+              <ScissorsIcon />
+              Cut
+            </DropdownMenuItem>
+            {tableMeta?.enablePaste && (
+              <DropdownMenuItem onSelect={onPaste}>
+                <ClipboardPasteIcon />
+                Paste
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={onClear}>
+              <EraserIcon />
+              Clear
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSetNull}>
+              <CircleOffIcon />
+              Set NULL
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

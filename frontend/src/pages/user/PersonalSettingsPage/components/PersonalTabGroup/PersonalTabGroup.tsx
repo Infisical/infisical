@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 
-import { PersonalAPIKeyTab } from "../PersonalAPIKeyTab";
 import { PersonalAuthTab } from "../PersonalAuthTab";
 import { PersonalGeneralTab } from "../PersonalGeneralTab";
 
@@ -61,7 +60,6 @@ export const PersonalTabGroup = () => {
               </p>
             </div>
           </div>
-          <PersonalAPIKeyTab />
         </div>
       </TabPanel>
     </Tabs>

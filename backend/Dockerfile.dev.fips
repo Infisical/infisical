@@ -77,9 +77,10 @@ WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && tar -xf openssl-3.1.2.tar.gz \
     && cd openssl-3.1.2 \
-    && ./Configure enable-fips \
+    && ./Configure enable-fips --libdir=lib \
     && make \
     && make install_fips \
+    && test -f /usr/local/lib/ossl-modules/fips.so \
     && cd / \
     && rm -rf /openssl-build \
     && apt-get clean \

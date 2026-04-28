@@ -88,7 +88,7 @@ Services live in `src/services/` (100+ modules). Each typically contains:
 
 Routes use Fastify's Zod type provider — schemas auto-generate OpenAPI docs. Each route specifies: `method`, `url`, `config.rateLimit` (using `readLimit` or `writeLimit` presets), `schema` (Zod schemas with `operationId` for OpenAPI), `onRequest: verifyAuth([AuthMode.*])`, and a `handler` that accesses business logic via `server.services.*`.
 
-See `src/server/routes/v3/user-router.ts` for a representative router file.
+See `src/server/routes/v4/secret-router.ts` for a representative router file.
 
 ### Auth System
 

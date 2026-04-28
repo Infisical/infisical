@@ -14,7 +14,7 @@ jobs:
   check-be-pr:
     name: Run integration test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Free up disk space
         run: |
@@ -53,18 +53,32 @@ jobs:
       - name: Run unit test
         run: npm run test:unit
         working-directory: backend
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Build FIPS test image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: backend
+          file: backend/Dockerfile.dev.fips
+          load: true
+          tags: infisical-backend-fips:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Run integration test
-        run: npm run test:e2e
-        working-directory: backend
-        env:
-          E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
-          E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
-          E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
-          E2E_TEST_ORACLE_DB_19_DATABASE: ${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}
-          REDIS_URL: redis://172.17.0.1:6379
-          DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
-          AUTH_SECRET: something-random
-          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
+        run: |
+          docker run --rm --network host \
+            -e DB_CONNECTION_URI="postgres://infisical:infisical@localhost:5432/infisical?sslmode=disable" \
+            -e REDIS_URL="redis://localhost:6379" \
+            -e AUTH_SECRET="something-random" \
+            -e ENCRYPTION_KEY="p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=" \
+            -e NODE_ENV="test" \
+            -e NODE_OPTIONS="--force-fips" \
+            -e E2E_TEST_ORACLE_DB_19_HOST="${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}" \
+            -e E2E_TEST_ORACLE_DB_19_USERNAME="${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}" \
+            -e E2E_TEST_ORACLE_DB_19_PASSWORD="${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}" \
+            -e E2E_TEST_ORACLE_DB_19_DATABASE="${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}" \
+            infisical-backend-fips:latest \
+            npm run test:e2e
       - name: cleanup
         run: |
           docker compose -f "docker-compose.dev.yml" down

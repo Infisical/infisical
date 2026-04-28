@@ -147,7 +147,11 @@ export const SqlDatabaseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string; originalHost: string }
   ) => {
     const ssl = providerInputs.ca
-      ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
+      ? {
+          rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+          ca: providerInputs.ca,
+          servername: providerInputs.originalHost
+        }
       : undefined;
 
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
@@ -185,7 +189,7 @@ export const SqlDatabaseProvider = ({
         options: isMsSQLClient
           ? {
               ...(providerInputs.sslEnabled !== undefined ? { encrypt: providerInputs.sslEnabled } : {}),
-              trustServerCertificate: !providerInputs.ca,
+              trustServerCertificate: !providerInputs.sslRejectUnauthorized,
               cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
             }
           : undefined
