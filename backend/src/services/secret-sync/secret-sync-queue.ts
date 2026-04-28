@@ -569,37 +569,47 @@ export const secretSyncQueueFactory = ({
             ? SecretSyncImportBehavior.PrioritizeSource
             : SecretSyncImportBehavior.PrioritizeDestination;
 
-        const importedSecretMap = await $importSecrets(secretSyncWithCredentials, resolvedImportBehavior);
+        let importStatus: SecretSyncStatus = SecretSyncStatus.Failed;
+        let importMessage: string | null = null;
 
-        Object.entries(importedSecretMap).forEach(([key, secretData]) => {
-          secretMap[key] = secretData;
-        });
+        try {
+          const importedSecretMap = await $importSecrets(secretSyncWithCredentials, resolvedImportBehavior);
 
-        await auditLogService.createAuditLog({
-          projectId: secretSync.projectId,
-          ...(auditLogInfo ?? {
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
+          Object.entries(importedSecretMap).forEach(([key, secretData]) => {
+            secretMap[key] = secretData;
+          });
+
+          importStatus = SecretSyncStatus.Succeeded;
+        } catch (err) {
+          importMessage = parseSyncErrorMessage(err);
+          throw err;
+        } finally {
+          await auditLogService.createAuditLog({
+            projectId: secretSync.projectId,
+            ...(auditLogInfo ?? {
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              }
+            }),
+            event: {
+              type: EventType.SECRET_SYNC_IMPORT_SECRETS,
+              metadata: {
+                syncId: secretSync.id,
+                syncOptions: secretSync.syncOptions,
+                destination: secretSync.destination,
+                destinationConfig: secretSync.destinationConfig,
+                folderId: secretSync.folderId,
+                connectionId: secretSync.connectionId,
+                jobRanAt: new Date(),
+                jobId: job.id!,
+                importStatus,
+                importMessage,
+                importBehavior: resolvedImportBehavior
+              }
             }
-          }),
-          event: {
-            type: EventType.SECRET_SYNC_IMPORT_SECRETS,
-            metadata: {
-              syncId: secretSync.id,
-              syncOptions: secretSync.syncOptions,
-              destination: secretSync.destination,
-              destinationConfig: secretSync.destinationConfig,
-              folderId: secretSync.folderId,
-              connectionId: secretSync.connectionId,
-              jobRanAt: new Date(),
-              jobId: job.id!,
-              importStatus: SecretSyncStatus.Succeeded,
-              importMessage: null,
-              importBehavior: resolvedImportBehavior
-            }
-          }
-        });
+          });
+        }
       }
 
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
