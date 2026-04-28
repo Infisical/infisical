@@ -1,7 +1,13 @@
 name: Generate Nightly Tag
 
 on:
-  workflow_dispatch:  # Allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: "Create as draft (for testing)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -89,7 +95,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests openai
+          pip install requests
 
       - name: Generate categorized changelog
         id: changelog
@@ -97,9 +103,7 @@ jobs:
         run: python .github/resources/changelog-generator.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TAG_PREFIX: "v"
-          OUTPUT_FORMAT: "github"
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
       - name: Create GitHub Release (categorized)
         if: steps.changelog.outcome == 'success' && steps.changelog.outputs.changelog
@@ -108,7 +112,7 @@ jobs:
           tag_name: ${{ env.NIGHTLY_TAG }}
           name: ${{ env.NIGHTLY_TAG }}
           body: ${{ steps.changelog.outputs.changelog }}
-          draft: false
+          draft: ${{ github.event.inputs.draft == 'true' || false }}
           prerelease: true
           make_latest: false
 
@@ -118,7 +122,7 @@ jobs:
         with:
           tag_name: ${{ env.NIGHTLY_TAG }}
           name: ${{ env.NIGHTLY_TAG }}
-          draft: false
+          draft: ${{ github.event.inputs.draft == 'true' || false }}
           prerelease: true
           generate_release_notes: true
           make_latest: false

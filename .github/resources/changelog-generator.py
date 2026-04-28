@@ -2,25 +2,29 @@
 import os
 import requests
 import re
-from openai import OpenAI
 import subprocess
 from datetime import datetime
-
 import uuid
+import sys
 
 # Constants
 REPO_OWNER = "infisical"
 REPO_NAME = "infisical"
-TOKEN = os.environ["GITHUB_TOKEN"]
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-SLACK_MSG_COLOR = "#36a64f"
+TOKEN = os.environ.get("GITHUB_TOKEN")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+DRY_RUN = os.environ.get("DRY_RUN", "false").lower() == "true"
+MODEL = os.environ.get("MODEL", "anthropic/claude-haiku-4.5")
+
+if not OPENROUTER_API_KEY:
+    print("Error: OPENROUTER_API_KEY is required")
+    sys.exit(1)
 
 headers = {
-    "Authorization": f"Bearer {TOKEN}",
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
+if TOKEN:
+    headers["Authorization"] = f"Bearer {TOKEN}"
 
 
 def set_multiline_output(name, value):
@@ -48,10 +52,8 @@ def post_changelog_to_slack(changelog, tag):
         raise Exception("Failed to post changelog to Slack.")
 
 def find_previous_release_tag(release_tag:str):
-    tag_prefix = os.environ.get("TAG_PREFIX", "infisical/")
+    # Find the immediate previous tag (any prefix)
     previous_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0", f"{release_tag}^"]).decode("utf-8").strip()
-    while not(previous_tag.startswith(tag_prefix)):
-        previous_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0", f"{previous_tag}^"]).decode("utf-8").strip()
     return previous_tag
 
 def get_tag_creation_date(tag_name):
@@ -150,22 +152,15 @@ def extract_commit_details_from_prs(prs):
 
     return commit_details
 
-# Function to generate changelog using OpenAI
-def generate_changelog_with_openai(commit_details):
+def generate_changelog_with_claude(commit_details):
     commit_messages = []
     for details in commit_details:
         base_message = f"{details['pr_url']} - {details['message']}"
-        # Add the issue URL if available
-        # if details["issue_url"]:
-        #     base_message += f" (Linear Issue: {details['issue_url']})"
         commit_messages.append(base_message)
 
     commit_list = "\n".join(commit_messages)
-    output_format = os.environ.get("OUTPUT_FORMAT", "slack")
 
-    if output_format == "github":
-        prompt = """
-Generate a changelog for Infisical, an open-source secrets management platform.
+    prompt = """Generate a changelog for Infisical, an open-source secrets management platform.
 
 Using the provided list of merged PRs, categorize them under these headers (in this order, only include a category if there are entries for it):
 
@@ -183,7 +178,7 @@ Using the provided list of merged PRs, categorize them under these headers (in t
 
 Rules:
 1. Every entry MUST be written in imperative mood, starting with a present tense verb (e.g. "Add", "Fix", "Remove", "Refactor", "Update", "Improve", "Support", "Document").
-2. Every entry MUST be self-describing as if no category heading exists. Instead of "Support of CentOS", write "Support CentOS". Instead of "Documentation for read()", write "Document the read() method".
+2. Every entry MUST be self-describing as if no category heading exists. Instead of "Support of CentOS", write "Support CentOS". Instead of "Document the read() method" write "Document the read() method".
 3. Each entry should be a single bullet point referencing the PR: `- Description (#PR_NUMBER)`
 4. REMOVE non-interesting maintenance changes that are NOT useful to users. This includes: dependency version bumps, CI/CD pipeline config tweaks, minor typo fixes, build script changes, test-only changes.
 5. Do NOT remove: refactorings, changes to supported runtime environments, code style changes that use new language features, new or updated documentation.
@@ -193,50 +188,30 @@ Rules:
 9. Do NOT wrap the output in a code block.
 
 Here are the merged PRs:
-{}
-""".format(commit_list)
-    else:
-        prompt = """
-Generate a changelog for Infisical, an open-source secrets management platform.
+{}""".format(commit_list)
 
-Using the provided list of merged PRs, categorize them under these headers (in this order, only include a category if there are entries for it):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-*Changed*
-(changes in existing functionality)
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+    }
 
-*Added*
-(new functionality)
+    response = requests.post(url, json=payload, headers=headers)
 
-*Removed*
-(removed functionality)
+    if response.status_code != 200:
+        raise Exception(f"Error calling OpenRouter API: {response.status_code} - {response.text}")
 
-*Fixed*
-(bug fixes)
+    data = response.json()
+    if "error" in data:
+        raise Exception(f"OpenRouter API error: {data['error']}")
 
-Rules:
-1. Every entry MUST be written in imperative mood, starting with a present tense verb (e.g. "Add", "Fix", "Remove", "Refactor", "Update", "Improve", "Support", "Document").
-2. Every entry MUST be self-describing as if no category heading exists. Instead of "Support of CentOS", write "Support CentOS". Instead of "Documentation for read()", write "Document the read() method".
-3. Each entry should be a single bullet point referencing the PR link: `• <PR_URL|#PR_NUMBER>: Description`
-4. REMOVE non-interesting maintenance changes that are NOT useful to users. This includes: dependency version bumps, CI/CD pipeline config tweaks, minor typo fixes, build script changes, test-only changes.
-5. Do NOT remove: refactorings, changes to supported runtime environments, code style changes that use new language features, new or updated documentation.
-6. Stay consistent in phrasing across all entries.
-7. Sort entries within each category by importance (most impactful first).
-8. Do NOT include any introductory or concluding text. Output ONLY the categorized list.
-9. Do NOT wrap the output in a code block.
-10. Links: use the Slack link syntax `<http://www.example.com|This message is a link>`.
-
-Here are the merged PRs:
-{}
-""".format(commit_list)
-
-    client  = OpenAI(api_key=OPENAI_API_KEY)
-    messages = [{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages)
-
-    if "error" in response.choices[0].message:
-        raise Exception("Error generating changelog with OpenAI!")
-
-    return response.choices[0].message.content.strip()
+    return data["choices"][0]["message"]["content"].strip()
 
 
 if __name__ == "__main__":
@@ -246,20 +221,41 @@ if __name__ == "__main__":
         latest_tag = os.environ.get("RELEASE_TAG") or subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).decode("utf-8").strip()
         previous_tag = find_previous_release_tag(latest_tag)
 
+        if DRY_RUN:
+            print(f"📋 DRY RUN MODE")
+            print(f"Release tag: {latest_tag}")
+            print(f"Previous tag: {previous_tag}")
+            print()
+
         latest_tag_date = get_tag_creation_date(latest_tag)
         previous_tag_date = get_tag_creation_date(previous_tag)
 
-        prs = fetch_prs_between_tags(previous_tag_date,latest_tag_date)
+        if DRY_RUN:
+            print(f"Date range: {previous_tag_date} to {latest_tag_date}")
+            print()
+
+        prs = fetch_prs_between_tags(previous_tag_date, latest_tag_date)
+
+        if DRY_RUN:
+            print(f"Found {len(prs)} PRs")
+            print()
+
         pr_details = extract_commit_details_from_prs(prs)
 
-        # Generate changelog
-        changelog = generate_changelog_with_openai(pr_details)
+        # Generate changelog using Claude via OpenRouter
+        changelog = generate_changelog_with_claude(pr_details)
 
-        if SLACK_WEBHOOK_URL:
-            post_changelog_to_slack(changelog,latest_tag)
-
-        if os.environ.get('GITHUB_OUTPUT'):
-            set_multiline_output("changelog", changelog)
+        if DRY_RUN:
+            print("=" * 60)
+            print("GENERATED CHANGELOG:")
+            print("=" * 60)
+            print(changelog)
+            print("=" * 60)
+        else:
+            # Output for GitHub Actions
+            if os.environ.get('GITHUB_OUTPUT'):
+                set_multiline_output("changelog", changelog)
 
     except Exception as e:
-        print(str(e))
+        print(f"Error: {str(e)}", file=sys.stderr)
+        sys.exit(1)
