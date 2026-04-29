@@ -11,7 +11,7 @@ export type TGatewayV2 = {
   updatedAt: string;
   heartbeat: string | null;
   lastHealthCheckStatus: GatewayHealthCheckStatus | null;
-  hasIssuedToken: boolean;
+  canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {
     name: string;

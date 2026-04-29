@@ -24,7 +24,7 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   heartbeat: true,
   lastHealthCheckStatus: true
 }).extend({
-  hasIssuedToken: z.boolean()
+  canRevoke: z.boolean()
 });
 
 const AwsAuthMethodConfigSchema = z.object({
@@ -130,7 +130,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
+      const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
+      return { ...gateway, canRevoke, authMethod: view };
     }
   });
 
@@ -153,7 +154,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
       });
-      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
+      const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
+      return { ...gateway, canRevoke, authMethod: view };
     }
   });
 
@@ -234,7 +236,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
       });
-      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
+      const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
+      return { ...gateway, canRevoke, authMethod: view };
     }
   });
 

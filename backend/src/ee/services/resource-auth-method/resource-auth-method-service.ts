@@ -131,6 +131,17 @@ export const resourceAuthMethodServiceFactory = ({
 
   const loadView = async (gatewayId: string): Promise<TAuthMethodView | null> => $loadAuthMethodView(gatewayId);
 
+  // Revoke is meaningful when there's something to invalidate: an active JWT
+  // (tokenVersion > 0) or a pending unused enrollment-token row.
+  const canRevoke = async (gateway: { id: string; tokenVersion: number; identityId?: string | null }) => {
+    if (gateway.identityId) return false;
+    if (gateway.tokenVersion > 0) return true;
+    const registry = await resourceAuthMethodDAL.findOne({ gatewayId: gateway.id });
+    if (!registry || registry.method !== ResourceAuthMethodType.Token) return false;
+    const pending = await resourceEnrollmentTokenDAL.findOne({ authMethodId: registry.id });
+    return Boolean(pending);
+  };
+
   const initAtCreate = async (
     {
       gatewayId,
@@ -445,6 +456,7 @@ export const resourceAuthMethodServiceFactory = ({
   return {
     getByGatewayId,
     loadView,
+    canRevoke,
     initAtCreate,
     setMethod,
     mintToken,

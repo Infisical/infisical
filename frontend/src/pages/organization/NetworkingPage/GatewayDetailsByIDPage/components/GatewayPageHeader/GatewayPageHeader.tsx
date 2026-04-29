@@ -1,11 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  BanIcon,
-  CopyIcon,
-  EllipsisIcon,
-  HeartPulseIcon,
-  TrashIcon
-} from "lucide-react";
+import { BanIcon, CopyIcon, EllipsisIcon, HeartPulseIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -66,7 +60,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
   };
 
   const isRegistered = Boolean(gateway.heartbeat || gateway.lastHealthCheckStatus);
-  const canRevoke = gateway.hasIssuedToken;
+  const { canRevoke } = gateway;
 
   return (
     <>
