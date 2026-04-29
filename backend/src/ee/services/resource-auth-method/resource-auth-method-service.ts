@@ -256,12 +256,15 @@ export const resourceAuthMethodServiceFactory = ({
   };
 
   /**
-   * Mints a fresh enrollment token for token-method gateways. Replaces any existing row
-   * for this auth method (only one bootstrap credential at a time) and bumps
-   * tokenVersion in the same tx — invalidating any JWT already minted from a previous
-   * enrollment. This makes regenerate semantically equivalent to "rotate everything,"
-   * matches what operators expect from "regenerate," and gives us tokenVersion > 0 as
-   * a universal signal that there's something to revoke.
+   * Mints a fresh enrollment token for token-method gateways. Replaces any existing
+   * unused enrollment-token row (only one bootstrap credential pending at a time).
+   *
+   * Does NOT bump tokenVersion or clear heartbeat — minting a new token is a
+   * non-destructive operation, and an operator clicking "Show start command" to view
+   * the deploy command shouldn't disconnect a healthy running gateway. The next daemon
+   * to actually log in with the new token will bump tokenVersion at that point
+   * (loginWithToken handles the rotation atomically). For active disconnection,
+   * operators use the explicit Revoke action.
    */
   const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
     assertGatewayResource(resource, "token");
@@ -285,13 +288,6 @@ export const resourceAuthMethodServiceFactory = ({
       // Replace any existing enrollment-token row. Rows are deleted on consume, so
       // anything still here is a pending unused credential we're superseding.
       await resourceEnrollmentTokenDAL.delete({ authMethodId: registry.id }, tx);
-      // Bump tokenVersion + clear heartbeat alongside. Same broad rotate semantic as
-      // login: any prior JWT dies; the gateway has to re-enroll using the new token.
-      await gatewayV2DAL.updateById(
-        gateway.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },
-        tx
-      );
       return resourceEnrollmentTokenDAL.create(
         {
           orgId: actor.orgId,
