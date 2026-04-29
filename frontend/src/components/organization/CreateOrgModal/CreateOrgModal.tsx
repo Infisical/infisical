@@ -17,7 +17,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
-import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
+import { useCreateOrg, useLogoutUser, useSelectOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 const schema = z
@@ -31,9 +31,10 @@ export type FormData = z.infer<typeof schema>;
 interface CreateOrgModalProps {
   isOpen: boolean;
   onClose?: () => void;
+  logoutOnClose?: boolean;
 }
 
-export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
+export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose, logoutOnClose }) => {
   const navigate = useNavigate();
 
   const {
@@ -52,6 +53,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     invalidate: false
   });
   const { mutateAsync: selectOrg } = useSelectOrganization();
+  const logout = useLogoutUser();
 
   const onFormSubmit = async ({ name }: FormData) => {
     const organization = await createOrg({ name });
@@ -74,16 +76,20 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     onClose?.();
   };
 
+  const handleOpenChange = async (open: boolean) => {
+    if (!open) {
+      reset();
+      if (logoutOnClose) {
+        await logout.mutateAsync();
+        navigate({ to: "/login" });
+      } else {
+        onClose?.();
+      }
+    }
+  };
+
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          reset();
-          onClose?.();
-        }
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Create Organization</DialogTitle>

@@ -10,7 +10,7 @@ function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
     <fieldset
       data-slot="field-set"
       className={cn(
-        "flex flex-col gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3",
+        "m-0 flex min-w-0 flex-col gap-4 border-0 p-0 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ function FieldLegend({
       data-slot="field-legend"
       data-variant={variant}
       className={cn(
-        "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
+        "mb-1.5 font-medium text-foreground data-[variant=label]:text-sm data-[variant=legend]:text-base",
         className
       )}
       {...props}
@@ -109,7 +109,7 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-label"
       className={cn(
-        "flex w-fit items-center gap-2 text-sm leading-snug font-medium group-data-[disabled=true]/field:opacity-50",
+        "flex w-fit items-center gap-2 text-sm leading-snug font-medium text-foreground group-data-[disabled=true]/field:opacity-50",
         className
       )}
       {...props}
@@ -122,9 +122,8 @@ function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="field-description"
       className={cn(
-        "mt-1 text-left text-xs leading-normal font-normal text-muted group-has-[[data-orientation=horizontal]]/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
-        "last:mt-0 nth-last-2:-mt-1",
-        "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "mt-0.5 text-left text-xs leading-snug font-normal text-muted group-has-[[data-orientation=horizontal]]/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
+        "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
         className
       )}
       {...props}
@@ -149,14 +148,16 @@ function FieldSeparator({
       )}
       {...props}
     >
-      <Separator className="absolute inset-0 top-1/2" />
-      {children && (
-        <span
-          className="text-muted-foreground relative mx-auto block w-fit bg-background px-2"
-          data-slot="field-separator-content"
-        >
-          {children}
-        </span>
+      {children ? (
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs font-medium text-muted/65" data-slot="field-separator-content">
+            {children}
+          </span>
+          <Separator className="flex-1" />
+        </div>
+      ) : (
+        <Separator className="absolute inset-0 top-1/2" />
       )}
     </div>
   );
@@ -202,7 +203,7 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("mt-1 text-xs font-normal text-danger", className)}
+      className={cn("mt-0.5 text-xs leading-snug font-normal text-danger", className)}
       {...props}
     >
       {content}

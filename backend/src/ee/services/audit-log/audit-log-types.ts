@@ -544,6 +544,7 @@ export enum EventType {
   CREATE_SECRET_ROTATION = "create-secret-rotation",
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
+  MOVE_SECRET_ROTATION = "move-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
   RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
 
@@ -783,7 +784,14 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_ATTACH = "resource-auth-method-attach",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_GET = "resource-auth-method-get",
-  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke"
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
+
+  // Gateway Pools
+  GATEWAY_POOL_CREATE = "gateway-pool-create",
+  GATEWAY_POOL_UPDATE = "gateway-pool-update",
+  GATEWAY_POOL_DELETE = "gateway-pool-delete",
+  GATEWAY_POOL_ADD_MEMBER = "gateway-pool-add-member",
+  GATEWAY_POOL_REMOVE_MEMBER = "gateway-pool-remove-member"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -2299,6 +2307,9 @@ interface CreateWebhookEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -2309,6 +2320,9 @@ interface UpdateWebhookStatusEvent {
     environment: string;
     secretPath: string;
     isDisabled: boolean;
+    eventsFilter?: {
+      eventName: string;
+    }[];
   };
 }
 
@@ -4375,6 +4389,18 @@ interface DeleteSecretRotationEvent {
   metadata: TDeleteSecretRotationV2DTO;
 }
 
+interface MoveSecretRotationEvent {
+  type: EventType.MOVE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+  };
+}
+
 interface RotateSecretRotationEvent {
   type: EventType.SECRET_ROTATION_ROTATE_SECRETS;
   metadata: Pick<TSecretRotationV2Raw, "parameters" | "secretsMapping" | "type" | "connectionId" | "folderId"> & {
@@ -6200,6 +6226,50 @@ interface ResourceAuthMethodRevokeEvent {
   metadata: ResourceAuthMethodGetEvent["metadata"];
 }
 
+interface GatewayPoolCreateEvent {
+  type: EventType.GATEWAY_POOL_CREATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolUpdateEvent {
+  type: EventType.GATEWAY_POOL_UPDATE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolDeleteEvent {
+  type: EventType.GATEWAY_POOL_DELETE;
+  metadata: {
+    poolId: string;
+    name: string;
+  };
+}
+
+interface GatewayPoolAddMemberEvent {
+  type: EventType.GATEWAY_POOL_ADD_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
+interface GatewayPoolRemoveMemberEvent {
+  type: EventType.GATEWAY_POOL_REMOVE_MEMBER;
+  metadata: {
+    poolId: string;
+    poolName: string;
+    gatewayId: string;
+    gatewayName: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6566,6 +6636,7 @@ export type Event =
   | CreateSecretRotationEvent
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
+  | MoveSecretRotationEvent
   | RotateSecretRotationEvent
   | ReconcileSecretRotationEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
@@ -6762,4 +6833,9 @@ export type Event =
   | ResourceAuthMethodAttachEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodGetEvent
-  | ResourceAuthMethodRevokeEvent;
+  | ResourceAuthMethodRevokeEvent
+  | GatewayPoolCreateEvent
+  | GatewayPoolUpdateEvent
+  | GatewayPoolDeleteEvent
+  | GatewayPoolAddMemberEvent
+  | GatewayPoolRemoveMemberEvent;

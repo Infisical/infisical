@@ -9,12 +9,8 @@ export {
 export {
   fetchOrgUsers,
   useAddUsersToOrg,
-  useCreateAPIKey,
-  useDeleteAPIKey,
   useDeleteMe,
   useDeleteOrgMembership,
-  useGetMyAPIKeys,
-  useGetMyAPIKeysV2,
   useGetMyDuplicateAccount,
   useGetMyIp,
   useGetMyOrganizationProjects,

@@ -2983,6 +2983,17 @@ export const secretV2BridgeServiceFactory = ({
 
       const destinationSecretsGroupedByKey = groupBy(decryptedDestinationSecrets, (i) => i.key);
 
+      const sourceKeys = decryptedSourceSecrets.map((s) => s.key);
+
+      const conflictingRotationSecretKeys = sourceKeys.filter(
+        (key) => destinationSecretsGroupedByKey[key]?.[0]?.isRotatedSecret
+      );
+      if (conflictingRotationSecretKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Cannot move secrets to '${destinationFolder.path}' because the following keys are managed by a secret rotation at the destination: ${conflictingRotationSecretKeys.join(", ")}`
+        });
+      }
+
       const locallyCreatedSecrets = decryptedSourceSecrets
         .filter(({ key }) => !destinationSecretsGroupedByKey[key]?.[0])
         .map((el) => ({ ...el, operation: SecretOperations.Create }));

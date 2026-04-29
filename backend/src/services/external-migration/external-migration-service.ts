@@ -27,8 +27,9 @@ import {
   getHCVaultKubernetesRoles,
   getHCVaultLdapRoles,
   getHCVaultPolicyNames,
-  getHCVaultSecretsForPath,
+  getHCVaultSecretsForPaths,
   HCVaultAuthType,
+  JsonValue,
   listHCVaultMounts,
   listHCVaultPolicies,
   listHCVaultSecretPaths,
@@ -286,7 +287,8 @@ export const externalMigrationServiceFactory = ({
         orgId: actorOrgId
       },
       {
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       }
     );
 
@@ -347,6 +349,13 @@ export const externalMigrationServiceFactory = ({
     connection: THCVaultConnection;
     namespace: string;
   }) => {
+    if (connection.projectId != null) {
+      throw new BadRequestError({
+        message:
+          "Vault external migration requires an organization-level HashiCorp Vault app connection. Project-scoped app connections cannot be used."
+      });
+    }
+
     // Allow root namespace access when no namespace is configured on the connection
     const isRootAccess = namespace === "root" || namespace === "/";
     const hasNoNamespace = connection.credentials.namespace === undefined;
@@ -614,7 +623,7 @@ export const externalMigrationServiceFactory = ({
     environment,
     secretPath,
     vaultNamespace,
-    vaultSecretPath,
+    vaultSecretPaths,
     auditLogInfo
   }: {
     actor: OrgServiceActor;
@@ -622,17 +631,53 @@ export const externalMigrationServiceFactory = ({
     environment: string;
     secretPath: string;
     vaultNamespace: string;
-    vaultSecretPath: string;
+    vaultSecretPaths: string[];
     auditLogInfo: AuditLogInfo;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, vaultNamespace, "import vault secrets");
-    const vaultSecrets = await getHCVaultSecretsForPath(
+
+    if (!vaultSecretPaths.length) {
+      throw new BadRequestError({ message: "At least one Vault secret path is required" });
+    }
+
+    const uniqueVaultSecretPaths = Array.from(new Set(vaultSecretPaths));
+
+    const secretsPerPath = await getHCVaultSecretsForPaths(
       vaultNamespace,
-      vaultSecretPath,
+      uniqueVaultSecretPaths,
       connection,
       gatewayService,
       gatewayV2Service
     );
+
+    const keyOrigins = new Map<string, string[]>();
+
+    // build a map of secret keys to the paths they appear in
+    for (const { vaultSecretPath, secrets } of secretsPerPath) {
+      for (const secretKey of Object.keys(secrets)) {
+        const paths = keyOrigins.get(secretKey);
+        if (paths) {
+          paths.push(vaultSecretPath);
+        } else {
+          keyOrigins.set(secretKey, [vaultSecretPath]);
+        }
+      }
+    }
+
+    const conflicts = [...keyOrigins.entries()]
+      .filter(([, paths]) => paths.length > 1)
+      .map(([secretKey, paths]) => `"${secretKey}" (in ${paths.join(", ")})`);
+
+    if (conflicts.length) {
+      throw new BadRequestError({
+        message: `Cannot import: the following secret keys appear in multiple selected Vault paths: ${conflicts.join("; ")}. Resolve the conflicts in Vault or import the paths separately.`
+      });
+    }
+
+    const vaultSecrets: Record<string, JsonValue> = {};
+    for (const { secrets } of secretsPerPath) {
+      Object.assign(vaultSecrets, secrets);
+    }
 
     try {
       const secretOperation = await secretService.createManySecretsRaw({

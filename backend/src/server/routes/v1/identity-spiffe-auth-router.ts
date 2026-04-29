@@ -136,6 +136,13 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: identitySpiffeAuth.identityId,
+              name: identity.name
+            }
+          },
           orgId: identity.orgId,
           event: {
             type: EventType.LOGIN_IDENTITY_SPIFFE_AUTH,

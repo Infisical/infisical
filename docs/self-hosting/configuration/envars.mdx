@@ -355,6 +355,15 @@ Without email configuration, Infisical's core functions like sign-up/login and s
   Name label to be used in From field (e.g. Team)
 </ParamField>
 
+<ParamField query="SMTP_HELO_HOST" type="string" default="none" optional>
+  Hostname that Infisical announces in the SMTP `EHLO`/`HELO` greeting. When
+  unset, the underlying mailer falls back to the operating system hostname.
+  Inside containers (e.g. Cloud Run, Kubernetes) the OS hostname is typically a
+  random container ID, which can be rejected by SMTP relays that validate the
+  sender hostname (such as Gmail SMTP relay with sender-hostname checks). Set
+  this to a valid FQDN that the relay accepts.
+</ParamField>
+
 <ParamField query="SMTP_IGNORE_TLS" type="bool" default="false" optional>
   If this is `true` and `SMTP_PORT` is not 465 then TLS is not used even if the
   server supports STARTTLS extension.

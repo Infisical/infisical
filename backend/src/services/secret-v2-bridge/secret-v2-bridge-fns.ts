@@ -271,6 +271,7 @@ export const fnSecretBulkUpdate = async ({
   const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
     tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
   );
+
   if (secsUpdatedTag.length) {
     await secretTagDAL.deleteTagsToSecretV2(
       { $in: { secrets_v2Id: secsUpdatedTag.map(({ secretId }) => secretId) } },

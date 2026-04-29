@@ -1,7 +1,17 @@
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ClipboardCheckIcon, Copy } from "lucide-react";
 
-import { Button, IconButton, Modal, ModalClose, ModalContent, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -13,41 +23,43 @@ type Props = {
 
 type ContentProps = {
   secretValue: string;
-  secretRequestName?: string;
+  onClose: () => void;
 };
 
-const Content = ({ secretValue, secretRequestName }: ContentProps) => {
+const Content = ({ secretValue, onClose }: ContentProps) => {
   const [isSecretValueCopied, setIsSecretValueCopied] = useToggle(false);
 
   return (
     <>
-      {secretRequestName && (
-        <p className="mb-8 text-sm text-mineshaft-200">
-          Shared secret value for <strong>{secretRequestName}</strong>
-        </p>
-      )}
-
-      <div className="mb-8 flex items-center justify-between rounded-md bg-mineshaft-700 p-2 text-base text-gray-400">
+      <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
         <p className="mr-4 break-all">{secretValue}</p>
-        <Tooltip content="Click to copy">
-          <IconButton
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="group relative"
-            onClick={() => {
-              navigator.clipboard.writeText(secretValue);
-              setIsSecretValueCopied.on();
-            }}
-          >
-            <FontAwesomeIcon icon={isSecretValueCopied ? faCheck : faCopy} />
-          </IconButton>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              aria-label="copy icon"
+              variant="ghost"
+              size="sm"
+              className="absolute top-1 right-1"
+              onClick={() => {
+                navigator.clipboard.writeText(secretValue);
+                setIsSecretValueCopied.on();
+              }}
+            >
+              {isSecretValueCopied ? (
+                <ClipboardCheckIcon className="size-4" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>Click to copy</TooltipContent>
         </Tooltip>
       </div>
 
-      <div className="mt-8 flex w-full items-center justify-between gap-2">
-        <ModalClose asChild>
-          <Button colorSchema="secondary">Close</Button>
-        </ModalClose>
+      <div className="flex w-full justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Close
+        </Button>
       </div>
     </>
   );
@@ -58,16 +70,19 @@ export const RevealSecretValueModal = ({ isOpen, onOpenChange, popUp }: Props) =
     secretValue: string;
     secretRequestName?: string;
   };
-
-  const title = data?.secretRequestName
-    ? `Shared secret value for secret request ${data.secretRequestName}`
-    : "Shared secret value";
-
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title={title}>
-        <Content secretRequestName={data?.secretRequestName} secretValue={data?.secretValue} />
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Shared secret value</DialogTitle>
+          {data?.secretRequestName && (
+            <DialogDescription>
+              Shared secret value for secret request {data.secretRequestName}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+        <Content secretValue={data?.secretValue} onClose={() => onOpenChange?.(false)} />
+      </DialogContent>
+    </Dialog>
   );
 };

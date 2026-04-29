@@ -7,6 +7,11 @@ import "../src/index.css";
 const preview: Preview = {
   decorators: [DocumentDecorator, RouterDecorator],
   parameters: {
+    options: {
+      storySort: {
+        method: "alphabetical"
+      }
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,

@@ -43,8 +43,10 @@ export const MAX_WEB_SESSIONS_PER_USER = 5;
 // WebSocket ping interval (ms) — keeps ALB from killing idle connections (default 60s timeout)
 export const WS_PING_INTERVAL_MS = 30000;
 
-// Idle timeout (ms) — auto-close sessions with no user input/control messages
-export const WS_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+// Idle timeout (ms) — auto-close sessions with no inbound WS traffic. The FE
+// sends an `activity` heartbeat while its browser tab is visible, so this fires
+// only when the tab has been hidden/backgrounded for the full window.
+export const WS_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export type TSessionContext = {
   socket: WebSocket;

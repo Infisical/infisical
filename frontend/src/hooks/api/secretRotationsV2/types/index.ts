@@ -190,6 +190,17 @@ export type TDeleteSecretRotationV2DTO = TRotateSecretRotationV2DTO & {
   deleteSecrets: boolean;
 };
 
+export type TMoveSecretRotationV2DTO = {
+  type: SecretRotation;
+  rotationId: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  overwriteDestination: boolean;
+  // required for query invalidation
+  projectId: string;
+  secretPath: string;
+};
+
 export type TViewSecretRotationV2GeneratedCredentialsDTO = {
   rotationId: string;
   type: SecretRotation;

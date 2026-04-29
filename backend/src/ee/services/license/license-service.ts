@@ -15,6 +15,8 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -388,7 +390,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -427,7 +429,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: "Organization not found"
@@ -495,7 +497,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -578,7 +580,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -622,7 +624,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -657,7 +659,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -684,7 +686,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -721,7 +723,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -760,7 +762,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -796,7 +798,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -824,7 +826,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -855,7 +857,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -879,7 +881,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -903,7 +905,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`

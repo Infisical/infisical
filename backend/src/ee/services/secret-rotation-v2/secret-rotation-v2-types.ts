@@ -284,6 +284,14 @@ export type TDeleteSecretRotationV2DTO = {
   revokeGeneratedCredentials: boolean;
 };
 
+export type TMoveSecretRotationV2DTO = {
+  type: SecretRotation;
+  rotationId: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  overwriteDestination: boolean;
+};
+
 /** Minimal rotation shape needed to build a permission subject (env, path, connectionId). */
 export type TSecretRotationV2PermissionContext = {
   environment: { slug: string };

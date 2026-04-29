@@ -341,7 +341,7 @@ export const KubernetesProvider = ({
         providerInputs.ca && providerInputs.sslEnabled
           ? new https.Agent({
               ca: providerInputs.ca,
-              rejectUnauthorized: true
+              rejectUnauthorized: providerInputs.sslRejectUnauthorized
             })
           : undefined;
 
@@ -610,7 +610,7 @@ export const KubernetesProvider = ({
         providerInputs.ca && providerInputs.sslEnabled
           ? new https.Agent({
               ca: providerInputs.ca,
-              rejectUnauthorized: true
+              rejectUnauthorized: providerInputs.sslRejectUnauthorized
             })
           : undefined;
 
@@ -769,7 +769,7 @@ export const KubernetesProvider = ({
           providerInputs.ca && providerInputs.sslEnabled
             ? new https.Agent({
                 ca: providerInputs.ca,
-                rejectUnauthorized: true
+                rejectUnauthorized: providerInputs.sslRejectUnauthorized
               })
             : undefined;
 

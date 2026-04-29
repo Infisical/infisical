@@ -142,6 +142,9 @@ const envSchema = z
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
       .describe("Generate sanitized schema with views after migrations"),
+    FAIL_ON_SANITIZED_SCHEMA_ERROR: zodStrBool
+      .default("false")
+      .describe("Exit startup when sanitized schema generation fails"),
     SANITIZED_SCHEMA_ROLE: zpStr(
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
@@ -199,6 +202,14 @@ const envSchema = z
     SMTP_PASSWORD: zpStr(z.string().optional()),
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
+    SMTP_HELO_HOST: zpStr(
+      z
+        .string()
+        .optional()
+        .describe(
+          "Hostname announced in the SMTP EHLO/HELO greeting. Defaults to the OS hostname, which may not be a valid FQDN inside containers."
+        )
+    ),
     SMTP_CUSTOM_CA_CERT: zpStr(
       z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
     ),
@@ -947,6 +958,7 @@ export const formatSmtpConfig = () => {
   return {
     host: envCfg.SMTP_HOST,
     port: envCfg.SMTP_PORT,
+    name: envCfg.SMTP_HELO_HOST,
     auth:
       envCfg.SMTP_USERNAME && envCfg.SMTP_PASSWORD
         ? { user: envCfg.SMTP_USERNAME, pass: envCfg.SMTP_PASSWORD }

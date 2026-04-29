@@ -2,6 +2,8 @@ import axios from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { InternalServerError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -16,7 +18,7 @@ export type TUserEngagementServiceFactory = ReturnType<typeof userEngagementServ
 export const userEngagementServiceFactory = ({ userDAL, orgDAL }: TUserEngagementServiceFactoryDep) => {
   const createUserWish = async (userId: string, orgId: string, text: string) => {
     const user = await userDAL.findById(userId);
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     const appCfg = getConfig();
 
     if (!appCfg.PYLON_API_KEY) {

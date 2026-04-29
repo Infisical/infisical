@@ -41,5 +41,9 @@ export const requestMemoKeys = {
 
   userFindById: (userId: string) => `user:findById:${userId}`,
 
-  identityFindById: (identityId: string) => `identity:findById:${identityId}`
+  identityFindById: (identityId: string) => `identity:findById:${identityId}`,
+
+  orgFindById: (orgId: string) => `org:findById:${orgId}`,
+
+  orgFindOrgById: (orgId: string) => `org:findOrgById:${orgId}`
 };

@@ -2,17 +2,21 @@ import { ChangeEvent, DragEvent, useCallback, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ClipboardPasteIcon,
+  CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
   InfoIcon,
   MessageSquareIcon,
-  UploadIcon
+  TagsIcon,
+  UploadIcon,
+  WrapTextIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  CsvDelimiter,
   parseCsvToMatrix,
   parseDotEnv,
   parseJson,
@@ -52,12 +56,12 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useGetOrCreateFolder, useUpdateSecretBatch } from "@app/hooks/api";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
+import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { SecretType } from "@app/hooks/api/types";
 
 import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
 import { PasteSecretsDialog } from "./PasteSecretsDialog";
-
-type TParsedEnv = Record<string, { value: string; comments: string[] }>;
+import { TParsedEnv } from "./types";
 
 type Props = {
   isOpen: boolean;
@@ -92,13 +96,24 @@ const ImportSecretsContent = ({
   const [isDragActive, setDragActive] = useToggle();
   const [isImporting, setIsImporting] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
-  const [csvData, setCsvData] = useState<{ headers: string[]; matrix: string[][] } | null>(null);
+  const [csvData, setCsvData] = useState<{
+    headers: string[];
+    matrix: string[][];
+    delimiter: CsvDelimiter;
+  } | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
+  const { mutateAsync: createWsTag } = useCreateWsTag();
+
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const canCreateTags = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
+  const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
+    canReadTags ? projectId : ""
+  );
 
   const allowedEnvironments = environments.filter((env) =>
     permission.can(
@@ -114,6 +129,10 @@ const ImportSecretsContent = ({
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
   const secretCount = activeSecrets ? Object.keys(activeSecrets).length : 0;
+  const hasTagsToResolve = activeSecrets
+    ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
+    : false;
+  const isWaitingForTags = canReadTags && hasTagsToResolve && isTagsLoading;
 
   const handleParsedSecrets = useCallback((env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -158,7 +177,7 @@ const ImportSecretsContent = ({
             handleParsedSecrets(parseYaml(src));
             break;
           case "text/csv": {
-            const fullMatrix = parseCsvToMatrix(src);
+            const { matrix: fullMatrix, delimiter } = parseCsvToMatrix(src);
             if (!fullMatrix.length) {
               createNotification({
                 type: "error",
@@ -166,7 +185,7 @@ const ImportSecretsContent = ({
               });
               return;
             }
-            setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1) });
+            setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1), delimiter });
             return;
           }
           default:
@@ -206,6 +225,7 @@ const ImportSecretsContent = ({
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     parseFile(e.target?.files?.[0]);
+    e.target.value = "";
   };
 
   const handleImport = async () => {
@@ -214,6 +234,51 @@ const ImportSecretsContent = ({
     setIsImporting.on();
 
     try {
+      const requestedSlugs = new Set<string>();
+      Object.values(activeSecrets).forEach((s) => {
+        s.tagSlugs?.forEach((slug) => requestedSlugs.add(slug));
+      });
+
+      const slugToTagId = new Map<string, string>();
+      (projectTags || []).forEach((t) => slugToTagId.set(t.slug, t.id));
+
+      const missingSlugs = [...requestedSlugs].filter((slug) => !slugToTagId.has(slug));
+      let skippedTagsCount = 0;
+
+      if (missingSlugs.length) {
+        if (canCreateTags) {
+          const createdTags = await Promise.allSettled(
+            missingSlugs.map((slug) => createWsTag({ projectId, tagSlug: slug, tagColor: "" }))
+          );
+          createdTags.forEach((result, idx) => {
+            if (result.status === "fulfilled") {
+              slugToTagId.set(result.value.slug, result.value.id);
+            } else {
+              skippedTagsCount += 1;
+              // eslint-disable-next-line no-console
+              console.error(`Failed to create tag ${missingSlugs[idx]}`, result.reason);
+            }
+          });
+        } else {
+          skippedTagsCount = missingSlugs.length;
+        }
+      }
+
+      if (skippedTagsCount > 0) {
+        createNotification({
+          type: "warning",
+          text: canCreateTags
+            ? `Failed to create ${skippedTagsCount} tag${skippedTagsCount > 1 ? "s" : ""}; those tags were skipped.`
+            : `${skippedTagsCount} tag${skippedTagsCount > 1 ? "s were" : " was"} skipped because ${skippedTagsCount > 1 ? "they don't" : "it doesn't"} exist and you don't have permission to create tags.`
+        });
+      }
+
+      const resolveTagIds = (slugs?: string[]): string[] | undefined => {
+        if (!slugs?.length) return undefined;
+        const ids = slugs.map((s) => slugToTagId.get(s)).filter((id): id is string => Boolean(id));
+        return ids.length ? ids : undefined;
+      };
+
       const envPromises = selectedEnvs.map(async (env) => {
         // Ensure folder exists if not root
         if (secretPath !== "/") {
@@ -259,7 +324,12 @@ const ImportSecretsContent = ({
             secretKey,
             secretValue: secretData.value,
             secretComment: secretData.comments.join("\n") || "",
-            type: SecretType.Shared
+            type: SecretType.Shared,
+            tagIds: resolveTagIds(secretData.tagSlugs),
+            secretMetadata: secretData.secretMetadata?.length
+              ? secretData.secretMetadata
+              : undefined,
+            skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
         const secretsToUpdate = Object.entries(activeSecrets)
@@ -268,7 +338,12 @@ const ImportSecretsContent = ({
             secretKey,
             secretValue: secretData.value,
             secretComment: secretData.comments.join("\n") || undefined,
-            type: SecretType.Shared
+            type: SecretType.Shared,
+            tagIds: resolveTagIds(secretData.tagSlugs),
+            secretMetadata: secretData.secretMetadata?.length
+              ? secretData.secretMetadata
+              : undefined,
+            skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
         const results = await Promise.allSettled([
@@ -451,7 +526,12 @@ const ImportSecretsContent = ({
             <div className="flex-1 border-t border-muted/50" />
           </div>
 
-          <Button variant="outline" className="w-full" onClick={() => setIsPasteOpen(true)}>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onClick={() => setIsPasteOpen(true)}
+          >
             <ClipboardPasteIcon className="mr-2 size-4" />
             Paste Secrets
           </Button>
@@ -481,7 +561,10 @@ const ImportSecretsContent = ({
               <TableBody>
                 {Object.entries(activeSecrets!).map(([key, secretData]) => {
                   const isVisible = visibleSecretKeys.has(key);
-                  const hasComments = secretData.comments.length > 0;
+                  const hasComments = secretData.comments.some((c) => c);
+                  const hasTags = Boolean(secretData.tagSlugs?.length);
+                  const hasMetadata = Boolean(secretData.secretMetadata?.length);
+                  const hasSkipMl = secretData.skipMultilineEncoding === true;
                   return (
                     <TableRow key={key}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
@@ -490,13 +573,59 @@ const ImportSecretsContent = ({
                           {hasComments && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <MessageSquareIcon className="size-3.5 text-muted" />
+                                <MessageSquareIcon className="size-3.5 shrink-0 text-muted" />
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="max-w-xs whitespace-pre-wrap">
+                                <p className="max-w-xl whitespace-pre-wrap">
                                   {secretData.comments.join("\n")}
                                 </p>
                               </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasTags && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <TagsIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xl">
+                                <div className="flex flex-col gap-1">
+                                  {secretData.tagSlugs!.map((slug) => (
+                                    <span key={slug} className="font-mono text-xs break-all">
+                                      {slug}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasMetadata && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <CodeXmlIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xl">
+                                <div className="flex flex-col gap-1">
+                                  {secretData.secretMetadata!.map((m) => (
+                                    <span key={m.key} className="font-mono text-xs break-all">
+                                      {m.key}={m.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasSkipMl && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <WrapTextIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Multi-line encoding enabled</TooltipContent>
                             </Tooltip>
                           )}
                         </div>
@@ -582,8 +711,8 @@ const ImportSecretsContent = ({
           <Button
             variant="project"
             onClick={handleImport}
-            isDisabled={!selectedEnvs.length || isImporting}
-            isPending={isImporting}
+            isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags}
+            isPending={isImporting || isWaitingForTags}
           >
             Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
           </Button>
@@ -604,6 +733,7 @@ const ImportSecretsContent = ({
           }}
           headers={csvData.headers}
           matrix={csvData.matrix}
+          delimiter={csvData.delimiter}
           onParsedSecrets={(env) => {
             setCsvData(null);
             handleParsedSecrets(env);
@@ -631,7 +761,7 @@ export const ImportSecretsModal = ({
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <ImportSecretsContent
           environments={environments}
           projectId={projectId}

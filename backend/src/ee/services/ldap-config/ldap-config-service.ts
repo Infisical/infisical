@@ -14,6 +14,8 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -149,7 +151,7 @@ export const ldapConfigServiceFactory = ({
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -277,7 +279,7 @@ export const ldapConfigServiceFactory = ({
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
       });
 
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
@@ -425,7 +427,7 @@ export const ldapConfigServiceFactory = ({
       aliasType: UserAliasType.LDAP
     });
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     if (userAlias) {
@@ -630,7 +632,7 @@ export const ldapConfigServiceFactory = ({
 
       await smtpService.sendMail({
         template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical confirmation code",
+        subjectLine: `Infisical confirmation code: ${token}`,
         recipients: [user.email],
         substitutions: {
           code: token

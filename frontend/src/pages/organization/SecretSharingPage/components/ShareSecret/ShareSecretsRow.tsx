@@ -1,9 +1,19 @@
-import { faEnvelope, faEnvelopeOpen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { ClockAlertIcon, ClockIcon, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
 
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -23,9 +33,8 @@ export const ShareSecretsRow = ({
     }
   ) => void;
 }) => {
-  // const [isRowExpanded, setIsRowExpanded] = useToggle();
   const lastViewedAt = row.lastViewedAt
-    ? format(new Date(row.lastViewedAt), "yyyy-MM-dd - HH:mm a")
+    ? format(new Date(row.lastViewedAt), "MMM d, yyyy h:mm a")
     : undefined;
 
   let isExpired = false;
@@ -38,38 +47,61 @@ export const ShareSecretsRow = ({
   }
 
   return (
-    <Tr
-      key={row.id}
-      // className="h-10 cursor-pointer transition-colors duration-300 hover:bg-mineshaft-700"
-      // onClick={() => setIsRowExpanded.toggle()}
-    >
-      <Td>
-        <Tooltip content={lastViewedAt ? `Last opened at ${lastViewedAt}` : "Not yet opened"}>
-          <FontAwesomeIcon icon={lastViewedAt ? faEnvelopeOpen : faEnvelope} />
+    <TableRow key={row.id}>
+      <TableCell>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {lastViewedAt ? (
+              <MailOpen className="size-4 text-accent" />
+            ) : (
+              <Mail className="size-4 text-accent" />
+            )}
+          </TooltipTrigger>
+          <TooltipContent>
+            {lastViewedAt ? `Last opened at ${lastViewedAt}` : "Not yet opened"}
+          </TooltipContent>
         </Tooltip>
-      </Td>
-      <Td>{row.name ? `${row.name}` : "-"}</Td>
-      <Td>
-        <Badge variant={isExpired ? "danger" : "success"}>{isExpired ? "Expired" : "Active"}</Badge>
-      </Td>
-      <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
-      <Td>{format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a")}</Td>
-      <Td>{row.expiresAfterViews !== null ? row.expiresAfterViews : "-"}</Td>
-      <Td>
-        <IconButton
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePopUpOpen("deleteSharedSecretConfirmation", {
-              name: "delete",
-              id: row.id
-            });
-          }}
-          variant="plain"
-          ariaLabel="delete"
-        >
-          <FontAwesomeIcon icon={faTrash} />
-        </IconButton>
-      </Td>
-    </Tr>
+      </TableCell>
+      <TableCell>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+
+      <TableCell>{format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}</TableCell>
+      <TableCell>{format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")}</TableCell>
+      <TableCell>
+        {row.expiresAfterViews !== null ? (
+          row.expiresAfterViews
+        ) : (
+          <span className="text-muted">&mdash;</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <Badge variant={isExpired ? "danger" : "success"}>
+          {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+          {isExpired ? "Expired" : "Active"}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs" aria-label="actions">
+              <Ellipsis className="size-4" />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              variant="danger"
+              onClick={() =>
+                handlePopUpOpen("deleteSharedSecretConfirmation", {
+                  name: "delete",
+                  id: row.id
+                })
+              }
+            >
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

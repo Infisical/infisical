@@ -337,7 +337,7 @@ export const SecretDropzone = ({
           env = parseYaml(src);
           break;
         case "text/csv": {
-          const fullMatrix = parseCsvToMatrix(src);
+          const { matrix: fullMatrix } = parseCsvToMatrix(src);
           if (!fullMatrix.length) {
             createNotification({
               type: "error",

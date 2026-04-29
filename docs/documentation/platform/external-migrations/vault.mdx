@@ -110,9 +110,9 @@ Before importing anything, you need to establish a secure connection between Inf
   <Step title="Add a Vault migration configuration">
     Navigate to **Organization Settings > External Migrations** in Infisical.
 
-    Under **In-Platform Migration Tooling**, click **Add configuration**. In the provider chooser, select **HashiCorp Vault** (listed by the same name as in **App Connections**).
+    Under **In-Platform Migration Tooling**, click **Add configuration**. In the provider chooser, select **HashiCorp Vault**.
 
-    ![Choose provider for in-platform migration](/images/platform/external-migrations/in-platform-migration-select-provider.png)
+    ![Choose provider](/images/platform/external-migrations/vault-in-platform/select-migration-provider.png)
 
     Configure the Vault namespace entry:
 
@@ -155,7 +155,11 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
   ![Add Secret Dropdown](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-option.png)
   
 
-4. Choose your Vault namespace and the secret path you want to import (e.g., `secret/app/prod`)
+4. Select your Vault namespace and one or more secret paths to import (for example, `secret/app/prod`). Keys are copied using their names from Vault.
+<Note>
+ If you select multiple paths and the same key name exists in more than one of them, the import aborts and no secrets are saved.
+</Note>
+
 5. Click **"Import Secrets"**
   ![Import Vault Secrets](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-modal.png)
 

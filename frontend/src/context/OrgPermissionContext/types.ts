@@ -30,6 +30,14 @@ export enum OrgGatewayPermissionActions {
   RevokeGatewayAccess = "revoke-gateway-access"
 }
 
+export enum OrgGatewayPoolPermissionActions {
+  CreateGatewayPools = "create-gateway-pools",
+  ListGatewayPools = "list-gateway-pools",
+  EditGatewayPools = "edit-gateway-pools",
+  DeleteGatewayPools = "delete-gateway-pools",
+  AttachGatewayPools = "attach-gateway-pools"
+}
+
 export enum OrgRelayPermissionActions {
   CreateRelays = "create-relays",
   ListRelays = "list-relays",
@@ -67,6 +75,7 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  GatewayPool = "gateway-pool",
   Relay = "relay",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
@@ -169,6 +178,7 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
+  | [OrgGatewayPoolPermissionActions, OrgPermissionSubjects.GatewayPool]
   | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [

@@ -3,7 +3,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
-import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
+import { EditorView, keymap, placeholder, type ViewUpdate } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
 const infisicalTheme = EditorView.theme({
@@ -113,6 +113,7 @@ export function SqlEditor({
             ...defaultKeymap
           ]),
           maxSqlLength,
+          placeholder("Start writing SQL..."),
           sql({ dialect: PostgreSQL }),
           infisicalTheme,
           syntaxHighlighting(infisicalHighlight),

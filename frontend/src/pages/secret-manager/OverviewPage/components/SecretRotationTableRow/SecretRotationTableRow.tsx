@@ -15,6 +15,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
 import {
   Badge,
+  Checkbox,
   IconButton,
   Table,
   TableBody,
@@ -50,6 +51,8 @@ type Props = {
   getSecretRotationByName: (slug: string, name: string) => TSecretRotationV2 | undefined;
   getSecretRotationStatusesByName: (name: string) => (SecretRotationStatus | null)[] | undefined;
   tableWidth: number;
+  isSelected: boolean;
+  onToggleRotationSelect: (name: string) => void;
   onEdit: (secretRotation: TSecretRotationV2) => void;
   onRotate: (secretRotation: TSecretRotationV2) => void;
   onReconcile: (secretRotation: TSecretRotationV2) => void;
@@ -73,6 +76,8 @@ export const SecretRotationTableRow = ({
   tableWidth,
   getSecretRotationByName,
   getSecretRotationStatusesByName,
+  isSelected,
+  onToggleRotationSelect,
   onEdit,
   onRotate,
   onViewGeneratedCredentials,
@@ -261,10 +266,30 @@ export const SecretRotationTableRow = ({
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
+          <Checkbox
+            variant="project"
+            id={`checkbox-${secretRotationName}`}
+            isChecked={isSelected}
+            onCheckedChange={() => {
+              onToggleRotationSelect(secretRotationName);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+          />
           {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon />
+            <ChevronDownIcon
+              className={twMerge("block", "group-hover:!hidden", isSelected && "!hidden")}
+            />
           ) : (
-            <RefreshCwIcon className="text-secret-rotation" />
+            <RefreshCwIcon
+              className={twMerge(
+                "block text-secret-rotation",
+                "group-hover:!hidden",
+                isSelected && "!hidden"
+              )}
+            />
           )}
         </TableCell>
         <TableCell

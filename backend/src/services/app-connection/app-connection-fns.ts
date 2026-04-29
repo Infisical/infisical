@@ -213,6 +213,12 @@ import {
   validateTravisCIConnectionCredentials
 } from "./travis-ci";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
+import {
+  getVenafiTppConnectionListItem,
+  validateVenafiTppConnectionCredentials,
+  VenafiTppConnectionMethod
+} from "./venafi-tpp";
+import { TVenafiTppConnectionConfig } from "./venafi-tpp/venafi-tpp-connection-types";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -244,6 +250,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
   AppConnection.Venafi,
+  AppConnection.VenafiTpp,
   AppConnection.NetScaler,
   AppConnection.DigiCert
 ];
@@ -304,6 +311,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getCircleCIConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
     getVenafiConnectionListItem(),
+    getVenafiTppConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
     getNetScalerConnectionListItem(),
@@ -455,6 +463,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
+      validateVenafiTppConnectionCredentials(
+        config as TVenafiTppConnectionConfig,
+        gatewayV2Service
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -485,6 +498,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureDevOpsConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
+    case VenafiTppConnectionMethod.OAuth:
       return "OAuth";
     case HerokuConnectionMethod.AuthToken:
       return "Auth Token";
@@ -671,6 +685,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
+  [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,

@@ -191,7 +191,9 @@ export const serviceTokenServiceFactory = ({
     if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
     await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 
-    const serviceTokenOrgDetails = await orgDAL.findById(project.orgId);
+    const serviceTokenOrgDetails = await requestMemoize(requestMemoKeys.orgFindById(project.orgId), () =>
+      orgDAL.findById(project.orgId)
+    );
 
     return {
       ...serviceToken,

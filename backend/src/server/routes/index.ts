@@ -59,6 +59,9 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
+import { gatewayPoolDalFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { gatewayPoolMembershipDalFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
+import { gatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
@@ -214,8 +217,6 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
-import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
-import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
@@ -520,7 +521,6 @@ export const registerRoutes = async (
   const orgMembershipDAL = orgMembershipDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
-  const apiKeyDAL = apiKeyDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectSshConfigDAL = projectSshConfigDALFactory(db);
@@ -1182,7 +1182,6 @@ export const registerRoutes = async (
     rateLimitDAL,
     licenseService
   });
-  const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
   const secretScanningQueue = secretScanningQueueFactory({
     telemetryService,
@@ -1297,6 +1296,8 @@ export const registerRoutes = async (
   const resourceEnrollmentTokenDAL = resourceEnrollmentTokenDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const gatewayPoolDAL = gatewayPoolDalFactory(db);
+  const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
@@ -1478,6 +1479,16 @@ export const registerRoutes = async (
     aiMcpServerDAL,
     pkiDiscoveryConfigDAL,
     resourceAuthMethodService
+  });
+
+  const gatewayPoolService = gatewayPoolServiceFactory({
+    gatewayPoolDAL,
+    gatewayPoolMembershipDAL,
+    gatewayV2DAL,
+    gatewayV2Service,
+    permissionService,
+    licenseService,
+    identityKubernetesAuthDAL
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -1943,7 +1954,9 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayDAL,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    gatewayPoolService,
+    gatewayPoolDAL
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityDAL,
@@ -2486,7 +2499,8 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     certificateRequestDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    gatewayV2Service
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2569,7 +2583,8 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateRequestDAL,
     resourceMetadataDAL,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    gatewayV2Service
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -3140,7 +3155,6 @@ export const registerRoutes = async (
     org: orgService,
     subOrganization: subOrgService,
     oidc: oidcService,
-    apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,
     offlineUsageReport: offlineUsageReportService,
@@ -3244,6 +3258,7 @@ export const registerRoutes = async (
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,
+    gatewayPool: gatewayPoolService,
     resourceAuthMethod: resourceAuthMethodService,
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,

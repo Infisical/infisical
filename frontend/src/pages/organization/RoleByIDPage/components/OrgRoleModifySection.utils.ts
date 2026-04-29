@@ -4,6 +4,7 @@ import { z } from "zod";
 import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgGatewayPoolPermissionActions,
   OrgPermissionAppConnectionActions,
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
@@ -103,6 +104,16 @@ const orgGatewayPermissionSchema = z
   })
   .optional();
 
+const orgGatewayPoolPermissionSchema = z
+  .object({
+    [OrgGatewayPoolPermissionActions.ListGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.CreateGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.EditGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.DeleteGatewayPools]: z.boolean().optional(),
+    [OrgGatewayPoolPermissionActions.AttachGatewayPools]: z.boolean().optional()
+  })
+  .optional();
+
 const orgRelayPermissionSchema = z
   .object({
     [OrgRelayPermissionActions.ListRelays]: z.boolean().optional(),
@@ -189,6 +200,7 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      "gateway-pool": orgGatewayPoolPermissionSchema,
       relay: orgRelayPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,

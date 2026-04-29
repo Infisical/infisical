@@ -24,6 +24,8 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -563,6 +565,7 @@ export const superAdminServiceFactory = ({
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
     const userInfo = await userDAL.transaction(async (tx) => {
+      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
       const newUser = await userDAL.create(
         {
           firstName: "Admin",
@@ -573,12 +576,11 @@ export const superAdminServiceFactory = ({
           isGhost: false,
           isAccepted: true,
           authMethods: [AuthMethod.EMAIL],
-          isEmailVerified: true
+          isEmailVerified: true,
+          hashedPassword
         },
         tx
       );
-
-      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
       const userEnc = await userDAL.createUserEncryption(
         {
@@ -589,7 +591,7 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      return { user: newUser, enc: userEnc };
+      return { user: { ...newUser, hashedPassword: null }, enc: userEnc };
     });
 
     const initialOrganizationName = organizationName ?? "Admin Org";
@@ -982,7 +984,7 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ message: "Could not find server admin user" });
     }
 
-    const org = await orgDAL.findById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     if (!org) {
       throw new NotFoundError({ message: `Could not organization with ID "${orgId}"` });
@@ -1047,7 +1049,9 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "No invite email associated with user." });
     }
 
-    const org = await orgDAL.findOrgById(orgMembership.scopeOrgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgMembership.scopeOrgId), () =>
+      orgDAL.findOrgById(orgMembership.scopeOrgId)
+    );
 
     const appCfg = getConfig();
     const serverAdmin = await userDAL.findById(actor.id);
@@ -1199,7 +1203,7 @@ export const superAdminServiceFactory = ({
   };
 
   const createEmailDomain = async ({ orgId, domain }: TAdminCreateEmailDomainDTO) => {
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const config = getConfig();

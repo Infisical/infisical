@@ -22,20 +22,20 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   environment: string;
   secretPath: string;
-  onImport: (vaultPath: string, namespace: string) => void;
+  onImport: (vaultPaths: string[], namespace: string) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
   environment: string;
   secretPath: string;
-  onImport: (vaultPath: string, namespace: string) => void;
+  onImport: (vaultPaths: string[], namespace: string) => void;
 };
 
 const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) => {
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [shouldFetchPaths, setShouldFetchPaths] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
@@ -70,8 +70,11 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
   }, [selectedNamespace, selectedMountPath]);
 
   const handleImport = () => {
-    if (!selectedPath) {
-      createNotification({ type: "error", text: "Please select a Vault secret path to import" });
+    if (!selectedPaths.length) {
+      createNotification({
+        type: "error",
+        text: "Please select at least one Vault secret path to import"
+      });
       return;
     }
 
@@ -88,7 +91,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
       return;
     }
 
-    onImport(selectedPath, selectedNamespace);
+    onImport(selectedPaths, selectedNamespace);
     onClose();
   };
 
@@ -103,9 +106,9 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             </div>
             <div className="space-y-1.5 text-xs leading-relaxed">
               <p>
-                Select a Vault namespace and secret path to import secrets into the current
-                Infisical environment (<code className="text-xs">{environment}</code>) at path{" "}
-                <code className="text-xs">{secretPath}</code>.
+                Select a Vault namespace and one or more secret paths to import secrets into the
+                current Infisical environment (<code className="text-xs">{environment}</code>) at
+                path <code className="text-xs">{secretPath}</code>.
               </p>
             </div>
           </div>
@@ -125,7 +128,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
                 setSelectedMountPath(null);
-                setSelectedPath(null);
+                setSelectedPaths([]);
               }
             }}
             options={namespaces || []}
@@ -153,7 +156,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
               if (value && !Array.isArray(value)) {
                 const mount = value as { path: string; type: string; version: string | null };
                 setSelectedMountPath(mount.path.replace(/\/$/, "")); // Remove trailing slash
-                setSelectedPath(null);
+                setSelectedPaths([]);
               }
             }}
             options={kvMounts || []}
@@ -172,12 +175,13 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
       <FormControl label="Vault Secret Path" className="mb-6">
         <>
           <FilterableSelect
-            value={selectedPath ? { path: selectedPath } : null}
+            isMulti
+            value={selectedPaths.map((path) => ({ path }))}
             onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                setSelectedPath((value as { path: string }).path);
-              } else {
-                setSelectedPath(null);
+              if (!value) {
+                setSelectedPaths([]);
+              } else if (Array.isArray(value)) {
+                setSelectedPaths(value.map((option) => option.path));
               }
             }}
             options={(secretPaths || []).map((path) => ({ path }))}
@@ -187,13 +191,13 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             placeholder={
               !selectedMountPath
                 ? "Select a mount path first..."
-                : "Select a Vault path to import..."
+                : "Select Vault path(s) to import..."
             }
             isClearable
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
-            Choose a secret path from the selected mount to import into Infisical
+            Choose one or more secret paths from the selected mount to import into Infisical
           </p>
         </>
       </FormControl>
@@ -201,7 +205,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
       <div className="mt-8 flex space-x-4">
         <Button
           onClick={handleImport}
-          isDisabled={!selectedPath || isLoadingMounts || isLoadingPaths}
+          isDisabled={!selectedPaths.length || isLoadingMounts || isLoadingPaths}
         >
           Import Secrets
         </Button>
@@ -227,7 +231,7 @@ export const VaultSecretImportModal = ({
       <ModalContent
         bodyClassName="overflow-visible"
         title="Import from HashiCorp Vault"
-        subTitle="Select a Vault namespace and secret path to import secrets into the current environment and folder."
+        subTitle="Select a Vault namespace and one or more secret paths to import secrets into the current environment and folder."
         className="max-w-2xl"
       >
         <Content

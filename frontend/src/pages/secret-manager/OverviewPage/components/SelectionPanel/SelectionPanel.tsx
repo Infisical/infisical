@@ -18,6 +18,7 @@ import { useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import {
   SecretType,
@@ -33,7 +34,8 @@ import {
 
 export enum EntryType {
   FOLDER = "folder",
-  SECRET = "secret"
+  SECRET = "secret",
+  SECRET_ROTATION = "secretRotation"
 }
 
 type Props = {
@@ -42,6 +44,7 @@ type Props = {
   selectedEntries: {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
+    [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
   };
   importedBy?: ProjectSecretsImportedBy[] | null;
   usedBySecretSyncs?: UsedBySecretSyncs[];
@@ -69,10 +72,11 @@ export const SelectionPanel = ({
 
   const selectedFolderCount = Object.keys(selectedEntries.folder).length;
   const selectedKeysCount = Object.keys(selectedEntries.secret).length;
+  const selectedRotationCount = Object.keys(selectedEntries.secretRotation).length;
   const isRotatedSecretSelected = Object.values(selectedEntries.secret).some((record) =>
     Object.values(record).some((secret) => secret.isRotatedSecret)
   );
-  const selectedCount = selectedFolderCount + selectedKeysCount;
+  const selectedCount = selectedFolderCount + selectedKeysCount + selectedRotationCount;
 
   const { currentProject, projectId } = useProject();
   const userAvailableEnvs = currentProject?.environments || [];
@@ -285,6 +289,20 @@ export const SelectionPanel = ({
   };
 
   const areFoldersSelected = Boolean(Object.keys(selectedEntries[EntryType.FOLDER]).length);
+  const areRotationsSelected = selectedRotationCount > 0;
+
+  const isMoveDisabled = areFoldersSelected || isRotatedSecretSelected;
+  let moveDisabledReason = "Moving folders is not supported";
+  if (!areFoldersSelected && isRotatedSecretSelected) {
+    moveDisabledReason = "Moving rotated secrets is not supported";
+  }
+
+  const isDeleteDisabled = areRotationsSelected || isRotatedSecretSelected;
+  let deleteDisabledReason = "Rotated secrets cannot be deleted via multi-select";
+  if (areRotationsSelected) {
+    deleteDisabledReason =
+      "Rotations cannot be deleted from this view. Use the delete action on the rotation row instead.";
+  }
 
   return (
     <>
@@ -303,11 +321,6 @@ export const SelectionPanel = ({
           >
             Unselect All
           </button>
-          {isRotatedSecretSelected && (
-            <span className="text-xs text-accent">
-              Rotated Secrets will not be affected by move or delete action.
-            </span>
-          )}
           {selectedKeysCount > 0 && (
             <Tooltip open={isTagActionDisabled ? undefined : false}>
               <TooltipTrigger>
@@ -327,10 +340,10 @@ export const SelectionPanel = ({
           )}
           {shouldShowDelete && (
             <>
-              <Tooltip open={areFoldersSelected ? undefined : false}>
+              <Tooltip open={isMoveDisabled ? undefined : false}>
                 <TooltipTrigger>
                   <Button
-                    isDisabled={areFoldersSelected}
+                    isDisabled={isMoveDisabled}
                     variant="project"
                     className="ml-2"
                     onClick={() => handlePopUpOpen("bulkMoveSecrets")}
@@ -340,17 +353,23 @@ export const SelectionPanel = ({
                     Move
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Moving folders is not supported</TooltipContent>
+                <TooltipContent>{moveDisabledReason}</TooltipContent>
               </Tooltip>
-              <Button
-                variant="danger"
-                className="ml-2"
-                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                size="xs"
-              >
-                <TrashIcon />
-                Delete
-              </Button>
+              <Tooltip open={isDeleteDisabled ? undefined : false}>
+                <TooltipTrigger>
+                  <Button
+                    isDisabled={isDeleteDisabled}
+                    variant="danger"
+                    className="ml-2"
+                    onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                    size="xs"
+                  >
+                    <TrashIcon />
+                    Delete
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{deleteDisabledReason}</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
@@ -364,6 +383,7 @@ export const SelectionPanel = ({
         projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
+        rotations={selectedEntries[EntryType.SECRET_ROTATION]}
         onComplete={resetSelectedEntries}
       />
       <BulkTagDialog

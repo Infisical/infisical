@@ -68,6 +68,10 @@ Create a user with the required permission in your SQL instance. This user will 
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
+	<ParamField path="SSL Reject Unauthorized" type="boolean" default="true">
+		If enabled, the server certificate will be verified against the list of supplied CAs. Disable this option if you are using a self-signed certificate.
+	</ParamField>
+
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   ![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statement-mysql.png)

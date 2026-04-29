@@ -422,13 +422,21 @@ export const useMoveSecrets = ({
 
       return data;
     },
-    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath }) => {
+    onSuccess: (_, { projectId, sourceEnvironment, sourceSecretPath, destinationSecretPath }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath: sourceSecretPath
         })
       });
+      if (destinationSecretPath !== sourceSecretPath) {
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({
+            projectId,
+            secretPath: destinationSecretPath
+          })
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({
           projectId,

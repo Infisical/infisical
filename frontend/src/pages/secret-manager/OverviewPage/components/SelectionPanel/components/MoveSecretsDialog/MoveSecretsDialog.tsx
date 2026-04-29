@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
-import { faBan, faEyeSlash, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { CheckCircleIcon, CircleAlertIcon, InfoIcon, LoaderCircleIcon } from "lucide-react";
@@ -14,6 +12,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Button,
   Checkbox,
   Dialog,
@@ -35,11 +34,15 @@ import {
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -51,6 +54,7 @@ type Props = {
   projectSlug: string;
   sourceSecretPath: string;
   secrets: Record<string, Record<string, SecretV3RawSanitized>>;
+  rotations: Record<string, Record<string, TSecretRotationV2>>;
   onComplete: () => void;
 };
 
@@ -187,6 +191,7 @@ const SingleEnvContent = ({
   onComplete,
   onClose,
   secrets,
+  rotations,
   environments,
   visibleEnvs,
   projectId,
@@ -195,6 +200,7 @@ const SingleEnvContent = ({
 }: ContentProps) => {
   const sourceEnv = visibleEnvs[0];
   const moveSecrets = useMoveSecrets();
+  const moveSecretRotation = useMoveSecretRotation();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
     secretPath: "/"
   });
@@ -237,44 +243,92 @@ const SingleEnvContent = ({
         (secret): secret is SecretV3RawSanitized => Boolean(secret) && !secret.isRotatedSecret
       );
 
-    if (!secretsToMove.length) {
+    const rotationsToMove = Object.values(rotations)
+      .map((rotationRecord) => rotationRecord[sourceEnv.slug])
+      .filter((rotation): rotation is TSecretRotationV2 => Boolean(rotation));
+
+    if (!secretsToMove.length && !rotationsToMove.length) {
       createNotification({
         type: "info",
-        text: "No secrets to move in this environment"
+        text: "No secrets or rotations to move in this environment"
       });
       return;
     }
 
-    const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-      shouldOverwrite: data.shouldOverwrite,
-      sourceEnvironment: sourceEnv.slug,
-      sourceSecretPath,
-      destinationEnvironment: data.environment,
-      destinationSecretPath: selectedPath.secretPath,
-      projectId,
-      projectSlug,
-      secretIds: secretsToMove.map((sec) => sec.id)
-    });
+    let isDestinationUpdated = true;
+    let isSourceUpdated = true;
 
-    if (isDestinationUpdated && isSourceUpdated) {
+    if (secretsToMove.length) {
+      const result = await moveSecrets.mutateAsync({
+        shouldOverwrite: data.shouldOverwrite,
+        sourceEnvironment: sourceEnv.slug,
+        sourceSecretPath,
+        destinationEnvironment: data.environment,
+        destinationSecretPath: selectedPath.secretPath,
+        projectId,
+        projectSlug,
+        secretIds: secretsToMove.map((sec) => sec.id)
+      });
+      isDestinationUpdated = result.isDestinationUpdated;
+      isSourceUpdated = result.isSourceUpdated;
+    }
+
+    const rotationFailures: { name: string; message: string }[] = [];
+    let rotationSuccessCount = 0;
+
+    // eslint-disable-next-line no-restricted-syntax
+    for await (const rotation of rotationsToMove) {
+      try {
+        await moveSecretRotation.mutateAsync({
+          type: rotation.type,
+          rotationId: rotation.id,
+          destinationEnvironment: data.environment,
+          destinationSecretPath: selectedPath.secretPath,
+          overwriteDestination: data.shouldOverwrite,
+          projectId,
+          secretPath: sourceSecretPath
+        });
+        rotationSuccessCount += 1;
+      } catch (error) {
+        let message = (error as Error)?.message ?? "Failed to move rotation";
+        if (axios.isAxiosError(error)) {
+          const responseMessage = (error?.response?.data as { message?: string })?.message;
+          if (responseMessage) message = responseMessage;
+        }
+        rotationFailures.push({ name: rotation.name, message });
+      }
+    }
+
+    if (secretsToMove.length) {
+      if (isDestinationUpdated && isSourceUpdated) {
+        createNotification({
+          type: "success",
+          text: "Successfully moved selected secrets"
+        });
+      } else if (isDestinationUpdated) {
+        createNotification({
+          type: "info",
+          text: "Successfully created secrets in destination. A secret approval request has been generated for the source."
+        });
+      } else if (isSourceUpdated) {
+        createNotification({
+          type: "info",
+          text: "A secret approval request has been generated in the destination"
+        });
+      } else {
+        createNotification({
+          type: "info",
+          text: "A secret approval request has been generated in both the source and the destination."
+        });
+      }
+    }
+
+    if (rotationSuccessCount > 0) {
       createNotification({
         type: "success",
-        text: "Successfully moved selected secrets"
-      });
-    } else if (isDestinationUpdated) {
-      createNotification({
-        type: "info",
-        text: "Successfully created secrets in destination. A secret approval request has been generated for the source."
-      });
-    } else if (isSourceUpdated) {
-      createNotification({
-        type: "info",
-        text: "A secret approval request has been generated in the destination"
-      });
-    } else {
-      createNotification({
-        type: "info",
-        text: "A secret approval request has been generated in both the source and the destination."
+        text: `Successfully moved ${rotationSuccessCount} secret rotation${
+          rotationSuccessCount === 1 ? "" : "s"
+        }`
       });
     }
 
@@ -380,12 +434,14 @@ const MultiEnvContent = ({
   onComplete,
   onClose,
   secrets,
+  rotations,
   environments,
   projectId,
   projectSlug,
   sourceSecretPath
 }: ContentProps) => {
   const moveSecrets = useMoveSecrets();
+  const moveSecretRotation = useMoveSecretRotation();
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
@@ -403,18 +459,25 @@ const MultiEnvContent = ({
     }
   });
 
-  const moveSecretsEligibility = useMemo(() => {
+  const moveEligibility = useMemo(() => {
     return Object.fromEntries(
       environments.map((env) => [
         env.slug,
         {
-          missingPermissions: permission.cannot(
+          cannotMoveSecrets: permission.cannot(
             ProjectPermissionSecretActions.Delete,
             subject(ProjectPermissionSub.Secrets, {
               environment: env.slug,
               secretPath: sourceSecretPath,
               secretName: "*",
               secretTags: ["*"]
+            })
+          ),
+          cannotMoveRotations: permission.cannot(
+            ProjectPermissionSecretRotationActions.Delete,
+            subject(ProjectPermissionSub.SecretRotation, {
+              environment: env.slug,
+              secretPath: sourceSecretPath
             })
           )
         }
@@ -432,17 +495,27 @@ const MultiEnvContent = ({
       [];
 
     environments.forEach((env) => {
-      if (moveSecretsEligibility[env.slug].missingPermissions) {
+      const { cannotMoveSecrets, cannotMoveRotations } = moveEligibility[env.slug];
+
+      if (cannotMoveSecrets) {
         environmentWarnings.push({
-          id: env.id,
+          id: `${env.id}-secrets`,
           type: "permission",
-          message: `${env.name}: You do not have permission to remove secrets from this environment`
+          message: `${env.name}: You do not have permission to move secrets from this environment`
+        });
+      }
+
+      if (cannotMoveRotations) {
+        environmentWarnings.push({
+          id: `${env.id}-rotations`,
+          type: "permission",
+          message: `${env.name}: You do not have permission to move secret rotations from this environment`
         });
       }
     });
 
     return environmentWarnings;
-  }, [moveSecretsEligibility, destinationSelected, environments]);
+  }, [moveEligibility, destinationSelected, environments]);
 
   const handleFormSubmit = async (data: TMultiEnvFormSchema) => {
     if (!selectedPath) {
@@ -466,21 +539,34 @@ const MultiEnvContent = ({
       })
     );
 
+    const rotationsByEnv: Record<string, TSecretRotationV2[]> = Object.fromEntries(
+      environments.map((env) => [env.slug, []])
+    );
+
+    Object.values(rotations).forEach((rotationRecord) =>
+      Object.entries(rotationRecord).forEach(([env, rotation]) => {
+        rotationsByEnv[env].push(rotation);
+      })
+    );
+
     // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
-      const secretsToMove = secretsByEnv[envSlug];
+      const { cannotMoveSecrets, cannotMoveRotations } = moveEligibility[envSlug];
 
-      if (moveSecretsEligibility[envSlug].missingPermissions) {
+      if (cannotMoveSecrets && cannotMoveRotations) {
         // eslint-disable-next-line no-continue
         continue;
       }
 
-      if (!secretsToMove.length) {
+      const secretsToMove = cannotMoveSecrets ? [] : secretsByEnv[envSlug];
+      const rotationsToMove = cannotMoveRotations ? [] : rotationsByEnv[envSlug];
+
+      if (!secretsToMove.length && !rotationsToMove.length) {
         results.push({
           name: environment.name,
-          message: "No secrets selected in environment",
+          message: "No secrets or rotations selected in environment",
           status: MoveResult.Info,
           id: environment.id
         });
@@ -488,53 +574,90 @@ const MultiEnvContent = ({
         continue;
       }
 
-      try {
-        const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-          shouldOverwrite: data.shouldOverwrite,
-          sourceEnvironment: environment.slug,
-          sourceSecretPath,
-          destinationEnvironment: environment.slug,
-          destinationSecretPath: selectedPath.secretPath,
-          projectId,
-          projectSlug,
-          secretIds: secretsToMove.map((sec) => sec.id)
-        });
+      if (secretsToMove.length) {
+        try {
+          const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
+            shouldOverwrite: data.shouldOverwrite,
+            sourceEnvironment: environment.slug,
+            sourceSecretPath,
+            destinationEnvironment: environment.slug,
+            destinationSecretPath: selectedPath.secretPath,
+            projectId,
+            projectSlug,
+            secretIds: secretsToMove.map((sec) => sec.id)
+          });
 
-        let message = "";
-        let status: MoveResult = MoveResult.Info;
+          let message = "";
+          let status: MoveResult = MoveResult.Info;
 
-        if (isDestinationUpdated && isSourceUpdated) {
-          message = "Successfully moved selected secrets";
-          status = MoveResult.Success;
-        } else if (isDestinationUpdated) {
-          message =
-            "Successfully created secrets in destination. A secret approval request has been generated for the source.";
-        } else if (isSourceUpdated) {
-          message = "A secret approval request has been generated in the destination";
-        } else {
-          message =
-            "A secret approval request has been generated in both the source and the destination.";
+          if (isDestinationUpdated && isSourceUpdated) {
+            message = "Successfully moved selected secrets";
+            status = MoveResult.Success;
+          } else if (isDestinationUpdated) {
+            message =
+              "Successfully created secrets in destination. A secret approval request has been generated for the source.";
+          } else if (isSourceUpdated) {
+            message = "A secret approval request has been generated in the destination";
+          } else {
+            message =
+              "A secret approval request has been generated in both the source and the destination.";
+          }
+
+          results.push({
+            name: environment.name,
+            message,
+            status,
+            id: environment.id
+          });
+        } catch (error) {
+          let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
+          if (axios.isAxiosError(error)) {
+            const { message } = error?.response?.data as { message: string };
+            if (message) errorMessage = message;
+          }
+
+          results.push({
+            name: environment.name,
+            message: errorMessage,
+            status: MoveResult.Error,
+            id: environment.id
+          });
         }
+      }
 
-        results.push({
-          name: environment.name,
-          message,
-          status,
-          id: environment.id
-        });
-      } catch (error) {
-        let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
-        if (axios.isAxiosError(error)) {
-          const { message } = error?.response?.data as { message: string };
-          if (message) errorMessage = message;
+      // eslint-disable-next-line no-restricted-syntax
+      for await (const rotation of rotationsToMove) {
+        try {
+          await moveSecretRotation.mutateAsync({
+            type: rotation.type,
+            rotationId: rotation.id,
+            destinationEnvironment: environment.slug,
+            destinationSecretPath: selectedPath.secretPath,
+            overwriteDestination: data.shouldOverwrite,
+            projectId,
+            secretPath: sourceSecretPath
+          });
+
+          results.push({
+            name: `${environment.name} / ${rotation.name}`,
+            message: "Successfully moved secret rotation",
+            status: MoveResult.Success,
+            id: `${environment.id}-${rotation.id}`
+          });
+        } catch (error) {
+          let errorMessage = (error as Error)?.message ?? "Failed to move secret rotation";
+          if (axios.isAxiosError(error)) {
+            const responseMessage = (error?.response?.data as { message?: string })?.message;
+            if (responseMessage) errorMessage = responseMessage;
+          }
+
+          results.push({
+            name: `${environment.name} / ${rotation.name}`,
+            message: errorMessage,
+            status: MoveResult.Error,
+            id: `${environment.id}-${rotation.id}`
+          });
         }
-
-        results.push({
-          name: environment.name,
-          message: errorMessage,
-          status: MoveResult.Error,
-          id: environment.id
-        });
       }
     }
 
@@ -551,7 +674,7 @@ const MultiEnvContent = ({
     return <MoveResultsView moveResults={moveResults} onComplete={onComplete} />;
   }
 
-  if (moveSecrets.isPending) {
+  if (moveSecrets.isPending || moveSecretRotation.isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <LoaderCircleIcon className="size-8 animate-spin text-accent" />
@@ -564,9 +687,7 @@ const MultiEnvContent = ({
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Alert variant="info" className="mb-4">
         <InfoIcon />
-        <AlertDescription>
-          Select a single environment to move secrets across environments.
-        </AlertDescription>
+        <AlertTitle>Select a single environment to move secrets across environments.</AlertTitle>
       </Alert>
       <Field>
         <FieldLabel>Secret Path</FieldLabel>
@@ -583,24 +704,17 @@ const MultiEnvContent = ({
         </FieldContent>
       </Field>
       {Boolean(environmentsToBeSkipped.length) && (
-        <div className="mt-4 rounded-sm bg-mineshaft-900 px-3 py-2">
-          <span className="text-sm text-yellow">
-            <FontAwesomeIcon icon={faWarning} className="mr-0.5" /> The following environments will
-            not be affected
-          </span>
-          {environmentsToBeSkipped.map((env) => (
-            <div
-              key={env.id}
-              className={`${env.type === "permission" ? "text-red" : "text-mineshaft-300"} mb-0.5 flex items-start gap-2 text-sm`}
-            >
-              <FontAwesomeIcon
-                className="mt-1"
-                icon={env.type === "permission" ? faBan : faEyeSlash}
-              />
-              <span>{env.message}</span>
-            </div>
-          ))}
-        </div>
+        <Alert variant="danger" className="mt-4">
+          <CircleAlertIcon />
+          <AlertTitle>The following environments will not be affected</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc pl-4">
+              {environmentsToBeSkipped.map((env) => (
+                <li key={env.id}>{env.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
       )}
       <Controller
         control={control}
