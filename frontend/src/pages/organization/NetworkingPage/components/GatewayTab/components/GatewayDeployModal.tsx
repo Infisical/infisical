@@ -47,9 +47,6 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     }
 
     try {
-      // FE always creates with token method by default. Operators can switch to AWS (or
-      // stay on token + generate enrollment tokens) on the gateway details page. Relay is
-      // picked at deploy time inside the enrollment-token / aws-start-command dialog.
       const gateway = await createGateway({ name, authMethod: { method: "token" } });
       onClose();
       navigate({

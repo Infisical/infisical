@@ -3603,7 +3603,7 @@ export const GATEWAYS_V3 = {
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing daemons keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",

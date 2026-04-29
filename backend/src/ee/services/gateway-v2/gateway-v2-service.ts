@@ -819,9 +819,6 @@ export const gatewayV2ServiceFactory = ({
           tx
         );
 
-        // Identity-bound gateways are tracked via gateways_v2.identityId, not via a
-        // resource_auth_methods row — no registry insert needed here.
-
         return upserted;
       });
 
@@ -1212,8 +1209,6 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    // Relay binding stays operator-driven — set lazily via /v3/gateways/connect when the
-    // daemon first calls in with --target-relay-name. Not exposed on create.
     const gateway = await gatewayV2DAL.transaction(async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateGateway(orgId)]);
@@ -1239,8 +1234,6 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      // Insert the auth-method registry row in the same tx. Every gateway has exactly one
-      // method at all times — no "unconfigured" state.
       await resourceAuthMethodService.initAtCreate({ gatewayId: created.id, authMethod }, tx);
 
       return created;

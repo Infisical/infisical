@@ -24,9 +24,7 @@ export const gatewaysV2QueryKeys = {
   byIdKey: (gatewayId: string) => [...gatewaysV2QueryKeys.allKey(), "by-id", gatewayId],
   byId: (gatewayId: string) => ({
     queryKey: gatewaysV2QueryKeys.byIdKey(gatewayId),
-    // The single-gateway GET returns the gateway plus the discriminated `authMethod` block,
-    // which the details page renders directly. staleTime: 0 because auth-method state can
-    // change via PATCH from this same view.
+    // Auth-method state can change via PATCH from this same view, so don't cache.
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {

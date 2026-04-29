@@ -65,15 +65,8 @@ export const resourceAuthMethodServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Gateway);
   };
 
-  // Builds the discriminated-union view of the gateway's current auth method.
-  //
-  // Identity is checked *first* via gateways_v2.identityId — that field is the
-  // authoritative legacy-state signal and overrides anything in resource_auth_methods.
-  // (Older migration runs may have left stale 'identity' registry rows; this ordering
-  // makes the view robust to that.)
-  //
-  // Token method's config is deliberately empty — enrollment-token state isn't surfaced
-  // (rows are deleted on consume; CLI returns its own error for invalid/expired).
+  // Identity is checked first via gateways_v2.identityId — it's the authoritative
+  // legacy-state signal and overrides any registry row.
   const $loadAuthMethodView = async (gatewayId: string): Promise<TAuthMethodView | null> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) return null;
@@ -164,19 +157,8 @@ export const resourceAuthMethodServiceFactory = ({
     }
   };
 
-  /**
-   * Switches the gateway's auth method (or updates the current method's config) in one tx.
-   *
-   * Refused for legacy identity-bound gateways — those have to be replaced with a new
-   * gateway, not migrated. We don't try to be clever about transitioning identity
-   * binding to a registry-tracked method; operators create a fresh gateway with the
-   * desired method instead.
-   *
-   * Note: tokenVersion is *not* bumped on method change. A running gateway holding a JWT
-   * minted under the previous method continues operating until it restarts and
-   * re-authenticates via the new method — intentional, to avoid downtime. Operators
-   * who need to forcibly invalidate the existing session use the explicit Revoke action.
-   */
+  // tokenVersion is intentionally NOT bumped on method change — running gateways keep
+  // their JWT until the next restart, avoiding forced downtime. Use revoke for that.
   const setMethod = async ({ resource, authMethod, actor }: TSetAuthMethodDTO): Promise<TAuthMethodView> => {
     assertGatewayResource(resource, "auth-method");
     await $checkPermission(actor, OrgPermissionGatewayActions.EditGateways);
@@ -255,17 +237,8 @@ export const resourceAuthMethodServiceFactory = ({
     return view;
   };
 
-  /**
-   * Mints a fresh enrollment token for token-method gateways. Replaces any existing
-   * unused enrollment-token row (only one bootstrap credential pending at a time).
-   *
-   * Does NOT bump tokenVersion or clear heartbeat — minting a new token is a
-   * non-destructive operation, and an operator clicking "Show start command" to view
-   * the deploy command shouldn't disconnect a healthy running gateway. The next daemon
-   * to actually log in with the new token will bump tokenVersion at that point
-   * (loginWithToken handles the rotation atomically). For active disconnection,
-   * operators use the explicit Revoke action.
-   */
+  // Non-destructive: minting a new token does NOT bump tokenVersion or clear heartbeat,
+  // so a running gateway keeps working. The next login (with the new token) does the bump.
   const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
     assertGatewayResource(resource, "token");
     await $checkPermission(actor, OrgPermissionGatewayActions.EditGateways);
@@ -285,8 +258,6 @@ export const resourceAuthMethodServiceFactory = ({
     const generated = $generateEnrollmentToken();
 
     const record = await resourceEnrollmentTokenDAL.transaction(async (tx) => {
-      // Replace any existing enrollment-token row. Rows are deleted on consume, so
-      // anything still here is a pending unused credential we're superseding.
       await resourceEnrollmentTokenDAL.delete({ authMethodId: registry.id }, tx);
       return resourceEnrollmentTokenDAL.create(
         {
@@ -308,15 +279,6 @@ export const resourceAuthMethodServiceFactory = ({
     };
   };
 
-  /**
-   * Method-aware broad revoke. Bumps tokenVersion (kills active JWT), clears heartbeat,
-   * and — for token method — deletes any pending enrollment-token row. Identity-bound
-   * gateways can't be revoked through this path; they need to switch off identity first.
-   *
-   * Authorized by the dedicated RevokeGatewayAccess permission, separate from
-   * EditGateways. Disconnecting a running gateway is a stronger action than editing its
-   * auth config and merits its own grant.
-   */
   const revokeAccess = async ({ resource, actor }: TRevokeTokenDTO) => {
     assertGatewayResource(resource, "auth-method");
     await $checkPermission(actor, OrgPermissionGatewayActions.RevokeGatewayAccess);
@@ -330,11 +292,6 @@ export const resourceAuthMethodServiceFactory = ({
     if (!registry) {
       throw new NotFoundError({ message: "Gateway has no auth method configured" });
     }
-    // Identity-bound gateways are detected via gateway.identityId. They have no registry
-    // row, but we double-check here in case stale data routes us through this branch
-    // unexpectedly. Operators can't revoke an identity-bound gateway directly — the
-    // legacy identity binding is the auth signal, and the only way to "kick" such a
-    // gateway is to delete it.
     if (gateway.identityId) {
       throw new BadRequestError({
         message:
@@ -436,10 +393,7 @@ export const resourceAuthMethodServiceFactory = ({
     };
   };
 
-  /**
-   * Consumes a transient enrollment token. The row is deleted on success — single-use
-   * is enforced by row existence rather than a usedAt flag.
-   */
+  // Single-use: row is deleted on consume, not flagged.
   const loginWithToken = async ({ token }: TLoginWithTokenDTO) => {
     const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
 
@@ -448,7 +402,6 @@ export const resourceAuthMethodServiceFactory = ({
       throw new BadRequestError({ message: "Invalid enrollment token" });
     }
     if (tokenRecord.expiresAt < new Date()) {
-      // Don't leave the expired row sitting around — clean up alongside the rejection.
       await resourceEnrollmentTokenDAL.deleteById(tokenRecord.id).catch(() => {});
       throw new BadRequestError({ message: "Enrollment token has expired" });
     }
@@ -459,8 +412,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
 
     const gateway = await resourceEnrollmentTokenDAL.transaction(async (tx) => {
-      // Single-use: delete on consume. If the row vanished between the find and the
-      // delete (concurrent consumption), the delete returns 0 rows and we reject.
+      // Reject concurrent consumption: if delete returns 0, another caller won the race.
       const deleted = await resourceEnrollmentTokenDAL.delete({ id: tokenRecord.id }, tx);
       if (deleted.length === 0) {
         throw new BadRequestError({ message: "Enrollment token has already been used" });

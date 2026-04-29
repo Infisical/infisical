@@ -277,7 +277,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /:gatewayId/revoke ─────────────────────────────────────────────
-  // Disconnect the running daemon and invalidate any outstanding enrollment tokens.
+  // Disconnect the running gateway and invalidate any outstanding enrollment tokens.
   server.route({
     method: "POST",
     url: "/:gatewayId/revoke",
@@ -305,7 +305,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /login ─────────────────────────────────────────────────────────
-  // Daemon login. Discriminated body covers both methods. Single rate limit (10/min).
+  // Gateway login. Discriminated body covers both methods. Single rate limit (10/min).
   server.route({
     method: "POST",
     url: "/login",
@@ -313,7 +313,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "loginGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      description: "Daemon login. Body discriminates on `method` for AWS or token authentication.",
+      description: "Gateway login. Body discriminates on `method` for AWS or token authentication.",
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
@@ -504,7 +504,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /connect ───────────────────────────────────────────────────────
-  // Daemon connect.
+  // Gateway connect.
   server.route({
     method: "POST",
     url: "/connect",

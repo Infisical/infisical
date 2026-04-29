@@ -46,9 +46,6 @@ export const useTriggerGatewayV2Heartbeat = () => {
   });
 };
 
-// POST /v3/gateways — body { name, authMethod }. The frontend always sends method=token by
-// default; API users may pass method=aws with the AWS allowlists for create-and-configure
-// in one call.
 export const useCreateGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -69,8 +66,6 @@ export const useCreateGateway = () => {
   });
 };
 
-// PATCH /v3/gateways/:id — switch auth method or update its config. Gateway names are
-// fixed at create time; this endpoint doesn't support rename.
 export const useUpdateGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -91,7 +86,6 @@ export const useUpdateGateway = () => {
   });
 };
 
-// POST /v3/gateways/:id/token — mint or rotate the bootstrap token. Token method only.
 export const useMintGatewayToken = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -105,9 +99,6 @@ export const useMintGatewayToken = () => {
   });
 };
 
-// POST /v3/gateways/:id/revoke — method-aware broad revoke. Bumps tokenVersion (kicks the
-// running gateway), clears heartbeat, and — for token method — deletes every enrollment
-// token row (used + unused).
 export const useRevokeGatewayAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
