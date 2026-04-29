@@ -69,22 +69,21 @@ export const useCreateGateway = () => {
   });
 };
 
-// PATCH /v3/gateways/:id — switch auth method or update its config (and/or rename).
+// PATCH /v3/gateways/:id — switch auth method or update its config. Gateway names are
+// fixed at create time; this endpoint doesn't support rename.
 export const useUpdateGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       gatewayId,
-      name,
       authMethod
     }: {
       gatewayId: string;
-      name?: string;
       authMethod?: SettableAuthMethodInput;
     }) => {
       const { data } = await apiRequest.patch<TGatewayV2WithAuthMethod>(
         `/api/v3/gateways/${gatewayId}`,
-        { name, authMethod }
+        { authMethod }
       );
       return data;
     },

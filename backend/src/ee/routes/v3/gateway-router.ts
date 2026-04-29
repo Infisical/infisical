@@ -176,7 +176,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
-        name: z.string().trim().min(1).max(64).optional().describe(GATEWAYS_V3.UPDATE.name),
+        // Renaming gateways is not supported here — name is set at create time and
+        // shouldn't change. If we ever want it, add `name` back and wire up the service.
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS_V3.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
@@ -237,9 +238,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             logger.error(err, `Failed to send telemetry [gatewayId=${req.params.gatewayId}]`);
           });
       }
-
-      // TODO: name updates are not yet implemented in the gateway service. When added,
-      // dispatch here and audit-log GATEWAY_UPDATE.
 
       const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({

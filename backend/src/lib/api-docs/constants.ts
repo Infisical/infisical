@@ -3602,7 +3602,6 @@ export const GATEWAYS_V3 = {
       "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
-    name: "New name for the gateway.",
     authMethod:
       "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Switching method bumps tokenVersion and disconnects active daemons."
   },
