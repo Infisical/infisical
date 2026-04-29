@@ -57,7 +57,10 @@ describe("CertificateRequestService", () => {
       certificateDAL: mockCertificateDAL,
       certificateService: mockCertificateService,
       permissionService: mockPermissionService,
-      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() }
+      resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
+      queueService: { stopJobById: vi.fn(), cancelActiveJob: vi.fn() } as any,
+      userDAL: { findById: vi.fn() } as any,
+      identityDAL: { findById: vi.fn() } as any
     });
   });
 
@@ -287,6 +290,7 @@ describe("CertificateRequestService", () => {
         privateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----",
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -332,6 +336,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -397,6 +402,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -473,6 +479,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,
@@ -518,6 +525,7 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: "Certificate issuance failed",
+        pendingMessage: null,
         commonName: null,
         organization: null,
         organizationalUnit: null,

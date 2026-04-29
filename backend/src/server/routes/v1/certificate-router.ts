@@ -393,6 +393,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           privateKey: z.string().nullable(),
           serialNumber: z.string().nullable(),
           errorMessage: z.string().nullable(),
+          pendingMessage: z.string().nullable().optional(),
           commonName: z.string().nullable().optional(),
           organization: z.string().nullable().optional(),
           organizationalUnit: z.string().nullable().optional(),
@@ -536,6 +537,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               certificateId: z.string().nullable(),
               approvalRequestId: z.string().nullable(),
               errorMessage: z.string().nullable(),
+              pendingMessage: z.string().nullable(),
               createdAt: z.date(),
               updatedAt: z.date(),
               certificate: z
@@ -610,6 +612,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             (certReq.altNames as Array<{ type: string; value: string }> | null)?.map((san) => san.value).join(",") ??
             null,
           errorMessage: certReq.errorMessage ?? null,
+          pendingMessage: certReq.pendingMessage ?? null,
           profileName: certReq.profileName ?? null
         })),
         totalCount
@@ -662,6 +665,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               certificateId: z.string().nullable(),
               approvalRequestId: z.string().nullable(),
               errorMessage: z.string().nullable(),
+              pendingMessage: z.string().nullable(),
               createdAt: z.date(),
               updatedAt: z.date(),
               certificate: z
@@ -739,9 +743,63 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             (certReq.altNames as Array<{ type: string; value: string }> | null)?.map((san) => san.value).join(",") ??
             null,
           errorMessage: certReq.errorMessage ?? null,
+          pendingMessage: certReq.pendingMessage ?? null,
           profileName: certReq.profileName ?? null
         })),
         totalCount
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/certificate-requests/:requestId/cancel",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "cancelCertificateRequest",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Cancel a pending certificate request.",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          status: z.nativeEnum(CertificateRequestStatus),
+          cancelled: z.boolean(),
+          errorMessage: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateRequest, projectId, cancelled } =
+        await server.services.certificateRequest.cancelCertificateRequest({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          certificateRequestId: req.params.requestId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CANCEL_CERTIFICATE_REQUEST,
+          metadata: {
+            certificateRequestId: req.params.requestId,
+            cancelled
+          }
+        }
+      });
+
+      return {
+        status: (certificateRequest?.status ?? CertificateRequestStatus.FAILED) as CertificateRequestStatus,
+        cancelled,
+        errorMessage: certificateRequest?.errorMessage ?? null
       };
     }
   });

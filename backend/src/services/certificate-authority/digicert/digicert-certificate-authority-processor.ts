@@ -53,7 +53,7 @@ export type TProcessDigiCertRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
@@ -212,6 +212,16 @@ export const processDigiCertPendingValidationRequest = async (
       }
     })
   });
+
+  try {
+    const validationDetail = lastCheckStatus && lastCheckStatus !== orderStatus ? `, ${lastCheckStatus}` : "";
+    await deps.certificateRequestDAL.setPendingMessage(
+      request.id,
+      `DigiCert is processing the request — order #${parsed.digicert.orderId} (status: ${orderStatus}${validationDetail})`
+    );
+  } catch (error) {
+    logger.warn(error, `Failed to update DigiCert pendingMessage [certificateRequestId=${request.id}]`);
+  }
 
   return { status: CertificateRequestStatus.PENDING_VALIDATION, orderStatus };
 };

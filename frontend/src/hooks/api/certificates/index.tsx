@@ -1,6 +1,7 @@
 export { certKeyAlgorithmToNameMap, certSignatureAlgorithmToNameMap } from "./constants";
 export { CertificateRequestStatus, CertKeyAlgorithm, CertSource, CertStatus } from "./enums";
 export {
+  useCancelCertificateRequest,
   useDeleteCert,
   useDownloadCertPkcs12,
   useImportCertificate,
@@ -24,6 +25,7 @@ export {
 export type {
   TActivityTrendPoint,
   TActivityTrendResponse,
+  TCancelCertificateRequestResponse,
   TCertificate,
   TCertificateByIdResponse,
   TCertificateRequestDetails,

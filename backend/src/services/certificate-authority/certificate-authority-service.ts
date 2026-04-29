@@ -119,7 +119,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "findById" | "updateById" | "updateStatus" | "attachCertificate"
+    "findById" | "updateById" | "updateStatus" | "attachCertificate" | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
 };

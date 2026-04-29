@@ -20,7 +20,10 @@ type TDigiCertCertificateAuthorityQueueServiceFactoryDep = Omit<
   "certificateRequestDAL"
 > & {
   queueService: TQueueServiceFactory;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findPendingValidationByCaType">;
+  certificateRequestDAL: Pick<
+    TCertificateRequestDALFactory,
+    "updateById" | "findPendingValidationByCaType" | "setPendingMessage"
+  >;
 };
 
 export type TDigiCertCertificateAuthorityQueueServiceFactory = ReturnType<

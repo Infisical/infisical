@@ -2547,7 +2547,10 @@ export const registerRoutes = async (
     certificateDAL,
     certificateService,
     permissionService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    queueService,
+    userDAL,
+    identityDAL
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({

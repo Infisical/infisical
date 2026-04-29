@@ -27,6 +27,7 @@ export const CertificateRequestsSchema = z.object({
   keyAlgorithm: z.string().nullable().optional(),
   signatureAlgorithm: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
+  pendingMessage: z.string().nullable().optional(),
   metadata: z.string().nullable().optional(),
   acmeOrderId: z.string().uuid().nullable().optional(),
   basicConstraints: z.unknown().nullable().optional(),

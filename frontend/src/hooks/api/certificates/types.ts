@@ -187,6 +187,7 @@ export type TCertificateRequestDetails = {
   privateKey: string | null;
   serialNumber: string | null;
   errorMessage: string | null;
+  pendingMessage: string | null;
   commonName: string | null;
   organization: string | null;
   organizationalUnit: string | null;
@@ -219,6 +220,7 @@ export type TCertificateRequestListItem = {
   certificateId: string | null;
   approvalRequestId: string | null;
   errorMessage: string | null;
+  pendingMessage: string | null;
   createdAt: string;
   updatedAt: string;
   certificate: {
@@ -226,6 +228,12 @@ export type TCertificateRequestListItem = {
     serialNumber: string;
     status: string;
   } | null;
+};
+
+export type TCancelCertificateRequestResponse = {
+  status: "pending_approval" | "pending" | "pending_validation" | "issued" | "failed" | "rejected";
+  cancelled: boolean;
+  errorMessage: string | null;
 };
 
 export type TListCertificateRequestsResponse = {
