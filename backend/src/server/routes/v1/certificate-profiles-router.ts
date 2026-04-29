@@ -10,6 +10,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import {
+  certKeyAlgorithmSchema,
+  certSignatureAlgorithmSchema
+} from "@app/services/certificate-common/certificate-algorithm-utils";
+import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
@@ -101,8 +105,8 @@ export const registerCertificateProfilesRouter = async (
             .object({
               ttlDays: z.number().int().positive().optional(),
               commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+              keyAlgorithm: certKeyAlgorithmSchema.optional(),
+              signatureAlgorithm: certSignatureAlgorithmSchema.optional(),
               keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
               extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
               basicConstraints: z
@@ -606,8 +610,8 @@ export const registerCertificateProfilesRouter = async (
             .object({
               ttlDays: z.number().int().positive().optional(),
               commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+              keyAlgorithm: certKeyAlgorithmSchema.optional(),
+              signatureAlgorithm: certSignatureAlgorithmSchema.optional(),
               keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
               extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
               basicConstraints: z

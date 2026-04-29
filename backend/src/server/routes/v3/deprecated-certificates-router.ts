@@ -7,8 +7,11 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
+import {
+  certKeyAlgorithmSchema,
+  certSignatureAlgorithmSchema
+} from "@app/services/certificate-common/certificate-algorithm-utils";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -88,8 +91,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
               })
             )
             .optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          signatureAlgorithm: certSignatureAlgorithmSchema,
+          keyAlgorithm: certKeyAlgorithmSchema,
           removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
@@ -353,8 +356,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
           commonName: validateTemplateRegexField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          signatureAlgorithm: certSignatureAlgorithmSchema,
+          keyAlgorithm: certKeyAlgorithmSchema,
           removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {

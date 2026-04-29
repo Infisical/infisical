@@ -19,6 +19,7 @@ import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { certKeyAlgorithmSchema } from "@app/services/certificate-common/certificate-algorithm-utils";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { InternalCertificateAuthorityResponseSchema } from "../sanitizedSchemas";
@@ -51,8 +52,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
           notBefore: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notBefore),
           notAfter: validateCaDateField.optional().describe(CERTIFICATE_AUTHORITIES.CREATE.notAfter),
           maxPathLength: z.number().min(-1).default(-1).describe(CERTIFICATE_AUTHORITIES.CREATE.maxPathLength),
-          keyAlgorithm: z
-            .nativeEnum(CertKeyAlgorithm)
+          keyAlgorithm: certKeyAlgorithmSchema
             .default(CertKeyAlgorithm.RSA_2048)
             .describe(CERTIFICATE_AUTHORITIES.CREATE.keyAlgorithm),
           requireTemplateForIssuance: z

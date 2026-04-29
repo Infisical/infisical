@@ -11,9 +11,13 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import { CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
+import {
+  certKeyAlgorithmSchema,
+  certSignatureAlgorithmSchema
+} from "@app/services/certificate-common/certificate-algorithm-utils";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -148,8 +152,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                   })
                 )
                 .optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+              signatureAlgorithm: certSignatureAlgorithmSchema.optional(),
+              keyAlgorithm: certKeyAlgorithmSchema.optional(),
               ttl: z
                 .string()
                 .trim()
@@ -779,8 +783,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               })
             )
             .optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          signatureAlgorithm: certSignatureAlgorithmSchema,
+          keyAlgorithm: certKeyAlgorithmSchema,
           removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
@@ -984,8 +988,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
           commonName: validateTemplateRegexField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          signatureAlgorithm: certSignatureAlgorithmSchema,
+          keyAlgorithm: certKeyAlgorithmSchema,
           removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
