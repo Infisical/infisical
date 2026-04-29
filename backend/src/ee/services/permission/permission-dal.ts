@@ -246,6 +246,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         // so without ORDER BY, the evaluated permissions depend on PostgreSQL's row return order
         // which varies with query planner changes, vacuuming, and concurrent writes (#4856).
         .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -399,6 +400,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           }
         })
         .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .select(
           db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
@@ -519,6 +521,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             .where(`${TableName.Membership}.scopeProjectId`, projectId);
         })
         .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("id").withSchema(TableName.Membership).as("membershipId"),
@@ -707,6 +710,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .select(selectAllTableCols(TableName.MembershipRole))
         .select(
           db.ref("id").withSchema(TableName.Membership).as("membershipId"),
