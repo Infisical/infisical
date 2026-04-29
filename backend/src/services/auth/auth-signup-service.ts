@@ -55,32 +55,18 @@ export const authSignupServiceFactory = ({
     // After account deletion the replica may still return the stale user record
     // due to replication lag, which causes re-registration to incorrectly treat
     // the email as an existing account (see #6034).
-    const user = await userDAL.transaction(async (tx) => {
+    // The transaction is kept short (DB ops only) — side effects like SMTP are
+    // handled after the transaction commits to avoid holding a connection during
+    // network I/O.
+    const { user, isExistingAcceptedUser } = await userDAL.transaction(async (tx) => {
       // akhilmhdh: case sensitive email resolution
       const existingUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
       if (existingUser && existingUser.isAccepted) {
-        // Send informational email for existing accounts instead of throwing error
-        // This prevents user enumeration vulnerability
-        const appCfg = getConfig();
-        await smtpService
-          .sendMail({
-            template: SmtpTemplates.SignupExistingAccount,
-            subjectLine: "Sign-up Request for Your Infisical Account",
-            recipients: [sanitizedEmail],
-            substitutions: {
-              email: sanitizedEmail,
-              loginUrl: `${appCfg.SITE_URL}/login`,
-              resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
-            }
-          })
-          .catch((err) =>
-            logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
-          );
-        return null;
+        return { user: null, isExistingAcceptedUser: true };
       }
 
       if (!existingUser) {
-        return userDAL.create(
+        const created = await userDAL.create(
           {
             authMethods: [AuthMethod.EMAIL],
             username: sanitizedEmail,
@@ -89,13 +75,34 @@ export const authSignupServiceFactory = ({
           },
           tx
         );
+        return { user: created, isExistingAcceptedUser: false };
       }
 
-      return existingUser;
+      return { user: existingUser, isExistingAcceptedUser: false };
     });
 
-    if (!user) return;
-    if (!user.id) throw new Error("Failed to create user");
+    if (isExistingAcceptedUser) {
+      // Send informational email for existing accounts instead of throwing error
+      // This prevents user enumeration vulnerability
+      const appCfg = getConfig();
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.SignupExistingAccount,
+          subjectLine: "Sign-up Request for Your Infisical Account",
+          recipients: [sanitizedEmail],
+          substitutions: {
+            email: sanitizedEmail,
+            loginUrl: `${appCfg.SITE_URL}/login`,
+            resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
+          }
+        })
+        .catch((err) =>
+          logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
+        );
+      return;
+    }
+
+    if (!user) throw new Error("Failed to create user");
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_CONFIRMATION,
