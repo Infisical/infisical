@@ -155,6 +155,12 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
         namedCurve: "P-384",
         hash: "SHA-384"
       };
+    case CertKeyAlgorithm.ECDSA_P521:
+      return {
+        name: "ECDSA",
+        namedCurve: "P-521",
+        hash: "SHA-512"
+      };
     // PQC: hash/namedCurve set to satisfy the TypeScript union return type; only `name` is used
     case CertKeyAlgorithm.ML_DSA_44:
       return { name: "ML-DSA-44", hash: "ML-DSA-44", namedCurve: "ML-DSA-44" };
