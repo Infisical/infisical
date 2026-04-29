@@ -5,11 +5,6 @@ type Props = {
   config: GatewayIdentityAuthConfig;
 };
 
-/**
- * Identity-method view. Read-only — operators can only switch *off* identity (via the
- * "Change auth method" button on the parent section), never *to* identity. Identity rows
- * exist only as legacy state from the registerGateway flow or the migration backfill.
- */
 export const ViewGatewayIdentityAuthContent = ({ config }: Props) => {
   return (
     <div className="grid grid-cols-1 gap-x-4 gap-y-2 md:grid-cols-2">

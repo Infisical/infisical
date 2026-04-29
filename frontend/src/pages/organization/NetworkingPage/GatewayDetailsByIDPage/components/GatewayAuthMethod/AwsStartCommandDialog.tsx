@@ -29,13 +29,7 @@ type Props = {
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-/**
- * AWS Auth has no enrollment token to issue — the gateway authenticates by signing an STS
- * GetCallerIdentity request. This dialog shows the start command parameterized by gateway
- * id/name plus the relay choice (operator picks here, command bakes
- * `--target-relay-name=<picked>` when not auto). Mirrors EnrollmentTokenDialog so operators
- * see the same shape regardless of which method they're using.
- */
+// Renders the AWS-method start command. Mirrors EnrollmentTokenDialog.
 export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gatewayName }: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";

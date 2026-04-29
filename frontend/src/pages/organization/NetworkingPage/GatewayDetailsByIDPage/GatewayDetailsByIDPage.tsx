@@ -16,10 +16,8 @@ import { useGetGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { GatewayConnectedResourcesSection } from "./components/GatewayConnectedResourcesSection/GatewayConnectedResourcesSection";
 import { GatewayDeploySection } from "./components/GatewayDeploySection/GatewayDeploySection";
-import {
-  GatewayDetailsCard,
-  GatewayPageHeader
-} from "./components/GatewayHeaderSection/GatewayHeaderSection";
+import { GatewayDetailsCard } from "./components/GatewayDetailsCard/GatewayDetailsCard";
+import { GatewayPageHeader } from "./components/GatewayPageHeader/GatewayPageHeader";
 
 const Page = () => {
   const params = useParams({ from: ROUTE_PATHS.Organization.GatewayDetailsByIDPage.id });

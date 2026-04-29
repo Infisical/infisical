@@ -29,12 +29,7 @@ type Props = {
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-/**
- * Renders the bootstrap-token CLI snippet. Operator picks the relay here so the displayed
- * command bakes `--target-relay-name=<picked>` (omitted when "Auto Select Relay"). The
- * choice is purely cosmetic for the rendered command — the gateway's `/connect` call binds
- * the relay lazily server-side based on whatever `--target-relay-name` it actually receives.
- */
+// Renders the token-method start command after a fresh enrollment token has been minted.
 export const EnrollmentTokenDialog = ({
   isOpen,
   onOpenChange,

@@ -23,8 +23,6 @@ import { useOrganization } from "@app/context";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView } from "@app/hooks/api/gateways-v2/types";
 
-// Settable methods only — identity is read-only and never reachable from this dialog
-// (the parent gates the edit pencil behind `!isIdentityGateway`).
 type SettableMethod = "aws" | "token";
 
 const METHOD_OPTIONS: { value: SettableMethod; label: string }[] = [
@@ -44,8 +42,6 @@ const schema = z
       const hasArns = data.allowedPrincipalArns.trim().length > 0;
       const hasAccountIds = data.allowedAccountIds.trim().length > 0;
       if (!hasArns && !hasAccountIds) {
-        // Attach to both paths so both inputs flag as errored — the constraint is paired
-        // (either field can satisfy it), so styling only one would mislead the user.
         const message = "At least one of allowed principal ARNs or allowed account IDs must be set";
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -98,8 +94,6 @@ export const GatewayAuthMethodModal = ({
     }
   });
 
-  // Reset whenever the modal reopens — picks up freshly-saved values if the user edits,
-  // closes, then reopens later, and discards any unsaved changes from a prior cancel.
   useEffect(() => {
     if (isOpen) {
       reset({

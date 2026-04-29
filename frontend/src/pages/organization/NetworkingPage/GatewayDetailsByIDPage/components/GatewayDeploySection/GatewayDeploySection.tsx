@@ -25,9 +25,7 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   authMethod: GatewayAuthMethodView;
-  // True when the gateway has no heartbeat — either never connected, or its access was
-  // just revoked (which clears heartbeat). Used to highlight the "Show start command"
-  // button so the operator sees it as the next step.
+  // True when the gateway has no heartbeat — drives highlighting the start-command button.
   isFirstTimeSetup: boolean;
 };
 
@@ -42,12 +40,8 @@ export const GatewayDeploySection = ({
   const [enrollmentToken, setEnrollmentToken] = useState<string | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useMintGatewayToken();
 
-  // Identity-bound gateways are legacy state — no actions surfaced here. The operator
-  // should switch to AWS or Token via the Authentication card before deploying anew.
   if (authMethod.method === "identity") return null;
 
-  // Token-method click mints a fresh single-use enrollment token (1h expiry); AWS-method
-  // click just opens the dialog (no token to issue — auth happens via SigV4).
   const handleClick = async () => {
     if (authMethod.method === "aws") {
       setShowAwsCommand(true);
