@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, TriangleAlertIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { NoticeBannerV2 } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Card,
   CardAction,
@@ -74,19 +76,21 @@ export const GatewayAuthenticationSection = ({ gatewayId, authMethod }: Props) =
         <CardContent>
           <div className="flex flex-col gap-4">
             {isIdentityGateway && (
-              <NoticeBannerV2 title="Authenticated via machine identity (legacy)">
-                <p className="text-sm text-mineshaft-300">
-                  This gateway is still using machine identity. We recommend creating a new gateway.{" "}
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertTitle>Authenticated via Machine Identity (Legacy)</AlertTitle>
+                <AlertDescription>
+                  <p>This gateway is still using machine identity. We recommend creating a new gateway.</p>
                   <Link
                     to="/organizations/$orgId/networking"
                     params={{ orgId }}
                     search={{ selectedTab: "gateways" }}
-                    className="text-primary-400 underline-offset-2 hover:underline"
+                    className="underline underline-offset-4"
                   >
                     Create a new gateway
                   </Link>
-                </p>
-              </NoticeBannerV2>
+                </AlertDescription>
+              </Alert>
             )}
             <DetailGroup>
               <Detail>

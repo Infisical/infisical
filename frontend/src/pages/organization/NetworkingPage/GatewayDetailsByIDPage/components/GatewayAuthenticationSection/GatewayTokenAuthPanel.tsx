@@ -1,5 +1,6 @@
 import { createNotification } from "@app/components/notifications";
 import { Button, SheetFooter } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
 
 export const GatewayTokenAuthPanel = ({ gatewayId, isAlreadyOnToken, onClose }: Props) => {
   const { mutateAsync: updateGateway, isPending } = useUpdateGateway();
+  const { isSubOrganization } = useOrganization();
 
   const handleSubmit = async () => {
     try {
@@ -28,7 +30,7 @@ export const GatewayTokenAuthPanel = ({ gatewayId, isAlreadyOnToken, onClose }: 
         <Button
           isPending={isPending}
           isDisabled={isPending || isAlreadyOnToken}
-          variant="neutral"
+          variant={isSubOrganization ? "sub-org" : "org"}
           type="button"
           onClick={handleSubmit}
         >

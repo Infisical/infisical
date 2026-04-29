@@ -13,6 +13,7 @@ import {
   Input,
   SheetFooter
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { GatewayAwsAuthConfig } from "@app/hooks/api/gateways-v2/types";
 
@@ -42,6 +43,7 @@ type Props = {
 
 export const GatewayAwsAuthForm = ({ gatewayId, existingConfig, onClose }: Props) => {
   const { mutateAsync: updateGateway } = useUpdateGateway();
+  const { isSubOrganization } = useOrganization();
 
   const {
     control,
@@ -140,7 +142,7 @@ export const GatewayAwsAuthForm = ({ gatewayId, existingConfig, onClose }: Props
         <Button
           isPending={isSubmitting}
           isDisabled={isSubmitting || !isDirty}
-          variant="neutral"
+          variant={isSubOrganization ? "sub-org" : "org"}
           type="submit"
         >
           Update

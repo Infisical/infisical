@@ -20,7 +20,7 @@ export const GatewayAuthMethodSheet = ({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-lg">
         <SheetHeader className="border-b">
-          <SheetTitle>Edit auth method</SheetTitle>
+          <SheetTitle>Edit Auth Method</SheetTitle>
           <SheetDescription>
             Switch the gateway&apos;s auth method or update the current method&apos;s config.
           </SheetDescription>

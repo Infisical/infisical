@@ -12,7 +12,11 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -80,7 +84,14 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
           </div>
         )}
         {!isPending && total === 0 && (
-          <p className="text-sm text-mineshaft-300">No resources connected to this gateway.</p>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No connected resources</EmptyTitle>
+              <EmptyDescription>
+                Resources that route through this gateway will show up here.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         {!isPending && total > 0 && (
           <Accordion type="multiple">
