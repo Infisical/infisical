@@ -12,6 +12,7 @@ import (
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/license"
 	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/project"
 )
 
 // ServicesDeps holds the external dependencies needed to construct shared services.
@@ -29,11 +30,13 @@ type Services struct {
 	Permission  *permission.Service
 	KMS         *kms.Service
 	License     *license.Service
+	Project     *project.Service
 }
 
 func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
 	permissionDAL := permission.NewDAL(deps.DB)
 	kmsDAL := kms.NewDAL(deps.DB, deps.KeyStore)
+	projectDAL := project.NewDAL(deps.DB)
 
 	kmsSvc, err := kms.NewService(kms.Deps{
 		DAL:    kmsDAL,
@@ -59,11 +62,14 @@ func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
 	authDAL := auth.NewDAL(deps.DB)
 	authHandler := auth.NewAuthHandler(authDAL, deps.Config.AuthSecret)
 
+	projectSvc := project.NewService(deps.Logger, project.Deps{DAL: projectDAL})
+
 	return &Services{
 		Config:      deps.Config,
 		AuthHandler: authHandler,
 		Permission:  permission.NewService(deps.Logger, permission.Deps{DAL: permissionDAL}),
 		KMS:         kmsSvc,
 		License:     licenseSvc,
+		Project:     projectSvc,
 	}, nil
 }

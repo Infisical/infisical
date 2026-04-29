@@ -47,6 +47,8 @@ type secretProcessorOpts struct {
 	ViewSecretValue bool
 	Ability         *gocasl.Ability
 	CipherPair      *kms.CipherPair
+	RequestedPath   string // Original requested path (for recursive filtering)
+	Recursive       bool   // Whether this is a recursive listing
 }
 
 // processSecretsWithPermissions filters and decrypts secrets based on permissions.
@@ -102,6 +104,16 @@ func processSecretsWithPermissions(
 		}
 
 		canReadValue := permission.CanReadSecretValue(opts.Ability, environment, secretPath, sec.Key, tagSlugs)
+
+		// When listing recursively with viewSecretValue=true, filter out secrets from
+		// non-root paths if user doesn't have ReadValue permission (Node.js behavior).
+		// This is different from just masking - the secret is completely excluded.
+		if opts.Recursive && opts.ViewSecretValue && secretPath != opts.RequestedPath {
+			if !canReadValue {
+				continue
+			}
+		}
+
 		valueHidden := !opts.ViewSecretValue || !canReadValue
 
 		var secretValue, secretComment string

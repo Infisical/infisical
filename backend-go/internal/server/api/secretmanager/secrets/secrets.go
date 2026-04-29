@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/project"
 	"github.com/infisical/api/internal/services/secretmanager/environment"
 	"github.com/infisical/api/internal/services/secretmanager/secret"
 	"github.com/infisical/api/internal/services/secretmanager/secretfolder"
@@ -25,6 +27,10 @@ type permissionSvc interface {
 
 type kmsSvc interface {
 	CreateCipherPairWithDataKey(ctx context.Context, dto kms.CreateCipherPairDTO) (*kms.CipherPair, error)
+}
+
+type projectSvc interface {
+	GetBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*project.Project, error)
 }
 
 type secretFolderSvc interface {
@@ -49,6 +55,7 @@ type service struct {
 	logger          *slog.Logger
 	permissionSvc   permissionSvc
 	kmsSvc          kmsSvc
+	projectSvc      projectSvc
 	secretFolderSvc secretFolderSvc
 	secretImportSvc secretImportSvc
 	secretDAL       secretDAL
@@ -60,6 +67,7 @@ type Deps struct {
 	AuthHandler    auth.AuthHandler
 	Permission     permissionSvc
 	KMS            kmsSvc
+	Project        projectSvc
 	SecretFolder   secretFolderSvc
 	SecretImport   secretImportSvc
 	SecretDAL      secretDAL
@@ -72,11 +80,18 @@ func NewService(logger *slog.Logger, deps *Deps) gensecrets.Service {
 		logger:          logger.With(slog.String("service", "secrets")),
 		permissionSvc:   deps.Permission,
 		kmsSvc:          deps.KMS,
+		projectSvc:      deps.Project,
 		secretFolderSvc: deps.SecretFolder,
 		secretImportSvc: deps.SecretImport,
 		secretDAL:       deps.SecretDAL,
 		environmentDAL:  deps.EnvironmentDAL,
 	}
+}
+
+// MetadataFilterEntry represents a single key-value filter for metadata.
+type MetadataFilterEntry struct {
+	Key   string
+	Value string
 }
 
 // ListSecretsOpts contains the common options for listing secrets.
@@ -89,10 +104,76 @@ type ListSecretsOpts struct {
 	Recursive                 bool
 	IncludeImports            bool
 	PersonalOverridesBehavior PersonalOverridesBehavior
+	ExpandPersonalOverrides   bool // Whether to include personal overrides during expansion
+	TagSlugs                  []string
+	MetadataFilter            []MetadataFilterEntry
+}
+
+// parseTagSlugs parses a comma-separated string of tag slugs into a slice.
+// Returns nil if the input is empty.
+func parseTagSlugs(tagSlugsStr *string) []string {
+	if tagSlugsStr == nil || *tagSlugsStr == "" {
+		return nil
+	}
+	parts := strings.Split(*tagSlugsStr, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+// parseMetadataFilter parses a pipe-delimited string of metadata filters.
+// Format: "key=k1,value=v1|key=k2,value=v2"
+// Returns nil if the input is empty or invalid.
+func parseMetadataFilter(metadataFilterStr *string) []MetadataFilterEntry {
+	if metadataFilterStr == nil || *metadataFilterStr == "" {
+		return nil
+	}
+
+	pairs := strings.Split(*metadataFilterStr, "|")
+	result := make([]MetadataFilterEntry, 0, len(pairs))
+
+	for _, pair := range pairs {
+		entry := MetadataFilterEntry{}
+		parts := strings.Split(pair, ",")
+
+		for _, part := range parts {
+			kv := strings.SplitN(part, "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+			identifier := strings.TrimSpace(strings.ToLower(kv[0]))
+			value := strings.TrimSpace(kv[1])
+
+			switch identifier {
+			case "key":
+				entry.Key = value
+			case "value":
+				entry.Value = value
+			}
+		}
+
+		// Only add if both key and value are present
+		if entry.Key != "" && entry.Value != "" {
+			result = append(result, entry)
+		}
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 // listSecretsCore is the shared implementation for v3 and v4 list secrets endpoints.
-func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*gensecrets.ListSecretsResult, error) {
+func (s *service) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*gensecrets.ListSecretsResult, error) {
 	// 1. Get identity from context
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
@@ -164,7 +245,26 @@ func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*g
 
 	// 7. Fetch secrets from all folders (direct + imported)
 	allFolderIDs := chainResult.AllFolderIDs()
-	secrets, err := s.secretDAL.FindByFolderIds(ctx, allFolderIDs, userID, nil)
+
+	// Build filters for tagSlugs and metadataFilter
+	var dalFilters *secret.FindByFolderIdsFilter
+	if len(opts.TagSlugs) > 0 || len(opts.MetadataFilter) > 0 {
+		dalFilters = &secret.FindByFolderIdsFilter{}
+		if len(opts.TagSlugs) > 0 {
+			dalFilters.TagSlugs = opts.TagSlugs
+		}
+		if len(opts.MetadataFilter) > 0 {
+			dalFilters.MetadataFilter = make([]secret.MetadataFilter, len(opts.MetadataFilter))
+			for i, mf := range opts.MetadataFilter {
+				dalFilters.MetadataFilter[i] = secret.MetadataFilter{
+					Key:   mf.Key,
+					Value: mf.Value,
+				}
+			}
+		}
+	}
+
+	secrets, err := s.secretDAL.FindByFolderIds(ctx, allFolderIDs, userID, dalFilters)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to fetch secrets").WithErr(err)
 	}
@@ -189,6 +289,8 @@ func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*g
 			ViewSecretValue: opts.ViewSecretValue,
 			Ability:         permResult.Permission.Ability,
 			CipherPair:      cipherPair,
+			RequestedPath:   opts.SecretPath,
+			Recursive:       opts.Recursive,
 		},
 	)
 
@@ -200,6 +302,15 @@ func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*g
 	if opts.ExpandSecretReferences {
 		inputs := buildSecretInputsForExpansion(directSecrets, importedSecrets, chainResult.Imports)
 
+		// Only pass userID to expansion when expandPersonalOverrides is true AND
+		// personal behavior is Priority or IncludeAll (matching Node.js behavior)
+		var expansionUserID *uuid.UUID
+		if opts.ExpandPersonalOverrides &&
+			(opts.PersonalOverridesBehavior == PersonalOverridesPriority ||
+				opts.PersonalOverridesBehavior == PersonalOverridesIncludeAll) {
+			expansionUserID = userID
+		}
+
 		absoluteFetcher := newAbsoluteSecretFetcher(
 			ctx,
 			opts.ProjectID,
@@ -208,7 +319,7 @@ func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*g
 			s.secretFolderSvc,
 			s.secretDAL,
 			cipherPair,
-			userID,
+			expansionUserID,
 		)
 
 		expander := secretsexpansion.NewSecretExpander(inputs, secretsexpansion.ExpandOpts{
@@ -218,6 +329,18 @@ func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*g
 			FetchAbsoluteSecrets: absoluteFetcher.Fetch,
 		})
 		expander.Expand()
+
+		// Check for permission-denied references and return error (matching Node.js behavior)
+		if expander.HasDeniedRefs() {
+			deniedRefs := expander.DeniedRefs()
+			details := make([]string, len(deniedRefs))
+			for i, ref := range deniedRefs {
+				details[i] = "Permission denied for secret reference: " + ref
+			}
+			return nil, errutil.Forbidden("Failed to expand one or more secret references").
+				WithErr(fmt.Errorf("denied refs: %v", deniedRefs))
+		}
+
 		applyExpandedValues(directSecrets, importedSecrets, expander)
 	}
 
@@ -253,7 +376,7 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		behavior = PersonalOverridesPriority
 	}
 
-	return s.listSecretsCore(ctx, ListSecretsOpts{
+	return s.listSecretsCore(ctx, &ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -262,6 +385,9 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		Recursive:                 p.Recursive,
 		IncludeImports:            p.IncludeImports,
 		PersonalOverridesBehavior: behavior,
+		ExpandPersonalOverrides:   p.IncludePersonalOverrides,
+		TagSlugs:                  parseTagSlugs(p.TagSlugs),
+		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 	})
 }
 
@@ -273,7 +399,7 @@ func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3
 	)
 
 	// v3: Always include all (both shared and personal)
-	return s.listSecretsCore(ctx, ListSecretsOpts{
+	return s.listSecretsCore(ctx, &ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -282,6 +408,8 @@ func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3
 		Recursive:                 p.Recursive,
 		IncludeImports:            p.IncludeImports,
 		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
+		TagSlugs:                  parseTagSlugs(p.TagSlugs),
+		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 	})
 }
 
@@ -460,22 +588,103 @@ func (s *service) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecret
 }
 
 func (s *service) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecretsRawV3Payload) (*gensecrets.ListSecretsResult, error) {
-	s.logger.InfoContext(ctx, "listing secrets raw v3")
-	return &gensecrets.ListSecretsResult{
-		Secrets: []*gensecrets.SecretRaw{},
-	}, nil
+	// Resolve project ID from workspaceId or workspaceSlug
+	projectID, err := s.resolveProjectID(ctx, p.WorkspaceID, p.WorkspaceSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logger.InfoContext(ctx, "listing secrets raw v3",
+		slog.String("projectId", projectID),
+		slog.String("environment", ptrToString(p.Environment)),
+		slog.String("secretPath", p.SecretPath),
+	)
+
+	// Environment is required for this endpoint
+	if p.Environment == nil || *p.Environment == "" {
+		return nil, errutil.BadRequest("Environment is required")
+	}
+
+	// v3 raw: Always include all (both shared and personal)
+	return s.listSecretsCore(ctx, &ListSecretsOpts{
+		ProjectID:                 projectID,
+		Environment:               *p.Environment,
+		SecretPath:                p.SecretPath,
+		ViewSecretValue:           p.ViewSecretValue,
+		ExpandSecretReferences:    p.ExpandSecretReferences,
+		Recursive:                 p.Recursive,
+		IncludeImports:            p.IncludeImports,
+		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
+		TagSlugs:                  parseTagSlugs(p.TagSlugs),
+		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
+	})
+}
+
+// resolveProjectID resolves the project ID from either workspaceId or workspaceSlug.
+func (s *service) resolveProjectID(ctx context.Context, workspaceID, workspaceSlug *string) (string, error) {
+	// Prefer workspaceId if provided
+	if workspaceID != nil && *workspaceID != "" {
+		return *workspaceID, nil
+	}
+
+	// Fall back to workspaceSlug
+	if workspaceSlug == nil || *workspaceSlug == "" {
+		return "", errutil.BadRequest("Either workspaceId or workspaceSlug is required")
+	}
+
+	// Get identity to extract org ID
+	identity := auth.IdentityFromContext(ctx)
+	if identity == nil {
+		return "", errutil.Unauthorized("Authentication required")
+	}
+
+	proj, err := s.projectSvc.GetBySlug(ctx, identity.OrgID, *workspaceSlug)
+	if err != nil {
+		return "", errutil.DatabaseErr("Failed to resolve project").WithErr(
+			fmt.Errorf("project.GetBySlug(slug=%s): %w", *workspaceSlug, err),
+		)
+	}
+	if proj == nil {
+		return "", errutil.NotFound("Project not found").WithErr(
+			fmt.Errorf("project with slug '%s' not found in org", *workspaceSlug),
+		)
+	}
+
+	return proj.ID, nil
+}
+
+func ptrToString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func (s *service) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSecretByNameRawV3Payload) (*gensecrets.GetSecretResult, error) {
+	// Resolve project ID from workspaceId or workspaceSlug
+	projectID, err := s.resolveProjectID(ctx, p.WorkspaceID, p.WorkspaceSlug)
+	if err != nil {
+		return nil, err
+	}
+
 	s.logger.InfoContext(ctx, "getting secret by name raw v3",
 		slog.String("secretName", p.SecretName),
+		slog.String("projectId", projectID),
+		slog.String("environment", ptrToString(p.Environment)),
 	)
+
+	// Environment is required for this endpoint
+	if p.Environment == nil || *p.Environment == "" {
+		return nil, errutil.BadRequest("Environment is required")
+	}
+
+	// TODO(go): Implement get single secret by name
 	return &gensecrets.GetSecretResult{
 		Secret: &gensecrets.SecretRaw{
 			ID:                "stub",
 			LegacyID:          "stub",
-			Workspace:         "",
-			Environment:       "",
+			Workspace:         projectID,
+			Environment:       *p.Environment,
 			Version:           1,
 			Type:              "shared",
 			SecretKey:         p.SecretName,

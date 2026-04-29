@@ -26,6 +26,7 @@ func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *services.Service
 			AuthHandler:    sharedServices.AuthHandler,
 			Permission:     sharedServices.Permission,
 			KMS:            sharedServices.KMS,
+			Project:        sharedServices.Project,
 			SecretFolder:   smServices.SecretFolder,
 			SecretImport:   smServices.SecretImport,
 			SecretDAL:      smServices.SecretDAL,

@@ -17,14 +17,15 @@ import (
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/project"
 	smShared "github.com/infisical/api/internal/services/secretmanager"
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
 )
 
 var (
-	stack   *infra.Stack
-	project *infra.ProjectSeed
+	stack       *infra.Stack
+	testProject *infra.ProjectSeed
 )
 
 func TestMain(m *testing.M) {
@@ -35,7 +36,7 @@ func TestMain(m *testing.M) {
 		WithEEFeatures("rbac", "groups").
 		MustStart()
 
-	project = stack.NodeJS().MustCreateProject("secrets-test")
+	testProject = stack.NodeJS().MustCreateProject("secrets-test")
 	code := m.Run()
 	stack.Stop()
 	os.Exit(code)
@@ -68,10 +69,14 @@ func newSecretsService(t *testing.T) gensecrets.Service {
 
 	smSharedSvcs := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
 
+	projectDAL := project.NewDAL(stack.DB())
+	projectSvc := project.NewService(testutil.NopLogger(), project.Deps{DAL: projectDAL})
+
 	return secrets.NewService(testutil.NopLogger(), &secrets.Deps{
 		AuthHandler:    authHandler,
 		Permission:     permLib,
 		KMS:            kmsSvc,
+		Project:        projectSvc,
 		SecretFolder:   smSharedSvcs.SecretFolder,
 		SecretImport:   smSharedSvcs.SecretImport,
 		SecretDAL:      smSharedSvcs.SecretDAL,
@@ -953,4 +958,675 @@ func TestListSecrets_CommentAndMetadataTogether(t *testing.T) {
 	require.Len(t, secret.SecretMetadata, 1)
 	assert.Equal(t, "env", secret.SecretMetadata[0].Key)
 	assert.Equal(t, "production", secret.SecretMetadata[0].Value)
+}
+
+func TestListSecrets_FilterByTagSlugs(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "tag-filter-test")
+	tag1 := nodejs.CreateTag(t, proj.ID, "api", "API", "#FF0000")
+	tag2 := nodejs.CreateTag(t, proj.ID, "database", "Database", "#00FF00")
+
+	// Create secrets with different tags
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "API_KEY", "api-key-value", &infra.CreateSecretOpts{TagIDs: []string{tag1.ID}})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DB_PASSWORD", "db-password", &infra.CreateSecretOpts{TagIDs: []string{tag2.ID}})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "UNTAGGED_SECRET", "untagged-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "tag-filter-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Filter by "api" tag - should only return API_KEY
+	tagSlugs := "api"
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+		TagSlugs:        &tagSlugs,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+	assert.Equal(t, "API_KEY", result.Secrets[0].SecretKey)
+}
+
+func TestListSecrets_FilterByMultipleTagSlugs(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "multi-tag-filter-test")
+	tag1 := nodejs.CreateTag(t, proj.ID, "api", "API", "#FF0000")
+	tag2 := nodejs.CreateTag(t, proj.ID, "database", "Database", "#00FF00")
+
+	// Create secrets with different tags
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "API_KEY", "api-key-value", &infra.CreateSecretOpts{TagIDs: []string{tag1.ID}})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DB_PASSWORD", "db-password", &infra.CreateSecretOpts{TagIDs: []string{tag2.ID}})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "UNTAGGED_SECRET", "untagged-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "multi-tag-filter-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Filter by "api,database" tags - should return both API_KEY and DB_PASSWORD
+	tagSlugs := "api,database"
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+		TagSlugs:        &tagSlugs,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 2)
+
+	keys := make([]string, len(result.Secrets))
+	for i, s := range result.Secrets {
+		keys[i] = s.SecretKey
+	}
+	assert.Contains(t, keys, "API_KEY")
+	assert.Contains(t, keys, "DB_PASSWORD")
+}
+
+func TestListSecrets_FilterByMetadata(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "metadata-filter-test")
+
+	// Create secrets with different metadata
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PROD_SECRET", "prod-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{{Key: "env", Value: "production"}},
+	})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "DEV_SECRET", "dev-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{{Key: "env", Value: "development"}},
+	})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "NO_METADATA", "no-meta-value", nil)
+
+	identity := nodejs.CreateIdentity(t, "metadata-filter-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Filter by metadata key=env,value=production - should only return PROD_SECRET
+	metadataFilter := "key=env,value=production"
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+		MetadataFilter:  &metadataFilter,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+	assert.Equal(t, "PROD_SECRET", result.Secrets[0].SecretKey)
+}
+
+// =============================================================================
+// Consolidated Test - Single Setup, Multiple Subtests
+// =============================================================================
+
+// TestListSecrets_Comprehensive creates a project with diverse secret types and
+// runs subtests to verify all filtering, expansion, and behavior modes.
+// This is more efficient than separate tests since setup happens once.
+func TestListSecrets_Comprehensive(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project with all the infrastructure we need
+	proj := nodejs.CreateProject(t, "comprehensive-test")
+
+	// Create tags
+	tagAPI := nodejs.CreateTag(t, proj.ID, "api", "API", "#FF0000")
+	tagDB := nodejs.CreateTag(t, proj.ID, "database", "Database", "#00FF00")
+	tagSensitive := nodejs.CreateTag(t, proj.ID, "sensitive", "Sensitive", "#0000FF")
+
+	// Create folders
+	nodejs.CreateFolder(t, proj.ID, "dev", "/", "config")
+	nodejs.CreateFolder(t, proj.ID, "dev", "/config", "nested")
+
+	// Create diverse secrets in root folder
+	// 1. Plain secret
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "PLAIN_SECRET", "plain-value", nil)
+
+	// 2. Secret with comment
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "COMMENTED_SECRET", "commented-value", &infra.CreateSecretOpts{
+		Comment: "This is a comment for the secret",
+	})
+
+	// 3. Secret with single tag
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "API_KEY", "api-key-value", &infra.CreateSecretOpts{
+		TagIDs: []string{tagAPI.ID},
+	})
+
+	// 4. Secret with multiple tags
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DB_PASSWORD", "db-password-value", &infra.CreateSecretOpts{
+		TagIDs: []string{tagDB.ID, tagSensitive.ID},
+	})
+
+	// 5. Secret with metadata
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "PROD_CONFIG", "prod-config-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{
+			{Key: "env", Value: "production"},
+			{Key: "owner", Value: "platform-team"},
+		},
+	})
+
+	// 6. Secret with different metadata value (same key)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_CONFIG", "dev-config-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{{Key: "env", Value: "development"}},
+	})
+
+	// 7. Base secrets for expansion tests
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "HOST", "myhost.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "PORT", "5432", nil)
+
+	// 8. Secret with local reference
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "ENDPOINT", "${HOST}:${PORT}", nil)
+
+	// 9. Secret with nested reference
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "FULL_URL", "https://${ENDPOINT}/api", nil)
+
+	// 10. Secret with missing reference
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_MISSING", "${NOT_EXISTS}", nil)
+
+	// 11. Secrets in subfolder for recursive tests
+	nodejs.CreateSecret(t, proj.ID, "dev", "/config", "CONFIG_SECRET", "config-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/config/nested", "NESTED_SECRET", "nested-value", nil)
+
+	// 12. Shared secret for personal override test
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "OVERRIDEABLE", "shared-overrideable", nil)
+
+	// 13. Personal override as bootstrap user
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "OVERRIDEABLE", "personal-overrideable", &infra.CreateSecretOpts{
+		Type: "personal",
+	})
+
+	// Create staging environment with secrets for import tests
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_DB", "staging-db-value", nil)
+
+	// Create import from staging to dev
+	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
+
+	// Create cross-env secret reference
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "CROSS_ENV_REF", "${staging.STAGING_SECRET}", nil)
+
+	// Create cross-path secret reference
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "CROSS_PATH_REF", "${dev.config.CONFIG_SECRET}", nil)
+
+	// Create identity for identity-based tests
+	identity := nodejs.CreateIdentity(t, "comprehensive-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Helper to list secrets as identity
+	listAsIdentity := func(t *testing.T, payload *gensecrets.ListSecretsV4Payload) *gensecrets.ListSecretsResult {
+		t.Helper()
+		result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), payload)
+		require.NoError(t, err)
+		return result
+	}
+
+	// Helper to get secret by key from results
+	getSecretByKey := func(secrets []*gensecrets.SecretRaw, key string) *gensecrets.SecretRaw {
+		for _, s := range secrets {
+			if s.SecretKey == key {
+				return s
+			}
+		}
+		return nil
+	}
+
+	// ===================
+	// Basic Operation Subtests
+	// ===================
+
+	t.Run("returns correct structure", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "PLAIN_SECRET")
+		require.NotNil(t, secret, "PLAIN_SECRET should exist")
+		assert.NotEmpty(t, secret.ID)
+		assert.Equal(t, "PLAIN_SECRET", secret.SecretKey)
+		assert.Equal(t, "plain-value", secret.SecretValue)
+		assert.Equal(t, "dev", secret.Environment)
+		assert.NotEmpty(t, secret.Workspace)
+		assert.NotEmpty(t, secret.CreatedAt)
+		assert.NotEmpty(t, secret.UpdatedAt)
+		assert.Equal(t, 1, secret.Version)
+		assert.Equal(t, "shared", secret.Type)
+	})
+
+	t.Run("returns comment", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "COMMENTED_SECRET")
+		require.NotNil(t, secret)
+		assert.Equal(t, "This is a comment for the secret", secret.SecretComment)
+	})
+
+	t.Run("returns metadata", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "PROD_CONFIG")
+		require.NotNil(t, secret)
+		require.Len(t, secret.SecretMetadata, 2)
+
+		metadataMap := make(map[string]string)
+		for _, m := range secret.SecretMetadata {
+			metadataMap[m.Key] = m.Value
+		}
+		assert.Equal(t, "production", metadataMap["env"])
+		assert.Equal(t, "platform-team", metadataMap["owner"])
+	})
+
+	t.Run("returns tags", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "DB_PASSWORD")
+		require.NotNil(t, secret)
+		require.Len(t, secret.Tags, 2)
+
+		tagSlugs := make([]string, len(secret.Tags))
+		for i, tag := range secret.Tags {
+			tagSlugs[i] = tag.Slug
+		}
+		assert.Contains(t, tagSlugs, "database")
+		assert.Contains(t, tagSlugs, "sensitive")
+	})
+
+	// ===================
+	// Filtering Subtests
+	// ===================
+
+	t.Run("filter by single tag slug", func(t *testing.T) {
+		tagSlugs := "api"
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			TagSlugs:        &tagSlugs,
+		})
+
+		require.Len(t, result.Secrets, 1)
+		assert.Equal(t, "API_KEY", result.Secrets[0].SecretKey)
+	})
+
+	t.Run("filter by multiple tag slugs (OR logic)", func(t *testing.T) {
+		tagSlugs := "api,database"
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			TagSlugs:        &tagSlugs,
+		})
+
+		require.Len(t, result.Secrets, 2)
+		keys := make([]string, len(result.Secrets))
+		for i, s := range result.Secrets {
+			keys[i] = s.SecretKey
+		}
+		assert.Contains(t, keys, "API_KEY")
+		assert.Contains(t, keys, "DB_PASSWORD")
+	})
+
+	t.Run("filter by metadata", func(t *testing.T) {
+		metadataFilter := "key=env,value=production"
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			MetadataFilter:  &metadataFilter,
+		})
+
+		require.Len(t, result.Secrets, 1)
+		assert.Equal(t, "PROD_CONFIG", result.Secrets[0].SecretKey)
+	})
+
+	// ===================
+	// Recursive Subtests
+	// ===================
+
+	t.Run("recursive includes subfolders", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			Recursive:       true,
+			IncludeImports:  false, // Exclude imports to just test folder recursion
+		})
+
+		keys := make([]string, len(result.Secrets))
+		for i, s := range result.Secrets {
+			keys[i] = s.SecretKey
+		}
+		assert.Contains(t, keys, "PLAIN_SECRET", "should include root secrets")
+		assert.Contains(t, keys, "CONFIG_SECRET", "should include /config secrets")
+		assert.Contains(t, keys, "NESTED_SECRET", "should include /config/nested secrets")
+	})
+
+	t.Run("non-recursive excludes subfolders", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			Recursive:       false,
+			IncludeImports:  false,
+		})
+
+		for _, s := range result.Secrets {
+			assert.NotEqual(t, "CONFIG_SECRET", s.SecretKey, "should not include /config secrets")
+			assert.NotEqual(t, "NESTED_SECRET", s.SecretKey, "should not include /config/nested secrets")
+		}
+	})
+
+	// ===================
+	// Import Subtests
+	// ===================
+
+	t.Run("include imports returns imported secrets", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  true,
+		})
+
+		require.NotNil(t, result.Imports, "imports should be present")
+		require.GreaterOrEqual(t, len(result.Imports), 1, "should have at least one import")
+
+		var foundStaging bool
+		for _, imp := range result.Imports {
+			if imp.Environment != "staging" {
+				continue
+			}
+			foundStaging = true
+			importKeys := make([]string, len(imp.Secrets))
+			for i, s := range imp.Secrets {
+				importKeys[i] = s.SecretKey
+			}
+			assert.Contains(t, importKeys, "STAGING_SECRET")
+			assert.Contains(t, importKeys, "STAGING_DB")
+		}
+		assert.True(t, foundStaging, "should have staging import")
+	})
+
+	t.Run("exclude imports omits imported secrets", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+			IncludeImports:  false,
+		})
+
+		assert.Nil(t, result.Imports, "imports should not be included")
+	})
+
+	// ===================
+	// Expansion Subtests
+	// ===================
+
+	t.Run("expands local references", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "ENDPOINT")
+		require.NotNil(t, secret)
+		assert.Equal(t, "myhost.com:5432", secret.SecretValue)
+	})
+
+	t.Run("expands nested references", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "FULL_URL")
+		require.NotNil(t, secret)
+		assert.Equal(t, "https://myhost.com:5432/api", secret.SecretValue)
+	})
+
+	t.Run("expands cross-environment references", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "CROSS_ENV_REF")
+		require.NotNil(t, secret)
+		assert.Equal(t, "staging-value", secret.SecretValue)
+	})
+
+	t.Run("expands cross-path references", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "CROSS_PATH_REF")
+		require.NotNil(t, secret)
+		assert.Equal(t, "config-value", secret.SecretValue)
+	})
+
+	t.Run("missing references resolve to empty", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+
+		secret := getSecretByKey(result.Secrets, "REF_MISSING")
+		require.NotNil(t, secret)
+		assert.Empty(t, secret.SecretValue, "missing ref should be empty")
+	})
+
+	t.Run("no expansion preserves references", func(t *testing.T) {
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: false,
+		})
+
+		secret := getSecretByKey(result.Secrets, "ENDPOINT")
+		require.NotNil(t, secret)
+		assert.Equal(t, "${HOST}:${PORT}", secret.SecretValue, "reference should NOT be expanded")
+	})
+
+	// ===================
+	// Personal Override Subtests
+	// ===================
+
+	t.Run("v4 default excludes personal overrides", func(t *testing.T) {
+		// Identity-based: always sees shared (identities can't have personal secrets)
+		result := listAsIdentity(t, &gensecrets.ListSecretsV4Payload{
+			ProjectID:                proj.ID,
+			Environment:              "dev",
+			SecretPath:               "/",
+			ViewSecretValue:          true,
+			IncludePersonalOverrides: false,
+		})
+
+		secret := getSecretByKey(result.Secrets, "OVERRIDEABLE")
+		require.NotNil(t, secret)
+		assert.Equal(t, "shared-overrideable", secret.SecretValue)
+	})
+
+	t.Run("v4 with personal overrides for user (priority)", func(t *testing.T) {
+		// Test as user, not identity
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		result, err := svc.ListSecretsV4(ctx, &gensecrets.ListSecretsV4Payload{
+			ProjectID:                proj.ID,
+			Environment:              "dev",
+			SecretPath:               "/",
+			ViewSecretValue:          true,
+			IncludePersonalOverrides: true,
+		})
+		require.NoError(t, err)
+
+		secret := getSecretByKey(result.Secrets, "OVERRIDEABLE")
+		require.NotNil(t, secret)
+		assert.Equal(t, "personal-overrideable", secret.SecretValue, "personal override should take precedence")
+	})
+
+	t.Run("v3 includes all personal and shared", func(t *testing.T) {
+		// V3 always returns both
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		result, err := svc.ListSecretsV3(ctx, &gensecrets.ListSecretsV3Payload{
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+
+		// Find both shared and personal versions
+		var sharedFound, personalFound bool
+		for _, s := range result.Secrets {
+			if s.SecretKey != "OVERRIDEABLE" {
+				continue
+			}
+			switch s.Type {
+			case "shared":
+				sharedFound = true
+				assert.Equal(t, "shared-overrideable", s.SecretValue)
+			case "personal":
+				personalFound = true
+				assert.Equal(t, "personal-overrideable", s.SecretValue)
+			}
+		}
+		assert.True(t, sharedFound, "should have shared secret")
+		assert.True(t, personalFound, "should have personal secret")
+	})
+
+	// ===================
+	// V3 Raw Endpoint Subtests
+	// ===================
+
+	t.Run("v3 raw with workspaceSlug resolves project", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		env := "dev"
+		result, err := svc.ListSecretsRawV3(ctx, &gensecrets.ListSecretsRawV3Payload{
+			WorkspaceSlug:   &proj.Slug,
+			Environment:     &env,
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+
+		// Should have secrets from the project
+		assert.NotEmpty(t, result.Secrets, "should return secrets when using workspaceSlug")
+		secret := getSecretByKey(result.Secrets, "PLAIN_SECRET")
+		require.NotNil(t, secret)
+		assert.Equal(t, "plain-value", secret.SecretValue)
+	})
+
+	t.Run("v3 raw with workspaceId works", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		env := "dev"
+		result, err := svc.ListSecretsRawV3(ctx, &gensecrets.ListSecretsRawV3Payload{
+			WorkspaceID:     &proj.ID,
+			Environment:     &env,
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+
+		// Should have secrets from the project
+		assert.NotEmpty(t, result.Secrets, "should return secrets when using workspaceId")
+		secret := getSecretByKey(result.Secrets, "PLAIN_SECRET")
+		require.NotNil(t, secret)
+		assert.Equal(t, "plain-value", secret.SecretValue)
+	})
+
+	t.Run("v3 raw requires workspaceId or workspaceSlug", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		env := "dev"
+		_, err := svc.ListSecretsRawV3(ctx, &gensecrets.ListSecretsRawV3Payload{
+			Environment:     &env,
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "workspaceId or workspaceSlug")
+	})
 }

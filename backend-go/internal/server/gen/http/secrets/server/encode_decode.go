@@ -300,9 +300,7 @@ func DecodeListSecretsV3Request(mux goahttp.Muxer, decoder func(*http.Request) g
 		}
 		{
 			expandSecretReferencesRaw := qp.Get("expandSecretReferences")
-			if expandSecretReferencesRaw == "" {
-				expandSecretReferences = true
-			} else {
+			if expandSecretReferencesRaw != "" {
 				v, err2 := strconv.ParseBool(expandSecretReferencesRaw)
 				if err2 != nil {
 					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("expandSecretReferences", expandSecretReferencesRaw, "boolean"))
@@ -322,9 +320,7 @@ func DecodeListSecretsV3Request(mux goahttp.Muxer, decoder func(*http.Request) g
 		}
 		{
 			includeImportsRaw := qp.Get("includeImports")
-			if includeImportsRaw == "" {
-				includeImports = true
-			} else {
+			if includeImportsRaw != "" {
 				v, err2 := strconv.ParseBool(includeImportsRaw)
 				if err2 != nil {
 					err = goa.MergeErrors(err, goa.InvalidFieldTypeError("includeImports", includeImportsRaw, "boolean"))

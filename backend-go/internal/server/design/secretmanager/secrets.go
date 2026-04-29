@@ -211,7 +211,7 @@ var _ = Service("secrets", func() {
 					Meta("struct:tag:json", "viewSecretValue")
 				})
 				Attribute("expandSecretReferences", Boolean, "Whether to expand secret references", func() {
-					Default(true)
+					Default(false)
 					Meta("struct:tag:json", "expandSecretReferences")
 				})
 				Attribute("recursive", Boolean, "Whether to list secrets recursively", func() {
@@ -219,7 +219,7 @@ var _ = Service("secrets", func() {
 					Meta("struct:tag:json", "recursive")
 				})
 				Attribute("includeImports", Boolean, "Whether to include imported secrets", func() {
-					Default(true)
+					Default(false)
 					Meta("struct:tag:json", "includeImports")
 				})
 				Attribute("tagSlugs", String, "Comma-separated tag slugs to filter by", func() {

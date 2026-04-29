@@ -106,6 +106,21 @@ func (e *SecretExpander) LookUp(id uuid.UUID) (string, bool) {
 	return e.currentValues[idx], true
 }
 
+// DeniedRefs returns the set of absolute references that were denied due to permissions.
+// Each entry is in "env:path:key" format.
+func (e *SecretExpander) DeniedRefs() []string {
+	refs := make([]string, 0, len(e.deniedRefs))
+	for ref := range e.deniedRefs {
+		refs = append(refs, ref)
+	}
+	return refs
+}
+
+// HasDeniedRefs returns true if any absolute references were denied.
+func (e *SecretExpander) HasDeniedRefs() bool {
+	return len(e.deniedRefs) > 0
+}
+
 // expandPass expands all references in current values.
 // Returns list of absolute refs that are needed but not yet available.
 func (e *SecretExpander) expandPass() []AbsoluteSecretRef {

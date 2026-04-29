@@ -173,7 +173,7 @@ paths:
                   description: Whether to expand secret references
                   required: false
                   type: boolean
-                  default: true
+                  default: false
                 - name: recursive
                   in: query
                   description: Whether to list secrets recursively
@@ -185,7 +185,7 @@ paths:
                   description: Whether to include imported secrets
                   required: false
                   type: boolean
-                  default: true
+                  default: false
                 - name: tagSlugs
                   in: query
                   description: Comma-separated tag slugs to filter by
