@@ -492,15 +492,25 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const result = await server.services.gatewayV2.enrollGateway({ token: req.body.token });
+      // Functionally identical to POST /v3/gateways/login with method=token. We route through
+      // the same service path so the audit-log event matches what new CLIs produce —
+      // querying "all gateway logins" stays consistent regardless of which CLI version
+      // each daemon is running.
+      const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
 
       await server.services.auditLog
         .createAuditLog({
           orgId: result.orgId,
           actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.gatewayId } },
           event: {
-            type: EventType.GATEWAY_ENROLL,
-            metadata: { gatewayId: result.gatewayId, name: result.gatewayName }
+            type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
+            metadata: {
+              resourceType: "gateway",
+              resourceId: result.gatewayId,
+              method: "token",
+              methodConfigId: result.gatewayId,
+              enrollmentTokenId: result.enrollmentTokenId
+            }
           },
           ipAddress: req.ip,
           userAgent: req.headers["user-agent"] ?? "",
