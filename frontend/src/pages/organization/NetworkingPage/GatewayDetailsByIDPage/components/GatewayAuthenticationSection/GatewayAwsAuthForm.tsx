@@ -4,12 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
 import {
-  useAddResourceAwsAuth,
-  useGetResourceAwsAuth,
-  useUpdateResourceAwsAuth
-} from "@app/hooks/api/resourceAuthMethods";
+  Button,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  Input,
+  SheetFooter
+} from "@app/components/v3";
+import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
+import { GatewayAwsAuthConfig } from "@app/hooks/api/gateways-v2/types";
 
 const schema = z
   .object({
@@ -31,111 +36,119 @@ export type FormData = z.infer<typeof schema>;
 
 type Props = {
   gatewayId: string;
-  isUpdate?: boolean;
+  existingConfig: GatewayAwsAuthConfig | null;
   onClose: () => void;
 };
 
-export const GatewayAwsAuthForm = ({ gatewayId, isUpdate, onClose }: Props) => {
-  const { data } = useGetResourceAwsAuth({ type: "gateway", id: gatewayId }, isUpdate ?? false);
-  const { mutateAsync: add } = useAddResourceAwsAuth();
-  const { mutateAsync: update } = useUpdateResourceAwsAuth();
+export const GatewayAwsAuthForm = ({ gatewayId, existingConfig, onClose }: Props) => {
+  const { mutateAsync: updateGateway } = useUpdateGateway();
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      stsEndpoint: "https://sts.amazonaws.com/",
-      allowedPrincipalArns: "",
-      allowedAccountIds: ""
+      stsEndpoint: existingConfig?.stsEndpoint ?? "https://sts.amazonaws.com/",
+      allowedPrincipalArns: existingConfig?.allowedPrincipalArns ?? "",
+      allowedAccountIds: existingConfig?.allowedAccountIds ?? ""
     }
   });
 
   useEffect(() => {
-    if (data) {
+    if (existingConfig) {
       reset({
-        stsEndpoint: data.stsEndpoint,
-        allowedPrincipalArns: data.allowedPrincipalArns,
-        allowedAccountIds: data.allowedAccountIds
+        stsEndpoint: existingConfig.stsEndpoint,
+        allowedPrincipalArns: existingConfig.allowedPrincipalArns,
+        allowedAccountIds: existingConfig.allowedAccountIds
       });
     }
-  }, [data]);
+  }, [existingConfig, reset]);
 
   const onSubmit = async (form: FormData) => {
-    const payload = {
-      resource: { type: "gateway" as const, id: gatewayId },
-      stsEndpoint: form.stsEndpoint,
-      allowedPrincipalArns: form.allowedPrincipalArns,
-      allowedAccountIds: form.allowedAccountIds
-    };
-
-    if (isUpdate) await update(payload);
-    else await add(payload);
-
-    createNotification({
-      type: "success",
-      text: `Successfully ${isUpdate ? "updated" : "configured"} AWS auth`
-    });
-    onClose();
+    try {
+      await updateGateway({
+        gatewayId,
+        authMethod: {
+          method: "aws",
+          stsEndpoint: form.stsEndpoint,
+          allowedPrincipalArns: form.allowedPrincipalArns,
+          allowedAccountIds: form.allowedAccountIds
+        }
+      });
+      createNotification({ type: "success", text: "Auth method updated" });
+      onClose();
+    } catch {
+      createNotification({ type: "error", text: "Failed to update auth method" });
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Controller
-        control={control}
-        name="allowedPrincipalArns"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Principal ARNs"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input
-              {...field}
-              placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName..."
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="allowedAccountIds"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Allowed Account IDs"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="123456789012, ..." />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="stsEndpoint"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="STS Endpoint" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} placeholder="https://sts.amazonaws.com/" />
-          </FormControl>
-        )}
-      />
-      <div className="mt-4 flex items-center">
+    <form className="flex flex-1 flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
+      <div className="flex min-h-0 flex-1 shrink flex-col gap-3 overflow-y-auto p-4 pb-8">
+        <Controller
+          control={control}
+          name="allowedPrincipalArns"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Allowed Principal ARNs</FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  isError={Boolean(error)}
+                  placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName..."
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="allowedAccountIds"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Allowed Account IDs</FieldLabel>
+              <FieldContent>
+                <Input {...field} isError={Boolean(error)} placeholder="123456789012, ..." />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="stsEndpoint"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>STS Endpoint</FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  isError={Boolean(error)}
+                  placeholder="https://sts.amazonaws.com/"
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      </div>
+      <SheetFooter className="shrink-0 border-t border-border">
         <Button
-          className="mr-4"
-          size="sm"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting || !isDirty}
+          variant="neutral"
           type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
         >
-          {isUpdate ? "Update" : "Add"}
+          Update
         </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={onClose}>
+        <Button onClick={onClose} variant="outline" className="mr-auto" type="button">
           Cancel
         </Button>
-      </div>
+      </SheetFooter>
     </form>
   );
 };

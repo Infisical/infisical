@@ -1,35 +1,19 @@
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FilterableSelect,
-  FormControl,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent
-} from "@app/components/v2";
+import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useCreateGateway } from "@app/hooks/api/gateways-v2";
-import { useGetRelays } from "@app/hooks/api/relays/queries";
 import { slugSchema } from "@app/lib/schemas";
 
-import { RelayOption } from "./RelayOption";
-
 const formSchema = z.object({
-  name: slugSchema({ field: "name" }),
-  relay: z
-    .object({ id: z.string(), name: z.string() }, { required_error: "Relay is required" })
-    .nullable()
-    .refine((val) => val !== null, { message: "Relay is required" })
+  name: slugSchema({ field: "name" })
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -44,7 +28,6 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.path });
   const { data: gateways } = useQuery(gatewaysQueryKeys.listWithTokens());
-  const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const { mutateAsync: createGateway, isPending } = useCreateGateway();
 
   const {
@@ -53,23 +36,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      relay: { id: "_auto", name: "Auto Select Relay" }
-    }
+    defaultValues: { name: "" }
   });
 
-  const onSubmit = async ({ name, relay }: FormData) => {
+  const onSubmit = async ({ name }: FormData) => {
     const existingNames = gateways?.map((g) => g.name) ?? [];
     if (existingNames.includes(name.trim())) {
       createNotification({ type: "error", text: "A gateway with this name already exists." });
       return;
     }
 
-    const relayName = relay?.id === "_auto" ? undefined : relay?.name;
-
     try {
-      const gateway = await createGateway({ name, relayName });
+      // FE always creates with token method by default. Operators can switch to AWS (or
+      // stay on token + generate enrollment tokens) on the gateway details page. Relay is
+      // picked at deploy time inside the enrollment-token / aws-start-command dialog.
+      const gateway = await createGateway({ name, authMethod: { method: "token" } });
       onClose();
       navigate({
         to: "/organizations/$orgId/networking/gateways/$gatewayId" as const,
@@ -93,42 +74,6 @@ const Content = ({ onClose }: { onClose: () => void }) => {
             errorText={error?.message}
           >
             <Input {...field} placeholder="Enter gateway name..." />
-          </FormControl>
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="relay"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Relay"
-            tooltipText="The relay to use with your gateway."
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <FilterableSelect
-              value={field.value}
-              onChange={(newValue) => {
-                if ((newValue as SingleValue<{ id: string }>)?.id === "_create") {
-                  navigate({
-                    search: (prev) => ({ ...prev, selectedTab: "relays", action: "deploy-relay" })
-                  });
-                  return;
-                }
-                field.onChange(newValue);
-              }}
-              isLoading={isRelaysLoading}
-              options={[
-                { id: "_auto", name: "Auto Select Relay" },
-                { id: "_create", name: "Deploy New Relay" },
-                ...(relays || [])
-              ]}
-              placeholder="Select relay..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              components={{ Option: RelayOption }}
-            />
           </FormControl>
         )}
       />

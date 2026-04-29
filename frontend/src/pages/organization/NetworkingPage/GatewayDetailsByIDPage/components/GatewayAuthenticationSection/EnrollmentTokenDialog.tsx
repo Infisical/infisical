@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
+  FormControl,
   FormLabel,
   IconButton,
   Input,
@@ -16,6 +18,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
   isOpen: boolean;
@@ -24,11 +27,13 @@ type Props = {
   enrollmentToken: string;
 };
 
+const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
+
 /**
- * Renders the bootstrap-token CLI snippet. Used after the operator generates a fresh
- * enrollment token from the Token Auth method. Same surface as the legacy ReEnrollGatewayModal —
- * just decoupled from the implicit "re-enroll" affordance, since enrollment-token issuance is
- * now an explicit action under the attached Token Auth method.
+ * Renders the bootstrap-token CLI snippet. Operator picks the relay here so the displayed
+ * command bakes `--target-relay-name=<picked>` (omitted when "Auto Select Relay"). The
+ * choice is purely cosmetic for the rendered command — the gateway's `/connect` call binds
+ * the relay lazily server-side based on whatever `--target-relay-name` it actually receives.
  */
 export const EnrollmentTokenDialog = ({
   isOpen,
@@ -40,17 +45,20 @@ export const EnrollmentTokenDialog = ({
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  const cliCommand = useMemo(
-    () =>
-      `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`,
-    [gatewayName, enrollmentToken, siteURL]
-  );
+  const { data: relays, isPending: isRelaysLoading } = useGetRelays();
+  const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const systemdInstallCommand = useMemo(
-    () =>
-      `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`,
-    [gatewayName, enrollmentToken, siteURL]
-  );
+  const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+
+  const cliCommand = useMemo(() => {
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
+    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
+
+  const systemdInstallCommand = useMemo(() => {
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
+    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-gateway";
 
@@ -65,7 +73,25 @@ export const EnrollmentTokenDialog = ({
         className="max-w-2xl"
         title={`Enrollment Token for ${gatewayName}`}
         subTitle="Run the following command on the machine where you want to deploy the gateway. The token expires in 1 hour and can only be used once."
+        bodyClassName="overflow-visible"
       >
+        <FormControl
+          label="Relay"
+          tooltipText="The relay this gateway should connect through. Auto Select picks one server-side at connect time."
+        >
+          <FilterableSelect
+            value={relay}
+            onChange={(newValue) =>
+              setRelay((newValue as { id: string; name: string }) ?? AUTO_RELAY_OPTION)
+            }
+            isLoading={isRelaysLoading}
+            options={[AUTO_RELAY_OPTION, ...(relays || [])]}
+            placeholder="Select relay..."
+            getOptionLabel={(option) => option.name}
+            getOptionValue={(option) => option.id}
+          />
+        </FormControl>
+
         <Tabs defaultValue="cli" className="mt-2">
           <TabList>
             <Tab value="cli">CLI</Tab>

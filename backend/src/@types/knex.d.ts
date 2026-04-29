@@ -437,6 +437,9 @@ import {
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
+  TResourceAuthMethods,
+  TResourceAuthMethodsInsert,
+  TResourceAuthMethodsUpdate,
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
@@ -446,9 +449,6 @@ import {
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
-  TResourceTokenAuths,
-  TResourceTokenAuthsInsert,
-  TResourceTokenAuthsUpdate,
   TRoles,
   TRolesInsert,
   TRolesUpdate,
@@ -1590,15 +1590,15 @@ declare module "knex/types/tables" {
       TResourceEnrollmentTokensInsert,
       TResourceEnrollmentTokensUpdate
     >;
+    [TableName.ResourceAuthMethod]: KnexOriginal.CompositeTableType<
+      TResourceAuthMethods,
+      TResourceAuthMethodsInsert,
+      TResourceAuthMethodsUpdate
+    >;
     [TableName.ResourceAwsAuth]: KnexOriginal.CompositeTableType<
       TResourceAwsAuths,
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
-    >;
-    [TableName.ResourceTokenAuth]: KnexOriginal.CompositeTableType<
-      TResourceTokenAuths,
-      TResourceTokenAuthsInsert,
-      TResourceTokenAuthsUpdate
     >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,

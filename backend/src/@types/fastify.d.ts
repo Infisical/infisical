@@ -50,8 +50,7 @@ import { TProjectEventsSSEService } from "@app/ee/services/project-events/projec
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
-import { TResourceAwsAuthServiceFactory } from "@app/ee/services/resource-aws-auth/resource-aws-auth-service";
-import { TResourceTokenAuthServiceFactory } from "@app/ee/services/resource-token-auth/resource-token-auth-service";
+import { TResourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -370,8 +369,7 @@ declare module "fastify" {
       insights: TInsightsServiceFactory;
       relay: TRelayServiceFactory;
       gatewayV2: TGatewayV2ServiceFactory;
-      resourceAwsAuth: TResourceAwsAuthServiceFactory;
-      resourceTokenAuth: TResourceTokenAuthServiceFactory;
+      resourceAuthMethod: TResourceAuthMethodServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;

@@ -219,8 +219,8 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
   ResourceEnrollmentTokens = "resource_enrollment_tokens",
+  ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
-  ResourceTokenAuth = "resource_token_auths",
 
   KeyValueStore = "key_value_store",
 

@@ -1,151 +1,114 @@
 import { useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { PencilIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { NoticeBannerV2, Spinner } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2";
 import {
-  Button,
+  Badge,
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  IconButton
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { GatewayAuthMethodView } from "@app/hooks/api/gateways-v2/types";
 
-import { GatewayAuthMethod } from "./AuthMethodComponentMap";
-import { GatewayAuthMethodModal } from "./GatewayAuthMethodModal";
-import { useAttachedAuthMethods } from "./useAttachedAuthMethods";
+import { GatewayAuthMethodSheet } from "./GatewayAuthMethodSheet";
 import { ViewGatewayAuth } from "./ViewGatewayAuth";
 
 type Props = {
   gatewayId: string;
-  gatewayName: string;
-  identity: { id: string; name: string } | null;
+  authMethod: GatewayAuthMethodView;
 };
 
-export const GatewayAuthenticationSection = ({ gatewayId, gatewayName, identity }: Props) => {
-  const { attached, isPending } = useAttachedAuthMethods(gatewayId);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editMethod, setEditMethod] = useState<GatewayAuthMethod | null>(null);
+const AuthMethodBadge = ({ method }: { method: GatewayAuthMethodView["method"] }) => {
+  if (method === "aws") return <Badge variant="info">AWS Auth</Badge>;
+  if (method === "token") return <Badge variant="info">Token Auth</Badge>;
+  return <Badge variant="warning">Machine Identity</Badge>;
+};
 
-  const hasAuthMethods = attached.length > 0;
-  const isIdentityGateway = Boolean(identity);
+export const GatewayAuthenticationSection = ({ gatewayId, authMethod }: Props) => {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
 
-  const openAdd = () => {
-    setEditMethod(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (method: GatewayAuthMethod) => {
-    setEditMethod(method);
-    setModalOpen(true);
-  };
-
-  const renderBody = () => {
-    if (isPending) {
-      return (
-        <div className="flex h-24 items-center justify-center">
-          <Spinner className="text-mineshaft-400" />
-        </div>
-      );
-    }
-    if (hasAuthMethods) {
-      return (
-        <ViewGatewayAuth
-          gatewayId={gatewayId}
-          gatewayName={gatewayName}
-          attachedMethods={attached}
-          onEdit={openEdit}
-        />
-      );
-    }
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyTitle>This gateway has no auth methods configured</EmptyTitle>
-          <EmptyDescription>Add an auth method to bootstrap this gateway</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <OrgPermissionCan
-            I={OrgGatewayPermissionActions.EditGateways}
-            a={OrgPermissionSubjects.Gateway}
-          >
-            {(isAllowed) => (
-              <Button variant="org" size="xs" isDisabled={!isAllowed} onClick={openAdd}>
-                <PlusIcon />
-                Add Auth Method
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </EmptyContent>
-      </Empty>
-    );
-  };
+  const isIdentityGateway = authMethod.method === "identity";
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="w-full">
+        <CardHeader className="border-b">
           <CardTitle>Authentication</CardTitle>
-          <CardDescription>Configure authentication methods</CardDescription>
-          {hasAuthMethods && (
+          {!isIdentityGateway && (
             <CardAction>
               <OrgPermissionCan
                 I={OrgGatewayPermissionActions.EditGateways}
                 a={OrgPermissionSubjects.Gateway}
               >
                 {(isAllowed) => (
-                  <Button
-                    variant="outline"
-                    isFullWidth
+                  <IconButton
+                    aria-label="edit auth method"
+                    variant="ghost"
                     size="xs"
                     isDisabled={!isAllowed}
-                    onClick={openAdd}
+                    onClick={() => setSheetOpen(true)}
                   >
-                    <PlusIcon />
-                    Add Auth Method
-                  </Button>
+                    <PencilIcon />
+                  </IconButton>
                 )}
               </OrgPermissionCan>
             </CardAction>
           )}
         </CardHeader>
         <CardContent>
-          {isIdentityGateway && (
-            <NoticeBannerV2
-              title="This gateway is currently authenticated via machine identity"
-              className="mb-4"
-            >
-              <p className="text-sm text-mineshaft-300">
-                Bound to identity{" "}
-                <span className="font-medium text-mineshaft-200">{identity!.name}</span>. Adding an
-                auth method below will unlink this identity from the gateway. The existing daemon
-                will keep running on its current JWT until it restarts — make sure to reconfigure it
-                with the new auth method before the next restart to avoid downtime.
-              </p>
-            </NoticeBannerV2>
-          )}
-          {renderBody()}
+          <div className="flex flex-col gap-4">
+            {isIdentityGateway && (
+              <NoticeBannerV2 title="Authenticated via machine identity (legacy)">
+                <p className="text-sm text-mineshaft-300">
+                  This gateway is still using machine identity. We recommend creating a new gateway.{" "}
+                  <Link
+                    to="/organizations/$orgId/networking"
+                    params={{ orgId }}
+                    search={{ selectedTab: "gateways" }}
+                    className="text-primary-400 underline-offset-2 hover:underline"
+                  >
+                    Create a new gateway
+                  </Link>
+                </p>
+              </NoticeBannerV2>
+            )}
+            <DetailGroup>
+              <Detail>
+                <DetailLabel>Method</DetailLabel>
+                <DetailValue>
+                  <AuthMethodBadge method={authMethod.method} />
+                </DetailValue>
+              </Detail>
+            </DetailGroup>
+            <ViewGatewayAuth authMethod={authMethod} />
+          </div>
         </CardContent>
       </Card>
 
-      <GatewayAuthMethodModal
-        isOpen={modalOpen}
-        onOpenChange={setModalOpen}
-        gatewayId={gatewayId}
-        attachedMethods={attached}
-        editMethod={editMethod}
-      />
+      {!isIdentityGateway && (
+        <GatewayAuthMethodSheet
+          isOpen={sheetOpen}
+          onOpenChange={setSheetOpen}
+          gatewayId={gatewayId}
+          currentMethod={authMethod}
+        />
+      )}
     </>
   );
 };

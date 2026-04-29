@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGatewayConnectedResources, TGatewayV2 } from "./types";
+import { TGatewayConnectedResources, TGatewayV2WithAuthMethod } from "./types";
 
 export const gatewaysV2QueryKeys = {
   allKey: () => ["gateways-v2"],
@@ -24,9 +24,16 @@ export const gatewaysV2QueryKeys = {
   byIdKey: (gatewayId: string) => [...gatewaysV2QueryKeys.allKey(), "by-id", gatewayId],
   byId: (gatewayId: string) => ({
     queryKey: gatewaysV2QueryKeys.byIdKey(gatewayId),
+    // The single-gateway GET returns the gateway plus the discriminated `authMethod` block,
+    // which the details page renders directly. staleTime: 0 because auth-method state can
+    // change via PATCH from this same view.
+    staleTime: 0,
+    gcTime: 0,
     queryFn: async () => {
-      const { data } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
-      return data.find((g) => g.id === gatewayId) ?? null;
+      const { data } = await apiRequest.get<TGatewayV2WithAuthMethod>(
+        `/api/v3/gateways/${gatewayId}`
+      );
+      return data;
     },
     enabled: Boolean(gatewayId)
   })

@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  FilterableSelect,
+  FormControl,
   FormLabel,
   IconButton,
   Input,
@@ -16,6 +18,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
   isOpen: boolean;
@@ -24,28 +27,34 @@ type Props = {
   gatewayName: string;
 };
 
+const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
+
 /**
- * AWS Auth has no enrollment token to issue — the daemon authenticates by signing an STS
- * GetCallerIdentity request. This dialog just shows the static start command parameterized by
- * gateway id/name. Mirrors EnrollmentTokenDialog so operators see the same shape regardless of
- * which method they're using.
+ * AWS Auth has no enrollment token to issue — the gateway authenticates by signing an STS
+ * GetCallerIdentity request. This dialog shows the start command parameterized by gateway
+ * id/name plus the relay choice (operator picks here, command bakes
+ * `--target-relay-name=<picked>` when not auto). Mirrors EnrollmentTokenDialog so operators
+ * see the same shape regardless of which method they're using.
  */
 export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gatewayName }: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  const cliCommand = useMemo(
-    () =>
-      `infisical gateway start ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId} --domain=${siteURL}`,
-    [gatewayName, gatewayId, siteURL]
-  );
+  const { data: relays, isPending: isRelaysLoading } = useGetRelays();
+  const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const systemdInstallCommand = useMemo(
-    () =>
-      `sudo infisical gateway systemd install ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId} --domain=${siteURL}`,
-    [gatewayName, gatewayId, siteURL]
-  );
+  const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+
+  const cliCommand = useMemo(() => {
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
+    return `infisical gateway start ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart} --domain=${siteURL}`;
+  }, [gatewayName, gatewayId, resolvedRelayName, siteURL]);
+
+  const systemdInstallCommand = useMemo(() => {
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
+    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart} --domain=${siteURL}`;
+  }, [gatewayName, gatewayId, resolvedRelayName, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-gateway";
 
@@ -60,7 +69,25 @@ export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gateway
         className="max-w-2xl"
         title={`Start command for ${gatewayName}`}
         subTitle="Run the following command on an EC2 instance whose IAM role matches your allowlist."
+        bodyClassName="overflow-visible"
       >
+        <FormControl
+          label="Relay"
+          tooltipText="The relay this gateway should connect through. Auto Select picks one server-side at connect time."
+        >
+          <FilterableSelect
+            value={relay}
+            onChange={(newValue) =>
+              setRelay((newValue as { id: string; name: string }) ?? AUTO_RELAY_OPTION)
+            }
+            isLoading={isRelaysLoading}
+            options={[AUTO_RELAY_OPTION, ...(relays || [])]}
+            placeholder="Select relay..."
+            getOptionLabel={(option) => option.name}
+            getOptionValue={(option) => option.id}
+          />
+        </FormControl>
+
         <Tabs defaultValue="cli" className="mt-2">
           <TabList>
             <Tab value="cli">CLI</Tab>

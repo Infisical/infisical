@@ -71,7 +71,12 @@ export enum OrgPermissionGatewayActions {
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
-  AttachGateways = "attach-gateways"
+  AttachGateways = "attach-gateways",
+  // Authorizes the broad-revoke action: bumps tokenVersion, clears heartbeat, and
+  // (for token method) deletes enrollment-token rows. Separated from EditGateways so
+  // operators can grant config edits without granting the ability to disconnect a
+  // running gateway.
+  RevokeGatewayAccess = "revoke-gateway-access"
 }
 
 export enum OrgPermissionRelayActions {
@@ -455,6 +460,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.RevokeGatewayAccess, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);

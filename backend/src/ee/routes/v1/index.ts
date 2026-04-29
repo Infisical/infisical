@@ -52,8 +52,6 @@ import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
-import { registerResourceAwsAuthRouter } from "./resource-aws-auth-router";
-import { registerResourceTokenAuthRouter } from "./resource-token-auth-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
@@ -118,8 +116,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
   await server.register(registerRelayRouter, { prefix: "/relays" });
-  await server.register(registerResourceAwsAuthRouter, { prefix: "/resource-aws-auth" });
-  await server.register(registerResourceTokenAuthRouter, { prefix: "/resource-token-auth" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });

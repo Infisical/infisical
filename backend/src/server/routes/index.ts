@@ -147,11 +147,10 @@ import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-r
 import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
-import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-aws-auth/resource-aws-auth-dal";
-import { resourceAwsAuthServiceFactory } from "@app/ee/services/resource-aws-auth/resource-aws-auth-service";
-import { resourceEnrollmentTokenDALFactory } from "@app/ee/services/resource-token-auth/resource-enrollment-token-dal";
-import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-token-auth/resource-token-auth-dal";
-import { resourceTokenAuthServiceFactory } from "@app/ee/services/resource-token-auth/resource-token-auth-service";
+import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
+import { resourceEnrollmentTokenDALFactory } from "@app/ee/services/resource-auth-method/enrollment-token-dal";
+import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
+import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -1296,8 +1295,8 @@ export const registerRoutes = async (
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
   const resourceEnrollmentTokenDAL = resourceEnrollmentTokenDALFactory(db);
+  const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
-  const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
@@ -1452,16 +1451,12 @@ export const registerRoutes = async (
     userDAL
   });
 
-  const resourceTokenAuthService = resourceTokenAuthServiceFactory({
-    resourceTokenAuthDAL,
+  const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    resourceAuthMethodDAL,
+    resourceAwsAuthDAL,
     resourceEnrollmentTokenDAL,
     gatewayV2DAL,
-    permissionService
-  });
-
-  const resourceAwsAuthService = resourceAwsAuthServiceFactory({
-    resourceAwsAuthDAL,
-    gatewayV2DAL,
+    identityDAL,
     permissionService
   });
 
@@ -1482,7 +1477,7 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     aiMcpServerDAL,
     pkiDiscoveryConfigDAL,
-    resourceTokenAuthService
+    resourceAuthMethodService
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -3249,8 +3244,7 @@ export const registerRoutes = async (
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,
-    resourceAwsAuth: resourceAwsAuthService,
-    resourceTokenAuth: resourceTokenAuthService,
+    resourceAuthMethod: resourceAuthMethodService,
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,

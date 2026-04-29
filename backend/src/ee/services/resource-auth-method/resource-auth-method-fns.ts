@@ -4,8 +4,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
 /**
- * Mints a GATEWAY_ACCESS_TOKEN JWT for a gateway. Same payload shape that the existing
- * enrollment-token flow produces — kept identical so issued tokens are indistinguishable
+ * Mints a GATEWAY_ACCESS_TOKEN JWT for a gateway. Same payload shape that the legacy
+ * enrollment-token flow produced — kept identical so issued tokens are indistinguishable
  * regardless of which auth method produced them.
  */
 export const mintGatewayJwt = ({
@@ -33,16 +33,15 @@ export const mintGatewayJwt = ({
 };
 
 // ResourceRef.type is "gateway" only today; the abstraction is in place so relay can be
-// added additively in a follow-up PR without renaming routes ("/resource-{aws,token}-auth/"),
-// audit events ("RESOURCE_AUTH_METHOD_*"), or DB tables. When relay support lands, expand
-// the union and add a discriminator column to resource_enrollment_tokens.
+// added additively in a follow-up PR without renaming routes, audit events
+// ("RESOURCE_AUTH_METHOD_*"), or DB tables (resource_auth_methods, resource_aws_auths).
 export type ResourceRef = { type: "gateway"; id: string };
 
 export const RESOURCE_TYPE_GATEWAY = "gateway" as const;
 
 // Accepts a wider input than ResourceRef so the runtime guard remains a meaningful check
 // (today TS narrows ResourceRef.type to "gateway" at compile time, but this function exists
-// so the runtime layer is ready when more resource types — e.g. relay — are added).
+// so the runtime layer is ready when more resource types are added).
 export const assertGatewayResource = (resource: { type: string }, methodName: string) => {
   if (resource.type !== RESOURCE_TYPE_GATEWAY) {
     throw new BadRequestError({
@@ -50,3 +49,20 @@ export const assertGatewayResource = (resource: { type: string }, methodName: st
     });
   }
 };
+
+// All auth method values surfaced anywhere in the system.
+//
+//   - 'aws' / 'token' — stored in resource_auth_methods.method, settable via the API.
+//   - 'identity'      — legacy state, derived from gateways_v2.identityId. Returned in
+//                       the API view but never stored in the registry and never
+//                       accepted as input to set/mint operations. The "settable" subset
+//                       is enforced by the discriminated TSetAuthMethodInput type
+//                       (which only accepts aws/token), not by this enum-like const.
+export const ResourceAuthMethodType = {
+  Aws: "aws",
+  Token: "token",
+  Identity: "identity"
+} as const;
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export type ResourceAuthMethodType = (typeof ResourceAuthMethodType)[keyof typeof ResourceAuthMethodType];

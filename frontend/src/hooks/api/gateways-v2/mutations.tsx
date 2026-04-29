@@ -4,7 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { gatewaysQueryKeys } from "../gateways/queries";
 import { gatewaysV2QueryKeys } from "./queries";
-import { TGatewayV2 } from "./types";
+import {
+  SettableAuthMethodInput,
+  TGatewayEnrollmentToken,
+  TGatewayV2WithAuthMethod
+} from "./types";
 
 const invalidateGatewayQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
@@ -18,7 +22,6 @@ const invalidateGatewayQueries = (
       queryKey: gatewaysV2QueryKeys.connectedResourcesKey(gatewayId)
     });
   } else {
-    // For operations without a known id (e.g. bulk refetches), invalidate the full namespace.
     queryClient.invalidateQueries({ queryKey: gatewaysV2QueryKeys.allKey() });
   }
 };
@@ -43,24 +46,77 @@ export const useTriggerGatewayV2Heartbeat = () => {
   });
 };
 
+// POST /v3/gateways — body { name, authMethod }. The frontend always sends method=token by
+// default; API users may pass method=aws with the AWS allowlists for create-and-configure
+// in one call.
 export const useCreateGateway = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, relayName }: { name: string; relayName?: string }) => {
-      const { data } = await apiRequest.post<TGatewayV2>("/api/v3/gateways", { name, relayName });
+    mutationFn: async ({
+      name,
+      authMethod
+    }: {
+      name: string;
+      authMethod: SettableAuthMethodInput;
+    }) => {
+      const { data } = await apiRequest.post<TGatewayV2WithAuthMethod>("/api/v3/gateways", {
+        name,
+        authMethod
+      });
       return data;
     },
     onSuccess: (gateway) => invalidateGatewayQueries(queryClient, gateway.id)
   });
 };
 
-export const useConfigureGatewayTokenAuth = () => {
+// PATCH /v3/gateways/:id — switch auth method or update its config (and/or rename).
+export const useUpdateGateway = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      gatewayId,
+      name,
+      authMethod
+    }: {
+      gatewayId: string;
+      name?: string;
+      authMethod?: SettableAuthMethodInput;
+    }) => {
+      const { data } = await apiRequest.patch<TGatewayV2WithAuthMethod>(
+        `/api/v3/gateways/${gatewayId}`,
+        { name, authMethod }
+      );
+      return data;
+    },
+    onSuccess: (_, { gatewayId }) => invalidateGatewayQueries(queryClient, gatewayId)
+  });
+};
+
+// POST /v3/gateways/:id/token — mint or rotate the bootstrap token. Token method only.
+export const useMintGatewayToken = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
-      const { data } = await apiRequest.post<{ token: string; expiresAt: string }>(
-        `/api/v3/gateways/${gatewayId}/token-auth/configure`
+      const { data } = await apiRequest.post<TGatewayEnrollmentToken>(
+        `/api/v3/gateways/${gatewayId}/token`
       );
+      return data;
+    },
+    onSuccess: (_, { gatewayId }) => invalidateGatewayQueries(queryClient, gatewayId)
+  });
+};
+
+// POST /v3/gateways/:id/revoke — method-aware broad revoke. Bumps tokenVersion (kicks the
+// running gateway), clears heartbeat, and — for token method — deletes every enrollment
+// token row (used + unused).
+export const useRevokeGatewayAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
+      const { data } = await apiRequest.post<{
+        method: "aws" | "token";
+        deletedTokenCount: number;
+      }>(`/api/v3/gateways/${gatewayId}/revoke`);
       return data;
     },
     onSuccess: (_, { gatewayId }) => invalidateGatewayQueries(queryClient, gatewayId)

@@ -5,7 +5,7 @@ import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { extractPrincipalArn } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
 
-import { TAwsGetCallerIdentityHeaders, TGetCallerIdentityResponse } from "./resource-aws-auth-types";
+import { TAwsGetCallerIdentityHeaders, TGetCallerIdentityResponse } from "./aws-auth-types";
 
 // Parses the AWS region from the SigV4 Authorization header's Credential=… segment.
 // Same approach as identity-aws-auth (services/identity-aws-auth/identity-aws-auth-service.ts).

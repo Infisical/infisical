@@ -89,8 +89,7 @@ export enum ApiDocsTags {
   LdapSso = "LDAP SSO",
   Scim = "SCIM",
   Events = "Event Subscriptions",
-  ResourceAwsAuth = "Resource AWS Auth",
-  ResourceTokenAuth = "Resource Token Auth"
+  GatewaysV3 = "Gateways"
 }
 
 export const GROUPS = {
@@ -3588,48 +3587,29 @@ export const SECRET_SHARING = {
   }
 } as const;
 
-export const RESOURCE_AWS_AUTH = {
-  LOGIN: {
-    gatewayId: "The ID of the gateway logging in.",
-    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
-    iamRequestBody: "The base64-encoded body of the signed STS request.",
-    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+export const GATEWAYS_V3 = {
+  CREATE: {
+    name: "Name of the gateway.",
+    authMethod:
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
-  ATTACH: {
-    gatewayId: "The ID of the gateway to attach AWS auth onto.",
+  UPDATE: {
+    name: "New name for the gateway.",
+    authMethod:
+      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Switching method bumps tokenVersion and disconnects active daemons."
+  },
+  AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
       "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
   },
-  UPDATE: {
-    gatewayId: "The ID of the gateway to update AWS auth for.",
-    stsEndpoint: "The endpoint URL for the AWS STS API.",
-    allowedPrincipalArns:
-      "The new comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
-    allowedAccountIds:
-      "The new comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
-  },
-  RETRIEVE: {
-    gatewayId: "The ID of the gateway to retrieve AWS auth for."
-  },
-  REVOKE: {
-    gatewayId: "The ID of the gateway to revoke AWS auth for."
-  }
-} as const;
-
-export const RESOURCE_TOKEN_AUTH = {
   LOGIN: {
-    token: "The one-time enrollment token previously issued for this gateway."
-  },
-  ATTACH: {
-    gatewayId: "The ID of the gateway to attach Token auth onto."
-  },
-  RETRIEVE: {
-    gatewayId: "The ID of the gateway to retrieve Token auth for."
-  },
-  REVOKE: {
-    gatewayId: "The ID of the gateway to revoke Token auth for."
+    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
+    iamRequestBody: "The base64-encoded body of the signed STS request.",
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;

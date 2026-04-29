@@ -15,6 +15,7 @@ import { useGetGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { GatewayAuthenticationSection } from "./components/GatewayAuthenticationSection/GatewayAuthenticationSection";
 import { GatewayConnectedResourcesSection } from "./components/GatewayConnectedResourcesSection/GatewayConnectedResourcesSection";
+import { GatewayDeploySection } from "./components/GatewayDeploySection/GatewayDeploySection";
 import {
   GatewayDetailsCard,
   GatewayPageHeader
@@ -52,12 +53,16 @@ const Page = () => {
       </Link>
       <GatewayPageHeader gateway={gateway} orgId={orgId} />
       <div className="flex flex-col gap-5 lg:flex-row">
-        <GatewayDetailsCard gateway={gateway} />
+        <div className="flex w-full flex-col gap-y-5 lg:max-w-[24rem]">
+          <GatewayDetailsCard gateway={gateway} />
+          <GatewayAuthenticationSection gatewayId={gatewayId} authMethod={gateway.authMethod} />
+        </div>
         <div className="flex flex-1 flex-col gap-y-5">
-          <GatewayAuthenticationSection
+          <GatewayDeploySection
             gatewayId={gatewayId}
             gatewayName={gateway.name}
-            identity={gateway.identity}
+            authMethod={gateway.authMethod}
+            canRevoke={gateway.tokenVersion > 0}
           />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />
         </div>

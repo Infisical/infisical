@@ -49,7 +49,6 @@ export * from "./projects";
 export * from "./projectUserAdditionalPrivilege";
 export * from "./rateLimit";
 export * from "./relays";
-export * from "./resourceAuthMethods";
 export * from "./roles";
 export * from "./scim";
 export * from "./secretApproval";

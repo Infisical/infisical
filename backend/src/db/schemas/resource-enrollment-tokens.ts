@@ -13,8 +13,7 @@ export const ResourceEnrollmentTokensSchema = z.object({
   tokenHash: z.string(),
   ttl: z.number().default(3600),
   expiresAt: z.date(),
-  usedAt: z.date().nullable().optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
+  authMethodId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

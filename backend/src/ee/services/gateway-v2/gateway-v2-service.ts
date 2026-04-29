@@ -39,7 +39,8 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
-import { TResourceTokenAuthServiceFactory } from "../resource-token-auth/resource-token-auth-service";
+import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
+import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { GatewayHealthCheckStatus, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
@@ -65,7 +66,10 @@ type TGatewayV2ServiceFactoryDep = {
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
-  resourceTokenAuthService: Pick<TResourceTokenAuthServiceFactory, "generateEnrollmentToken" | "enrollWithToken">;
+  resourceAuthMethodService: Pick<
+    TResourceAuthMethodServiceFactory,
+    "initAtCreate" | "loadView" | "mintToken" | "loginWithToken"
+  >;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -86,7 +90,7 @@ export const gatewayV2ServiceFactory = ({
   identityKubernetesAuthDAL,
   aiMcpServerDAL,
   pkiDiscoveryConfigDAL,
-  resourceTokenAuthService
+  resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -801,17 +805,25 @@ export const gatewayV2ServiceFactory = ({
     if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
 
     try {
-      const [gateway] = await gatewayV2DAL.upsert(
-        [
-          {
-            orgId,
-            name,
-            identityId: actorId,
-            relayId: relay.id
-          }
-        ],
-        ["identityId"]
-      );
+      const gateway = await gatewayV2DAL.transaction(async (tx) => {
+        const [upserted] = await gatewayV2DAL.upsert(
+          [
+            {
+              orgId,
+              name,
+              identityId: actorId,
+              relayId: relay.id
+            }
+          ],
+          ["identityId"],
+          tx
+        );
+
+        // Identity-bound gateways are tracked via gateways_v2.identityId, not via a
+        // resource_auth_methods row — no registry insert needed here.
+
+        return upserted;
+      });
 
       return await $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
     } catch (err) {
@@ -1177,14 +1189,14 @@ export const gatewayV2ServiceFactory = ({
     actorType,
     actorAuthMethod,
     name,
-    relayName
+    authMethod
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
-    relayName?: string;
+    authMethod: { method: "aws"; config: TAwsAuthMethodConfig } | { method: "token" };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1200,15 +1212,8 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    // Resolve relay name to id if provided. Same lookup pattern as registerGateway.
-    let relayId: string | undefined;
-    if (relayName) {
-      let relay = await relayDAL.findOne({ orgId, name: relayName });
-      if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
-      if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
-      relayId = relay.id;
-    }
-
+    // Relay binding stays operator-driven — set lazily via /v3/gateways/connect when the
+    // daemon first calls in with --target-relay-name. Not exposed on create.
     const gateway = await gatewayV2DAL.transaction(async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateGateway(orgId)]);
@@ -1221,8 +1226,9 @@ export const gatewayV2ServiceFactory = ({
         });
       }
 
+      let created;
       try {
-        return await gatewayV2DAL.create({ orgId, name, relayId }, tx);
+        created = await gatewayV2DAL.create({ orgId, name }, tx);
       } catch (err) {
         if (
           err instanceof DatabaseError &&
@@ -1232,22 +1238,15 @@ export const gatewayV2ServiceFactory = ({
         }
         throw err;
       }
+
+      // Insert the auth-method registry row in the same tx. Every gateway has exactly one
+      // method at all times — no "unconfigured" state.
+      await resourceAuthMethodService.initAtCreate({ gatewayId: created.id, authMethod }, tx);
+
+      return created;
     });
 
     return gateway;
-  };
-
-  const configureTokenAuth = async ({
-    orgPermission,
-    gatewayId
-  }: {
-    orgPermission: OrgServiceActor;
-    gatewayId: string;
-  }) => {
-    return resourceTokenAuthService.generateEnrollmentToken({
-      resource: { type: "gateway", id: gatewayId },
-      actor: orgPermission
-    });
   };
 
   const connectGateway = async ({
@@ -1292,7 +1291,7 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const enrollGateway = async ({ token }: { token: string }) => {
-    return resourceTokenAuthService.enrollWithToken({ token });
+    return resourceAuthMethodService.loginWithToken({ token });
   };
 
   return {
@@ -1310,7 +1309,6 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
-    configureTokenAuth,
     connectGateway
   };
 };

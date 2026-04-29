@@ -10,7 +10,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   Detail,
@@ -29,7 +28,11 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
-import { GatewayHealthCheckStatus, TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
+import {
+  GatewayHealthCheckStatus,
+  TGatewayV2,
+  TGatewayV2WithAuthMethod
+} from "@app/hooks/api/gateways-v2/types";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
   if (!gateway.heartbeat && !gateway.lastHealthCheckStatus) {
@@ -122,16 +125,15 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
   );
 };
 
-export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2 }) => {
+export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
 
   return (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
-        <CardDescription>Gateway details</CardDescription>
       </CardHeader>
       <CardContent>
         <DetailGroup>
@@ -141,6 +143,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2 }) => {
               <span className="font-mono text-xs">{gateway.id}</span>
               <Tooltip content="Copy gateway ID to clipboard">
                 <IconButton
+                  aria-label="copy gateway id"
                   onClick={() => {
                     navigator.clipboard.writeText(gateway.id);
                     setCopyTextId("Copied");
@@ -157,16 +160,6 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2 }) => {
             <DetailLabel>Health</DetailLabel>
             <DetailValue>
               <HealthBadge gateway={gateway} />
-            </DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Relay</DetailLabel>
-            <DetailValue>
-              {gateway.relay ? (
-                gateway.relay.name
-              ) : (
-                <span className="text-muted">Auto-select on connect</span>
-              )}
             </DetailValue>
           </Detail>
           <Detail>
