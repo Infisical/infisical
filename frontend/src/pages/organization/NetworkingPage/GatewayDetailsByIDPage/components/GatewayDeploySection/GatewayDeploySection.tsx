@@ -18,8 +18,8 @@ import {
 import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView } from "@app/hooks/api/gateways-v2/types";
 
-import { AwsStartCommandDialog } from "../GatewayAuthenticationSection/AwsStartCommandDialog";
-import { EnrollmentTokenDialog } from "../GatewayAuthenticationSection/EnrollmentTokenDialog";
+import { AwsStartCommandDialog } from "../GatewayAuthMethod/AwsStartCommandDialog";
+import { EnrollmentTokenDialog } from "../GatewayAuthMethod/EnrollmentTokenDialog";
 
 type Props = {
   gatewayId: string;

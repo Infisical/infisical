@@ -56,8 +56,8 @@ import {
   TGatewayV2WithAuthMethod
 } from "@app/hooks/api/gateways-v2/types";
 
-import { GatewayAuthMethodModal } from "../GatewayAuthenticationSection/GatewayAuthMethodModal";
-import { ViewGatewayAuth } from "../GatewayAuthenticationSection/ViewGatewayAuth";
+import { GatewayAuthMethodModal } from "../GatewayAuthMethod/GatewayAuthMethodModal";
+import { ViewGatewayAuth } from "../GatewayAuthMethod/ViewGatewayAuth";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
   if (!gateway.heartbeat && !gateway.lastHealthCheckStatus) {
