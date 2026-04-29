@@ -51,38 +51,51 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    // akhilmhdh: case sensitive email resolution
-    let user = await userDAL.findOne({ username: sanitizedEmail });
-    if (user && user.isAccepted) {
-      // Send informational email for existing accounts instead of throwing error
-      // This prevents user enumeration vulnerability
-      const appCfg = getConfig();
-      await smtpService
-        .sendMail({
-          template: SmtpTemplates.SignupExistingAccount,
-          subjectLine: "Sign-up Request for Your Infisical Account",
-          recipients: [sanitizedEmail],
-          substitutions: {
-            email: sanitizedEmail,
-            loginUrl: `${appCfg.SITE_URL}/login`,
-            resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
-          }
-        })
-        .catch((err) =>
-          logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
-        );
-      return;
-    }
+    // Use a transaction to read from the primary database, not a read replica.
+    // After account deletion the replica may still return the stale user record
+    // due to replication lag, which causes re-registration to incorrectly treat
+    // the email as an existing account (see #6034).
+    const user = await userDAL.transaction(async (tx) => {
+      // akhilmhdh: case sensitive email resolution
+      const existingUser = await userDAL.findOne({ username: sanitizedEmail }, tx);
+      if (existingUser && existingUser.isAccepted) {
+        // Send informational email for existing accounts instead of throwing error
+        // This prevents user enumeration vulnerability
+        const appCfg = getConfig();
+        await smtpService
+          .sendMail({
+            template: SmtpTemplates.SignupExistingAccount,
+            subjectLine: "Sign-up Request for Your Infisical Account",
+            recipients: [sanitizedEmail],
+            substitutions: {
+              email: sanitizedEmail,
+              loginUrl: `${appCfg.SITE_URL}/login`,
+              resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
+            }
+          })
+          .catch((err) =>
+            logger.error(err, "Failed to send existing account email — swallowing to prevent user enumeration")
+          );
+        return null;
+      }
 
-    if (!user) {
-      user = await userDAL.create({
-        authMethods: [AuthMethod.EMAIL],
-        username: sanitizedEmail,
-        email: sanitizedEmail,
-        isGhost: false
-      });
-    }
-    if (!user) throw new Error("Failed to create user");
+      if (!existingUser) {
+        return userDAL.create(
+          {
+            authMethods: [AuthMethod.EMAIL],
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            isGhost: false
+          },
+          tx
+        );
+      }
+
+      return existingUser;
+    });
+
+    if (!user) return;
+    if (!user.id) throw new Error("Failed to create user");
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_CONFIRMATION,
