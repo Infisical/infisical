@@ -252,7 +252,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
                 {gateway.heartbeat ? (
                   format(new Date(gateway.heartbeat), "PPpp")
                 ) : (
-                  <span className="text-muted">Never</span>
+                  <span className="text-muted">—</span>
                 )}
               </DetailValue>
             </Detail>

@@ -13,7 +13,7 @@ const Field = ({
   <Detail className={className}>
     <DetailLabel>{label}</DetailLabel>
     <DetailValue>
-      {children ? <p className="break-words">{children}</p> : <p className="text-muted">Not set</p>}
+      {children ? <p className="break-words">{children}</p> : <p className="text-muted">—</p>}
     </DetailValue>
   </Detail>
 );

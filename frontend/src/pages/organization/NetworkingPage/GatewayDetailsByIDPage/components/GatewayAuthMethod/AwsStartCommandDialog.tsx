@@ -68,7 +68,7 @@ export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gateway
       <ModalContent
         className="max-w-2xl"
         title={`Start command for ${gatewayName}`}
-        subTitle="Run the following command on an EC2 instance whose IAM role matches your allowlist."
+        subTitle="Run the following command on the host where you want to deploy the gateway. The host must have AWS credentials whose principal matches your allowlist."
         bodyClassName="overflow-visible"
       >
         <FormControl

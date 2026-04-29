@@ -4,7 +4,8 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Spinner } from "@app/components/v2";
+import { EmptyState } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -28,15 +29,11 @@ const Page = () => {
   const { data: gateway, isPending } = useGetGatewayV2ById(gatewayId);
 
   if (isPending) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!gateway) {
-    return <div className="p-6 text-mineshaft-300">Gateway not found.</div>;
+    return <EmptyState title="Gateway not found" />;
   }
 
   return (
