@@ -101,6 +101,16 @@ export const validateAllowlists = ({
   allowedPrincipalArns,
   errorContext
 }: TValidateAllowlistsInput) => {
+  // Defense-in-depth: route-layer schema requires at least one allowlist field, but the
+  // service is also reachable from create flows / future internal callers. Refuse to
+  // authenticate against an unrestricted config rather than silently allowing any caller.
+  if (!allowedAccountIds?.trim() && !allowedPrincipalArns?.trim()) {
+    throw new UnauthorizedError({
+      message: "Access denied: AWS auth method has no allowlist configured.",
+      detail: { reasonCode: "no_allowlist_configured", ...errorContext }
+    });
+  }
+
   if (allowedAccountIds) {
     const isAccountAllowed = allowedAccountIds
       .split(",")
