@@ -17,8 +17,8 @@ export async function up(knex: Knex): Promise<void> {
     }
   });
 
-  // Literal table name (not TableName enum) is intentional: migration 20260428000001
-  // renames this table to resource_enrollment_tokens, so the enum value no longer exists.
+  // Literal table name (not TableName enum) is intentional: migration 20260430143000
+  // renames this table to resource_token_auths, so the enum value no longer exists.
   // Don't replace with the enum.
   if (!(await knex.schema.hasTable("gateway_enrollment_tokens"))) {
     await knex.schema.createTable("gateway_enrollment_tokens", (t) => {

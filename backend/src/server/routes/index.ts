@@ -151,7 +151,7 @@ import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-confi
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
-import { resourceEnrollmentTokenDALFactory } from "@app/ee/services/resource-auth-method/enrollment-token-dal";
+import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-auth-method/token-auth-dal";
 import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
 import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
@@ -1293,7 +1293,7 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
-  const resourceEnrollmentTokenDAL = resourceEnrollmentTokenDALFactory(db);
+  const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
@@ -1455,7 +1455,7 @@ export const registerRoutes = async (
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
-    resourceEnrollmentTokenDAL,
+    resourceTokenAuthDAL,
     gatewayV2DAL,
     identityDAL,
     permissionService

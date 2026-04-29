@@ -446,9 +446,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
-  TResourceEnrollmentTokens,
-  TResourceEnrollmentTokensInsert,
-  TResourceEnrollmentTokensUpdate,
+  TResourceTokenAuths,
+  TResourceTokenAuthsInsert,
+  TResourceTokenAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1587,10 +1587,10 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
-    [TableName.ResourceEnrollmentTokens]: KnexOriginal.CompositeTableType<
-      TResourceEnrollmentTokens,
-      TResourceEnrollmentTokensInsert,
-      TResourceEnrollmentTokensUpdate
+    [TableName.ResourceTokenAuth]: KnexOriginal.CompositeTableType<
+      TResourceTokenAuths,
+      TResourceTokenAuthsInsert,
+      TResourceTokenAuthsUpdate
     >;
     [TableName.ResourceAuthMethod]: KnexOriginal.CompositeTableType<
       TResourceAuthMethods,

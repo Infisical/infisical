@@ -11,7 +11,7 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
-import { TResourceEnrollmentTokenDALFactory } from "./enrollment-token-dal";
+import { TResourceTokenAuthDALFactory } from "./token-auth-dal";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import { assertGatewayResource, mintGatewayJwt, ResourceAuthMethodType } from "./resource-auth-method-fns";
 import {
@@ -37,7 +37,7 @@ const $generateEnrollmentToken = () => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
-  resourceEnrollmentTokenDAL: TResourceEnrollmentTokenDALFactory;
+  resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -48,7 +48,7 @@ export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMe
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
-  resourceEnrollmentTokenDAL,
+  resourceTokenAuthDAL,
   gatewayV2DAL,
   identityDAL,
   permissionService
@@ -138,7 +138,7 @@ export const resourceAuthMethodServiceFactory = ({
     if (gateway.tokenVersion > 0) return true;
     const registry = await resourceAuthMethodDAL.findOne({ gatewayId: gateway.id });
     if (!registry || registry.method !== ResourceAuthMethodType.Token) return false;
-    const pending = await resourceEnrollmentTokenDAL.findOne({ authMethodId: registry.id });
+    const pending = await resourceTokenAuthDAL.findOne({ authMethodId: registry.id });
     return Boolean(pending);
   };
 
@@ -211,7 +211,7 @@ export const resourceAuthMethodServiceFactory = ({
         authMethod.method !== ResourceAuthMethodType.Token &&
         current
       ) {
-        await resourceEnrollmentTokenDAL.delete({ authMethodId: current.id }, tx);
+        await resourceTokenAuthDAL.delete({ authMethodId: current.id }, tx);
       }
 
       // 3. Insert/upsert the new method's config row.
@@ -268,9 +268,9 @@ export const resourceAuthMethodServiceFactory = ({
 
     const generated = $generateEnrollmentToken();
 
-    const record = await resourceEnrollmentTokenDAL.transaction(async (tx) => {
-      await resourceEnrollmentTokenDAL.delete({ authMethodId: registry.id }, tx);
-      return resourceEnrollmentTokenDAL.create(
+    const record = await resourceTokenAuthDAL.transaction(async (tx) => {
+      await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
+      return resourceTokenAuthDAL.create(
         {
           orgId: actor.orgId,
           tokenHash: generated.tokenHash,
@@ -310,13 +310,13 @@ export const resourceAuthMethodServiceFactory = ({
       });
     }
 
-    const result = await resourceEnrollmentTokenDAL.transaction(async (tx) => {
+    const result = await resourceTokenAuthDAL.transaction(async (tx) => {
       let deletedTokenCount = 0;
       if (registry.method === ResourceAuthMethodType.Token) {
-        const tokens = await resourceEnrollmentTokenDAL.find({ authMethodId: registry.id }, { tx });
+        const tokens = await resourceTokenAuthDAL.find({ authMethodId: registry.id }, { tx });
         deletedTokenCount = tokens.length;
         if (tokens.length > 0) {
-          await resourceEnrollmentTokenDAL.delete({ authMethodId: registry.id }, tx);
+          await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
         }
       }
       await gatewayV2DAL.updateById(
@@ -408,12 +408,12 @@ export const resourceAuthMethodServiceFactory = ({
   const loginWithToken = async ({ token }: TLoginWithTokenDTO) => {
     const tokenHash = crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
 
-    const tokenRecord = await resourceEnrollmentTokenDAL.findOne({ tokenHash });
+    const tokenRecord = await resourceTokenAuthDAL.findOne({ tokenHash });
     if (!tokenRecord) {
       throw new BadRequestError({ message: "Invalid enrollment token" });
     }
     if (tokenRecord.expiresAt < new Date()) {
-      await resourceEnrollmentTokenDAL.deleteById(tokenRecord.id).catch(() => {});
+      await resourceTokenAuthDAL.deleteById(tokenRecord.id).catch(() => {});
       throw new BadRequestError({ message: "Enrollment token has expired" });
     }
 
@@ -421,15 +421,16 @@ export const resourceAuthMethodServiceFactory = ({
     if (!registry || !registry.gatewayId) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a gateway" });
     }
+    const linkedGatewayId = registry.gatewayId;
 
-    const gateway = await resourceEnrollmentTokenDAL.transaction(async (tx) => {
+    const gateway = await resourceTokenAuthDAL.transaction(async (tx) => {
       // Reject concurrent consumption: if delete returns 0, another caller won the race.
-      const deleted = await resourceEnrollmentTokenDAL.delete({ id: tokenRecord.id }, tx);
+      const deleted = await resourceTokenAuthDAL.delete({ id: tokenRecord.id }, tx);
       if (deleted.length === 0) {
         throw new BadRequestError({ message: "Enrollment token has already been used" });
       }
-      const existing = await gatewayV2DAL.findById(registry.gatewayId, tx);
-      if (!existing) throw new NotFoundError({ message: `Gateway ${registry.gatewayId} not found` });
+      const existing = await gatewayV2DAL.findById(linkedGatewayId, tx);
+      if (!existing) throw new NotFoundError({ message: `Gateway ${linkedGatewayId} not found` });
       return gatewayV2DAL.updateById(
         existing.id,
         { $incr: { tokenVersion: 1 }, heartbeat: null, lastHealthCheckStatus: null },

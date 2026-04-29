@@ -6,16 +6,16 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 const OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE = "gateway_enrollment_tokens";
 
 export async function up(knex: Knex): Promise<void> {
-  // 1. Rename gateway_enrollment_tokens -> resource_enrollment_tokens (column-compatible).
+  // 1. Rename gateway_enrollment_tokens -> resource_token_auths (column-compatible).
   const hasOldEnrollmentTokensTable = await knex.schema.hasTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
-  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceEnrollmentTokens);
+  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceTokenAuth);
   if (hasOldEnrollmentTokensTable && !hasNewEnrollmentTokensTable) {
-    await knex.schema.renameTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE, TableName.ResourceEnrollmentTokens);
+    await knex.schema.renameTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE, TableName.ResourceTokenAuth);
   }
 
   // 2. resource_auth_methods: registry of which auth method each resource is currently
   // using. Single source of truth for "this resource uses this method" — config tables
-  // (resource_aws_auths) and credential tables (resource_enrollment_tokens) reference
+  // (resource_aws_auths) and credential tables (resource_token_auths) reference
   // this row's id rather than carrying the resource FK themselves.
   //
   // gatewayId is nullable so this table can hold rows for other resource types in the
@@ -87,11 +87,11 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.ResourceAwsAuth);
   }
 
-  // 5. Reshape resource_enrollment_tokens from gatewayId-keyed to authMethodId-keyed.
+  // 5. Reshape resource_token_auths from gatewayId-keyed to authMethodId-keyed.
   // After this block the table no longer carries gatewayId at all — the registry row
   // is the only place that knows which resource a token belongs to.
-  if (await knex.schema.hasColumn(TableName.ResourceEnrollmentTokens, "gatewayId")) {
-    await knex.schema.alterTable(TableName.ResourceEnrollmentTokens, (t) => {
+  if (await knex.schema.hasColumn(TableName.ResourceTokenAuth, "gatewayId")) {
+    await knex.schema.alterTable(TableName.ResourceTokenAuth, (t) => {
       t.uuid("authMethodId").nullable();
     });
 
@@ -102,13 +102,13 @@ export async function up(knex: Knex): Promise<void> {
        SET "authMethodId" = m.id
        FROM ?? AS m
        WHERE m."gatewayId" = t."gatewayId" AND m.method = 'token'`,
-      [TableName.ResourceEnrollmentTokens, TableName.ResourceAuthMethod]
+      [TableName.ResourceTokenAuth, TableName.ResourceAuthMethod]
     );
 
     // Scrub orphans — tokens whose gateway is now on a non-token method.
-    await knex.raw(`DELETE FROM ?? WHERE "authMethodId" IS NULL`, [TableName.ResourceEnrollmentTokens]);
+    await knex.raw(`DELETE FROM ?? WHERE "authMethodId" IS NULL`, [TableName.ResourceTokenAuth]);
 
-    await knex.schema.alterTable(TableName.ResourceEnrollmentTokens, (t) => {
+    await knex.schema.alterTable(TableName.ResourceTokenAuth, (t) => {
       t.uuid("authMethodId").notNullable().alter();
       t.foreign("authMethodId").references("id").inTable(TableName.ResourceAuthMethod).onDelete("CASCADE");
       t.dropColumn("gatewayId");
@@ -124,30 +124,30 @@ export async function up(knex: Knex): Promise<void> {
   // we want them to match the new table name for clarity.
   await knex.raw(
     `ALTER INDEX IF EXISTS gateway_enrollment_tokens_pkey
-       RENAME TO resource_enrollment_tokens_pkey`
+       RENAME TO resource_token_auths_pkey`
   );
   await knex.raw(
     `ALTER INDEX IF EXISTS gateway_enrollment_tokens_tokenhash_unique
-       RENAME TO resource_enrollment_tokens_tokenhash_unique`
+       RENAME TO resource_token_auths_tokenhash_unique`
   );
   await knex.raw(
     `ALTER TABLE ?? RENAME CONSTRAINT gateway_enrollment_tokens_orgid_foreign
-       TO resource_enrollment_tokens_orgid_foreign`,
-    [TableName.ResourceEnrollmentTokens]
+       TO resource_token_auths_orgid_foreign`,
+    [TableName.ResourceTokenAuth]
   );
   // Trigger: drop the old name and recreate via the helper using the new table name.
   // (gateway_enrollment_tokens_gatewayid_foreign was dropped automatically when we
   // dropped the gatewayId column above.)
   await knex.raw(`DROP TRIGGER IF EXISTS "gateway_enrollment_tokens_updatedAt" ON ??`, [
-    TableName.ResourceEnrollmentTokens
+    TableName.ResourceTokenAuth
   ]);
-  await createOnUpdateTrigger(knex, TableName.ResourceEnrollmentTokens);
+  await createOnUpdateTrigger(knex, TableName.ResourceTokenAuth);
 }
 
 export async function down(knex: Knex): Promise<void> {
   // Reverse step 5: enrollment-tokens table back to gatewayId-keyed.
-  if (await knex.schema.hasColumn(TableName.ResourceEnrollmentTokens, "authMethodId")) {
-    await knex.schema.alterTable(TableName.ResourceEnrollmentTokens, (t) => {
+  if (await knex.schema.hasColumn(TableName.ResourceTokenAuth, "authMethodId")) {
+    await knex.schema.alterTable(TableName.ResourceTokenAuth, (t) => {
       t.uuid("gatewayId").nullable();
       t.timestamp("usedAt").nullable();
     });
@@ -156,9 +156,9 @@ export async function down(knex: Knex): Promise<void> {
        SET "gatewayId" = m."gatewayId"
        FROM ?? AS m
        WHERE m.id = t."authMethodId"`,
-      [TableName.ResourceEnrollmentTokens, TableName.ResourceAuthMethod]
+      [TableName.ResourceTokenAuth, TableName.ResourceAuthMethod]
     );
-    await knex.schema.alterTable(TableName.ResourceEnrollmentTokens, (t) => {
+    await knex.schema.alterTable(TableName.ResourceTokenAuth, (t) => {
       t.foreign("gatewayId").references("id").inTable(TableName.GatewayV2).onDelete("CASCADE");
       t.dropColumn("authMethodId");
     });
@@ -172,27 +172,27 @@ export async function down(knex: Knex): Promise<void> {
 
   // Reverse step 1: rename back. Triggers/indexes on the renamed table revert to the
   // old names too (done before the table rename so the SQL can resolve names).
-  await knex.raw(`DROP TRIGGER IF EXISTS "resource_enrollment_tokens_updatedAt" ON ??`, [
-    TableName.ResourceEnrollmentTokens
+  await knex.raw(`DROP TRIGGER IF EXISTS "resource_token_auths_updatedAt" ON ??`, [
+    TableName.ResourceTokenAuth
   ]);
   await knex.raw(
-    `ALTER TABLE ?? RENAME CONSTRAINT resource_enrollment_tokens_orgid_foreign
+    `ALTER TABLE ?? RENAME CONSTRAINT resource_token_auths_orgid_foreign
        TO gateway_enrollment_tokens_orgid_foreign`,
-    [TableName.ResourceEnrollmentTokens]
+    [TableName.ResourceTokenAuth]
   );
   await knex.raw(
-    `ALTER INDEX IF EXISTS resource_enrollment_tokens_tokenhash_unique
+    `ALTER INDEX IF EXISTS resource_token_auths_tokenhash_unique
        RENAME TO gateway_enrollment_tokens_tokenhash_unique`
   );
   await knex.raw(
-    `ALTER INDEX IF EXISTS resource_enrollment_tokens_pkey
+    `ALTER INDEX IF EXISTS resource_token_auths_pkey
        RENAME TO gateway_enrollment_tokens_pkey`
   );
 
-  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceEnrollmentTokens);
+  const hasNewEnrollmentTokensTable = await knex.schema.hasTable(TableName.ResourceTokenAuth);
   const hasOldEnrollmentTokensTable = await knex.schema.hasTable(OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
   if (hasNewEnrollmentTokensTable && !hasOldEnrollmentTokensTable) {
-    await knex.schema.renameTable(TableName.ResourceEnrollmentTokens, OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
+    await knex.schema.renameTable(TableName.ResourceTokenAuth, OLD_GATEWAY_ENROLLMENT_TOKENS_TABLE);
   }
 
   // Recreate the trigger using the old table name.
