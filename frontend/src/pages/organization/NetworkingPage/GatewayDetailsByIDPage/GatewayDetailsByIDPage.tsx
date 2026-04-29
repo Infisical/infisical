@@ -13,7 +13,6 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { useGetGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
-import { GatewayAuthenticationSection } from "./components/GatewayAuthenticationSection/GatewayAuthenticationSection";
 import { GatewayConnectedResourcesSection } from "./components/GatewayConnectedResourcesSection/GatewayConnectedResourcesSection";
 import { GatewayDeploySection } from "./components/GatewayDeploySection/GatewayDeploySection";
 import {
@@ -55,14 +54,13 @@ const Page = () => {
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="flex w-full flex-col gap-y-5 lg:max-w-[24rem]">
           <GatewayDetailsCard gateway={gateway} />
-          <GatewayAuthenticationSection gatewayId={gatewayId} authMethod={gateway.authMethod} />
         </div>
         <div className="flex flex-1 flex-col gap-y-5">
           <GatewayDeploySection
             gatewayId={gatewayId}
             gatewayName={gateway.name}
             authMethod={gateway.authMethod}
-            canRevoke={gateway.tokenVersion > 0}
+            isFirstTimeSetup={!gateway.heartbeat}
           />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />
         </div>

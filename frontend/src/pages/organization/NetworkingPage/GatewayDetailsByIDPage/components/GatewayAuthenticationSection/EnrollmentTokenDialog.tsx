@@ -71,8 +71,8 @@ export const EnrollmentTokenDialog = ({
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl"
-        title={`Enrollment Token for ${gatewayName}`}
-        subTitle="Run the following command on the machine where you want to deploy the gateway. The token expires in 1 hour and can only be used once."
+        title={`Start command for ${gatewayName}`}
+        subTitle="Run the following command on the machine where you want to deploy the gateway. The enrollment token expires in 1 hour and can only be used once."
         bodyClassName="overflow-visible"
       >
         <FormControl
