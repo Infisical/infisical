@@ -416,10 +416,10 @@ func TestIdentityCustomRole_SecretsReadCreateOnly(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a custom role that allows only reading and creating secrets
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "secrets-read-create", "Secrets Read Create", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "secrets-read-create", "Secrets Read Create", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read", "create"},
+			Subject: "secrets",
+			Action:  []string{"read", "create"},
 		},
 	})
 
@@ -452,10 +452,10 @@ func TestIdentityCustomRole_SecretsReadCreateOnly(t *testing.T) {
 func TestUserCustomRole_SecretsReadCreateOnly(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "user-secrets-rc", "User Secrets Read Create", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "user-secrets-rc", "User Secrets Read Create", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read", "create"},
+			Subject: "secrets",
+			Action:  []string{"read", "create"},
 		},
 	})
 
@@ -485,11 +485,11 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a custom role that allows reading secrets only in "dev" environment
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-reader", "Dev Secret Reader", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-reader", "Dev Secret Reader", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
@@ -521,11 +521,11 @@ func TestIdentityCustomRole_GlobSecretPath(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	// Create a custom role with $glob condition on secretPath
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "path-reader", "Path Scoped Reader", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "path-reader", "Path Scoped Reader", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
 				"secretPath": map[string]any{
 					"$glob": "/app/**",
 				},
@@ -605,14 +605,14 @@ func TestGroupViewer_UserInheritsReadOnly(t *testing.T) {
 func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-secrets-ro", "Group Secrets ReadOnly", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-secrets-ro", "Group Secrets ReadOnly", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
+			Subject: "secrets",
+			Action:  []string{"read"},
 		},
 		{
-			"subject": "secret-folders",
-			"action":  []string{"read"},
+			Subject: "secret-folders",
+			Action:  []string{"read"},
 		},
 	})
 
@@ -676,10 +676,10 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	// Give identity viewer role (read-only) then add additional privilege for secret creation
 	identity := nodejs.CreateIdentity(t, "addl-priv-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "viewer")
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "create",
+			Subject: "secrets",
+			Action:  "create",
 		},
 	})
 
@@ -705,11 +705,11 @@ func TestIdentityAdditionalPrivilege_WithConditions(t *testing.T) {
 	// Give identity no-access role, then add scoped additional privilege
 	identity := nodejs.CreateIdentity(t, "addl-priv-scoped-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  "read",
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
@@ -732,21 +732,31 @@ func TestIdentityAdditionalPrivilege_WithConditions(t *testing.T) {
 func TestUserAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	nodejs := stack.NodeJS()
 
-	// The user additional privilege API is JWT-only (no identity token).
-	// Add bootstrap admin user to project so their userToken can make the call.
-	nodejs.AddUserToProject(t, proj.ID, nodejs.UserEmail(), []string{"admin"})
+	// Create project using user JWT so bootstrap user is automatically a member.
+	// This is needed because the user additional privilege API requires user JWT auth.
+	testProj := nodejs.CreateProjectAsUser(t, "user-addl-priv-test")
 
 	// Give user viewer role, then add additional privilege for secret edit
 	user := nodejs.InviteAndCreateUser(t, "addl-priv-user@test.local")
-	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
-	nodejs.CreateUserAdditionalPrivilege(t, user.ID, proj.ID, []map[string]any{
+	nodejs.AddUserToProjectAsUser(t, testProj.ID, user.Email, []string{"viewer"})
+	nodejs.CreateUserAdditionalPrivilege(t, user.ID, testProj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "edit",
+			Subject: "secrets",
+			Action:  "edit",
 		},
 	})
 
-	result := getProjectPermission(t, permission.ActorTypeUser, user.ID)
+	// Use testProj.ID instead of the shared proj.ID
+	svc := newPermissionService()
+	result, err := svc.GetProjectPermission(context.Background(), &permission.GetProjectPermissionArgs{
+		Actor:             permission.ActorTypeUser,
+		ActorID:           uuid.MustParse(user.ID),
+		ProjectID:         testProj.ID,
+		ActorAuthMethod:   "",
+		ActorOrgID:        uuid.MustParse(nodejs.OrgID()),
+		ActionProjectType: permission.ActionProjectTypeSecretManager,
+	})
+	require.NoError(t, err)
 	ability := result.Permission.Ability
 
 	// Base viewer permissions
@@ -768,16 +778,16 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	identity := nodejs.CreateIdentity(t, "multi-addl-priv-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
 
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
+			Subject: "secrets",
+			Action:  "read",
 		},
 	})
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secret-folders",
-			"action":  "read",
+			Subject: "secret-folders",
+			Action:  "read",
 		},
 	})
 
@@ -802,17 +812,17 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-role-active-identity")
 	// API requires at least one permanent role; use no-access as the permanent base
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "no-access",
-			"isTemporary": false,
+			Role:        "no-access",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -832,17 +842,17 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-role-expired-identity")
 	// Permanent no-access + expired temporary admin (started 2h ago, range 1h)
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "no-access",
-			"isTemporary": false,
+			Role:        "no-access",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -872,17 +882,17 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-role-mixed-identity")
 	// Permanent viewer + expired temporary admin
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "viewer",
-			"isTemporary": false,
+			Role:        "viewer",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -909,10 +919,10 @@ func TestIdentityTemporaryAdditionalPrivilege_ActiveGrantsAccess(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-active-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
+			Subject: "secrets",
+			Action:  "read",
 		},
 	}, "1h", time.Now().UTC().Format(time.RFC3339))
 
@@ -932,10 +942,10 @@ func TestIdentityTemporaryAdditionalPrivilege_ExpiredDeniesAccess(t *testing.T) 
 	identity := nodejs.CreateIdentity(t, "temp-addl-expired-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
 	// Start 2h ago, range 1h → expired
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
+			Subject: "secrets",
+			Action:  "read",
 		},
 	}, "1h", time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339))
 

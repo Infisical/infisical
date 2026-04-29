@@ -14,6 +14,7 @@ import (
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/testutil/infra"
 )
 
 // listSecrets is a helper that calls ListSecretsV4 with the given identity context.
@@ -210,11 +211,11 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only Reader", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only Reader", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
@@ -258,11 +259,11 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app/config", "CONFIG_SECRET", "config-value")
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/other", "OTHER_SECRET", "other-value")
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "app-reader", "App Path Reader", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "app-reader", "App Path Reader", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
 				"secretPath": map[string]any{
 					"$glob": "/app/**",
 				},
@@ -368,11 +369,11 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
 	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
 
-	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-dev-reader", "Group Dev Reader", []map[string]any{
+	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-dev-reader", "Group Dev Reader", []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  []string{"read"},
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  []string{"read"},
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
@@ -420,11 +421,11 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "addl-priv-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  "read",
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
@@ -465,20 +466,20 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
 
 	// Add two separate additional privileges
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  "read",
+			Conditions: map[string]any{
 				"environment": "dev",
 			},
 		},
 	})
-	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
-			"conditions": map[string]any{
+			Subject: "secrets",
+			Action:  "read",
+			Conditions: map[string]any{
 				"environment": "staging",
 			},
 		},
@@ -516,17 +517,17 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_SECRET", "temp-value")
 
 	identity := nodejs.CreateIdentity(t, "temp-active-identity")
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "no-access",
-			"isTemporary": false,
+			Role:        "no-access",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -549,17 +550,17 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_SECRET", "expired-value")
 
 	identity := nodejs.CreateIdentity(t, "temp-expired-identity")
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "no-access",
-			"isTemporary": false,
+			Role:        "no-access",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -582,17 +583,17 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-mixed-identity")
 	// Permanent viewer + expired temporary admin
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []map[string]any{
+	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
-			"role":        "viewer",
-			"isTemporary": false,
+			Role:        "viewer",
+			IsTemporary: false,
 		},
 		{
-			"role":                     "admin",
-			"isTemporary":              true,
-			"temporaryMode":            "relative",
-			"temporaryRange":           "1h",
-			"temporaryAccessStartTime": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+			Role:                     "admin",
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           "1h",
+			TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
 		},
 	})
 
@@ -618,10 +619,10 @@ func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-active-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
+			Subject: "secrets",
+			Action:  "read",
 		},
 	}, "1h", time.Now().UTC().Format(time.RFC3339))
 
@@ -645,10 +646,10 @@ func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-expired-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []map[string]any{
+	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
-			"subject": "secrets",
-			"action":  "read",
+			Subject: "secrets",
+			Action:  "read",
 		},
 	}, "1h", time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339))
 

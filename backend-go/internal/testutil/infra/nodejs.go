@@ -132,12 +132,12 @@ func startNodeJS(ctx context.Context, networkName string, files []testcontainers
 // bootstrap creates the initial admin user, org, and machine identity,
 // then logs in to obtain a user JWT. Uses log.Fatalf since it runs in TestMain.
 func (n *NodeJSService) bootstrap() {
-	var bootstrapResp map[string]any
+	var bootstrapResp BootstrapResponse
 	resp, err := n.client.R().
-		SetBody(map[string]any{
-			"email":        "test-admin@example.com",
-			"password":     "testpassword123",
-			"organization": "test-org",
+		SetBody(BootstrapRequest{
+			Email:        "test-admin@example.com",
+			Password:     "testpassword123",
+			Organization: "test-org",
 		}).
 		SetResult(&bootstrapResp).
 		Post("/api/v1/admin/bootstrap")
@@ -148,16 +148,16 @@ func (n *NodeJSService) bootstrap() {
 		log.Fatalf("infra.bootstrap: returned %d: %s", resp.StatusCode(), resp.String())
 	}
 
-	n.orgID = jsonStr(bootstrapResp, "organization.id")
-	n.identityToken = jsonStr(bootstrapResp, "identity.credentials.token")
-	n.userEmail = jsonStr(bootstrapResp, "user.email")
-	n.userID = jsonStr(bootstrapResp, "user.id")
+	n.orgID = bootstrapResp.Organization.ID
+	n.identityToken = bootstrapResp.Identity.Credentials.Token
+	n.userEmail = bootstrapResp.User.Email
+	n.userID = bootstrapResp.User.ID
 
-	var loginResp map[string]any
+	var loginResp LoginResponse
 	resp, err = n.client.R().
-		SetBody(map[string]any{
-			"email":    n.userEmail,
-			"password": "testpassword123",
+		SetBody(LoginRequest{
+			Email:    n.userEmail,
+			Password: "testpassword123",
 		}).
 		SetResult(&loginResp).
 		Post("/api/v3/auth/login")
@@ -167,14 +167,13 @@ func (n *NodeJSService) bootstrap() {
 	if resp.IsError() {
 		log.Fatalf("infra.bootstrap: login returned %d: %s", resp.StatusCode(), resp.String())
 	}
-	loginToken := jsonStr(loginResp, "accessToken")
 
 	// Select organization to get an org-scoped JWT (required for org-level API calls).
-	var selectOrgResp map[string]any
+	var selectOrgResp SelectOrgResponse
 	resp, err = n.client.R().
-		SetHeader("Authorization", "Bearer "+loginToken).
-		SetBody(map[string]any{
-			"organizationId": n.orgID,
+		SetHeader("Authorization", "Bearer "+loginResp.AccessToken).
+		SetBody(SelectOrgRequest{
+			OrganizationID: n.orgID,
 		}).
 		SetResult(&selectOrgResp).
 		Post("/api/v3/auth/select-organization")
@@ -184,19 +183,19 @@ func (n *NodeJSService) bootstrap() {
 	if resp.IsError() {
 		log.Fatalf("infra.bootstrap: select-org returned %d: %s", resp.StatusCode(), resp.String())
 	}
-	n.userToken = jsonStr(selectOrgResp, "token")
+	n.userToken = selectOrgResp.Token
 }
 
 // MustCreateProject creates a new project via the Node.js API.
 // Safe to call from TestMain — uses log.Fatalf on error.
 func (n *NodeJSService) MustCreateProject(name string) *ProjectSeed {
-	var projectResp map[string]any
+	var projectResp CreateProjectResponse
 	resp, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectName": name,
-			"slug":        fmt.Sprintf("test-%s", name),
-			"type":        "secret-manager",
+		SetBody(CreateProjectRequest{
+			ProjectName: name,
+			Slug:        fmt.Sprintf("test-%s", name),
+			Type:        "secret-manager",
 		}).
 		SetResult(&projectResp).
 		Post("/api/v1/projects")
@@ -208,8 +207,8 @@ func (n *NodeJSService) MustCreateProject(name string) *ProjectSeed {
 	}
 
 	return &ProjectSeed{
-		ID:      jsonStr(projectResp, "project.id"),
-		Slug:    jsonStr(projectResp, "project.slug"),
+		ID:      projectResp.Project.ID,
+		Slug:    projectResp.Project.Slug,
 		EnvSlug: "dev",
 	}
 }
@@ -225,13 +224,13 @@ func (n *NodeJSService) CreateProject(t *testing.T, name string) *ProjectSeed {
 		slug = slug[:36]
 	}
 
-	var projectResp map[string]any
+	var projectResp CreateProjectResponse
 	resp, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectName": name,
-			"slug":        slug,
-			"type":        "secret-manager",
+		SetBody(CreateProjectRequest{
+			ProjectName: name,
+			Slug:        slug,
+			Type:        "secret-manager",
 		}).
 		SetResult(&projectResp).
 		Post("/api/v1/projects")
@@ -243,8 +242,8 @@ func (n *NodeJSService) CreateProject(t *testing.T, name string) *ProjectSeed {
 	}
 
 	return &ProjectSeed{
-		ID:      jsonStr(projectResp, "project.id"),
-		Slug:    jsonStr(projectResp, "project.slug"),
+		ID:      projectResp.Project.ID,
+		Slug:    projectResp.Project.Slug,
 		EnvSlug: "dev",
 	}
 }
@@ -264,47 +263,17 @@ func (n *NodeJSService) DeleteProject(t *testing.T, projectID string) {
 	}
 }
 
-// jsonStr extracts a string value from a nested JSON map using dot-separated path.
-func jsonStr(m map[string]any, path string) string {
-	keys := splitDotPath(path)
-	current := any(m)
-
-	for _, key := range keys {
-		obj, ok := current.(map[string]any)
-		if !ok {
-			return ""
-		}
-		current = obj[key]
-	}
-
-	s, _ := current.(string)
-	return s
-}
-
-func splitDotPath(path string) []string {
-	var keys []string
-	start := 0
-	for i := 0; i < len(path); i++ {
-		if path[i] == '.' {
-			keys = append(keys, path[start:i])
-			start = i + 1
-		}
-	}
-	keys = append(keys, path[start:])
-	return keys
-}
-
 // CreateIdentity creates a new machine identity in the bootstrap org.
 func (n *NodeJSService) CreateIdentity(t *testing.T, name string) *IdentitySeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateIdentityResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"name":           name,
-			"organizationId": n.orgID,
-			"role":           "no-access",
+		SetBody(CreateIdentityRequest{
+			Name:           name,
+			OrganizationID: n.orgID,
+			Role:           "no-access",
 		}).
 		SetResult(&resp).
 		Post("/api/v1/identities")
@@ -316,7 +285,7 @@ func (n *NodeJSService) CreateIdentity(t *testing.T, name string) *IdentitySeed 
 	}
 
 	return &IdentitySeed{
-		ID:   jsonStr(resp, "identity.id"),
+		ID:   resp.Identity.ID,
 		Name: name,
 	}
 }
@@ -327,8 +296,8 @@ func (n *NodeJSService) AddIdentityToProject(t *testing.T, projectID, identityID
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"role": role,
+		SetBody(AddIdentityToProjectRequest{
+			Role: role,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships/identities/%s", projectID, identityID))
 	if err != nil {
@@ -342,13 +311,13 @@ func (n *NodeJSService) AddIdentityToProject(t *testing.T, projectID, identityID
 // AddIdentityToProjectWithRoles adds a machine identity to a project with a roles array.
 // Each role entry can include temporary access fields (isTemporary, temporaryMode, temporaryRange,
 // temporaryAccessStartTime).
-func (n *NodeJSService) AddIdentityToProjectWithRoles(t *testing.T, projectID, identityID string, roles []map[string]any) {
+func (n *NodeJSService) AddIdentityToProjectWithRoles(t *testing.T, projectID, identityID string, roles []RoleAssignment) {
 	t.Helper()
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"roles": roles,
+		SetBody(AddIdentityToProjectWithRolesRequest{
+			Roles: roles,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships/identities/%s", projectID, identityID))
 	if err != nil {
@@ -368,9 +337,9 @@ func (n *NodeJSService) InviteAndCreateUser(t *testing.T, email string) *UserSee
 	// 1. Invite user to org (requires user JWT auth with org context)
 	r, err := n.client.R().
 		SetAuthToken(n.userToken).
-		SetBody(map[string]any{
-			"inviteeEmails":  []string{email},
-			"organizationId": n.orgID,
+		SetBody(InviteToOrgRequest{
+			InviteeEmails:  []string{email},
+			OrganizationID: n.orgID,
 		}).
 		Post("/api/v1/invite-org/signup")
 	if err != nil {
@@ -398,14 +367,27 @@ func (n *NodeJSService) InviteAndCreateUser(t *testing.T, email string) *UserSee
 }
 
 // AddUserToProject adds a user (by email) to a project with the given role slugs.
+// Uses identity token for authentication.
 func (n *NodeJSService) AddUserToProject(t *testing.T, projectID, email string, roleSlugs []string) {
+	t.Helper()
+	n.addUserToProjectWithToken(t, projectID, email, roleSlugs, n.identityToken)
+}
+
+// AddUserToProjectAsUser adds a user (by email) to a project using the bootstrap user's JWT.
+// Use this when the identity isn't a member of the project.
+func (n *NodeJSService) AddUserToProjectAsUser(t *testing.T, projectID, email string, roleSlugs []string) {
+	t.Helper()
+	n.addUserToProjectWithToken(t, projectID, email, roleSlugs, n.userToken)
+}
+
+func (n *NodeJSService) addUserToProjectWithToken(t *testing.T, projectID, email string, roleSlugs []string, token string) {
 	t.Helper()
 
 	r, err := n.client.R().
-		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"emails":    []string{email},
-			"roleSlugs": roleSlugs,
+		SetAuthToken(token).
+		SetBody(AddUserToProjectRequest{
+			Emails:    []string{email},
+			RoleSlugs: roleSlugs,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships", projectID))
 	if err != nil {
@@ -416,20 +398,55 @@ func (n *NodeJSService) AddUserToProject(t *testing.T, projectID, email string, 
 	}
 }
 
-// CreateCustomProjectRole creates a custom project role with the given permissions.
-// Requires the "rbac" EE feature to be enabled (see WithEEFeatures).
-// Permissions is a slice of permission objects, each with "subject", "action", and
-// optionally "conditions" and "inverted" fields.
-func (n *NodeJSService) CreateCustomProjectRole(t *testing.T, projectID, slug, name string, permissions []map[string]any) *CustomRoleSeed {
+// CreateProjectAsUser creates a project using the bootstrap user's JWT.
+// This makes the bootstrap user automatically a member of the project,
+// which is needed for user-only APIs like user additional privileges.
+func (n *NodeJSService) CreateProjectAsUser(t *testing.T, name string) *ProjectSeed {
 	t.Helper()
 
-	var resp map[string]any
+	b := make([]byte, 4)
+	rand.Read(b)
+	slug := fmt.Sprintf("t-%s-%x", name, b)
+	if len(slug) > 36 {
+		slug = slug[:36]
+	}
+
+	var projectResp CreateProjectResponse
+	resp, err := n.client.R().
+		SetAuthToken(n.userToken).
+		SetBody(CreateProjectRequest{
+			ProjectName: name,
+			Slug:        slug,
+			Type:        "secret-manager",
+		}).
+		SetResult(&projectResp).
+		Post("/api/v1/projects")
+	if err != nil {
+		t.Fatalf("infra.CreateProjectAsUser: request failed: %v", err)
+	}
+	if resp.IsError() {
+		t.Fatalf("infra.CreateProjectAsUser: returned %d: %s", resp.StatusCode(), resp.String())
+	}
+
+	return &ProjectSeed{
+		ID:      projectResp.Project.ID,
+		Slug:    projectResp.Project.Slug,
+		EnvSlug: "dev",
+	}
+}
+
+// CreateCustomProjectRole creates a custom project role with the given permissions.
+// Requires the "rbac" EE feature to be enabled (see WithEEFeatures).
+func (n *NodeJSService) CreateCustomProjectRole(t *testing.T, projectID, slug, name string, permissions []Permission) *CustomRoleSeed {
+	t.Helper()
+
+	var resp CreateCustomRoleResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"slug":        slug,
-			"name":        name,
-			"permissions": permissions,
+		SetBody(CreateCustomRoleRequest{
+			Slug:        slug,
+			Name:        name,
+			Permissions: permissions,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v1/projects/%s/roles", projectID))
@@ -441,9 +458,9 @@ func (n *NodeJSService) CreateCustomProjectRole(t *testing.T, projectID, slug, n
 	}
 
 	return &CustomRoleSeed{
-		ID:   jsonStr(resp, "role.id"),
-		Slug: jsonStr(resp, "role.slug"),
-		Name: jsonStr(resp, "role.name"),
+		ID:   resp.Role.ID,
+		Slug: resp.Role.Slug,
+		Name: resp.Role.Name,
 	}
 }
 
@@ -452,12 +469,12 @@ func (n *NodeJSService) CreateCustomProjectRole(t *testing.T, projectID, slug, n
 func (n *NodeJSService) CreateGroup(t *testing.T, name string) *GroupSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateGroupResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"name": name,
-			"role": "no-access",
+		SetBody(CreateGroupRequest{
+			Name: name,
+			Role: "no-access",
 		}).
 		SetResult(&resp).
 		Post("/api/v1/groups")
@@ -469,9 +486,9 @@ func (n *NodeJSService) CreateGroup(t *testing.T, name string) *GroupSeed {
 	}
 
 	return &GroupSeed{
-		ID:   jsonStr(resp, "id"),
-		Name: jsonStr(resp, "name"),
-		Slug: jsonStr(resp, "slug"),
+		ID:   resp.ID,
+		Name: resp.Name,
+		Slug: resp.Slug,
 	}
 }
 
@@ -484,7 +501,7 @@ func (n *NodeJSService) AddUserToGroup(t *testing.T, groupID, username string) {
 	r, err := n.client.R().
 		SetAuthToken(n.userToken).
 		SetHeader("Content-Type", "application/json").
-		SetBody("{}").
+		SetBody(struct{}{}).
 		Post(fmt.Sprintf("/api/v1/groups/%s/users/%s", groupID, username))
 	if err != nil {
 		t.Fatalf("infra.AddUserToGroup: request failed: %v", err)
@@ -500,8 +517,8 @@ func (n *NodeJSService) AddGroupToProject(t *testing.T, projectID, groupID, role
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"role": role,
+		SetBody(AddGroupToProjectRequest{
+			Role: role,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships/groups/%s", projectID, groupID))
 	if err != nil {
@@ -514,18 +531,16 @@ func (n *NodeJSService) AddGroupToProject(t *testing.T, projectID, groupID, role
 
 // CreateIdentityAdditionalPrivilege creates a permanent additional privilege
 // for an identity in a project via the V2 Node.js API.
-func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []map[string]any) {
+func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []Permission) {
 	t.Helper()
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"identityId":  identityID,
-			"projectId":   projectID,
-			"permissions": permissions,
-			"type": map[string]any{
-				"isTemporary": false,
-			},
+		SetBody(CreateIdentityPrivilegeRequest{
+			IdentityID:  identityID,
+			ProjectID:   projectID,
+			Permissions: permissions,
+			Type:        PrivilegeType{IsTemporary: false},
 		}).
 		Post("/api/v2/identity-project-additional-privilege/")
 	if err != nil {
@@ -539,20 +554,20 @@ func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identity
 // CreateIdentityTemporaryAdditionalPrivilege creates a temporary additional privilege
 // for an identity in a project. temporaryRange is a duration string (e.g. "1h", "30s").
 // temporaryAccessStartTime is an ISO-8601 datetime string.
-func (n *NodeJSService) CreateIdentityTemporaryAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []map[string]any, temporaryRange, temporaryAccessStartTime string) {
+func (n *NodeJSService) CreateIdentityTemporaryAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []Permission, temporaryRange, temporaryAccessStartTime string) {
 	t.Helper()
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"identityId":  identityID,
-			"projectId":   projectID,
-			"permissions": permissions,
-			"type": map[string]any{
-				"isTemporary":              true,
-				"temporaryMode":            "relative",
-				"temporaryRange":           temporaryRange,
-				"temporaryAccessStartTime": temporaryAccessStartTime,
+		SetBody(CreateIdentityPrivilegeRequest{
+			IdentityID:  identityID,
+			ProjectID:   projectID,
+			Permissions: permissions,
+			Type: PrivilegeType{
+				IsTemporary:              true,
+				TemporaryMode:            "relative",
+				TemporaryRange:           temporaryRange,
+				TemporaryAccessStartTime: temporaryAccessStartTime,
 			},
 		}).
 		Post("/api/v2/identity-project-additional-privilege/")
@@ -567,7 +582,7 @@ func (n *NodeJSService) CreateIdentityTemporaryAdditionalPrivilege(t *testing.T,
 // CreateUserAdditionalPrivilege creates a permanent additional privilege
 // for a user in a project via the Node.js API.
 // Requires looking up the project membership ID from the DB.
-func (n *NodeJSService) CreateUserAdditionalPrivilege(t *testing.T, userID, projectID string, permissions []map[string]any) {
+func (n *NodeJSService) CreateUserAdditionalPrivilege(t *testing.T, userID, projectID string, permissions []Permission) {
 	t.Helper()
 
 	if n.db == nil {
@@ -585,12 +600,10 @@ func (n *NodeJSService) CreateUserAdditionalPrivilege(t *testing.T, userID, proj
 
 	r, err := n.client.R().
 		SetAuthToken(n.userToken).
-		SetBody(map[string]any{
-			"projectMembershipId": membershipID,
-			"permissions":         permissions,
-			"type": map[string]any{
-				"isTemporary": false,
-			},
+		SetBody(CreateUserPrivilegeRequest{
+			ProjectMembershipID: membershipID,
+			Permissions:         permissions,
+			Type:                PrivilegeType{IsTemporary: false},
 		}).
 		Post("/api/v1/user-project-additional-privilege/")
 	if err != nil {
@@ -613,15 +626,15 @@ type SecretSeed struct {
 func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secretPath, key, value string) *SecretSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateSecretResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectId":   projectID,
-			"environment": environment,
-			"secretPath":  secretPath,
-			"secretValue": value,
-			"type":        "shared",
+		SetBody(CreateSecretRequest{
+			ProjectID:   projectID,
+			Environment: environment,
+			SecretPath:  secretPath,
+			SecretValue: value,
+			Type:        "shared",
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
@@ -633,7 +646,7 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	}
 
 	return &SecretSeed{
-		ID:      jsonStr(resp, "secret.id"),
+		ID:      resp.Secret.ID,
 		Key:     key,
 		Value:   value,
 		Version: 1,
@@ -644,16 +657,16 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 func (n *NodeJSService) CreateSecretWithTags(t *testing.T, projectID, environment, secretPath, key, value string, tagIDs []string) *SecretSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateSecretResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectId":   projectID,
-			"environment": environment,
-			"secretPath":  secretPath,
-			"secretValue": value,
-			"type":        "shared",
-			"tagIds":      tagIDs,
+		SetBody(CreateSecretRequest{
+			ProjectID:   projectID,
+			Environment: environment,
+			SecretPath:  secretPath,
+			SecretValue: value,
+			Type:        "shared",
+			TagIDs:      tagIDs,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
@@ -665,7 +678,7 @@ func (n *NodeJSService) CreateSecretWithTags(t *testing.T, projectID, environmen
 	}
 
 	return &SecretSeed{
-		ID:      jsonStr(resp, "secret.id"),
+		ID:      resp.Secret.ID,
 		Key:     key,
 		Value:   value,
 		Version: 1,
@@ -682,14 +695,14 @@ type FolderSeed struct {
 func (n *NodeJSService) CreateFolder(t *testing.T, projectID, environment, path, name string) *FolderSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateFolderResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectId":   projectID,
-			"environment": environment,
-			"path":        path,
-			"name":        name,
+		SetBody(CreateFolderRequest{
+			ProjectID:   projectID,
+			Environment: environment,
+			Path:        path,
+			Name:        name,
 		}).
 		SetResult(&resp).
 		Post("/api/v2/folders")
@@ -701,7 +714,7 @@ func (n *NodeJSService) CreateFolder(t *testing.T, projectID, environment, path,
 	}
 
 	return &FolderSeed{
-		ID:   jsonStr(resp, "folder.id"),
+		ID:   resp.Folder.ID,
 		Name: name,
 	}
 }
@@ -715,16 +728,16 @@ type SecretImportSeed struct {
 func (n *NodeJSService) CreateSecretImport(t *testing.T, projectID, environment, path, importEnv, importPath string) *SecretImportSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateSecretImportResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"projectId":   projectID,
-			"environment": environment,
-			"path":        path,
-			"import": map[string]any{
-				"environment": importEnv,
-				"path":        importPath,
+		SetBody(CreateSecretImportRequest{
+			ProjectID:   projectID,
+			Environment: environment,
+			Path:        path,
+			Import: SecretImportTarget{
+				Environment: importEnv,
+				Path:        importPath,
 			},
 		}).
 		SetResult(&resp).
@@ -737,7 +750,7 @@ func (n *NodeJSService) CreateSecretImport(t *testing.T, projectID, environment,
 	}
 
 	return &SecretImportSeed{
-		ID: jsonStr(resp, "secretImport.id"),
+		ID: resp.SecretImport.ID,
 	}
 }
 
@@ -752,12 +765,12 @@ type EnvironmentSeed struct {
 func (n *NodeJSService) CreateEnvironment(t *testing.T, projectID, slug, name string) *EnvironmentSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateEnvironmentResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"slug": slug,
-			"name": name,
+		SetBody(CreateEnvironmentRequest{
+			Slug: slug,
+			Name: name,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v1/projects/%s/environments", projectID))
@@ -769,7 +782,7 @@ func (n *NodeJSService) CreateEnvironment(t *testing.T, projectID, slug, name st
 	}
 
 	return &EnvironmentSeed{
-		ID:   jsonStr(resp, "environment.id"),
+		ID:   resp.Environment.ID,
 		Slug: slug,
 		Name: name,
 	}
@@ -786,13 +799,13 @@ type TagSeed struct {
 func (n *NodeJSService) CreateTag(t *testing.T, projectID, slug, name, color string) *TagSeed {
 	t.Helper()
 
-	var resp map[string]any
+	var resp CreateTagResponse
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"slug":  slug,
-			"name":  name,
-			"color": color,
+		SetBody(CreateTagRequest{
+			Slug:  slug,
+			Name:  name,
+			Color: color,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v1/projects/%s/tags", projectID))
@@ -804,7 +817,7 @@ func (n *NodeJSService) CreateTag(t *testing.T, projectID, slug, name, color str
 	}
 
 	return &TagSeed{
-		ID:   jsonStr(resp, "tag.id"),
+		ID:   resp.Tag.ID,
 		Slug: slug,
 		Name: name,
 	}
@@ -818,15 +831,15 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 	// First, create a universal auth method for the identity
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"identityId":                    identityID,
-			"accessTokenTrustedIps":         []map[string]any{{"ipAddress": "0.0.0.0/0"}},
-			"accessTokenTTL":                3600,
-			"accessTokenMaxTTL":             7200,
-			"accessTokenNumUsesLimit":       0,
-			"clientSecretTrustedIps":        []map[string]any{{"ipAddress": "0.0.0.0/0"}},
-			"clientSecretNumUsesLimit":      0,
-			"isClientSecretRotationEnabled": false,
+		SetBody(CreateUniversalAuthRequest{
+			IdentityID:                    identityID,
+			AccessTokenTrustedIPs:         []IPAddress{{IPAddress: "0.0.0.0/0"}},
+			AccessTokenTTL:                3600,
+			AccessTokenMaxTTL:             7200,
+			AccessTokenNumUsesLimit:       0,
+			ClientSecretTrustedIPs:        []IPAddress{{IPAddress: "0.0.0.0/0"}},
+			ClientSecretNumUsesLimit:      0,
+			IsClientSecretRotationEnabled: false,
 		}).
 		Post("/api/v1/auth/universal-auth/identities/" + identityID)
 	if err != nil {
@@ -837,13 +850,13 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 	}
 
 	// Then create a client secret
-	var clientSecretResp map[string]any
+	var clientSecretResp CreateClientSecretResponse
 	r, err = n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(map[string]any{
-			"description":  "test-client-secret",
-			"ttl":          0,
-			"numUsesLimit": 0,
+		SetBody(CreateClientSecretRequest{
+			Description:  "test-client-secret",
+			TTL:          0,
+			NumUsesLimit: 0,
 		}).
 		SetResult(&clientSecretResp).
 		Post("/api/v1/auth/universal-auth/identities/" + identityID + "/client-secrets")
@@ -854,15 +867,15 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 		t.Fatalf("infra.GetIdentityAccessToken: create client secret returned %d: %s", r.StatusCode(), r.String())
 	}
 
-	clientID := jsonStr(clientSecretResp, "clientSecretData.clientId")
-	clientSecret := jsonStr(clientSecretResp, "clientSecretData.clientSecretPrefix") + jsonStr(clientSecretResp, "clientSecret")
+	clientID := clientSecretResp.ClientSecretData.ClientID
+	clientSecret := clientSecretResp.ClientSecretData.ClientSecretPrefix + clientSecretResp.ClientSecret
 
 	// Finally, login to get the access token
-	var loginResp map[string]any
+	var loginResp UniversalAuthLoginResponse
 	r, err = n.client.R().
-		SetBody(map[string]any{
-			"clientId":     clientID,
-			"clientSecret": clientSecret,
+		SetBody(UniversalAuthLoginRequest{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
 		}).
 		SetResult(&loginResp).
 		Post("/api/v1/auth/universal-auth/login")
@@ -873,5 +886,5 @@ func (n *NodeJSService) GetIdentityAccessToken(t *testing.T, identityID string) 
 		t.Fatalf("infra.GetIdentityAccessToken: login returned %d: %s", r.StatusCode(), r.String())
 	}
 
-	return jsonStr(loginResp, "accessToken")
+	return loginResp.AccessToken
 }
