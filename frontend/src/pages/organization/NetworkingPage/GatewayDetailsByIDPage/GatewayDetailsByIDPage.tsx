@@ -1,0 +1,86 @@
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
+import { Link, useParams } from "@tanstack/react-router";
+import { ChevronLeftIcon } from "lucide-react";
+
+import { OrgPermissionCan } from "@app/components/permissions";
+import { Spinner } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import { useGetGatewayV2ById } from "@app/hooks/api/gateways-v2";
+
+import { GatewayAuthenticationSection } from "./components/GatewayAuthenticationSection/GatewayAuthenticationSection";
+import { GatewayConnectedResourcesSection } from "./components/GatewayConnectedResourcesSection/GatewayConnectedResourcesSection";
+import {
+  GatewayDetailsCard,
+  GatewayPageHeader
+} from "./components/GatewayHeaderSection/GatewayHeaderSection";
+
+const Page = () => {
+  const params = useParams({ from: ROUTE_PATHS.Organization.GatewayDetailsByIDPage.id });
+  const gatewayId = params.gatewayId as string;
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+  const { data: gateway, isPending } = useGetGatewayV2ById(gatewayId);
+
+  if (isPending) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!gateway) {
+    return <div className="p-6 text-mineshaft-300">Gateway not found.</div>;
+  }
+
+  return (
+    <div className="mx-auto flex max-w-8xl flex-col">
+      <Link
+        to="/organizations/$orgId/networking"
+        params={{ orgId }}
+        search={{ selectedTab: "gateways" }}
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
+      >
+        <ChevronLeftIcon size={16} />
+        Gateways
+      </Link>
+      <GatewayPageHeader gateway={gateway} orgId={orgId} />
+      <div className="flex flex-col gap-5 lg:flex-row">
+        <GatewayDetailsCard gateway={gateway} />
+        <div className="flex flex-1 flex-col gap-y-5">
+          <GatewayAuthenticationSection
+            gatewayId={gatewayId}
+            gatewayName={gateway.name}
+            identity={gateway.identity}
+          />
+          <GatewayConnectedResourcesSection gatewayId={gatewayId} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const GatewayDetailsByIDPage = () => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <Helmet>
+        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Helmet>
+      <OrgPermissionCan
+        passThrough={false}
+        I={OrgGatewayPermissionActions.ListGateways}
+        a={OrgPermissionSubjects.Gateway}
+      >
+        <Page />
+      </OrgPermissionCan>
+    </>
+  );
+};

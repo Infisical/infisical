@@ -775,7 +775,15 @@ export enum EventType {
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
-  GATEWAY_ENROLL = "gateway-enroll"
+  GATEWAY_ENROLL = "gateway-enroll",
+
+  // Resource Auth Methods (gateway, future: relay)
+  RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
+  RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_ATTACH = "resource-auth-method-attach",
+  RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_GET = "resource-auth-method-get",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -6129,6 +6137,69 @@ interface GatewayEnrollEvent {
   };
 }
 
+type ResourceAuthMethodKind = "aws" | "token";
+
+interface ResourceAuthMethodLoginEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    principalArn?: string;
+    accountId?: string;
+    enrollmentTokenId?: string;
+  };
+}
+
+interface ResourceAuthMethodLoginFailedEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    reasonCode: string;
+    message: string;
+    principalArn?: string;
+    accountId?: string;
+  };
+}
+
+interface ResourceAuthMethodAttachEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_ATTACH;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+    stsEndpoint?: string;
+    allowedPrincipalArns?: string;
+    allowedAccountIds?: string;
+    // Set when attach unlinked an existing machine-identity binding from the gateway.
+    unlinkedIdentityId?: string;
+  };
+}
+
+interface ResourceAuthMethodUpdateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
+  metadata: ResourceAuthMethodAttachEvent["metadata"];
+}
+
+interface ResourceAuthMethodGetEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_GET;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    methodConfigId: string;
+  };
+}
+
+interface ResourceAuthMethodRevokeEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
+  metadata: ResourceAuthMethodGetEvent["metadata"];
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -6685,4 +6756,10 @@ export type Event =
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
-  | GatewayEnrollEvent;
+  | GatewayEnrollEvent
+  | ResourceAuthMethodLoginEvent
+  | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodAttachEvent
+  | ResourceAuthMethodUpdateEvent
+  | ResourceAuthMethodGetEvent
+  | ResourceAuthMethodRevokeEvent;

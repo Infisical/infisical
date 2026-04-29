@@ -1,0 +1,147 @@
+import RE2 from "re2";
+
+import { request } from "@app/lib/config/request";
+import { UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { extractPrincipalArn } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
+
+import { TAwsGetCallerIdentityHeaders, TGetCallerIdentityResponse } from "./resource-aws-auth-types";
+
+// Parses the AWS region from the SigV4 Authorization header's Credential=… segment.
+// Same approach as identity-aws-auth (services/identity-aws-auth/identity-aws-auth-service.ts).
+// We trust the caller-provided region because the signature itself is bound to it; if the
+// region is wrong, AWS STS will reject the proxied request.
+const awsRegionFromHeader = (authorizationHeader: string): string | null => {
+  // Authorization: AWS4-HMAC-SHA256 Credential=AKIA.../<date>/<region>/sts/aws4_request, ...
+  try {
+    const fields = authorizationHeader.split(" ");
+    for (const field of fields) {
+      if (field.startsWith("Credential=")) {
+        const parts = field.split("/");
+        if (parts.length >= 3) return parts[2];
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const validRegionPattern = new RE2("^[a-z0-9-]+$");
+
+const isValidAwsRegion = (region: string | null): boolean => {
+  if (typeof region !== "string" || region.length === 0 || region.length > 20) return false;
+  return validRegionPattern.test(region);
+};
+
+type TVerifyStsCallerInput = {
+  iamHttpRequestMethod: string;
+  iamRequestBody: string;
+  iamRequestHeaders: string;
+  defaultStsEndpoint: string;
+  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+};
+
+/**
+ * Verifies a signed STS GetCallerIdentity request and returns the caller's account/ARN/userId.
+ * Throws UnauthorizedError on failure with errorContext attached so callers can audit-log it.
+ */
+export const verifyStsAndExtractCaller = async ({
+  iamHttpRequestMethod,
+  iamRequestBody,
+  iamRequestHeaders,
+  defaultStsEndpoint,
+  errorContext
+}: TVerifyStsCallerInput) => {
+  const headers: TAwsGetCallerIdentityHeaders = JSON.parse(
+    Buffer.from(iamRequestHeaders, "base64").toString()
+  ) as TAwsGetCallerIdentityHeaders;
+  const body: string = Buffer.from(iamRequestBody, "base64").toString();
+
+  const authHeader = headers.Authorization || headers.authorization;
+  const region = authHeader ? awsRegionFromHeader(authHeader) : null;
+
+  if (!isValidAwsRegion(region)) {
+    throw new UnauthorizedError({
+      message: "Invalid AWS region",
+      detail: { reasonCode: "invalid_region", ...errorContext }
+    });
+  }
+
+  const url = region ? `https://sts.${region}.amazonaws.com` : defaultStsEndpoint;
+
+  const {
+    data: {
+      GetCallerIdentityResponse: {
+        GetCallerIdentityResult: { Account, Arn, UserId }
+      }
+    }
+  }: { data: TGetCallerIdentityResponse } = await request({
+    method: iamHttpRequestMethod,
+    url,
+    headers,
+    data: body
+  });
+
+  return { Account, Arn, UserId };
+};
+
+type TValidateAllowlistsInput = {
+  Account: string;
+  Arn: string;
+  allowedAccountIds: string;
+  allowedPrincipalArns: string;
+  errorContext: { gatewayId: string; orgId: string; gatewayName: string };
+};
+
+export const validateAllowlists = ({
+  Account,
+  Arn,
+  allowedAccountIds,
+  allowedPrincipalArns,
+  errorContext
+}: TValidateAllowlistsInput) => {
+  if (allowedAccountIds) {
+    const isAccountAllowed = allowedAccountIds
+      .split(",")
+      .map((accountId) => accountId.trim())
+      .filter((accountId) => accountId.length > 0)
+      .some((accountId) => accountId === Account);
+
+    if (!isAccountAllowed) {
+      throw new UnauthorizedError({
+        message: "Access denied: AWS account ID not allowed.",
+        detail: { reasonCode: "account_id_not_allowed", accountId: Account, principalArn: Arn, ...errorContext }
+      });
+    }
+  }
+
+  if (allowedPrincipalArns) {
+    const formattedArn = extractPrincipalArn(Arn);
+
+    const isArnAllowed = allowedPrincipalArns
+      .split(",")
+      .map((principalArn) => principalArn.trim())
+      .filter((principalArn) => principalArn.length > 0)
+      .some((principalArn) => {
+        // Convert wildcard to regex; arnRegex in validators ensures safe input.
+        const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+        return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
+      });
+
+    if (!isArnAllowed) {
+      logger.error(
+        `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [gateway-id=${errorContext.gatewayId}]`
+      );
+      throw new UnauthorizedError({
+        message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`,
+        detail: {
+          reasonCode: "principal_arn_not_allowed",
+          accountId: Account,
+          principalArn: formattedArn,
+          ...errorContext
+        }
+      });
+    }
+  }
+};

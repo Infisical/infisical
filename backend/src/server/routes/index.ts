@@ -59,7 +59,6 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
-import { gatewayEnrollmentTokenDALFactory } from "@app/ee/services/gateway-v2/gateway-enrollment-token-dal";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
@@ -148,6 +147,11 @@ import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-r
 import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
+import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-aws-auth/resource-aws-auth-dal";
+import { resourceAwsAuthServiceFactory } from "@app/ee/services/resource-aws-auth/resource-aws-auth-service";
+import { resourceEnrollmentTokenDALFactory } from "@app/ee/services/resource-token-auth/resource-enrollment-token-dal";
+import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-token-auth/resource-token-auth-dal";
+import { resourceTokenAuthServiceFactory } from "@app/ee/services/resource-token-auth/resource-token-auth-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -1291,7 +1295,9 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
-  const gatewayEnrollmentTokenDAL = gatewayEnrollmentTokenDALFactory(db);
+  const resourceEnrollmentTokenDAL = resourceEnrollmentTokenDALFactory(db);
+  const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
 
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
@@ -1446,12 +1452,24 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const resourceTokenAuthService = resourceTokenAuthServiceFactory({
+    resourceTokenAuthDAL,
+    resourceEnrollmentTokenDAL,
+    gatewayV2DAL,
+    permissionService
+  });
+
+  const resourceAwsAuthService = resourceAwsAuthServiceFactory({
+    resourceAwsAuthDAL,
+    gatewayV2DAL,
+    permissionService
+  });
+
   const gatewayV2Service = gatewayV2ServiceFactory({
     kmsService,
     relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
-    gatewayEnrollmentTokenDAL,
     relayDAL,
     permissionService,
     orgDAL,
@@ -1463,7 +1481,8 @@ export const registerRoutes = async (
     pamDiscoverySourceDAL,
     identityKubernetesAuthDAL,
     aiMcpServerDAL,
-    pkiDiscoveryConfigDAL
+    pkiDiscoveryConfigDAL,
+    resourceTokenAuthService
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -3230,6 +3249,8 @@ export const registerRoutes = async (
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,
+    resourceAwsAuth: resourceAwsAuthService,
+    resourceTokenAuth: resourceTokenAuthService,
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,

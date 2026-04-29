@@ -164,9 +164,6 @@ import {
   TFolderTreeCheckpoints,
   TFolderTreeCheckpointsInsert,
   TFolderTreeCheckpointsUpdate,
-  TGatewayEnrollmentTokens,
-  TGatewayEnrollmentTokensInsert,
-  TGatewayEnrollmentTokensUpdate,
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
@@ -440,9 +437,18 @@ import {
   TRelays,
   TRelaysInsert,
   TRelaysUpdate,
+  TResourceAwsAuths,
+  TResourceAwsAuthsInsert,
+  TResourceAwsAuthsUpdate,
+  TResourceEnrollmentTokens,
+  TResourceEnrollmentTokensInsert,
+  TResourceEnrollmentTokensUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TResourceTokenAuths,
+  TResourceTokenAuthsInsert,
+  TResourceTokenAuthsUpdate,
   TRoles,
   TRolesInsert,
   TRolesUpdate,
@@ -1579,10 +1585,20 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
-    [TableName.GatewayEnrollmentTokens]: KnexOriginal.CompositeTableType<
-      TGatewayEnrollmentTokens,
-      TGatewayEnrollmentTokensInsert,
-      TGatewayEnrollmentTokensUpdate
+    [TableName.ResourceEnrollmentTokens]: KnexOriginal.CompositeTableType<
+      TResourceEnrollmentTokens,
+      TResourceEnrollmentTokensInsert,
+      TResourceEnrollmentTokensUpdate
+    >;
+    [TableName.ResourceAwsAuth]: KnexOriginal.CompositeTableType<
+      TResourceAwsAuths,
+      TResourceAwsAuthsInsert,
+      TResourceAwsAuthsUpdate
+    >;
+    [TableName.ResourceTokenAuth]: KnexOriginal.CompositeTableType<
+      TResourceTokenAuths,
+      TResourceTokenAuthsInsert,
+      TResourceTokenAuthsUpdate
     >;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,

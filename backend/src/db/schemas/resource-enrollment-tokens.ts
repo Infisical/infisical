@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const GatewayEnrollmentTokensSchema = z.object({
+export const ResourceEnrollmentTokensSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   tokenHash: z.string(),
@@ -19,8 +19,8 @@ export const GatewayEnrollmentTokensSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TGatewayEnrollmentTokens = z.infer<typeof GatewayEnrollmentTokensSchema>;
-export type TGatewayEnrollmentTokensInsert = Omit<z.input<typeof GatewayEnrollmentTokensSchema>, TImmutableDBKeys>;
-export type TGatewayEnrollmentTokensUpdate = Partial<
-  Omit<z.input<typeof GatewayEnrollmentTokensSchema>, TImmutableDBKeys>
+export type TResourceEnrollmentTokens = z.infer<typeof ResourceEnrollmentTokensSchema>;
+export type TResourceEnrollmentTokensInsert = Omit<z.input<typeof ResourceEnrollmentTokensSchema>, TImmutableDBKeys>;
+export type TResourceEnrollmentTokensUpdate = Partial<
+  Omit<z.input<typeof ResourceEnrollmentTokensSchema>, TImmutableDBKeys>
 >;

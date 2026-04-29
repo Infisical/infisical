@@ -92,8 +92,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       response: {
         200: SanitizedGatewayV2Schema.extend({
           identity: z.object({ name: z.string(), id: z.string() }).nullable(),
-          connectedResourcesCount: z.number(),
-          enrollmentTokenStatus: z.enum(["pending", "expired"]).nullable()
+          relay: z.object({ name: z.string(), id: z.string() }).nullable(),
+          connectedResourcesCount: z.number()
         }).array()
       }
     },

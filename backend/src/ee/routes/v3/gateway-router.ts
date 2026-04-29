@@ -28,7 +28,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "createGateway",
       body: z.object({
-        name: slugSchema({ min: 1, max: 64, field: "name" })
+        name: slugSchema({ min: 1, max: 64, field: "name" }),
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional()
       }),
       response: {
         200: SanitizedGatewayV2Schema
@@ -41,7 +42,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
-        name: req.body.name
+        name: req.body.name,
+        relayName: req.body.relayName
       });
 
       await server.services.auditLog.createAuditLog({
@@ -100,13 +102,20 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Enroll a gateway using a token (unauthenticated)
+  // Enroll a gateway using a token (unauthenticated).
+  //
+  // DEPRECATED: kept for backwards compatibility with deployed gateway CLI binaries that
+  // hardcode this URL. New CLI versions should use POST /v1/resource-token-auth/gateways/login
+  // (same body shape, same response). Delete this route once a CLI release that adopts the
+  // v1 path has rolled out across the deployed fleet.
   server.route({
     method: "POST",
     url: "/token-auth/enroll",
     config: { rateLimit: enrollRateLimit },
     schema: {
       operationId: "enrollGatewayWithToken",
+      deprecated: true,
+      description: "Deprecated. Use POST /v1/resource-token-auth/gateways/login instead.",
       body: z.object({
         token: z.string().min(1)
       }),

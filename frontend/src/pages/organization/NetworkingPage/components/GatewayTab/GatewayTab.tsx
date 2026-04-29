@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  faArrowsRotate,
-  faClock,
   faCopy,
   faDoorClosed,
   faEdit,
@@ -15,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -41,6 +40,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -52,30 +52,15 @@ import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks
 import { GatewayHealthCheckStatus } from "@app/hooks/api/gateways-v2/types";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
-import { GatewayConnectedResourcesDrawer } from "./components/GatewayConnectedResourcesDrawer";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
-import { ReEnrollGatewayModal } from "./components/ReEnrollGatewayModal";
 
 const GatewayHealthStatus = ({
   heartbeat,
-  lastHealthCheckStatus,
-  isPending
+  lastHealthCheckStatus
 }: {
   heartbeat?: string | null;
   lastHealthCheckStatus?: GatewayHealthCheckStatus | null;
-  isPending?: boolean;
 }) => {
-  if (isPending) {
-    return (
-      <Tooltip content="Waiting for gateway to enroll using the CLI command">
-        <span className="inline-flex cursor-default items-center gap-1.5 text-yellow-500">
-          <FontAwesomeIcon icon={faClock} className="size-3" />
-          Pending
-        </span>
-      </Tooltip>
-    );
-  }
-
   if (!heartbeat && !lastHealthCheckStatus) {
     return (
       <Tooltip content="Gateway has not connected yet">
@@ -85,7 +70,6 @@ const GatewayHealthStatus = ({
   }
 
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-
   const isHealthy = lastHealthCheckStatus === GatewayHealthCheckStatus.Healthy;
 
   const tooltipContent = heartbeatDate
@@ -101,41 +85,12 @@ const GatewayHealthStatus = ({
   );
 };
 
-type GatewayConnectedCellProps = {
-  isV1: boolean;
-  connectedResourcesCount: number;
-  onClick: () => void;
-};
-
-const GatewayConnectedCell = ({
-  isV1,
-  connectedResourcesCount,
-  onClick
-}: GatewayConnectedCellProps) => {
-  if (isV1 || connectedResourcesCount === 0) {
-    return <span className="text-mineshaft-400">—</span>;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex cursor-pointer items-center gap-1.5 text-mineshaft-200 underline decoration-mineshaft-400 underline-offset-2 hover:text-mineshaft-100 hover:decoration-mineshaft-300"
-    >
-      <span>
-        {connectedResourcesCount} resource{connectedResourcesCount !== 1 ? "s" : ""}
-      </span>
-    </button>
-  );
-};
-
 export const GatewayTab = withPermission(
   () => {
+    const navigate = useNavigate();
+    const { currentOrg } = useOrganization();
+    const orgId = currentOrg?.id || "";
     const [search, setSearch] = useState("");
-    const [selectedGateway, setSelectedGateway] = useState<{
-      id: string;
-      name: string;
-    } | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
@@ -144,9 +99,7 @@ export const GatewayTab = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails",
-      "connectedResources",
-      "reEnrollGateway"
+      "editDetails"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -161,29 +114,19 @@ export const GatewayTab = withPermission(
           text: "Health check successful - gateway is healthy"
         });
       } catch {
-        createNotification({
-          type: "error",
-          text: "Health check failed - gateway is unreachable"
-        });
+        createNotification({ type: "error", text: "Health check failed - gateway is unreachable" });
       }
     };
 
     const handleDeleteGateway = async () => {
-      const data = popUp.deleteGateway.data as {
-        id: string;
-        isV1: boolean;
-      };
+      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
       if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
       } else {
         await deleteGatewayV2ById.mutateAsync(data.id);
       }
-
       handlePopUpToggle("deleteGateway");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted gateway"
-      });
+      createNotification({ type: "success", text: "Successfully deleted gateway" });
     };
 
     const filteredGateway = gateways?.filter((el) =>
@@ -248,105 +191,82 @@ export const GatewayTab = withPermission(
               </THead>
               <TBody>
                 {isGatewaysLoading && (
-                  <TableSkeleton innerKey="gateway-table" columns={5} key="gateway-table" />
+                  <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
                 )}
-                {filteredGateway?.map((el) => (
-                  <Tr key={el.id}>
-                    <Td>
-                      <div className="flex items-center gap-2">
-                        <span>{el.name}</span>
-                        {(() => {
-                          if (el.isPending) {
-                            return (
-                              <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
-                                Pending
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                              Gateway v{el.isV1 ? "1" : "2"}
-                            </span>
-                          );
-                        })()}
-                        {"hasReEnrollToken" in el && el.hasReEnrollToken && (
-                          <span className="rounded-sm bg-yellow-900/30 px-1.5 py-0.5 text-xs text-yellow-500">
-                            Re-enrolling
+                {filteredGateway?.map((el) => {
+                  const canNavigate = !el.isV1;
+                  return (
+                    <Tr
+                      key={el.id}
+                      className={canNavigate ? "cursor-pointer hover:bg-mineshaft-700" : undefined}
+                      onClick={
+                        canNavigate
+                          ? () =>
+                              navigate({
+                                to: "/organizations/$orgId/networking/gateways/$gatewayId",
+                                params: { orgId, gatewayId: el.id }
+                              })
+                          : undefined
+                      }
+                    >
+                      <Td>
+                        <div className="flex items-center gap-2">
+                          <span>{el.name}</span>
+                          <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                            Gateway v{el.isV1 ? "1" : "2"}
                           </span>
+                        </div>
+                      </Td>
+                      <Td>
+                        {!el.isV1 && el.connectedResourcesCount > 0 ? (
+                          <span className="text-mineshaft-200">
+                            {el.connectedResourcesCount} resource
+                            {el.connectedResourcesCount !== 1 ? "s" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-mineshaft-400">—</span>
                         )}
-                      </div>
-                    </Td>
-                    <Td>
-                      {el.isPending ? (
-                        <span className="text-mineshaft-400">—</span>
-                      ) : (
-                        <GatewayConnectedCell
-                          isV1={el.isV1}
-                          connectedResourcesCount={
-                            "connectedResourcesCount" in el ? el.connectedResourcesCount : 0
+                      </Td>
+                      <Td>
+                        <GatewayHealthStatus
+                          heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                          lastHealthCheckStatus={
+                            "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
                           }
-                          onClick={() => {
-                            setSelectedGateway({ id: el.id, name: el.name });
-                            handlePopUpOpen("connectedResources");
-                          }}
                         />
-                      )}
-                    </Td>
-                    <Td>
-                      <GatewayHealthStatus
-                        heartbeat={"heartbeat" in el ? el.heartbeat : null}
-                        lastHealthCheckStatus={
-                          "lastHealthCheckStatus" in el ? el.lastHealthCheckStatus : null
-                        }
-                        isPending={el.isPending}
-                      />
-                    </Td>
-                    <Td className="w-5">
-                      <Tooltip className="max-w-sm text-center" content="Options">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              colorSchema="secondary"
-                              className="w-6"
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={faCopy} />}
-                              onClick={() => navigator.clipboard.writeText(el.id)}
-                            >
-                              Copy ID
-                            </DropdownMenuItem>
-                            {!el.isV1 && !el.isPending && (
+                      </Td>
+                      <Td className="w-5" onClick={(e) => e.stopPropagation()}>
+                        <Tooltip className="max-w-sm text-center" content="Options">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                ariaLabel="Options"
+                                colorSchema="secondary"
+                                className="w-6"
+                                variant="plain"
+                              >
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                icon={<FontAwesomeIcon icon={faHeartPulse} />}
-                                onClick={() => handleTriggerHealthCheck(el.id)}
+                                icon={<FontAwesomeIcon icon={faCopy} />}
+                                onClick={() => navigator.clipboard.writeText(el.id)}
                               >
-                                Trigger Health Check
+                                Copy ID
                               </DropdownMenuItem>
-                            )}
-                            {el.isV1 && (
-                              <OrgPermissionCan
-                                I={OrgGatewayPermissionActions.EditGateways}
-                                a={OrgPermissionSubjects.Gateway}
-                              >
-                                {(isAllowed: boolean) => (
+                              {!el.isV1 &&
+                                ("heartbeat" in el
+                                  ? !!el.heartbeat || !!el.lastHealthCheckStatus
+                                  : false) && (
                                   <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    icon={<FontAwesomeIcon icon={faEdit} />}
-                                    onClick={() => handlePopUpOpen("editDetails", el)}
+                                    icon={<FontAwesomeIcon icon={faHeartPulse} />}
+                                    onClick={() => handleTriggerHealthCheck(el.id)}
                                   >
-                                    Edit Details
+                                    Trigger Health Check
                                   </DropdownMenuItem>
                                 )}
-                              </OrgPermissionCan>
-                            )}
-                            {!el.isV1 &&
-                              (el.isPending || ("identityId" in el && !el.identityId)) && (
+                              {el.isV1 && (
                                 <OrgPermissionCan
                                   I={OrgGatewayPermissionActions.EditGateways}
                                   a={OrgPermissionSubjects.Gateway}
@@ -354,35 +274,36 @@ export const GatewayTab = withPermission(
                                   {(isAllowed: boolean) => (
                                     <DropdownMenuItem
                                       isDisabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faArrowsRotate} />}
-                                      onClick={() => handlePopUpOpen("reEnrollGateway", el)}
+                                      icon={<FontAwesomeIcon icon={faEdit} />}
+                                      onClick={() => handlePopUpOpen("editDetails", el)}
                                     >
-                                      Re-enroll
+                                      Edit Details
                                     </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>
                               )}
-                            <OrgPermissionCan
-                              I={OrgGatewayPermissionActions.DeleteGateways}
-                              a={OrgPermissionSubjects.Gateway}
-                            >
-                              {(isAllowed: boolean) => (
-                                <DropdownMenuItem
-                                  isDisabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  className="text-red"
-                                  onClick={() => handlePopUpOpen("deleteGateway", el)}
-                                >
-                                  Delete Gateway
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </Tooltip>
-                    </Td>
-                  </Tr>
-                ))}
+                              <OrgPermissionCan
+                                I={OrgGatewayPermissionActions.DeleteGateways}
+                                a={OrgPermissionSubjects.Gateway}
+                              >
+                                {(isAllowed: boolean) => (
+                                  <DropdownMenuItem
+                                    isDisabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    className="text-red"
+                                    onClick={() => handlePopUpOpen("deleteGateway", el)}
+                                  >
+                                    Delete Gateway
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </Tooltip>
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </TBody>
             </Table>
             <Modal
@@ -417,28 +338,6 @@ export const GatewayTab = withPermission(
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
-            <ReEnrollGatewayModal
-              isOpen={popUp.reEnrollGateway.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("reEnrollGateway", isOpen)}
-              gatewayData={
-                popUp.reEnrollGateway.data as {
-                  id: string;
-                  name: string;
-                  isPending: boolean;
-                } | null
-              }
-            />
-            {selectedGateway && (
-              <GatewayConnectedResourcesDrawer
-                isOpen={popUp.connectedResources.isOpen}
-                onOpenChange={(isOpen) => {
-                  handlePopUpToggle("connectedResources", isOpen);
-                  if (!isOpen) setSelectedGateway(null);
-                }}
-                gatewayId={selectedGateway.id}
-                gatewayName={selectedGateway.name}
-              />
-            )}
           </TableContainer>
         </div>
       </div>
