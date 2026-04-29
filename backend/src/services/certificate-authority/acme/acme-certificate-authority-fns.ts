@@ -32,6 +32,7 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -297,7 +298,8 @@ export const orderCertificate = async (
     keyAlgorithm,
     isRenewal,
     originalCertificateId,
-    onProgress
+    onProgress,
+    isCancelled
   }: {
     caId: string;
     profileId?: string;
@@ -314,6 +316,7 @@ export const orderCertificate = async (
     isRenewal?: boolean;
     originalCertificateId?: string;
     onProgress?: (message: string) => Promise<void> | void;
+    isCancelled?: () => Promise<boolean>;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
@@ -539,6 +542,10 @@ export const orderCertificate = async (
       }
     }
   });
+
+  if (isCancelled && (await isCancelled())) {
+    throw new CertificateRequestCancelledError();
+  }
 
   const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
   const certObj = new x509.X509Certificate(leafCert);
@@ -945,7 +952,8 @@ export const AcmeCertificateAuthorityFns = ({
     keyAlgorithm,
     isRenewal,
     originalCertificateId,
-    onProgress
+    onProgress,
+    isCancelled
   }: {
     caId: string;
     profileId?: string;
@@ -961,6 +969,7 @@ export const AcmeCertificateAuthorityFns = ({
     isRenewal?: boolean;
     originalCertificateId?: string;
     onProgress?: (message: string) => Promise<void> | void;
+    isCancelled?: () => Promise<boolean>;
   }) => {
     return orderCertificate(
       {
@@ -978,7 +987,8 @@ export const AcmeCertificateAuthorityFns = ({
         keyAlgorithm,
         isRenewal,
         originalCertificateId,
-        onProgress
+        onProgress,
+        isCancelled
       },
       {
         appConnectionDAL,

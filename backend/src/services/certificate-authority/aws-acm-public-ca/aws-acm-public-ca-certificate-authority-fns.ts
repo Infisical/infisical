@@ -38,6 +38,7 @@ import {
   CertSubjectAlternativeNameType,
   CrlReason
 } from "@app/services/certificate/certificate-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { ExternalMetadataSchema } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -401,7 +402,8 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     state,
     locality,
     keyUsages = [],
-    extendedKeyUsages = []
+    extendedKeyUsages = [],
+    isCancelled
   }: {
     caId: string;
     profileId: string;
@@ -420,6 +422,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     locality?: string;
     keyUsages?: string[];
     extendedKeyUsages?: string[];
+    isCancelled?: () => Promise<boolean>;
   }) => {
     validateAcmIssuanceInputs({
       csr,
@@ -717,6 +720,10 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       region: issuanceRegion,
       validationMethod: AwsAcmValidationMethod.DNS
     });
+
+    if (isCancelled && (await isCancelled())) {
+      throw new CertificateRequestCancelledError();
+    }
 
     let newCertId: string;
     await certificateDAL.transaction(async (tx) => {

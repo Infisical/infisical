@@ -142,7 +142,11 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     try {
       const [updated] = await (tx || db)(TableName.CertificateRequests)
         .where({ id })
-        .whereIn("status", [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION])
+        .whereIn("status", [
+          CertificateRequestStatus.PENDING,
+          CertificateRequestStatus.PENDING_VALIDATION,
+          CertificateRequestStatus.ISSUED
+        ])
         .update({ certificateId, status: CertificateRequestStatus.ISSUED, pendingMessage: null })
         .returning("*");
       return updated ?? null;
