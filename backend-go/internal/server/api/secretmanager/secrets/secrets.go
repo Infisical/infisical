@@ -79,13 +79,20 @@ func NewService(logger *slog.Logger, deps *Deps) gensecrets.Service {
 	}
 }
 
-func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4Payload) (*gensecrets.ListSecretsResult, error) {
-	s.logger.InfoContext(ctx, "listing secrets v4",
-		slog.String("projectId", p.ProjectID),
-		slog.String("environment", p.Environment),
-		slog.String("secretPath", p.SecretPath),
-	)
+// ListSecretsOpts contains the common options for listing secrets.
+type ListSecretsOpts struct {
+	ProjectID                 string
+	Environment               string
+	SecretPath                string
+	ViewSecretValue           bool
+	ExpandSecretReferences    bool
+	Recursive                 bool
+	IncludeImports            bool
+	PersonalOverridesBehavior PersonalOverridesBehavior
+}
 
+// listSecretsCore is the shared implementation for v3 and v4 list secrets endpoints.
+func (s *service) listSecretsCore(ctx context.Context, opts ListSecretsOpts) (*gensecrets.ListSecretsResult, error) {
 	// 1. Get identity from context
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
@@ -101,7 +108,7 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 	permResult, err := s.permissionSvc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
 		Actor:             identity.Actor,
 		ActorID:           actorID,
-		ProjectID:         p.ProjectID,
+		ProjectID:         opts.ProjectID,
 		ActorAuthMethod:   identity.AuthMethod,
 		ActorOrgID:        orgID,
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
@@ -111,7 +118,7 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 	}
 
 	// 3. Load all environments for the project (metadata only, for envID -> slug mapping)
-	allEnvs, err := s.environmentDAL.GetAllByProjectID(ctx, p.ProjectID)
+	allEnvs, err := s.environmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load environments").WithErr(err)
 	}
@@ -126,25 +133,25 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 			Slug: allEnvs[i].Slug,
 		}
 		envBySlug[allEnvs[i].Slug] = allEnvs[i].ID
-		if allEnvs[i].Slug == p.Environment {
+		if allEnvs[i].Slug == opts.Environment {
 			env = &allEnvs[i]
 		}
 	}
 	if env == nil {
 		return nil, errutil.NotFound("Environment not found").WithErr(
-			fmt.Errorf("environment '%s' not found in project", p.Environment),
+			fmt.Errorf("environment '%s' not found in project", opts.Environment),
 		)
 	}
 
 	// 4. Load imports for the project
-	importLookup, err := s.secretImportSvc.LoadProjectImports(ctx, p.ProjectID)
+	importLookup, err := s.secretImportSvc.LoadProjectImports(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to load imports").WithErr(err)
 	}
 
 	// 5. Resolve direct folders + import chain
 	chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderSvc)
-	chainResult, err := chainResolver.Resolve(ctx, p.ProjectID, env.ID, p.SecretPath, p.Recursive, envByID)
+	chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, env.ID, opts.SecretPath, opts.Recursive, envByID)
 	if err != nil {
 		return nil, errutil.NotFound("Folder not found").WithErr(err)
 	}
@@ -165,7 +172,7 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 	// 8. Get KMS cipher pair for decryption
 	cipherPair, err := s.kmsSvc.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
 		Type:      kms.DataKeyProject,
-		ProjectID: p.ProjectID,
+		ProjectID: opts.ProjectID,
 	})
 	if err != nil {
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErr(err)
@@ -177,21 +184,25 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		chainResult.DirectFolderIDs,
 		chainResult.DirectPaths,
 		chainResult.Imports,
-		p.Environment,
+		opts.Environment,
 		secretProcessorOpts{
-			ViewSecretValue: p.ViewSecretValue,
+			ViewSecretValue: opts.ViewSecretValue,
 			Ability:         permResult.Permission.Ability,
 			CipherPair:      cipherPair,
 		},
 	)
 
-	// 10. Expand secret references if requested
-	if p.ExpandSecretReferences {
+	// 10. Apply personal overrides behavior filtering
+	directSecrets = filterByPersonalOverridesBehavior(directSecrets, opts.PersonalOverridesBehavior)
+	importedSecrets = filterByPersonalOverridesBehavior(importedSecrets, opts.PersonalOverridesBehavior)
+
+	// 11. Expand secret references if requested
+	if opts.ExpandSecretReferences {
 		inputs := buildSecretInputsForExpansion(directSecrets, importedSecrets, chainResult.Imports)
 
 		absoluteFetcher := newAbsoluteSecretFetcher(
 			ctx,
-			p.ProjectID,
+			opts.ProjectID,
 			envBySlug,
 			chainResult.FolderLookup,
 			s.secretFolderSvc,
@@ -210,15 +221,15 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		applyExpandedValues(directSecrets, importedSecrets, expander)
 	}
 
-	// 11. Build response
+	// 12. Build response
 	result := make([]*gensecrets.SecretRaw, 0, len(directSecrets))
 	for i := range directSecrets {
-		result = append(result, s.buildSecretRaw(&directSecrets[i], p.ProjectID, cipherPair))
+		result = append(result, s.buildSecretRaw(&directSecrets[i], opts.ProjectID, cipherPair))
 	}
 
 	var importsResult []*gensecrets.SecretImport
-	if p.IncludeImports {
-		importsResult = s.buildImportsResponse(importedSecrets, chainResult.Imports, p.ProjectID, cipherPair)
+	if opts.IncludeImports {
+		importsResult = s.buildImportsResponse(importedSecrets, chainResult.Imports, opts.ProjectID, cipherPair)
 	}
 
 	// TODO(go): ETag caching
@@ -227,6 +238,51 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		Secrets: result,
 		Imports: importsResult,
 	}, nil
+}
+
+func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4Payload) (*gensecrets.ListSecretsResult, error) {
+	s.logger.InfoContext(ctx, "listing secrets v4",
+		slog.String("projectId", p.ProjectID),
+		slog.String("environment", p.Environment),
+		slog.String("secretPath", p.SecretPath),
+	)
+
+	// v4: NeverInclude by default, Priority when includePersonalOverrides=true
+	behavior := PersonalOverridesNeverInclude
+	if p.IncludePersonalOverrides {
+		behavior = PersonalOverridesPriority
+	}
+
+	return s.listSecretsCore(ctx, ListSecretsOpts{
+		ProjectID:                 p.ProjectID,
+		Environment:               p.Environment,
+		SecretPath:                p.SecretPath,
+		ViewSecretValue:           p.ViewSecretValue,
+		ExpandSecretReferences:    p.ExpandSecretReferences,
+		Recursive:                 p.Recursive,
+		IncludeImports:            p.IncludeImports,
+		PersonalOverridesBehavior: behavior,
+	})
+}
+
+func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3Payload) (*gensecrets.ListSecretsResult, error) {
+	s.logger.InfoContext(ctx, "listing secrets v3",
+		slog.String("projectId", p.ProjectID),
+		slog.String("environment", p.Environment),
+		slog.String("secretPath", p.SecretPath),
+	)
+
+	// v3: Always include all (both shared and personal)
+	return s.listSecretsCore(ctx, ListSecretsOpts{
+		ProjectID:                 p.ProjectID,
+		Environment:               p.Environment,
+		SecretPath:                p.SecretPath,
+		ViewSecretValue:           p.ViewSecretValue,
+		ExpandSecretReferences:    p.ExpandSecretReferences,
+		Recursive:                 p.Recursive,
+		IncludeImports:            p.IncludeImports,
+		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
+	})
 }
 
 // buildSecretRaw converts a processedSecret to the API response type.

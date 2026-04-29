@@ -96,6 +96,7 @@ func startNodeJS(ctx context.Context, networkName string, files []testcontainers
 			"AUTH_SECRET":       AuthSecret,
 			"SITE_URL":          "http://localhost:8080",
 			"TELEMETRY_ENABLED": "false",
+			"SMTP_HOST":         "",
 		},
 		Files:      files,
 		Cmd:        cmd,
@@ -214,6 +215,8 @@ func (n *NodeJSService) MustCreateProject(name string) *ProjectSeed {
 }
 
 // CreateProject creates a new project via the Node.js API and returns its metadata.
+// The bootstrap identity creates the project (automatically becoming admin), then the
+// bootstrap user is also added as admin so both can be used for API calls.
 func (n *NodeJSService) CreateProject(t *testing.T, name string) *ProjectSeed {
 	t.Helper()
 
@@ -241,8 +244,25 @@ func (n *NodeJSService) CreateProject(t *testing.T, name string) *ProjectSeed {
 		t.Fatalf("infra.CreateProject: returned %d: %s", resp.StatusCode(), resp.String())
 	}
 
+	projectID := projectResp.Project.ID
+
+	// Add bootstrap user to project as admin (identity is already admin as creator)
+	r, err := n.client.R().
+		SetAuthToken(n.identityToken).
+		SetBody(AddUserToProjectRequest{
+			Usernames: []string{n.userEmail},
+			RoleSlugs: []string{"admin"},
+		}).
+		Post(fmt.Sprintf("/api/v1/projects/%s/memberships", projectID))
+	if err != nil {
+		t.Fatalf("infra.CreateProject: add user failed: %v", err)
+	}
+	if r.IsError() {
+		t.Fatalf("infra.CreateProject: add user returned %d: %s", r.StatusCode(), r.String())
+	}
+
 	return &ProjectSeed{
-		ID:      projectResp.Project.ID,
+		ID:      projectID,
 		Slug:    projectResp.Project.Slug,
 		EnvSlug: "dev",
 	}
@@ -290,14 +310,16 @@ func (n *NodeJSService) CreateIdentity(t *testing.T, name string) *IdentitySeed 
 	}
 }
 
-// AddIdentityToProject adds a machine identity to a project with the given role.
-func (n *NodeJSService) AddIdentityToProject(t *testing.T, projectID, identityID, role string) {
+// AddIdentityToProject adds a machine identity to a project with the given roles.
+// Each role entry can include temporary access fields (isTemporary, temporaryMode, temporaryRange,
+// temporaryAccessStartTime). For simple cases, use infra.Role("admin") helper.
+func (n *NodeJSService) AddIdentityToProject(t *testing.T, projectID, identityID string, roles []RoleAssignment) {
 	t.Helper()
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
-		SetBody(AddIdentityToProjectRequest{
-			Role: role,
+		SetBody(AddIdentityToProjectWithRolesRequest{
+			Roles: roles,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships/identities/%s", projectID, identityID))
 	if err != nil {
@@ -308,24 +330,9 @@ func (n *NodeJSService) AddIdentityToProject(t *testing.T, projectID, identityID
 	}
 }
 
-// AddIdentityToProjectWithRoles adds a machine identity to a project with a roles array.
-// Each role entry can include temporary access fields (isTemporary, temporaryMode, temporaryRange,
-// temporaryAccessStartTime).
-func (n *NodeJSService) AddIdentityToProjectWithRoles(t *testing.T, projectID, identityID string, roles []RoleAssignment) {
-	t.Helper()
-
-	r, err := n.client.R().
-		SetAuthToken(n.identityToken).
-		SetBody(AddIdentityToProjectWithRolesRequest{
-			Roles: roles,
-		}).
-		Post(fmt.Sprintf("/api/v1/projects/%s/memberships/identities/%s", projectID, identityID))
-	if err != nil {
-		t.Fatalf("infra.AddIdentityToProjectWithRoles: request failed: %v", err)
-	}
-	if r.IsError() {
-		t.Fatalf("infra.AddIdentityToProjectWithRoles: returned %d: %s", r.StatusCode(), r.String())
-	}
+// Role is a helper to create a simple RoleAssignment for AddIdentityToProject.
+func Role(slug string) []RoleAssignment {
+	return []RoleAssignment{{Role: slug}}
 }
 
 // InviteAndCreateUser invites a user to the org and returns their seed.
@@ -367,26 +374,13 @@ func (n *NodeJSService) InviteAndCreateUser(t *testing.T, email string) *UserSee
 }
 
 // AddUserToProject adds a user (by email) to a project with the given role slugs.
-// Uses identity token for authentication.
 func (n *NodeJSService) AddUserToProject(t *testing.T, projectID, email string, roleSlugs []string) {
-	t.Helper()
-	n.addUserToProjectWithToken(t, projectID, email, roleSlugs, n.identityToken)
-}
-
-// AddUserToProjectAsUser adds a user (by email) to a project using the bootstrap user's JWT.
-// Use this when the identity isn't a member of the project.
-func (n *NodeJSService) AddUserToProjectAsUser(t *testing.T, projectID, email string, roleSlugs []string) {
-	t.Helper()
-	n.addUserToProjectWithToken(t, projectID, email, roleSlugs, n.userToken)
-}
-
-func (n *NodeJSService) addUserToProjectWithToken(t *testing.T, projectID, email string, roleSlugs []string, token string) {
 	t.Helper()
 
 	r, err := n.client.R().
-		SetAuthToken(token).
+		SetAuthToken(n.identityToken).
 		SetBody(AddUserToProjectRequest{
-			Emails:    []string{email},
+			Usernames: []string{email},
 			RoleSlugs: roleSlugs,
 		}).
 		Post(fmt.Sprintf("/api/v1/projects/%s/memberships", projectID))
@@ -395,43 +389,6 @@ func (n *NodeJSService) addUserToProjectWithToken(t *testing.T, projectID, email
 	}
 	if r.IsError() {
 		t.Fatalf("infra.AddUserToProject: returned %d: %s", r.StatusCode(), r.String())
-	}
-}
-
-// CreateProjectAsUser creates a project using the bootstrap user's JWT.
-// This makes the bootstrap user automatically a member of the project,
-// which is needed for user-only APIs like user additional privileges.
-func (n *NodeJSService) CreateProjectAsUser(t *testing.T, name string) *ProjectSeed {
-	t.Helper()
-
-	b := make([]byte, 4)
-	rand.Read(b)
-	slug := fmt.Sprintf("t-%s-%x", name, b)
-	if len(slug) > 36 {
-		slug = slug[:36]
-	}
-
-	var projectResp CreateProjectResponse
-	resp, err := n.client.R().
-		SetAuthToken(n.userToken).
-		SetBody(CreateProjectRequest{
-			ProjectName: name,
-			Slug:        slug,
-			Type:        "secret-manager",
-		}).
-		SetResult(&projectResp).
-		Post("/api/v1/projects")
-	if err != nil {
-		t.Fatalf("infra.CreateProjectAsUser: request failed: %v", err)
-	}
-	if resp.IsError() {
-		t.Fatalf("infra.CreateProjectAsUser: returned %d: %s", resp.StatusCode(), resp.String())
-	}
-
-	return &ProjectSeed{
-		ID:      projectResp.Project.ID,
-		Slug:    projectResp.Project.Slug,
-		EnvSlug: "dev",
 	}
 }
 
@@ -529,10 +486,26 @@ func (n *NodeJSService) AddGroupToProject(t *testing.T, projectID, groupID, role
 	}
 }
 
-// CreateIdentityAdditionalPrivilege creates a permanent additional privilege
-// for an identity in a project via the V2 Node.js API.
-func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []Permission) {
+// IdentityPrivilegeOpts holds optional temporal parameters for CreateIdentityAdditionalPrivilege.
+type IdentityPrivilegeOpts struct {
+	TemporaryRange           string // Duration string (e.g. "1h", "30s")
+	TemporaryAccessStartTime string // ISO-8601 datetime string
+}
+
+// CreateIdentityAdditionalPrivilege creates an additional privilege for an identity in a project.
+// Pass nil opts for permanent privilege, or provide temporal fields for temporary privilege.
+func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []Permission, opts *IdentityPrivilegeOpts) {
 	t.Helper()
+
+	privType := PrivilegeType{IsTemporary: false}
+	if opts != nil && opts.TemporaryRange != "" {
+		privType = PrivilegeType{
+			IsTemporary:              true,
+			TemporaryMode:            "relative",
+			TemporaryRange:           opts.TemporaryRange,
+			TemporaryAccessStartTime: opts.TemporaryAccessStartTime,
+		}
+	}
 
 	r, err := n.client.R().
 		SetAuthToken(n.identityToken).
@@ -540,7 +513,7 @@ func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identity
 			IdentityID:  identityID,
 			ProjectID:   projectID,
 			Permissions: permissions,
-			Type:        PrivilegeType{IsTemporary: false},
+			Type:        privType,
 		}).
 		Post("/api/v2/identity-project-additional-privilege/")
 	if err != nil {
@@ -548,34 +521,6 @@ func (n *NodeJSService) CreateIdentityAdditionalPrivilege(t *testing.T, identity
 	}
 	if r.IsError() {
 		t.Fatalf("infra.CreateIdentityAdditionalPrivilege: returned %d: %s", r.StatusCode(), r.String())
-	}
-}
-
-// CreateIdentityTemporaryAdditionalPrivilege creates a temporary additional privilege
-// for an identity in a project. temporaryRange is a duration string (e.g. "1h", "30s").
-// temporaryAccessStartTime is an ISO-8601 datetime string.
-func (n *NodeJSService) CreateIdentityTemporaryAdditionalPrivilege(t *testing.T, identityID, projectID string, permissions []Permission, temporaryRange, temporaryAccessStartTime string) {
-	t.Helper()
-
-	r, err := n.client.R().
-		SetAuthToken(n.identityToken).
-		SetBody(CreateIdentityPrivilegeRequest{
-			IdentityID:  identityID,
-			ProjectID:   projectID,
-			Permissions: permissions,
-			Type: PrivilegeType{
-				IsTemporary:              true,
-				TemporaryMode:            "relative",
-				TemporaryRange:           temporaryRange,
-				TemporaryAccessStartTime: temporaryAccessStartTime,
-			},
-		}).
-		Post("/api/v2/identity-project-additional-privilege/")
-	if err != nil {
-		t.Fatalf("infra.CreateIdentityTemporaryAdditionalPrivilege: request failed: %v", err)
-	}
-	if r.IsError() {
-		t.Fatalf("infra.CreateIdentityTemporaryAdditionalPrivilege: returned %d: %s", r.StatusCode(), r.String())
 	}
 }
 
@@ -622,19 +567,50 @@ type SecretSeed struct {
 	Version int
 }
 
+// CreateSecretOpts holds optional parameters for CreateSecret.
+type CreateSecretOpts struct {
+	Comment  string
+	Metadata []SecretMetadataEntry
+	TagIDs   []string
+	Type     string // "shared" or "personal", defaults to "shared"
+}
+
 // CreateSecret creates a secret via the Node.js API.
-func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secretPath, key, value string) *SecretSeed {
+// Pass nil opts for a basic shared secret, or provide opts for tags, comment, metadata, or personal type.
+func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secretPath, key, value string, opts *CreateSecretOpts) *SecretSeed {
 	t.Helper()
+
+	var comment string
+	var metadata []SecretMetadataEntry
+	var tagIDs []string
+	secretType := "shared"
+
+	if opts != nil {
+		comment = opts.Comment
+		metadata = opts.Metadata
+		tagIDs = opts.TagIDs
+		if opts.Type != "" {
+			secretType = opts.Type
+		}
+	}
+
+	token := n.identityToken
+	if secretType == "personal" {
+		token = n.userToken
+	}
 
 	var resp CreateSecretResponse
 	r, err := n.client.R().
-		SetAuthToken(n.identityToken).
+		SetAuthToken(token).
 		SetBody(CreateSecretRequest{
-			ProjectID:   projectID,
-			Environment: environment,
-			SecretPath:  secretPath,
-			SecretValue: value,
-			Type:        "shared",
+			ProjectID:      projectID,
+			Environment:    environment,
+			SecretPath:     secretPath,
+			SecretValue:    value,
+			SecretComment:  comment,
+			SecretMetadata: metadata,
+			Type:           secretType,
+			TagIDs:         tagIDs,
 		}).
 		SetResult(&resp).
 		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
@@ -643,38 +619,6 @@ func (n *NodeJSService) CreateSecret(t *testing.T, projectID, environment, secre
 	}
 	if r.IsError() {
 		t.Fatalf("infra.CreateSecret: returned %d: %s", r.StatusCode(), r.String())
-	}
-
-	return &SecretSeed{
-		ID:      resp.Secret.ID,
-		Key:     key,
-		Value:   value,
-		Version: 1,
-	}
-}
-
-// CreateSecretWithTags creates a secret with tags via the Node.js API.
-func (n *NodeJSService) CreateSecretWithTags(t *testing.T, projectID, environment, secretPath, key, value string, tagIDs []string) *SecretSeed {
-	t.Helper()
-
-	var resp CreateSecretResponse
-	r, err := n.client.R().
-		SetAuthToken(n.identityToken).
-		SetBody(CreateSecretRequest{
-			ProjectID:   projectID,
-			Environment: environment,
-			SecretPath:  secretPath,
-			SecretValue: value,
-			Type:        "shared",
-			TagIDs:      tagIDs,
-		}).
-		SetResult(&resp).
-		Post(fmt.Sprintf("/api/v4/secrets/%s", key))
-	if err != nil {
-		t.Fatalf("infra.CreateSecretWithTags: request failed: %v", err)
-	}
-	if r.IsError() {
-		t.Fatalf("infra.CreateSecretWithTags: returned %d: %s", r.StatusCode(), r.String())
 	}
 
 	return &SecretSeed{

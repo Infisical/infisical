@@ -41,11 +41,11 @@ func TestIdentityAdmin_CanReadAllSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "admin-read-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ADMIN_SECRET_1", "value1")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ADMIN_SECRET_2", "value2")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ADMIN_SECRET_1", "value1", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ADMIN_SECRET_2", "value2", nil)
 
 	identity := nodejs.CreateIdentity(t, "admin-secrets-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -67,10 +67,10 @@ func TestIdentityMember_CanReadAllSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "member-read-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MEMBER_SECRET", "member-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MEMBER_SECRET", "member-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "member-secrets-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "member")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("member"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -90,10 +90,10 @@ func TestIdentityViewer_CanReadSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "viewer-read-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VIEWER_SECRET", "viewer-visible-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VIEWER_SECRET", "viewer-visible-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "viewer-secrets-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "viewer")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -114,10 +114,10 @@ func TestIdentityNoAccess_EmptyResult(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "noaccess-read-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "NOACCESS_SECRET", "secret-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "NOACCESS_SECRET", "secret-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "noaccess-secrets-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -134,7 +134,7 @@ func TestIdentityNotMember_Forbidden(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "notmember-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FORBIDDEN_SECRET", "secret-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FORBIDDEN_SECRET", "secret-value", nil)
 
 	// Create identity but do NOT add to project
 	identity := nodejs.CreateIdentity(t, "outsider-secrets-identity")
@@ -158,7 +158,7 @@ func TestUserAdmin_CanReadSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "user-admin-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_ADMIN_SECRET", "admin-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_ADMIN_SECRET", "admin-value", nil)
 
 	user := nodejs.InviteAndCreateUser(t, "user-admin-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"admin"})
@@ -179,7 +179,7 @@ func TestUserViewer_CanReadSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "user-viewer-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_VIEWER_SECRET", "user-viewer-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "USER_VIEWER_SECRET", "user-viewer-value", nil)
 
 	user := nodejs.InviteAndCreateUser(t, "user-viewer-secrets@test.local")
 	nodejs.AddUserToProject(t, proj.ID, user.Email, []string{"viewer"})
@@ -208,8 +208,8 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	proj := nodejs.CreateProject(t, "env-scoped-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
 
 	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "dev-only-reader", "Dev Only Reader", []infra.Permission{
 		{
@@ -222,7 +222,7 @@ func TestIdentityCustomRole_EnvironmentScoped(t *testing.T) {
 	})
 
 	identity := nodejs.CreateIdentity(t, "env-scoped-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, customRole.Slug)
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
 	// Should see dev secrets
 	devResult, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
@@ -255,9 +255,9 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/app", "config")
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "other")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app", "APP_SECRET", "app-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app/config", "CONFIG_SECRET", "config-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/other", "OTHER_SECRET", "other-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app", "APP_SECRET", "app-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/app/config", "CONFIG_SECRET", "config-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/other", "OTHER_SECRET", "other-value", nil)
 
 	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "app-reader", "App Path Reader", []infra.Permission{
 		{
@@ -272,7 +272,7 @@ func TestIdentityCustomRole_PathScoped(t *testing.T) {
 	})
 
 	identity := nodejs.CreateIdentity(t, "path-scoped-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, customRole.Slug)
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role(customRole.Slug))
 
 	// Should see secrets under /app
 	appResult, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
@@ -315,7 +315,7 @@ func TestGroupAdmin_UserInheritsAccess(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "group-admin-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_ADMIN_SECRET", "group-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_ADMIN_SECRET", "group-value", nil)
 
 	group := nodejs.CreateGroup(t, "secrets-admin-group")
 	user := nodejs.InviteAndCreateUser(t, "group-admin@test.local")
@@ -339,7 +339,7 @@ func TestGroupViewer_UserInheritsReadAccess(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "group-viewer-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_VIEWER_SECRET", "group-viewer-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "GROUP_VIEWER_SECRET", "group-viewer-value", nil)
 
 	group := nodejs.CreateGroup(t, "secrets-viewer-group")
 	user := nodejs.InviteAndCreateUser(t, "group-viewer@test.local")
@@ -366,8 +366,8 @@ func TestGroupCustomRole_UserInheritsCustomPermissions(t *testing.T) {
 	proj := nodejs.CreateProject(t, "group-custom-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
 
 	customRole := nodejs.CreateCustomProjectRole(t, proj.ID, "group-dev-reader", "Group Dev Reader", []infra.Permission{
 		{
@@ -416,11 +416,11 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	proj := nodejs.CreateProject(t, "addl-priv-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "addl-priv-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
 			Subject: "secrets",
@@ -429,7 +429,7 @@ func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 				"environment": "dev",
 			},
 		},
-	})
+	}, nil)
 
 	// Should see dev secrets via additional privilege
 	devResult, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
@@ -459,11 +459,11 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 	proj := nodejs.CreateProject(t, "multi-addl-priv-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_SECRET", "staging-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "multi-addl-priv-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
 
 	// Add two separate additional privileges
 	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
@@ -474,7 +474,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 				"environment": "dev",
 			},
 		},
-	})
+	}, nil)
 	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
 			Subject: "secrets",
@@ -483,7 +483,7 @@ func TestIdentityMultipleAdditionalPrivileges_Merge(t *testing.T) {
 				"environment": "staging",
 			},
 		},
-	})
+	}, nil)
 
 	// Should see dev secrets
 	devResult, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
@@ -514,10 +514,10 @@ func TestIdentityTemporaryRole_ActiveGrantsAccess(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-active-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_SECRET", "temp-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_SECRET", "temp-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-active-identity")
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
 			Role:        "no-access",
 			IsTemporary: false,
@@ -547,10 +547,10 @@ func TestIdentityTemporaryRole_ExpiredDeniesAccess(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-expired-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_SECRET", "expired-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_SECRET", "expired-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-expired-identity")
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
 			Role:        "no-access",
 			IsTemporary: false,
@@ -579,11 +579,11 @@ func TestIdentityTemporaryRole_MixedWithPermanent(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-mixed-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MIXED_SECRET", "mixed-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MIXED_SECRET", "mixed-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-mixed-identity")
 	// Permanent viewer + expired temporary admin
-	nodejs.AddIdentityToProjectWithRoles(t, proj.ID, identity.ID, []infra.RoleAssignment{
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, []infra.RoleAssignment{
 		{
 			Role:        "viewer",
 			IsTemporary: false,
@@ -615,16 +615,16 @@ func TestIdentityTemporaryAdditionalPrivilege_Active(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-addl-active-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_ADDL_SECRET", "temp-addl-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TEMP_ADDL_SECRET", "temp-addl-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-active-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
 			Subject: "secrets",
 			Action:  "read",
 		},
-	}, "1h", time.Now().UTC().Format(time.RFC3339))
+	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().UTC().Format(time.RFC3339)})
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -642,16 +642,16 @@ func TestIdentityTemporaryAdditionalPrivilege_Expired(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "temp-addl-expired-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_ADDL_SECRET", "expired-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "EXPIRED_ADDL_SECRET", "expired-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "temp-addl-expired-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "no-access")
-	nodejs.CreateIdentityTemporaryAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("no-access"))
+	nodejs.CreateIdentityAdditionalPrivilege(t, identity.ID, proj.ID, []infra.Permission{
 		{
 			Subject: "secrets",
 			Action:  "read",
 		},
-	}, "1h", time.Now().Add(-2*time.Hour).UTC().Format(time.RFC3339))
+	}, &infra.IdentityPrivilegeOpts{TemporaryRange: "1h", TemporaryAccessStartTime: time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)})
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -672,10 +672,10 @@ func TestViewSecretValue_False_HidesValues(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "view-value-false-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HIDDEN_VALUE_SECRET", "should-be-hidden")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HIDDEN_VALUE_SECRET", "should-be-hidden", nil)
 
 	identity := nodejs.CreateIdentity(t, "view-value-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -694,10 +694,10 @@ func TestViewSecretValue_True_ShowsValues(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "view-value-true-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VISIBLE_VALUE_SECRET", "should-be-visible")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "VISIBLE_VALUE_SECRET", "should-be-visible", nil)
 
 	identity := nodejs.CreateIdentity(t, "view-value-true-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecrets(t, permission.ActorTypeIdentity, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,

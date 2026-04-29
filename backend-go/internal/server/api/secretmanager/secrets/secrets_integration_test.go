@@ -103,10 +103,10 @@ func TestListSecrets_ReturnsCorrectStructure(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "structure-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "STRUCTURE_SECRET", "structure-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "STRUCTURE_SECRET", "structure-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "structure-test-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -134,10 +134,10 @@ func TestListSecrets_DecryptsValues(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "decrypt-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENCRYPTED_SECRET", "decrypted-correctly")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENCRYPTED_SECRET", "decrypted-correctly", nil)
 
 	identity := nodejs.CreateIdentity(t, "decrypt-test-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -159,10 +159,10 @@ func TestListSecrets_IncludesTags(t *testing.T) {
 	tag1 := nodejs.CreateTag(t, proj.ID, "env-prod", "Production", "#FF0000")
 	tag2 := nodejs.CreateTag(t, proj.ID, "sensitive", "Sensitive", "#0000FF")
 
-	nodejs.CreateSecretWithTags(t, proj.ID, proj.EnvSlug, "/", "TAGGED_SECRET", "tagged-value", []string{tag1.ID, tag2.ID})
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "TAGGED_SECRET", "tagged-value", &infra.CreateSecretOpts{TagIDs: []string{tag1.ID, tag2.ID}})
 
 	identity := nodejs.CreateIdentity(t, "tags-test-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -187,12 +187,12 @@ func TestListSecrets_MultipleSecrets(t *testing.T) {
 	nodejs := stack.NodeJS()
 
 	proj := nodejs.CreateProject(t, "multi-secrets-test")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "A_SECRET", "value-a")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "B_SECRET", "value-b")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "C_SECRET", "value-c")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "A_SECRET", "value-a", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "B_SECRET", "value-b", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "C_SECRET", "value-c", nil)
 
 	identity := nodejs.CreateIdentity(t, "multi-secrets-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -223,14 +223,14 @@ func TestListSecrets_IncludeImports_ReturnsImportedSecrets(t *testing.T) {
 	proj := nodejs.CreateProject(t, "imports-include-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_DB_URL", "staging-db-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_KEY", "staging-api-value")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_DB_URL", "staging-db-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_KEY", "staging-api-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DEV_SECRET", "dev-value", nil)
 
 	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
 
 	identity := nodejs.CreateIdentity(t, "imports-include-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -266,12 +266,12 @@ func TestListSecrets_ExcludeImports_OmitsImportedSecrets(t *testing.T) {
 	proj := nodejs.CreateProject(t, "imports-exclude-test")
 	// Note: "staging" environment is pre-created with the project
 
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORTED_SECRET", "imported-value")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DIRECT_SECRET", "direct-value")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORTED_SECRET", "imported-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "DIRECT_SECRET", "direct-value", nil)
 	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
 
 	identity := nodejs.CreateIdentity(t, "imports-exclude-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -331,32 +331,32 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	nodejs.CreateFolder(t, proj.ID, "dev", "/", "app")
 
 	// Prod secrets
-	nodejs.CreateSecret(t, proj.ID, "prod", "/", "PROD_ROOT", "prod-root")
-	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "PROD_DB_HOST", "prod-db.example.com")
-	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "SHARED_KEY", "prod-shared-value")
+	nodejs.CreateSecret(t, proj.ID, "prod", "/", "PROD_ROOT", "prod-root", nil)
+	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "PROD_DB_HOST", "prod-db.example.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "prod", "/config", "SHARED_KEY", "prod-shared-value", nil)
 
 	// Staging secrets + import from prod/config
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_URL", "https://staging-api.example.com")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "SHARED_KEY", "staging-shared-value")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORT_PRIORITY_KEY", "from-first-import")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "SERVICE_URL", "https://staging-service.example.com")
-	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "IMPORT_PRIORITY_KEY", "from-second-import")
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "STAGING_API_URL", "https://staging-api.example.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "SHARED_KEY", "staging-shared-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/", "IMPORT_PRIORITY_KEY", "from-first-import", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "SERVICE_URL", "https://staging-service.example.com", nil)
+	nodejs.CreateSecret(t, proj.ID, "staging", "/services", "IMPORT_PRIORITY_KEY", "from-second-import", nil)
 	nodejs.CreateSecretImport(t, proj.ID, "staging", "/", "prod", "/config")
 
 	// Dev secrets
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "LOCAL_SECRET", "local-only")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "SHARED_KEY", "dev-shared-value")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_CONFIG", "app-config")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "LOCAL_SECRET", "local-only", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "SHARED_KEY", "dev-shared-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_CONFIG", "app-config", nil)
 
 	// Dev reference secrets
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_LOCAL", "${LOCAL_SECRET}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_STAGING", "${STAGING_API_URL}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SHARED", "${SHARED_KEY}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SERVICE", "${SERVICE_URL}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_PROD_VIA_STAGING", "${PROD_DB_HOST}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_CHAIN", "host=${PROD_DB_HOST}&api=${STAGING_API_URL}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_MISSING", "${NOT_EXISTS}")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_LOCAL", "${LOCAL_SECRET}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_STAGING", "${STAGING_API_URL}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SHARED", "${SHARED_KEY}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_SERVICE", "${SERVICE_URL}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_PROD_VIA_STAGING", "${PROD_DB_HOST}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_CHAIN", "host=${PROD_DB_HOST}&api=${STAGING_API_URL}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_MISSING", "${NOT_EXISTS}", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "REF_IMPORT_PRIORITY", "${IMPORT_PRIORITY_KEY}", nil)
 
 	// Dev imports (order matters for priority)
 	nodejs.CreateSecretImport(t, proj.ID, "dev", "/", "staging", "/")
@@ -364,10 +364,10 @@ func TestListSecrets_ExpansionWithImports(t *testing.T) {
 	nodejs.CreateSecretImport(t, proj.ID, "dev", "/app", "prod", "/config")
 
 	// Dev/app reference secret that uses folder-level import
-	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app")
+	nodejs.CreateSecret(t, proj.ID, "dev", "/app", "APP_DB_URL", "postgres://${PROD_DB_HOST}:5432/app", nil)
 
 	identity := nodejs.CreateIdentity(t, "expansion-imports-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	// Test root level expansion with imports
 	t.Run("root level expansion", func(t *testing.T) {
@@ -456,13 +456,13 @@ func TestListSecrets_NestedExpansion(t *testing.T) {
 
 	proj := nodejs.CreateProject(t, "expansion-nested-test")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HOST", "myhost.com")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PORT", "5432")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENDPOINT", "${HOST}:${PORT}")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FULL_URL", "https://${ENDPOINT}/api")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "HOST", "myhost.com", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "PORT", "5432", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ENDPOINT", "${HOST}:${PORT}", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FULL_URL", "https://${ENDPOINT}/api", nil)
 
 	identity := nodejs.CreateIdentity(t, "expansion-nested-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:              proj.ID,
@@ -494,11 +494,11 @@ func TestListSecrets_CrossEnvironmentExpansion(t *testing.T) {
 	proj := nodejs.CreateProject(t, "expansion-cross-env-test")
 	nodejs.CreateEnvironment(t, proj.ID, "shared", "Shared")
 
-	nodejs.CreateSecret(t, proj.ID, "shared", "/", "SHARED_API_KEY", "shared-api-key-value")
-	nodejs.CreateSecret(t, proj.ID, "dev", "/", "MY_API_KEY", "${shared.SHARED_API_KEY}")
+	nodejs.CreateSecret(t, proj.ID, "shared", "/", "SHARED_API_KEY", "shared-api-key-value", nil)
+	nodejs.CreateSecret(t, proj.ID, "dev", "/", "MY_API_KEY", "${shared.SHARED_API_KEY}", nil)
 
 	identity := nodejs.CreateIdentity(t, "expansion-cross-env-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:              proj.ID,
@@ -519,12 +519,12 @@ func TestListSecrets_CrossPathExpansion(t *testing.T) {
 	proj := nodejs.CreateProject(t, "expansion-cross-path-test")
 
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "common")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/common", "COMMON_SECRET", "common-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/common", "COMMON_SECRET", "common-value", nil)
 	// Reference format is ${env.path.path.KEY} where path segments use . not /
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "${dev.common.COMMON_SECRET}")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "${dev.common.COMMON_SECRET}", nil)
 
 	identity := nodejs.CreateIdentity(t, "expansion-cross-path-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:              proj.ID,
@@ -544,11 +544,11 @@ func TestListSecrets_NoExpansion_PreservesReferences(t *testing.T) {
 
 	proj := nodejs.CreateProject(t, "no-expansion-test")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "BASE_VALUE", "base")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "REF_VALUE", "${BASE_VALUE}")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "BASE_VALUE", "base", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "REF_VALUE", "${BASE_VALUE}", nil)
 
 	identity := nodejs.CreateIdentity(t, "no-expansion-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:              proj.ID,
@@ -584,12 +584,12 @@ func TestListSecrets_Recursive_IncludesSubfolders(t *testing.T) {
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "level1")
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/level1", "level2")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_SECRET", "root-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1", "LEVEL1_SECRET", "level1-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1/level2", "LEVEL2_SECRET", "level2-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_SECRET", "root-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1", "LEVEL1_SECRET", "level1-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/level1/level2", "LEVEL2_SECRET", "level2-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "recursive-test-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -617,11 +617,11 @@ func TestListSecrets_NonRecursive_OnlyCurrentFolder(t *testing.T) {
 	proj := nodejs.CreateProject(t, "non-recursive-test")
 
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "subfolder")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_ONLY", "root-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/subfolder", "SUB_SECRET", "sub-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "ROOT_ONLY", "root-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/subfolder", "SUB_SECRET", "sub-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "non-recursive-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -648,11 +648,11 @@ func TestListSecrets_SpecificPath(t *testing.T) {
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "api")
 	nodejs.CreateFolder(t, proj.ID, proj.EnvSlug, "/", "web")
 
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/api", "API_SECRET", "api-value")
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/web", "WEB_SECRET", "web-value")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/api", "API_SECRET", "api-value", nil)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/web", "WEB_SECRET", "web-value", nil)
 
 	identity := nodejs.CreateIdentity(t, "specific-path-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -676,7 +676,7 @@ func TestListSecrets_EnvironmentNotFound(t *testing.T) {
 	proj := nodejs.CreateProject(t, "env-not-found-test")
 
 	identity := nodejs.CreateIdentity(t, "env-not-found-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	_, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -695,7 +695,7 @@ func TestListSecrets_FolderNotFound(t *testing.T) {
 	proj := nodejs.CreateProject(t, "folder-not-found-test")
 
 	identity := nodejs.CreateIdentity(t, "folder-not-found-identity")
-	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, "admin")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
 
 	_, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
 		ProjectID:       proj.ID,
@@ -706,4 +706,251 @@ func TestListSecrets_FolderNotFound(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+// =============================================================================
+// Comment, Metadata, and Personal Override Tests
+// =============================================================================
+
+func TestListSecrets_ReturnsComment(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "comment-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_COMMENT", "secret-value", &infra.CreateSecretOpts{
+		Comment: "This is a test comment for the secret",
+	})
+
+	identity := nodejs.CreateIdentity(t, "comment-test-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+	assert.Equal(t, "SECRET_WITH_COMMENT", result.Secrets[0].SecretKey)
+	assert.Equal(t, "secret-value", result.Secrets[0].SecretValue)
+	assert.Equal(t, "This is a test comment for the secret", result.Secrets[0].SecretComment)
+}
+
+func TestListSecrets_ReturnsMetadata(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "metadata-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "SECRET_WITH_METADATA", "secret-value", &infra.CreateSecretOpts{
+		Metadata: []infra.SecretMetadataEntry{
+			{Key: "owner", Value: "platform-team"},
+			{Key: "sensitivity", Value: "high"},
+		},
+	})
+
+	identity := nodejs.CreateIdentity(t, "metadata-test-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+	assert.Equal(t, "SECRET_WITH_METADATA", result.Secrets[0].SecretKey)
+
+	require.Len(t, result.Secrets[0].SecretMetadata, 2)
+	metadataMap := make(map[string]string)
+	for _, m := range result.Secrets[0].SecretMetadata {
+		metadataMap[m.Key] = m.Value
+	}
+	assert.Equal(t, "platform-team", metadataMap["owner"])
+	assert.Equal(t, "high", metadataMap["sensitivity"])
+}
+
+func TestListSecretsV4_PersonalOverrides_NeverInclude(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project (both bootstrap user and identity are auto-added as admin)
+	proj := nodejs.CreateProject(t, "personal-v4-never")
+
+	// Create a shared secret first (personal secrets are overrides of shared secrets)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
+
+	// Create a personal override as bootstrap user
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
+		Type: "personal",
+	})
+
+	// V4 default: IncludePersonalOverrides=false -> NeverInclude behavior (only shared)
+	svc := newSecretsService(t)
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeJWT,
+		Actor:      permission.ActorTypeUser,
+		ActorID:    uuid.MustParse(nodejs.UserID()),
+		OrgID:      uuid.MustParse(nodejs.OrgID()),
+		AuthMethod: "",
+	})
+
+	result, err := svc.ListSecretsV4(ctx, &gensecrets.ListSecretsV4Payload{
+		ProjectID:                proj.ID,
+		Environment:              proj.EnvSlug,
+		SecretPath:               "/",
+		ViewSecretValue:          true,
+		IncludePersonalOverrides: false, // default behavior
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1, "v4 default should only return shared secrets")
+	assert.Equal(t, "MY_SECRET", result.Secrets[0].SecretKey)
+	assert.Equal(t, "shared-value", result.Secrets[0].SecretValue, "should see shared value when personal overrides disabled")
+}
+
+func TestListSecretsV4_PersonalOverrides_Priority(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project (both bootstrap user and identity are auto-added as admin)
+	proj := nodejs.CreateProject(t, "personal-v4-priority")
+
+	// Create a shared secret first
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
+
+	// Create a personal override as bootstrap user
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
+		Type: "personal",
+	})
+
+	// V4 with IncludePersonalOverrides=true -> Priority behavior (personal wins)
+	svc := newSecretsService(t)
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeJWT,
+		Actor:      permission.ActorTypeUser,
+		ActorID:    uuid.MustParse(nodejs.UserID()),
+		OrgID:      uuid.MustParse(nodejs.OrgID()),
+		AuthMethod: "",
+	})
+
+	result, err := svc.ListSecretsV4(ctx, &gensecrets.ListSecretsV4Payload{
+		ProjectID:                proj.ID,
+		Environment:              proj.EnvSlug,
+		SecretPath:               "/",
+		ViewSecretValue:          true,
+		IncludePersonalOverrides: true, // Priority behavior
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1, "v4 with personal overrides should return 1 secret (priority)")
+	assert.Equal(t, "MY_SECRET", result.Secrets[0].SecretKey)
+	assert.Equal(t, "personal-value", result.Secrets[0].SecretValue, "personal override should take precedence")
+}
+
+func TestListSecretsV3_PersonalOverrides_IncludeAll(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project (both bootstrap user and identity are auto-added as admin)
+	proj := nodejs.CreateProject(t, "personal-v3-all")
+
+	// Create a shared secret first
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
+
+	// Create a personal override as bootstrap user
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
+		Type: "personal",
+	})
+
+	// V3: Always returns both shared and personal secrets
+	svc := newSecretsService(t)
+	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+		AuthMode:   auth.AuthModeJWT,
+		Actor:      permission.ActorTypeUser,
+		ActorID:    uuid.MustParse(nodejs.UserID()),
+		OrgID:      uuid.MustParse(nodejs.OrgID()),
+		AuthMethod: "",
+	})
+
+	result, err := svc.ListSecretsV3(ctx, &gensecrets.ListSecretsV3Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 2, "v3 should return both shared and personal secrets")
+
+	values := make(map[string]string)
+	for _, s := range result.Secrets {
+		values[s.Type] = s.SecretValue
+	}
+	assert.Equal(t, "shared-value", values["shared"], "should have shared secret")
+	assert.Equal(t, "personal-value", values["personal"], "should have personal secret")
+}
+
+func TestListSecretsV4_PersonalSecretHiddenFromIdentity(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	// Create project (both bootstrap user and identity are auto-added as admin)
+	proj := nodejs.CreateProject(t, "personal-hidden-test")
+
+	// Create another identity and add it to project so we can list secrets as this identity
+	identity := nodejs.CreateIdentity(t, "personal-hidden-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	// Create a shared secret first (personal secrets are overrides of shared secrets)
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
+
+	// Create a personal override as bootstrap user
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
+		Type: "personal",
+	})
+
+	// List as a different identity - identities can't have personal secrets, so they see shared
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:                proj.ID,
+		Environment:              proj.EnvSlug,
+		SecretPath:               "/",
+		ViewSecretValue:          true,
+		IncludePersonalOverrides: true, // Even with flag, identity sees shared (no personal secrets for identities)
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1, "identity should see the shared secret")
+	assert.Equal(t, "MY_SECRET", result.Secrets[0].SecretKey)
+	assert.Equal(t, "shared-value", result.Secrets[0].SecretValue, "identity should see shared value")
+}
+
+func TestListSecrets_CommentAndMetadataTogether(t *testing.T) {
+	nodejs := stack.NodeJS()
+
+	proj := nodejs.CreateProject(t, "comment-metadata-test")
+	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "FULL_SECRET", "full-value", &infra.CreateSecretOpts{
+		Comment: "A secret with both comment and metadata",
+		Metadata: []infra.SecretMetadataEntry{
+			{Key: "env", Value: "production"},
+		},
+	})
+
+	identity := nodejs.CreateIdentity(t, "comment-metadata-identity")
+	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("admin"))
+
+	result, err := listSecretsAsAdmin(t, identity.ID, nodejs.OrgID(), &gensecrets.ListSecretsV4Payload{
+		ProjectID:       proj.ID,
+		Environment:     proj.EnvSlug,
+		SecretPath:      "/",
+		ViewSecretValue: true,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Secrets, 1)
+
+	secret := result.Secrets[0]
+	assert.Equal(t, "FULL_SECRET", secret.SecretKey)
+	assert.Equal(t, "full-value", secret.SecretValue)
+	assert.Equal(t, "A secret with both comment and metadata", secret.SecretComment)
+	require.Len(t, secret.SecretMetadata, 1)
+	assert.Equal(t, "env", secret.SecretMetadata[0].Key)
+	assert.Equal(t, "production", secret.SecretMetadata[0].Value)
 }

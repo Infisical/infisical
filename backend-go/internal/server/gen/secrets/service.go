@@ -19,6 +19,9 @@ import (
 type Service interface {
 	// List secrets for a project environment (V4).
 	ListSecretsV4(context.Context, *ListSecretsV4Payload) (res *ListSecretsResult, err error)
+	// List secrets for a project environment (V3). Returns both shared and
+	// personal secrets.
+	ListSecretsV3(context.Context, *ListSecretsV3Payload) (res *ListSecretsResult, err error)
 	// Get a secret by name (V4).
 	GetSecretByNameV4(context.Context, *GetSecretByNameV4Payload) (res *GetSecretResult, err error)
 	// List raw secrets for a project environment (V3, deprecated).
@@ -47,7 +50,7 @@ const ServiceName = "secrets"
 // MethodNames lists the service method names as defined in the design. These
 // are the same values that are set in the endpoint request contexts under the
 // MethodKey key.
-var MethodNames = [4]string{"listSecretsV4", "getSecretByNameV4", "listSecretsRawV3", "getSecretByNameRawV3"}
+var MethodNames = [5]string{"listSecretsV4", "listSecretsV3", "getSecretByNameV4", "listSecretsRawV3", "getSecretByNameRawV3"}
 
 type APIErrorResult struct {
 	// HTTP status code
@@ -187,6 +190,30 @@ type ListSecretsResult struct {
 	Secrets []*SecretRaw
 	// Imported secret blocks
 	Imports []*SecretImport
+}
+
+// ListSecretsV3Payload is the payload type of the secrets service
+// listSecretsV3 method.
+type ListSecretsV3Payload struct {
+	Token string
+	// Project ID
+	ProjectID string `json:"projectId"`
+	// Environment slug
+	Environment string `json:"environment"`
+	// Secret path
+	SecretPath string `json:"secretPath"`
+	// Whether to include the secret value
+	ViewSecretValue bool `json:"viewSecretValue"`
+	// Whether to expand secret references
+	ExpandSecretReferences bool `json:"expandSecretReferences"`
+	// Whether to list secrets recursively
+	Recursive bool `json:"recursive"`
+	// Whether to include imported secrets
+	IncludeImports bool `json:"includeImports"`
+	// Comma-separated tag slugs to filter by
+	TagSlugs *string `json:"tagSlugs"`
+	// Pipe-delimited metadata filter (key=k,value=v|...)
+	MetadataFilter *string `json:"metadataFilter"`
 }
 
 // ListSecretsV4Payload is the payload type of the secrets service

@@ -76,11 +76,6 @@ type CreateIdentityResponse struct {
 	} `json:"identity"`
 }
 
-// AddIdentityToProjectRequest is the request body for POST /api/v1/projects/{id}/memberships/identities/{id}.
-type AddIdentityToProjectRequest struct {
-	Role string `json:"role,omitempty"`
-}
-
 // RoleAssignment represents a role with optional temporary access settings.
 type RoleAssignment struct {
 	Role                     string `json:"role"`
@@ -103,7 +98,7 @@ type InviteToOrgRequest struct {
 
 // AddUserToProjectRequest is the request body for POST /api/v1/projects/{id}/memberships.
 type AddUserToProjectRequest struct {
-	Emails    []string `json:"emails"`
+	Usernames []string `json:"usernames"`
 	RoleSlugs []string `json:"roleSlugs"`
 }
 
@@ -172,14 +167,22 @@ type CreateUserPrivilegeRequest struct {
 	Type                PrivilegeType `json:"type"`
 }
 
+// SecretMetadataEntry represents a metadata key-value pair for a secret.
+type SecretMetadataEntry struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 // CreateSecretRequest is the request body for POST /api/v4/secrets/{key}.
 type CreateSecretRequest struct {
-	ProjectID   string   `json:"projectId"`
-	Environment string   `json:"environment"`
-	SecretPath  string   `json:"secretPath"`
-	SecretValue string   `json:"secretValue"`
-	Type        string   `json:"type"`
-	TagIDs      []string `json:"tagIds,omitempty"`
+	ProjectID      string                `json:"projectId"`
+	Environment    string                `json:"environment"`
+	SecretPath     string                `json:"secretPath"`
+	SecretValue    string                `json:"secretValue"`
+	SecretComment  string                `json:"secretComment,omitempty"`
+	SecretMetadata []SecretMetadataEntry `json:"secretMetadata,omitempty"`
+	Type           string                `json:"type"`
+	TagIDs         []string              `json:"tagIds,omitempty"`
 }
 
 // CreateSecretResponse is the response from POST /api/v4/secrets/{key}.

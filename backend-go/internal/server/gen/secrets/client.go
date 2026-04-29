@@ -17,15 +17,17 @@ import (
 // Client is the "secrets" service client.
 type Client struct {
 	ListSecretsV4Endpoint        goa.Endpoint
+	ListSecretsV3Endpoint        goa.Endpoint
 	GetSecretByNameV4Endpoint    goa.Endpoint
 	ListSecretsRawV3Endpoint     goa.Endpoint
 	GetSecretByNameRawV3Endpoint goa.Endpoint
 }
 
 // NewClient initializes a "secrets" service client given the endpoints.
-func NewClient(listSecretsV4, getSecretByNameV4, listSecretsRawV3, getSecretByNameRawV3 goa.Endpoint) *Client {
+func NewClient(listSecretsV4, listSecretsV3, getSecretByNameV4, listSecretsRawV3, getSecretByNameRawV3 goa.Endpoint) *Client {
 	return &Client{
 		ListSecretsV4Endpoint:        listSecretsV4,
+		ListSecretsV3Endpoint:        listSecretsV3,
 		GetSecretByNameV4Endpoint:    getSecretByNameV4,
 		ListSecretsRawV3Endpoint:     listSecretsRawV3,
 		GetSecretByNameRawV3Endpoint: getSecretByNameRawV3,
@@ -43,6 +45,23 @@ func NewClient(listSecretsV4, getSecretByNameV4, listSecretsRawV3, getSecretByNa
 func (c *Client) ListSecretsV4(ctx context.Context, p *ListSecretsV4Payload) (res *ListSecretsResult, err error) {
 	var ires any
 	ires, err = c.ListSecretsV4Endpoint(ctx, p)
+	if err != nil {
+		return
+	}
+	return ires.(*ListSecretsResult), nil
+}
+
+// ListSecretsV3 calls the "listSecretsV3" endpoint of the "secrets" service.
+// ListSecretsV3 may return the following errors:
+//   - "bad_request" (type *APIErrorResult)
+//   - "unauthorized" (type *APIErrorResult)
+//   - "forbidden" (type *APIErrorResult)
+//   - "not_found" (type *APIErrorResult)
+//   - "internal_error" (type *APIErrorResult)
+//   - error: internal error
+func (c *Client) ListSecretsV3(ctx context.Context, p *ListSecretsV3Payload) (res *ListSecretsResult, err error) {
+	var ires any
+	ires, err = c.ListSecretsV3Endpoint(ctx, p)
 	if err != nil {
 		return
 	}

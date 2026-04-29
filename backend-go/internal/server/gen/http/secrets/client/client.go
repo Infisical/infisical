@@ -22,6 +22,10 @@ type Client struct {
 	// listSecretsV4 endpoint.
 	ListSecretsV4Doer goahttp.Doer
 
+	// ListSecretsV3 Doer is the HTTP client used to make requests to the
+	// listSecretsV3 endpoint.
+	ListSecretsV3Doer goahttp.Doer
+
 	// GetSecretByNameV4 Doer is the HTTP client used to make requests to the
 	// getSecretByNameV4 endpoint.
 	GetSecretByNameV4Doer goahttp.Doer
@@ -55,6 +59,7 @@ func NewClient(
 ) *Client {
 	return &Client{
 		ListSecretsV4Doer:        doer,
+		ListSecretsV3Doer:        doer,
 		GetSecretByNameV4Doer:    doer,
 		ListSecretsRawV3Doer:     doer,
 		GetSecretByNameRawV3Doer: doer,
@@ -85,6 +90,30 @@ func (c *Client) ListSecretsV4() goa.Endpoint {
 		resp, err := c.ListSecretsV4Doer.Do(req)
 		if err != nil {
 			return nil, goahttp.ErrRequestError("secrets", "listSecretsV4", err)
+		}
+		return decodeResponse(resp)
+	}
+}
+
+// ListSecretsV3 returns an endpoint that makes HTTP requests to the secrets
+// service listSecretsV3 server.
+func (c *Client) ListSecretsV3() goa.Endpoint {
+	var (
+		encodeRequest  = EncodeListSecretsV3Request(c.encoder)
+		decodeResponse = DecodeListSecretsV3Response(c.decoder, c.RestoreResponseBody)
+	)
+	return func(ctx context.Context, v any) (any, error) {
+		req, err := c.BuildListSecretsV3Request(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		err = encodeRequest(req, v)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.ListSecretsV3Doer.Do(req)
+		if err != nil {
+			return nil, goahttp.ErrRequestError("secrets", "listSecretsV3", err)
 		}
 		return decodeResponse(resp)
 	}

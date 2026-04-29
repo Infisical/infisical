@@ -16,6 +16,18 @@ import (
 
 const secretValueHiddenMask = "<hidden-by-infisical>"
 
+// PersonalOverridesBehavior controls how personal secret overrides are handled.
+type PersonalOverridesBehavior int
+
+const (
+	// PersonalOverridesIncludeAll returns both shared and personal secrets (v3 behavior).
+	PersonalOverridesIncludeAll PersonalOverridesBehavior = iota
+	// PersonalOverridesNeverInclude returns only shared secrets.
+	PersonalOverridesNeverInclude
+	// PersonalOverridesPriority returns personal secrets when they exist, otherwise shared (v4 with flag).
+	PersonalOverridesPriority
+)
+
 // processedSecret holds a secret with its computed metadata.
 type processedSecret struct {
 	Secret            *secret.Secret
@@ -129,6 +141,48 @@ func processSecretsWithPermissions(
 	}
 
 	return directSecrets, importedSecrets
+}
+
+// filterByPersonalOverridesBehavior filters secrets based on personal overrides behavior.
+// - IncludeAll: returns all secrets as-is (both shared and personal)
+// - NeverInclude: returns only shared secrets
+// - Priority: personal secrets take precedence over shared (1 secret per key+folder)
+func filterByPersonalOverridesBehavior(secretsList []processedSecret, behavior PersonalOverridesBehavior) []processedSecret {
+	switch behavior {
+	case PersonalOverridesIncludeAll:
+		return secretsList
+
+	case PersonalOverridesNeverInclude:
+		result := make([]processedSecret, 0, len(secretsList))
+		for i := range secretsList {
+			if secretsList[i].Secret.Type == "shared" {
+				result = append(result, secretsList[i])
+			}
+		}
+		return result
+
+	case PersonalOverridesPriority:
+		secretMap := make(map[string]processedSecret)
+		for i := range secretsList {
+			sec := &secretsList[i]
+			key := sec.Secret.Key + "-" + sec.Secret.FolderID.String()
+			existing, exists := secretMap[key]
+			if !exists {
+				secretMap[key] = *sec
+			} else if sec.Secret.Type == "personal" {
+				secretMap[key] = *sec
+			}
+			_ = existing // keep existing if current is shared
+		}
+		result := make([]processedSecret, 0, len(secretMap))
+		for key := range secretMap {
+			result = append(result, secretMap[key])
+		}
+		return result
+
+	default:
+		return secretsList
+	}
 }
 
 // buildSecretInputsForExpansion builds SecretInput slice for the expander.

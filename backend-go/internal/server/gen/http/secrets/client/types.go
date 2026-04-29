@@ -23,6 +23,15 @@ type ListSecretsV4ResponseBody struct {
 	Imports []*SecretImportResponseBody `form:"imports,omitempty" json:"imports,omitempty" xml:"imports,omitempty"`
 }
 
+// ListSecretsV3ResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body.
+type ListSecretsV3ResponseBody struct {
+	// List of secrets
+	Secrets []*SecretRawResponseBody `form:"secrets,omitempty" json:"secrets,omitempty" xml:"secrets,omitempty"`
+	// Imported secret blocks
+	Imports []*SecretImportResponseBody `form:"imports,omitempty" json:"imports,omitempty" xml:"imports,omitempty"`
+}
+
 // GetSecretByNameV4ResponseBody is the type of the "secrets" service
 // "getSecretByNameV4" endpoint HTTP response body.
 type GetSecretByNameV4ResponseBody struct {
@@ -101,6 +110,71 @@ type ListSecretsV4NotFoundResponseBody struct {
 // ListSecretsV4InternalErrorResponseBody is the type of the "secrets" service
 // "listSecretsV4" endpoint HTTP response body for the "internal_error" error.
 type ListSecretsV4InternalErrorResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV3BadRequestResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body for the "bad_request" error.
+type ListSecretsV3BadRequestResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV3UnauthorizedResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body for the "unauthorized" error.
+type ListSecretsV3UnauthorizedResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV3ForbiddenResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body for the "forbidden" error.
+type ListSecretsV3ForbiddenResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV3NotFoundResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body for the "not_found" error.
+type ListSecretsV3NotFoundResponseBody struct {
+	// HTTP status code
+	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
+	// Human-readable error message
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Error class name
+	ErrorClass *string `form:"error,omitempty" json:"error,omitempty" xml:"error,omitempty"`
+	// Optional structured details
+	Details any `form:"details,omitempty" json:"details,omitempty" xml:"details,omitempty"`
+}
+
+// ListSecretsV3InternalErrorResponseBody is the type of the "secrets" service
+// "listSecretsV3" endpoint HTTP response body for the "internal_error" error.
+type ListSecretsV3InternalErrorResponseBody struct {
 	// HTTP status code
 	StatusCode *int `form:"statusCode,omitempty" json:"statusCode,omitempty" xml:"statusCode,omitempty"`
 	// Human-readable error message
@@ -538,6 +612,97 @@ func NewListSecretsV4InternalError(body *ListSecretsV4InternalErrorResponseBody)
 	return v
 }
 
+// NewListSecretsV3ListSecretsResultOK builds a "secrets" service
+// "listSecretsV3" endpoint result from a HTTP "OK" response.
+func NewListSecretsV3ListSecretsResultOK(body *ListSecretsV3ResponseBody) *secretsviews.ListSecretsResultView {
+	v := &secretsviews.ListSecretsResultView{}
+	v.Secrets = make([]*secretsviews.SecretRawView, len(body.Secrets))
+	for i, val := range body.Secrets {
+		if val == nil {
+			v.Secrets[i] = nil
+			continue
+		}
+		v.Secrets[i] = unmarshalSecretRawResponseBodyToSecretsviewsSecretRawView(val)
+	}
+	if body.Imports != nil {
+		v.Imports = make([]*secretsviews.SecretImportView, len(body.Imports))
+		for i, val := range body.Imports {
+			if val == nil {
+				v.Imports[i] = nil
+				continue
+			}
+			v.Imports[i] = unmarshalSecretImportResponseBodyToSecretsviewsSecretImportView(val)
+		}
+	}
+
+	return v
+}
+
+// NewListSecretsV3BadRequest builds a secrets service listSecretsV3 endpoint
+// bad_request error.
+func NewListSecretsV3BadRequest(body *ListSecretsV3BadRequestResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsV3Unauthorized builds a secrets service listSecretsV3 endpoint
+// unauthorized error.
+func NewListSecretsV3Unauthorized(body *ListSecretsV3UnauthorizedResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsV3Forbidden builds a secrets service listSecretsV3 endpoint
+// forbidden error.
+func NewListSecretsV3Forbidden(body *ListSecretsV3ForbiddenResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsV3NotFound builds a secrets service listSecretsV3 endpoint
+// not_found error.
+func NewListSecretsV3NotFound(body *ListSecretsV3NotFoundResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
+// NewListSecretsV3InternalError builds a secrets service listSecretsV3
+// endpoint internal_error error.
+func NewListSecretsV3InternalError(body *ListSecretsV3InternalErrorResponseBody) *secrets.APIErrorResult {
+	v := &secrets.APIErrorResult{
+		StatusCode: *body.StatusCode,
+		Message:    *body.Message,
+		ErrorClass: *body.ErrorClass,
+		Details:    body.Details,
+	}
+
+	return v
+}
+
 // NewGetSecretByNameV4GetSecretResultOK builds a "secrets" service
 // "getSecretByNameV4" endpoint result from a HTTP "OK" response.
 func NewGetSecretByNameV4GetSecretResultOK(body *GetSecretByNameV4ResponseBody) *secretsviews.GetSecretResultView {
@@ -840,6 +1005,81 @@ func ValidateListSecretsV4NotFoundResponseBody(body *ListSecretsV4NotFoundRespon
 // ValidateListSecretsV4InternalErrorResponseBody runs the validations defined
 // on listSecretsV4_internal_error_response_body
 func ValidateListSecretsV4InternalErrorResponseBody(body *ListSecretsV4InternalErrorResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateListSecretsV3BadRequestResponseBody runs the validations defined on
+// listSecretsV3_bad_request_response_body
+func ValidateListSecretsV3BadRequestResponseBody(body *ListSecretsV3BadRequestResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateListSecretsV3UnauthorizedResponseBody runs the validations defined
+// on listSecretsV3_unauthorized_response_body
+func ValidateListSecretsV3UnauthorizedResponseBody(body *ListSecretsV3UnauthorizedResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateListSecretsV3ForbiddenResponseBody runs the validations defined on
+// listSecretsV3_forbidden_response_body
+func ValidateListSecretsV3ForbiddenResponseBody(body *ListSecretsV3ForbiddenResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateListSecretsV3NotFoundResponseBody runs the validations defined on
+// listSecretsV3_not_found_response_body
+func ValidateListSecretsV3NotFoundResponseBody(body *ListSecretsV3NotFoundResponseBody) (err error) {
+	if body.StatusCode == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.ErrorClass == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("error", "body"))
+	}
+	return
+}
+
+// ValidateListSecretsV3InternalErrorResponseBody runs the validations defined
+// on listSecretsV3_internal_error_response_body
+func ValidateListSecretsV3InternalErrorResponseBody(body *ListSecretsV3InternalErrorResponseBody) (err error) {
 	if body.StatusCode == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("statusCode", "body"))
 	}

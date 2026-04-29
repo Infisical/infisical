@@ -190,6 +190,64 @@ var _ = Service("secrets", func() {
 		})
 	})
 
+	// ─── V3 Endpoints ───
+
+	Method("listSecretsV3", func() {
+		Description("List secrets for a project environment (V3). Returns both shared and personal secrets.")
+		auth.Secured(auth.JWTAuth, auth.IdentityAccessTokenAuth, auth.ServiceTokenAuth).
+			Payload(func() {
+				Attribute("projectId", String, "Project ID", func() {
+					Meta("struct:tag:json", "projectId")
+				})
+				Attribute("environment", String, "Environment slug", func() {
+					Meta("struct:tag:json", "environment")
+				})
+				Attribute("secretPath", String, "Secret path", func() {
+					Default("/")
+					Meta("struct:tag:json", "secretPath")
+				})
+				Attribute("viewSecretValue", Boolean, "Whether to include the secret value", func() {
+					Default(true)
+					Meta("struct:tag:json", "viewSecretValue")
+				})
+				Attribute("expandSecretReferences", Boolean, "Whether to expand secret references", func() {
+					Default(true)
+					Meta("struct:tag:json", "expandSecretReferences")
+				})
+				Attribute("recursive", Boolean, "Whether to list secrets recursively", func() {
+					Default(false)
+					Meta("struct:tag:json", "recursive")
+				})
+				Attribute("includeImports", Boolean, "Whether to include imported secrets", func() {
+					Default(true)
+					Meta("struct:tag:json", "includeImports")
+				})
+				Attribute("tagSlugs", String, "Comma-separated tag slugs to filter by", func() {
+					Meta("struct:tag:json", "tagSlugs")
+				})
+				Attribute("metadataFilter", String, "Pipe-delimited metadata filter (key=k,value=v|...)", func() {
+					Meta("struct:tag:json", "metadataFilter")
+				})
+				Required("projectId", "environment")
+			})
+		Result(ListSecretsResult)
+		HTTP(func() {
+			GET("/api/v3/secrets")
+			Params(func() {
+				Param("projectId")
+				Param("environment")
+				Param("secretPath")
+				Param("viewSecretValue")
+				Param("expandSecretReferences")
+				Param("recursive")
+				Param("includeImports")
+				Param("tagSlugs")
+				Param("metadataFilter")
+			})
+			Response(StatusOK)
+		})
+	})
+
 	Method("getSecretByNameV4", func() {
 		Description("Get a secret by name (V4).")
 		auth.Secured(auth.JWTAuth, auth.IdentityAccessTokenAuth, auth.ServiceTokenAuth).

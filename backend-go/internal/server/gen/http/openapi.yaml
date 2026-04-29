@@ -138,6 +138,119 @@ paths:
                             - error
             schemes:
                 - http
+    /api/v3/secrets:
+        get:
+            tags:
+                - secrets
+            summary: listSecretsV3 secrets
+            description: List secrets for a project environment (V3). Returns both shared and personal secrets.
+            operationId: secrets#listSecretsV3
+            parameters:
+                - name: projectId
+                  in: query
+                  description: Project ID
+                  required: true
+                  type: string
+                - name: environment
+                  in: query
+                  description: Environment slug
+                  required: true
+                  type: string
+                - name: secretPath
+                  in: query
+                  description: Secret path
+                  required: false
+                  type: string
+                  default: /
+                - name: viewSecretValue
+                  in: query
+                  description: Whether to include the secret value
+                  required: false
+                  type: boolean
+                  default: true
+                - name: expandSecretReferences
+                  in: query
+                  description: Whether to expand secret references
+                  required: false
+                  type: boolean
+                  default: true
+                - name: recursive
+                  in: query
+                  description: Whether to list secrets recursively
+                  required: false
+                  type: boolean
+                  default: false
+                - name: includeImports
+                  in: query
+                  description: Whether to include imported secrets
+                  required: false
+                  type: boolean
+                  default: true
+                - name: tagSlugs
+                  in: query
+                  description: Comma-separated tag slugs to filter by
+                  required: false
+                  type: string
+                - name: metadataFilter
+                  in: query
+                  description: Pipe-delimited metadata filter (key=k,value=v|...)
+                  required: false
+                  type: string
+                - name: Authorization
+                  in: header
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: OK response.
+                    schema:
+                        $ref: '#/definitions/ListSecretsResult'
+                "400":
+                    description: Bad Request response.
+                    schema:
+                        $ref: '#/definitions/APIErrorResult'
+                        required:
+                            - statusCode
+                            - message
+                            - error
+                "401":
+                    description: Unauthorized response.
+                    schema:
+                        $ref: '#/definitions/APIErrorResult'
+                        required:
+                            - statusCode
+                            - message
+                            - error
+                "403":
+                    description: Forbidden response.
+                    schema:
+                        $ref: '#/definitions/APIErrorResult'
+                        required:
+                            - statusCode
+                            - message
+                            - error
+                "404":
+                    description: Not Found response.
+                    schema:
+                        $ref: '#/definitions/APIErrorResult'
+                        required:
+                            - statusCode
+                            - message
+                            - error
+                "500":
+                    description: Internal Server Error response.
+                    schema:
+                        $ref: '#/definitions/APIErrorResult'
+                        required:
+                            - statusCode
+                            - message
+                            - error
+            schemes:
+                - http
+            security:
+                - jwt_header_Authorization: []
+                - identity_access_token_header_Authorization: []
+                - service_token_header_Authorization: []
     /api/v3/secrets/raw:
         get:
             tags:
@@ -621,26 +734,26 @@ definitions:
         properties:
             details:
                 description: Optional structured details
-                example: Eaque dolores ducimus voluptate ad.
+                example: Explicabo molestias quo.
             error:
                 type: string
                 description: Error class name
-                example: Rerum voluptate nam aut.
+                example: Ut veniam quos in.
             message:
                 type: string
                 description: Human-readable error message
-                example: Qui consequatur aut id et ipsam.
+                example: Quia repellat dolores.
             statusCode:
                 type: integer
                 description: HTTP status code
-                example: 8979240563111973307
+                example: 1389739368956294542
                 format: int64
         description: Invalid request
         example:
-            details: Sequi eaque.
-            error: Voluptate repellat.
-            message: Est in repudiandae hic temporibus qui eaque.
-            statusCode: 3955333097740135695
+            details: Natus maxime sed aut optio adipisci.
+            error: Consectetur expedita aut.
+            message: Culpa pariatur accusantium esse similique.
+            statusCode: 3940228766973184523
         required:
             - statusCode
             - message
@@ -655,51 +768,49 @@ definitions:
         example:
             secret:
                 actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                createdAt: Reprehenderit explicabo et sed et eum.
-                environment: Quod est neque officia aspernatur.
-                id: Velit at aperiam enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                createdAt: Consequatur autem pariatur.
+                environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                id: Omnis veniam.
                 isRotatedSecret: false
-                legacyId: Eum et qui sed pariatur.
-                rotationId: Quisquam sit sunt in.
-                secretComment: Delectus ut.
-                secretKey: Officiis velit amet.
+                legacyId: Explicabo et sed.
+                rotationId: Dolor recusandae voluptates et.
+                secretComment: Eum dolores tempore.
+                secretKey: Facilis id.
                 secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                secretPath: Enim molestias at.
-                secretReminderNote: Voluptatem est.
-                secretReminderRepeatDays: 1668481484677454029
-                secretValue: Eaque omnis est.
-                secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                secretPath: Repellendus porro et quia.
+                secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                secretReminderRepeatDays: 1399648740971078448
+                secretValue: Voluptas exercitationem maiores natus distinctio.
+                secretValueHidden: false
                 skipMultilineEncoding: false
                 tags:
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                type: A ut libero tenetur.
-                updatedAt: Consequatur velit.
-                version: 2522455600532057151
-                workspace: Repudiandae voluptatibus quasi.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                type: Enim dignissimos sed magni.
+                updatedAt: Et in et quos eius soluta.
+                version: 2258480470594265978
+                workspace: Eum est consequatur velit eaque quibusdam id.
         required:
             - secret
     ImportSecretRaw:
@@ -711,11 +822,11 @@ definitions:
             environment:
                 type: string
                 description: Environment slug
-                example: Provident autem.
+                example: Voluptates porro possimus ut.
             id:
                 type: string
                 description: Secret ID
-                example: Qui amet ut exercitationem.
+                example: Ea ipsum aliquam sit.
             isRotatedSecret:
                 type: boolean
                 description: Whether this is a rotated secret
@@ -723,50 +834,44 @@ definitions:
             legacyId:
                 type: string
                 description: Legacy secret ID
-                example: Et voluptas ipsa consequatur odio quisquam repellendus.
+                example: Optio fugiat esse.
             rotationId:
                 type: string
                 description: Rotation ID (UUID)
-                example: Ipsam quasi iste consequatur.
+                example: Et est qui.
             secretComment:
                 type: string
                 description: Secret comment
-                example: Natus beatae.
+                example: Ea dolores.
             secretKey:
                 type: string
                 description: Secret key
-                example: Eos odit ut excepturi reprehenderit dignissimos.
+                example: Ut voluptate deleniti tempore.
             secretMetadata:
                 type: array
                 items:
                     $ref: '#/definitions/ResourceMetadata'
                 description: Secret metadata entries
                 example:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
             secretReminderNote:
                 type: string
                 description: Reminder note
-                example: Rem et saepe.
+                example: Nostrum consequatur illum voluptas nisi est.
             secretReminderRepeatDays:
                 type: integer
                 description: Reminder repeat days
-                example: 7667557556445928357
+                example: 8574779191834343543
                 format: int64
             secretValue:
                 type: string
                 description: Secret value
-                example: Molestiae harum ex blanditiis dicta fugit eum.
+                example: Itaque autem et id ducimus.
             secretValueHidden:
                 type: boolean
                 description: Whether the secret value is hidden
@@ -778,48 +883,45 @@ definitions:
             type:
                 type: string
                 description: Secret type (shared or personal)
-                example: Et laboriosam autem.
+                example: Exercitationem quo debitis.
             version:
                 type: integer
                 description: Secret version
-                example: 5710884989500560097
+                example: 5750941967563557180
                 format: int64
             workspace:
                 type: string
                 description: Workspace/project ID
-                example: Ratione porro error rerum beatae quas dolorum.
+                example: Consequatur est dolor eos.
         example:
             actor:
-                actorId: Quibusdam id eos inventore praesentium.
-                actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                groupId: Eum dolores tempore.
-                membershipId: Voluptas exercitationem maiores natus distinctio.
-                name: Magni accusantium facilis id.
-            environment: Molestias accusantium esse possimus.
-            id: Modi est.
-            isRotatedSecret: true
-            legacyId: Sed maxime sint non alias.
-            rotationId: Et consequatur est dolor eos sed.
-            secretComment: Voluptas fuga nam ex eligendi.
-            secretKey: Unde est ea est.
+                actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                actorType: Unde modi.
+                groupId: Quam rem.
+                membershipId: Voluptas inventore est ut.
+                name: Voluptatibus officia magni et ducimus pariatur.
+            environment: Ut quasi quam sint porro doloribus.
+            id: Est officia.
+            isRotatedSecret: false
+            legacyId: Distinctio eaque doloribus enim blanditiis aut.
+            rotationId: Corrupti rerum.
+            secretComment: Illum eum est consequatur fuga nam iste.
+            secretKey: Asperiores quia tenetur soluta ullam.
             secretMetadata:
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-            secretReminderNote: Sed quas ea ipsum aliquam sit.
-            secretReminderRepeatDays: 3283955930906328187
-            secretValue: Voluptatibus similique voluptas rem ratione ut.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+            secretReminderNote: Laboriosam error voluptatem magnam molestias eius.
+            secretReminderRepeatDays: 3050104048910164704
+            secretValue: Et numquam error.
             secretValueHidden: false
             skipMultilineEncoding: true
-            type: Ab aut.
-            version: 5565510037109683139
-            workspace: Placeat consequatur qui veritatis mollitia nisi.
+            type: Magnam eveniet vero autem atque magnam.
+            version: 3620242478873872006
+            workspace: Minus exercitationem quae aperiam fuga.
         required:
             - id
             - legacyId
@@ -841,294 +943,186 @@ definitions:
                     $ref: '#/definitions/SecretImport'
                 description: Imported secret blocks
                 example:
-                    - environment: Et quia tempore quis maiores et.
-                      folderId: Eos incidunt.
-                      secretPath: Inventore repellendus.
+                    - environment: Corrupti et velit quod nihil dolor.
+                      folderId: Quam eius doloribus dolorem odio similique.
+                      secretPath: Ratione aliquam quas expedita ipsam delectus.
                       secrets:
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
-                    - environment: Et quia tempore quis maiores et.
-                      folderId: Eos incidunt.
-                      secretPath: Inventore repellendus.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
+                    - environment: Corrupti et velit quod nihil dolor.
+                      folderId: Quam eius doloribus dolorem odio similique.
+                      secretPath: Ratione aliquam quas expedita ipsam delectus.
                       secrets:
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
-                    - environment: Et quia tempore quis maiores et.
-                      folderId: Eos incidunt.
-                      secretPath: Inventore repellendus.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
+                    - environment: Corrupti et velit quod nihil dolor.
+                      folderId: Quam eius doloribus dolorem odio similique.
+                      secretPath: Ratione aliquam quas expedita ipsam delectus.
                       secrets:
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
                         - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
+                            actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                            actorType: Unde modi.
+                            groupId: Quam rem.
+                            membershipId: Voluptas inventore est ut.
+                            name: Voluptatibus officia magni et ducimus pariatur.
+                          environment: Ad suscipit.
+                          id: Nulla dolore mollitia facilis.
                           isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
+                          legacyId: Ad omnis et ut.
+                          rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                          secretComment: Saepe et earum corporis similique voluptas.
+                          secretKey: Voluptate doloribus iste.
                           secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                            - isEncrypted: false
+                              key: Et quia eos incidunt.
+                              value: Quod aut exercitationem enim consectetur dolor ut.
+                          secretReminderNote: Ut aut.
+                          secretReminderRepeatDays: 8141885500050080575
+                          secretValue: Sed exercitationem.
+                          secretValueHidden: false
                           skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
-                    - environment: Et quia tempore quis maiores et.
-                      folderId: Eos incidunt.
-                      secretPath: Inventore repellendus.
-                      secrets:
-                        - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
-                          isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
-                          secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
-                          skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
-                        - actor:
-                            actorId: Quibusdam id eos inventore praesentium.
-                            actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                            groupId: Eum dolores tempore.
-                            membershipId: Voluptas exercitationem maiores natus distinctio.
-                            name: Magni accusantium facilis id.
-                          environment: Accusamus natus.
-                          id: Aut exercitationem enim.
-                          isRotatedSecret: false
-                          legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                          rotationId: Mollitia facilis sed ad omnis et.
-                          secretComment: Corrupti et velit quod nihil dolor.
-                          secretKey: Alias sed aut ut.
-                          secretMetadata:
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                            - isEncrypted: true
-                              key: Pariatur rerum et in et quos eius.
-                              value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                          secretReminderNote: Quam eius doloribus dolorem odio similique.
-                          secretReminderRepeatDays: 6991192545649184547
-                          secretValue: Ratione aliquam quas expedita ipsam delectus.
-                          secretValueHidden: true
-                          skipMultilineEncoding: false
-                          type: Voluptas nesciunt illum sed magni facere et.
-                          version: 6274419464849932560
-                          workspace: Repellendus officiis quas qui excepturi numquam.
+                          type: Ratione itaque.
+                          version: 2629381824850672301
+                          workspace: Atque ipsum.
             secrets:
                 type: array
                 items:
@@ -1136,383 +1130,497 @@ definitions:
                 description: List of secrets
                 example:
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      createdAt: Reprehenderit explicabo et sed et eum.
-                      environment: Quod est neque officia aspernatur.
-                      id: Velit at aperiam enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      createdAt: Consequatur autem pariatur.
+                      environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                      id: Omnis veniam.
                       isRotatedSecret: false
-                      legacyId: Eum et qui sed pariatur.
-                      rotationId: Quisquam sit sunt in.
-                      secretComment: Delectus ut.
-                      secretKey: Officiis velit amet.
+                      legacyId: Explicabo et sed.
+                      rotationId: Dolor recusandae voluptates et.
+                      secretComment: Eum dolores tempore.
+                      secretKey: Facilis id.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretPath: Enim molestias at.
-                      secretReminderNote: Voluptatem est.
-                      secretReminderRepeatDays: 1668481484677454029
-                      secretValue: Eaque omnis est.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretPath: Repellendus porro et quia.
+                      secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                      secretReminderRepeatDays: 1399648740971078448
+                      secretValue: Voluptas exercitationem maiores natus distinctio.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
                       tags:
-                        - color: Inventore est ut non quam.
-                          id: Modi et voluptatibus officia magni et.
-                          name: Illo quidem dolor recusandae voluptates.
-                          slug: Pariatur inventore.
-                        - color: Inventore est ut non quam.
-                          id: Modi et voluptatibus officia magni et.
-                          name: Illo quidem dolor recusandae voluptates.
-                          slug: Pariatur inventore.
-                      type: A ut libero tenetur.
-                      updatedAt: Consequatur velit.
-                      version: 2522455600532057151
-                      workspace: Repudiandae voluptatibus quasi.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                      type: Enim dignissimos sed magni.
+                      updatedAt: Et in et quos eius soluta.
+                      version: 2258480470594265978
+                      workspace: Eum est consequatur velit eaque quibusdam id.
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      createdAt: Reprehenderit explicabo et sed et eum.
-                      environment: Quod est neque officia aspernatur.
-                      id: Velit at aperiam enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      createdAt: Consequatur autem pariatur.
+                      environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                      id: Omnis veniam.
                       isRotatedSecret: false
-                      legacyId: Eum et qui sed pariatur.
-                      rotationId: Quisquam sit sunt in.
-                      secretComment: Delectus ut.
-                      secretKey: Officiis velit amet.
+                      legacyId: Explicabo et sed.
+                      rotationId: Dolor recusandae voluptates et.
+                      secretComment: Eum dolores tempore.
+                      secretKey: Facilis id.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretPath: Enim molestias at.
-                      secretReminderNote: Voluptatem est.
-                      secretReminderRepeatDays: 1668481484677454029
-                      secretValue: Eaque omnis est.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretPath: Repellendus porro et quia.
+                      secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                      secretReminderRepeatDays: 1399648740971078448
+                      secretValue: Voluptas exercitationem maiores natus distinctio.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
                       tags:
-                        - color: Inventore est ut non quam.
-                          id: Modi et voluptatibus officia magni et.
-                          name: Illo quidem dolor recusandae voluptates.
-                          slug: Pariatur inventore.
-                        - color: Inventore est ut non quam.
-                          id: Modi et voluptatibus officia magni et.
-                          name: Illo quidem dolor recusandae voluptates.
-                          slug: Pariatur inventore.
-                      type: A ut libero tenetur.
-                      updatedAt: Consequatur velit.
-                      version: 2522455600532057151
-                      workspace: Repudiandae voluptatibus quasi.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                      type: Enim dignissimos sed magni.
+                      updatedAt: Et in et quos eius soluta.
+                      version: 2258480470594265978
+                      workspace: Eum est consequatur velit eaque quibusdam id.
+                    - actor:
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      createdAt: Consequatur autem pariatur.
+                      environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                      id: Omnis veniam.
+                      isRotatedSecret: false
+                      legacyId: Explicabo et sed.
+                      rotationId: Dolor recusandae voluptates et.
+                      secretComment: Eum dolores tempore.
+                      secretKey: Facilis id.
+                      secretMetadata:
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretPath: Repellendus porro et quia.
+                      secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                      secretReminderRepeatDays: 1399648740971078448
+                      secretValue: Voluptas exercitationem maiores natus distinctio.
+                      secretValueHidden: false
+                      skipMultilineEncoding: false
+                      tags:
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                        - color: Voluptas nesciunt illum sed magni facere et.
+                          id: Repudiandae laboriosam odio repellendus officiis.
+                          name: Alias sed aut ut.
+                          slug: Qui excepturi numquam est accusamus natus qui.
+                      type: Enim dignissimos sed magni.
+                      updatedAt: Et in et quos eius soluta.
+                      version: 2258480470594265978
+                      workspace: Eum est consequatur velit eaque quibusdam id.
         description: ListSecretsV4ResponseBody result type (default view)
         example:
             imports:
-                - environment: Et quia tempore quis maiores et.
-                  folderId: Eos incidunt.
-                  secretPath: Inventore repellendus.
+                - environment: Corrupti et velit quod nihil dolor.
+                  folderId: Quam eius doloribus dolorem odio similique.
+                  secretPath: Ratione aliquam quas expedita ipsam delectus.
                   secrets:
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
-                - environment: Et quia tempore quis maiores et.
-                  folderId: Eos incidunt.
-                  secretPath: Inventore repellendus.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
+                - environment: Corrupti et velit quod nihil dolor.
+                  folderId: Quam eius doloribus dolorem odio similique.
+                  secretPath: Ratione aliquam quas expedita ipsam delectus.
                   secrets:
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
+                - environment: Corrupti et velit quod nihil dolor.
+                  folderId: Quam eius doloribus dolorem odio similique.
+                  secretPath: Ratione aliquam quas expedita ipsam delectus.
+                  secrets:
+                    - actor:
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
+                      isRotatedSecret: false
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
+                      secretMetadata:
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
+                      skipMultilineEncoding: false
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
+                    - actor:
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
+                      isRotatedSecret: false
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
+                      secretMetadata:
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
+                      skipMultilineEncoding: false
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
             secrets:
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  createdAt: Reprehenderit explicabo et sed et eum.
-                  environment: Quod est neque officia aspernatur.
-                  id: Velit at aperiam enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  createdAt: Consequatur autem pariatur.
+                  environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                  id: Omnis veniam.
                   isRotatedSecret: false
-                  legacyId: Eum et qui sed pariatur.
-                  rotationId: Quisquam sit sunt in.
-                  secretComment: Delectus ut.
-                  secretKey: Officiis velit amet.
+                  legacyId: Explicabo et sed.
+                  rotationId: Dolor recusandae voluptates et.
+                  secretComment: Eum dolores tempore.
+                  secretKey: Facilis id.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretPath: Enim molestias at.
-                  secretReminderNote: Voluptatem est.
-                  secretReminderRepeatDays: 1668481484677454029
-                  secretValue: Eaque omnis est.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretPath: Repellendus porro et quia.
+                  secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                  secretReminderRepeatDays: 1399648740971078448
+                  secretValue: Voluptas exercitationem maiores natus distinctio.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
                   tags:
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                  type: A ut libero tenetur.
-                  updatedAt: Consequatur velit.
-                  version: 2522455600532057151
-                  workspace: Repudiandae voluptatibus quasi.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                  type: Enim dignissimos sed magni.
+                  updatedAt: Et in et quos eius soluta.
+                  version: 2258480470594265978
+                  workspace: Eum est consequatur velit eaque quibusdam id.
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  createdAt: Reprehenderit explicabo et sed et eum.
-                  environment: Quod est neque officia aspernatur.
-                  id: Velit at aperiam enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  createdAt: Consequatur autem pariatur.
+                  environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                  id: Omnis veniam.
                   isRotatedSecret: false
-                  legacyId: Eum et qui sed pariatur.
-                  rotationId: Quisquam sit sunt in.
-                  secretComment: Delectus ut.
-                  secretKey: Officiis velit amet.
+                  legacyId: Explicabo et sed.
+                  rotationId: Dolor recusandae voluptates et.
+                  secretComment: Eum dolores tempore.
+                  secretKey: Facilis id.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretPath: Enim molestias at.
-                  secretReminderNote: Voluptatem est.
-                  secretReminderRepeatDays: 1668481484677454029
-                  secretValue: Eaque omnis est.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretPath: Repellendus porro et quia.
+                  secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                  secretReminderRepeatDays: 1399648740971078448
+                  secretValue: Voluptas exercitationem maiores natus distinctio.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
                   tags:
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                  type: A ut libero tenetur.
-                  updatedAt: Consequatur velit.
-                  version: 2522455600532057151
-                  workspace: Repudiandae voluptatibus quasi.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                  type: Enim dignissimos sed magni.
+                  updatedAt: Et in et quos eius soluta.
+                  version: 2258480470594265978
+                  workspace: Eum est consequatur velit eaque quibusdam id.
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  createdAt: Reprehenderit explicabo et sed et eum.
-                  environment: Quod est neque officia aspernatur.
-                  id: Velit at aperiam enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  createdAt: Consequatur autem pariatur.
+                  environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                  id: Omnis veniam.
                   isRotatedSecret: false
-                  legacyId: Eum et qui sed pariatur.
-                  rotationId: Quisquam sit sunt in.
-                  secretComment: Delectus ut.
-                  secretKey: Officiis velit amet.
+                  legacyId: Explicabo et sed.
+                  rotationId: Dolor recusandae voluptates et.
+                  secretComment: Eum dolores tempore.
+                  secretKey: Facilis id.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretPath: Enim molestias at.
-                  secretReminderNote: Voluptatem est.
-                  secretReminderRepeatDays: 1668481484677454029
-                  secretValue: Eaque omnis est.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretPath: Repellendus porro et quia.
+                  secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                  secretReminderRepeatDays: 1399648740971078448
+                  secretValue: Voluptas exercitationem maiores natus distinctio.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
                   tags:
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                  type: A ut libero tenetur.
-                  updatedAt: Consequatur velit.
-                  version: 2522455600532057151
-                  workspace: Repudiandae voluptatibus quasi.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                  type: Enim dignissimos sed magni.
+                  updatedAt: Et in et quos eius soluta.
+                  version: 2258480470594265978
+                  workspace: Eum est consequatur velit eaque quibusdam id.
+                - actor:
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  createdAt: Consequatur autem pariatur.
+                  environment: Inventore praesentium blanditiis soluta beatae occaecati.
+                  id: Omnis veniam.
+                  isRotatedSecret: false
+                  legacyId: Explicabo et sed.
+                  rotationId: Dolor recusandae voluptates et.
+                  secretComment: Eum dolores tempore.
+                  secretKey: Facilis id.
+                  secretMetadata:
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretPath: Repellendus porro et quia.
+                  secretReminderNote: Possimus quisquam sit sunt in nemo enim.
+                  secretReminderRepeatDays: 1399648740971078448
+                  secretValue: Voluptas exercitationem maiores natus distinctio.
+                  secretValueHidden: false
+                  skipMultilineEncoding: false
+                  tags:
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                  type: Enim dignissimos sed magni.
+                  updatedAt: Et in et quos eius soluta.
+                  version: 2258480470594265978
+                  workspace: Eum est consequatur velit eaque quibusdam id.
         required:
             - secrets
     Project:
@@ -1522,20 +1630,20 @@ definitions:
             id:
                 type: string
                 description: Project ID
-                example: Qui nobis maxime deleniti.
+                example: Est non maxime quam consequatur quod cumque.
             name:
                 type: string
                 description: Project name
-                example: Dolorem et.
+                example: Est et dolores.
             orgId:
                 type: string
                 description: Organization ID
-                example: Omnis cum praesentium maxime.
+                example: Voluptatibus consequatur qui.
         description: CreateProjectResponseBody result type (default view)
         example:
-            id: Sunt neque iure consequatur velit optio at.
-            name: Repudiandae neque voluptas nemo veritatis.
-            orgId: Inventore quis recusandae quia ducimus.
+            id: Ut accusamus eum quia.
+            name: Distinctio pariatur.
+            orgId: Ab ex soluta aut similique.
         required:
             - id
             - name
@@ -1547,15 +1655,15 @@ definitions:
             name:
                 type: string
                 description: Project name
-                example: u
+                example: xe
                 minLength: 1
             orgId:
                 type: string
                 description: Organization ID
-                example: Assumenda explicabo et eveniet dolore.
+                example: Laudantium blanditiis dolores perspiciatis eius.
         example:
-            name: i
-            orgId: Voluptatibus consequatur enim vel optio voluptatem.
+            name: 52y
+            orgId: Omnis cupiditate.
         required:
             - name
             - orgId
@@ -1567,20 +1675,20 @@ definitions:
                 type: boolean
                 description: Whether the value is encrypted
                 default: false
-                example: false
+                example: true
             key:
                 type: string
                 description: Metadata key
-                example: Tempora reiciendis beatae quis et pariatur est.
+                example: Suscipit cumque earum.
             value:
                 type: string
                 description: Metadata value
                 default: ""
-                example: Consequatur eos doloremque numquam.
+                example: Aut dolor qui quos.
         example:
-            isEncrypted: false
-            key: Impedit nostrum enim autem fugiat veritatis.
-            value: Corporis cupiditate.
+            isEncrypted: true
+            key: Et cumque aut voluptate.
+            value: Autem neque et voluptate similique voluptate.
         required:
             - key
     SecretActor:
@@ -1590,29 +1698,29 @@ definitions:
             actorId:
                 type: string
                 description: Actor ID
-                example: Expedita aut ipsa natus.
+                example: Pariatur id placeat.
             actorType:
                 type: string
                 description: Actor type
-                example: Sed aut optio adipisci.
+                example: Aut non laboriosam aut beatae.
             groupId:
                 type: string
                 description: Group ID
-                example: Voluptatibus consequatur qui.
+                example: Ipsam ut culpa omnis nulla.
             membershipId:
                 type: string
                 description: Membership ID
-                example: Est et dolores.
+                example: Fugit error pariatur rerum.
             name:
                 type: string
                 description: Actor name
-                example: Est non maxime quam consequatur quod cumque.
+                example: Molestiae impedit dolorem voluptas soluta ratione ipsam.
         example:
-            actorId: Ut accusamus eum quia.
-            actorType: Distinctio pariatur.
-            groupId: Ipsa mollitia ex harum nulla.
-            membershipId: Laborum esse et laudantium blanditiis dolores perspiciatis.
-            name: Ab ex soluta aut similique.
+            actorId: Cumque explicabo.
+            actorType: Sit quia iure vitae.
+            groupId: Pariatur saepe aspernatur.
+            membershipId: Et omnis est cumque.
+            name: Deleniti sed.
     SecretImport:
         title: SecretImport
         type: object
@@ -1620,15 +1728,15 @@ definitions:
             environment:
                 type: string
                 description: Import source environment
-                example: Quos ut ad debitis aut id.
+                example: Voluptas rem ratione ut et.
             folderId:
                 type: string
                 description: Import source folder ID
-                example: Libero nemo praesentium qui omnis.
+                example: Fuga nam ex eligendi voluptatem sed.
             secretPath:
                 type: string
                 description: Import source path
-                example: Et qui quo ea tempora a minima.
+                example: Soluta voluptatibus.
             secrets:
                 type: array
                 items:
@@ -1636,282 +1744,150 @@ definitions:
                 description: Imported secrets
                 example:
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
                     - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
+                        actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                        actorType: Unde modi.
+                        groupId: Quam rem.
+                        membershipId: Voluptas inventore est ut.
+                        name: Voluptatibus officia magni et ducimus pariatur.
+                      environment: Ad suscipit.
+                      id: Nulla dolore mollitia facilis.
                       isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
+                      legacyId: Ad omnis et ut.
+                      rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                      secretComment: Saepe et earum corporis similique voluptas.
+                      secretKey: Voluptate doloribus iste.
                       secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                        - isEncrypted: false
+                          key: Et quia eos incidunt.
+                          value: Quod aut exercitationem enim consectetur dolor ut.
+                      secretReminderNote: Ut aut.
+                      secretReminderRepeatDays: 8141885500050080575
+                      secretValue: Sed exercitationem.
+                      secretValueHidden: false
                       skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
-                    - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
-                      isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
-                      secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
-                      skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
-                    - actor:
-                        actorId: Quibusdam id eos inventore praesentium.
-                        actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                        groupId: Eum dolores tempore.
-                        membershipId: Voluptas exercitationem maiores natus distinctio.
-                        name: Magni accusantium facilis id.
-                      environment: Accusamus natus.
-                      id: Aut exercitationem enim.
-                      isRotatedSecret: false
-                      legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                      rotationId: Mollitia facilis sed ad omnis et.
-                      secretComment: Corrupti et velit quod nihil dolor.
-                      secretKey: Alias sed aut ut.
-                      secretMetadata:
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                        - isEncrypted: true
-                          key: Pariatur rerum et in et quos eius.
-                          value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                      secretReminderNote: Quam eius doloribus dolorem odio similique.
-                      secretReminderRepeatDays: 6991192545649184547
-                      secretValue: Ratione aliquam quas expedita ipsam delectus.
-                      secretValueHidden: true
-                      skipMultilineEncoding: false
-                      type: Voluptas nesciunt illum sed magni facere et.
-                      version: 6274419464849932560
-                      workspace: Repellendus officiis quas qui excepturi numquam.
+                      type: Ratione itaque.
+                      version: 2629381824850672301
+                      workspace: Atque ipsum.
         example:
-            environment: Debitis assumenda.
-            folderId: Voluptate deleniti tempore.
-            secretPath: Quae est exercitationem.
+            environment: Aspernatur voluptatum aperiam mollitia.
+            folderId: Velit nobis.
+            secretPath: Dignissimos doloremque optio.
             secrets:
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  environment: Accusamus natus.
-                  id: Aut exercitationem enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  environment: Ad suscipit.
+                  id: Nulla dolore mollitia facilis.
                   isRotatedSecret: false
-                  legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                  rotationId: Mollitia facilis sed ad omnis et.
-                  secretComment: Corrupti et velit quod nihil dolor.
-                  secretKey: Alias sed aut ut.
+                  legacyId: Ad omnis et ut.
+                  rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                  secretComment: Saepe et earum corporis similique voluptas.
+                  secretKey: Voluptate doloribus iste.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretReminderNote: Quam eius doloribus dolorem odio similique.
-                  secretReminderRepeatDays: 6991192545649184547
-                  secretValue: Ratione aliquam quas expedita ipsam delectus.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretReminderNote: Ut aut.
+                  secretReminderRepeatDays: 8141885500050080575
+                  secretValue: Sed exercitationem.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
-                  type: Voluptas nesciunt illum sed magni facere et.
-                  version: 6274419464849932560
-                  workspace: Repellendus officiis quas qui excepturi numquam.
+                  type: Ratione itaque.
+                  version: 2629381824850672301
+                  workspace: Atque ipsum.
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  environment: Accusamus natus.
-                  id: Aut exercitationem enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  environment: Ad suscipit.
+                  id: Nulla dolore mollitia facilis.
                   isRotatedSecret: false
-                  legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                  rotationId: Mollitia facilis sed ad omnis et.
-                  secretComment: Corrupti et velit quod nihil dolor.
-                  secretKey: Alias sed aut ut.
+                  legacyId: Ad omnis et ut.
+                  rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                  secretComment: Saepe et earum corporis similique voluptas.
+                  secretKey: Voluptate doloribus iste.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretReminderNote: Quam eius doloribus dolorem odio similique.
-                  secretReminderRepeatDays: 6991192545649184547
-                  secretValue: Ratione aliquam quas expedita ipsam delectus.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretReminderNote: Ut aut.
+                  secretReminderRepeatDays: 8141885500050080575
+                  secretValue: Sed exercitationem.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
-                  type: Voluptas nesciunt illum sed magni facere et.
-                  version: 6274419464849932560
-                  workspace: Repellendus officiis quas qui excepturi numquam.
+                  type: Ratione itaque.
+                  version: 2629381824850672301
+                  workspace: Atque ipsum.
                 - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  environment: Accusamus natus.
-                  id: Aut exercitationem enim.
+                    actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                    actorType: Unde modi.
+                    groupId: Quam rem.
+                    membershipId: Voluptas inventore est ut.
+                    name: Voluptatibus officia magni et ducimus pariatur.
+                  environment: Ad suscipit.
+                  id: Nulla dolore mollitia facilis.
                   isRotatedSecret: false
-                  legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                  rotationId: Mollitia facilis sed ad omnis et.
-                  secretComment: Corrupti et velit quod nihil dolor.
-                  secretKey: Alias sed aut ut.
+                  legacyId: Ad omnis et ut.
+                  rotationId: Sunt recusandae itaque corrupti necessitatibus quasi enim.
+                  secretComment: Saepe et earum corporis similique voluptas.
+                  secretKey: Voluptate doloribus iste.
                   secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretReminderNote: Quam eius doloribus dolorem odio similique.
-                  secretReminderRepeatDays: 6991192545649184547
-                  secretValue: Ratione aliquam quas expedita ipsam delectus.
-                  secretValueHidden: true
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                  secretReminderNote: Ut aut.
+                  secretReminderRepeatDays: 8141885500050080575
+                  secretValue: Sed exercitationem.
+                  secretValueHidden: false
                   skipMultilineEncoding: false
-                  type: Voluptas nesciunt illum sed magni facere et.
-                  version: 6274419464849932560
-                  workspace: Repellendus officiis quas qui excepturi numquam.
-                - actor:
-                    actorId: Quibusdam id eos inventore praesentium.
-                    actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                    groupId: Eum dolores tempore.
-                    membershipId: Voluptas exercitationem maiores natus distinctio.
-                    name: Magni accusantium facilis id.
-                  environment: Accusamus natus.
-                  id: Aut exercitationem enim.
-                  isRotatedSecret: false
-                  legacyId: Dolor ut eius ex delectus repudiandae laboriosam.
-                  rotationId: Mollitia facilis sed ad omnis et.
-                  secretComment: Corrupti et velit quod nihil dolor.
-                  secretKey: Alias sed aut ut.
-                  secretMetadata:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                  secretReminderNote: Quam eius doloribus dolorem odio similique.
-                  secretReminderRepeatDays: 6991192545649184547
-                  secretValue: Ratione aliquam quas expedita ipsam delectus.
-                  secretValueHidden: true
-                  skipMultilineEncoding: false
-                  type: Voluptas nesciunt illum sed magni facere et.
-                  version: 6274419464849932560
-                  workspace: Repellendus officiis quas qui excepturi numquam.
+                  type: Ratione itaque.
+                  version: 2629381824850672301
+                  workspace: Atque ipsum.
         required:
             - secretPath
             - environment
@@ -1925,15 +1901,15 @@ definitions:
             createdAt:
                 type: string
                 description: Creation timestamp
-                example: Explicabo molestias quo.
+                example: Repellendus tempore temporibus.
             environment:
                 type: string
                 description: Environment slug
-                example: Deserunt eos neque praesentium quia sed repellat.
+                example: Quis et pariatur est eum consequatur.
             id:
                 type: string
                 description: Secret ID
-                example: Ad omnis quibusdam deserunt accusantium adipisci quisquam.
+                example: Sint animi aut omnis voluptatem illo.
             isRotatedSecret:
                 type: boolean
                 description: Whether this is a rotated secret
@@ -1941,54 +1917,54 @@ definitions:
             legacyId:
                 type: string
                 description: Legacy secret ID
-                example: Neque fuga eveniet ratione eos.
+                example: Tempore nemo consequatur laudantium.
             rotationId:
                 type: string
                 description: Rotation ID (UUID)
-                example: Qui sint animi aut omnis voluptatem.
+                example: Qui et ut iste voluptatem.
             secretComment:
                 type: string
                 description: Secret comment
-                example: Dolorum quia quia.
+                example: Dolores ut sunt omnis eum veniam.
             secretKey:
                 type: string
                 description: Secret key
-                example: Facilis nesciunt est autem ut eius.
+                example: Fugiat veritatis provident corporis.
             secretMetadata:
                 type: array
                 items:
                     $ref: '#/definitions/ResourceMetadata'
                 description: Secret metadata entries
                 example:
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                    - isEncrypted: true
-                      key: Pariatur rerum et in et quos eius.
-                      value: Temporibus impedit adipisci voluptatem molestiae voluptas.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
+                    - isEncrypted: false
+                      key: Et quia eos incidunt.
+                      value: Quod aut exercitationem enim consectetur dolor ut.
             secretPath:
                 type: string
                 description: Path of the secret
-                example: Numquam tempore nemo consequatur laudantium fuga.
+                example: Id modi esse.
             secretReminderNote:
                 type: string
                 description: Reminder note
-                example: Dolores quis ut veniam.
+                example: Rerum ipsa molestias sunt commodi impedit.
             secretReminderRepeatDays:
                 type: integer
                 description: Reminder repeat days
-                example: 2207507811819319793
+                example: 5786951498712286070
                 format: int64
             secretValue:
                 type: string
                 description: Secret value
-                example: Enim eos provident dolores qui qui odio.
+                example: Ratione exercitationem ut.
             secretValueHidden:
                 type: boolean
                 description: Whether the secret value is hidden
@@ -1996,89 +1972,93 @@ definitions:
             skipMultilineEncoding:
                 type: boolean
                 description: Skip multiline encoding
-                example: true
+                example: false
             tags:
                 type: array
                 items:
                     $ref: '#/definitions/SecretTag'
                 description: Tags attached to the secret
                 example:
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
-                    - color: Inventore est ut non quam.
-                      id: Modi et voluptatibus officia magni et.
-                      name: Illo quidem dolor recusandae voluptates.
-                      slug: Pariatur inventore.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
+                    - color: Voluptas nesciunt illum sed magni facere et.
+                      id: Repudiandae laboriosam odio repellendus officiis.
+                      name: Alias sed aut ut.
+                      slug: Qui excepturi numquam est accusamus natus qui.
             type:
                 type: string
                 description: Secret type (shared or personal)
-                example: Optio aut atque autem unde suscipit qui.
+                example: Numquam fuga odio impedit nostrum enim.
             updatedAt:
                 type: string
                 description: Last update timestamp
-                example: Architecto culpa pariatur accusantium esse similique fugit.
+                example: Quasi reprehenderit alias et omnis in placeat.
             version:
                 type: integer
                 description: Secret version
-                example: 668940069429816460
+                example: 6440231575573686356
                 format: int64
             workspace:
                 type: string
                 description: Workspace/project ID
-                example: A sequi qui id.
+                example: Et debitis tempora reiciendis.
         example:
             actor:
-                actorId: Quibusdam id eos inventore praesentium.
-                actorType: Soluta beatae occaecati magni impedit enim dignissimos.
-                groupId: Eum dolores tempore.
-                membershipId: Voluptas exercitationem maiores natus distinctio.
-                name: Magni accusantium facilis id.
-            createdAt: Cumque aut.
-            environment: Sit quia iure vitae.
-            id: Error pariatur rerum eius ipsam ut.
+                actorId: Impedit adipisci voluptatem molestiae voluptas nemo.
+                actorType: Unde modi.
+                groupId: Quam rem.
+                membershipId: Voluptas inventore est ut.
+                name: Voluptatibus officia magni et ducimus pariatur.
+            createdAt: Sed maxime sint non alias.
+            environment: Ut excepturi reprehenderit dignissimos odit molestiae harum.
+            id: Porro error.
             isRotatedSecret: true
-            legacyId: Omnis nulla.
-            rotationId: Et repellat quia.
-            secretComment: Excepturi id modi esse non est.
-            secretKey: Cumque nisi pariatur saepe aspernatur.
+            legacyId: Beatae quas dolorum ratione provident.
+            rotationId: Accusantium esse.
+            secretComment: Dicta quis ipsam quasi iste consequatur.
+            secretKey: Beatae ut rem.
             secretMetadata:
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-                - isEncrypted: true
-                  key: Pariatur rerum et in et quos eius.
-                  value: Temporibus impedit adipisci voluptatem molestiae voluptas.
-            secretPath: Eos consequatur.
-            secretReminderNote: Cumque earum ut aut dolor qui quos.
-            secretReminderRepeatDays: 5912983869593674428
-            secretValue: Quo qui et ut iste.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+                - isEncrypted: false
+                  key: Et quia eos incidunt.
+                  value: Quod aut exercitationem enim consectetur dolor ut.
+            secretPath: Perspiciatis non ab aut.
+            secretReminderNote: Id non.
+            secretReminderRepeatDays: 5424358753491156501
+            secretValue: Saepe eaque.
             secretValueHidden: true
             skipMultilineEncoding: false
             tags:
-                - color: Inventore est ut non quam.
-                  id: Modi et voluptatibus officia magni et.
-                  name: Illo quidem dolor recusandae voluptates.
-                  slug: Pariatur inventore.
-                - color: Inventore est ut non quam.
-                  id: Modi et voluptatibus officia magni et.
-                  name: Illo quidem dolor recusandae voluptates.
-                  slug: Pariatur inventore.
-            type: Sed maiores et omnis.
-            updatedAt: Consequuntur autem neque et voluptate similique voluptate.
-            version: 5897633123921414337
-            workspace: Cumque explicabo.
+                - color: Voluptas nesciunt illum sed magni facere et.
+                  id: Repudiandae laboriosam odio repellendus officiis.
+                  name: Alias sed aut ut.
+                  slug: Qui excepturi numquam est accusamus natus qui.
+                - color: Voluptas nesciunt illum sed magni facere et.
+                  id: Repudiandae laboriosam odio repellendus officiis.
+                  name: Alias sed aut ut.
+                  slug: Qui excepturi numquam est accusamus natus qui.
+                - color: Voluptas nesciunt illum sed magni facere et.
+                  id: Repudiandae laboriosam odio repellendus officiis.
+                  name: Alias sed aut ut.
+                  slug: Qui excepturi numquam est accusamus natus qui.
+            type: Dicta fugit eum dolores.
+            updatedAt: Placeat consequatur qui veritatis mollitia nisi.
+            version: 7235545215534020876
+            workspace: Aliquam eveniet et laboriosam autem voluptatem eos.
         required:
             - id
             - legacyId
@@ -2099,24 +2079,24 @@ definitions:
             color:
                 type: string
                 description: Tag color
-                example: Sunt commodi impedit modi voluptate.
+                example: Et sit et.
             id:
                 type: string
                 description: Tag ID (UUID)
-                example: Aut dolores ut sunt.
+                example: Repellat quia.
             name:
                 type: string
                 description: Tag name
-                example: Repellendus tempore temporibus.
+                example: Et qui quo ea tempora a minima.
             slug:
                 type: string
                 description: Tag slug
-                example: Eum veniam voluptates rerum ipsa.
+                example: Eos consequatur.
         example:
-            color: Aut non laboriosam aut beatae.
-            id: Quasi reprehenderit alias et omnis in placeat.
-            name: Molestiae impedit dolorem voluptas soluta ratione ipsam.
-            slug: Pariatur id placeat.
+            color: Qui amet ut exercitationem.
+            id: Quos ut ad debitis aut id.
+            name: Et voluptas ipsa consequatur odio quisquam repellendus.
+            slug: Libero nemo praesentium qui omnis.
         required:
             - id
             - slug

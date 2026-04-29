@@ -18,6 +18,7 @@ import (
 // Endpoints wraps the "secrets" service endpoints.
 type Endpoints struct {
 	ListSecretsV4        goa.Endpoint
+	ListSecretsV3        goa.Endpoint
 	GetSecretByNameV4    goa.Endpoint
 	ListSecretsRawV3     goa.Endpoint
 	GetSecretByNameRawV3 goa.Endpoint
@@ -29,6 +30,7 @@ func NewEndpoints(s Service) *Endpoints {
 	a := s.(Auther)
 	return &Endpoints{
 		ListSecretsV4:        NewListSecretsV4Endpoint(s, a.JWTAuth),
+		ListSecretsV3:        NewListSecretsV3Endpoint(s, a.JWTAuth),
 		GetSecretByNameV4:    NewGetSecretByNameV4Endpoint(s, a.JWTAuth),
 		ListSecretsRawV3:     NewListSecretsRawV3Endpoint(s, a.JWTAuth),
 		GetSecretByNameRawV3: NewGetSecretByNameRawV3Endpoint(s, a.JWTAuth),
@@ -38,6 +40,7 @@ func NewEndpoints(s Service) *Endpoints {
 // Use applies the given middleware to all the "secrets" service endpoints.
 func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
 	e.ListSecretsV4 = m(e.ListSecretsV4)
+	e.ListSecretsV3 = m(e.ListSecretsV3)
 	e.GetSecretByNameV4 = m(e.GetSecretByNameV4)
 	e.ListSecretsRawV3 = m(e.ListSecretsRawV3)
 	e.GetSecretByNameRawV3 = m(e.GetSecretByNameRawV3)
@@ -75,6 +78,46 @@ func NewListSecretsV4Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.End
 			return nil, err
 		}
 		res, err := s.ListSecretsV4(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+		vres := NewViewedListSecretsResult(res, "default")
+		return vres, nil
+	}
+}
+
+// NewListSecretsV3Endpoint returns an endpoint function that calls the method
+// "listSecretsV3" of service "secrets".
+func NewListSecretsV3Endpoint(s Service, authJWTFn security.AuthJWTFunc) goa.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		p := req.(*ListSecretsV3Payload)
+		var err error
+		sc := security.JWTScheme{
+			Name:           "jwt",
+			Scopes:         []string{},
+			RequiredScopes: []string{},
+		}
+		ctx, err = authJWTFn(ctx, p.Token, &sc)
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "identity_access_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			sc := security.JWTScheme{
+				Name:           "service_token",
+				Scopes:         []string{},
+				RequiredScopes: []string{},
+			}
+			ctx, err = authJWTFn(ctx, p.Token, &sc)
+		}
+		if err != nil {
+			return nil, err
+		}
+		res, err := s.ListSecretsV3(ctx, p)
 		if err != nil {
 			return nil, err
 		}
