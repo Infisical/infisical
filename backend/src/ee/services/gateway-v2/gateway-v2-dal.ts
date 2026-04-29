@@ -23,10 +23,8 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(regularFilter, TableName.GatewayV2))
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
-        .leftJoin(TableName.Relay, `${TableName.Relay}.id`, `${TableName.GatewayV2}.relayId`)
         .select(selectAllTableCols(TableName.GatewayV2))
-        .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
-        .select(db.ref("name").withSchema(TableName.Relay).as("relayName"));
+        .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -56,8 +54,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
 
       return docs.map((el) => ({
         ...GatewaysV2Schema.parse(el),
-        identity: el.identityId ? { id: el.identityId, name: el.identityName } : null,
-        relay: el.relayId ? { id: el.relayId, name: el.relayName } : null
+        identity: el.identityId ? { id: el.identityId, name: el.identityName } : null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: `${TableName.GatewayV2}: Find` });

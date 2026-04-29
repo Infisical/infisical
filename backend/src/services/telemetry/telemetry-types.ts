@@ -107,11 +107,8 @@ export enum PostHogEventTypes {
   PamRotationRuleCreated = "PAM Rotation Rule Created",
   PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
 
-  // Resource auth methods (gateway today, relay later)
   ResourceAuthMethodLogin = "Resource Auth Method Login",
-  ResourceAuthMethodAttached = "Resource Auth Method Attached",
-  ResourceAuthMethodUpdated = "Resource Auth Method Updated",
-  ResourceAuthMethodRevoked = "Resource Auth Method Revoked"
+  ResourceAuthMethodUpdated = "Resource Auth Method Updated"
 }
 
 export type TSecretModifiedEvent = {
@@ -829,11 +826,7 @@ export type TPamRotationRuleDeletedEvent = {
 };
 
 export type TResourceAuthMethodEvent = {
-  event:
-    | PostHogEventTypes.ResourceAuthMethodLogin
-    | PostHogEventTypes.ResourceAuthMethodAttached
-    | PostHogEventTypes.ResourceAuthMethodUpdated
-    | PostHogEventTypes.ResourceAuthMethodRevoked;
+  event: PostHogEventTypes.ResourceAuthMethodLogin | PostHogEventTypes.ResourceAuthMethodUpdated;
   properties: {
     resourceType: "gateway";
     resourceId: string;

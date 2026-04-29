@@ -22,14 +22,11 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  lastHealthCheckStatus: true,
-  // Surfaced so the frontend can gate the Revoke button on tokenVersion > 0 — the cheap
-  // proxy for "this gateway has produced a JWT at some point" without server-side JWT
-  // tracking.
-  tokenVersion: true
+  lastHealthCheckStatus: true
+}).extend({
+  hasIssuedToken: z.boolean()
 });
 
-// AWS-method config returned in responses (already-existing config row).
 const AwsAuthMethodConfigSchema = z.object({
   id: z.string().uuid(),
   stsEndpoint: z.string(),
@@ -39,9 +36,6 @@ const AwsAuthMethodConfigSchema = z.object({
   updatedAt: z.date()
 });
 
-// Token method has no surfaced config — enrollment-token rows are deleted on consume,
-// so there's no client-visible state to expose. The CLI itself returns a clear error
-// for invalid/expired tokens.
 const TokenAuthMethodConfigSchema = z.object({});
 
 const IdentityAuthMethodConfigSchema = z.object({
@@ -49,7 +43,6 @@ const IdentityAuthMethodConfigSchema = z.object({
   identityName: z.string().nullable()
 });
 
-// Discriminated union returned to clients on GET / PATCH / POST gateway.
 const AuthMethodViewSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
   z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
@@ -60,7 +53,6 @@ const GatewayWithAuthMethodSchema = SanitizedGatewayV2Schema.extend({
   authMethod: AuthMethodViewSchema
 });
 
-// AWS-method input for create/update. PUT-like full-replace semantics on the AWS config.
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
@@ -138,7 +130,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { ...gateway, authMethod: view };
+      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
     }
   });
 
@@ -161,7 +153,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
       });
-      return { ...gateway, authMethod: view };
+      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
     }
   });
 
@@ -176,8 +168,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
-        // Renaming gateways is not supported here — name is set at create time and
-        // shouldn't change. If we ever want it, add `name` back and wire up the service.
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS_V3.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
@@ -244,7 +234,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
       });
-      return { ...gateway, authMethod: view };
+      return { ...gateway, hasIssuedToken: gateway.tokenVersion > 0, authMethod: view };
     }
   });
 
@@ -287,9 +277,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /:gatewayId/revoke ─────────────────────────────────────────────
-  // Method-aware broad revoke. Bumps tokenVersion (kills active JWT), clears heartbeat,
-  // and — for token method — deletes every enrollment-token row (used + unused). Single
-  // affordance for "kick this gateway out and invalidate everything it has."
+  // Disconnect the running daemon and invalidate any outstanding enrollment tokens.
   server.route({
     method: "POST",
     url: "/:gatewayId/revoke",
@@ -427,7 +415,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       }
 
-      // Token method
       const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
 
       await server.services.auditLog
@@ -476,8 +463,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
   // ─── POST /token-auth/enroll  (DEPRECATED) ────────────────────────────────
   // Kept for deployed gateway CLIs that hardcode this URL. New CLIs hit POST /v3/gateways/login.
-  // The handler is functionally equivalent to /login with method=token; we keep it on a
-  // parallel route so request shapes don't have to change in deployed binaries.
   server.route({
     method: "POST",
     url: "/token-auth/enroll",
@@ -492,10 +477,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      // Functionally identical to POST /v3/gateways/login with method=token. We route through
-      // the same service path so the audit-log event matches what new CLIs produce —
-      // querying "all gateway logins" stays consistent regardless of which CLI version
-      // each daemon is running.
       const result = await server.services.resourceAuthMethod.loginWithToken({ token: req.body.token });
 
       await server.services.auditLog
@@ -523,7 +504,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── POST /connect ───────────────────────────────────────────────────────
-  // Daemon connect. Untouched by this redesign — relay binding still resolved here lazily.
+  // Daemon connect.
   server.route({
     method: "POST",
     url: "/connect",

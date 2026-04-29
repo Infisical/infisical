@@ -37,10 +37,6 @@ export type TLoginWithTokenDTO = {
   token: string;
 };
 
-// Discriminated-union shape returned to the API layer. Callers render the right view by
-// switching on `method`. `identity` is a literal here rather than a member of
-// ResourceAuthMethodType because identity isn't a stored method — it's a legacy state
-// surfaced from gateways_v2.identityId.
 export type TAuthMethodView =
   | {
       method: typeof ResourceAuthMethodType.Aws;

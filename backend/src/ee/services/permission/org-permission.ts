@@ -72,10 +72,6 @@ export enum OrgPermissionGatewayActions {
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
   AttachGateways = "attach-gateways",
-  // Authorizes the broad-revoke action: bumps tokenVersion, clears heartbeat, and
-  // (for token method) deletes enrollment-token rows. Separated from EditGateways so
-  // operators can grant config edits without granting the ability to disconnect a
-  // running gateway.
   RevokeGatewayAccess = "revoke-gateway-access"
 }
 

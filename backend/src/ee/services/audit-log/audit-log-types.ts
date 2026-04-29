@@ -778,13 +778,10 @@ export enum EventType {
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
 
-  // Resource Auth Methods (gateway, future: relay)
+  // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
-  RESOURCE_AUTH_METHOD_ATTACH = "resource-auth-method-attach",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
-  RESOURCE_AUTH_METHOD_GET = "resource-auth-method-get",
-  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -6191,8 +6188,8 @@ interface ResourceAuthMethodLoginFailedEvent {
   };
 }
 
-interface ResourceAuthMethodAttachEvent {
-  type: EventType.RESOURCE_AUTH_METHOD_ATTACH;
+interface ResourceAuthMethodUpdateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
   metadata: {
     resourceType: "gateway";
     resourceId: string;
@@ -6201,29 +6198,7 @@ interface ResourceAuthMethodAttachEvent {
     stsEndpoint?: string;
     allowedPrincipalArns?: string;
     allowedAccountIds?: string;
-    // Set when attach unlinked an existing machine-identity binding from the gateway.
-    unlinkedIdentityId?: string;
   };
-}
-
-interface ResourceAuthMethodUpdateEvent {
-  type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
-  metadata: ResourceAuthMethodAttachEvent["metadata"];
-}
-
-interface ResourceAuthMethodGetEvent {
-  type: EventType.RESOURCE_AUTH_METHOD_GET;
-  metadata: {
-    resourceType: "gateway";
-    resourceId: string;
-    method: ResourceAuthMethodKind;
-    methodConfigId: string;
-  };
-}
-
-interface ResourceAuthMethodRevokeEvent {
-  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
-  metadata: ResourceAuthMethodGetEvent["metadata"];
 }
 
 interface GatewayPoolCreateEvent {
@@ -6830,10 +6805,7 @@ export type Event =
   | GatewayEnrollEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
-  | ResourceAuthMethodAttachEvent
   | ResourceAuthMethodUpdateEvent
-  | ResourceAuthMethodGetEvent
-  | ResourceAuthMethodRevokeEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent

@@ -217,9 +217,9 @@ export enum TableName {
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
   GatewayV2 = "gateways_v2",
-  ResourceEnrollmentTokens = "resource_enrollment_tokens",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceEnrollmentTokens = "resource_enrollment_tokens",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
 

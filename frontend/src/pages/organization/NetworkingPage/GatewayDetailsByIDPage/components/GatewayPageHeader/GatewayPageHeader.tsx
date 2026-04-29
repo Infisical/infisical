@@ -66,7 +66,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
   };
 
   const isRegistered = Boolean(gateway.heartbeat || gateway.lastHealthCheckStatus);
-  const canRevoke = gateway.tokenVersion > 0;
+  const canRevoke = gateway.hasIssuedToken;
 
   return (
     <>

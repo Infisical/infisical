@@ -78,7 +78,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("authMethodId").notNullable().unique();
       t.foreign("authMethodId").references("id").inTable(TableName.ResourceAuthMethod).onDelete("CASCADE");
-      t.string("stsEndpoint").notNullable().defaultTo("https://sts.amazonaws.com/");
+      t.string("stsEndpoint").notNullable();
       t.string("allowedPrincipalArns", 4096).notNullable().defaultTo("");
       t.string("allowedAccountIds", 2048).notNullable().defaultTo("");
       t.timestamps(true, true, true);
