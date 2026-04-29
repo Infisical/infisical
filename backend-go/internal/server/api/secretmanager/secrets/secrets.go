@@ -43,6 +43,7 @@ type secretImportSvc interface {
 
 type secretDAL interface {
 	FindByFolderIds(ctx context.Context, folderIDs []uuid.UUID, userID *uuid.UUID, filters *secret.FindByFolderIdsFilter) ([]secret.Secret, error)
+	FindByKey(ctx context.Context, folderID uuid.UUID, key string, secretType string, userID *uuid.UUID) (*secret.Secret, error)
 }
 
 type environmentDAL interface {
@@ -563,28 +564,278 @@ func (s *service) buildImportSecretRaw(ps *processedSecret, projectID string, ci
 	}
 }
 
+// GetSecretOpts contains the options for getting a single secret by name.
+type GetSecretOpts struct {
+	ProjectID              string
+	Environment            string
+	SecretPath             string
+	SecretName             string
+	SecretType             string
+	ViewSecretValue        bool
+	ExpandSecretReferences bool
+	IncludeImports         bool
+}
+
+// getSecretByNameCore is the shared implementation for v3 and v4 get secret by name endpoints.
+func (s *service) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) (*gensecrets.GetSecretResult, error) {
+	identity := auth.IdentityFromContext(ctx)
+	if identity == nil {
+		return nil, errutil.Unauthorized("Authentication required")
+	}
+
+	actorID := identity.ActorID
+	orgID := identity.OrgID
+
+	// Get project permission
+	permResult, err := s.permissionSvc.GetProjectPermission(ctx, &permission.GetProjectPermissionArgs{
+		Actor:             identity.Actor,
+		ActorID:           actorID,
+		ProjectID:         opts.ProjectID,
+		ActorAuthMethod:   identity.AuthMethod,
+		ActorOrgID:        orgID,
+		ActionProjectType: permission.ActionProjectTypeSecretManager,
+	})
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to get project permission").WithErr(err)
+	}
+
+	// Load environments
+	allEnvs, err := s.environmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to load environments").WithErr(err)
+	}
+
+	envByID := make(map[uuid.UUID]secretimport.EnvironmentInfo, len(allEnvs))
+	envBySlug := make(map[string]uuid.UUID, len(allEnvs))
+	var env *environment.Environment
+	for i := range allEnvs {
+		envByID[allEnvs[i].ID] = secretimport.EnvironmentInfo{
+			ID:   allEnvs[i].ID,
+			Slug: allEnvs[i].Slug,
+		}
+		envBySlug[allEnvs[i].Slug] = allEnvs[i].ID
+		if allEnvs[i].Slug == opts.Environment {
+			env = &allEnvs[i]
+		}
+	}
+	if env == nil {
+		return nil, errutil.NotFound("Environment not found").WithErr(
+			fmt.Errorf("environment '%s' not found in project", opts.Environment),
+		)
+	}
+
+	// Load folder
+	folderLookup, err := s.secretFolderSvc.LoadProjectFolders(ctx, opts.ProjectID, []uuid.UUID{env.ID})
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to load folders").WithErr(err)
+	}
+
+	folderNode, ok := folderLookup.GetByPath(env.ID, opts.SecretPath)
+	if !ok {
+		return nil, errutil.NotFound("Folder not found").WithErr(
+			fmt.Errorf("folder path '%s' not found in environment '%s'", opts.SecretPath, opts.Environment),
+		)
+	}
+
+	// Get KMS cipher pair
+	cipherPair, err := s.kmsSvc.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
+		Type:      kms.DataKeyProject,
+		ProjectID: opts.ProjectID,
+	})
+	if err != nil {
+		return nil, errutil.InternalServer("Failed to get decryption key").WithErr(err)
+	}
+
+	// Prepare user ID for personal secrets
+	var userID *uuid.UUID
+	secretType := opts.SecretType
+	if secretType == "" {
+		secretType = "shared"
+	}
+	switch identity.Actor {
+	case permission.ActorTypeIdentity, permission.ActorTypeService:
+		// Identities and service tokens can't have personal secrets - force to shared
+		secretType = "shared"
+	case permission.ActorTypeUser:
+		userID = &actorID
+	}
+
+	// Find the secret by name
+	foundSecret, err := s.secretDAL.FindByKey(ctx, folderNode.ID, opts.SecretName, secretType, userID)
+	if err != nil {
+		return nil, errutil.DatabaseErr("Failed to find secret").WithErr(err)
+	}
+
+	// If not found in direct folder and includeImports is true, search imports
+	if foundSecret == nil && opts.IncludeImports {
+		importLookup, err := s.secretImportSvc.LoadProjectImports(ctx, opts.ProjectID)
+		if err != nil {
+			return nil, errutil.DatabaseErr("Failed to load imports").WithErr(err)
+		}
+
+		chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderSvc)
+		chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, env.ID, opts.SecretPath, false, envByID)
+		if err == nil && len(chainResult.Imports) > 0 {
+			// Search imports in reverse order (last import wins)
+			for i := len(chainResult.Imports) - 1; i >= 0; i-- {
+				imp := &chainResult.Imports[i]
+				importedSecret, err := s.secretDAL.FindByKey(ctx, imp.FolderID, opts.SecretName, secretType, userID)
+				if err != nil {
+					continue
+				}
+				if importedSecret != nil {
+					foundSecret = importedSecret
+					break
+				}
+			}
+		}
+	}
+
+	if foundSecret == nil {
+		return nil, errutil.NotFound("Secret not found").WithErr(
+			fmt.Errorf("secret with name '%s' not found", opts.SecretName),
+		)
+	}
+
+	// Check permissions
+	tagSlugs := make([]string, len(foundSecret.Tags))
+	for i, tag := range foundSecret.Tags {
+		tagSlugs[i] = tag.Slug
+	}
+
+	canDescribe := permission.CanDescribeSecret(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
+	if !canDescribe {
+		return nil, errutil.Forbidden("You do not have permission to access this secret")
+	}
+
+	canReadValue := permission.CanReadSecretValue(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
+	valueHidden := !opts.ViewSecretValue || !canReadValue
+
+	if opts.ViewSecretValue && !canReadValue {
+		return nil, errutil.Forbidden("You do not have permission to view this secret value")
+	}
+
+	// Decrypt value and comment
+	var secretValue, secretComment string
+	if !valueHidden && foundSecret.EncryptedValue.Valid && len(foundSecret.EncryptedValue.V) > 0 {
+		if decrypted, err := cipherPair.Decrypt(foundSecret.EncryptedValue.V); err == nil {
+			secretValue = string(decrypted)
+		}
+	}
+	if valueHidden {
+		secretValue = secretValueHiddenMask
+	}
+
+	if foundSecret.EncryptedComment.Valid && len(foundSecret.EncryptedComment.V) > 0 {
+		if decrypted, err := cipherPair.Decrypt(foundSecret.EncryptedComment.V); err == nil {
+			secretComment = string(decrypted)
+		}
+	}
+
+	// Expand references if requested
+	if opts.ExpandSecretReferences && !valueHidden && secretValue != "" {
+		importLookup, _ := s.secretImportSvc.LoadProjectImports(ctx, opts.ProjectID)
+		chainResolver := secretimport.NewChainResolver(importLookup, s.secretFolderSvc)
+		chainResult, _ := chainResolver.Resolve(ctx, opts.ProjectID, env.ID, opts.SecretPath, false, envByID)
+
+		// Build inputs for expansion with the single secret
+		inputs := []secretsexpansion.SecretInput{{
+			ID:         foundSecret.ID,
+			Key:        foundSecret.Key,
+			Value:      secretValue,
+			Env:        opts.Environment,
+			Path:       opts.SecretPath,
+			IsImported: false,
+		}}
+
+		// Add imported secrets for reference resolution
+		if len(chainResult.Imports) > 0 {
+			allFolderIDs := chainResult.AllFolderIDs()
+			importedSecrets, _ := s.secretDAL.FindByFolderIds(ctx, allFolderIDs, userID, nil)
+			for i := range importedSecrets {
+				sec := &importedSecrets[i]
+				if sec.ID == foundSecret.ID {
+					continue
+				}
+				var val string
+				if sec.EncryptedValue.Valid && len(sec.EncryptedValue.V) > 0 {
+					if decrypted, err := cipherPair.Decrypt(sec.EncryptedValue.V); err == nil {
+						val = string(decrypted)
+					}
+				}
+				inputs = append(inputs, secretsexpansion.SecretInput{
+					ID:         sec.ID,
+					Key:        sec.Key,
+					Value:      val,
+					Env:        opts.Environment,
+					Path:       opts.SecretPath,
+					IsImported: true,
+				})
+			}
+		}
+
+		absoluteFetcher := newAbsoluteSecretFetcher(
+			ctx,
+			opts.ProjectID,
+			envBySlug,
+			folderLookup,
+			s.secretFolderSvc,
+			s.secretDAL,
+			cipherPair,
+			userID,
+		)
+
+		expander := secretsexpansion.NewSecretExpander(inputs, secretsexpansion.ExpandOpts{
+			CanAccessAbsolute: func(ref secretsexpansion.AbsoluteSecretRef) bool {
+				return permission.CanReadSecretValue(permResult.Permission.Ability, ref.Env, ref.Path, ref.Key, nil)
+			},
+			FetchAbsoluteSecrets: absoluteFetcher.Fetch,
+		})
+		expander.Expand()
+
+		if expander.HasDeniedRefs() {
+			deniedRefs := expander.DeniedRefs()
+			return nil, errutil.Forbidden("Failed to expand one or more secret references").
+				WithErr(fmt.Errorf("denied refs: %v", deniedRefs))
+		}
+
+		if expanded, ok := expander.LookUp(foundSecret.ID); ok {
+			secretValue = expanded
+		}
+	}
+
+	// Build response
+	processed := &processedSecret{
+		Secret:      foundSecret,
+		SecretPath:  opts.SecretPath,
+		Environment: opts.Environment,
+		Value:       secretValue,
+		Comment:     secretComment,
+		ValueHidden: valueHidden,
+	}
+
+	return &gensecrets.GetSecretResult{
+		Secret: s.buildSecretRaw(processed, opts.ProjectID, cipherPair),
+	}, nil
+}
+
 func (s *service) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecretByNameV4Payload) (*gensecrets.GetSecretResult, error) {
 	s.logger.InfoContext(ctx, "getting secret by name v4",
 		slog.String("secretName", p.SecretName),
 		slog.String("projectId", p.ProjectID),
 		slog.String("environment", p.Environment),
 	)
-	return &gensecrets.GetSecretResult{
-		Secret: &gensecrets.SecretRaw{
-			ID:                "stub",
-			LegacyID:          "stub",
-			Workspace:         p.ProjectID,
-			Environment:       p.Environment,
-			Version:           1,
-			Type:              "shared",
-			SecretKey:         p.SecretName,
-			SecretValue:       "",
-			SecretComment:     "",
-			CreatedAt:         "",
-			UpdatedAt:         "",
-			SecretValueHidden: false,
-		},
-	}, nil
+
+	return s.getSecretByNameCore(ctx, &GetSecretOpts{
+		ProjectID:              p.ProjectID,
+		Environment:            p.Environment,
+		SecretPath:             p.SecretPath,
+		SecretName:             p.SecretName,
+		SecretType:             p.Type,
+		ViewSecretValue:        p.ViewSecretValue,
+		ExpandSecretReferences: p.ExpandSecretReferences,
+		IncludeImports:         p.IncludeImports,
+	})
 }
 
 func (s *service) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecretsRawV3Payload) (*gensecrets.ListSecretsResult, error) {
@@ -678,21 +929,14 @@ func (s *service) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	// TODO(go): Implement get single secret by name
-	return &gensecrets.GetSecretResult{
-		Secret: &gensecrets.SecretRaw{
-			ID:                "stub",
-			LegacyID:          "stub",
-			Workspace:         projectID,
-			Environment:       *p.Environment,
-			Version:           1,
-			Type:              "shared",
-			SecretKey:         p.SecretName,
-			SecretValue:       "",
-			SecretComment:     "",
-			CreatedAt:         "",
-			UpdatedAt:         "",
-			SecretValueHidden: false,
-		},
-	}, nil
+	return s.getSecretByNameCore(ctx, &GetSecretOpts{
+		ProjectID:              projectID,
+		Environment:            *p.Environment,
+		SecretPath:             p.SecretPath,
+		SecretName:             p.SecretName,
+		SecretType:             p.Type,
+		ViewSecretValue:        p.ViewSecretValue,
+		ExpandSecretReferences: p.ExpandSecretReferences,
+		IncludeImports:         p.IncludeImports,
+	})
 }

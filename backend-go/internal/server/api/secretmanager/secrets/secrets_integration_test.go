@@ -1629,4 +1629,155 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "workspaceId or workspaceSlug")
 	})
+
+	// ===================
+	// Get Secret By Name Subtests
+	// ===================
+
+	t.Run("get secret by name v4 returns secret", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeIdentityAccessToken,
+			Actor:      permission.ActorTypeIdentity,
+			ActorID:    uuid.MustParse(identity.ID),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		getResult, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "PLAIN_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "PLAIN_SECRET", getResult.Secret.SecretKey)
+		assert.Equal(t, "plain-value", getResult.Secret.SecretValue)
+	})
+
+	t.Run("get secret by name v4 with expansion", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeIdentityAccessToken,
+			Actor:      permission.ActorTypeIdentity,
+			ActorID:    uuid.MustParse(identity.ID),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		getResult, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:             "ENDPOINT",
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "ENDPOINT", getResult.Secret.SecretKey)
+		assert.Equal(t, "myhost.com:5432", getResult.Secret.SecretValue, "should expand references")
+	})
+
+	t.Run("get secret by name v4 without expansion", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeIdentityAccessToken,
+			Actor:      permission.ActorTypeIdentity,
+			ActorID:    uuid.MustParse(identity.ID),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		getResult, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:             "ENDPOINT",
+			ProjectID:              proj.ID,
+			Environment:            "dev",
+			SecretPath:             "/",
+			ViewSecretValue:        true,
+			ExpandSecretReferences: false,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "ENDPOINT", getResult.Secret.SecretKey)
+		assert.Equal(t, "${HOST}:${PORT}", getResult.Secret.SecretValue, "should not expand references")
+	})
+
+	t.Run("get secret by name v4 not found", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeIdentityAccessToken,
+			Actor:      permission.ActorTypeIdentity,
+			ActorID:    uuid.MustParse(identity.ID),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		_, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "NON_EXISTENT_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("get secret by name v4 with comment and metadata", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeIdentityAccessToken,
+			Actor:      permission.ActorTypeIdentity,
+			ActorID:    uuid.MustParse(identity.ID),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		// Get secret with comment
+		getResult, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "COMMENTED_SECRET",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "COMMENTED_SECRET", getResult.Secret.SecretKey)
+		assert.Equal(t, "This is a comment for the secret", getResult.Secret.SecretComment)
+
+		// Get secret with metadata
+		getResult2, err := svc.GetSecretByNameV4(ctx, &gensecrets.GetSecretByNameV4Payload{
+			SecretName:      "PROD_CONFIG",
+			ProjectID:       proj.ID,
+			Environment:     "dev",
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "PROD_CONFIG", getResult2.Secret.SecretKey)
+		require.NotEmpty(t, getResult2.Secret.SecretMetadata)
+	})
+
+	t.Run("get secret by name v3 raw with workspaceSlug", func(t *testing.T) {
+		svc := newSecretsService(t)
+		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
+			AuthMode:   auth.AuthModeJWT,
+			Actor:      permission.ActorTypeUser,
+			ActorID:    uuid.MustParse(nodejs.UserID()),
+			OrgID:      uuid.MustParse(nodejs.OrgID()),
+			AuthMethod: "",
+		})
+
+		env := "dev"
+		getResult, err := svc.GetSecretByNameRawV3(ctx, &gensecrets.GetSecretByNameRawV3Payload{
+			SecretName:      "PLAIN_SECRET",
+			WorkspaceSlug:   &proj.Slug,
+			Environment:     &env,
+			SecretPath:      "/",
+			ViewSecretValue: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "PLAIN_SECRET", getResult.Secret.SecretKey)
+		assert.Equal(t, "plain-value", getResult.Secret.SecretValue)
+	})
 }
