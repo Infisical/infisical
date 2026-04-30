@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to generate changelog for (e.g. infisical/v0.159.25). Defaults to latest tag if omitted."
+        description: "Release tag to generate changelog for (e.g. v0.159.25). Defaults to latest tag if omitted."
         required: false
   push:
     tags:
-      - "infisical/v*.*.*"
+      - "v*.*.*"
 
 jobs:
   generate_changelog:

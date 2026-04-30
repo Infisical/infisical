@@ -18,7 +18,11 @@ DRY_RUN = os.environ.get("DRY_RUN", "false").lower() == "true"
 MODEL = os.environ.get("MODEL", "anthropic/claude-haiku-4.5")
 
 if not OPENROUTER_API_KEY:
-    print("Error: OPENROUTER_API_KEY is required")
+    print("Error: OPENROUTER_API_KEY is required", file=sys.stderr)
+    sys.exit(1)
+
+if not DRY_RUN and not SLACK_WEBHOOK_URL:
+    print("Error: SLACK_WEBHOOK_URL is required", file=sys.stderr)
     sys.exit(1)
 
 headers = {
@@ -30,10 +34,6 @@ if TOKEN:
 
 
 def post_to_slack(tag, changelog):
-    if not SLACK_WEBHOOK_URL:
-        print("Error: SLACK_WEBHOOK_URL is required", file=sys.stderr)
-        sys.exit(1)
-
     message = f"*Changelog for {tag}*\n\n{changelog}"
     response = requests.post(SLACK_WEBHOOK_URL, json={"text": message})
 
