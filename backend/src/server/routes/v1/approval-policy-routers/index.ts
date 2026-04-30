@@ -1,6 +1,5 @@
-import { z } from "zod";
-
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { BaseCheckPolicyMatchResponseSchema } from "@app/services/approval-policy/approval-policy-schemas";
 import {
   CertRequestPolicyInputsSchema,
   CertRequestPolicySchema,
@@ -22,6 +21,7 @@ import {
 import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
+  PamAccessCheckPolicyMatchResponseSchema,
   PamAccessPolicyInputsSchema,
   PamAccessPolicySchema,
   PamAccessRequestGrantSchema,
@@ -46,11 +46,7 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       requestResponseSchema: PamAccessRequestSchema,
       grantResponseSchema: PamAccessRequestGrantSchema,
       inputsSchema: PamAccessPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: z.object({
-        requiresApproval: z.boolean(),
-        hasActiveGrant: z.boolean(),
-        constraints: z.object({ accessDuration: z.object({ max: z.string() }) }).optional()
-      })
+      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema
     });
   },
   [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {
@@ -64,10 +60,7 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       requestResponseSchema: CertRequestRequestSchema,
       grantResponseSchema: CertRequestRequestGrantSchema,
       inputsSchema: CertRequestPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: z.object({
-        requiresApproval: z.boolean(),
-        hasActiveGrant: z.boolean()
-      })
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
     });
   },
   [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {
@@ -81,10 +74,7 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       requestResponseSchema: CodeSigningRequestSchema,
       grantResponseSchema: CodeSigningRequestGrantSchema,
       inputsSchema: CodeSigningPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: z.object({
-        requiresApproval: z.boolean(),
-        hasActiveGrant: z.boolean()
-      })
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
     });
   }
 };
