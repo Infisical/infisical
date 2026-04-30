@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
+import { TableName, TApprovalRequestApprovals, TApprovalRequestGrants } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -202,6 +202,18 @@ export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneForUpdate = async (
+    filter: Partial<TApprovalRequestGrants>,
+    tx: Knex
+  ): Promise<TApprovalRequestGrants | null> => {
+    try {
+      const grant = await tx(TableName.ApprovalRequestGrants).forUpdate().where(filter).first();
+      return grant ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOneApprovalRequestGrantForUpdate" });
+    }
+  };
+
   const markExpiredGrants = async () => {
     try {
       const result = await db(TableName.ApprovalRequestGrants)
@@ -216,7 +228,7 @@ export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdForUpdate, markExpiredGrants };
+  return { ...orm, findByIdForUpdate, findOneForUpdate, markExpiredGrants };
 };
 
 // Approval Request Approvals

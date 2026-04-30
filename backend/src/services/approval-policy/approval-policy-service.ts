@@ -1,12 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  ActionProjectType,
-  ProjectMembershipRole,
-  TableName,
-  TApprovalPolicies,
-  TApprovalRequests
-} from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -163,7 +157,6 @@ export const approvalPolicyServiceFactory = ({
   ): Promise<
     R & {
       canBreakGlass: boolean;
-      bypassReasonRequired: boolean;
       isBreakGlass: boolean;
       bypassReason: string | null;
     }
@@ -230,7 +223,6 @@ export const approvalPolicyServiceFactory = ({
     return {
       ...request,
       canBreakGlass,
-      bypassReasonRequired: canBreakGlass,
       isBreakGlass,
       bypassReason
     };
@@ -278,6 +270,18 @@ export const approvalPolicyServiceFactory = ({
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    // Bypass-related fields are PAM-only at the moment. The schema accepts them on every policy
+    // type for forward-compat, but the service rejects non-PAM use so admins can't silently store
+    // configuration that the bypass branch will never honor.
+    if (
+      policyType !== ApprovalPolicyType.PamAccess &&
+      (enforcementLevel === EnforcementLevel.Soft || (bypassers && bypassers.length > 0))
+    ) {
+      throw new BadRequestError({
+        message: "Bypass approvals are only supported on PAM access policies"
+      });
     }
 
     // Verify all users are part of project
@@ -438,6 +442,15 @@ export const approvalPolicyServiceFactory = ({
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    if (
+      policy.type !== ApprovalPolicyType.PamAccess &&
+      (enforcementLevel === EnforcementLevel.Soft || (bypassers && bypassers.length > 0))
+    ) {
+      throw new BadRequestError({
+        message: "Bypass approvals are only supported on PAM access policies"
+      });
     }
 
     if (steps !== undefined) {
@@ -882,9 +895,10 @@ export const approvalPolicyServiceFactory = ({
           throw new ForbiddenRequestError({ message: "Request not found" });
         }
 
-        const existingBreakGlassGrant = await tx(TableName.ApprovalRequestGrants)
-          .where({ requestId, granteeUserId: actor.id, isBreakGlass: true })
-          .first();
+        const existingBreakGlassGrant = await approvalRequestGrantsDAL.findOneForUpdate(
+          { requestId, granteeUserId: actor.id, isBreakGlass: true },
+          tx
+        );
         if (existingBreakGlassGrant) {
           return { grant: existingBreakGlassGrant, lockedRequest: locked, idempotent: true as const };
         }

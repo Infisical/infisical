@@ -109,7 +109,6 @@ export type TApprovalRequest = {
   };
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;
-  bypassReasonRequired: boolean;
   isBreakGlass: boolean;
   bypassReason?: string | null;
   createdAt: string;

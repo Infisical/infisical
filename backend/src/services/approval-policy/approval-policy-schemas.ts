@@ -85,7 +85,6 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
   steps: ApprovalRequestStepSchema.array(),
   canBreakGlass: z.boolean().default(false),
-  bypassReasonRequired: z.boolean().default(false),
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional()
 });
