@@ -3595,7 +3595,7 @@ export const SECRET_SHARING = {
   }
 } as const;
 
-export const GATEWAYS_V3 = {
+export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:

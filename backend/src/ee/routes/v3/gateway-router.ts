@@ -4,7 +4,7 @@ import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { ApiDocsTags, GATEWAYS_V3 } from "@app/lib/api-docs";
+import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -61,9 +61,9 @@ const AwsAuthMethodInputSchema = z
       .trim()
       .min(1)
       .default("https://sts.amazonaws.com/")
-      .describe(GATEWAYS_V3.AUTH_METHOD.stsEndpoint),
-    allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS_V3.AUTH_METHOD.allowedPrincipalArns),
-    allowedAccountIds: validateAccountIds.describe(GATEWAYS_V3.AUTH_METHOD.allowedAccountIds)
+      .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
+    allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
+    allowedAccountIds: validateAccountIds.describe(GATEWAYS.AUTH_METHOD.allowedAccountIds)
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
@@ -88,8 +88,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       operationId: "createGateway",
       tags: [ApiDocsTags.GatewaysV3],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe(GATEWAYS_V3.CREATE.name),
-        authMethod: SettableAuthMethodInputSchema.describe(GATEWAYS_V3.CREATE.authMethod)
+        name: z.string().trim().min(1).max(64).describe(GATEWAYS.CREATE.name),
+        authMethod: SettableAuthMethodInputSchema.describe(GATEWAYS.CREATE.authMethod)
       }),
       response: {
         200: GatewayWithAuthMethodSchema
@@ -170,7 +170,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
-        authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS_V3.UPDATE.authMethod)
+        authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
@@ -320,14 +320,14 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
-          gatewayId: z.string().trim().uuid().describe(GATEWAYS_V3.LOGIN.gatewayId),
-          iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS_V3.LOGIN.iamHttpRequestMethod),
-          iamRequestBody: z.string().describe(GATEWAYS_V3.LOGIN.iamRequestBody),
-          iamRequestHeaders: z.string().describe(GATEWAYS_V3.LOGIN.iamRequestHeaders)
+          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS.LOGIN.iamHttpRequestMethod),
+          iamRequestBody: z.string().describe(GATEWAYS.LOGIN.iamRequestBody),
+          iamRequestHeaders: z.string().describe(GATEWAYS.LOGIN.iamRequestHeaders)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Token),
-          token: z.string().min(1).describe(GATEWAYS_V3.LOGIN.token)
+          token: z.string().min(1).describe(GATEWAYS.LOGIN.token)
         })
       ]),
       response: {
