@@ -286,7 +286,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                           variant="neutral"
                                           key={`${policy.id}-bypasser-${i + 1}`}
                                         >
-                                          {b.type === BypasserType.Group ? <User /> : <Users />}
+                                          {b.type === BypasserType.Group ? <Users /> : <User />}
                                           {getApproverLabel(
                                             b.id,
                                             b.type === BypasserType.User
@@ -332,9 +332,9 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                         key={`${policy.id}-step-${index + 1}-approver-${approverIndex + 1}`}
                                       >
                                         {approver.type === ApproverType.Group ? (
-                                          <User />
-                                        ) : (
                                           <Users />
+                                        ) : (
+                                          <User />
                                         )}
                                         {getApproverLabel(approver.id, approver.type)}
                                       </Badge>

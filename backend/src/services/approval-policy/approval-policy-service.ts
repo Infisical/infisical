@@ -842,6 +842,11 @@ export const approvalPolicyServiceFactory = ({
         });
       }
 
+      // Project-membership re-check at review time. userGroupMembershipDAL is org-scoped, so a user
+      // removed from the project after creating a request would otherwise still pass the predicate.
+      // We don't want bypass to mint an unredeemable grant + audit noise for an ex-member.
+      await $verifyProjectUserMembership([actor.id], actor.orgId, request.projectId);
+
       // Re-run constraint validation in case admin tightened constraints since the request was created.
       // The policy row from findById lacks the joined steps/bypassers fields the factory's TApprovalPolicy
       // type carries — validateConstraints only reads policy.constraints, so the cast is safe at runtime.
@@ -991,8 +996,9 @@ export const approvalPolicyServiceFactory = ({
         const recipients = await userDAL.find({ $in: { id: recipientUserIds } });
         const project = await projectDAL.findById(lockedRequest.projectId);
         const cfg = getConfig();
-        const approvalPath = `/projects/secret-management/${lockedRequest.projectId}/approval`;
-        const approvalUrl = cfg.SITE_URL ? `${cfg.SITE_URL}${approvalPath}` : approvalPath;
+        const approvalPath = project
+          ? `/organizations/${project.orgId}/projects/pam/${lockedRequest.projectId}/approvals/${requestId}`
+          : null;
         const actingUser = await userDAL.findById(actor.id);
 
         const requesterFullName = actingUser
@@ -1012,7 +1018,7 @@ export const approvalPolicyServiceFactory = ({
             ]
               .filter(Boolean)
               .join(" / ")}** without obtaining the required approval.`,
-            link: approvalPath
+            link: approvalPath ?? undefined
           }))
         );
 
@@ -1020,7 +1026,9 @@ export const approvalPolicyServiceFactory = ({
           .map((r) => r.email)
           .filter((e): e is string => typeof e === "string" && e.length > 0);
 
-        if (emailRecipients.length > 0) {
+        // Skip email when SITE_URL is unset — the "Review Bypass" button would dead-link otherwise.
+        // The in-app notification above still fires.
+        if (emailRecipients.length > 0 && cfg.SITE_URL && approvalPath) {
           await smtpService.sendMail({
             recipients: emailRecipients,
             subjectLine: "Infisical PAM Access Policy Bypassed",
@@ -1032,10 +1040,12 @@ export const approvalPolicyServiceFactory = ({
               accountName: inputs.accountName,
               accessDuration: inputs.accessDuration,
               bypassReason: bypassReason.trim(),
-              approvalUrl
+              approvalUrl: `${cfg.SITE_URL}${approvalPath}`
             },
             template: SmtpTemplates.AccessPamRequestBypassed
           });
+        } else if (emailRecipients.length > 0 && !cfg.SITE_URL) {
+          logger.warn({ requestId }, `Skipping break-glass email: SITE_URL is not configured [requestId=${requestId}]`);
         }
       } catch (err) {
         logger.error(
