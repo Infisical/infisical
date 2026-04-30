@@ -160,7 +160,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── PATCH /:gatewayId ───────────────────────────────────────────────────
-  // Partial update. Body fields are independent — pass `name`, `authMethod`, or both.
+  // Partial update. Today only `authMethod` is settable; rename is not supported.
   server.route({
     method: "PATCH",
     url: "/:gatewayId",
@@ -301,6 +301,21 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_REVOKE,
+          metadata: {
+            resourceType: "gateway",
+            resourceId: req.params.gatewayId,
+            method: result.method,
+            gatewayName: result.gatewayName,
+            deletedTokenCount: result.deletedTokenCount
+          }
+        }
       });
 
       return { method: result.method, deletedTokenCount: result.deletedTokenCount };

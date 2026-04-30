@@ -53,10 +53,17 @@ export const verifyStsAndExtractCaller = async ({
   defaultStsEndpoint,
   errorContext
 }: TVerifyStsCallerInput) => {
-  const headers: TAwsGetCallerIdentityHeaders = JSON.parse(
-    Buffer.from(iamRequestHeaders, "base64").toString()
-  ) as TAwsGetCallerIdentityHeaders;
-  const body: string = Buffer.from(iamRequestBody, "base64").toString();
+  let headers: TAwsGetCallerIdentityHeaders;
+  let body: string;
+  try {
+    headers = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString()) as TAwsGetCallerIdentityHeaders;
+    body = Buffer.from(iamRequestBody, "base64").toString();
+  } catch {
+    throw new UnauthorizedError({
+      message: "Malformed signed STS request",
+      detail: { reasonCode: "malformed_request", ...errorContext }
+    });
+  }
 
   const authHeader = headers.Authorization || headers.authorization;
   const region = authHeader ? awsRegionFromHeader(authHeader) : null;
@@ -70,18 +77,27 @@ export const verifyStsAndExtractCaller = async ({
 
   const url = region ? `https://sts.${region}.amazonaws.com` : defaultStsEndpoint;
 
+  let stsResponse: { data: TGetCallerIdentityResponse };
+  try {
+    stsResponse = await request({
+      method: iamHttpRequestMethod,
+      url,
+      headers,
+      data: body
+    });
+  } catch (err) {
+    logger.error(err, `Resource AWS Auth Login: STS verification failed [gateway-id=${errorContext.gatewayId}]`);
+    throw new UnauthorizedError({
+      message: "STS verification failed",
+      detail: { reasonCode: "sts_request_failed", ...errorContext }
+    });
+  }
+
   const {
-    data: {
-      GetCallerIdentityResponse: {
-        GetCallerIdentityResult: { Account, Arn, UserId }
-      }
+    GetCallerIdentityResponse: {
+      GetCallerIdentityResult: { Account, Arn, UserId }
     }
-  }: { data: TGetCallerIdentityResponse } = await request({
-    method: iamHttpRequestMethod,
-    url,
-    headers,
-    data: body
-  });
+  } = stsResponse.data;
 
   return { Account, Arn, UserId };
 };

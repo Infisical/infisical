@@ -97,11 +97,15 @@ export async function up(knex: Knex): Promise<void> {
 
     // Backfill authMethodId from registry. Only token-method gateways have valid
     // mappings (a token row for a gateway now on identity method is an orphan).
+    // usedAt filter: in the new model, row existence means "unused" — consumed
+    // rows must not be carried over or they become replayable.
     await knex.raw(
       `UPDATE ?? AS t
        SET "authMethodId" = m.id
        FROM ?? AS m
-       WHERE m."gatewayId" = t."gatewayId" AND m.method = 'token'`,
+       WHERE m."gatewayId" = t."gatewayId"
+         AND m.method = 'token'
+         AND t."usedAt" IS NULL`,
       [TableName.ResourceTokenAuth, TableName.ResourceAuthMethod]
     );
 

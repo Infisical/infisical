@@ -115,7 +115,7 @@ export const resourceAuthMethodServiceFactory = ({
 
   const getByGatewayId = async ({ resource, actor }: TGetAuthMethodDTO) => {
     assertGatewayResource(resource, "auth-method");
-    await $checkPermission(actor, OrgPermissionGatewayActions.EditGateways);
+    await $checkPermission(actor, OrgPermissionGatewayActions.ListGateways);
 
     const gateway = await gatewayV2DAL.findById(resource.id);
     if (!gateway || gateway.orgId !== actor.orgId) {

@@ -782,6 +782,7 @@ export enum EventType {
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
+  RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
 
   // Gateway Pools
   GATEWAY_POOL_CREATE = "gateway-pool-create",
@@ -6201,6 +6202,17 @@ interface ResourceAuthMethodUpdateEvent {
   };
 }
 
+interface ResourceAuthMethodRevokeEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_REVOKE;
+  metadata: {
+    resourceType: "gateway";
+    resourceId: string;
+    method: ResourceAuthMethodKind;
+    gatewayName: string;
+    deletedTokenCount: number;
+  };
+}
+
 interface GatewayPoolCreateEvent {
   type: EventType.GATEWAY_POOL_CREATE;
   metadata: {
@@ -6806,6 +6818,7 @@ export type Event =
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent
+  | ResourceAuthMethodRevokeEvent
   | GatewayPoolCreateEvent
   | GatewayPoolUpdateEvent
   | GatewayPoolDeleteEvent
