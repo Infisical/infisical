@@ -126,6 +126,10 @@ func NewService(logger *slog.Logger, redisClient redis.UniversalClient) *Service
 // Enqueue adds a typed task to the queue with the given payload and options.
 // The payload type is enforced at compile time via the Task[P] generic parameter.
 func Enqueue[P any](s *Service, task Task[P], payload P, opts ...EnqueueOption) error {
+	if s == nil {
+		return fmt.Errorf("enqueue task %s: queue service is nil", task.name)
+	}
+
 	options := &EnqueueOpts{}
 	for _, opt := range opts {
 		opt(options)

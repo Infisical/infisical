@@ -12,8 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/keystore"
+	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/services"
 	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
@@ -23,12 +25,6 @@ import (
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
 )
-
-type nopAuditLogSvc struct{}
-
-func (nopAuditLogSvc) CreateAuditLog(_ context.Context, _ *auditlog.CreateAuditLogDTO) error {
-	return nil
-}
 
 var (
 	stack       *infra.Stack
@@ -49,12 +45,12 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// newSecretsService creates a secrets service for direct testing.
-func newSecretsService(t *testing.T) gensecrets.Service {
+// newSecretsHandler creates a secrets handler for direct testing.
+func newSecretsHandler(t *testing.T) gensecrets.Service {
 	t.Helper()
 
 	permDAL := permission.NewDAL(stack.DB())
-	permLib := permission.NewService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
+	permSvc := permission.NewService(testutil.NopLogger(), permission.Deps{DAL: permDAL})
 
 	authDAL := auth.NewDAL(stack.DB())
 	authHandler := auth.NewAuthHandler(authDAL, infra.AuthSecret)
@@ -74,21 +70,27 @@ func newSecretsService(t *testing.T) gensecrets.Service {
 	err = kmsSvc.Start(context.Background(), false)
 	require.NoError(t, err)
 
-	smSharedSvcs := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
-
 	projectDAL := project.NewDAL(stack.DB())
 	projectSvc := project.NewService(testutil.NopLogger(), project.Deps{DAL: projectDAL})
 
-	return secrets.NewService(testutil.NopLogger(), &secrets.Deps{
-		AuthHandler:    authHandler,
-		Permission:     permLib,
-		KMS:            kmsSvc,
-		Project:        projectSvc,
-		SecretFolder:   smSharedSvcs.SecretFolder,
-		SecretImport:   smSharedSvcs.SecretImport,
-		SecretDAL:      smSharedSvcs.SecretDAL,
-		EnvironmentDAL: smSharedSvcs.EnvironmentDAL,
-		AuditLog:       nopAuditLogSvc{},
+	queueSvc := queue.NewService(testutil.NopLogger(), redisClient)
+
+	// Build shared services struct for handler
+	sharedSvc := &services.Services{
+		Config:      stack.Config(),
+		AuthHandler: authHandler,
+		Permission:  permSvc,
+		KMS:         kmsSvc,
+		Project:     projectSvc,
+		AuditLog:    auditlog.NewService(testutil.NopLogger(), auditlog.Deps{Queue: queueSvc, Config: stack.Config()}),
+	}
+
+	secretManagerSvc := smShared.NewServices(smShared.ServicesDeps{DB: stack.DB()})
+
+	return secrets.NewHandler(secrets.Deps{
+		Logger:           testutil.NopLogger(),
+		SharedSvc:        sharedSvc,
+		SecretManagerSvc: secretManagerSvc,
 	})
 }
 
@@ -104,7 +106,7 @@ func listSecretsAsAdmin(t *testing.T, identityID, orgID string, payload *gensecr
 		AuthMethod: "",
 	})
 
-	svc := newSecretsService(t)
+	svc := newSecretsHandler(t)
 	return svc.ListSecretsV4(ctx, payload)
 }
 
@@ -799,7 +801,7 @@ func TestListSecretsV4_PersonalOverrides_NeverInclude(t *testing.T) {
 	})
 
 	// V4 default: IncludePersonalOverrides=false -> NeverInclude behavior (only shared)
-	svc := newSecretsService(t)
+	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeJWT,
 		Actor:      permission.ActorTypeUser,
@@ -837,7 +839,7 @@ func TestListSecretsV4_PersonalOverrides_Priority(t *testing.T) {
 	})
 
 	// V4 with IncludePersonalOverrides=true -> Priority behavior (personal wins)
-	svc := newSecretsService(t)
+	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeJWT,
 		Actor:      permission.ActorTypeUser,
@@ -875,7 +877,7 @@ func TestListSecretsV3_PersonalOverrides_IncludeAll(t *testing.T) {
 	})
 
 	// V3: Always returns both shared and personal secrets
-	svc := newSecretsService(t)
+	svc := newSecretsHandler(t)
 	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 		AuthMode:   auth.AuthModeJWT,
 		Actor:      permission.ActorTypeUser,
@@ -1501,7 +1503,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 
 	t.Run("v4 with personal overrides for user (priority)", func(t *testing.T) {
 		// Test as user, not identity
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,
@@ -1526,7 +1528,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 
 	t.Run("v3 includes all personal and shared", func(t *testing.T) {
 		// V3 always returns both
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,
@@ -1567,7 +1569,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	// ===================
 
 	t.Run("v3 raw with workspaceSlug resolves project", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,
@@ -1593,7 +1595,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("v3 raw with workspaceId works", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,
@@ -1619,7 +1621,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("v3 raw requires workspaceId or workspaceSlug", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,
@@ -1643,7 +1645,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	// ===================
 
 	t.Run("get secret by name v4 returns secret", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
 			Actor:      permission.ActorTypeIdentity,
@@ -1665,7 +1667,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("get secret by name v4 with expansion", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
 			Actor:      permission.ActorTypeIdentity,
@@ -1688,7 +1690,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("get secret by name v4 without expansion", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
 			Actor:      permission.ActorTypeIdentity,
@@ -1711,7 +1713,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("get secret by name v4 not found", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
 			Actor:      permission.ActorTypeIdentity,
@@ -1732,7 +1734,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("get secret by name v4 with comment and metadata", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeIdentityAccessToken,
 			Actor:      permission.ActorTypeIdentity,
@@ -1767,7 +1769,7 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 	})
 
 	t.Run("get secret by name v3 raw with workspaceSlug", func(t *testing.T) {
-		svc := newSecretsService(t)
+		svc := newSecretsHandler(t)
 		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
 			AuthMode:   auth.AuthModeJWT,
 			Actor:      permission.ActorTypeUser,

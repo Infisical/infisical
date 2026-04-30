@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
 	"github.com/infisical/api/internal/keystore"
@@ -45,9 +44,7 @@ func TestMain(m *testing.M) {
 func setupService(t *testing.T) *kms.Service {
 	t.Helper()
 
-	opts, err := redis.ParseURL(stack.Redis().URL())
-	require.NoError(t, err)
-	redisClient := redis.NewClient(opts)
+	redisClient := stack.Redis().Client()
 	t.Cleanup(func() { redisClient.Close() })
 
 	ks := keystore.NewKeyStore(redisClient, stack.DB().Primary())

@@ -9,6 +9,7 @@ require (
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
+	github.com/hibiken/asynq v0.26.0
 	github.com/infisical/gocasl v0.0.7
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/knadh/koanf/parsers/dotenv v1.1.1
@@ -57,7 +58,6 @@ require (
 	github.com/gohugoio/hashstructure v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
-	github.com/hibiken/asynq v0.26.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect

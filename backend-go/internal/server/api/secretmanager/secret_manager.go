@@ -14,24 +14,18 @@ type Registry struct {
 	Secrets gensecrets.Service
 }
 
-func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *services.Services) *Registry {
+func NewRegistry(logger *slog.Logger, db pg.DB, sharedSvc *services.Services) *Registry {
 	l := logger.With(slog.String("product", "secretmanager"))
 
-	smServices := smService.NewServices(smService.ServicesDeps{
+	secretManagerSvc := smService.NewServices(smService.ServicesDeps{
 		DB: db,
 	})
 
 	return &Registry{
-		Secrets: secrets.NewService(l, &secrets.Deps{
-			AuthHandler:    sharedServices.AuthHandler,
-			Permission:     sharedServices.Permission,
-			KMS:            sharedServices.KMS,
-			Project:        sharedServices.Project,
-			SecretFolder:   smServices.SecretFolder,
-			SecretImport:   smServices.SecretImport,
-			SecretDAL:      smServices.SecretDAL,
-			EnvironmentDAL: smServices.EnvironmentDAL,
-			AuditLog:       sharedServices.AuditLog,
+		Secrets: secrets.NewHandler(secrets.Deps{
+			Logger:           l,
+			SharedSvc:        sharedSvc,
+			SecretManagerSvc: secretManagerSvc,
 		}),
 	}
 }

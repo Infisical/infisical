@@ -29,7 +29,7 @@ func listSecrets(t *testing.T, actorType permission.ActorType, actorID, orgID st
 		AuthMethod: "",
 	})
 
-	svc := newSecretsService(t)
+	svc := newSecretsHandler(t)
 	return svc.ListSecretsV4(ctx, payload)
 }
 
