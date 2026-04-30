@@ -440,13 +440,11 @@ export const registerApprovalPolicyEndpoints = ({
         policyType
       );
 
-      const requestForAudit = request as { projectId: string; id: string; policyId: string | null };
-
       if (audit === "standard") {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: requestForAudit.projectId,
+          projectId: request.projectId,
           event: {
             type: EventType.APPROVAL_REQUEST_APPROVE,
             metadata: {
@@ -460,13 +458,13 @@ export const registerApprovalPolicyEndpoints = ({
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: requestForAudit.projectId,
+          projectId: request.projectId,
           event: {
             type: EventType.PAM_ACCESS_POLICY_BYPASSED,
             metadata: {
               policyType,
-              policyId: requestForAudit.policyId,
-              requestId: requestForAudit.id,
+              policyId: request.policyId ?? null,
+              requestId: request.id,
               granteeUserId: req.permission.id,
               ...bypassMetadata
             }
@@ -474,7 +472,7 @@ export const registerApprovalPolicyEndpoints = ({
         });
       }
 
-      return { request: request as Record<string, unknown> };
+      return { request };
     }
   });
 

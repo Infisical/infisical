@@ -46,6 +46,13 @@ export type TApprovalPolicyConstraints =
 export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
 export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
 
+// Bypass-affordance fields the service stamps onto every request response.
+export type TBypassAffordances = {
+  canBreakGlass: boolean;
+  isBreakGlass: boolean;
+  bypassReason: string | null;
+};
+
 export interface ApprovalPolicyStep {
   name?: string | null;
   requiredApprovals: number;

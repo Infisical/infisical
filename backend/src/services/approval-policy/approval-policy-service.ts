@@ -48,6 +48,7 @@ import {
   TApprovalPolicyInputs,
   TApprovalRequest,
   TApprovalRequestData,
+  TBypassAffordances,
   TCreatePolicyDTO,
   TCreateRequestDTO,
   TCreateRequestFromPolicyDTO,
@@ -124,7 +125,7 @@ export const approvalPolicyServiceFactory = ({
   type TDecorationContext = {
     getUserGroupIds: () => Promise<Set<string>>;
     grantsByRequestId?: Map<string, { isBreakGlass: boolean; bypassReason: string | null }>;
-    policyById?: Map<string, { enforcementLevel: string | null | undefined } | null>;
+    policyById?: Map<string, TApprovalPolicies>;
     bypassersByPolicyId?: Map<string, PolicyBypasser[]>;
   };
 
@@ -154,13 +155,7 @@ export const approvalPolicyServiceFactory = ({
     request: R,
     actor: OrgServiceActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
-  ): Promise<
-    R & {
-      canBreakGlass: boolean;
-      isBreakGlass: boolean;
-      bypassReason: string | null;
-    }
-  > => {
+  ): Promise<R & TBypassAffordances> => {
     let canBreakGlass = false;
 
     try {
@@ -776,7 +771,7 @@ export const approvalPolicyServiceFactory = ({
     actor: OrgServiceActor,
     policyType: ApprovalPolicyType
   ): Promise<{
-    request: unknown;
+    request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
     audit: "standard" | "break-glass" | "none";
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
