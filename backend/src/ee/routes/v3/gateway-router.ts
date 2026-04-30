@@ -160,7 +160,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── PATCH /:gatewayId ───────────────────────────────────────────────────
-  // Partial update. Today only `authMethod` is settable; rename is not supported.
   server.route({
     method: "PATCH",
     url: "/:gatewayId",
