@@ -50,6 +50,9 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyBypassers,
+  TApprovalPolicyBypassersInsert,
+  TApprovalPolicyBypassersUpdate,
   TApprovalPolicyStepApprovers,
   TApprovalPolicyStepApproversInsert,
   TApprovalPolicyStepApproversUpdate,
@@ -1715,6 +1718,11 @@ declare module "knex/types/tables" {
       TApprovalPolicies,
       TApprovalPoliciesInsert,
       TApprovalPoliciesUpdate
+    >;
+    [TableName.ApprovalPolicyBypassers]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyBypassers,
+      TApprovalPolicyBypassersInsert,
+      TApprovalPolicyBypassersUpdate
     >;
     [TableName.ApprovalPolicyStepApprovers]: KnexOriginal.CompositeTableType<
       TApprovalPolicyStepApprovers,

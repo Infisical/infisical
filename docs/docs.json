@@ -910,6 +910,7 @@
                 "group": "Product Reference",
                 "pages": [
                   "documentation/platform/pam/product-reference/access-policies",
+                  "documentation/platform/pam/product-reference/bypass-approvals",
                   "documentation/platform/pam/product-reference/account-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",

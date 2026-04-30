@@ -6,7 +6,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 
-import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
+import { ApprovalPolicyType, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -56,6 +56,11 @@ export interface ApprovalPolicyStep {
   }[];
 }
 
+export interface PolicyBypasser {
+  type: ApproverType;
+  id: string;
+}
+
 // Policy DTOs
 export interface TCreatePolicyDTO {
   projectId: TApprovalPolicy["projectId"];
@@ -65,6 +70,8 @@ export interface TCreatePolicyDTO {
   constraints: TApprovalPolicy["constraints"]["constraints"];
   steps: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  bypassers?: PolicyBypasser[];
 }
 
 export interface TUpdatePolicyDTO {
@@ -74,6 +81,9 @@ export interface TUpdatePolicyDTO {
   constraints?: TApprovalPolicy["constraints"]["constraints"];
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
+  enforcementLevel?: EnforcementLevel;
+  // omitted (undefined) => leave bypassers unchanged; empty array => delete all bypassers.
+  bypassers?: PolicyBypasser[];
 }
 
 // Request DTOs

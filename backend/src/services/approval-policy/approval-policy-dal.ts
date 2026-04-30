@@ -4,7 +4,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
-import { ApprovalPolicyStep } from "./approval-policy-types";
+import { ApprovalPolicyStep, PolicyBypasser } from "./approval-policy-types";
 
 // Approval Policy
 export type TApprovalPolicyDALFactory = ReturnType<typeof approvalPolicyDALFactory>;
@@ -61,6 +61,22 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findBypassersByPolicyId = async (policyId: string): Promise<PolicyBypasser[]> => {
+    try {
+      const dbInstance = db.replicaNode();
+      const rows = (await dbInstance(TableName.ApprovalPolicyBypassers)
+        .where({ policyId })
+        .select("userId", "groupId")) as { userId: string | null; groupId: string | null }[];
+
+      return rows.map((row) => ({
+        type: row.userId ? ApproverType.User : ApproverType.Group,
+        id: (row.userId || row.groupId) as string
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval policy bypassers" });
+    }
+  };
+
   const findByProjectId = async (policyType: ApprovalPolicyType, projectId: string) => {
     try {
       const dbInstance = db.replicaNode();
@@ -72,9 +88,23 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       const policyIds = policies.map((p) => p.id);
 
-      const steps = await dbInstance(TableName.ApprovalPolicySteps)
-        .whereIn("policyId", policyIds)
-        .orderBy("stepNumber", "asc");
+      const [steps, bypassersRaw] = await Promise.all([
+        dbInstance(TableName.ApprovalPolicySteps).whereIn("policyId", policyIds).orderBy("stepNumber", "asc"),
+        dbInstance(TableName.ApprovalPolicyBypassers)
+          .whereIn("policyId", policyIds)
+          .select("policyId", "userId", "groupId")
+      ]);
+      const bypassers = bypassersRaw as { policyId: string; userId: string | null; groupId: string | null }[];
+
+      const bypassersByPolicyId = bypassers.reduce<Record<string, PolicyBypasser[]>>((acc, row) => {
+        const list = acc[row.policyId] || [];
+        list.push({
+          type: row.userId ? ApproverType.User : ApproverType.Group,
+          id: (row.userId || row.groupId) as string
+        });
+        acc[row.policyId] = list;
+        return acc;
+      }, {});
 
       const stepsByPolicyId: Record<string, ApprovalPolicyStep[]> = {};
 
@@ -121,7 +151,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
       return policies.map((policy) => ({
         ...policy,
-        steps: stepsByPolicyId[policy.id] || []
+        steps: stepsByPolicyId[policy.id] || [],
+        bypassers: bypassersByPolicyId[policy.id] || []
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find approval policies by project id" });
@@ -131,6 +162,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findStepsByPolicyId,
+    findBypassersByPolicyId,
     findByProjectId
   };
 };
@@ -146,5 +178,12 @@ export const approvalPolicyStepsDALFactory = (db: TDbClient) => {
 export type TApprovalPolicyStepApproversDALFactory = ReturnType<typeof approvalPolicyStepApproversDALFactory>;
 export const approvalPolicyStepApproversDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalPolicyStepApprovers);
+  return orm;
+};
+
+// Approval Policy Bypassers
+export type TApprovalPolicyBypassersDALFactory = ReturnType<typeof approvalPolicyBypassersDALFactory>;
+export const approvalPolicyBypassersDALFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.ApprovalPolicyBypassers);
   return orm;
 };

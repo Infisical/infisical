@@ -37,6 +37,8 @@ import {
   approvalPolicyQuery,
   ApprovalPolicyType,
   ApproverType,
+  BypasserType,
+  EnforcementLevel,
   PamAccessPolicyConditions,
   PamAccessPolicyConstraints
 } from "@app/hooks/api/approvalPolicies";
@@ -263,6 +265,41 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </div>
                             <div className="flex-2">
+                              <div className="mb-2 text-sm font-medium text-mineshaft-300">
+                                Bypass Approvals
+                              </div>
+                              {policy.enforcementLevel !== EnforcementLevel.Soft ? (
+                                <div className="mb-3 rounded border border-mineshaft-600 bg-mineshaft-900 p-3 text-sm text-mineshaft-400">
+                                  Disabled
+                                </div>
+                              ) : (
+                                <div className="mb-3 rounded border border-mineshaft-600 bg-mineshaft-900 p-3">
+                                  {policy.bypassers.length === 0 ? (
+                                    <div className="rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-3 py-2 text-xs text-bunker-300">
+                                      Enabled — no bypassers configured. Anyone in the project can
+                                      bypass this policy.
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                      {policy.bypassers.map((b, i) => (
+                                        <Badge
+                                          variant="neutral"
+                                          key={`${policy.id}-bypasser-${i + 1}`}
+                                        >
+                                          {b.type === BypasserType.Group ? <User /> : <Users />}
+                                          {getApproverLabel(
+                                            b.id,
+                                            b.type === BypasserType.User
+                                              ? ApproverType.User
+                                              : ApproverType.Group
+                                          )}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Sequence
                               </div>

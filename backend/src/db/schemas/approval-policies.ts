@@ -19,7 +19,8 @@ export const ApprovalPoliciesSchema = z.object({
   constraints: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  bypassForMachineIdentities: z.boolean().default(false).nullable().optional()
+  bypassForMachineIdentities: z.boolean().default(false).nullable().optional(),
+  enforcementLevel: z.string().default("hard")
 });
 
 export type TApprovalPolicies = z.infer<typeof ApprovalPoliciesSchema>;

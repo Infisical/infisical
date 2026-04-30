@@ -324,6 +324,12 @@ export const ApprovalRequestTab = () => {
                           >
                             {request.status.split("-").join(" ")}
                           </Badge>
+                          {request.isBreakGlass && (
+                            <div className="flex items-center gap-1 rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                              <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />
+                              <span>Bypassed</span>
+                            </div>
+                          )}
                           {needsApproval && (
                             <div className="flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary">
                               <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />

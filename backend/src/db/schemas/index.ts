@@ -14,6 +14,7 @@ export * from "./ai-mcp-servers";
 export * from "./app-connection-credential-rotations";
 export * from "./app-connections";
 export * from "./approval-policies";
+export * from "./approval-policy-bypassers";
 export * from "./approval-policy-step-approvers";
 export * from "./approval-policy-steps";
 export * from "./approval-request-approvals";

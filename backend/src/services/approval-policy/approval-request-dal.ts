@@ -138,6 +138,15 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      const row = await tx(TableName.ApprovalRequests).forUpdate().where({ id }).first();
+      return row || null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindApprovalRequestByIdForUpdate" });
+    }
+  };
+
   const markExpiredRequests = async (): Promise<string[]> => {
     try {
       const expiredRequestIds = await db(TableName.ApprovalRequests)
@@ -160,7 +169,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findStepsByRequestId, findByProjectId, markExpiredRequests };
+  return { ...orm, findStepsByRequestId, findByProjectId, findByIdForUpdate, markExpiredRequests };
 };
 
 // Approval Request Steps

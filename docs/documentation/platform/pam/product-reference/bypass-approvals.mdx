@@ -1,0 +1,81 @@
+---
+title: "Bypass Approvals"
+sidebarTitle: "Bypass Approvals"
+description: "Allow designated users to self-approve PAM access requests in emergencies."
+---
+
+Bypass Approvals lets a designated on-call engineer grab privileged credentials when no approver is reachable. The bypass is fully audited, surfaces a notification + email to all configured approvers, and produces a grant tagged as bypassed.
+
+Bypass Approvals is currently supported only for PAM Access policies. Cert and Code Signing policies are unaffected.
+
+## When to Use Bypass Approvals
+
+- **Failover playbook needs to run now**: Production database is down, the primary approver is asleep, and waiting for normal review breaks the SLO.
+- **Compliance still demands a paper trail**: A bypass produces a dedicated audit event with the actor, target, duration, and required reason.
+- **You want sane defaults**: When bypass approvals are *not* needed, you stay on the standard enforcement and the approval workflow behaves exactly as before.
+
+## How It Works
+
+A policy carries a **Bypass Approvals** toggle:
+
+- **Off** (default) — standard approval flow only. Self-approval is rejected; bypass UI does not render.
+- **On** — designated **bypassers** may approve their own request without waiting for the configured approvers, with a written reason of at least 10 characters.
+
+When a bypasser opens their own pending request, the review section shows an additional checkbox: *"Approve immediately without approver review (bypass policy)"*. Checking it reveals a reason input and switches the Approve Request button to a danger color. Submitting:
+
+1. Validates the bypass reason server-side.
+2. Re-evaluates eligibility, project membership, and policy constraints against the **current** state.
+3. Marks all approval steps Completed and the request Approved.
+4. Issues a grant tagged as bypassed, with the bypass reason persisted on the grant.
+5. Emits a `pam-access-policy-bypassed` audit event with full metadata.
+6. Sends in-app notifications and an email to every approver listed on the request's snapshot — including users inside approver groups.
+
+## Configuring Bypass Approvals
+
+Project admins configure bypass approvals per-policy.
+
+1. Open **PAM Project → Approvals → Policies**, create or edit a policy.
+2. Toggle **Bypass Approvals** on.
+3. Select **User Bypassers** and/or **Group Bypassers**.
+
+If **Bypass Approvals is on AND no bypassers are selected**, *anyone in the project* can bypass this policy. The UI surfaces a warning: *"Not selecting specific users or groups will allow anyone to bypass this policy."* Configure explicit bypassers to scope this down.
+
+## Who Can Use It
+
+A user can bypass a policy on a request only if **all** of the following hold at review time:
+
+- Actor is a user (machine identities are excluded — bypass is not available to identity tokens).
+- Actor is the requester (you can only self-approve your own request).
+- Policy still exists, is the request's policy, and has Bypass Approvals enabled.
+- Actor is in the bypassers list (or the bypassers list is empty).
+- The request is still Pending.
+
+These checks are re-run **at review time**, not request creation time. If an admin disables Bypass Approvals on a policy between request creation and bypass attempt, the bypass is rejected. Likewise if the admin tightens `accessDuration` constraints, the bypass is rejected if the request now exceeds the new max.
+
+## What Gets Audited
+
+Each bypass approval emits a `pam-access-policy-bypassed` event with metadata:
+
+- `policyType`, `policyId`, `requestId`, `grantId`, `granteeUserId`
+- `resourceName`, `accountName`, `accessDuration`
+- `bypassReason` (verbatim)
+- `approverCount` (number of approvers notified)
+
+Find these in **Audit Logs**, filtered by event type *PAM Access Policy Bypassed*.
+
+The standard `approval-request-approve` event is **not** emitted on a bypass approval — the bypass event replaces it. Idempotent re-clicks (same actor approving the same request twice) emit no additional events.
+
+## What Gets Emailed
+
+Every approver listed on the request's snapshot receives an in-app notification and an email when a bypass commits. Group approvers are expanded — every group member who is an active project member is notified individually. The actor is excluded from notification recipients.
+
+## Mid-Pending Policy Changes
+
+The rule is **current state wins**. Eligibility, project membership, and policy constraints are re-evaluated at review time. If you have an open review UI in another tab and an admin changes the policy, refetch the request before acting — the server will reject a stale bypass attempt.
+
+## Out of Scope (Today)
+
+- **Cert / CodeSigning policies** — schema is shared but bypass behavior is gated to PAM only.
+- **Machine identities** — the approve route is JWT-only at the framework level; identity tokens fail at auth.
+- **MFA on bypass** — not required.
+- **License gating** — none. The feature is available wherever the PAM approval framework is.

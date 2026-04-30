@@ -313,16 +313,26 @@ export const RequestGrantTab = () => {
                         <span className="text-sm text-mineshaft-200">{attrs.accessDuration}</span>
                       </Td>
                       <Td>
-                        <Badge
-                          variant={
-                            isActive
-                              ? getStatusBadgeColor(ApprovalGrantStatus.Active)
-                              : getStatusBadgeColor(grant.status)
-                          }
-                          className="capitalize"
-                        >
-                          {isActive ? "Active" : grant.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              isActive
+                                ? getStatusBadgeColor(ApprovalGrantStatus.Active)
+                                : getStatusBadgeColor(grant.status)
+                            }
+                            className="capitalize"
+                          >
+                            {isActive ? "Active" : grant.status}
+                          </Badge>
+                          {grant.isBreakGlass && (
+                            <span
+                              className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300"
+                              title={grant.bypassReason ?? "Bypass approved"}
+                            >
+                              Bypassed
+                            </span>
+                          )}
+                        </div>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-400">

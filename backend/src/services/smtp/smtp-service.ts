@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestBypassedTemplate,
   AccountDeletionConfirmationTemplate,
   AuditLogMigrationAlertTemplate,
   CredentialRotationFailedTemplate,
@@ -69,6 +70,7 @@ export enum SmtpTemplates {
   AccessApprovalRequest = "accessApprovalRequest",
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
+  AccessPamRequestBypassed = "accessPamRequestBypassed",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
@@ -128,6 +130,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.ExternalImportStarted]: ExternalImportStartedTemplate,
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
   [SmtpTemplates.OrgAdminBreakglassAccess]: OrgAdminBreakglassAccessTemplate,
   [SmtpTemplates.SecretLeakIncident]: SecretLeakIncidentTemplate,

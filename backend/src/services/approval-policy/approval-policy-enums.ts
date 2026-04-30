@@ -33,3 +33,8 @@ export enum ApprovalRequestGrantStatus {
   Expired = "expired",
   Revoked = "revoked"
 }
+
+export enum EnforcementLevel {
+  Hard = "hard",
+  Soft = "soft"
+}

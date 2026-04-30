@@ -9,7 +9,7 @@ import {
 } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
 
-import { ApproverType } from "./approval-policy-enums";
+import { ApproverType, EnforcementLevel } from "./approval-policy-enums";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),
@@ -23,6 +23,11 @@ const ApprovalPolicyStepSchema = z.object({
     .array()
 });
 
+const BypasserSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(ApproverType.User), id: z.string().uuid() }),
+  z.object({ type: z.literal(ApproverType.Group), id: z.string().uuid() })
+]);
+
 const MaxRequestTtlSchema = z.string().refine(
   (val) => {
     const duration = ms(val) / 1000;
@@ -35,7 +40,9 @@ const MaxRequestTtlSchema = z.string().refine(
 
 // Policy
 export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
-  steps: ApprovalPolicyStepSchema.array()
+  steps: ApprovalPolicyStepSchema.array(),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+  bypassers: BypasserSchema.array().default([])
 });
 
 export const BaseCreateApprovalPolicySchema = z.object({
@@ -43,14 +50,19 @@ export const BaseCreateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array(),
-  bypassForMachineIdentities: z.boolean().optional().default(false)
+  bypassForMachineIdentities: z.boolean().optional().default(false),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).optional().default(EnforcementLevel.Hard),
+  bypassers: BypasserSchema.array().max(100).optional().default([])
 });
 
 export const BaseUpdateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128).optional(),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array().optional(),
-  bypassForMachineIdentities: z.boolean().optional()
+  bypassForMachineIdentities: z.boolean().optional(),
+  enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
+  // omitted -> unchanged; empty array -> deletes all bypassers
+  bypassers: BypasserSchema.array().max(100).optional()
 });
 
 // Request
@@ -72,7 +84,13 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 });
 
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
-  steps: ApprovalRequestStepSchema.array()
+  steps: ApprovalRequestStepSchema.array(),
+  // Server-computed break-glass affordances. UI MUST treat the server as the source of truth.
+  canBreakGlass: z.boolean().default(false),
+  bypassReasonRequired: z.boolean().default(false),
+  // Sourced from the associated grant after a bypass commits.
+  isBreakGlass: z.boolean().default(false),
+  bypassReason: z.string().nullable().optional()
 });
 
 export const BaseCreateApprovalRequestSchema = z.object({
