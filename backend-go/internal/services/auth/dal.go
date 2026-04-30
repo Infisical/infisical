@@ -61,6 +61,7 @@ func (d *DAL) FindSessionByIDAndUserID(ctx context.Context, sessionID, userID uu
 type UserRow struct {
 	ID         uuid.UUID      `alias:"users.id"`
 	Email      sql.NullString `alias:"users.email"`
+	Username   sql.NullString `alias:"users.username"`
 	IsAccepted sql.Null[bool] `alias:"users.is_accepted"`
 	SuperAdmin sql.Null[bool] `alias:"users.super_admin"`
 }
@@ -69,7 +70,7 @@ type UserRow struct {
 func (d *DAL) FindUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error) {
 	u := table.Users
 
-	stmt := postgres.SELECT(u.ID, u.Email, u.IsAccepted, u.SuperAdmin).
+	stmt := postgres.SELECT(u.ID, u.Email, u.Username, u.IsAccepted, u.SuperAdmin).
 		FROM(u).
 		WHERE(u.ID.EQ(postgres.UUID(id)))
 
@@ -213,6 +214,7 @@ func (d *DAL) DeleteIdentityAccessTokenByID(ctx context.Context, id string) erro
 // ServiceTokenRow holds the subset of service_tokens used by the auth handler.
 type ServiceTokenRow struct {
 	ID         string       `alias:"service_tokens.id"`
+	Name       string       `alias:"service_tokens.name"`
 	ProjectId  string       `alias:"service_tokens.project_id"`
 	ExpiresAt  sql.NullTime `alias:"service_tokens.expires_at"`
 	SecretHash string       `alias:"service_tokens.secret_hash"`
@@ -222,7 +224,7 @@ type ServiceTokenRow struct {
 func (d *DAL) FindServiceTokenByID(ctx context.Context, id string) (*ServiceTokenRow, error) {
 	st := table.ServiceTokens
 
-	stmt := postgres.SELECT(st.ID, st.ProjectId, st.ExpiresAt, st.SecretHash).
+	stmt := postgres.SELECT(st.ID, st.Name, st.ProjectId, st.ExpiresAt, st.SecretHash).
 		FROM(st).
 		WHERE(st.ID.EQ(postgres.String(id)))
 

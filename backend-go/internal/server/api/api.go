@@ -17,7 +17,7 @@ type Registry struct {
 	Libs          *services.Services
 }
 
-func NewRegistry(ctx context.Context, logger *slog.Logger, db pg.DB, sharedDeps services.ServicesDeps) (*Registry, error) {
+func NewRegistry(ctx context.Context, logger *slog.Logger, db pg.DB, sharedDeps *services.ServicesDeps) (*Registry, error) {
 	sharedLibs, err := services.NewServices(ctx, sharedDeps)
 	if err != nil {
 		return nil, fmt.Errorf("shared services: %w", err)

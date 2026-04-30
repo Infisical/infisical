@@ -48,6 +48,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	var handler http.Handler = s.mux
 	// the order is other way around. Last one wraps the previous one, so request ID is set before logging.
 	handler = requestLogger(handler, s.logger)
+	handler = HTTPInfoMiddleware(handler)
 	handler = requestid.Middleware(handler)
 
 	srv := &http.Server{

@@ -8,6 +8,8 @@ import (
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/keystore"
+	"github.com/infisical/api/internal/queue"
+	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/license"
@@ -22,8 +24,10 @@ type ServicesDeps struct {
 	DB       pg.DB             // primary DB connection (writes)
 	HSM      kms.HsmService    // nil when HSM is not configured
 	KeyStore keystore.KeyStore // Redis-backed keystore for PG advisory locks
+	Queue    *queue.Service    // queue service for async tasks
 }
 
+// Services holds all shared services.
 type Services struct {
 	Config      *config.Config
 	AuthHandler auth.AuthHandler
@@ -31,9 +35,11 @@ type Services struct {
 	KMS         *kms.Service
 	License     *license.Service
 	Project     *project.Service
+	Queue       *queue.Service
+	AuditLog    *auditlog.Service
 }
 
-func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
+func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 	permissionDAL := permission.NewDAL(deps.DB)
 	kmsDAL := kms.NewDAL(deps.DB, deps.KeyStore)
 	projectDAL := project.NewDAL(deps.DB)
@@ -64,6 +70,21 @@ func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
 
 	projectSvc := project.NewService(deps.Logger, project.Deps{DAL: projectDAL})
 
+	auditLogDAL := auditlog.NewDAL(deps.DB)
+	auditLogSvc := auditlog.NewService(deps.Logger, auditlog.Deps{
+		Queue:  deps.Queue,
+		Config: deps.Config,
+	})
+
+	auditLogHandler := auditlog.NewHandler(deps.Logger, auditlog.HandlerDeps{
+		DAL:        auditLogDAL,
+		ProjectDAL: projectDAL,
+		License:    licenseSvc,
+		Config:     deps.Config,
+		KeyStore:   deps.KeyStore,
+	})
+	auditLogHandler.Register(deps.Queue)
+
 	return &Services{
 		Config:      deps.Config,
 		AuthHandler: authHandler,
@@ -71,5 +92,7 @@ func NewServices(ctx context.Context, deps ServicesDeps) (*Services, error) {
 		KMS:         kmsSvc,
 		License:     licenseSvc,
 		Project:     projectSvc,
+		Queue:       deps.Queue,
+		AuditLog:    auditLogSvc,
 	}, nil
 }

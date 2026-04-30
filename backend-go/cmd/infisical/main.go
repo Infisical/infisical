@@ -12,9 +12,12 @@ import (
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/database/pg"
+	redisdb "github.com/infisical/api/internal/database/redis"
+	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/libs/bootstrap"
 	"github.com/infisical/api/internal/libs/errutil"
 	"github.com/infisical/api/internal/libs/logutil"
+	"github.com/infisical/api/internal/queue"
 	"github.com/infisical/api/internal/server"
 	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/services"
@@ -54,12 +57,26 @@ func main() {
 	dbReport := bootstrap.CheckDBConnection(ctx, db)
 	dbReport.PrintReport(logger)
 
-	registry, err := api.NewRegistry(ctx, logger, db, services.ServicesDeps{
+	// Connect to Redis.
+	redisClient, err := redisdb.NewClientFromEnvConfig(cfg)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to initialize redis", slog.Any("error", err))
+		return
+	}
+	defer errutil.DeferErr(ctx, redisClient.Close, "closing redis")
+
+	// Initialize KeyStore and Queue.
+	ks := keystore.NewKeyStore(redisClient, db.Primary())
+	queueSvc := queue.NewService(logger, redisClient)
+	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
+
+	registry, err := api.NewRegistry(ctx, logger, db, &services.ServicesDeps{
 		Logger:   logger,
 		Config:   cfg,
 		DB:       db,
 		HSM:      nil,
-		KeyStore: nil,
+		KeyStore: ks,
+		Queue:    queueSvc,
 	})
 
 	if err != nil {
@@ -81,6 +98,14 @@ func main() {
 
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
+
+	// Start queue worker.
+	wg.Go(func() {
+		if err := queueSvc.Start(queue.ServerConfig{Concurrency: 10}); err != nil {
+			logger.ErrorContext(ctx, "queue worker error", slog.Any("error", err))
+			errc <- err
+		}
+	})
 
 	// Start HTTP server.
 	srv.Listen(ctx, cfg.Addr(), &wg, errc)

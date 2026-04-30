@@ -10,6 +10,7 @@ import (
 
 	"github.com/infisical/api/internal/libs/errutil"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
@@ -51,6 +52,10 @@ type environmentDAL interface {
 	GetAllByProjectID(ctx context.Context, projectID string) ([]environment.Environment, error)
 }
 
+type auditLogSvc interface {
+	CreateAuditLog(ctx context.Context, dto *auditlog.CreateAuditLogDTO) error
+}
+
 type service struct {
 	auth.AuthHandler
 	logger          *slog.Logger
@@ -61,6 +66,7 @@ type service struct {
 	secretImportSvc secretImportSvc
 	secretDAL       secretDAL
 	environmentDAL  environmentDAL
+	auditLogSvc     auditLogSvc
 }
 
 // Deps holds the dependencies for the secrets service.
@@ -73,6 +79,7 @@ type Deps struct {
 	SecretImport   secretImportSvc
 	SecretDAL      secretDAL
 	EnvironmentDAL environmentDAL
+	AuditLog       auditLogSvc
 }
 
 func NewService(logger *slog.Logger, deps *Deps) gensecrets.Service {
@@ -86,6 +93,7 @@ func NewService(logger *slog.Logger, deps *Deps) gensecrets.Service {
 		secretImportSvc: deps.SecretImport,
 		secretDAL:       deps.SecretDAL,
 		environmentDAL:  deps.EnvironmentDAL,
+		auditLogSvc:     deps.AuditLog,
 	}
 }
 
@@ -143,9 +151,9 @@ func parseMetadataFilter(metadataFilterStr *string) []MetadataFilterEntry {
 
 	for _, pair := range pairs {
 		entry := MetadataFilterEntry{}
-		parts := strings.Split(pair, ",")
+		parts := strings.SplitSeq(pair, ",")
 
-		for _, part := range parts {
+		for part := range parts {
 			kv := strings.SplitN(part, "=", 2)
 			if len(kv) != 2 {
 				continue
@@ -377,7 +385,7 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		behavior = PersonalOverridesPriority
 	}
 
-	return s.listSecretsCore(ctx, &ListSecretsOpts{
+	result, err := s.listSecretsCore(ctx, &ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -390,6 +398,13 @@ func (s *service) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.createGetSecretsAuditLog(ctx, p.ProjectID, p.Environment, p.SecretPath, len(result.Secrets))
+
+	return result, nil
 }
 
 func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3Payload) (*gensecrets.ListSecretsResult, error) {
@@ -400,7 +415,7 @@ func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3
 	)
 
 	// v3: Always include all (both shared and personal)
-	return s.listSecretsCore(ctx, &ListSecretsOpts{
+	result, err := s.listSecretsCore(ctx, &ListSecretsOpts{
 		ProjectID:                 p.ProjectID,
 		Environment:               p.Environment,
 		SecretPath:                p.SecretPath,
@@ -412,6 +427,13 @@ func (s *service) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.createGetSecretsAuditLog(ctx, p.ProjectID, p.Environment, p.SecretPath, len(result.Secrets))
+
+	return result, nil
 }
 
 // buildSecretRaw converts a processedSecret to the API response type.
@@ -826,7 +848,7 @@ func (s *service) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecret
 		slog.String("environment", p.Environment),
 	)
 
-	return s.getSecretByNameCore(ctx, &GetSecretOpts{
+	result, err := s.getSecretByNameCore(ctx, &GetSecretOpts{
 		ProjectID:              p.ProjectID,
 		Environment:            p.Environment,
 		SecretPath:             p.SecretPath,
@@ -836,6 +858,13 @@ func (s *service) GetSecretByNameV4(ctx context.Context, p *gensecrets.GetSecret
 		ExpandSecretReferences: p.ExpandSecretReferences,
 		IncludeImports:         p.IncludeImports,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.createGetSecretAuditLog(ctx, p.ProjectID, p.Environment, p.SecretPath, result.Secret)
+
+	return result, nil
 }
 
 func (s *service) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecretsRawV3Payload) (*gensecrets.ListSecretsResult, error) {
@@ -857,7 +886,7 @@ func (s *service) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 	}
 
 	// v3 raw: Always include all (both shared and personal)
-	return s.listSecretsCore(ctx, &ListSecretsOpts{
+	result, err := s.listSecretsCore(ctx, &ListSecretsOpts{
 		ProjectID:                 projectID,
 		Environment:               *p.Environment,
 		SecretPath:                p.SecretPath,
@@ -869,6 +898,13 @@ func (s *service) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 		TagSlugs:                  parseTagSlugs(p.TagSlugs),
 		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.createGetSecretsAuditLog(ctx, projectID, *p.Environment, p.SecretPath, len(result.Secrets))
+
+	return result, nil
 }
 
 // resolveProjectID resolves the project ID from either workspaceId or workspaceSlug.
@@ -929,7 +965,7 @@ func (s *service) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		return nil, errutil.BadRequest("Environment is required")
 	}
 
-	return s.getSecretByNameCore(ctx, &GetSecretOpts{
+	result, err := s.getSecretByNameCore(ctx, &GetSecretOpts{
 		ProjectID:              projectID,
 		Environment:            *p.Environment,
 		SecretPath:             p.SecretPath,
@@ -939,4 +975,94 @@ func (s *service) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 		ExpandSecretReferences: p.ExpandSecretReferences,
 		IncludeImports:         p.IncludeImports,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.createGetSecretAuditLog(ctx, projectID, *p.Environment, p.SecretPath, result.Secret)
+
+	return result, nil
+}
+
+func (s *service) createGetSecretsAuditLog(ctx context.Context, projectID, env, secretPath string, numberOfSecrets int) {
+	identity := auth.IdentityFromContext(ctx)
+	if identity == nil {
+		return
+	}
+
+	info := auditlog.BuildAuditLogInfo(identity)
+	if info == nil {
+		return
+	}
+
+	dto := &auditlog.CreateAuditLogDTO{
+		Event: auditlog.Event{
+			Metadata: auditlog.GetSecretsEventMetadata{
+				Environment:     env,
+				SecretPath:      secretPath,
+				NumberOfSecrets: numberOfSecrets,
+			},
+		},
+		Actor:         info.Actor,
+		ProjectID:     &projectID,
+		IPAddress:     info.IPAddress,
+		UserAgent:     info.UserAgent,
+		UserAgentType: info.UserAgentType,
+	}
+
+	if err := s.auditLogSvc.CreateAuditLog(ctx, dto); err != nil {
+		s.logger.WarnContext(ctx, "failed to create get-secrets audit log",
+			slog.String("projectId", projectID),
+			slog.Any("error", err),
+		)
+	}
+}
+
+func (s *service) createGetSecretAuditLog(ctx context.Context, projectID, env, secretPath string, sec *gensecrets.SecretRaw) {
+	identity := auth.IdentityFromContext(ctx)
+	if identity == nil {
+		return
+	}
+
+	info := auditlog.BuildAuditLogInfo(identity)
+	if info == nil {
+		return
+	}
+
+	var secretMetadata []auditlog.SecretMetadataEntry
+	if sec.SecretMetadata != nil {
+		secretMetadata = make([]auditlog.SecretMetadataEntry, len(sec.SecretMetadata))
+		for i, m := range sec.SecretMetadata {
+			secretMetadata[i] = auditlog.SecretMetadataEntry{
+				Key:   m.Key,
+				Value: m.Value,
+			}
+		}
+	}
+
+	dto := &auditlog.CreateAuditLogDTO{
+		Event: auditlog.Event{
+			Metadata: auditlog.GetSecretEventMetadata{
+				Environment:    env,
+				SecretPath:     secretPath,
+				SecretID:       sec.ID,
+				SecretKey:      sec.SecretKey,
+				SecretVersion:  sec.Version,
+				SecretMetadata: secretMetadata,
+			},
+		},
+		Actor:         info.Actor,
+		ProjectID:     &projectID,
+		IPAddress:     info.IPAddress,
+		UserAgent:     info.UserAgent,
+		UserAgentType: info.UserAgentType,
+	}
+
+	if err := s.auditLogSvc.CreateAuditLog(ctx, dto); err != nil {
+		s.logger.WarnContext(ctx, "failed to create get-secret audit log",
+			slog.String("projectId", projectID),
+			slog.String("secretKey", sec.SecretKey),
+			slog.Any("error", err),
+		)
+	}
 }

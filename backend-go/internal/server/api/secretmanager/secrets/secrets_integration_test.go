@@ -14,6 +14,7 @@ import (
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/server/api/secretmanager/secrets"
 	gensecrets "github.com/infisical/api/internal/server/gen/secrets"
+	"github.com/infisical/api/internal/services/auditlog"
 	"github.com/infisical/api/internal/services/auth"
 	"github.com/infisical/api/internal/services/kms"
 	"github.com/infisical/api/internal/services/permission"
@@ -22,6 +23,12 @@ import (
 	"github.com/infisical/api/internal/testutil"
 	"github.com/infisical/api/internal/testutil/infra"
 )
+
+type nopAuditLogSvc struct{}
+
+func (nopAuditLogSvc) CreateAuditLog(_ context.Context, _ *auditlog.CreateAuditLogDTO) error {
+	return nil
+}
 
 var (
 	stack       *infra.Stack
@@ -81,6 +88,7 @@ func newSecretsService(t *testing.T) gensecrets.Service {
 		SecretImport:   smSharedSvcs.SecretImport,
 		SecretDAL:      smSharedSvcs.SecretDAL,
 		EnvironmentDAL: smSharedSvcs.EnvironmentDAL,
+		AuditLog:       nopAuditLogSvc{},
 	})
 }
 

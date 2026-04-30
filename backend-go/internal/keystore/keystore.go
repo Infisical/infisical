@@ -69,6 +69,10 @@ type KeyStore interface {
 	DeleteItems(ctx context.Context, keys []string) (int64, error)
 	IncrementBy(ctx context.Context, key string, value int64) (int64, error)
 
+	// StreamAdd adds an entry to a Redis stream (XADD).
+	// Pass "*" as id to auto-generate the entry ID.
+	StreamAdd(ctx context.Context, stream string, id string, values map[string]string) (string, error)
+
 	// AcquirePgLock acquires a PostgreSQL transaction-level advisory lock (pg_advisory_xact_lock).
 	// If tx is nil, a new transaction is created and owned by the Lock (Release commits it).
 	// If tx is provided, the lock is acquired within that transaction and Release is a no-op —
@@ -122,6 +126,14 @@ func (k *redisKeyStore) DeleteItems(ctx context.Context, keys []string) (int64, 
 
 func (k *redisKeyStore) IncrementBy(ctx context.Context, key string, value int64) (int64, error) {
 	return k.client.IncrBy(ctx, key, value).Result()
+}
+
+func (k *redisKeyStore) StreamAdd(ctx context.Context, stream, id string, values map[string]string) (string, error) {
+	return k.client.XAdd(ctx, &redis.XAddArgs{
+		Stream: stream,
+		ID:     id,
+		Values: values,
+	}).Result()
 }
 
 func (k *redisKeyStore) AcquirePgLock(ctx context.Context, stringLockId string, tx Tx) (*Lock, error) {

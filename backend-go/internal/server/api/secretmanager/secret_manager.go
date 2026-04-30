@@ -31,6 +31,7 @@ func NewRegistry(logger *slog.Logger, db pg.DB, sharedServices *services.Service
 			SecretImport:   smServices.SecretImport,
 			SecretDAL:      smServices.SecretDAL,
 			EnvironmentDAL: smServices.EnvironmentDAL,
+			AuditLog:       sharedServices.AuditLog,
 		}),
 	}
 }

@@ -86,10 +86,12 @@ type FeatureSet struct {
 
 func DefaultFeatures() FeatureSet {
 	return FeatureSet{
-		Tier:                -1,
-		SecretVersioning:    true,
-		HasUsedTrial:        true,
-		AuditLogStreamLimit: 3,
+		Tier:                   -1,
+		SecretVersioning:       true,
+		HasUsedTrial:           true,
+		AuditLogStreamLimit:    3,
+		AuditLogs:              true,
+		AuditLogsRetentionDays: 1,
 		RateLimits: RateLimits{
 			ReadLimit:    60,
 			WriteLimit:   200,

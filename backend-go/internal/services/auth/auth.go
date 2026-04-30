@@ -92,9 +92,37 @@ type Identity struct {
 	UserAuthInfo *UserAuthInfo
 	// IdentityAuthInfo is set for identity access token auth. Used for audit logging.
 	IdentityAuthInfo *IdentityAuthInfo
+
+	// HTTP layer fields (populated by middleware, used for audit logging).
+	IPAddress     string
+	UserAgent     string
+	UserAgentType string
+	// Actor display fields (populated during auth, used for audit logging).
+	Name     string // For identity/service actors
+	Email    string // For user actors
+	Username string // For user actors
 }
 
 type ctxKey struct{}
+type httpInfoKey struct{}
+
+// HTTPInfo holds HTTP request information for audit logging.
+type HTTPInfo struct {
+	IPAddress     string
+	UserAgent     string
+	UserAgentType string
+}
+
+// WithHTTPInfo stores HTTP info in the context.
+func WithHTTPInfo(ctx context.Context, info *HTTPInfo) context.Context {
+	return context.WithValue(ctx, httpInfoKey{}, info)
+}
+
+// HTTPInfoFromContext returns the HTTPInfo stored in ctx, or nil if absent.
+func HTTPInfoFromContext(ctx context.Context) *HTTPInfo {
+	info, _ := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	return info
+}
 
 // WithIdentity stores the given identity in the context.
 func WithIdentity(ctx context.Context, id *Identity) context.Context {

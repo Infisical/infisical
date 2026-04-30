@@ -93,6 +93,13 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 		return ctx, err
 	}
 
+	// Populate HTTP layer fields from context (set by HTTPInfoMiddleware).
+	if httpInfo := HTTPInfoFromContext(ctx); httpInfo != nil {
+		identity.IPAddress = httpInfo.IPAddress
+		identity.UserAgent = httpInfo.UserAgent
+		identity.UserAgentType = httpInfo.UserAgentType
+	}
+
 	return WithIdentity(ctx, identity), nil
 }
 
@@ -210,6 +217,11 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 		email = user.Email.String
 	}
 
+	username := ""
+	if user.Username.Valid {
+		username = user.Username.String
+	}
+
 	return &Identity{
 		AuthMode:     AuthModeJWT,
 		Actor:        permission.ActorTypeUser,
@@ -223,6 +235,8 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			UserID: user.ID,
 			Email:  email,
 		},
+		Email:    email,
+		Username: username,
 	}, nil
 }
 
@@ -372,6 +386,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 		ParentOrgID:      parentOrgID,
 		AuthMethod:       permission.ActorAuthMethod(accessToken.AuthMethod),
 		IdentityAuthInfo: identityAuthInfo,
+		Name:             accessToken.IdentityName,
 	}, nil
 }
 
@@ -436,6 +451,7 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 		OrgID:       orgID,
 		RootOrgID:   rootOrgID,
 		ParentOrgID: parentOrgID,
+		Name:        serviceToken.Name,
 	}, nil
 }
 
