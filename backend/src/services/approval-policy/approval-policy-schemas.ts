@@ -61,7 +61,6 @@ export const BaseUpdateApprovalPolicySchema = z.object({
   steps: ApprovalPolicyStepSchema.array().optional(),
   bypassForMachineIdentities: z.boolean().optional(),
   enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
-  // omitted -> unchanged; empty array -> deletes all bypassers
   bypassers: BypasserSchema.array().max(100).optional()
 });
 
@@ -85,10 +84,8 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
 
 export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
   steps: ApprovalRequestStepSchema.array(),
-  // Server-computed break-glass affordances. UI MUST treat the server as the source of truth.
   canBreakGlass: z.boolean().default(false),
   bypassReasonRequired: z.boolean().default(false),
-  // Sourced from the associated grant after a bypass commits.
   isBreakGlass: z.boolean().default(false),
   bypassReason: z.string().nullable().optional()
 });

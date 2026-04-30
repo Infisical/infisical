@@ -108,10 +108,8 @@ export type TApprovalRequest = {
     requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
-  // Server-computed break-glass affordances. UI MUST treat the server as source of truth.
   canBreakGlass: boolean;
   bypassReasonRequired: boolean;
-  // Sourced from the associated grant after a bypass commits.
   isBreakGlass: boolean;
   bypassReason?: string | null;
   createdAt: string;

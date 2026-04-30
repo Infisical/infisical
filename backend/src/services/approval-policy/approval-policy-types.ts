@@ -82,7 +82,6 @@ export interface TUpdatePolicyDTO {
   steps?: ApprovalPolicyStep[];
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
-  // omitted (undefined) => leave bypassers unchanged; empty array => delete all bypassers.
   bypassers?: PolicyBypasser[];
 }
 

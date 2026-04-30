@@ -128,9 +128,7 @@ export const approvalPolicyServiceFactory = ({
     notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
 
   type TDecorationContext = {
-    // Lazy + memoized: built once per actor, reused across N decorations.
     getUserGroupIds: () => Promise<Set<string>>;
-    // Optional pre-batched lookups for list endpoints. Undefined entries fall back to per-row queries.
     grantsByRequestId?: Map<string, { isBreakGlass: boolean; bypassReason: string | null }>;
     policyById?: Map<string, { enforcementLevel: string | null | undefined } | null>;
     bypassersByPolicyId?: Map<string, PolicyBypasser[]>;
@@ -150,9 +148,6 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  // Annotates a request with break-glass affordances.
-  // Server is the source of truth for canBreakGlass — UI must not re-derive eligibility from
-  // local memberships, and policy/grant lookups can fail benignly (returning canBreakGlass: false).
   const $decorateRequest = async <
     R extends {
       id: string;
@@ -216,7 +211,6 @@ export const approvalPolicyServiceFactory = ({
         isBreakGlass = prefetched.isBreakGlass;
         bypassReason = prefetched.bypassReason;
       } else if (request.requesterId) {
-        // Scope to (requestId, granteeUserId) so we can't get the wrong grant if multiple ever exist.
         const grant = await approvalRequestGrantsDAL.findOne({
           requestId: request.id,
           granteeUserId: request.requesterId
@@ -525,7 +519,6 @@ export const approvalPolicyServiceFactory = ({
         );
       }
 
-      // omitted -> leave bypassers unchanged; empty array -> deletes them all.
       if (bypassers !== undefined) {
         await approvalPolicyBypassersDAL.delete({ policyId }, tx);
 
@@ -779,14 +772,12 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Request not found" });
     }
 
-    // Type-mismatch guard — prevents /pam-access/.../<cert-id>/approve
     if (request.type !== policyType) {
       throw new BadRequestError({
         message: `Request type mismatch: expected ${policyType}, got ${request.type}`
       });
     }
 
-    // Cross-type bypassReason guard
     if (bypassReason !== undefined && policyType !== ApprovalPolicyType.PamAccess) {
       throw new BadRequestError({
         message: "bypassReason is only supported for PAM access requests"
@@ -798,7 +789,6 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Request has expired" });
     }
 
-    // Conditional policy load — needed for bypass eligibility evaluation.
     const policy =
       policyType === ApprovalPolicyType.PamAccess && request.policyId
         ? await approvalPolicyDAL.findById(request.policyId)
@@ -817,10 +807,7 @@ export const approvalPolicyServiceFactory = ({
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
-    // Bypass is OPT-IN: only fires when the actor explicitly passes bypassReason. An
-    // approver+requester+bypasser on a Soft policy can still do a normal approval without bypass —
-    // the standard flow handles that path. (PAM has no allowedSelfApprovals flag, so self-approve
-    // is allowed by default for any eligible approver.)
+    // Opt-in: only triggers when the caller passes bypassReason.
     const isBreakGlass =
       bypassReason !== undefined &&
       policyType === ApprovalPolicyType.PamAccess &&
@@ -842,14 +829,10 @@ export const approvalPolicyServiceFactory = ({
         });
       }
 
-      // Project-membership re-check at review time. userGroupMembershipDAL is org-scoped, so a user
-      // removed from the project after creating a request would otherwise still pass the predicate.
-      // We don't want bypass to mint an unredeemable grant + audit noise for an ex-member.
+      // Re-check project membership in case the user was removed after creating the request.
       await $verifyProjectUserMembership([actor.id], actor.orgId, request.projectId);
 
-      // Re-run constraint validation in case admin tightened constraints since the request was created.
-      // The policy row from findById lacks the joined steps/bypassers fields the factory's TApprovalPolicy
-      // type carries — validateConstraints only reads policy.constraints, so the cast is safe at runtime.
+      // Re-validate constraints in case the policy was tightened after the request was created.
       const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
       const constraintCheck = fac.validateConstraints(
         policy as unknown as TApprovalPolicy,
@@ -867,7 +850,6 @@ export const approvalPolicyServiceFactory = ({
 
       const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
-      // Snapshot-based recipient resolution: who would have reviewed at request-creation time.
       const approverUserIdSet = new Set<string>();
       const approverGroupIds: string[] = [];
       for (const step of steps) {
@@ -880,7 +862,6 @@ export const approvalPolicyServiceFactory = ({
         }
       }
 
-      // Expand groups (the secrets-side bug-fix: secrets silently skips group approvers on bypass).
       const expandedGroupUsers = (
         await Promise.all(
           [...new Set(approverGroupIds)].map((groupId) =>
@@ -896,15 +877,11 @@ export const approvalPolicyServiceFactory = ({
       const recipientUserIds = [...approverUserIdSet];
 
       const { grant, lockedRequest, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
-        // Concurrency lock — re-read under FOR UPDATE so the status check below sees the up-to-date row.
         const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
         if (!locked) {
           throw new ForbiddenRequestError({ message: "Request not found" });
         }
 
-        // Idempotency carve-out — only applies to a re-clicked break-glass.
-        // Falls through cleanly for multi-step actors who approved earlier steps via the standard flow
-        // and now bypass on the current step (the bypass writes its own approval row + grant).
         const existingBreakGlassGrant = await tx(TableName.ApprovalRequestGrants)
           .where({ requestId, granteeUserId: actor.id, isBreakGlass: true })
           .first();
@@ -921,7 +898,6 @@ export const approvalPolicyServiceFactory = ({
           throw new BadRequestError({ message: "Request has expired" });
         }
 
-        // Mark all steps Completed, advance request to Approved.
         const requestSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
         await Promise.all(
           requestSteps.map((step) =>
@@ -982,7 +958,6 @@ export const approvalPolicyServiceFactory = ({
         approverCount: recipientUserIds.length
       };
 
-      // Idempotent re-click: nothing new happened — skip notifications and audit.
       if (idempotent) {
         return { request: await $decorateRequest(result, actor), audit: "none" };
       }
@@ -991,7 +966,6 @@ export const approvalPolicyServiceFactory = ({
         return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
       }
 
-      // Post-tx fanout: notifications first, email second. Failures don't roll back the bypass.
       try {
         const recipients = await userDAL.find({ $in: { id: recipientUserIds } });
         const project = await projectDAL.findById(lockedRequest.projectId);
@@ -1026,8 +1000,7 @@ export const approvalPolicyServiceFactory = ({
           .map((r) => r.email)
           .filter((e): e is string => typeof e === "string" && e.length > 0);
 
-        // Skip email when SITE_URL is unset — the "Review Bypass" button would dead-link otherwise.
-        // The in-app notification above still fires.
+        // Skip email when SITE_URL is unset — the link in the email would dead-link.
         if (emailRecipients.length > 0 && cfg.SITE_URL && approvalPath) {
           await smtpService.sendMail({
             recipients: emailRecipients,
@@ -1057,9 +1030,6 @@ export const approvalPolicyServiceFactory = ({
       return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
     }
 
-    // ────────────────────────────────────────
-    // Standard (non-bypass) approval path
-    // ────────────────────────────────────────
     if (request.status !== ApprovalRequestStatus.Pending) {
       throw new BadRequestError({ message: "Request is not pending" });
     }
@@ -1278,7 +1248,6 @@ export const approvalPolicyServiceFactory = ({
 
     const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
 
-    // Pre-batch the per-row lookups so decoration is O(1) DB-wise per request instead of O(N).
     const ctx = $buildDecorationContext(actor);
 
     const visibleRequests = await (async () => {
@@ -1315,7 +1284,6 @@ export const approvalPolicyServiceFactory = ({
       ctx.grantsByRequestId = new Map();
       for (const g of grants) {
         if (g.requestId) {
-          // Scope to the request's requester so we never surface a stranger's grant on a re-issued request.
           const owner = visibleRequests.find((r) => r.id === g.requestId)?.requesterId;
           if (!owner || g.granteeUserId === owner) {
             ctx.grantsByRequestId.set(g.requestId, {

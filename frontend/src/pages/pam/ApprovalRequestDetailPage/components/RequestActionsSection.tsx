@@ -21,9 +21,6 @@ type Props = {
   request: TApprovalRequest;
 };
 
-// Schema mirrors the server contract:
-// - bypassReason ≥10 chars when bypassApproval is checked.
-// - The server-side route Zod is `bypassReason: z.string().min(10).max(1000).optional()`.
 const ReviewFormSchema = z
   .object({
     comment: z.string().max(1000).optional(),
@@ -101,8 +98,6 @@ export const RequestActionsSection = ({ request }: Props) => {
     );
   }
 
-  // Bypass is opt-in: an approver+requester+bypasser can choose normal approve OR bypass.
-  // Pure bypassers (no approver rights) have isApprover=false, so they must check bypass to enable.
   const canSubmitApprove = bypassApproval ? isValid : isApprover;
 
   const onApprove = async (data: TReviewForm) => {

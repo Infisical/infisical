@@ -473,7 +473,6 @@ export const registerApprovalPolicyEndpoints = ({
           }
         });
       }
-      // audit === "none" → idempotent re-click, emit nothing
 
       return { request: request as Record<string, unknown> };
     }
