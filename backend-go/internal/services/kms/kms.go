@@ -181,7 +181,7 @@ func (s *Service) Start(ctx context.Context, hsmConfigured bool) error {
 	})
 
 	if err != nil {
-		return errutil.DatabaseErr("Failed to find or create KMS root config").WithErr(err)
+		return errutil.DatabaseErr("Failed to find or create KMS root config").WithErrf("Start: %w", err)
 	}
 
 	decryptedRootKey, err := s.decryptRootKey(rootConfig)
@@ -304,7 +304,7 @@ func (s *Service) generateEncryptedKeyMaterial() ([]byte, error) {
 func (s *Service) decryptKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
 	kmsKeyDoc, err := s.dal.FindKmsKeyByID(ctx, kmsKeyID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find KMS key").WithErrf("decryptKmsKey(kmsKeyId=%s): %w", kmsKeyID, err)
 	}
 	return s.decryptKmsKeyMaterial(kmsKeyDoc)
 }

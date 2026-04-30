@@ -21,6 +21,25 @@ const (
 // An empty string means no specific method (e.g. platform-level actions).
 type AuthMethod string
 
+// IdentityAuthMethod represents the authentication method used by machine identities.
+type IdentityAuthMethod string
+
+const (
+	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal_auth"
+	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes_auth"
+	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp_auth"
+	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud_auth"
+	IdentityAuthMethodAWS        IdentityAuthMethod = "aws_auth"
+	IdentityAuthMethodAzure      IdentityAuthMethod = "azure_auth"
+	IdentityAuthMethodToken      IdentityAuthMethod = "token_auth"
+	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls_cert_auth"
+	IdentityAuthMethodOCI        IdentityAuthMethod = "oci_auth"
+	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc_auth"
+	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt_auth"
+	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap_auth"
+	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe_auth"
+)
+
 // AuthOIDC holds OIDC-specific claims from the identity JWT payload.
 // Used for permission template interpolation (e.g., {{identity.auth.oidc.sub}}).
 type AuthOIDC struct {
@@ -51,7 +70,7 @@ type AuthAWS struct {
 type AuthInfo struct {
 	IdentityID   uuid.UUID
 	IdentityName string
-	AuthMethod   string
+	AuthMethod   IdentityAuthMethod
 	OIDC         *AuthOIDC
 	Kubernetes   *AuthKubernetes
 	AWS          *AuthAWS

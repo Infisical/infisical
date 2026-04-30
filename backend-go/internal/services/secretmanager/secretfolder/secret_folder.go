@@ -29,7 +29,7 @@ func NewService(deps Deps) *Service {
 func (s *Service) LoadProjectFolders(ctx context.Context, projectID string, envIDs []uuid.UUID) (*FolderLookup, error) {
 	rows, err := s.dal.GetFoldersByProjectAndEnvIDs(ctx, projectID, envIDs)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to get folders for project").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to get folders for project").WithErrf("LoadProjectFolders(projectId=%s): %w", projectID, err)
 	}
 	return newFolderLookup(rows), nil
 }

@@ -2,7 +2,6 @@ package secrets
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -56,25 +55,21 @@ func (h *Handler) resolveProjectID(ctx context.Context, workspaceID, workspaceSl
 
 	// Fall back to workspaceSlug
 	if workspaceSlug == nil || *workspaceSlug == "" {
-		return "", errutil.BadRequest("Either workspaceId or workspaceSlug is required")
+		return "", errutil.BadRequest("Either workspaceId or workspaceSlug is required").WithErrf("resolveProjectID: both workspaceId and workspaceSlug are empty")
 	}
 
 	// Get identity to extract org ID
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
-		return "", errutil.Unauthorized("Authentication required")
+		return "", errutil.Unauthorized("Authentication required").WithErrf("resolveProjectID: identity not in context")
 	}
 
 	proj, err := h.sharedSvc.Project.GetBySlug(ctx, identity.OrgID, *workspaceSlug)
 	if err != nil {
-		return "", errutil.DatabaseErr("Failed to resolve project").WithErr(
-			fmt.Errorf("project.GetBySlug(slug=%s): %w", *workspaceSlug, err),
-		)
+		return "", errutil.DatabaseErr("Failed to resolve project").WithErrf("resolveProjectID(slug=%s): %w", *workspaceSlug, err)
 	}
 	if proj == nil {
-		return "", errutil.NotFound("Project not found").WithErr(
-			fmt.Errorf("project with slug '%s' not found in org", *workspaceSlug),
-		)
+		return "", errutil.NotFound("Project not found").WithErrf("resolveProjectID: project with slug '%s' not found in org", *workspaceSlug)
 	}
 
 	return proj.ID, nil

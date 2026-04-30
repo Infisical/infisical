@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -44,7 +43,7 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 	}
 
 	if token == "" {
-		return ctx, errutil.Unauthorized("Token missing")
+		return ctx, errutil.Unauthorized("Token missing").WithErrf("JWTAuth: token is empty")
 	}
 
 	tokenMode := ClassifyToken(token)
@@ -67,7 +66,7 @@ func (h AuthHandler) JWTAuth(ctx context.Context, token string, sc *security.JWT
 
 	// Fast reject: token type doesn't match the scheme being tried.
 	if tokenMode != expectedMode {
-		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErr(fmt.Errorf("provider token %v not supported", tokenMode))
+		return ctx, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("provider token %v not supported", tokenMode)
 	}
 
 	var (
@@ -113,12 +112,12 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	})
 
 	if err != nil {
-		return nil, errutil.Unauthorized("Invalid JWT token").WithErr(err)
+		return nil, errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWT: %w", err)
 	}
 
 	// 2. Validate authTokenType.
 	if claims.AuthTokenType != AuthTokenTypeAccessToken {
-		return nil, errutil.Unauthorized("You are not allowed to access this resource")
+		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateJWT: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
 	// 3. Find session by tokenVersionId + userId.
@@ -126,32 +125,32 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	userID := parseUUID(claims.UserID)
 	session, err := h.dal.FindSessionByIDAndUserID(ctx, sessionID, userID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to validate session").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to validate session").WithErrf("validateJWT(sessionId=%s, userId=%s): %w", sessionID, userID, err)
 	}
 	if session == nil {
-		return nil, errutil.NotFound("Session not found")
+		return nil, errutil.NotFound("Session not found").WithErrf("validateJWT(sessionId=%s, userId=%s): session is nil", sessionID, userID)
 	}
 
 	// 4. Check access version.
 	if claims.AccessVersion != int(session.AccessVersion) {
-		return nil, errutil.Unauthorized("User session is stale, please re-authenticate").WithName("StaleSession")
+		return nil, errutil.Unauthorized("User session is stale, please re-authenticate").WithName("StaleSession").WithErrf("validateJWT(sessionId=%s): access version mismatch claim=%d db=%d", sessionID, claims.AccessVersion, session.AccessVersion)
 	}
 
 	// 5. Find user.
 	user, err := h.dal.FindUserByID(ctx, session.UserId)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find user").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find user").WithErrf("validateJWT(userId=%s): %w", session.UserId, err)
 	}
 	if user == nil || !user.IsAccepted.V {
-		return nil, errutil.NotFound("User with ID '%s' not found", session.UserId)
+		return nil, errutil.NotFound("User with ID '%s' not found", session.UserId).WithErrf("validateJWT: user not found or not accepted")
 	}
 
 	// 5a. Check user lock status.
 	if user.IsLocked.Valid && user.IsLocked.V {
-		return nil, errutil.Unauthorized("Account is locked")
+		return nil, errutil.Unauthorized("Account is locked").WithErrf("validateJWT(userId=%s): user is permanently locked", user.ID)
 	}
 	if user.TemporaryLockDateEnd.Valid && time.Now().Before(user.TemporaryLockDateEnd.Time) {
-		return nil, errutil.Unauthorized("Account is locked")
+		return nil, errutil.Unauthorized("Account is locked").WithErrf("validateJWT(userId=%s): user is temporarily locked", user.ID)
 	}
 
 	// 6. Organization scoping.
@@ -164,10 +163,10 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			subOrgUUID := parseUUID(claims.SubOrganizationID)
 			subOrg, err := h.dal.FindOrgByID(ctx, subOrgUUID)
 			if err != nil {
-				return nil, errutil.DatabaseErr("Failed to find sub-organization").WithErr(err)
+				return nil, errutil.DatabaseErr("Failed to find sub-organization").WithErrf("validateJWT(subOrgId=%s): %w", subOrgUUID, err)
 			}
 			if subOrg == nil {
-				return nil, errutil.BadRequest("Sub organization %s not found", claims.SubOrganizationID)
+				return nil, errutil.BadRequest("Sub organization %s not found", claims.SubOrganizationID).WithErrf("validateJWT: sub-organization not found")
 			}
 
 			// Verify the sub-org belongs to the token's root organization.
@@ -176,18 +175,18 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 				subRootOrgID = subOrg.RootOrgId.V
 			}
 			if subRootOrgID != claimOrgUUID && subOrg.ID != claimOrgUUID {
-				return nil, errutil.Forbidden("Sub-organization does not belong to the token's organization")
+				return nil, errutil.Forbidden("Sub-organization does not belong to the token's organization").WithErrf("validateJWT(subOrgId=%s, claimOrgId=%s): org mismatch", subOrg.ID, claimOrgUUID)
 			}
 
 			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, subOrg.ID, "accepted")
 			if err != nil {
-				return nil, errutil.DatabaseErr("Failed to check org membership").WithErr(err)
+				return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateJWT(userId=%s, orgId=%s): %w", user.ID, subOrg.ID, err)
 			}
 			if orgMembership == nil {
-				return nil, errutil.Forbidden("User not member of organization")
+				return nil, errutil.Forbidden("User not member of organization").WithErrf("validateJWT(userId=%s, subOrgId=%s): no membership found", user.ID, subOrg.ID)
 			}
 			if !orgMembership.IsActive {
-				return nil, errutil.Forbidden("User organization membership is inactive")
+				return nil, errutil.Forbidden("User organization membership is inactive").WithErrf("validateJWT(userId=%s, subOrgId=%s): membership inactive", user.ID, subOrg.ID)
 			}
 
 			orgID = subOrg.ID
@@ -200,18 +199,18 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			// 6b. Regular organization scope.
 			org, err := h.dal.FindOrgByID(ctx, claimOrgUUID)
 			if err != nil {
-				return nil, errutil.DatabaseErr("Failed to find organization").WithErr(err)
+				return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateJWT(orgId=%s): %w", claimOrgUUID, err)
 			}
 
 			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, claimOrgUUID, "accepted")
 			if err != nil {
-				return nil, errutil.DatabaseErr("Failed to check org membership").WithErr(err)
+				return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateJWT(userId=%s, orgId=%s): %w", user.ID, claimOrgUUID, err)
 			}
 			if orgMembership == nil {
-				return nil, errutil.Forbidden("User not member of organization")
+				return nil, errutil.Forbidden("User not member of organization").WithErrf("validateJWT(userId=%s, orgId=%s): no membership found", user.ID, claimOrgUUID)
 			}
 			if !orgMembership.IsActive {
-				return nil, errutil.Forbidden("User organization membership is inactive")
+				return nil, errutil.Forbidden("User organization membership is inactive").WithErrf("validateJWT(userId=%s, orgId=%s): membership inactive", user.ID, claimOrgUUID)
 			}
 
 			orgID = claimOrgUUID
@@ -263,26 +262,26 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 		return h.authSecret, nil
 	})
 	if err != nil {
-		return nil, errutil.Unauthorized("You are not allowed to access this resource")
+		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: JWT parse failed: %w", err)
 	}
 
 	// 2. Validate authTokenType.
 	if claims.AuthTokenType != AuthTokenTypeIdentityAccessToken {
-		return nil, errutil.Unauthorized("You are not allowed to access this resource")
+		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
 	// 3. Find identity access token (joined with identities table).
 	accessToken, err := h.dal.FindIdentityAccessTokenByID(ctx, claims.IdentityAccessTokenID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find identity access token").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find identity access token").WithErrf("validateIdentityAccessToken(tokenId=%s): %w", claims.IdentityAccessTokenID, err)
 	}
 	if accessToken == nil {
-		return nil, errutil.Unauthorized("No identity access token found")
+		return nil, errutil.Unauthorized("No identity access token found").WithErrf("validateIdentityAccessToken(tokenId=%s): token not found in DB", claims.IdentityAccessTokenID)
 	}
 
 	// 4. Belt-and-suspenders revocation check.
 	if accessToken.IsAccessTokenRevoked {
-		return nil, errutil.Unauthorized("Failed to authorize revoked access token, access token is revoked")
+		return nil, errutil.Unauthorized("Failed to authorize revoked access token, access token is revoked").WithErrf("validateIdentityAccessToken(tokenId=%s): token is revoked", accessToken.ID)
 	}
 
 	// 5. IP check.
@@ -290,7 +289,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	if ipAddress != "" {
 		trustedIPs, err := h.dal.FindTrustedIpsByAuthMethod(ctx, accessToken.IdentityId, accessToken.AuthMethod)
 		if err != nil {
-			return nil, errutil.InternalServer("Failed to find trusted IPs")
+			return nil, errutil.DatabaseErr("Failed to find trusted IPs").WithErrf("validateIdentityAccessToken(identityId=%s, authMethod=%s): %w", accessToken.IdentityId, accessToken.AuthMethod, err)
 		}
 		if trustedIPs != nil {
 			if ipErr := checkIPAgainstBlocklist(ipAddress, trustedIPs); ipErr != nil {
@@ -310,10 +309,10 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	// 7. Find org.
 	org, err := h.dal.FindOrgByID(ctx, scopeOrgUUID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find organization").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateIdentityAccessToken(orgId=%s): %w", scopeOrgUUID, err)
 	}
 	if org == nil {
-		return nil, errutil.InternalServer("Organization not found for identity")
+		return nil, errutil.NotFound("Organization not found for identity").WithErrf("validateIdentityAccessToken(orgId=%s): org not found", scopeOrgUUID)
 	}
 
 	// 8. Resolve org hierarchy.
@@ -322,10 +321,10 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	// 9. Check org membership.
 	membership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeIdentity, accessToken.IdentityId, org.ID, "")
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to check org membership")
+		return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): %w", accessToken.IdentityId, org.ID, err)
 	}
 	if membership == nil {
-		return nil, errutil.BadRequest("Identity does not belong to this organization")
+		return nil, errutil.BadRequest("Identity does not belong to this organization").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): no membership found", accessToken.IdentityId, org.ID)
 	}
 
 	// 10. Validate usage limit.
@@ -333,7 +332,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	accessTokenNumUses := accessToken.AccessTokenNumUses
 	if accessToken.AccessTokenNumUsesLimit > 0 && accessTokenNumUses > 0 && accessTokenNumUses >= accessToken.AccessTokenNumUsesLimit {
 		_ = h.dal.DeleteIdentityAccessTokenByID(ctx, accessToken.ID)
-		return nil, errutil.Unauthorized("Unable to renew because access token number of uses limit reached")
+		return nil, errutil.Unauthorized("Unable to renew because access token number of uses limit reached").WithErrf("validateIdentityAccessToken(tokenId=%s): usage limit %d reached", accessToken.ID, accessToken.AccessTokenNumUsesLimit)
 	}
 
 	// 11. Validate TTL.
@@ -347,7 +346,7 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 		expiry := base.Add(time.Duration(accessToken.AccessTokenTTL) * time.Second)
 		if time.Now().After(expiry) {
 			_ = h.dal.DeleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token due to TTL expiration")
+			return nil, errutil.Unauthorized("Failed to renew MI access token due to TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): TTL expired", accessToken.ID)
 		}
 	}
 
@@ -360,13 +359,13 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 		expirationDate := createdAt.Add(time.Duration(accessToken.AccessTokenMaxTTL) * time.Second)
 		if time.Now().After(expirationDate) {
 			_ = h.dal.DeleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token due to Max TTL expiration")
+			return nil, errutil.Unauthorized("Failed to renew MI access token due to Max TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): Max TTL expired", accessToken.ID)
 		}
 
 		extendToDate := time.Now().Add(time.Duration(accessToken.AccessTokenTTL) * time.Second)
 		if extendToDate.After(expirationDate) {
 			_ = h.dal.DeleteIdentityAccessTokenByID(ctx, accessToken.ID)
-			return nil, errutil.Unauthorized("Failed to renew MI access token past its Max TTL expiration")
+			return nil, errutil.Unauthorized("Failed to renew MI access token past its Max TTL expiration").WithErrf("validateIdentityAccessToken(tokenId=%s): would exceed Max TTL", accessToken.ID)
 		}
 	}
 
@@ -411,7 +410,7 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 	// 1. Split token: "st.<tokenID>.<tokenSecret>"
 	parts := strings.SplitN(token, ".", 3)
 	if len(parts) != 3 || parts[0] != "st" {
-		return nil, errutil.Unauthorized("You are not allowed to access this resource")
+		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateServiceToken: invalid token format")
 	}
 	tokenID := parts[1]
 	tokenSecret := parts[2]
@@ -419,30 +418,30 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 	// 2. Find service token.
 	serviceToken, err := h.dal.FindServiceTokenByID(ctx, tokenID)
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to find service token")
+		return nil, errutil.DatabaseErr("Failed to find service token").WithErrf("validateServiceToken(tokenId=%s): %w", tokenID, err)
 	}
 	if serviceToken == nil {
-		return nil, errutil.NotFound("Service token with ID '%s' not found", tokenID)
+		return nil, errutil.NotFound("Service token with ID '%s' not found", tokenID).WithErrf("validateServiceToken: token not found in DB")
 	}
 
 	// 3. Find project.
 	project, err := h.dal.FindProjectByID(ctx, serviceToken.ProjectId)
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to find project")
+		return nil, errutil.DatabaseErr("Failed to find project").WithErrf("validateServiceToken(projectId=%s): %w", serviceToken.ProjectId, err)
 	}
 	if project == nil {
-		return nil, errutil.NotFound("Project with ID '%s' not found", serviceToken.ProjectId)
+		return nil, errutil.NotFound("Project with ID '%s' not found", serviceToken.ProjectId).WithErrf("validateServiceToken: project not found")
 	}
 
 	// 4. Check expiration.
 	if serviceToken.ExpiresAt.Valid && serviceToken.ExpiresAt.Time.Before(time.Now()) {
 		_ = h.dal.DeleteServiceTokenByID(ctx, serviceToken.ID)
-		return nil, errutil.Forbidden("Service token has expired")
+		return nil, errutil.Forbidden("Service token has expired").WithErrf("validateServiceToken(tokenId=%s): token expired", serviceToken.ID)
 	}
 
 	// 5. Verify secret hash (bcrypt).
 	if err := bcrypt.CompareHashAndPassword([]byte(serviceToken.SecretHash), []byte(tokenSecret)); err != nil {
-		return nil, errutil.Unauthorized("Invalid service token")
+		return nil, errutil.Unauthorized("Invalid service token").WithErrf("validateServiceToken(tokenId=%s): secret hash mismatch", serviceToken.ID)
 	}
 
 	// TODO(go): accessTokenQueue.updateServiceTokenStatus — update lastUsed timestamp
@@ -450,10 +449,10 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 	// 6. Find org.
 	org, err := h.dal.FindOrgByID(ctx, project.OrgId)
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to find organization")
+		return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateServiceToken(orgId=%s): %w", project.OrgId, err)
 	}
 	if org == nil {
-		return nil, errutil.InternalServer("Organization not found for project")
+		return nil, errutil.NotFound("Organization not found for project").WithErrf("validateServiceToken(orgId=%s): org not found", project.OrgId)
 	}
 
 	// 7. Build identity.

@@ -27,7 +27,7 @@ func NewService(deps Deps) *Service {
 func (s *Service) LoadProjectImports(ctx context.Context, projectID string) (*ImportLookup, error) {
 	rows, err := s.dal.GetImportsByProjectID(ctx, projectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to get imports for project").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to get imports for project").WithErrf("LoadProjectImports(projectId=%s): %w", projectID, err)
 	}
 	return newImportLookup(rows), nil
 }

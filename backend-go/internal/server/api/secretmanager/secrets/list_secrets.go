@@ -2,7 +2,6 @@ package secrets
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -109,7 +108,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 	// 1. Get identity from context
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
-		return nil, errutil.Unauthorized("Authentication required")
+		return nil, errutil.Unauthorized("Authentication required").WithErrf("listSecretsCore: identity not in context")
 	}
 
 	actorID := identity.ActorID
@@ -127,13 +126,13 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to get project permission").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to get project permission").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// 3. Load all environments for the project (metadata only, for envID -> slug mapping)
 	allEnvs, err := h.secretManagerSvc.EnvironmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to load environments").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to load environments").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// Build environment lookups and find requested env
@@ -151,22 +150,20 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 		}
 	}
 	if env == nil {
-		return nil, errutil.NotFound("Environment not found").WithErr(
-			fmt.Errorf("environment '%s' not found in project", opts.Environment),
-		)
+		return nil, errutil.NotFound("Environment not found").WithErrf("ListSecrets: environment '%s' not found in project", opts.Environment)
 	}
 
 	// 4. Load imports for the project
 	importLookup, err := h.secretManagerSvc.SecretImport.LoadProjectImports(ctx, opts.ProjectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to load imports").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// 5. Resolve direct folders + import chain
 	chainResolver := secretimport.NewChainResolver(importLookup, h.secretManagerSvc.SecretFolder)
 	chainResult, err := chainResolver.Resolve(ctx, opts.ProjectID, env.ID, opts.SecretPath, opts.Recursive, envByID)
 	if err != nil {
-		return nil, errutil.NotFound("Folder not found").WithErr(err)
+		return nil, errutil.NotFound("Folder not found").WithErrf("ListSecrets(path=%s): %w", opts.SecretPath, err)
 	}
 
 	// 6. Prepare user ID for personal secrets
@@ -198,7 +195,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 
 	secrets, err := h.secretManagerSvc.SecretDAL.FindByFolderIds(ctx, allFolderIDs, userID, dalFilters)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to fetch secrets").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to fetch secrets").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// 8. Get KMS cipher pair for decryption
@@ -207,7 +204,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 		ProjectID: opts.ProjectID,
 	})
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to get decryption key").WithErr(err)
+		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("ListSecrets(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// 9. Process secrets with permission filtering
@@ -270,7 +267,7 @@ func (h *Handler) listSecretsCore(ctx context.Context, opts *ListSecretsOpts) (*
 				details[i] = "Permission denied for secret reference: " + ref
 			}
 			return nil, errutil.Forbidden("Failed to expand one or more secret references").
-				WithErr(fmt.Errorf("denied refs: %v", deniedRefs))
+				WithErrf("listSecretsCore: denied refs: %v", deniedRefs)
 		}
 
 		applyExpandedValues(directSecrets, importedSecrets, expander)
@@ -378,7 +375,7 @@ func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecret
 
 	// Environment is required for this endpoint
 	if p.Environment == nil || *p.Environment == "" {
-		return nil, errutil.BadRequest("Environment is required")
+		return nil, errutil.BadRequest("Environment is required").WithErrf("ListSecretsRawV3: environment param missing")
 	}
 
 	// v3 raw: Always include all (both shared and personal)
@@ -582,9 +579,7 @@ func (h *Handler) createGetSecretsAuditLog(ctx context.Context, projectID, env, 
 	}
 
 	if err := h.sharedSvc.AuditLog.CreateAuditLog(ctx, dto); err != nil {
-		return errutil.InternalServer("Failed to create audit log").WithErr(
-			fmt.Errorf("createGetSecretsAuditLog(project=%s, env=%s, path=%s): %w", projectID, env, secretPath, err),
-		)
+		return errutil.InternalServer("Failed to create audit log").WithErrf("createGetSecretsAuditLog(project=%s, env=%s, path=%s): %w", projectID, env, secretPath, err)
 	}
 
 	return nil

@@ -138,7 +138,7 @@ func (s *Service) Init(ctx context.Context) (ServerConfig, error) {
 
 	m, err := s.dal.FindOrCreateConfig(ctx)
 	if err != nil {
-		return ServerConfig{}, errutil.DatabaseErr("Failed to initialize server config").WithErr(err)
+		return ServerConfig{}, errutil.DatabaseErr("Failed to initialize server config").WithErrf("Init: %w", err)
 	}
 	return configFromModel(m), nil
 }
@@ -162,7 +162,7 @@ func (s *Service) GetConfig(ctx context.Context) (ServerConfig, error) {
 	// Cache miss — read from DB.
 	m, err := s.dal.FindByID(ctx, adminConfigDBUUID)
 	if err != nil {
-		return ServerConfig{}, errutil.DatabaseErr("Failed to read server config").WithErr(err)
+		return ServerConfig{}, errutil.DatabaseErr("Failed to read server config").WithErrf("GetConfig: %w", err)
 	}
 
 	cfg := configFromModel(m)

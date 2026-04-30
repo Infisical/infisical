@@ -2,7 +2,6 @@ package secrets
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -34,7 +33,7 @@ type GetSecretOpts struct {
 func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) (*gensecrets.GetSecretResult, error) {
 	identity := auth.IdentityFromContext(ctx)
 	if identity == nil {
-		return nil, errutil.Unauthorized("Authentication required")
+		return nil, errutil.Unauthorized("Authentication required").WithErrf("getSecretByNameCore: identity not in context")
 	}
 
 	actorID := identity.ActorID
@@ -50,13 +49,13 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		ActionProjectType: permission.ActionProjectTypeSecretManager,
 	})
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to get project permission").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to get project permission").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// Load environments
 	allEnvs, err := h.secretManagerSvc.EnvironmentDAL.GetAllByProjectID(ctx, opts.ProjectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to load environments").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to load environments").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	envByID := make(map[uuid.UUID]secretimport.EnvironmentInfo, len(allEnvs))
@@ -73,22 +72,18 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		}
 	}
 	if env == nil {
-		return nil, errutil.NotFound("Environment not found").WithErr(
-			fmt.Errorf("environment '%s' not found in project", opts.Environment),
-		)
+		return nil, errutil.NotFound("Environment not found").WithErrf("GetSecretByName: environment '%s' not found in project", opts.Environment)
 	}
 
 	// Load folder
 	folderLookup, err := h.secretManagerSvc.SecretFolder.LoadProjectFolders(ctx, opts.ProjectID, []uuid.UUID{env.ID})
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to load folders").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to load folders").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	folderNode, ok := folderLookup.GetByPath(env.ID, opts.SecretPath)
 	if !ok {
-		return nil, errutil.NotFound("Folder not found").WithErr(
-			fmt.Errorf("folder path '%s' not found in environment '%s'", opts.SecretPath, opts.Environment),
-		)
+		return nil, errutil.NotFound("Folder not found").WithErrf("GetSecretByName: folder path '%s' not found in environment '%s'", opts.SecretPath, opts.Environment)
 	}
 
 	// Get KMS cipher pair
@@ -97,7 +92,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		ProjectID: opts.ProjectID,
 	})
 	if err != nil {
-		return nil, errutil.InternalServer("Failed to get decryption key").WithErr(err)
+		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 	}
 
 	// Prepare user ID for personal secrets
@@ -117,14 +112,14 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 	// Find the secret by name
 	foundSecret, err := h.secretManagerSvc.SecretDAL.FindByKey(ctx, folderNode.ID, opts.SecretName, secretType, userID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find secret").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find secret").WithErrf("GetSecretByName(secretName=%s): %w", opts.SecretName, err)
 	}
 
 	// If not found in direct folder and includeImports is true, search imports
 	if foundSecret == nil && opts.IncludeImports {
 		importLookup, err := h.secretManagerSvc.SecretImport.LoadProjectImports(ctx, opts.ProjectID)
 		if err != nil {
-			return nil, errutil.DatabaseErr("Failed to load imports").WithErr(err)
+			return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("GetSecretByName(projectId=%s): %w", opts.ProjectID, err)
 		}
 
 		chainResolver := secretimport.NewChainResolver(importLookup, h.secretManagerSvc.SecretFolder)
@@ -146,9 +141,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 	}
 
 	if foundSecret == nil {
-		return nil, errutil.NotFound("Secret not found").WithErr(
-			fmt.Errorf("secret with name '%s' not found", opts.SecretName),
-		)
+		return nil, errutil.NotFound("Secret not found").WithErrf("GetSecretByName: secret with name '%s' not found", opts.SecretName)
 	}
 
 	// Check permissions
@@ -159,14 +152,14 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 
 	canDescribe := permission.CanDescribeSecret(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
 	if !canDescribe {
-		return nil, errutil.Forbidden("You do not have permission to access this secret")
+		return nil, errutil.Forbidden("You do not have permission to access this secret").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): describe denied", opts.SecretName, opts.Environment, opts.SecretPath)
 	}
 
 	canReadValue := permission.CanReadSecretValue(permResult.Permission.Ability, opts.Environment, opts.SecretPath, foundSecret.Key, tagSlugs)
 	valueHidden := !opts.ViewSecretValue || !canReadValue
 
 	if opts.ViewSecretValue && !canReadValue {
-		return nil, errutil.Forbidden("You do not have permission to view this secret value")
+		return nil, errutil.Forbidden("You do not have permission to view this secret value").WithErrf("getSecretByNameCore(secretName=%s, env=%s, path=%s): read value denied", opts.SecretName, opts.Environment, opts.SecretPath)
 	}
 
 	// Decrypt value and comment
@@ -250,7 +243,7 @@ func (h *Handler) getSecretByNameCore(ctx context.Context, opts *GetSecretOpts) 
 		if expander.HasDeniedRefs() {
 			deniedRefs := expander.DeniedRefs()
 			return nil, errutil.Forbidden("Failed to expand one or more secret references").
-				WithErr(fmt.Errorf("denied refs: %v", deniedRefs))
+				WithErrf("denied refs: %v", deniedRefs)
 		}
 
 		if expanded, ok := expander.LookUp(foundSecret.ID); ok {
@@ -316,7 +309,7 @@ func (h *Handler) GetSecretByNameRawV3(ctx context.Context, p *gensecrets.GetSec
 
 	// Environment is required for this endpoint
 	if p.Environment == nil || *p.Environment == "" {
-		return nil, errutil.BadRequest("Environment is required")
+		return nil, errutil.BadRequest("Environment is required").WithErrf("GetSecretByNameRawV3: environment param missing")
 	}
 
 	result, err := h.getSecretByNameCore(ctx, &GetSecretOpts{
@@ -381,9 +374,8 @@ func (h *Handler) createGetSecretAuditLog(ctx context.Context, projectID, env, s
 	}
 
 	if err := h.sharedSvc.AuditLog.CreateAuditLog(ctx, dto); err != nil {
-		return errutil.InternalServer("Failed to create audit log").WithErr(
-			fmt.Errorf("createGetSecretAuditLog(project=%s, env=%s, path=%s, key=%s): %w", projectID, env, secretPath, sec.SecretKey, err),
-		)
+		return errutil.InternalServer("Failed to create audit log").WithErrf(
+			"createGetSecretAuditLog(project=%s, env=%s, path=%s, key=%s): %w", projectID, env, secretPath, sec.SecretKey, err)
 	}
 
 	return nil

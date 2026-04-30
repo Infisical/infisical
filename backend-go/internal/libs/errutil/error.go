@@ -60,6 +60,14 @@ func (e *Error) WithErr(err error) *Error {
 	return e
 }
 
+// WithErrf wraps an underlying cause using fmt.Errorf formatting.
+// Use this to add function context: .WithErrf("FunctionName(arg=%s): %w", argValue, err)
+func (e *Error) WithErrf(format string, args ...any) *Error {
+	e.Err = fmt.Errorf(format, args...)
+
+	return e
+}
+
 // BadRequest creates a 400 error.
 func BadRequest(format string, args ...any) *Error {
 	return &Error{Name: "BadRequest", Status: 400, Message: fmt.Sprintf(format, args...)}

@@ -13,7 +13,7 @@ import (
 func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]byte, error) {
 	project, err := s.dal.FindProjectKmsInfo(ctx, projectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find project KMS info").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find project KMS info").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, err)
 	}
 
 	// Ensure project has a KMS key (lazy create if missing).
@@ -23,7 +23,7 @@ func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]by
 			return s.generateEncryptedKeyMaterial()
 		})
 		if kmsErr != nil {
-			return nil, errutil.DatabaseErr("Failed to ensure project KMS key").WithErr(kmsErr)
+			return nil, errutil.DatabaseErr("Failed to ensure project KMS key").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, kmsErr)
 		}
 		kmsKeyID.V = createdKmsKeyID
 		kmsKeyID.Valid = true
@@ -33,7 +33,7 @@ func (s *Service) getProjectDataKey(ctx context.Context, projectID string) ([]by
 	if project.KmsSecretManagerEncryptedDataKey == nil {
 		dataKey, dataErr := s.generateProjectDataKey(ctx, projectID, kmsKeyID.V)
 		if dataErr != nil {
-			return nil, errutil.DatabaseErr("Failed to ensure project data key").WithErr(dataErr)
+			return nil, errutil.DatabaseErr("Failed to ensure project data key").WithErrf("getProjectDataKey(projectId=%s): %w", projectID, dataErr)
 		}
 		return dataKey, nil
 	}
@@ -65,7 +65,7 @@ func (s *Service) generateProjectDataKey(ctx context.Context, projectID string, 
 		return encryptWithVersion(plainDataKey, kmsKey)
 	})
 	if err != nil {
-		return nil, errutil.DatabaseErr("Failed to find or create project data key").WithErr(err)
+		return nil, errutil.DatabaseErr("Failed to find or create project data key").WithErrf("generateProjectDataKey(projectId=%s): %w", projectID, err)
 	}
 
 	return decryptWithVersion(encryptedDataKey, kmsKey)

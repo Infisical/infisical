@@ -1,137 +1,83 @@
-# CLAUDE.md
+# backend-go
 
-This is the **backend-go** package — a partial Go rewrite of the Node.js backend using Goa v3 for API design and go-jet for type-safe SQL.
+Partial Go rewrite of the Node.js backend using Goa v3 + go-jet.
 
 ## Commands
 
-All commands run from `backend-go/`:
+```
+make build      # build binary
+make dev        # hot-reload via docker-compose + air
+make gen-goa    # regenerate Goa handlers (design/ → gen/)
+make gen-db     # regenerate go-jet types from DB
+make test       # integration tests (testcontainers, -race)
+make lint       # must pass before submission
+make lint-fix   # auto-fix linting issues
+```
 
-- `make build` — build binary
-- `make dev` — hot-reloading server via docker-compose + air
-- `make gen-goa` — regenerate Goa HTTP handlers from DSL (`internal/server/design/` → `internal/server/gen/`)
-- `make gen-db` — regenerate go-jet table types from DB (`internal/database/pg/gen/`)
-- `make test` — integration tests (testcontainers, `-race`, 300s timeout)
-- `make lint` — **must pass before submission**
-- `make lint-fix` — **use to fix auto fixable ones**
-
-Never edit generated code in `gen/` directories — always regenerate.
+Never edit `gen/` directories — always regenerate.
 
 ## Code Rules
 
-- **Linting**: All code must pass `make lint`. Do not suppress with `//nolint` unless clearly justified.
-- **Constructor signature**: Both services and DALs initialize with `(logger *slog.Logger, deps Deps)`. All external dependencies go in a `Deps` struct (name must end with `Deps`). The `exhaustruct` linter enforces every field is set at the call site — no silent nil dependencies.
-- **Context everywhere**: Every service and DAL method that does I/O **must accept `context.Context` as its first argument**. Constructors are the only exception.
-- **Explicit logger**: Services and DALs receive `*slog.Logger` via constructor — **never use `slog.Default()` or package-level `slog.*` functions**. Tag with `logger.With("service", "name")`.
-- **Interfaces for dependencies**: Consumer defines the interface (narrow, only needed methods). Accept interfaces, not concrete types.
-- **DAL boundary**: Services must not import `table`, `postgres`, or `qrm`. All queries go through a DAL. Always use type-safe go-jet — no raw SQL (exception: `pg_advisory_xact_lock`).
-- **Database error wrapping**: All `err` values returned from DAL/database calls must be wrapped with `errutil.DatabaseErr("<user-facing message>").WithErr(err)` at the service/caller level, NOT inside DAL methods. This logs the real DB error internally but only shows the safe message to clients.
-- **Error cause context**: When returning `errutil` service errors, always attach origin context via `.WithErr()` using `fmt.Errorf` with the function name and relevant args: `errutil.DatabaseErr("Failed to load resource").WithErr(fmt.Errorf("secretfolder.LoadProjectFolders(project=%s): %w", projectID, err))`. Keep client-facing messages generic — the cause is never exposed to clients, it only appears in server logs alongside the Goa service/method from context.
-- **Lean code**: Inline helpers with one caller. Only extract when shared. Split DAL files by functionality.
+- **Linting**: `make lint` must pass. No `//nolint` unless justified.
+- **Constructor**: `(logger *slog.Logger, deps Deps)` — deps struct name ends with `Deps`.
+- **Context**: Every I/O method takes `context.Context` first. Constructors are the exception.
+- **Logger**: Pass `*slog.Logger` via constructor — never use `slog.Default()`.
+- **Interfaces**: Service Consumer defines narrow interfaces. Accept interfaces, not concrete types.
+- **DAL boundary**: Services must not import `table`, `postgres`, `qrm`. Use go-jet only.
+- **Error wrapping**: Wrap DAL errors at caller level with context:
+  ```go
+  errutil.DatabaseErr("Failed to load").WithErrf("FuncName(arg=%s): %w", arg, err)
+  errutil.Forbidden("Access denied").WithErrf("FuncName: permission check failed")
+  ```
+- **Lean code**: Inline single-use helpers. Split DAL files by functionality.
 
 ## Architecture
 
-### Key Directories
-
 ```
-cmd/infisical/main.go          # Entry point: config → DB → api.Registry → server
-cmd/dev/pg_gen/main.go         # go-jet codegen utility
+cmd/infisical/main.go           # Entry point
 internal/
-├── config/                    # Env-var config via koanf (186+ settings)
+├── config/                     # Env config via koanf
 ├── database/
-│   ├── pg/gen/                # go-jet generated types (DO NOT EDIT)
-│   ├── redis/                 # Redis client (standalone/cluster/sentinel)
-│   └── ormify/                # Generic CRUD: DAL[M any] with FindByID, Create, Update, etc.
-├── keystore/                  # Redis key-value + PG advisory locks
+│   ├── pg/gen/                 # go-jet generated (DO NOT EDIT)
+│   ├── redis/                  # Redis client
+│   └── ormify/                 # Generic CRUD: DAL[M] with Find/Create/Update/Delete
 ├── server/
-│   ├── design/
-│   │   ├── auth/              # Goa security schemes (JWT, identity, service token)
-│   │   ├── common/            # Shared error types
-│   │   ├── platform/          # Platform Goa DSL
-│   │   └── secretmanager/     # Secret manager Goa DSL
-│   ├── gen/                   # Goa generated (DO NOT EDIT)
-│   └── api/                   # Goa endpoint implementations
-│       ├── api.go             # Root DI wiring (NewRegistry)
-│       ├── platform/          # Platform API (projects, etc.)
-│       └── secretmanager/     # Secret manager API (secrets, etc.)
-├── services/                  # Shared business logic (cross-product)
-│   ├── libs.go                # SharedServices wiring
-│   ├── auth/                  # Authentication & token validation
-│   ├── permission/            # CASL-based permission checks
-│   ├── kms/                   # Key management service
-│   ├── license/               # License validation
-│   ├── secretmanager/         # Shared secret manager services (secretfolder, secretimport)
-│   └── serverconfig/          # Server configuration
-└── testutil/                  # Test infra (testcontainers, fluent HTTP builder)
+│   ├── design/                 # Goa DSL definitions
+│   ├── gen/                    # Goa generated (DO NOT EDIT)
+│   └── api/                    # Endpoint implementations + DI wiring
+├── services/                   # Shared business logic (auth, permission, kms)
+└── testutil/                   # Test infra (testcontainers)
 ```
 
-### Two-Tier Service Architecture
+**Two tiers:**
+- `server/api/` — Goa endpoint implementations. 1:1 with endpoints. Not imported elsewhere.
+- `services/` — Shared logic. No Goa dependency.
 
-- **`server/api/`** — Goa endpoint implementations. Each module implements a Goa-generated `Service` interface and orchestrates shared services. Always 1:1 with a Goa endpoint. These should NOT be imported by anything outside `server/`.
-- **`services/`** — Shared business logic (auth, permission, kms, etc.). Consumed by API implementations and by each other. No dependency on Goa-generated code.
+**DAL**: `ormify.DAL[M]` provides `FindByID`, `Find`, `Create`, `Update`, `Delete`, `Count`.
 
-DI wiring: `api.NewRegistry()` constructs shared services first, then passes them into product-specific API registries.
+**Read replicas**: `pg.DB` wraps primary + replica pools. Reads hit replicas, writes hit primary.
 
-### Data Access (DAL)
+### Go-Jet Nesting
 
-`ormify.DAL[M any]` provides: `FindByID`, `FindOne`, `Find`, `FindAll`, `Create`, `InsertMany`, `UpdateByID`, `Update`, `DeleteByID`, `Delete`, `Count` with functional options (limit/offset/orderBy).
-
-**Read replica pattern**: `pg.DB` wraps primary + replica pools. Reads go to a random replica (fallback to primary). Writes always hit primary.
-
-### Go-Jet QRM Automatic Nesting
-
-For queries with LEFT JOINs that create one-to-many relationships (e.g., secrets → tags), use go-jet's automatic nesting via struct definitions instead of manual nesting functions.
-
-**Define nested structs with slice fields and primary key tags:**
+For JOINs with one-to-many, use struct tags:
 
 ```go
 type Secret struct {
-    ID       uuid.UUID    `sql:"primary_key" alias:"secrets_v2.id"`
-    Key      string       `alias:"secrets_v2.key"`
-    Tags     []SecretTag  `alias:"secret_tags"`  // go-jet auto-groups into slices
+    ID   uuid.UUID   `sql:"primary_key" alias:"secrets_v2.id"`
+    Tags []SecretTag `alias:"secret_tags"`
 }
-
 type SecretTag struct {
     ID   uuid.UUID `sql:"primary_key" alias:"secret_tags.id"`
     Slug string    `alias:"secret_tags.slug"`
 }
 ```
 
-**Query directly into nested struct:**
-
-```go
-var secrets []Secret
-err := stmt.QueryContext(ctx, d.db.Replica(), &secrets)
-// secrets[].Tags[] automatically populated and deduplicated
-```
-
-**Key requirements:**
-- Include `sql:"primary_key"` tag on ID fields — go-jet uses these for grouping/deduplication
-- Use `alias:"table.column"` tags to map columns from JOINed tables
-- Child slices must have their own primary keys to avoid duplicates from cartesian products
-- No manual nesting function needed — go-jet handles it automatically
-
-See `internal/services/secretmanager/secret/dal.go` for a complete example with multiple nested slices (tags, metadata, reminder recipients).
-
-### Testing
-
-Integration tests with testcontainers-go (PostgreSQL 14, Redis 7, Node.js backend):
-
-```go
-mux.Request(t, http.MethodPost, "/api/v1/...").
-    WithAuth(infra.IdentityToken).
-    WithBody(payload).
-    Do().
-    ExpectStatus(http.StatusCreated).
-    ParseJSON(&result)
-```
-
-Tests run with `-race`. Infrastructure shared across packages via file lock + `.test-infra-state.json`.
+Go-jet auto-groups slices. Requires `sql:"primary_key"` on IDs.
 
 ## Wiring a New Feature
 
-1. Define API in Goa DSL (`internal/server/design/<product>/`)
+1. Define API in Goa DSL (`server/design/<product>/`)
 2. `make gen-goa`
-3. Create API implementation in `internal/server/api/<product>/<name>/` implementing generated interface
-4. Wire in `api.go`, mount in `internal/server/<product>.go`
-5. Add tests with `setupMux()` pattern
-6. `make test` + `make lint`
+3. Implement in `server/api/<product>/<name>/`
+4. Wire in `api.go`
+5. Add tests, run `make test && make lint`, auto fix lint command `make lint-fix`

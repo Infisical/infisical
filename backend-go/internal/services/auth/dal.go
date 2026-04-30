@@ -147,18 +147,18 @@ func (d *DAL) FindProjectByID(ctx context.Context, id string) (*ProjectRow, erro
 // IdentityAccessTokenRow holds the identity_access_tokens columns + joined identity fields
 // used by the auth handler. Nearly all token columns are needed for validation.
 type IdentityAccessTokenRow struct {
-	ID                       string              `alias:"identity_access_tokens.id"`
-	AccessTokenTTL           int64               `alias:"identity_access_tokens.access_token_ttl"`
-	AccessTokenMaxTTL        int64               `alias:"identity_access_tokens.access_token_max_ttl"`
-	AccessTokenNumUses       int64               `alias:"identity_access_tokens.access_token_num_uses"`
-	AccessTokenNumUsesLimit  int64               `alias:"identity_access_tokens.access_token_num_uses_limit"`
-	AccessTokenLastRenewedAt sql.NullTime        `alias:"identity_access_tokens.access_token_last_renewed_at"`
-	IsAccessTokenRevoked     bool                `alias:"identity_access_tokens.is_access_token_revoked"`
-	IdentityId               uuid.UUID           `alias:"identity_access_tokens.identity_id"`
-	CreatedAt                sql.NullTime        `alias:"identity_access_tokens.created_at"`
-	AuthMethod               string              `alias:"identity_access_tokens.auth_method"`
-	AccessTokenPeriod        int64               `alias:"identity_access_tokens.access_token_period"`
-	SubOrganizationId        sql.Null[uuid.UUID] `alias:"identity_access_tokens.sub_organization_id"`
+	ID                       string                   `alias:"identity_access_tokens.id"`
+	AccessTokenTTL           int64                    `alias:"identity_access_tokens.access_token_ttl"`
+	AccessTokenMaxTTL        int64                    `alias:"identity_access_tokens.access_token_max_ttl"`
+	AccessTokenNumUses       int64                    `alias:"identity_access_tokens.access_token_num_uses"`
+	AccessTokenNumUsesLimit  int64                    `alias:"identity_access_tokens.access_token_num_uses_limit"`
+	AccessTokenLastRenewedAt sql.NullTime             `alias:"identity_access_tokens.access_token_last_renewed_at"`
+	IsAccessTokenRevoked     bool                     `alias:"identity_access_tokens.is_access_token_revoked"`
+	IdentityId               uuid.UUID                `alias:"identity_access_tokens.identity_id"`
+	CreatedAt                sql.NullTime             `alias:"identity_access_tokens.created_at"`
+	AuthMethod               actor.IdentityAuthMethod `alias:"identity_access_tokens.auth_method"`
+	AccessTokenPeriod        int64                    `alias:"identity_access_tokens.access_token_period"`
+	SubOrganizationId        sql.Null[uuid.UUID]      `alias:"identity_access_tokens.sub_organization_id"`
 
 	// Joined from identities table.
 	IdentityOrgID uuid.UUID `alias:"identities.org_id"`
@@ -334,7 +334,7 @@ type trustedIPRow struct {
 
 // FindTrustedIpsByAuthMethod returns the parsed trusted IPs for an identity's auth method.
 // Exact port of Node.js identityDAL.getTrustedIpsByAuthMethod.
-func (d *DAL) FindTrustedIpsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod string) ([]TrustedIP, error) {
+func (d *DAL) FindTrustedIpsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod actor.IdentityAuthMethod) ([]TrustedIP, error) {
 	iua := table.IdentityUniversalAuths
 	ika := table.IdentityKubernetesAuths
 	iga := table.IdentityGcpAuths
@@ -349,37 +349,37 @@ func (d *DAL) FindTrustedIpsByAuthMethod(ctx context.Context, identityID uuid.UU
 	ila := table.IdentityLdapAuths
 	isa := table.IdentitySpiffeAuths
 
-	// Map auth method string → table + column references.
+	// Map auth method → table + column references.
 	var tbl postgres.ReadableTable
 	var identityCol postgres.Column
 	var trustedIPsProj postgres.Projection
 
 	switch authMethod {
-	case "universal_auth":
+	case actor.IdentityAuthMethodUniversal:
 		tbl, identityCol, trustedIPsProj = iua, iua.IdentityId, iua.AccessTokenTrustedIps
-	case "kubernetes_auth":
+	case actor.IdentityAuthMethodKubernetes:
 		tbl, identityCol, trustedIPsProj = ika, ika.IdentityId, ika.AccessTokenTrustedIps
-	case "gcp_auth":
+	case actor.IdentityAuthMethodGCP:
 		tbl, identityCol, trustedIPsProj = iga, iga.IdentityId, iga.AccessTokenTrustedIps
-	case "alicloud_auth":
+	case actor.IdentityAuthMethodAliCloud:
 		tbl, identityCol, trustedIPsProj = iaa, iaa.IdentityId, iaa.AccessTokenTrustedIps
-	case "aws_auth":
+	case actor.IdentityAuthMethodAWS:
 		tbl, identityCol, trustedIPsProj = iwa, iwa.IdentityId, iwa.AccessTokenTrustedIps
-	case "azure_auth":
+	case actor.IdentityAuthMethodAzure:
 		tbl, identityCol, trustedIPsProj = iza, iza.IdentityId, iza.AccessTokenTrustedIps
-	case "token_auth":
+	case actor.IdentityAuthMethodToken:
 		tbl, identityCol, trustedIPsProj = ita, ita.IdentityId, ita.AccessTokenTrustedIps
-	case "tls_cert_auth":
+	case actor.IdentityAuthMethodTLSCert:
 		tbl, identityCol, trustedIPsProj = itca, itca.IdentityId, itca.AccessTokenTrustedIps
-	case "oci_auth":
+	case actor.IdentityAuthMethodOCI:
 		tbl, identityCol, trustedIPsProj = ioa, ioa.IdentityId, ioa.AccessTokenTrustedIps
-	case "oidc_auth":
+	case actor.IdentityAuthMethodOIDC:
 		tbl, identityCol, trustedIPsProj = ioda, ioda.IdentityId, ioda.AccessTokenTrustedIps
-	case "jwt_auth":
+	case actor.IdentityAuthMethodJWT:
 		tbl, identityCol, trustedIPsProj = ija, ija.IdentityId, ija.AccessTokenTrustedIps
-	case "ldap_auth":
+	case actor.IdentityAuthMethodLDAP:
 		tbl, identityCol, trustedIPsProj = ila, ila.IdentityId, ila.AccessTokenTrustedIps
-	case "spiffe_auth":
+	case actor.IdentityAuthMethodSPIFFE:
 		tbl, identityCol, trustedIPsProj = isa, isa.IdentityId, isa.AccessTokenTrustedIps
 	default:
 		return nil, nil

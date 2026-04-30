@@ -38,7 +38,7 @@ func (s *Service) CreateAuditLog(ctx context.Context, dto *CreateAuditLogDTO) er
 	}
 
 	if dto.ProjectID == nil && dto.OrgID == nil {
-		return errutil.BadRequest("Must specify either projectId or orgId")
+		return errutil.BadRequest("Must specify either projectId or orgId").WithErrf("CreateAuditLog: both projectId and orgId are nil")
 	}
 
 	if err := queue.Enqueue(s.queue, TaskAuditLog, dto, queue.WithMaxRetry(3)); err != nil {
@@ -46,7 +46,7 @@ func (s *Service) CreateAuditLog(ctx context.Context, dto *CreateAuditLogDTO) er
 			slog.String("eventType", string(dto.Event.Type())),
 			slog.Any("error", err),
 		)
-		return errutil.InternalServer("Failed to create audit log").WithErr(err)
+		return errutil.InternalServer("Failed to create audit log").WithErrf("CreateAuditLog(eventType=%s): %w", dto.Event.Type(), err)
 	}
 
 	return nil

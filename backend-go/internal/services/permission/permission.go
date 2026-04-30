@@ -133,7 +133,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 
 	// 3. Validate actor type
 	if args.Actor != ActorTypeUser && args.Actor != ActorTypeIdentity {
-		return nil, errutil.BadRequest("Invalid actor provided")
+		return nil, errutil.BadRequest("Invalid actor provided").WithErrf("GetProjectPermission: unsupported actor type %s", args.Actor)
 	}
 
 	// TODO(go): request-scoped memoization — avoid redundant permission checks within same request.
@@ -152,15 +152,15 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// 4. Find project
 	projectDetails, err := p.dal.FindProjectByID(ctx, args.ProjectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("finding project").WithErr(err)
+		return nil, errutil.DatabaseErr("finding project").WithErrf("GetProjectPermission(projectId=%s): %w", args.ProjectID, err)
 	}
 	if projectDetails == nil {
-		return nil, errutil.NotFound("Project with %s not found", args.ProjectID)
+		return nil, errutil.NotFound("Project with %s not found", args.ProjectID).WithErrf("GetProjectPermission: project not found in DB")
 	}
 
 	// 5. Org ownership
 	if projectDetails.OrgID != args.ActorOrgID {
-		return nil, errutil.Forbidden("This project does not belong to your selected organization.")
+		return nil, errutil.Forbidden("This project does not belong to your selected organization.").WithErrf("GetProjectPermission(projectId=%s): org mismatch projectOrg=%s actorOrg=%s", args.ProjectID, projectDetails.OrgID, args.ActorOrgID)
 	}
 
 	// 6. ActionProjectType check
@@ -168,7 +168,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return nil, errutil.BadRequest(
 			"The project is of type %s. Operations of type %s are not allowed.",
 			projectDetails.Type, string(args.ActionProjectType),
-		)
+		).WithErrf("GetProjectPermission(projectId=%s): type mismatch", args.ProjectID)
 	}
 
 	// 7. Query permission data
@@ -180,7 +180,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		ActorType: args.Actor,
 	})
 	if err != nil {
-		return nil, errutil.DatabaseErr("getting project permission").WithErr(err)
+		return nil, errutil.DatabaseErr("getting project permission").WithErrf("GetProjectPermission(projectId=%s, actorId=%s): %w", args.ProjectID, args.ActorID, err)
 	}
 
 	// 8. Empty check
@@ -188,7 +188,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return nil, errutil.Forbidden(
 			"You are not a member of this project with ID %s. Please assign this %s to the project with the appropriate permissions, then try again.",
 			args.ProjectID, string(args.Actor),
-		)
+		).WithErrf("GetProjectPermission(projectId=%s, actorId=%s): no membership found", args.ProjectID, args.ActorID)
 	}
 
 	// 9. Flatten active roles
@@ -215,12 +215,12 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	if args.Actor == ActorTypeUser {
 		username, err = p.dal.FindUserUsername(ctx, args.ActorID)
 		if err != nil {
-			return nil, errutil.DatabaseErr("finding user username").WithErr(err)
+			return nil, errutil.DatabaseErr("finding user username").WithErrf("GetProjectPermission(userId=%s): %w", args.ActorID, err)
 		}
 	} else {
 		username, err = p.dal.FindIdentityName(ctx, args.ActorID)
 		if err != nil {
-			return nil, errutil.DatabaseErr("finding identity name").WithErr(err)
+			return nil, errutil.DatabaseErr("finding identity name").WithErrf("GetProjectPermission(identityId=%s): %w", args.ActorID, err)
 		}
 	}
 
@@ -278,29 +278,29 @@ func (p *Service) getServiceTokenProjectPermission(
 	// 1. Find service token
 	serviceToken, err := p.dal.FindServiceTokenByID(ctx, serviceTokenID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("finding service token").WithErr(err)
+		return nil, errutil.DatabaseErr("finding service token").WithErrf("getServiceTokenProjectPermission(tokenId=%s): %w", serviceTokenID, err)
 	}
 	if serviceToken == nil {
-		return nil, errutil.NotFound("Service token with ID '%s' not found", serviceTokenID)
+		return nil, errutil.NotFound("Service token with ID '%s' not found", serviceTokenID).WithErrf("getServiceTokenProjectPermission: token not found in DB")
 	}
 
 	// 2. Verify project linked
 	serviceTokenProject, err := p.dal.FindProjectByID(ctx, serviceToken.ProjectID)
 	if err != nil {
-		return nil, errutil.DatabaseErr("finding service token project").WithErr(err)
+		return nil, errutil.DatabaseErr("finding service token project").WithErrf("getServiceTokenProjectPermission(projectId=%s): %w", serviceToken.ProjectID, err)
 	}
 	if serviceTokenProject == nil {
-		return nil, errutil.BadRequest("Service token not linked to a project")
+		return nil, errutil.BadRequest("Service token not linked to a project").WithErrf("getServiceTokenProjectPermission(tokenId=%s): project not found", serviceTokenID)
 	}
 
 	// 3. Verify projectId match
 	if serviceToken.ProjectID != projectID {
-		return nil, errutil.Forbidden("Service token not a part of the specified project with ID %s", projectID)
+		return nil, errutil.Forbidden("Service token not a part of the specified project with ID %s", projectID).WithErrf("getServiceTokenProjectPermission(tokenId=%s): project mismatch tokenProject=%s requestedProject=%s", serviceTokenID, serviceToken.ProjectID, projectID)
 	}
 
 	// 4. Verify orgId match
 	if serviceTokenProject.OrgID != actorOrgID {
-		return nil, errutil.Forbidden("Service token not a part of the specified organization with ID %s", actorOrgID.String())
+		return nil, errutil.Forbidden("Service token not a part of the specified organization with ID %s", actorOrgID.String()).WithErrf("getServiceTokenProjectPermission(tokenId=%s): org mismatch", serviceTokenID)
 	}
 
 	// 5. Verify actionProjectType match
@@ -308,7 +308,7 @@ func (p *Service) getServiceTokenProjectPermission(
 		return nil, errutil.BadRequest(
 			"The project is of type %s. Operations of type %s are not allowed.",
 			serviceTokenProject.Type, string(actionProjectType),
-		)
+		).WithErrf("getServiceTokenProjectPermission(tokenId=%s): type mismatch", serviceTokenID)
 	}
 
 	// 6. Parse scopes and build rules

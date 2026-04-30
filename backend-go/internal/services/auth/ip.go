@@ -36,7 +36,7 @@ func checkIPAgainstBlocklist(ipAddress string, trustedIPs []TrustedIP) error {
 
 	incoming := net.ParseIP(ipAddress)
 	if incoming == nil {
-		return errutil.Forbidden("You are not allowed to access this resource from the current IP address")
+		return errutil.Forbidden("You are not allowed to access this resource from the current IP address").WithErrf("checkIPAgainstBlocklist: failed to parse IP %s", ipAddress)
 	}
 
 	for _, tip := range trustedIPs {
@@ -58,7 +58,7 @@ func checkIPAgainstBlocklist(ipAddress string, trustedIPs []TrustedIP) error {
 		}
 	}
 
-	return errutil.Forbidden("You are not allowed to access this resource from the current IP address")
+	return errutil.Forbidden("You are not allowed to access this resource from the current IP address").WithErrf("checkIPAgainstBlocklist: IP %s not in allowlist", ipAddress)
 }
 
 // itoa converts an int to its decimal string representation without importing strconv.
