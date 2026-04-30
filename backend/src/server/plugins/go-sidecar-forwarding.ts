@@ -3,6 +3,8 @@ import fp from "fastify-plugin";
 
 // Method + URL combinations to forward to the Go sidecar
 const FORWARDED_ROUTES: { method: string; url: string }[] = [
+  // { method: "GET", url: "/api/v3/secrets/raw/:secretName" },
+  // { method: "GET", url: "/api/v3/secrets/raw" },
   { method: "GET", url: "/api/v4/secrets" },
   { method: "GET", url: "/api/v4/secrets/:secretName" }
 ];
@@ -16,9 +18,7 @@ export const forwardToGoSidecar = fp(async (server, opt: { sidecarUrl: string })
 
   server.addHook("onRequest", async (request, reply) => {
     const key = `${request.method}:${request.routeOptions.url}`;
-    console.log(">>> KEY", key);
     if (routeSet.has(key)) {
-      console.log("hit");
       return reply.from(request.url, {
         rewriteRequestHeaders: (_req, headers) => ({
           ...headers,

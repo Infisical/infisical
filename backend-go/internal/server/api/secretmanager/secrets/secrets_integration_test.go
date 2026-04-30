@@ -862,48 +862,6 @@ func TestListSecretsV4_PersonalOverrides_Priority(t *testing.T) {
 	assert.Equal(t, "personal-value", result.Secrets[0].SecretValue, "personal override should take precedence")
 }
 
-func TestListSecretsV3_PersonalOverrides_IncludeAll(t *testing.T) {
-	nodejs := stack.NodeJS()
-
-	// Create project (both bootstrap user and identity are auto-added as admin)
-	proj := nodejs.CreateProject(t, "personal-v3-all")
-
-	// Create a shared secret first
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "shared-value", nil)
-
-	// Create a personal override as bootstrap user
-	nodejs.CreateSecret(t, proj.ID, proj.EnvSlug, "/", "MY_SECRET", "personal-value", &infra.CreateSecretOpts{
-		Type: "personal",
-	})
-
-	// V3: Always returns both shared and personal secrets
-	svc := newSecretsHandler(t)
-	ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-		AuthMode:   auth.AuthModeJWT,
-		Actor:      permission.ActorTypeUser,
-		ActorID:    uuid.MustParse(nodejs.UserID()),
-		OrgID:      uuid.MustParse(nodejs.OrgID()),
-		AuthMethod: "",
-	})
-
-	result, err := svc.ListSecretsV3(ctx, &gensecrets.ListSecretsV3Payload{
-		ProjectID:       proj.ID,
-		Environment:     proj.EnvSlug,
-		SecretPath:      "/",
-		ViewSecretValue: true,
-	})
-
-	require.NoError(t, err)
-	require.Len(t, result.Secrets, 2, "v3 should return both shared and personal secrets")
-
-	values := make(map[string]string)
-	for _, s := range result.Secrets {
-		values[s.Type] = s.SecretValue
-	}
-	assert.Equal(t, "shared-value", values["shared"], "should have shared secret")
-	assert.Equal(t, "personal-value", values["personal"], "should have personal secret")
-}
-
 func TestListSecretsV4_PersonalSecretHiddenFromIdentity(t *testing.T) {
 	nodejs := stack.NodeJS()
 
@@ -1524,44 +1482,6 @@ func TestListSecrets_Comprehensive(t *testing.T) {
 		secret := getSecretByKey(result.Secrets, "OVERRIDEABLE")
 		require.NotNil(t, secret)
 		assert.Equal(t, "personal-overrideable", secret.SecretValue, "personal override should take precedence")
-	})
-
-	t.Run("v3 includes all personal and shared", func(t *testing.T) {
-		// V3 always returns both
-		svc := newSecretsHandler(t)
-		ctx := auth.WithIdentity(context.Background(), &auth.Identity{
-			AuthMode:   auth.AuthModeJWT,
-			Actor:      permission.ActorTypeUser,
-			ActorID:    uuid.MustParse(nodejs.UserID()),
-			OrgID:      uuid.MustParse(nodejs.OrgID()),
-			AuthMethod: "",
-		})
-
-		result, err := svc.ListSecretsV3(ctx, &gensecrets.ListSecretsV3Payload{
-			ProjectID:       proj.ID,
-			Environment:     "dev",
-			SecretPath:      "/",
-			ViewSecretValue: true,
-		})
-		require.NoError(t, err)
-
-		// Find both shared and personal versions
-		var sharedFound, personalFound bool
-		for _, s := range result.Secrets {
-			if s.SecretKey != "OVERRIDEABLE" {
-				continue
-			}
-			switch s.Type {
-			case "shared":
-				sharedFound = true
-				assert.Equal(t, "shared-overrideable", s.SecretValue)
-			case "personal":
-				personalFound = true
-				assert.Equal(t, "personal-overrideable", s.SecretValue)
-			}
-		}
-		assert.True(t, sharedFound, "should have shared secret")
-		assert.True(t, personalFound, "should have personal secret")
 	})
 
 	// ===================

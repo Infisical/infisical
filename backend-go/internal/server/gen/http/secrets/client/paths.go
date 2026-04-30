@@ -17,11 +17,6 @@ func ListSecretsV4SecretsPath() string {
 	return "/api/v4/secrets"
 }
 
-// ListSecretsV3SecretsPath returns the URL path to the secrets service listSecretsV3 HTTP endpoint.
-func ListSecretsV3SecretsPath() string {
-	return "/api/v3/secrets"
-}
-
 // GetSecretByNameV4SecretsPath returns the URL path to the secrets service getSecretByNameV4 HTTP endpoint.
 func GetSecretByNameV4SecretsPath(secretName string) string {
 	return fmt.Sprintf("/api/v4/secrets/%v", secretName)

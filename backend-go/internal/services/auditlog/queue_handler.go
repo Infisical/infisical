@@ -45,8 +45,8 @@ type licenseService interface {
 	GetPlan(ctx context.Context, orgID string) (*license.FeatureSet, error)
 }
 
-// HandlerDeps holds dependencies for the audit log task handler.
-type HandlerDeps struct {
+// QueueHandlerDeps holds dependencies for the audit log queue handler.
+type QueueHandlerDeps struct {
 	DAL        *DAL
 	ProjectDAL projectDAL
 	License    licenseService
@@ -54,8 +54,8 @@ type HandlerDeps struct {
 	KeyStore   keystore.KeyStore
 }
 
-// Handler processes audit log tasks from the queue.
-type Handler struct {
+// QueueHandler processes audit log tasks from the queue.
+type QueueHandler struct {
 	logger     *slog.Logger
 	dal        *DAL
 	projectDAL projectDAL
@@ -64,10 +64,10 @@ type Handler struct {
 	keyStore   keystore.KeyStore
 }
 
-// NewHandler creates a new audit log task handler.
-func NewHandler(logger *slog.Logger, deps HandlerDeps) *Handler {
-	return &Handler{
-		logger:     logger.With(slog.String("handler", "auditlog")),
+// NewQueueHandler creates a new audit log queue handler.
+func NewQueueHandler(logger *slog.Logger, deps QueueHandlerDeps) *QueueHandler {
+	return &QueueHandler{
+		logger:     logger.With(slog.String("queue_handler", "auditlog")),
 		dal:        deps.DAL,
 		projectDAL: deps.ProjectDAL,
 		license:    deps.License,
@@ -76,13 +76,13 @@ func NewHandler(logger *slog.Logger, deps HandlerDeps) *Handler {
 	}
 }
 
-// Register registers the audit log task handler with the queue service.
-func (h *Handler) Register(queueSvc *queue.Service) {
+// Register registers the audit log queue handler with the queue service.
+func (h *QueueHandler) Register(queueSvc *queue.Service) {
 	queue.RegisterHandler(queueSvc, TaskAuditLog, h.HandleAuditLog)
 }
 
 // HandleAuditLog processes a single audit log task.
-func (h *Handler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDTO) error {
+func (h *QueueHandler) HandleAuditLog(ctx context.Context, dto *CreateAuditLogDTO) error {
 	orgID := dto.OrgID
 	var proj *project.Project
 

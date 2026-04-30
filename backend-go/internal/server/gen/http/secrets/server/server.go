@@ -21,7 +21,6 @@ import (
 type Server struct {
 	Mounts               []*MountPoint
 	ListSecretsV4        http.Handler
-	ListSecretsV3        http.Handler
 	GetSecretByNameV4    http.Handler
 	ListSecretsRawV3     http.Handler
 	GetSecretByNameRawV3 http.Handler
@@ -55,13 +54,11 @@ func New(
 	return &Server{
 		Mounts: []*MountPoint{
 			{"ListSecretsV4", "GET", "/api/v4/secrets"},
-			{"ListSecretsV3", "GET", "/api/v3/secrets"},
 			{"GetSecretByNameV4", "GET", "/api/v4/secrets/{secretName}"},
 			{"ListSecretsRawV3", "GET", "/api/v3/secrets/raw"},
 			{"GetSecretByNameRawV3", "GET", "/api/v3/secrets/raw/{secretName}"},
 		},
 		ListSecretsV4:        NewListSecretsV4Handler(e.ListSecretsV4, mux, decoder, encoder, errhandler, formatter),
-		ListSecretsV3:        NewListSecretsV3Handler(e.ListSecretsV3, mux, decoder, encoder, errhandler, formatter),
 		GetSecretByNameV4:    NewGetSecretByNameV4Handler(e.GetSecretByNameV4, mux, decoder, encoder, errhandler, formatter),
 		ListSecretsRawV3:     NewListSecretsRawV3Handler(e.ListSecretsRawV3, mux, decoder, encoder, errhandler, formatter),
 		GetSecretByNameRawV3: NewGetSecretByNameRawV3Handler(e.GetSecretByNameRawV3, mux, decoder, encoder, errhandler, formatter),
@@ -74,7 +71,6 @@ func (s *Server) Service() string { return "secrets" }
 // Use wraps the server handlers with the given middleware.
 func (s *Server) Use(m func(http.Handler) http.Handler) {
 	s.ListSecretsV4 = m(s.ListSecretsV4)
-	s.ListSecretsV3 = m(s.ListSecretsV3)
 	s.GetSecretByNameV4 = m(s.GetSecretByNameV4)
 	s.ListSecretsRawV3 = m(s.ListSecretsRawV3)
 	s.GetSecretByNameRawV3 = m(s.GetSecretByNameRawV3)
@@ -86,7 +82,6 @@ func (s *Server) MethodNames() []string { return secrets.MethodNames[:] }
 // Mount configures the mux to serve the secrets endpoints.
 func Mount(mux goahttp.Muxer, h *Server) {
 	MountListSecretsV4Handler(mux, h.ListSecretsV4)
-	MountListSecretsV3Handler(mux, h.ListSecretsV3)
 	MountGetSecretByNameV4Handler(mux, h.GetSecretByNameV4)
 	MountListSecretsRawV3Handler(mux, h.ListSecretsRawV3)
 	MountGetSecretByNameRawV3Handler(mux, h.GetSecretByNameRawV3)
@@ -127,59 +122,6 @@ func NewListSecretsV4Handler(
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
 		ctx = context.WithValue(ctx, goa.MethodKey, "listSecretsV4")
-		ctx = context.WithValue(ctx, goa.ServiceKey, "secrets")
-		payload, err := decodeRequest(r)
-		if err != nil {
-			if err := encodeError(ctx, w, err); err != nil && errhandler != nil {
-				errhandler(ctx, w, err)
-			}
-			return
-		}
-		res, err := endpoint(ctx, payload)
-		if err != nil {
-			if err := encodeError(ctx, w, err); err != nil && errhandler != nil {
-				errhandler(ctx, w, err)
-			}
-			return
-		}
-		if err := encodeResponse(ctx, w, res); err != nil {
-			if errhandler != nil {
-				errhandler(ctx, w, err)
-			}
-		}
-	})
-}
-
-// MountListSecretsV3Handler configures the mux to serve the "secrets" service
-// "listSecretsV3" endpoint.
-func MountListSecretsV3Handler(mux goahttp.Muxer, h http.Handler) {
-	f, ok := h.(http.HandlerFunc)
-	if !ok {
-		f = func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, r)
-		}
-	}
-	mux.Handle("GET", "/api/v3/secrets", f)
-}
-
-// NewListSecretsV3Handler creates a HTTP handler which loads the HTTP request
-// and calls the "secrets" service "listSecretsV3" endpoint.
-func NewListSecretsV3Handler(
-	endpoint goa.Endpoint,
-	mux goahttp.Muxer,
-	decoder func(*http.Request) goahttp.Decoder,
-	encoder func(context.Context, http.ResponseWriter) goahttp.Encoder,
-	errhandler func(context.Context, http.ResponseWriter, error),
-	formatter func(ctx context.Context, err error) goahttp.Statuser,
-) http.Handler {
-	var (
-		decodeRequest  = DecodeListSecretsV3Request(mux, decoder)
-		encodeResponse = EncodeListSecretsV3Response(encoder)
-		encodeError    = EncodeListSecretsV3Error(encoder, formatter)
-	)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
-		ctx = context.WithValue(ctx, goa.MethodKey, "listSecretsV3")
 		ctx = context.WithValue(ctx, goa.ServiceKey, "secrets")
 		payload, err := decodeRequest(r)
 		if err != nil {

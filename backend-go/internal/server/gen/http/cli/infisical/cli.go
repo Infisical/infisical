@@ -26,14 +26,14 @@ import (
 func UsageCommands() []string {
 	return []string{
 		"projects (get-health|create-project)",
-		"secrets (list-secrets-v4|list-secrets-v3|get-secret-by-name-v4|list-secrets-raw-v3|get-secret-by-name-raw-v3)",
+		"secrets (list-secrets-v4|get-secret-by-name-v4|list-secrets-raw-v3|get-secret-by-name-raw-v3)",
 	}
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + " " + "projects get-health" + "\n" +
-		os.Args[0] + " " + "secrets list-secrets-v4 --project-id \"Enim qui eum et.\" --environment \"Sed pariatur sunt repudiandae voluptatibus quasi provident.\" --secret-path \"Est neque officia aspernatur laudantium molestiae.\" --view-secret-value true --expand-secret-references false --recursive false --include-personal-overrides true --include-imports false --tag-slugs \"Velit amet voluptatem.\" --metadata-filter \"Omnis est architecto delectus ut.\" --token \"Voluptatem est.\"" + "\n" +
+		os.Args[0] + " " + "secrets list-secrets-v4 --project-id \"Eos aut voluptas animi excepturi cupiditate.\" --environment \"Tenetur quidem voluptates.\" --secret-path \"Maxime aut.\" --view-secret-value true --expand-secret-references true --recursive false --include-personal-overrides false --include-imports true --tag-slugs \"Minus consequatur non aut officia illum.\" --metadata-filter \"Sunt et sed enim.\" --token \"Officia ea rerum.\"" + "\n" +
 		""
 }
 
@@ -69,18 +69,6 @@ func ParseEndpoint(
 		secretsListSecretsV4TagSlugsFlag                 = secretsListSecretsV4Flags.String("tag-slugs", "", "")
 		secretsListSecretsV4MetadataFilterFlag           = secretsListSecretsV4Flags.String("metadata-filter", "", "")
 		secretsListSecretsV4TokenFlag                    = secretsListSecretsV4Flags.String("token", "REQUIRED", "")
-
-		secretsListSecretsV3Flags                      = flag.NewFlagSet("list-secrets-v3", flag.ExitOnError)
-		secretsListSecretsV3ProjectIDFlag              = secretsListSecretsV3Flags.String("project-id", "REQUIRED", "")
-		secretsListSecretsV3EnvironmentFlag            = secretsListSecretsV3Flags.String("environment", "REQUIRED", "")
-		secretsListSecretsV3SecretPathFlag             = secretsListSecretsV3Flags.String("secret-path", "/", "")
-		secretsListSecretsV3ViewSecretValueFlag        = secretsListSecretsV3Flags.String("view-secret-value", "true", "")
-		secretsListSecretsV3ExpandSecretReferencesFlag = secretsListSecretsV3Flags.String("expand-secret-references", "", "")
-		secretsListSecretsV3RecursiveFlag              = secretsListSecretsV3Flags.String("recursive", "", "")
-		secretsListSecretsV3IncludeImportsFlag         = secretsListSecretsV3Flags.String("include-imports", "", "")
-		secretsListSecretsV3TagSlugsFlag               = secretsListSecretsV3Flags.String("tag-slugs", "", "")
-		secretsListSecretsV3MetadataFilterFlag         = secretsListSecretsV3Flags.String("metadata-filter", "", "")
-		secretsListSecretsV3TokenFlag                  = secretsListSecretsV3Flags.String("token", "REQUIRED", "")
 
 		secretsGetSecretByNameV4Flags                      = flag.NewFlagSet("get-secret-by-name-v4", flag.ExitOnError)
 		secretsGetSecretByNameV4SecretNameFlag             = secretsGetSecretByNameV4Flags.String("secret-name", "REQUIRED", "Secret name")
@@ -126,7 +114,6 @@ func ParseEndpoint(
 
 	secretsFlags.Usage = secretsUsage
 	secretsListSecretsV4Flags.Usage = secretsListSecretsV4Usage
-	secretsListSecretsV3Flags.Usage = secretsListSecretsV3Usage
 	secretsGetSecretByNameV4Flags.Usage = secretsGetSecretByNameV4Usage
 	secretsListSecretsRawV3Flags.Usage = secretsListSecretsRawV3Usage
 	secretsGetSecretByNameRawV3Flags.Usage = secretsGetSecretByNameRawV3Usage
@@ -180,9 +167,6 @@ func ParseEndpoint(
 			case "list-secrets-v4":
 				epf = secretsListSecretsV4Flags
 
-			case "list-secrets-v3":
-				epf = secretsListSecretsV3Flags
-
 			case "get-secret-by-name-v4":
 				epf = secretsGetSecretByNameV4Flags
 
@@ -229,9 +213,6 @@ func ParseEndpoint(
 			case "list-secrets-v4":
 				endpoint = c.ListSecretsV4()
 				data, err = secretsc.BuildListSecretsV4Payload(*secretsListSecretsV4ProjectIDFlag, *secretsListSecretsV4EnvironmentFlag, *secretsListSecretsV4SecretPathFlag, *secretsListSecretsV4ViewSecretValueFlag, *secretsListSecretsV4ExpandSecretReferencesFlag, *secretsListSecretsV4RecursiveFlag, *secretsListSecretsV4IncludePersonalOverridesFlag, *secretsListSecretsV4IncludeImportsFlag, *secretsListSecretsV4TagSlugsFlag, *secretsListSecretsV4MetadataFilterFlag, *secretsListSecretsV4TokenFlag)
-			case "list-secrets-v3":
-				endpoint = c.ListSecretsV3()
-				data, err = secretsc.BuildListSecretsV3Payload(*secretsListSecretsV3ProjectIDFlag, *secretsListSecretsV3EnvironmentFlag, *secretsListSecretsV3SecretPathFlag, *secretsListSecretsV3ViewSecretValueFlag, *secretsListSecretsV3ExpandSecretReferencesFlag, *secretsListSecretsV3RecursiveFlag, *secretsListSecretsV3IncludeImportsFlag, *secretsListSecretsV3TagSlugsFlag, *secretsListSecretsV3MetadataFilterFlag, *secretsListSecretsV3TokenFlag)
 			case "get-secret-by-name-v4":
 				endpoint = c.GetSecretByNameV4()
 				data, err = secretsc.BuildGetSecretByNameV4Payload(*secretsGetSecretByNameV4SecretNameFlag, *secretsGetSecretByNameV4ProjectIDFlag, *secretsGetSecretByNameV4EnvironmentFlag, *secretsGetSecretByNameV4SecretPathFlag, *secretsGetSecretByNameV4VersionFlag, *secretsGetSecretByNameV4TypeFlag, *secretsGetSecretByNameV4ViewSecretValueFlag, *secretsGetSecretByNameV4ExpandSecretReferencesFlag, *secretsGetSecretByNameV4IncludeImportsFlag, *secretsGetSecretByNameV4TokenFlag)
@@ -295,7 +276,7 @@ func projectsCreateProjectUsage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"87y\",\n      \"orgId\": \"Itaque libero labore ut vitae dolorum.\"\n   }' --token \"Nisi autem natus nam.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "projects create-project --body '{\n      \"name\": \"q\",\n      \"orgId\": \"Necessitatibus qui harum ut quo.\"\n   }' --token \"Voluptates temporibus ut consequuntur.\"")
 }
 
 // secretsUsage displays the usage of the secrets command and its subcommands.
@@ -304,7 +285,6 @@ func secretsUsage() {
 	fmt.Fprintf(os.Stderr, "Usage:\n    %s [globalflags] secrets COMMAND [flags]\n\n", os.Args[0])
 	fmt.Fprintln(os.Stderr, "COMMAND:")
 	fmt.Fprintln(os.Stderr, `    list-secrets-v4: List secrets for a project environment (V4).`)
-	fmt.Fprintln(os.Stderr, `    list-secrets-v3: List secrets for a project environment (V3). Returns both shared and personal secrets.`)
 	fmt.Fprintln(os.Stderr, `    get-secret-by-name-v4: Get a secret by name (V4).`)
 	fmt.Fprintln(os.Stderr, `    list-secrets-raw-v3: List raw secrets for a project environment (V3, deprecated).`)
 	fmt.Fprintln(os.Stderr, `    get-secret-by-name-raw-v3: Get a raw secret by name (V3, deprecated).`)
@@ -347,43 +327,7 @@ func secretsListSecretsV4Usage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-v4 --project-id \"Enim qui eum et.\" --environment \"Sed pariatur sunt repudiandae voluptatibus quasi provident.\" --secret-path \"Est neque officia aspernatur laudantium molestiae.\" --view-secret-value true --expand-secret-references false --recursive false --include-personal-overrides true --include-imports false --tag-slugs \"Velit amet voluptatem.\" --metadata-filter \"Omnis est architecto delectus ut.\" --token \"Voluptatem est.\"")
-}
-
-func secretsListSecretsV3Usage() {
-	// Header with flags
-	fmt.Fprintf(os.Stderr, "%s [flags] secrets list-secrets-v3", os.Args[0])
-	fmt.Fprint(os.Stderr, " -project-id STRING")
-	fmt.Fprint(os.Stderr, " -environment STRING")
-	fmt.Fprint(os.Stderr, " -secret-path STRING")
-	fmt.Fprint(os.Stderr, " -view-secret-value BOOL")
-	fmt.Fprint(os.Stderr, " -expand-secret-references BOOL")
-	fmt.Fprint(os.Stderr, " -recursive BOOL")
-	fmt.Fprint(os.Stderr, " -include-imports BOOL")
-	fmt.Fprint(os.Stderr, " -tag-slugs STRING")
-	fmt.Fprint(os.Stderr, " -metadata-filter STRING")
-	fmt.Fprint(os.Stderr, " -token STRING")
-	fmt.Fprintln(os.Stderr)
-
-	// Description
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, `List secrets for a project environment (V3). Returns both shared and personal secrets.`)
-
-	// Flags list
-	fmt.Fprintln(os.Stderr, `    -project-id STRING: `)
-	fmt.Fprintln(os.Stderr, `    -environment STRING: `)
-	fmt.Fprintln(os.Stderr, `    -secret-path STRING: `)
-	fmt.Fprintln(os.Stderr, `    -view-secret-value BOOL: `)
-	fmt.Fprintln(os.Stderr, `    -expand-secret-references BOOL: `)
-	fmt.Fprintln(os.Stderr, `    -recursive BOOL: `)
-	fmt.Fprintln(os.Stderr, `    -include-imports BOOL: `)
-	fmt.Fprintln(os.Stderr, `    -tag-slugs STRING: `)
-	fmt.Fprintln(os.Stderr, `    -metadata-filter STRING: `)
-	fmt.Fprintln(os.Stderr, `    -token STRING: `)
-
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-v3 --project-id \"Repellat nemo et cupiditate eaque.\" --environment \"Cumque aliquid.\" --secret-path \"Quia ipsum nisi qui fugiat sequi itaque.\" --view-secret-value false --expand-secret-references false --recursive true --include-imports true --tag-slugs \"Alias repellendus culpa aut aperiam.\" --metadata-filter \"Et et accusamus laborum vitae.\" --token \"Molestiae dolores.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-v4 --project-id \"Eos aut voluptas animi excepturi cupiditate.\" --environment \"Tenetur quidem voluptates.\" --secret-path \"Maxime aut.\" --view-secret-value true --expand-secret-references true --recursive false --include-personal-overrides false --include-imports true --tag-slugs \"Minus consequatur non aut officia illum.\" --metadata-filter \"Sunt et sed enim.\" --token \"Officia ea rerum.\"")
 }
 
 func secretsGetSecretByNameV4Usage() {
@@ -419,7 +363,7 @@ func secretsGetSecretByNameV4Usage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-v4 --secret-name \"3tb\" --project-id \"Voluptas accusamus repellendus.\" --environment \"Ut ratione id.\" --secret-path \"Est consectetur culpa debitis consequuntur dicta.\" --version 2272906610438107845 --type \"personal\" --view-secret-value true --expand-secret-references false --include-imports true --token \"Accusamus eveniet omnis et nisi eius cum.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-v4 --secret-name \"9s\" --project-id \"Adipisci labore enim.\" --environment \"Non aut corrupti odio reiciendis porro.\" --secret-path \"Deleniti cupiditate.\" --version 3309525106578863021 --type \"personal\" --view-secret-value false --expand-secret-references false --include-imports true --token \"Sint commodi repellat nemo et.\"")
 }
 
 func secretsListSecretsRawV3Usage() {
@@ -457,7 +401,7 @@ func secretsListSecretsRawV3Usage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-raw-v3 --workspace-id \"Dolorem fuga quia.\" --workspace-slug \"Deleniti repellendus.\" --environment \"Quia magni atque voluptatem.\" --secret-path \"Harum fuga natus et.\" --view-secret-value true --expand-secret-references false --recursive false --include-imports true --tag-slugs \"Et voluptate in reiciendis tempora.\" --metadata-filter \"Cupiditate repellendus.\" --token \"Consequatur est.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets list-secrets-raw-v3 --workspace-id \"Provident delectus et et aut.\" --workspace-slug \"Nostrum et repellat.\" --environment \"Blanditiis sunt ut.\" --secret-path \"Quibusdam numquam dolorem cum enim.\" --view-secret-value false --expand-secret-references true --recursive false --include-imports false --tag-slugs \"Et reiciendis eligendi voluptatem incidunt.\" --metadata-filter \"Earum blanditiis consequatur fugiat qui.\" --token \"Delectus sed ex vel architecto.\"")
 }
 
 func secretsGetSecretByNameRawV3Usage() {
@@ -495,5 +439,5 @@ func secretsGetSecretByNameRawV3Usage() {
 
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Example:")
-	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-raw-v3 --secret-name \"68\" --workspace-id \"Aut alias eaque dolores ducimus.\" --workspace-slug \"Ad rerum repudiandae est.\" --environment \"Repudiandae hic temporibus qui eaque.\" --secret-path \"Voluptate repellat.\" --version 822254679433895334 --type \"shared\" --view-secret-value false --expand-secret-references true --include-imports false --token \"Maxime deleniti et dolorem et ea omnis.\"")
+	fmt.Fprintf(os.Stderr, "    %s %s\n", os.Args[0], "secrets get-secret-by-name-raw-v3 --secret-name \"85\" --workspace-id \"Dolorem fuga quia.\" --workspace-slug \"Deleniti repellendus.\" --environment \"Quia magni atque voluptatem.\" --secret-path \"Harum fuga natus et.\" --version 8184023905617809374 --type \"personal\" --view-secret-value false --expand-secret-references true --include-imports true --token \"Voluptate in reiciendis tempora.\"")
 }

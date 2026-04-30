@@ -76,14 +76,14 @@ func NewServices(ctx context.Context, deps *ServicesDeps) (*Services, error) {
 		Config: deps.Config,
 	})
 
-	auditLogHandler := auditlog.NewHandler(deps.Logger, auditlog.HandlerDeps{
+	auditLogQueueHandler := auditlog.NewQueueHandler(deps.Logger, auditlog.QueueHandlerDeps{
 		DAL:        auditLogDAL,
 		ProjectDAL: projectDAL,
 		License:    licenseSvc,
 		Config:     deps.Config,
 		KeyStore:   deps.KeyStore,
 	})
-	auditLogHandler.Register(deps.Queue)
+	auditLogQueueHandler.Register(deps.Queue)
 
 	return &Services{
 		Config:      deps.Config,

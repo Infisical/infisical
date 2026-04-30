@@ -329,37 +329,6 @@ func (h *Handler) ListSecretsV4(ctx context.Context, p *gensecrets.ListSecretsV4
 	return result, nil
 }
 
-func (h *Handler) ListSecretsV3(ctx context.Context, p *gensecrets.ListSecretsV3Payload) (*gensecrets.ListSecretsResult, error) {
-	h.logger.InfoContext(ctx, "listing secrets v3",
-		slog.String("projectId", p.ProjectID),
-		slog.String("environment", p.Environment),
-		slog.String("secretPath", p.SecretPath),
-	)
-
-	// v3: Always include all (both shared and personal)
-	result, err := h.listSecretsCore(ctx, &ListSecretsOpts{
-		ProjectID:                 p.ProjectID,
-		Environment:               p.Environment,
-		SecretPath:                p.SecretPath,
-		ViewSecretValue:           p.ViewSecretValue,
-		ExpandSecretReferences:    p.ExpandSecretReferences,
-		Recursive:                 p.Recursive,
-		IncludeImports:            p.IncludeImports,
-		PersonalOverridesBehavior: PersonalOverridesIncludeAll,
-		TagSlugs:                  parseTagSlugs(p.TagSlugs),
-		MetadataFilter:            parseMetadataFilter(p.MetadataFilter),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := h.createGetSecretsAuditLog(ctx, p.ProjectID, p.Environment, p.SecretPath, len(result.Secrets)); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func (h *Handler) ListSecretsRawV3(ctx context.Context, p *gensecrets.ListSecretsRawV3Payload) (*gensecrets.ListSecretsResult, error) {
 	// Resolve project ID from workspaceId or workspaceSlug
 	projectID, err := h.resolveProjectID(ctx, p.WorkspaceID, p.WorkspaceSlug)
