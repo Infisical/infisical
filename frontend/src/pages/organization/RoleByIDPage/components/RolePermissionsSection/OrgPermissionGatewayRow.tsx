@@ -75,29 +75,50 @@ export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props
     }
     setIsCustom.off();
 
-    const fullAccessRule = Object.fromEntries(
-      PERMISSION_ACTIONS.map(({ action }) => [action, true])
-    ) as Record<OrgGatewayPermissionActions, boolean>;
-    const noAccessRule = Object.fromEntries(
-      PERMISSION_ACTIONS.map(({ action }) => [action, false])
-    ) as Record<OrgGatewayPermissionActions, boolean>;
-    const readOnlyRule = Object.fromEntries(
-      PERMISSION_ACTIONS.map(({ action }) => [
-        action,
-        action === OrgGatewayPermissionActions.ListGateways
-      ])
-    ) as Record<OrgGatewayPermissionActions, boolean>;
-
     switch (val) {
       case Permission.FullAccess:
-        setValue("permissions.gateway", fullAccessRule, { shouldDirty: true });
+        setValue(
+          "permissions.gateway",
+          {
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.CreateGateways]: true,
+            [OrgGatewayPermissionActions.EditGateways]: true,
+            [OrgGatewayPermissionActions.DeleteGateways]: true,
+            [OrgGatewayPermissionActions.AttachGateways]: true,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: true
+          },
+          { shouldDirty: true }
+        );
         break;
       case Permission.ReadOnly:
-        setValue("permissions.gateway", readOnlyRule, { shouldDirty: true });
+        setValue(
+          "permissions.gateway",
+          {
+            [OrgGatewayPermissionActions.ListGateways]: true,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false,
+            [OrgGatewayPermissionActions.AttachGateways]: false,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: false
+          },
+          { shouldDirty: true }
+        );
         break;
+
       case Permission.NoAccess:
       default:
-        setValue("permissions.gateway", noAccessRule, { shouldDirty: true });
+        setValue(
+          "permissions.gateway",
+          {
+            [OrgGatewayPermissionActions.ListGateways]: false,
+            [OrgGatewayPermissionActions.CreateGateways]: false,
+            [OrgGatewayPermissionActions.EditGateways]: false,
+            [OrgGatewayPermissionActions.DeleteGateways]: false,
+            [OrgGatewayPermissionActions.AttachGateways]: false,
+            [OrgGatewayPermissionActions.RevokeGatewayAccess]: false
+          },
+          { shouldDirty: true }
+        );
     }
   };
 
