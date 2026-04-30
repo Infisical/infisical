@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # inspired by https://www.photoroom.com/inside-photoroom/how-we-automated-our-changelog-thanks-to-chatgpt
 import os
-import requests
 import re
 import subprocess
-from datetime import datetime
-import uuid
 import sys
+from datetime import datetime
+
+import requests
 
 # Constants
 REPO_OWNER = "infisical"
 REPO_NAME = "infisical"
 TOKEN = os.environ.get("GITHUB_TOKEN")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 DRY_RUN = os.environ.get("DRY_RUN", "false").lower() == "true"
 MODEL = os.environ.get("MODEL", "anthropic/claude-haiku-4.5")
 
@@ -28,12 +29,17 @@ if TOKEN:
     headers["Authorization"] = f"Bearer {TOKEN}"
 
 
-def set_multiline_output(name, value):
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-        delimiter = uuid.uuid1()
-        print(f'{name}<<{delimiter}', file=fh)
-        print(value, file=fh)
-        print(delimiter, file=fh)
+def post_to_slack(tag, changelog):
+    if not SLACK_WEBHOOK_URL:
+        print("Error: SLACK_WEBHOOK_URL is required", file=sys.stderr)
+        sys.exit(1)
+
+    message = f"*Changelog for {tag}*\n\n{changelog}"
+    response = requests.post(SLACK_WEBHOOK_URL, json={"text": message})
+
+    if response.status_code != 200:
+        raise Exception(f"Error posting to Slack: {response.status_code} - {response.text}")
+
 
 def find_previous_release_tag(release_tag:str):
     # Find the previous stable release tag, excluding nightly tags
@@ -243,10 +249,9 @@ if __name__ == "__main__":
             print("=" * 60)
             print(changelog)
             print("=" * 60)
+            post_to_slack(f"[DRY RUN] {latest_tag}", changelog)
         else:
-            # Output for GitHub Actions
-            if os.environ.get('GITHUB_OUTPUT'):
-                set_multiline_output("changelog", changelog)
+            post_to_slack(latest_tag, changelog)
 
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)

@@ -1,9 +1,11 @@
 name: Generate Changelog
-permissions:
-  contents: write
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to generate changelog for (e.g. infisical/v0.159.25). Defaults to latest tag if omitted."
+        required: false
   push:
     tags:
       - "infisical/v*.*.*"
@@ -31,3 +33,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_2 }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
