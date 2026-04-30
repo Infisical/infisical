@@ -11,7 +11,6 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
-import { TResourceTokenAuthDALFactory } from "./token-auth-dal";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import { assertGatewayResource, mintGatewayJwt, ResourceAuthMethodType } from "./resource-auth-method-fns";
 import {
@@ -24,6 +23,7 @@ import {
   TRevokeTokenDTO,
   TSetAuthMethodDTO
 } from "./resource-auth-method-types";
+import { TResourceTokenAuthDALFactory } from "./token-auth-dal";
 
 const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
 

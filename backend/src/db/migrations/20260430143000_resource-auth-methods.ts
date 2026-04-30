@@ -138,9 +138,7 @@ export async function up(knex: Knex): Promise<void> {
   // Trigger: drop the old name and recreate via the helper using the new table name.
   // (gateway_enrollment_tokens_gatewayid_foreign was dropped automatically when we
   // dropped the gatewayId column above.)
-  await knex.raw(`DROP TRIGGER IF EXISTS "gateway_enrollment_tokens_updatedAt" ON ??`, [
-    TableName.ResourceTokenAuth
-  ]);
+  await knex.raw(`DROP TRIGGER IF EXISTS "gateway_enrollment_tokens_updatedAt" ON ??`, [TableName.ResourceTokenAuth]);
   await createOnUpdateTrigger(knex, TableName.ResourceTokenAuth);
 }
 
@@ -172,9 +170,7 @@ export async function down(knex: Knex): Promise<void> {
 
   // Reverse step 1: rename back. Triggers/indexes on the renamed table revert to the
   // old names too (done before the table rename so the SQL can resolve names).
-  await knex.raw(`DROP TRIGGER IF EXISTS "resource_token_auths_updatedAt" ON ??`, [
-    TableName.ResourceTokenAuth
-  ]);
+  await knex.raw(`DROP TRIGGER IF EXISTS "resource_token_auths_updatedAt" ON ??`, [TableName.ResourceTokenAuth]);
   await knex.raw(
     `ALTER TABLE ?? RENAME CONSTRAINT resource_token_auths_orgid_foreign
        TO gateway_enrollment_tokens_orgid_foreign`,
