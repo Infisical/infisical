@@ -11,21 +11,24 @@ import (
 	"github.com/infisical/gocasl"
 
 	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/services/actor"
 	"github.com/infisical/api/internal/services/permission/project"
 )
 
 // ActorType identifies the kind of entity performing an action.
-type ActorType string
+// Type alias for actor.Type for backward compatibility.
+type ActorType = actor.Type
 
 const (
-	ActorTypeUser     ActorType = "user"
-	ActorTypeIdentity ActorType = "identity"
-	ActorTypeService  ActorType = "service"
+	ActorTypeUser     ActorType = actor.TypeUser
+	ActorTypeIdentity ActorType = actor.TypeIdentity
+	ActorTypeService  ActorType = actor.TypeService
 )
 
 // ActorAuthMethod represents the authentication method used by the actor (e.g. "jwt", "api-key").
 // An empty string means no specific method (e.g. platform-level actions).
-type ActorAuthMethod string
+// Type alias for actor.AuthMethod for backward compatibility.
+type ActorAuthMethod = actor.AuthMethod
 
 // ActionProjectType scopes the permission check to a specific project type.
 type ActionProjectType string
@@ -114,19 +117,37 @@ func NewService(logger *slog.Logger, deps Deps) *Service {
 }
 
 // GetProjectPermission resolves the effective permissions for an actor within a project.
-// Exact port of permission-service.ts:350-510.
+// Exact port of permission-service.ts:403-573.
 func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPermissionArgs) (*GetProjectPermissionResult, error) {
 	// 1. SERVICE actor → delegate to service token path
 	if args.Actor == ActorTypeService {
 		return p.getServiceTokenProjectPermission(ctx, args.ActorID.String(), args.ProjectID, args.ActorOrgID, args.ActionProjectType)
 	}
 
-	// 2. TODO(go): assumed privilege check
+	// 2. TODO(go): assumed privilege check — allows users to assume another actor's privileges
+	// (identity impersonation). Port of permission-service.ts:427-436.
+	// Implementation requires:
+	// - Request context key for AssumedPrivilegeDetails
+	// - Check if current user is assuming another identity's privileges
+	// - Swap actor/actorId if assumption is valid
 
 	// 3. Validate actor type
 	if args.Actor != ActorTypeUser && args.Actor != ActorTypeIdentity {
 		return nil, errutil.BadRequest("Invalid actor provided")
 	}
+
+	// TODO(go): request-scoped memoization — avoid redundant permission checks within same request.
+	// Port of permission-service.ts:447-455, 568.
+	// Implementation requires:
+	// - Request context with memoizer (similar to Node.js @fastify/request-context)
+	// - Memoization key based on projectId + actor + actorId + actorAuthMethod + actionProjectType + actorOrgId
+
+	// TODO(go): Redis fingerprint cache — two-tier caching with marker TTL (10s) + data TTL (10m).
+	// Port of permission-service.ts:465-483 (withCacheFingerprint).
+	// Implementation requires:
+	// - Redis keystore integration
+	// - Fingerprint-based cache invalidation (permissionDAL.getPermissionFingerprint)
+	// - Cache reviver for date fields
 
 	// 4. Find project
 	projectDetails, err := p.dal.FindProjectByID(ctx, args.ProjectID)
@@ -173,7 +194,12 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 	// 9. Flatten active roles
 	permissionFromRoles := flattenActiveRolesFromMemberships(permissionData)
 
-	// 10. TODO(go): SSO enforcement (validateOrgSSO + org permission bypass check)
+	// 10. TODO(go): SSO enforcement — validate SSO requirements and bypass permissions.
+	// Port of permission-service.ts:508-516 (validateOrgSSO) and L377-396 (canBypassSso).
+	// Implementation requires:
+	// - validateOrgSSO function checking orgAuthEnforced, googleSsoAuthEnforced, bypassOrgAuthEnabled
+	// - Org-level permission check for SSO bypass capability
+	// - Only applies to ActorTypeUser
 
 	// 11. Build rules
 	rules := buildProjectPermissionRules(permissionFromRoles)
@@ -198,7 +224,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		}
 	}
 
-	// 14. Build template vars
+	// 14. Build template vars with metadata
 	metadataMap := make(map[string]string)
 	if len(permissionData) > 0 {
 		for _, metadataEntry := range permissionData[0].Metadata {
@@ -206,18 +232,23 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		}
 	}
 
+	// 15. Build identity auth info for template vars (OIDC/Kubernetes/AWS claims)
+	// Port of permission-service.ts:528-532.
+	identityAuthMap := buildIdentityAuthMap(ctx, args.ActorID)
+
 	vars := map[string]any{
 		"identity": map[string]any{
 			"id":       args.ActorID.String(),
 			"username": username,
 			"metadata": metadataMap,
+			"auth":     identityAuthMap,
 		},
 	}
 
-	// 15. Interpolate Handlebars templates in rules JSON with actual values
+	// 16. Interpolate Handlebars templates in rules JSON with actual values
 	rulesStr := InterpolateRulesJSON(string(rulesJSON), vars)
 
-	// 16. Load ability from interpolated JSON
+	// 17. Load ability from interpolated JSON
 	ability, err := gocasl.LoadFromJSON([]byte(rulesStr), gocasl.LoadOptions{
 		FieldOps: PermissionFieldOps(),
 	})
@@ -225,7 +256,7 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return nil, fmt.Errorf("loading permission rules: %w", err)
 	}
 
-	// 17. Build memberships for result
+	// 18. Build memberships for result
 	memberships := buildMembershipsFromPermissionData(permissionData)
 
 	return &GetProjectPermissionResult{
@@ -319,23 +350,33 @@ func flattenActiveRolesFromMemberships(memberships []PermissionData) []roleWithP
 		membership := &memberships[i]
 		for j := range membership.Roles {
 			role := &membership.Roles[j]
-			if role.IsTemporary && (role.TemporaryAccessEndTime == nil || now.After(*role.TemporaryAccessEndTime)) {
+			isTemporary := role.IsTemporary.Valid && role.IsTemporary.V
+			if isTemporary && (!role.TemporaryAccessEndTime.Valid || now.After(role.TemporaryAccessEndTime.Time)) {
 				continue
+			}
+			var permissions *string
+			if role.Permissions.Valid {
+				permissions = &role.Permissions.String
 			}
 			result = append(result, roleWithPermissions{
 				Role:        role.Role,
-				Permissions: role.Permissions,
+				Permissions: permissions,
 			})
 		}
 
 		for j := range membership.AdditionalPrivileges {
 			additionalPrivilege := &membership.AdditionalPrivileges[j]
-			if additionalPrivilege.IsTemporary && (additionalPrivilege.TemporaryAccessEndTime == nil || now.After(*additionalPrivilege.TemporaryAccessEndTime)) {
+			isTemporary := additionalPrivilege.IsTemporary.Valid && additionalPrivilege.IsTemporary.V
+			if isTemporary && (!additionalPrivilege.TemporaryAccessEndTime.Valid || now.After(additionalPrivilege.TemporaryAccessEndTime.Time)) {
 				continue
+			}
+			var permissions *string
+			if additionalPrivilege.Permissions.Valid {
+				permissions = &additionalPrivilege.Permissions.String
 			}
 			result = append(result, roleWithPermissions{
 				Role:        project.RoleCustom,
-				Permissions: additionalPrivilege.Permissions,
+				Permissions: permissions,
 			})
 		}
 	}
@@ -352,8 +393,8 @@ func buildMembershipsFromPermissionData(permissionData []PermissionData) []Membe
 		for j := range data.Roles {
 			role := &data.Roles[j]
 			membershipRole := MembershipRole{Role: role.Role}
-			if role.CustomRoleSlug != nil {
-				membershipRole.CustomRoleSlug = *role.CustomRoleSlug
+			if role.CustomRoleSlug.Valid {
+				membershipRole.CustomRoleSlug = role.CustomRoleSlug.String
 			}
 			membership.Roles = append(membership.Roles, membershipRole)
 		}
@@ -370,4 +411,45 @@ func checkProjectEnforcement(projectDetails *ProjectDetail) func(string) bool {
 		}
 		return false
 	}
+}
+
+// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from request context
+// for use in permission template variable interpolation.
+// Port of permission-service.ts:528-532.
+func buildIdentityAuthMap(ctx context.Context, actorID uuid.UUID) map[string]any {
+	authInfo := actor.AuthInfoFromContext(ctx)
+	if authInfo == nil {
+		return map[string]any{}
+	}
+
+	if authInfo.IdentityID != actorID {
+		return map[string]any{}
+	}
+
+	result := make(map[string]any)
+
+	if authInfo.OIDC != nil && len(authInfo.OIDC.Claims) > 0 {
+		result["oidc"] = authInfo.OIDC.Claims
+	}
+
+	if authInfo.Kubernetes != nil {
+		result["kubernetes"] = map[string]string{
+			"namespace": authInfo.Kubernetes.Namespace,
+			"name":      authInfo.Kubernetes.Name,
+		}
+	}
+
+	if authInfo.AWS != nil {
+		result["aws"] = map[string]string{
+			"accountId":    authInfo.AWS.AccountID,
+			"arn":          authInfo.AWS.ARN,
+			"userId":       authInfo.AWS.UserID,
+			"partition":    authInfo.AWS.Partition,
+			"service":      authInfo.AWS.Service,
+			"resourceType": authInfo.AWS.ResourceType,
+			"resourceName": authInfo.AWS.ResourceName,
+		}
+	}
+
+	return result
 }

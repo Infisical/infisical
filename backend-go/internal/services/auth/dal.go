@@ -11,7 +11,7 @@ import (
 
 	"github.com/infisical/api/internal/database/pg"
 	"github.com/infisical/api/internal/database/pg/gen/table"
-	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/actor"
 )
 
 // DAL provides data access for authentication-related queries.
@@ -59,18 +59,20 @@ func (d *DAL) FindSessionByIDAndUserID(ctx context.Context, sessionID, userID uu
 
 // UserRow holds the subset of users used by the auth handler.
 type UserRow struct {
-	ID         uuid.UUID      `alias:"users.id"`
-	Email      sql.NullString `alias:"users.email"`
-	Username   sql.NullString `alias:"users.username"`
-	IsAccepted sql.Null[bool] `alias:"users.is_accepted"`
-	SuperAdmin sql.Null[bool] `alias:"users.super_admin"`
+	ID                   uuid.UUID      `alias:"users.id"`
+	Email                sql.NullString `alias:"users.email"`
+	Username             sql.NullString `alias:"users.username"`
+	IsAccepted           sql.Null[bool] `alias:"users.is_accepted"`
+	SuperAdmin           sql.Null[bool] `alias:"users.super_admin"`
+	IsLocked             sql.Null[bool] `alias:"users.is_locked"`
+	TemporaryLockDateEnd sql.NullTime   `alias:"users.temporary_lock_date_end"`
 }
 
 // FindUserByID returns the user matching id, or nil if not found.
 func (d *DAL) FindUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error) {
 	u := table.Users
 
-	stmt := postgres.SELECT(u.ID, u.Email, u.Username, u.IsAccepted, u.SuperAdmin).
+	stmt := postgres.SELECT(u.ID, u.Email, u.Username, u.IsAccepted, u.SuperAdmin, u.IsLocked, u.TemporaryLockDateEnd).
 		FROM(u).
 		WHERE(u.ID.EQ(postgres.UUID(id)))
 
@@ -90,6 +92,7 @@ func (d *DAL) FindUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error) 
 // OrgRow holds the subset of organizations used by the auth handler.
 type OrgRow struct {
 	ID          uuid.UUID           `alias:"organizations.id"`
+	Name        string              `alias:"organizations.name"`
 	RootOrgId   sql.Null[uuid.UUID] `alias:"organizations.root_org_id"`
 	ParentOrgId sql.Null[uuid.UUID] `alias:"organizations.parent_org_id"`
 }
@@ -98,7 +101,7 @@ type OrgRow struct {
 func (d *DAL) FindOrgByID(ctx context.Context, id uuid.UUID) (*OrgRow, error) {
 	o := table.Organizations
 
-	stmt := postgres.SELECT(o.ID, o.RootOrgId, o.ParentOrgId).
+	stmt := postgres.SELECT(o.ID, o.Name, o.RootOrgId, o.ParentOrgId).
 		FROM(o).
 		WHERE(o.ID.EQ(postgres.UUID(id)))
 
@@ -259,7 +262,7 @@ type MembershipRow struct {
 // including direct membership and membership via groups.
 // Exact port of Node.js orgDAL.findEffectiveOrgMembership.
 // TODO(go): move this to dal like membership
-func (d *DAL) FindEffectiveOrgMembership(ctx context.Context, actorType permission.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*MembershipRow, error) {
+func (d *DAL) FindEffectiveOrgMembership(ctx context.Context, actorType actor.Type, actorID, orgID uuid.UUID, filterStatus string) (*MembershipRow, error) {
 	m := table.Memberships
 	g := table.Groups
 	ugm := table.UserGroupMembership
@@ -267,7 +270,7 @@ func (d *DAL) FindEffectiveOrgMembership(ctx context.Context, actorType permissi
 
 	// Build the group subquery based on actor type.
 	var actorCondition postgres.BoolExpression
-	if actorType == permission.ActorTypeUser {
+	if actorType == actor.TypeUser {
 		groupSubquery := postgres.SELECT(g.ID).
 			FROM(g.INNER_JOIN(ugm, ugm.GroupId.EQ(g.ID))).
 			WHERE(ugm.UserId.EQ(postgres.UUID(actorID)))

@@ -43,43 +43,49 @@ type GetPermissionParams struct {
 	ActorType ActorType
 }
 
-// PermissionData is the nested result of the permission query.
-type PermissionData struct {
-	ID                          uuid.UUID
-	ScopeOrgID                  uuid.UUID
-	OrgAuthEnforced             *bool
-	OrgGoogleSsoAuthEnforced    bool
-	BypassOrgAuthEnabled        bool
-	ShouldUseNewPrivilegeSystem bool
-	RootOrgID                   *uuid.UUID
-	Roles                       []RoleInfo
-	AdditionalPrivileges        []AdditionalPrivilegeInfo
-	Metadata                    []MetadataInfo
-}
-
 // RoleInfo represents a single role assignment from the permission query.
+// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type RoleInfo struct {
-	ID                     uuid.UUID
-	Role                   string
-	Permissions            *string // JSON for custom roles
-	CustomRoleSlug         *string
-	IsTemporary            bool
-	TemporaryAccessEndTime *time.Time
+	ID                     uuid.UUID      `sql:"primary_key" alias:"membership_roles.id"`
+	Role                   string         `alias:"membership_roles.role"`
+	IsTemporary            sql.Null[bool] `alias:"membership_roles.is_temporary"`
+	TemporaryAccessEndTime sql.NullTime   `alias:"membership_roles.temporary_access_end_time"`
+	// Custom role fields from LEFT JOIN roles table
+	CustomRoleSlug sql.NullString `alias:"roles.slug"`
+	Permissions    sql.NullString `alias:"roles.permissions"`
 }
 
 // AdditionalPrivilegeInfo represents an additional privilege from the permission query.
+// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type AdditionalPrivilegeInfo struct {
-	ID                     uuid.UUID
-	Permissions            *string // JSON
-	IsTemporary            bool
-	TemporaryAccessEndTime *time.Time
+	ID                     uuid.UUID      `sql:"primary_key" alias:"additional_privileges.id"`
+	Permissions            sql.NullString `alias:"additional_privileges.permissions"`
+	IsTemporary            sql.Null[bool] `alias:"additional_privileges.is_temporary"`
+	TemporaryAccessEndTime sql.NullTime   `alias:"additional_privileges.temporary_access_end_time"`
 }
 
 // MetadataInfo represents identity metadata key-value pair.
+// Uses go-jet automatic nesting via sql:"primary_key" tag.
 type MetadataInfo struct {
-	ID    uuid.UUID
-	Key   string
-	Value string
+	ID    uuid.UUID `sql:"primary_key" alias:"identity_metadata.id"`
+	Key   string    `alias:"identity_metadata.key"`
+	Value string    `alias:"identity_metadata.value"`
+}
+
+// PermissionData is the nested result of the permission query.
+// Go-jet automatically nests Roles, AdditionalPrivileges, and Metadata
+// based on sql:"primary_key" tags in child structs.
+type PermissionData struct {
+	ID                          uuid.UUID                 `sql:"primary_key" alias:"memberships.id"`
+	ScopeOrgID                  uuid.UUID                 `alias:"memberships.scope_org_id"`
+	OrgAuthEnforced             sql.Null[bool]            `alias:"organizations.auth_enforced"`
+	OrgGoogleSsoAuthEnforced    bool                      `alias:"organizations.google_sso_auth_enforced"`
+	BypassOrgAuthEnabled        bool                      `alias:"organizations.bypass_org_auth_enabled"`
+	ShouldUseNewPrivilegeSystem bool                      `alias:"organizations.should_use_new_privilege_system"`
+	RootOrgID                   sql.Null[uuid.UUID]       `alias:"organizations.root_org_id"`
+	Roles                       []RoleInfo                `alias:"membership_roles"`
+	AdditionalPrivileges        []AdditionalPrivilegeInfo `alias:"additional_privileges"`
+	Metadata                    []MetadataInfo            `alias:"identity_metadata"`
 }
 
 // ProjectDetail holds project info needed by the permission service.
@@ -101,43 +107,8 @@ type ServiceTokenDetail struct {
 	Permissions []string // e.g. ["read", "write"]
 }
 
-// --- Flat row type for the join query ---
-
-type permissionFlatRow struct {
-	// Membership fields
-	MembershipID uuid.UUID `alias:"memberships.id"`
-	ScopeOrgID   uuid.UUID `alias:"memberships.scope_org_id"`
-
-	// Organization fields
-	OrgAuthEnforced             sql.Null[bool]      `alias:"organizations.auth_enforced"`
-	OrgGoogleSsoAuthEnforced    bool                `alias:"organizations.google_sso_auth_enforced"`
-	BypassOrgAuthEnabled        bool                `alias:"organizations.bypass_org_auth_enabled"`
-	ShouldUseNewPrivilegeSystem bool                `alias:"organizations.should_use_new_privilege_system"`
-	RootOrgID                   sql.Null[uuid.UUID] `alias:"organizations.root_org_id"`
-
-	// MembershipRole fields
-	MembershipRoleID           sql.Null[uuid.UUID] `alias:"membership_roles.id"`
-	MembershipRole             sql.Null[string]    `alias:"membership_roles.role"`
-	MembershipRoleIsTemporary  sql.Null[bool]      `alias:"membership_roles.is_temporary"`
-	MembershipRoleTemporaryEnd sql.NullTime        `alias:"membership_roles.temporary_access_end_time"`
-
-	// Role (custom role) fields
-	RoleSlug              sql.Null[string] `alias:"roles.slug"`
-	CustomRolePermissions sql.Null[string] `alias:"roles.permissions"`
-
-	// AdditionalPrivilege fields
-	AdditionalPrivilegeID      sql.Null[uuid.UUID] `alias:"additional_privileges.id"`
-	AdditionalPrivilegePerms   sql.Null[string]    `alias:"additional_privileges.permissions"`
-	AdditionalPrivilegeIsTemp  sql.Null[bool]      `alias:"additional_privileges.is_temporary"`
-	AdditionalPrivilegeTempEnd sql.NullTime        `alias:"additional_privileges.temporary_access_end_time"`
-
-	// IdentityMetadata fields
-	MetadataID    sql.Null[uuid.UUID] `alias:"identity_metadata.id"`
-	MetadataKey   sql.Null[string]    `alias:"identity_metadata.key"`
-	MetadataValue sql.Null[string]    `alias:"identity_metadata.value"`
-}
-
 // GetPermission executes the main permission join query.
+// Uses go-jet automatic nesting to populate Roles, AdditionalPrivileges, and Metadata arrays.
 // Port of permission-dal.ts:173-366.
 func (d *DAL) GetPermission(ctx context.Context, params *GetPermissionParams) ([]PermissionData, error) {
 	memberships := table.Memberships
@@ -224,8 +195,10 @@ func (d *DAL) GetPermission(ctx context.Context, params *GetPermissionParams) ([
 			AND(scopeFilter),
 	)
 
-	var rows []permissionFlatRow
-	err := stmt.QueryContext(ctx, d.db.Replica(), &rows)
+	// Go-jet automatically nests Roles, AdditionalPrivileges, and Metadata arrays
+	// based on sql:"primary_key" tags in the child structs.
+	var result []PermissionData
+	err := stmt.QueryContext(ctx, d.db.Replica(), &result)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			return nil, nil
@@ -233,103 +206,7 @@ func (d *DAL) GetPermission(ctx context.Context, params *GetPermissionParams) ([
 		return nil, err
 	}
 
-	return nestPermissionRows(rows), nil
-}
-
-// nestPermissionRows transforms flat join rows into nested PermissionData.
-func nestPermissionRows(rows []permissionFlatRow) []PermissionData {
-	type entry struct {
-		data     PermissionData
-		roleSeen map[uuid.UUID]bool
-		apSeen   map[uuid.UUID]bool
-		metaSeen map[uuid.UUID]bool
-	}
-
-	orderKeys := make([]uuid.UUID, 0)
-	lookup := make(map[uuid.UUID]*entry)
-
-	for i := range rows {
-		row := &rows[i]
-		existing, ok := lookup[row.MembershipID]
-		if !ok {
-			var rootOrgID *uuid.UUID
-			if row.RootOrgID.Valid {
-				rootOrgID = &row.RootOrgID.V
-			}
-			var orgAuthEnforced *bool
-			if row.OrgAuthEnforced.Valid {
-				orgAuthEnforced = &row.OrgAuthEnforced.V
-			}
-			existing = &entry{
-				data: PermissionData{
-					ID:                          row.MembershipID,
-					ScopeOrgID:                  row.ScopeOrgID,
-					OrgAuthEnforced:             orgAuthEnforced,
-					OrgGoogleSsoAuthEnforced:    row.OrgGoogleSsoAuthEnforced,
-					BypassOrgAuthEnabled:        row.BypassOrgAuthEnabled,
-					ShouldUseNewPrivilegeSystem: row.ShouldUseNewPrivilegeSystem,
-					RootOrgID:                   rootOrgID,
-				},
-				roleSeen: make(map[uuid.UUID]bool),
-				apSeen:   make(map[uuid.UUID]bool),
-				metaSeen: make(map[uuid.UUID]bool),
-			}
-			orderKeys = append(orderKeys, row.MembershipID)
-			lookup[row.MembershipID] = existing
-		}
-
-		// Dedup roles by membershipRoleId
-		if row.MembershipRoleID.Valid && !existing.roleSeen[row.MembershipRoleID.V] {
-			existing.roleSeen[row.MembershipRoleID.V] = true
-			roleInfo := RoleInfo{
-				ID:          row.MembershipRoleID.V,
-				Role:        row.MembershipRole.V,
-				IsTemporary: row.MembershipRoleIsTemporary.Valid && row.MembershipRoleIsTemporary.V,
-			}
-			if row.RoleSlug.Valid {
-				roleInfo.CustomRoleSlug = &row.RoleSlug.V
-			}
-			if row.CustomRolePermissions.Valid {
-				roleInfo.Permissions = &row.CustomRolePermissions.V
-			}
-			if row.MembershipRoleTemporaryEnd.Valid {
-				roleInfo.TemporaryAccessEndTime = &row.MembershipRoleTemporaryEnd.Time
-			}
-			existing.data.Roles = append(existing.data.Roles, roleInfo)
-		}
-
-		// Dedup additional privileges
-		if row.AdditionalPrivilegeID.Valid && !existing.apSeen[row.AdditionalPrivilegeID.V] {
-			existing.apSeen[row.AdditionalPrivilegeID.V] = true
-			privilegeInfo := AdditionalPrivilegeInfo{
-				ID:          row.AdditionalPrivilegeID.V,
-				IsTemporary: row.AdditionalPrivilegeIsTemp.Valid && row.AdditionalPrivilegeIsTemp.V,
-			}
-			if row.AdditionalPrivilegePerms.Valid {
-				privilegeInfo.Permissions = &row.AdditionalPrivilegePerms.V
-			}
-			if row.AdditionalPrivilegeTempEnd.Valid {
-				privilegeInfo.TemporaryAccessEndTime = &row.AdditionalPrivilegeTempEnd.Time
-			}
-			existing.data.AdditionalPrivileges = append(existing.data.AdditionalPrivileges, privilegeInfo)
-		}
-
-		// Dedup metadata
-		if row.MetadataID.Valid && !existing.metaSeen[row.MetadataID.V] {
-			existing.metaSeen[row.MetadataID.V] = true
-			existing.data.Metadata = append(existing.data.Metadata, MetadataInfo{
-				ID:    row.MetadataID.V,
-				Key:   row.MetadataKey.V,
-				Value: row.MetadataValue.V,
-			})
-		}
-	}
-
-	result := make([]PermissionData, 0, len(orderKeys))
-	for _, key := range orderKeys {
-		result = append(result, lookup[key].data)
-	}
-	return result
+	return result, nil
 }
 
 // FindProjectByID returns basic project details needed for permission checks.

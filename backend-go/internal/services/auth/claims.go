@@ -14,6 +14,8 @@ type UserJWTClaims struct {
 	OrganizationID    string        `json:"organizationId,omitempty"`
 	SubOrganizationID string        `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool          `json:"isMfaVerified,omitempty"`
+	MfaMethod         string        `json:"mfaMethod,omitempty"`
+	MCP               bool          `json:"mcp,omitempty"`
 }
 
 // IdentityJWTClaims represents the JWT payload for machine identity access tokens.

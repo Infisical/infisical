@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/infisical/api/internal/libs/errutil"
-	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/actor"
 )
 
 // AuthHandler implements the Goa-generated authorization interface (JWTAuth method).
@@ -146,8 +146,17 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 		return nil, errutil.NotFound("User with ID '%s' not found", session.UserId)
 	}
 
+	// 5a. Check user lock status.
+	if user.IsLocked.Valid && user.IsLocked.V {
+		return nil, errutil.Unauthorized("Account is locked")
+	}
+	if user.TemporaryLockDateEnd.Valid && time.Now().Before(user.TemporaryLockDateEnd.Time) {
+		return nil, errutil.Unauthorized("Account is locked")
+	}
+
 	// 6. Organization scoping.
 	var orgID, rootOrgID, parentOrgID uuid.UUID
+	var orgName string
 	if claims.OrganizationID != "" {
 		claimOrgUUID := parseUUID(claims.OrganizationID)
 		if claims.SubOrganizationID != "" {
@@ -170,7 +179,7 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 				return nil, errutil.Forbidden("Sub-organization does not belong to the token's organization")
 			}
 
-			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, permission.ActorTypeUser, user.ID, subOrg.ID, "accepted")
+			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, subOrg.ID, "accepted")
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to check org membership").WithErr(err)
 			}
@@ -182,18 +191,19 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			}
 
 			orgID = subOrg.ID
+			orgName = subOrg.Name
 			rootOrgID = claimOrgUUID
 			if nullUUIDValid(subOrg.ParentOrgId) {
 				parentOrgID = subOrg.ParentOrgId.V
 			}
 		} else {
 			// 6b. Regular organization scope.
-			_, err := h.dal.FindOrgByID(ctx, claimOrgUUID)
+			org, err := h.dal.FindOrgByID(ctx, claimOrgUUID)
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to find organization").WithErr(err)
 			}
 
-			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, permission.ActorTypeUser, user.ID, claimOrgUUID, "accepted")
+			orgMembership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeUser, user.ID, claimOrgUUID, "accepted")
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to check org membership").WithErr(err)
 			}
@@ -205,6 +215,7 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 			}
 
 			orgID = claimOrgUUID
+			orgName = org.Name
 			rootOrgID = claimOrgUUID
 			parentOrgID = claimOrgUUID
 		}
@@ -223,14 +234,17 @@ func (h AuthHandler) validateJWT(ctx context.Context, token string) (*Identity, 
 	}
 
 	return &Identity{
-		AuthMode:     AuthModeJWT,
-		Actor:        permission.ActorTypeUser,
-		ActorID:      user.ID,
-		OrgID:        orgID,
-		RootOrgID:    rootOrgID,
-		ParentOrgID:  parentOrgID,
-		AuthMethod:   permission.ActorAuthMethod(claims.AuthMethod),
-		IsSuperAdmin: isSuperAdmin,
+		AuthMode:      AuthModeJWT,
+		Actor:         actor.TypeUser,
+		ActorID:       user.ID,
+		OrgID:         orgID,
+		RootOrgID:     rootOrgID,
+		ParentOrgID:   parentOrgID,
+		OrgName:       orgName,
+		AuthMethod:    actor.AuthMethod(claims.AuthMethod),
+		IsSuperAdmin:  isSuperAdmin,
+		IsMfaVerified: claims.IsMfaVerified,
+		MfaMethod:     claims.MfaMethod,
 		UserAuthInfo: &UserAuthInfo{
 			UserID: user.ID,
 			Email:  email,
@@ -303,10 +317,10 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	}
 
 	// 8. Resolve org hierarchy.
-	orgID, rootOrgID, parentOrgID := resolveOrgHierarchy(org)
+	orgID, rootOrgID, parentOrgID, orgName := resolveOrgHierarchy(org)
 
 	// 9. Check org membership.
-	membership, err := h.dal.FindEffectiveOrgMembership(ctx, permission.ActorTypeIdentity, accessToken.IdentityId, org.ID, "")
+	membership, err := h.dal.FindEffectiveOrgMembership(ctx, actor.TypeIdentity, accessToken.IdentityId, org.ID, "")
 	if err != nil {
 		return nil, errutil.InternalServer("Failed to check org membership")
 	}
@@ -379,12 +393,13 @@ func (h AuthHandler) validateIdentityAccessToken(ctx context.Context, token, ipA
 	// 13. Build identity.
 	return &Identity{
 		AuthMode:         AuthModeIdentityAccessToken,
-		Actor:            permission.ActorTypeIdentity,
+		Actor:            actor.TypeIdentity,
 		ActorID:          accessToken.IdentityId,
 		OrgID:            orgID,
 		RootOrgID:        rootOrgID,
 		ParentOrgID:      parentOrgID,
-		AuthMethod:       permission.ActorAuthMethod(accessToken.AuthMethod),
+		OrgName:          orgName,
+		AuthMethod:       actor.AuthMethod(accessToken.AuthMethod),
 		IdentityAuthInfo: identityAuthInfo,
 		Name:             accessToken.IdentityName,
 	}, nil
@@ -442,22 +457,24 @@ func (h AuthHandler) validateServiceToken(ctx context.Context, token string) (*I
 	}
 
 	// 7. Build identity.
-	orgID, rootOrgID, parentOrgID := resolveOrgHierarchy(org)
+	orgID, rootOrgID, parentOrgID, orgName := resolveOrgHierarchy(org)
 	serviceTokenUUID := parseUUID(serviceToken.ID)
 	return &Identity{
 		AuthMode:    AuthModeServiceToken,
-		Actor:       permission.ActorTypeService,
+		Actor:       actor.TypeService,
 		ActorID:     serviceTokenUUID,
 		OrgID:       orgID,
 		RootOrgID:   rootOrgID,
 		ParentOrgID: parentOrgID,
+		OrgName:     orgName,
 		Name:        serviceToken.Name,
 	}, nil
 }
 
-// resolveOrgHierarchy extracts orgID, rootOrgID, and parentOrgID from an OrgRow.
-func resolveOrgHierarchy(org *OrgRow) (orgID, rootOrgID, parentOrgID uuid.UUID) {
+// resolveOrgHierarchy extracts orgID, rootOrgID, parentOrgID, and orgName from an OrgRow.
+func resolveOrgHierarchy(org *OrgRow) (orgID, rootOrgID, parentOrgID uuid.UUID, orgName string) {
 	orgID = org.ID
+	orgName = org.Name
 	rootOrgID = orgID
 	parentOrgID = orgID
 	if nullUUIDValid(org.RootOrgId) {

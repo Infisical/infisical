@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/infisical/api/internal/services/permission"
+	"github.com/infisical/api/internal/services/actor"
 )
 
 // AuthMode identifies the authentication mechanism used by the caller.
@@ -43,50 +43,35 @@ type UserAuthInfo struct {
 	Email  string
 }
 
-// IdentityAuthInfo holds the minimal identity info stored in request context for audit logging.
+// IdentityAuthInfo is an alias for actor.AuthInfo for backward compatibility.
 // Port of Node.js requestContext.identityAuthInfo.
-type IdentityAuthInfo struct {
-	IdentityID   uuid.UUID
-	IdentityName string
-	AuthMethod   string
-	OIDC         *IdentityAuthOIDC
-	Kubernetes   *IdentityAuthKubernetes
-	AWS          *IdentityAuthAWS
-}
+type IdentityAuthInfo = actor.AuthInfo
 
-// IdentityAuthOIDC holds OIDC-specific claims from the identity JWT payload.
-type IdentityAuthOIDC struct {
-	Claims map[string]string `json:"claims"`
-}
+// IdentityAuthOIDC is an alias for actor.AuthOIDC for backward compatibility.
+type IdentityAuthOIDC = actor.AuthOIDC
 
-// IdentityAuthKubernetes holds Kubernetes-specific metadata from the identity JWT payload.
-type IdentityAuthKubernetes struct {
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
-}
+// IdentityAuthKubernetes is an alias for actor.AuthKubernetes for backward compatibility.
+type IdentityAuthKubernetes = actor.AuthKubernetes
 
-// IdentityAuthAWS holds AWS-specific principal details from the identity JWT payload.
-type IdentityAuthAWS struct {
-	AccountID    string `json:"accountId"`
-	ARN          string `json:"arn"`
-	UserID       string `json:"userId"`
-	Partition    string `json:"partition"`
-	Service      string `json:"service"`
-	ResourceType string `json:"resourceType"`
-	ResourceName string `json:"resourceName"`
-}
+// IdentityAuthAWS is an alias for actor.AuthAWS for backward compatibility.
+type IdentityAuthAWS = actor.AuthAWS
 
 // Identity holds the resolved actor information extracted from a request token.
 // It is the Go equivalent of the Node.js backend's req.auth / req.permission object.
 type Identity struct {
 	AuthMode     AuthMode
-	Actor        permission.ActorType
+	Actor        actor.Type
 	ActorID      uuid.UUID
 	OrgID        uuid.UUID
 	RootOrgID    uuid.UUID
 	ParentOrgID  uuid.UUID
-	AuthMethod   permission.ActorAuthMethod
+	OrgName      string
+	AuthMethod   actor.AuthMethod
 	IsSuperAdmin bool
+
+	// MFA fields (for JWT user auth).
+	IsMfaVerified bool
+	MfaMethod     string
 
 	// UserAuthInfo is set for JWT (user) auth. Used for audit logging.
 	UserAuthInfo *UserAuthInfo
