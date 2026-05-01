@@ -49,6 +49,7 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      crlDistributionPointUrls?: string[];
     }
   | ({
       isInternal: false;
@@ -66,6 +67,7 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
+      crlDistributionPointUrls?: string[];
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaDTO = {
@@ -78,12 +80,14 @@ export type TUpdateCaDTO =
       caId: string;
       name?: string;
       status?: CaStatus;
+      crlDistributionPointUrls?: string[];
     }
   | ({
       isInternal: false;
       caId: string;
       name?: string;
       status?: CaStatus;
+      crlDistributionPointUrls?: string[];
     } & Omit<TProjectPermission, "projectId">);
 
 export type TDeleteCaDTO = {

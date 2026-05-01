@@ -172,6 +172,36 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
+  const countByProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where("projectId", projectId)
+      .count("id as count")
+      .first();
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
+  const countWithRotationByProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamResource)
+      .where("projectId", projectId)
+      .whereNotNull("encryptedRotationAccountCredentials")
+      .count("id as count")
+      .first();
+    return Number((result as { count?: string | number })?.count ?? 0);
+  };
+
+  const countByProjectGroupedByType = async (
+    projectId: string,
+    tx?: Knex
+  ): Promise<{ resourceType: string; count: number }[]> => {
+    const rows = (await (tx || db.replicaNode())(TableName.PamResource)
+      .select("resourceType")
+      .count("id as count")
+      .where("projectId", projectId)
+      .groupBy("resourceType")) as unknown as { resourceType: string; count: string | number }[];
+
+    return rows.map((row) => ({ resourceType: row.resourceType, count: Number(row.count) }));
+  };
+
   return {
     ...orm,
     findById,
@@ -179,6 +209,9 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     findMetadataByResourceIds,
     findByDomainId,
     findByGatewayId,
-    countByGatewayId
+    countByGatewayId,
+    countByProject,
+    countWithRotationByProject,
+    countByProjectGroupedByType
   };
 };

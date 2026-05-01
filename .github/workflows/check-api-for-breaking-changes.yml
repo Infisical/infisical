@@ -44,6 +44,7 @@ jobs:
             -e REDIS_URL=$REDIS_URL \
             -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET \
             -e ENCRYPTION_KEY=$ENCRYPTION_KEY \
+            -e TELEMETRY_ENABLED=false \
             --env-file .env \
             infisical-api
           

@@ -293,7 +293,9 @@ export const identitySpiffeAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identitySpiffeAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identitySpiffeAuth.identityId), () =>
+      identityDAL.findById(identitySpiffeAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

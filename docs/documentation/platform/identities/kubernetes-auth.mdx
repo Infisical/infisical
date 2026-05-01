@@ -248,7 +248,8 @@ In the following steps, we explore how to create and use identities for your app
     - Allowed Service Account Names: A comma-separated list of trusted service account names that are allowed to authenticate with Infisical.
     - Allowed Namespaces: A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.
     - Allowed Audience: An optional audience claim that the service account JWT token must have to authenticate with Infisical.
-    - CA Certificate: The PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server.
+    - Verify TLS Certificate: When enabled, Infisical validates the Kubernetes API server's TLS certificate against the CA certificate provided below. Strongly recommended. Pasting a CA certificate below auto-enables this. When disabled, the connection is still over HTTPS but the API server's identity is not verified.
+    - CA Certificate: The PEM-encoded CA cert that issued the Kubernetes API server's TLS certificate. Required when TLS certificate verification is enabled.
     - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
     - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
     - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.

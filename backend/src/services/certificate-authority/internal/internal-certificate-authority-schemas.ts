@@ -3,13 +3,13 @@ import { z } from "zod";
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
-import { CaType, InternalCaType } from "../certificate-authority-enums";
+import { CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import {
   BaseCertificateAuthoritySchema,
   GenericCreateCertificateAuthorityFieldsSchema,
   GenericUpdateCertificateAuthorityFieldsSchema
 } from "../certificate-authority-schemas";
-import { validateCaDateField } from "../certificate-authority-validators";
+import { distributionPointUrlsSchema, validateCaDateField } from "../certificate-authority-validators";
 
 type TInternalCertificateAuthorityConfiguration = {
   type: InternalCaType;
@@ -28,6 +28,7 @@ type TInternalCertificateAuthorityConfiguration = {
   parentCaId?: string | null;
   serialNumber?: string | null;
   activeCaCertId?: string | null;
+  crlDistributionPointUrls?: string[];
 };
 
 export const InternalCertificateAuthorityConfigurationSchema = z
@@ -47,7 +48,10 @@ export const InternalCertificateAuthorityConfigurationSchema = z
     dn: z.string().trim().nullish(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().nullish(),
-    activeCaCertId: z.string().uuid().nullish()
+    activeCaCertId: z.string().uuid().nullish(),
+    crlDistributionPointUrls: distributionPointUrlsSchema
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls)
   })
   .refine(
     (data) => {
@@ -74,4 +78,17 @@ export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificate
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
-export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(CaType.INTERNAL);
+export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
+  crlDistributionPointUrls: distributionPointUrlsSchema
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls)
+});
+
+export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
+  CaType.INTERNAL
+).extend({
+  configuration: UpdateInternalCertificateAuthorityConfigurationSchema.optional()
+}) as unknown as z.ZodType<{
+  status?: CaStatus;
+  configuration?: TInternalCertificateAuthorityConfiguration;
+}>;

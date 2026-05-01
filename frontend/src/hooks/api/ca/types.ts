@@ -115,8 +115,12 @@ export type TInternalCertificateAuthority = {
     parentCaId?: string;
     serialNumber?: string;
     activeCaCertId?: string;
+    crlDistributionPointUrls?: string[];
   };
 };
+
+export const MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS = 4;
+export const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
 
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority

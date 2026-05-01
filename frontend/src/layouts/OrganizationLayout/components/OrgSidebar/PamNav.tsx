@@ -1,4 +1,5 @@
 import {
+  ActivityIcon,
   BookCheck,
   Database,
   FileText,
@@ -35,6 +36,7 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
+    { label: "Insights", icon: ActivityIcon, pathSuffix: "insights" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

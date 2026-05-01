@@ -30,6 +30,7 @@ import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-ce
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
 import {
+  buildCrlDistributionPointUrls,
   createSerialNumber,
   getCaCertChain,
   getCaCredentials,
@@ -141,12 +142,13 @@ export const InternalCertificateAuthorityFns = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
+    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
-      new x509.CRLDistributionPointsExtension([distributionPointUrl]),
+      new x509.CRLDistributionPointsExtension(cdpUrls),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.AuthorityInfoAccessExtension({
@@ -389,12 +391,13 @@ export const InternalCertificateAuthorityFns = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const managedCdpUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
+    const cdpUrls = buildCrlDistributionPointUrls(managedCdpUrl, ca.internalCa.crlDistributionPointUrls);
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
-      new x509.CRLDistributionPointsExtension([distributionPointUrl]),
+      new x509.CRLDistributionPointsExtension(cdpUrls),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.AuthorityInfoAccessExtension({

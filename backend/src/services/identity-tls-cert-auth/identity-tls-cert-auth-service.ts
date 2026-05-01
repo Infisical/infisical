@@ -86,7 +86,9 @@ export const identityTlsCertAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityTlsCertAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityTlsCertAuth.identityId), () =>
+      identityDAL.findById(identityTlsCertAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

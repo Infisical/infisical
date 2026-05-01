@@ -316,7 +316,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -378,7 +379,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -471,7 +473,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -581,7 +584,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -745,7 +749,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-123"
+          caId: "ca-123",
+          crlDistributionPointUrls: []
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -787,7 +792,8 @@ describe("CertificateV3Service", () => {
             notBefore: null,
             notAfter: null,
             activeCaCertId: "cert-123",
-            caId: "ca-123"
+            caId: "ca-123",
+            crlDistributionPointUrls: []
           }
         }
       };
@@ -1017,7 +1023,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1179,7 +1186,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1341,7 +1349,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1503,7 +1512,8 @@ describe("CertificateV3Service", () => {
           notBefore: undefined,
           notAfter: undefined,
           activeCaCertId: "cert-123",
-          caId: "ca-1"
+          caId: "ca-1",
+          crlDistributionPointUrls: []
         }
       };
 
@@ -1730,7 +1740,8 @@ describe("CertificateV3Service", () => {
         maxPathLength: -1,
         activeCaCertId: "cert-123",
         dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
-        serialNumber: "123456789"
+        serialNumber: "123456789",
+        crlDistributionPointUrls: []
       }
     };
 

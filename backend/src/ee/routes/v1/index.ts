@@ -41,6 +41,7 @@ import {
   registerPamDomainRouter
 } from "./pam-domain-routers";
 import { registerPamFolderRouter } from "./pam-folder-router";
+import { registerPamInsightsRouter } from "./pam-insights-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRotationRulesRouter } from "./pam-resource-routers/pam-resource-rotation-rules-router";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
@@ -121,6 +122,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
+  await server.register(registerPamInsightsRouter, { prefix: "/insights/pam" });
 
   await server.register(
     async (pkiRouter) => {

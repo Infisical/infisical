@@ -5,7 +5,9 @@ import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } fr
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -282,7 +284,10 @@ export const roleServiceFactory = ({
         : undefined;
 
       if (assumedPrivilegeDetails?.actorType === ActorType.IDENTITY) {
-        const identityDetails = await identityDAL.findById(assumedPrivilegeDetails.actorId);
+        const identityDetails = await requestMemoize(
+          requestMemoKeys.identityFindById(assumedPrivilegeDetails.actorId),
+          () => identityDAL.findById(assumedPrivilegeDetails.actorId)
+        );
         if (!identityDetails)
           throw new NotFoundError({ message: `Identity with ID ${assumedPrivilegeDetails.actorId} not found` });
         assumedPrivilegeDetails.actorName = identityDetails.name;

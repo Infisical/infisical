@@ -39,3 +39,23 @@ up-dev-sso:
 go-generate:
 	cd backend-go && \
 	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
+
+validate-upgrade-impact:
+	cd upgrade-impact && \
+	npm run type:check && \
+	npm test && \
+	npm run validate
+
+generate-upgrade-impact:
+ifndef TAG
+	$(error TAG is required. Usage: make generate-upgrade-impact TAG=v0.159.23)
+endif
+	cd upgrade-impact && \
+	npm run generate -- --tag $(TAG)
+
+generate-upgrade-impact-dry-run:
+ifndef TAG
+	$(error TAG is required. Usage: make generate-upgrade-impact-dry-run TAG=v0.159.23)
+endif
+	cd upgrade-impact && \
+	npm run generate:dry-run -- --tag $(TAG)

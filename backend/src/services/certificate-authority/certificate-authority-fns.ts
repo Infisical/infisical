@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
@@ -154,6 +155,12 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
         name: "ECDSA",
         namedCurve: "P-384",
         hash: "SHA-384"
+      };
+    case CertKeyAlgorithm.ECDSA_P521:
+      return {
+        name: "ECDSA",
+        namedCurve: "P-521",
+        hash: "SHA-512"
       };
     // PQC: hash/namedCurve set to satisfy the TypeScript union return type; only `name` is used
     case CertKeyAlgorithm.ML_DSA_44:
@@ -535,4 +542,34 @@ export const expandInternalCa = (
     ...ca,
     requireTemplateForIssuance: !ca.enableDirectIssuance
   } as const;
+};
+
+const TRAILING_SLASHES_REGEX = new RE2("/+$");
+
+// Per RFC 3986 §6.2.2.1 only scheme and host are case-insensitive; path/query/hash are case-sensitive.
+export const normalizeUrlForComparison = (url: string) => {
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    const pathname = parsed.pathname.replace(TRAILING_SLASHES_REGEX, "");
+    return `${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return trimmed.replace(TRAILING_SLASHES_REGEX, "").toLowerCase();
+  }
+};
+
+export const buildCrlDistributionPointUrls = (
+  managedUrl: string,
+  customUrls: string[] | null | undefined
+): string[] => {
+  const seen = new Set<string>();
+  return [managedUrl, ...(customUrls ?? [])].reduce<string[]>((acc, rawUrl) => {
+    if (!rawUrl) return acc;
+    const trimmed = rawUrl.trim();
+    const normalized = normalizeUrlForComparison(trimmed);
+    if (seen.has(normalized)) return acc;
+    seen.add(normalized);
+    acc.push(trimmed);
+    return acc;
+  }, []);
 };

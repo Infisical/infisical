@@ -253,7 +253,7 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    const identityDetails = await identityDAL.findById(id);
+    const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
@@ -404,7 +404,7 @@ export const identityServiceFactory = ({
       return doc;
     });
 
-    const deletedIdentity = await identityDAL.findById(id);
+    const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

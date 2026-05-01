@@ -254,7 +254,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
-    const { requiresApproval } = await checkPolicyMatch({
+    const { requiresApproval, constraints } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
@@ -267,7 +267,8 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
       handlePopUpOpen("requestAccount", {
         resourceName: resource.name,
         accountName: account.name,
-        accountAccessed: true
+        accountAccessed: true,
+        accessDurationMax: constraints?.accessDuration.max
       });
       return;
     }
@@ -672,6 +673,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
+        accessDurationMax={popUp.requestAccount.data?.accessDurationMax}
       />
 
       <PamUpdateAccountModal

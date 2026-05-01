@@ -43,7 +43,8 @@ export const registerApprovalPolicyEndpoints = ({
   createRequestSchema,
   requestResponseSchema,
   grantResponseSchema,
-  inputsSchema
+  inputsSchema,
+  checkPolicyMatchResponseSchema
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
@@ -54,6 +55,7 @@ export const registerApprovalPolicyEndpoints = ({
   requestResponseSchema: z.ZodObject<z.ZodRawShape>;
   grantResponseSchema: z.ZodObject<z.ZodRawShape>;
   inputsSchema: z.ZodType<TApprovalPolicyInputs>;
+  checkPolicyMatchResponseSchema: z.ZodObject<z.ZodRawShape>;
 }) => {
   // Policies
   server.route({
@@ -683,10 +685,7 @@ export const registerApprovalPolicyEndpoints = ({
         inputs: inputsSchema
       }),
       response: {
-        200: z.object({
-          requiresApproval: z.boolean(),
-          hasActiveGrant: z.boolean()
-        })
+        200: checkPolicyMatchResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),

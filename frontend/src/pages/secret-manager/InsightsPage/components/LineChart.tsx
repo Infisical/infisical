@@ -16,14 +16,25 @@ export type LineChartDataPoint = {
 type LineChartProps = {
   data: LineChartDataPoint[];
   height?: number;
+  valueLabel?: string;
+  ticks?: string[];
+  tickFormatter?: (label: string) => string;
+  gradientId?: string;
 };
 
-export const LineChart = ({ data, height = 280 }: LineChartProps) => {
+export const LineChart = ({
+  data,
+  height = 280,
+  valueLabel = "Requests",
+  ticks,
+  tickFormatter,
+  gradientId = "areaGradient"
+}: LineChartProps) => {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
         <defs>
-          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-info)" stopOpacity={0.15} />
             <stop offset="100%" stopColor="var(--color-info)" stopOpacity={0} />
           </linearGradient>
@@ -31,6 +42,8 @@ export const LineChart = ({ data, height = 280 }: LineChartProps) => {
         <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} />
         <XAxis
           dataKey="label"
+          ticks={ticks}
+          tickFormatter={tickFormatter}
           tick={{ fontSize: 11, fill: "var(--color-label)" }}
           axisLine={false}
           tickLine={false}
@@ -51,14 +64,15 @@ export const LineChart = ({ data, height = 280 }: LineChartProps) => {
           labelStyle={{ color: "var(--color-foreground)" }}
           itemStyle={{ color: "var(--color-warning)" }}
           cursor={{ stroke: "var(--color-warning)", strokeWidth: 1, strokeDasharray: "4 4" }}
-          formatter={(value) => [Number(value).toLocaleString(), "Requests"]}
+          isAnimationActive={false}
+          formatter={(value) => [Number(value).toLocaleString(), valueLabel]}
         />
         <Area
           type="monotoneX"
           dataKey="value"
           stroke="var(--color-info)"
           strokeWidth={1.5}
-          fill="url(#areaGradient)"
+          fill={`url(#${gradientId})`}
           dot={{
             r: 4,
             fill: "var(--color-info)",

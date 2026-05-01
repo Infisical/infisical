@@ -1,0 +1,41 @@
+name: Validate upgrade impact data
+
+on:
+  pull_request:
+    paths:
+      - "upgrade-impact/**"
+      - ".github/workflows/validate-upgrade-impact.yml"
+      - ".github/workflows/generate-upgrade-impact.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: upgrade-impact
+
+      - name: Type check
+        run: npm run type:check
+        working-directory: upgrade-impact
+
+      - name: Test upgrade impact tooling
+        run: npm test
+        working-directory: upgrade-impact
+
+      - name: Validate upgrade impact data
+        run: npm run validate
+        working-directory: upgrade-impact

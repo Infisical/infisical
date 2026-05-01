@@ -1,4 +1,5 @@
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { BaseCheckPolicyMatchResponseSchema } from "@app/services/approval-policy/approval-policy-schemas";
 import {
   CertRequestPolicyInputsSchema,
   CertRequestPolicySchema,
@@ -20,6 +21,7 @@ import {
 import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
+  PamAccessCheckPolicyMatchResponseSchema,
   PamAccessPolicyInputsSchema,
   PamAccessPolicySchema,
   PamAccessRequestGrantSchema,
@@ -43,7 +45,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       createRequestSchema: CreatePamAccessRequestSchema,
       requestResponseSchema: PamAccessRequestSchema,
       grantResponseSchema: PamAccessRequestGrantSchema,
-      inputsSchema: PamAccessPolicyInputsSchema
+      inputsSchema: PamAccessPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema
     });
   },
   [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {
@@ -56,7 +59,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       createRequestSchema: CreateCertRequestRequestSchema,
       requestResponseSchema: CertRequestRequestSchema,
       grantResponseSchema: CertRequestRequestGrantSchema,
-      inputsSchema: CertRequestPolicyInputsSchema
+      inputsSchema: CertRequestPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
     });
   },
   [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {
@@ -69,7 +73,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       createRequestSchema: CreateCodeSigningRequestSchema,
       requestResponseSchema: CodeSigningRequestSchema,
       grantResponseSchema: CodeSigningRequestGrantSchema,
-      inputsSchema: CodeSigningPolicyInputsSchema
+      inputsSchema: CodeSigningPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
     });
   }
 };

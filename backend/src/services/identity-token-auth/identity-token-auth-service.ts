@@ -29,7 +29,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -49,7 +48,6 @@ import {
 } from "./identity-token-auth-types";
 
 type TIdentityTokenAuthServiceFactoryDep = {
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityTokenAuthDAL: Pick<
     TIdentityTokenAuthDALFactory,
     "transaction" | "create" | "findOne" | "updateById" | "delete"
@@ -67,7 +65,6 @@ type TIdentityTokenAuthServiceFactoryDep = {
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
 
 export const identityTokenAuthServiceFactory = ({
-  identityDAL,
   identityTokenAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -509,8 +506,7 @@ export const identityTokenAuthServiceFactory = ({
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
-    const identity = await identityDAL.findById(identityTokenAuth.identityId);
-    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+    const { identity } = identityMembershipOrg;
 
     const org = await requestMemoize(requestMemoKeys.orgFindById(identity.orgId), () =>
       orgDAL.findById(identity.orgId)

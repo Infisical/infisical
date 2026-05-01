@@ -1,0 +1,140 @@
+---
+title: "Model Context Protocol"
+sidebarTitle: "MCP Server"
+description: "Connect Infisical's documentation to AI tools like Claude, Cursor, and VS Code with a hosted Model Context Protocol (MCP) server."
+---
+
+## About the Infisical Docs MCP server
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open protocol that creates standardized connections between AI applications and external services like documentation. Infisical hosts an MCP server that exposes its documentation to any MCP client — Claude, Claude Code, Cursor, VS Code, ChatGPT, and others — so your agent can answer questions from Infisical's source documentation instead of relying on its training data.
+
+When an AI tool is connected to the Infisical MCP server, it can search the documentation and retrieve full page content directly while generating a response. This means:
+
+- **Up-to-date answers**: agents pull from current documentation, not stale training data.
+- **Source-grounded responses**: agents answer from Infisical's documentation rather than guessing.
+- **No copy-pasting**: you don't need to paste documentation snippets into your prompts.
+
+<Tip>
+  The MCP server pairs well with the [Infisical Skills](https://github.com/infisical/ai-skills) repo. The MCP server gives agents access to the documentation; skills teach agents how to use Infisical effectively (project structure, conventions, common workflows). Connect both for the best results.
+</Tip>
+
+## MCP server URL
+
+The Infisical Docs MCP server is publicly available at:
+
+```
+https://infisical.com/docs/mcp
+```
+
+No authentication is required — anyone can connect their AI tool to it.
+
+## Connect to the Infisical MCP server
+
+<Tabs>
+  <Tab title="Claude">
+    <Steps>
+      <Step title="Open Claude's connector settings">
+        Navigate to the [Connectors](https://claude.ai/settings/connectors) page in your Claude settings.
+      </Step>
+      <Step title="Add the Infisical MCP server">
+        1. Select **Add custom connector**.
+        2. Add the Infisical MCP server:
+           - **Name**: `Infisical`
+           - **URL**: `https://infisical.com/docs/mcp`
+        3. Select **Add**.
+      </Step>
+      <Step title="Use the MCP server in a chat">
+        1. In a Claude chat, select the attachments button (the plus icon).
+        2. Select the Infisical MCP server.
+        3. Ask Claude a question about Infisical.
+      </Step>
+    </Steps>
+
+    See the [Model Context Protocol documentation](https://modelcontextprotocol.io/docs/tutorials/use-remote-mcp-server#connecting-to-a-remote-mcp-server) for more details.
+  </Tab>
+
+  <Tab title="Claude Code">
+    Run the following command to add the Infisical MCP server to Claude Code:
+
+    ```bash
+    claude mcp add --transport http Infisical https://infisical.com/docs/mcp
+    ```
+
+    Verify the connection:
+
+    ```bash
+    claude mcp list
+    ```
+
+    See the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code/mcp#installing-mcp-servers) for more details.
+  </Tab>
+
+  <Tab title="Cursor">
+    <Steps>
+      <Step title="Open MCP settings">
+        1. Use <kbd>Command</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> (<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> on Windows) to open the command palette.
+        2. Search for **Open MCP settings**.
+        3. Select **Add custom MCP**. This opens the `mcp.json` file.
+      </Step>
+      <Step title="Configure the Infisical MCP server">
+        In `mcp.json`, add:
+
+        ```json
+        {
+          "mcpServers": {
+            "Infisical": {
+              "url": "https://infisical.com/docs/mcp"
+            }
+          }
+        }
+        ```
+      </Step>
+      <Step title="Test the connection">
+        In Cursor's chat, ask "What tools do you have available?" Cursor should show the Infisical MCP server as an available tool.
+      </Step>
+    </Steps>
+
+    See [Installing MCP servers](https://docs.cursor.com/en/context/mcp#installing-mcp-servers) in the Cursor documentation for more details.
+  </Tab>
+
+  <Tab title="VS Code">
+    Create a `.vscode/mcp.json` file in your workspace and add:
+
+    ```json
+    {
+      "servers": {
+        "Infisical": {
+          "type": "http",
+          "url": "https://infisical.com/docs/mcp"
+        }
+      }
+    }
+    ```
+
+    See the [VS Code documentation](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) for more details.
+  </Tab>
+</Tabs>
+
+## Using the MCP server alongside other tools
+
+AI tools can connect to multiple MCP servers at once. Connected servers do not consume context until the AI invokes a search tool, and the AI decides when to search based on query relevance — it does not search every connected server for every question.
+
+A few practices to get the most out of the Infisical MCP server:
+
+- **Be specific in prompts**: mention Infisical explicitly when you want the agent to consult the documentation (e.g., "Using Infisical's CLI, how do I…").
+- **Pair with skills**: install the [Infisical Skills](https://github.com/infisical/ai-skills) for opinionated guidance on top of raw documentation access.
+- **Disconnect unused servers**: if you have many MCP servers connected, remove ones you aren't actively using to keep responses focused.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What's the difference between the MCP server and the Infisical Skills?">
+    The MCP server gives an AI agent the ability to search and read Infisical's documentation on demand. The [Infisical Skills](https://github.com/infisical/ai-skills) are reusable instructions that teach an agent how to work with Infisical (conventions, common workflows, etc.). The MCP server provides knowledge; skills provide know-how. They're complementary.
+  </Accordion>
+  <Accordion title="Do I need an Infisical account to use the MCP server?">
+    No. The Infisical Docs MCP server is publicly available and does not require authentication. It exposes only the public documentation.
+  </Accordion>
+  <Accordion title="Can I use the MCP server with any AI tool?">
+    Any AI tool that supports the Model Context Protocol over HTTP can connect to it. This includes Claude, Claude Code, Cursor, VS Code (with Copilot), and others.
+  </Accordion>
+</AccordionGroup>

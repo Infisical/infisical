@@ -167,7 +167,9 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const identity = await identityDAL.findById(identityLdapAuth.identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityLdapAuth.identityId), () =>
+      identityDAL.findById(identityLdapAuth.identityId)
+    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
@@ -874,7 +876,9 @@ export const identityLdapAuthServiceFactory = ({
   ): Promise<T> => {
     const usernameSlug = slugify(username.trim().toLowerCase());
 
-    const identity = await identityDAL.findById(identityId);
+    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityId), () =>
+      identityDAL.findById(identityId)
+    );
     const orgId = identity?.orgId ?? null;
 
     const lockoutKey = KeyStorePrefixes.IdentityLockoutState(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug);

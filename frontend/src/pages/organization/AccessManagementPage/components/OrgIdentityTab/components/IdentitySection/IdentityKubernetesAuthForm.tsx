@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
@@ -15,6 +15,7 @@ import {
   Input,
   Select,
   SelectItem,
+  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -61,6 +62,7 @@ const schema = z
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
     caCert: z.string().optional(),
+    verifyTlsCertificate: z.boolean().default(true),
     accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
       message: "Access Token TTL cannot be greater than 315360000"
     }),
@@ -98,6 +100,31 @@ const schema = z
         code: z.ZodIssueCode.custom,
         message:
           "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+      });
+    }
+
+    if (
+      data.verifyTlsCertificate &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["caCert"],
+        code: z.ZodIssueCode.custom,
+        message: "A CA certificate is required when TLS certificate verification is enabled."
+      });
+    }
+
+    if (
+      data.verifyTlsCertificate === false &&
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      data.caCert?.length
+    ) {
+      ctx.addIssue({
+        path: ["verifyTlsCertificate"],
+        code: z.ZodIssueCode.custom,
+        message:
+          "TLS certificate verification cannot be disabled while a CA certificate is provided. Either remove the CA certificate or enable verification."
       });
     }
   });
@@ -166,6 +193,7 @@ export const IdentityKubernetesAuthForm = ({
       gatewayId: "",
       allowedAudience: "",
       caCert: "",
+      verifyTlsCertificate: true,
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -189,6 +217,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
+        verifyTlsCertificate: data.verifyTlsCertificate ?? false,
         gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
         gatewayPoolId: data.gatewayPoolId || null,
         accessTokenTTL: String(data.accessTokenTTL),
@@ -213,6 +242,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces: "",
         allowedAudience: "",
         caCert: "",
+        verifyTlsCertificate: true,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
@@ -313,6 +343,7 @@ export const IdentityKubernetesAuthForm = ({
     allowedNamespaces,
     allowedAudience,
     caCert,
+    verifyTlsCertificate,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -338,6 +369,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedNamespaces,
         allowedAudience,
         caCert,
+        verifyTlsCertificate,
         identityId,
         gatewayId: gatewayPoolId ? null : gatewayId || null,
         gatewayPoolId: gatewayPoolId || null,
@@ -365,6 +397,7 @@ export const IdentityKubernetesAuthForm = ({
         gatewayId: gatewayPoolId ? null : gatewayId || null,
         gatewayPoolId: gatewayPoolId || null,
         caCert: caCert || "",
+        verifyTlsCertificate,
         tokenReviewMode,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -692,20 +725,105 @@ export const IdentityKubernetesAuthForm = ({
             )}
           />
           {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
-            <Controller
-              control={control}
-              name="caCert"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="CA Certificate"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-                >
-                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                </FormControl>
-              )}
-            />
+            <>
+              <Controller
+                control={control}
+                name="verifyTlsCertificate"
+                render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  const hasCaCert = Boolean(watch("caCert")?.length);
+                  return (
+                    <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                      <Switch
+                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        id="k8s-verify-tls-certificate"
+                        thumbClassName="bg-mineshaft-800"
+                        isChecked={hasCaCert ? true : value}
+                        onCheckedChange={onChange}
+                        isDisabled={hasCaCert}
+                      >
+                        <p className="w-44 text-sm font-normal text-mineshaft-400">
+                          Verify TLS Certificate
+                          <Tooltip
+                            className="max-w-md"
+                            content={
+                              <div className="flex flex-col gap-2">
+                                {hasCaCert ? (
+                                  <p>
+                                    Verification is always on while a CA certificate is provided. To
+                                    disable verification, clear the CA certificate field below.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <p>
+                                      When enabled, Infisical validates the Kubernetes API
+                                      server&apos;s TLS certificate against the CA certificate
+                                      provided below.
+                                    </p>
+                                    <p>
+                                      Leaving this disabled means any host that responds at the
+                                      configured Kubernetes URL will be trusted, regardless of its
+                                      certificate. The connection is still over HTTPS, but the API
+                                      server&apos;s identity is not verified. Only do this for
+                                      testing or if you cannot supply a CA certificate.
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            }
+                          >
+                            <FontAwesomeIcon
+                              icon={faQuestionCircle}
+                              size="sm"
+                              className="ml-1 text-mineshaft-400"
+                            />
+                          </Tooltip>
+                        </p>
+                      </Switch>
+                    </FormControl>
+                  );
+                }}
+              />
+              <Controller
+                control={control}
+                name="caCert"
+                render={({ field, fieldState: { error } }) => {
+                  const verifyTlsCertificate = watch("verifyTlsCertificate");
+                  return (
+                    <FormControl
+                      label="CA Certificate"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired={verifyTlsCertificate}
+                      tooltipClassName="max-w-md"
+                      tooltipText={
+                        <div className="flex flex-col gap-2">
+                          <p>
+                            The PEM-encoded CA certificate that issued the Kubernetes API
+                            server&apos;s TLS certificate. Required when TLS certificate
+                            verification is enabled. Providing a CA certificate forces TLS
+                            verification on.
+                          </p>
+                        </div>
+                      }
+                    >
+                      <TextArea
+                        {...field}
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value.length > 0 && !verifyTlsCertificate) {
+                            setValue("verifyTlsCertificate", true, {
+                              shouldDirty: true,
+                              shouldValidate: true
+                            });
+                          }
+                        }}
+                      />
+                    </FormControl>
+                  );
+                }}
+              />
+            </>
           )}
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>

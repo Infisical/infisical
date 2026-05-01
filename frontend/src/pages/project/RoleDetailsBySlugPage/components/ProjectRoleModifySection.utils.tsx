@@ -28,6 +28,7 @@ import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamAccountPolicyActions,
   ProjectPermissionPamDiscoveryActions,
+  ProjectPermissionPamInsightsActions,
   ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -264,6 +265,10 @@ const PamDiscoveryPolicyActionSchema = z.object({
   [ProjectPermissionPamDiscoveryActions.Read]: z.boolean().optional(),
   [ProjectPermissionPamDiscoveryActions.Edit]: z.boolean().optional(),
   [ProjectPermissionPamDiscoveryActions.Delete]: z.boolean().optional()
+});
+
+const PamInsightsPolicyActionSchema = z.object({
+  [ProjectPermissionPamInsightsActions.Read]: z.boolean().optional()
 });
 
 const McpEndpointPolicyActionSchema = z.object({
@@ -825,6 +830,7 @@ export const projectRoleFormSchema = z.object({
         []
       ),
       [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamInsights]: PamInsightsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1833,6 +1839,14 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
       if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
       if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
+    }
+
+    if (subject === ProjectPermissionSub.PamInsights) {
+      const canRead = action.includes(ProjectPermissionPamInsightsActions.Read);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPamInsightsActions.Read] = true;
     }
 
     if (subject === ProjectPermissionSub.PamAccountPolicies) {
@@ -3309,6 +3323,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PamInsights]: {
+    title: "Insights",
+    description: "View the PAM insights dashboard",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionPamInsightsActions.Read,
+        description: "View the PAM insights dashboard"
+      }
+    ]
+  },
   [ProjectPermissionSub.ApprovalRequests]: {
     title: "Access Requests",
     description: "View and submit access requests",
@@ -3490,7 +3515,8 @@ const PamPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PamAccounts]: enabled,
   [ProjectPermissionSub.PamSessions]: enabled,
   [ProjectPermissionSub.PamAccountPolicies]: enabled,
-  [ProjectPermissionSub.PamDiscovery]: enabled
+  [ProjectPermissionSub.PamDiscovery]: enabled,
+  [ProjectPermissionSub.PamInsights]: enabled
 });
 
 const AiPermissionSubjects = (enabled = false) => ({

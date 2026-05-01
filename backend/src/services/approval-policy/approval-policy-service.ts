@@ -942,9 +942,16 @@ export const approvalPolicyServiceFactory = ({
 
     const hasActiveGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
 
+    const innerConstraints = policy.constraints?.constraints;
+    const constraints =
+      innerConstraints && "accessDuration" in innerConstraints
+        ? { accessDuration: { max: innerConstraints.accessDuration.max } }
+        : undefined;
+
     return {
       requiresApproval: !hasActiveGrant,
-      hasActiveGrant
+      hasActiveGrant,
+      constraints
     };
   };
 

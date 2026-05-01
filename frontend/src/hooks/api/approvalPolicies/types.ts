@@ -125,4 +125,7 @@ export type TCheckPolicyMatchDTO = {
 export type TCheckPolicyMatchResult = {
   requiresApproval: boolean;
   hasActiveGrant: boolean;
+  constraints?: {
+    accessDuration: { max: string };
+  };
 };
