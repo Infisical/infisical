@@ -225,6 +225,231 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  // Bypass-approve flow. Caller has already evaluated the predicate and confirmed eligibility.
+  // Returns the same shape as approveRequest's standard branch.
+  const $approveRequestBreakGlass = async ({
+    requestId,
+    request,
+    actor,
+    policy,
+    policyType,
+    bypassReason
+  }: {
+    requestId: string;
+    request: TApprovalRequests;
+    actor: OrgServiceActor;
+    policy: TApprovalPolicies;
+    policyType: ApprovalPolicyType;
+    bypassReason: string;
+  }): Promise<{
+    request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
+    audit: "break-glass" | "none";
+    bypassMetadata?: BreakGlassBypassMetadata;
+  }> => {
+    if (bypassReason.trim().length < 10) {
+      throw new BadRequestError({
+        message: "A bypass reason of at least 10 characters is required to bypass approvals"
+      });
+    }
+
+    // Re-check project membership in case the user was removed after creating the request.
+    await $verifyProjectUserMembership([actor.id], actor.orgId, request.projectId);
+
+    // Re-validate constraints in case the policy was tightened after the request was created.
+    const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
+    const constraintCheck = fac.validateConstraints(
+      policy as unknown as TApprovalPolicy,
+      (request.requestData as { requestData: unknown }).requestData as TApprovalRequestData
+    );
+    if (!constraintCheck.valid) {
+      throw new BadRequestError({
+        message: constraintCheck.errors
+          ? `Policy constraints not met: ${constraintCheck.errors.join("; ")}`
+          : "Policy constraints not met"
+      });
+    }
+
+    const inputs = (request.requestData as { requestData: TPamAccessRequestData }).requestData;
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+
+    const approverUserIdSet = new Set<string>();
+    const approverGroupIds: string[] = [];
+    for (const step of steps) {
+      for (const approver of step.approvers) {
+        if (approver.type === ApproverType.User) {
+          approverUserIdSet.add(approver.id);
+        } else {
+          approverGroupIds.push(approver.id);
+        }
+      }
+    }
+
+    const expandedGroupMembers = (
+      await Promise.all([...new Set(approverGroupIds)].map((groupId) => userGroupMembershipDAL.find({ groupId })))
+    ).flat();
+    expandedGroupMembers.forEach((m) => approverUserIdSet.add(m.userId));
+    approverUserIdSet.delete(actor.id);
+
+    const recipientUserIds = [...approverUserIdSet];
+
+    const { grant, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+      if (!locked) {
+        throw new ForbiddenRequestError({ message: "Request not found" });
+      }
+
+      const existingBreakGlassGrant = await approvalRequestGrantsDAL.findOneForUpdate(
+        { requestId, granteeUserId: actor.id, isBreakGlass: true },
+        tx
+      );
+      if (existingBreakGlassGrant) {
+        return { grant: existingBreakGlassGrant, idempotent: true as const };
+      }
+
+      if (locked.status !== ApprovalRequestStatus.Pending) {
+        throw new BadRequestError({ message: "Request is not pending" });
+      }
+
+      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+        await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired }, tx);
+        throw new BadRequestError({ message: "Request has expired" });
+      }
+
+      const requestSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
+      await Promise.all(
+        requestSteps.map((step) =>
+          approvalRequestStepsDAL.updateById(
+            step.id,
+            { status: ApprovalRequestStepStatus.Completed, completedAt: new Date() },
+            tx
+          )
+        )
+      );
+
+      const currentStepRow = requestSteps.find((s) => s.stepNumber === locked.currentStep) || requestSteps[0] || null;
+      if (currentStepRow) {
+        await approvalRequestApprovalsDAL.create(
+          {
+            stepId: currentStepRow.id,
+            approverUserId: actor.id,
+            decision: ApprovalRequestApprovalDecision.Approved,
+            comment: null
+          },
+          tx
+        );
+      }
+
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
+
+      const durationMs = ms(inputs.accessDuration);
+      const expiresAt = new Date(Date.now() + durationMs);
+
+      const newGrant = await approvalRequestGrantsDAL.create(
+        {
+          projectId: request.projectId,
+          requestId: request.id,
+          granteeUserId: actor.id,
+          status: ApprovalRequestGrantStatus.Active,
+          type: request.type,
+          attributes: inputs,
+          expiresAt,
+          isBreakGlass: true,
+          bypassReason: bypassReason.trim()
+        },
+        tx
+      );
+
+      return { grant: newGrant, idempotent: false as const };
+    });
+
+    const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const finalRequest = await approvalRequestDAL.findById(requestId);
+
+    const result = { ...finalRequest, steps: finalSteps } as TApprovalRequest & { steps: unknown[] };
+    const bypassMetadata: BreakGlassBypassMetadata = {
+      grantId: grant.id,
+      resourceName: inputs.resourceName,
+      accountName: inputs.accountName,
+      accessDuration: inputs.accessDuration,
+      bypassReason: bypassReason.trim(),
+      approverCount: recipientUserIds.length
+    };
+
+    if (idempotent) {
+      return { request: await $decorateRequest(result, actor), audit: "none" };
+    }
+
+    if (recipientUserIds.length === 0) {
+      return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
+    }
+
+    try {
+      const [recipients, project, actingUser] = await Promise.all([
+        userDAL.find({ $in: { id: recipientUserIds } }),
+        projectDAL.findById(request.projectId),
+        userDAL.findById(actor.id)
+      ]);
+      const cfg = getConfig();
+      const approvalPath = project
+        ? `/organizations/${project.orgId}/projects/pam/${request.projectId}/approvals/${requestId}`
+        : null;
+
+      const requesterFullName = actingUser
+        ? `${actingUser.firstName ?? ""} ${actingUser.lastName ?? ""}`.trim() || (actingUser.email ?? "")
+        : "Unknown user";
+      const requesterEmail = actingUser?.email ?? "";
+
+      await notificationService.createUserNotifications(
+        recipients.map((r) => ({
+          userId: r.id,
+          orgId: actor.orgId,
+          type: NotificationType.PAM_ACCESS_POLICY_BYPASSED,
+          title: "PAM Access Policy Bypassed",
+          body: `**${requesterFullName}** (${requesterEmail}) self-approved access to **${[
+            inputs.resourceName,
+            inputs.accountName
+          ]
+            .filter(Boolean)
+            .join(" / ")}** without obtaining the required approval.`,
+          link: approvalPath ?? undefined
+        }))
+      );
+
+      const emailRecipients = recipients
+        .map((r) => r.email)
+        .filter((e): e is string => typeof e === "string" && e.length > 0);
+
+      // Skip email when SITE_URL is unset — the link in the email would dead-link.
+      if (emailRecipients.length > 0 && cfg.SITE_URL && approvalPath) {
+        await smtpService.sendMail({
+          recipients: emailRecipients,
+          subjectLine: "Infisical PAM Access Policy Bypassed",
+          substitutions: {
+            projectName: project?.name ?? "Unknown project",
+            requesterFullName,
+            requesterEmail,
+            resourceName: inputs.resourceName,
+            accountName: inputs.accountName,
+            accessDuration: inputs.accessDuration,
+            bypassReason: bypassReason.trim(),
+            approvalUrl: `${cfg.SITE_URL}${approvalPath}`
+          },
+          template: SmtpTemplates.AccessPamRequestBypassed
+        });
+      } else if (emailRecipients.length > 0 && !cfg.SITE_URL) {
+        logger.warn({ requestId }, `Skipping break-glass email: SITE_URL is not configured [requestId=${requestId}]`);
+      }
+    } catch (err) {
+      logger.error(
+        { err, requestId, granteeUserId: actor.id },
+        `Failed to deliver break-glass notifications [requestId=${requestId}] [granteeUserId=${actor.id}]`
+      );
+    }
+
+    return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
+  };
+
   const create = async (
     policyType: ApprovalPolicyType,
     {
@@ -817,210 +1042,14 @@ export const approvalPolicyServiceFactory = ({
         ));
 
     if (isBreakGlass) {
-      if (!bypassReason || bypassReason.trim().length < 10) {
-        throw new BadRequestError({
-          message: "A bypass reason of at least 10 characters is required to bypass approvals"
-        });
-      }
-
-      // Re-check project membership in case the user was removed after creating the request.
-      await $verifyProjectUserMembership([actor.id], actor.orgId, request.projectId);
-
-      // Re-validate constraints in case the policy was tightened after the request was created.
-      const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
-      const constraintCheck = fac.validateConstraints(
-        policy as unknown as TApprovalPolicy,
-        (request.requestData as { requestData: unknown }).requestData as TApprovalRequestData
-      );
-      if (!constraintCheck.valid) {
-        throw new BadRequestError({
-          message: constraintCheck.errors
-            ? `Policy constraints not met: ${constraintCheck.errors.join("; ")}`
-            : "Policy constraints not met"
-        });
-      }
-
-      const inputs = (request.requestData as { requestData: TPamAccessRequestData }).requestData;
-
-      const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
-
-      const approverUserIdSet = new Set<string>();
-      const approverGroupIds: string[] = [];
-      for (const step of steps) {
-        for (const approver of step.approvers) {
-          if (approver.type === ApproverType.User) {
-            approverUserIdSet.add(approver.id);
-          } else {
-            approverGroupIds.push(approver.id);
-          }
-        }
-      }
-
-      // Group expansion mirrors notifyApproversForStep so the two paths produce the same
-      // recipient set. (Reviewer flagged a previous version using groupDAL.findAllGroupPossibleUsers.)
-      const expandedGroupMembers = (
-        await Promise.all([...new Set(approverGroupIds)].map((groupId) => userGroupMembershipDAL.find({ groupId })))
-      ).flat();
-      expandedGroupMembers.forEach((m) => approverUserIdSet.add(m.userId));
-      approverUserIdSet.delete(actor.id);
-
-      const recipientUserIds = [...approverUserIdSet];
-
-      const { grant, idempotent } = await approvalRequestDAL.transaction(async (tx) => {
-        const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
-        if (!locked) {
-          throw new ForbiddenRequestError({ message: "Request not found" });
-        }
-
-        const existingBreakGlassGrant = await approvalRequestGrantsDAL.findOneForUpdate(
-          { requestId, granteeUserId: actor.id, isBreakGlass: true },
-          tx
-        );
-        if (existingBreakGlassGrant) {
-          return { grant: existingBreakGlassGrant, idempotent: true as const };
-        }
-
-        if (locked.status !== ApprovalRequestStatus.Pending) {
-          throw new BadRequestError({ message: "Request is not pending" });
-        }
-
-        if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
-          await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired }, tx);
-          throw new BadRequestError({ message: "Request has expired" });
-        }
-
-        const requestSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
-        await Promise.all(
-          requestSteps.map((step) =>
-            approvalRequestStepsDAL.updateById(
-              step.id,
-              { status: ApprovalRequestStepStatus.Completed, completedAt: new Date() },
-              tx
-            )
-          )
-        );
-
-        const currentStepRow = requestSteps.find((s) => s.stepNumber === locked.currentStep) || requestSteps[0] || null;
-        if (currentStepRow) {
-          await approvalRequestApprovalsDAL.create(
-            {
-              stepId: currentStepRow.id,
-              approverUserId: actor.id,
-              decision: ApprovalRequestApprovalDecision.Approved,
-              comment: null
-            },
-            tx
-          );
-        }
-
-        await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-
-        const durationMs = ms(inputs.accessDuration);
-        const expiresAt = new Date(Date.now() + durationMs);
-
-        const newGrant = await approvalRequestGrantsDAL.create(
-          {
-            projectId: request.projectId,
-            requestId: request.id,
-            granteeUserId: actor.id,
-            status: ApprovalRequestGrantStatus.Active,
-            type: request.type,
-            attributes: inputs,
-            expiresAt,
-            isBreakGlass: true,
-            bypassReason: bypassReason.trim()
-          },
-          tx
-        );
-
-        return { grant: newGrant, idempotent: false as const };
+      return $approveRequestBreakGlass({
+        requestId,
+        request,
+        actor,
+        policy,
+        policyType,
+        bypassReason
       });
-
-      const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
-      const finalRequest = await approvalRequestDAL.findById(requestId);
-
-      const result = { ...finalRequest, steps: finalSteps } as TApprovalRequest & { steps: unknown[] };
-      const bypassMetadata: BreakGlassBypassMetadata = {
-        grantId: grant.id,
-        resourceName: inputs.resourceName,
-        accountName: inputs.accountName,
-        accessDuration: inputs.accessDuration,
-        bypassReason: bypassReason.trim(),
-        approverCount: recipientUserIds.length
-      };
-
-      if (idempotent) {
-        return { request: await $decorateRequest(result, actor), audit: "none" };
-      }
-
-      if (recipientUserIds.length === 0) {
-        return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
-      }
-
-      try {
-        const [recipients, project, actingUser] = await Promise.all([
-          userDAL.find({ $in: { id: recipientUserIds } }),
-          projectDAL.findById(request.projectId),
-          userDAL.findById(actor.id)
-        ]);
-        const cfg = getConfig();
-        const approvalPath = project
-          ? `/organizations/${project.orgId}/projects/pam/${request.projectId}/approvals/${requestId}`
-          : null;
-
-        const requesterFullName = actingUser
-          ? `${actingUser.firstName ?? ""} ${actingUser.lastName ?? ""}`.trim() || (actingUser.email ?? "")
-          : "Unknown user";
-        const requesterEmail = actingUser?.email ?? "";
-
-        await notificationService.createUserNotifications(
-          recipients.map((r) => ({
-            userId: r.id,
-            orgId: actor.orgId,
-            type: NotificationType.PAM_ACCESS_POLICY_BYPASSED,
-            title: "PAM Access Policy Bypassed",
-            body: `**${requesterFullName}** (${requesterEmail}) self-approved access to **${[
-              inputs.resourceName,
-              inputs.accountName
-            ]
-              .filter(Boolean)
-              .join(" / ")}** without obtaining the required approval.`,
-            link: approvalPath ?? undefined
-          }))
-        );
-
-        const emailRecipients = recipients
-          .map((r) => r.email)
-          .filter((e): e is string => typeof e === "string" && e.length > 0);
-
-        // Skip email when SITE_URL is unset — the link in the email would dead-link.
-        if (emailRecipients.length > 0 && cfg.SITE_URL && approvalPath) {
-          await smtpService.sendMail({
-            recipients: emailRecipients,
-            subjectLine: "Infisical PAM Access Policy Bypassed",
-            substitutions: {
-              projectName: project?.name ?? "Unknown project",
-              requesterFullName,
-              requesterEmail,
-              resourceName: inputs.resourceName,
-              accountName: inputs.accountName,
-              accessDuration: inputs.accessDuration,
-              bypassReason: bypassReason.trim(),
-              approvalUrl: `${cfg.SITE_URL}${approvalPath}`
-            },
-            template: SmtpTemplates.AccessPamRequestBypassed
-          });
-        } else if (emailRecipients.length > 0 && !cfg.SITE_URL) {
-          logger.warn({ requestId }, `Skipping break-glass email: SITE_URL is not configured [requestId=${requestId}]`);
-        }
-      } catch (err) {
-        logger.error(
-          { err, requestId, granteeUserId: actor.id },
-          `Failed to deliver break-glass notifications [requestId=${requestId}] [granteeUserId=${actor.id}]`
-        );
-      }
-
-      return { request: await $decorateRequest(result, actor), audit: "break-glass", bypassMetadata };
     }
 
     if (request.status !== ApprovalRequestStatus.Pending) {
