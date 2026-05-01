@@ -16,7 +16,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -165,7 +164,10 @@ export type TAppConnectionServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
+  >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
@@ -482,24 +484,19 @@ export const appConnectionServiceFactory = ({
           message: `Gateway with ID ${gatewayId} not found for org`
         });
       }
-    } else if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
     }
 
-    // For validation, resolve gatewayPoolId to a concrete gatewayId by picking a healthy member.
+    // For validation, resolve gatewayPoolId to a concrete gatewayId via the centralized helper
+    // (license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists).
     // The stored row keeps gatewayPoolId; runtime consumers re-resolve a fresh member per use.
     const validationGatewayId = gatewayPoolId
-      ? (await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId)).id
+      ? (
+          await gatewayPoolService.resolveAttachableGatewayFromPool({
+            poolId: gatewayPoolId,
+            orgId: actor.orgId,
+            actor
+          })
+        ).id
       : gatewayId;
 
     await enterpriseAppCheck(
@@ -668,20 +665,6 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    if (gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
-    }
-
     // Mutual exclusion: when one is being set, clear the other.
     const gatewayIdValue =
       gatewayId !== undefined
@@ -697,13 +680,27 @@ export const appConnectionServiceFactory = ({
           : undefined;
 
     // For validation, resolve the effective gateway: directly-attached, or a fresh pool member.
+    // For pool changes, the centralized helper enforces license + RBAC + pool-belongs-to-org.
+    // For unchanged pools (re-validation only), pickRandomHealthyGateway is sufficient since the row
+    // was already validated when first attached.
     const effectiveGatewayIdForUpdate =
       gatewayIdValue !== undefined ? gatewayIdValue : appConnection.gatewayId;
     const effectiveGatewayPoolIdForUpdate =
       gatewayPoolIdValue !== undefined ? gatewayPoolIdValue : appConnection.gatewayPoolId;
-    const validationGatewayId = effectiveGatewayPoolIdForUpdate
-      ? (await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate)).id
-      : effectiveGatewayIdForUpdate;
+
+    let validationGatewayId: string | null | undefined = effectiveGatewayIdForUpdate;
+    if (effectiveGatewayPoolIdForUpdate) {
+      const isNewPoolAttachment =
+        gatewayPoolId !== undefined && gatewayPoolId !== appConnection.gatewayPoolId && gatewayPoolId !== null;
+      const picked = isNewPoolAttachment
+        ? await gatewayPoolService.resolveAttachableGatewayFromPool({
+            poolId: effectiveGatewayPoolIdForUpdate,
+            orgId: actor.orgId,
+            actor
+          })
+        : await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
+      validationGatewayId = picked.id;
+    }
 
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {

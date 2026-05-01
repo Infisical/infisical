@@ -1,11 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamResources } from "@app/db/schemas";
-import {
-  OrgPermissionAppConnectionActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -27,7 +23,6 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
@@ -64,8 +59,10 @@ type TPamResourceServiceFactoryDep = {
     TGatewayV2ServiceFactory,
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -81,7 +78,6 @@ export const pamResourceServiceFactory = ({
   kmsService,
   gatewayV2Service,
   gatewayPoolService,
-  licenseService,
   resourceMetadataDAL,
   appConnectionDAL
 }: TPamResourceServiceFactoryDep) => {
@@ -216,26 +212,12 @@ export const pamResourceServiceFactory = ({
     );
 
     if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: actor.type,
-        actorId: actor.id,
+      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        actor
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
     }
 
     if (domainId) {
@@ -372,26 +354,11 @@ export const pamResourceServiceFactory = ({
     }
 
     if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: actor.type,
-        actorId: actor.id,
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        actor
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
     }
 
     const updateDoc: Partial<TPamResources> = {};

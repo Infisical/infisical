@@ -52,24 +52,12 @@ const CoreCreatePamResourceSchema = z.object({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
+// Base schemas stay extendable (no .superRefine here — that would turn them into ZodEffects
+// and break per-type schemas that .extend() these). Mutual exclusion + required-on-create
+// rules are enforced at the service layer (see pam-resource-service.ts create/updateById).
 export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
   gatewayId: z.string().uuid().optional(),
   gatewayPoolId: z.string().uuid().optional()
-}).superRefine((data, ctx) => {
-  if (data.gatewayId && data.gatewayPoolId) {
-    ctx.addIssue({
-      path: ["gatewayPoolId"],
-      code: z.ZodIssueCode.custom,
-      message: "Cannot specify both a gateway and a gateway pool"
-    });
-  }
-  if (!data.gatewayId && !data.gatewayPoolId) {
-    ctx.addIssue({
-      path: ["gatewayId"],
-      code: z.ZodIssueCode.custom,
-      message: "A gateway or gateway pool is required"
-    });
-  }
 });
 
 export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
@@ -83,14 +71,6 @@ const CoreUpdatePamResourceSchema = z.object({
 export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
   gatewayId: z.string().uuid().optional(),
   gatewayPoolId: z.string().uuid().optional()
-}).superRefine((data, ctx) => {
-  if (data.gatewayId && data.gatewayPoolId) {
-    ctx.addIssue({
-      path: ["gatewayPoolId"],
-      code: z.ZodIssueCode.custom,
-      message: "Cannot specify both a gateway and a gateway pool"
-    });
-  }
 });
 
 export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;

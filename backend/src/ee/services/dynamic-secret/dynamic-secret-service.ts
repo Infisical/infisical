@@ -22,11 +22,7 @@ import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
@@ -50,7 +46,10 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -156,34 +155,29 @@ export const dynamicSecretServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
+    // Mutual exclusion is best-effort enforced at the schema layer for K8s; for the SQL family
+    // it's enforced here so we don't silently prefer one over the other.
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      "gatewayId" in inputs &&
+      inputs.gatewayId &&
+      "gatewayPoolId" in inputs &&
+      inputs.gatewayPoolId
+    ) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     let selectedGatewayId: string | null = null;
     let selectedGatewayPoolId: string | null = null;
     if (inputs && typeof inputs === "object" && "gatewayPoolId" in inputs && inputs.gatewayPoolId) {
       const gatewayPoolId = inputs.gatewayPoolId as string;
-
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
-
-      // Verify the pool has at least one healthy gateway
-      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
       selectedGatewayPoolId = gatewayPoolId;
     } else if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
       const gatewayId = inputs.gatewayId as string;
@@ -372,6 +366,17 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
+    if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      "gatewayId" in updatedInput &&
+      updatedInput.gatewayId &&
+      "gatewayPoolId" in updatedInput &&
+      updatedInput.gatewayPoolId
+    ) {
+      throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
+    }
+
     let selectedGatewayId: string | null = null;
     let selectedGatewayPoolId: string | null = null;
     let isGatewayV1 = true;
@@ -382,29 +387,11 @@ export const dynamicSecretServiceFactory = ({
       updatedInput?.gatewayPoolId
     ) {
       const gatewayPoolId = updatedInput.gatewayPoolId as string;
-
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
-
-      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
       selectedGatewayPoolId = gatewayPoolId;
     } else if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
       const gatewayId = updatedInput.gatewayId as string;

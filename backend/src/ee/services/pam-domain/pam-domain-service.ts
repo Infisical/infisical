@@ -1,7 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TPamDomains } from "@app/db/schemas";
-import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { ActionProjectType, TPamDomains } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -48,7 +47,6 @@ export const pamDomainServiceFactory = ({
   kmsService,
   gatewayV2Service,
   gatewayPoolService,
-  licenseService,
   resourceMetadataDAL
 }: TPamDomainServiceFactoryDep) => {
   // Resolve a concrete gatewayId for factory operations: either the directly-attached gateway,
@@ -131,26 +129,12 @@ export const pamDomainServiceFactory = ({
     );
 
     if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: actor.type,
-        actorId: actor.id,
+      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        actor
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
     }
 
     const existingDomain = await pamDomainDAL.findOne({ name, projectId });
@@ -263,26 +247,11 @@ export const pamDomainServiceFactory = ({
     }
 
     if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: actor.type,
-        actorId: actor.id,
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        actor
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
     }
 
     const updateDoc: Partial<TPamDomains> = {};

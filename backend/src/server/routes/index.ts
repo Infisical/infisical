@@ -2786,7 +2786,6 @@ export const registerRoutes = async (
     permissionService,
     gatewayV2DAL,
     gatewayPoolService,
-    licenseService,
     queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
   });
 
@@ -2900,7 +2899,6 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
-    licenseService,
     resourceMetadataDAL,
     appConnectionDAL
   });
@@ -2912,7 +2910,6 @@ export const registerRoutes = async (
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
-    licenseService,
     resourceMetadataDAL
   });
 
@@ -3041,7 +3038,6 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
-    licenseService,
     pamDiscoveryQueue
   });
 

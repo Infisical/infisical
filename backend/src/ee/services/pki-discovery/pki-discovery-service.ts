@@ -2,12 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiDiscoveryActions,
@@ -53,8 +48,7 @@ type TPkiDiscoveryServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 
@@ -80,7 +74,6 @@ export const pkiDiscoveryServiceFactory = ({
   permissionService,
   gatewayV2DAL,
   gatewayPoolService,
-  licenseService,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
   const createDiscovery = async ({
@@ -145,29 +138,14 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
     } else if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+      // license + AttachGatewayPools RBAC + pool exists + pool belongs to org + healthy member exists.
+      // Centralized to avoid the cross-org-attach gap that drifted in earlier when each consumer
+      // assembled these checks by hand.
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
-
-      // Verify the pool exists in this org and has at least one healthy gateway available
-      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
     }
 
     try {
@@ -261,28 +239,11 @@ export const pkiDiscoveryServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
     } else if (gatewayPoolId) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.gatewayPool) {
-        throw new BadRequestError({
-          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
-        });
-      }
-
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
+      await gatewayPoolService.resolveAttachableGatewayFromPool({
+        poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
+        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
-
-      await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
     }
 
     // Mutual exclusion: setting one clears the other

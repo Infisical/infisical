@@ -7,7 +7,6 @@ import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-meta
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPostRotateContext } from "../pam-resource/pam-resource-types";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -67,11 +66,13 @@ export type TDeleteDomainDTO = {
 export type TPamDomainServiceFactoryDep = {
   pamDomainDAL: TPamDomainDALFactory;
   pamResourceDAL: Pick<TPamResourceDALFactory, "find" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickRandomHealthyGateway">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 

@@ -330,6 +330,75 @@ export const gatewayPoolServiceFactory = ({
     });
   };
 
+  // Centralized "consumer wants to attach this pool" entry point.
+  //
+  // Bundles every check that must pass before a consumer (K8s auth, app
+  // connection, dynamic secret, PAM resource/domain/discovery, etc.) is
+  // allowed to use a pool — including the org-ownership check that previously
+  // got missed when the pattern was copy-pasted across consumers.
+  //
+  //   1. Enterprise license has gatewayPool feature
+  //   2. Actor has AttachGatewayPools RBAC on the pool's org
+  //   3. Pool exists AND belongs to the given org (cross-org safety)
+  //   4. Pool has at least one healthy member
+  //
+  // Returns the picked healthy gateway, ready to be passed to
+  // gatewayV2Service.getPlatformConnectionDetailsByGatewayId or stored on a
+  // session row for pinning. Use this instead of stitching the four checks by
+  // hand at every consumer site.
+  const resolveAttachableGatewayFromPool = async ({
+    poolId,
+    orgId,
+    actor
+  }: {
+    poolId: string;
+    orgId: string;
+    actor: OrgServiceActor;
+  }) => {
+    await $checkLicense(orgId);
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayPoolActions.AttachGatewayPools,
+      OrgPermissionSubjects.GatewayPool
+    );
+
+    const pool = await gatewayPoolDAL.findById(poolId);
+    if (!pool || pool.orgId !== orgId) {
+      throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
+    }
+
+    return pickRandomHealthyGateway(poolId);
+  };
+
+  // Resolve a concrete gatewayId from EITHER a directly-attached gateway OR a
+  // gateway pool. Use at runtime sites that have already validated org-scope
+  // (e.g. the row was just loaded from the consumer's own table). Returns
+  // null when neither is set, so callers requiring a gateway should branch on
+  // that explicitly. Picks a fresh healthy member each call — caller decides
+  // whether to pin the picked id (e.g. on a session row) or pick again per op.
+  const resolveEffectiveGatewayId = async ({
+    gatewayId,
+    gatewayPoolId
+  }: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  }): Promise<string | null> => {
+    if (gatewayId) return gatewayId;
+    if (gatewayPoolId) {
+      const picked = await pickRandomHealthyGateway(gatewayPoolId);
+      return picked.id;
+    }
+    return null;
+  };
+
   const getConnectedResources = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
     await $checkLicense(actor.orgId);
@@ -410,6 +479,8 @@ export const gatewayPoolServiceFactory = ({
     pickRandomHealthyGateway,
     getPlatformConnectionDetailsByPoolId,
     getConnectedResources,
-    getConnectedResourcesCount
+    getConnectedResourcesCount,
+    resolveAttachableGatewayFromPool,
+    resolveEffectiveGatewayId
   };
 };
