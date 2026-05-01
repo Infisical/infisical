@@ -64,6 +64,20 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
   </Step>
 </Steps>
 
+### Bypass Approvals (Break-Glass)
+
+The **Bypass Approvals** option enables emergency access in break-glass situations:
+
+- When enabled, designated users (bypassers) can self-approve their own pending request with a written reason, skipping the configured approver workflow.
+- When disabled, all requests must go through the full approval process.
+- You can specify which users or groups are allowed to bypass.
+
+The bypass is recorded as a `pam-access-policy-bypassed` audit event and notifies all approvers via in-app notification and email.
+
+<Warning>
+  Not selecting specific users or groups for bypass will allow anyone in the project to bypass the policy.
+</Warning>
+
 ## Approval Requests
 
 When an access request matches a policy's conditions, an approval request is created. Approvers can then review and approve or reject the request.
