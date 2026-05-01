@@ -2614,7 +2614,6 @@ export const registerRoutes = async (
     certificateRequestDAL,
     smtpService,
     userDAL,
-    groupDAL,
     projectDAL
   });
 

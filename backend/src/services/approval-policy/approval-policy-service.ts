@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -83,7 +82,6 @@ type TApprovalPolicyServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
-  groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleUsers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -116,7 +114,6 @@ export const approvalPolicyServiceFactory = ({
   certificateRequestDAL,
   smtpService,
   userDAL,
-  groupDAL,
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
@@ -859,16 +856,12 @@ export const approvalPolicyServiceFactory = ({
         }
       }
 
-      const expandedGroupUsers = (
-        await Promise.all(
-          [...new Set(approverGroupIds)].map((groupId) =>
-            groupDAL
-              .findAllGroupPossibleUsers({ orgId: actor.orgId, groupId })
-              .then((res) => res.members.filter((u) => u.isPartOfGroup))
-          )
-        )
+      // Group expansion mirrors notifyApproversForStep so the two paths produce the same
+      // recipient set. (Reviewer flagged a previous version using groupDAL.findAllGroupPossibleUsers.)
+      const expandedGroupMembers = (
+        await Promise.all([...new Set(approverGroupIds)].map((groupId) => userGroupMembershipDAL.find({ groupId })))
       ).flat();
-      expandedGroupUsers.forEach((u) => approverUserIdSet.add(u.id));
+      expandedGroupMembers.forEach((m) => approverUserIdSet.add(m.userId));
       approverUserIdSet.delete(actor.id);
 
       const recipientUserIds = [...approverUserIdSet];
